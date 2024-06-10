@@ -2,4 +2,4 @@ k3d cluster delete kwirth
 k3d cluster create kwirth -p "80:80@loadbalancer" -p "443:443@loadbalancer" -p "8080:8080@loadbalancer" --k3s-arg "--disable=traefik@server:*"
 kubectl config use-context k3d-kwirth
 timeout 5 > NUL
-rem kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.4/deploy/static/provider/cloud/deploy.yaml
+kubectl apply -f kwirth.yaml

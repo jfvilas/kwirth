@@ -1,4 +1,4 @@
-call image-build.cmd
+call build.cmd
 
 set /p major=<major
 set /p minor=<minor

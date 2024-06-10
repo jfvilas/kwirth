@@ -1,0 +1,12 @@
+#!/bin/bash
+./update-version
+
+# build back
+npm run build
+mkdir dist/front
+
+# build front
+cd ../front
+npm run build
+cp -R build/ ../back/dist/front/
+cd ../back

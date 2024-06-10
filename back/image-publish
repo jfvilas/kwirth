@@ -1,0 +1,12 @@
+#!/bin/bash
+./build
+
+export MAJOR=$(cat major)
+export MINOR=$(cat minor)
+export LEVEL=$(cat level)
+export CURRENTVERSION=$MAJOR.$MINOR.$LEVEL
+
+# docker image rm kwirth:latest
+docker build . -t kwirth -t jfvilasoutlook/kwirth:$CURRENTVERSION -t jfvilasoutlook/kwirth:latest
+docker push jfvilasoutlook/kwirth:$CURRENTVERSION
+docker push jfvilasoutlook/kwirth:latest

@@ -1,0 +1,11 @@
+#!/bin/bash
+export MAJOR=$(cat major)
+export MINOR=$(cat minor)
+export LEVEL=$(cat level)
+export CURRENTVERSION=$MAJOR.$MINOR.$LEVEL
+export LEVEL=$(($LEVEL+1))
+rm level
+printf "%s" $LEVEL > level
+export NEXTVERSION=$MAJOR.$MINOR.$LEVEL
+echo Moving $CURRENTVERSION to $NEXTVERSION
+echo "export const VERSION:string=\"$NEXTVERSION\";" > src/version.ts
