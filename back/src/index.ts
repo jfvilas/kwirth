@@ -5,6 +5,7 @@ import Guid from 'guid';
 
 // HTTP server for serving front, api and websockets
 import WebSocket from 'ws';
+import { StoreApi } from './api/StoreApi';
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
@@ -101,38 +102,40 @@ wss.on('connection', (ws:any, req) => {
 });
 
 // serve front application
-app.get('/', (rq:any,rs:any) => { rs.redirect('/front') });
+app.get('/', (req:any,res:any) => { res.redirect('/front') });
 app.use('/front', express.static('./dist/front'))
 
 
 // authentication
-app.post('/login', (rq:any,rs:any) => { 
-  if (rq.body.user===admin.user && rq.body.password===admin.password) {
+app.post('/login', (req:any,res:any) => { 
+  if (req.body.user===admin.user && req.body.password===admin.password) {
     if (admin.password==='password')
-      rs.status(201).send('');
+      res.status(201).send('');
     else {
       admin.apiKey=Guid.create().toString();
-      rs.status(200).send(admin.apiKey);
+      res.status(200).send(admin.apiKey);
     }
   }
   else {
-    rs.status(401).send('');
+    res.status(401).send('');
   }
 });
-app.post('/password', (rq:any,rs:any) => { 
-  if (rq.body.user===admin.user && rq.body.password===admin.password) {
-    admin.password = rq.body.newpassword
+app.post('/password', (req:any,res:any) => { 
+  if (req.body.user===admin.user && req.body.password===admin.password) {
+    admin.password = req.body.newpassword
     admin.apiKey=Guid.create().toString();
-    rs.status(200).send(admin.apiKey);
+    res.status(200).send(admin.apiKey);
   }
   else {
-    rs.status(401).send('');
+    res.status(401).send('');
   }
 });
 
 // serve config API
 var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi);
 app.use(`/config`, va.route);
+var sa:StoreApi = new StoreApi(coreApi);
+app.use(`/storeconfig`, sa.route);
 
 // listen
 server.listen(PORT, () => {

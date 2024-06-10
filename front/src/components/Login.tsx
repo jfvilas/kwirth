@@ -1,6 +1,5 @@
-import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material';
-import { Pause, PauseOutlined } from '@mui/icons-material';
 
 interface IProps {
   onClose:(result:boolean,apiKey:string) => {},
@@ -74,7 +73,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
         </>}
         { changingPassword && <>
           <Typography>Change your password, since it's your first login</Typography>
-          <TextField value={newPassword1} onChange={(ev) => setNewPassword1(ev.target.value)} variant='standard'label='NewPassword'></TextField>
+          <TextField value={newPassword1} onChange={(ev) => setNewPassword1(ev.target.value)} variant='standard'label='NewPassword' autoFocus></TextField>
           <TextField value={newPassword2} onChange={(ev) => setNewPassword2(ev.target.value)} variant='standard'label='NewPassword'></TextField>
         </>}
       </Stack>
