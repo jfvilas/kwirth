@@ -1,21 +1,24 @@
-import { CoreV1Api } from '@kubernetes/client-node';
 import express from 'express';
-import Secrets from '../tools/Secrets';
+import { ConfigMaps } from '../tools/ConfigMaps';
+import Semaphore from 'ts-semaphore';
 
 export class StoreApi {
-  static secrets:Secrets;
+  configMaps:ConfigMaps;
+  static semaphore:Semaphore = new Semaphore(1);
   static namespace:string;
 
   public route = express.Router();
 
-  constructor (coreV1Api:CoreV1Api, namespace:string='default') {
-    StoreApi.secrets=new Secrets(coreV1Api, namespace);
+  constructor (config:ConfigMaps, namespace:string='default') {
+    this.configMaps=config;
 
-    this.route.route('/store/:key')
+    this.route.route('/store/:user/:key')
     .get( async (req, res) => {
       try {
-        var content= await StoreApi.secrets.read(req.params.key);
-        res.status(200).json();
+        StoreApi.semaphore.use ( async () => {
+          var content:any= await this.configMaps.read('kwirth.store.'+req.params.user);
+          res.status(200).json(content.data['key']);
+        });
       }
       catch (err) {
         res.status(500).json();
@@ -24,8 +27,12 @@ export class StoreApi {
     })
     .post( async (req, res) => {
       try {
-        var content= await StoreApi.secrets.write(req.params.key, req.body);
-        res.status(200).json();
+        StoreApi.semaphore.use ( async () => {
+          var content:any= await this.configMaps.read('kwirth.store.'+req.params.user);
+          content.data[req.params.key]=req.body;
+          await this.configMaps.write('kwirth.store.'+req.params.user,content);
+          res.status(200).send('');
+          });
       }
       catch (err) {
         res.status(500).json();

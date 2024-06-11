@@ -1,7 +1,12 @@
 import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch } from '@kubernetes/client-node';
 import { ConfigApi } from './api/ConfigApi';
 import { VERSION } from './version';
+import { Secrets } from './tools/Secrets';
+import { ConfigMaps } from './tools/ConfigMaps';
+
 import Guid from 'guid';
+const Semaphore = require('ts-semaphore')
+const semaphore = new Semaphore(1);
 
 // HTTP server for serving front, api and websockets
 import WebSocket from 'ws';
@@ -13,15 +18,15 @@ const cors = require('cors');
 const bodyParser = require('body-parser')
 const PORT = 3883;
 
-// users
-var admin = { user:'admin', password:'password', apiKey:'not-created'};
-
 // Kubernetes API access
 const kc = new KubeConfig();
 kc.loadFromDefault();
 const coreApi = kc.makeApiClient(CoreV1Api);
 const appsApi = kc.makeApiClient(AppsV1Api);
 const k8sLog = new Log(kc);
+
+const secrets = new Secrets(coreApi);
+const configMaps = new ConfigMaps(coreApi);
 
 const sendLines = (ws:WebSocket, event:any, source:string) => {
   const logLines = source.split('\n');
@@ -107,34 +112,57 @@ app.use('/front', express.static('./dist/front'))
 
 
 // authentication
-app.post('/login', (req:any,res:any) => { 
-  if (req.body.user===admin.user && req.body.password===admin.password) {
-    if (admin.password==='password')
-      res.status(201).send('');
-    else {
-      admin.apiKey=Guid.create().toString();
-      res.status(200).send(admin.apiKey);
+app.post('/login', async (req:any,res:any) => {
+  semaphore.use( async () => {
+    var users:any = (await secrets.read('kwirth.users') as any).data;
+    var user:any=JSON.parse(atob(users[req.body.user]));
+    if (user) {
+      if (req.body.password===user.password) {
+        if (user.password==='password')
+          res.status(201).send('');
+        else {
+          user.apiKey=Guid.create().toString();
+          users[req.body.user]=btoa(JSON.stringify(user));
+          secrets.write('kwirth.users',users);
+          res.status(200).send(user.apiKey);
+        }
+      } 
+      else {
+        res.status(401).send('');
+      }
     }
-  }
-  else {
-    res.status(401).send('');
-  }
+    else {
+      res.status(403).send('');
+    }
+  });
 });
-app.post('/password', (req:any,res:any) => { 
-  if (req.body.user===admin.user && req.body.password===admin.password) {
-    admin.password = req.body.newpassword
-    admin.apiKey=Guid.create().toString();
-    res.status(200).send(admin.apiKey);
-  }
-  else {
-    res.status(401).send('');
-  }
+
+app.post('/password', async (req:any,res:any) => { 
+  semaphore.use ( async () => {
+    var users:any = (await secrets.read('kwirth.users') as any).data;
+    var user:any=JSON.parse (atob(users[req.body.user]));
+    if (user) {
+      if (req.body.password===user.password) {
+        user.password = req.body.newpassword
+        user.apiKey=Guid.create().toString();
+        users[req.body.user]=btoa(JSON.stringify(user));
+        secrets.write('kwirth.users',users);
+        res.status(200).send(users.apiKey);
+      }
+      else {
+        res.status(401).send('');
+      }
+    }
+    else {
+      res.status(403).send('');
+    }
+  });
 });
 
 // serve config API
 var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi);
 app.use(`/config`, va.route);
-var sa:StoreApi = new StoreApi(coreApi);
+var sa:StoreApi = new StoreApi(configMaps);
 app.use(`/storeconfig`, sa.route);
 
 // listen

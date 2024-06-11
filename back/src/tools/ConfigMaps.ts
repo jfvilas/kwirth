@@ -1,6 +1,6 @@
 import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch } from '@kubernetes/client-node';
 
-export class  Secrets {
+export class  ConfigMaps {
     coreApi:CoreV1Api;
     namespace:string;
 
@@ -21,11 +21,11 @@ export class  Secrets {
                         data: content
                     };
                     try {
-                        this.coreApi?.replaceNamespacedSecret(name,this.namespace, secret);
+                        this.coreApi?.replaceNamespacedConfigMap(name,this.namespace, secret);
                         resolve ({});
                     }
                     catch (err) {
-                        this.coreApi?.createNamespacedSecret(this.namespace, secret);
+                        this.coreApi?.createNamespacedConfigMap(this.namespace, secret);
                         resolve ({});
                     }
                 }
@@ -40,7 +40,7 @@ export class  Secrets {
         return new Promise(
             async (resolve,reject) => {
                 try {
-                    var ct = await this.coreApi?.readNamespacedSecret(name,this.namespace);
+                    var ct = await this.coreApi?.readNamespacedConfigMap(name,this.namespace);
                     resolve(ct.body);
                 }
                 catch(err){
