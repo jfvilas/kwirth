@@ -11,6 +11,8 @@ const semaphore = new Semaphore(1);
 // HTTP server for serving front, api and websockets
 import WebSocket from 'ws';
 import { StoreApi } from './api/StoreApi';
+import { UserApi } from './api/UserApi';
+import { KeyApi } from './api/KeyApi';
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
@@ -114,7 +116,7 @@ app.use('/front', express.static('./dist/front'))
 // authentication
 app.post('/login', async (req:any,res:any) => {
   semaphore.use( async () => {
-    var users:any = (await secrets.read('kwirth.users') as any).data;
+    var users:any = (await secrets.read('kwirth.users') as any);
     var user:any=JSON.parse(atob(users[req.body.user]));
     if (user) {
       if (req.body.password===user.password) {
@@ -139,7 +141,7 @@ app.post('/login', async (req:any,res:any) => {
 
 app.post('/password', async (req:any,res:any) => { 
   semaphore.use ( async () => {
-    var users:any = (await secrets.read('kwirth.users') as any).data;
+    var users:any = (await secrets.read('kwirth.users') as any);
     var user:any=JSON.parse (atob(users[req.body.user]));
     if (user) {
       if (req.body.password===user.password) {
@@ -162,8 +164,12 @@ app.post('/password', async (req:any,res:any) => {
 // serve config API
 var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi);
 app.use(`/config`, va.route);
+var ka:KeyApi = new KeyApi(configMaps);
+app.use(`/key`, ka.route);
 var sa:StoreApi = new StoreApi(configMaps);
-app.use(`/storeconfig`, sa.route);
+app.use(`/store`, sa.route);
+var ua:UserApi = new UserApi(secrets);
+app.use(`/user`, ua.route);
 
 // listen
 server.listen(PORT, () => {

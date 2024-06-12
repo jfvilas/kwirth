@@ -9,14 +9,14 @@ interface IProps {
   cluster:Cluster;
 }
 
-const ManageSecurity: React.FC<any> = (props:IProps) => {
+const ManageApiSecurity: React.FC<any> = (props:IProps) => {
   const [keys, setKeys] = useState<Key[]|null>();
   const [selectedKey, setSelectedKey] = useState<Key|null>();
   const [description, setDescrition] = useState<string>('');
   const [expire, setExpire] = useState<string|null>('');
 
   const getKeys = async () => {
-    var response = await fetch(`${props.cluster!.url}/config/key`);
+    var response = await fetch(`${props.cluster!.url}/key`);
     var data = await response.json();
     setKeys(data);
   }
@@ -39,11 +39,11 @@ const ManageSecurity: React.FC<any> = (props:IProps) => {
   const onClickSave= async () => {
     if (selectedKey!==undefined) {
       var key={ key:selectedKey?.key, description:description, expire:expire};
-      await fetch(`${props.cluster!.url}/config/key/${selectedKey?.key}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json'}});
+      await fetch(`${props.cluster!.url}/key/${selectedKey?.key}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json'}});
     }
     else {
       var newkey={ description:description, expire:expire};
-      await fetch(`${props.cluster!.url}/config/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json'}});
+      await fetch(`${props.cluster!.url}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json'}});
     }
     await getKeys();
   }
@@ -58,7 +58,7 @@ const ManageSecurity: React.FC<any> = (props:IProps) => {
 
   const onClickDelete= async () => {
     if (selectedKey!==undefined) {
-      await fetch(`${props.cluster!.url}/config/key/${selectedKey?.key}`, {method:'DELETE'});
+      await fetch(`${props.cluster!.url}/key/${selectedKey?.key}`, {method:'DELETE'});
       setDescrition('');
       setExpire('');
       getKeys();
@@ -95,4 +95,4 @@ const ManageSecurity: React.FC<any> = (props:IProps) => {
   </>);
 };
 
-export default ManageSecurity;
+export default ManageApiSecurity;

@@ -41,7 +41,7 @@ export class  Secrets {
             async (resolve,reject) => {
                 try {
                     var ct = await this.coreApi?.readNamespacedSecret(name,this.namespace);
-                    resolve(ct.body);
+                    resolve(ct.body.data!);
                 }
                 catch(err){
                     reject (undefined);

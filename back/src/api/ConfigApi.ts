@@ -1,10 +1,8 @@
 import express from 'express';
 import { CoreV1Api, AppsV1Api, KubeConfig } from '@kubernetes/client-node';
 import Guid from 'guid';
-import { Key } from '../model/Key';
 
 export class ConfigApi {
-  public static keys:Key[]=[];
   public route = express.Router();
   coreApi:CoreV1Api;
   appsV1Api:AppsV1Api;
@@ -63,71 +61,6 @@ export class ConfigApi {
           console.log(err);
         }
       })
-
-      this.route.route('/key')
-      .get( async (req, res) => {
-        try {
-          // store keys in secret
-          res.status(200).json(ConfigApi.keys);
-        }
-        catch (err) {
-          res.status(200).json([]);
-          console.log(err);
-        }
-      })
-      .post( async (req, res) => {
-        try {
-          var description=req.body.description;
-          var expire=req.body.expire;
-          console.log(req);
-          var key={ key:Guid.create().toString(), description:description, expire:expire };
-          ConfigApi.keys.push(key);
-          res.status(200).json(key);
-        }
-        catch (err) {
-          res.status(200).json({});
-          console.log(err);
-        }
-      });
-
-      this.route.route('/key/:key')
-      .get( async (req, res) => {
-        try {
-          var key=ConfigApi.keys.filter(k => k.key!==req.params.key);
-          if (key)
-            res.status(200).json(key);
-          else
-            res.status(404).json({});
-
-        }
-        catch (err) {
-          res.status(200).json([]);
-          console.log(err);
-        }
-      })
-      .delete( async (req, res) => {
-        try {
-          ConfigApi.keys=ConfigApi.keys.filter(k => k.key!==req.params.key);
-          res.status(200).json({});
-        }
-        catch (err) {
-          res.status(200).json([]);
-          console.log(err);
-        }
-      })
-      .put( async (req, res) => {
-        try {
-          var key=req.body as Key;
-          ConfigApi.keys=ConfigApi.keys.filter(k => k.key!==key.key);
-          key.key=req.params.key;
-          ConfigApi.keys.push(key);
-          res.status(200).json({});
-        }
-        catch (err) {
-          res.status(200).json({});
-          console.log(err);
-        }
-      });
 
   }
 

@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch } from '@kubernetes/client-node';
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1ConfigMap } from '@kubernetes/client-node';
 
 export class  ConfigMaps {
     coreApi:CoreV1Api;
@@ -9,44 +9,57 @@ export class  ConfigMaps {
         this.namespace=namespace;
     }
 
-    public write = (name:string, content:{}): Promise<{}> =>{
+    public write = (name:string, data:any): Promise<{}> =>{
         return new Promise(
-            (resolve, reject) => {
+            async (resolve, reject) => {
+                console.log(data);
                 try {
-                    var secret = {
+                    var configMap:V1ConfigMap = {
                         metadata: {
                             name: name,
                             namespace: this.namespace
                         },
-                        data: content
+                        data: data
                     };
                     try {
-                        this.coreApi?.replaceNamespacedConfigMap(name,this.namespace, secret);
+                        console.log(configMap);
+                        await this.coreApi?.replaceNamespacedConfigMap(name,this.namespace, configMap);
                         resolve ({});
                     }
                     catch (err) {
-                        this.coreApi?.createNamespacedConfigMap(this.namespace, secret);
-                        resolve ({});
+                        console.log('err replacing try to create');
+                        try {
+                            await this.coreApi?.createNamespacedConfigMap(this.namespace, configMap);
+                            resolve ({});
+                        }
+                        catch (err) {
+                            console.log(err);
+                            reject ({});
+                        }
                     }
                 }
                 catch (err) {
-                    reject (undefined);
+                    reject ({});
                 }
             }
         );
     }
     
-    public read = async (name:string):Promise<{}> =>{
-        return new Promise(
-            async (resolve,reject) => {
-                try {
-                    var ct = await this.coreApi?.readNamespacedConfigMap(name,this.namespace);
-                    resolve(ct.body);
-                }
-                catch(err){
+    public read = async (name:string, defaultValue:any=undefined):Promise<any> =>{
+        return new Promise( async (resolve,reject) => {
+            try {
+                var ct = await this.coreApi?.readNamespacedConfigMap(name,this.namespace);
+                resolve(ct.body.data);
+            }
+            catch(err:any){
+                console.log(err.statusCode);
+                if (err.statusCode===404) 
+                    resolve (defaultValue);
+                else {
+                    console.log(err);
                     reject (undefined);
                 }
             }
-        );
+        });
     }  
 }

@@ -1,22 +1,33 @@
-import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography, TextField, ListItemButton } from '@mui/material';
-import { ChangeEvent, useEffect, useState } from 'react';
+import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography, ListItemButton } from '@mui/material';
+import { useEffect, useState } from 'react';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 
 interface IProps {
     onClose:({}) => {},
+    user:string,
     names:string[]
 }
 const LoadConfig: React.FC<any> = (props:IProps) => {
     const [names, setNames] = useState<string[]|null>(null);
 
+    // useEffect( () =>{
+    //     if (names===null) {
+    //         var n=[];
+    //         for (var key in localStorage){
+    //             if (key.startsWith('kwirth.config.')) n.push(key.substring(13));
+    //         }
+    //         setNames(n);
+    //     }
+    // });
+
     useEffect( () =>{
         if (names===null) {
-            var n=[];
-            for (var key in localStorage){
-                if (key.startsWith('kwirth.config.')) n.push(key.substring(13));
-            }
-            setNames(n);
+            var n:string[]=[];
+            fetch(`/store/${props.user}`).then ( (resp) => {
+                console.log(resp);
+                //setNames(n);
+            })
         }
     });
 

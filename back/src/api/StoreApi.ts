@@ -12,32 +12,63 @@ export class StoreApi {
   constructor (config:ConfigMaps, namespace:string='default') {
     this.configMaps=config;
 
-    this.route.route('/store/:user/:key')
+    this.route.route('/:user')
+    .get(async (req, res) => {
+      StoreApi.semaphore.use ( async () => {
+        try {
+          var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});
+          res.status(200).json(Object.keys(data));
+        }
+        catch (err) {
+          console.log('err');
+          console.log(err);
+          res.status(500).send();
+        }
+      });
+    });
+
+    this.route.route('/:user/:key')
     .get( async (req, res) => {
-      try {
-        StoreApi.semaphore.use ( async () => {
-          var content:any= await this.configMaps.read('kwirth.store.'+req.params.user);
-          res.status(200).json(content.data['key']);
-        });
-      }
-      catch (err) {
-        res.status(500).json();
-        console.log(err);
-      }
+      StoreApi.semaphore.use ( async () => {
+        try {
+          var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});
+          res.status(200).json(data[req.params.key]);
+        }      
+        catch (err) {
+          res.status(500).json();
+          console.log(err);
+        }
+      });
+    })
+    .delete( async (req, res) => {
+      StoreApi.semaphore.use ( async () => {
+        try {
+          var data:any= await this.configMaps.read('kwirth.store.'+req.params.user);
+          delete data[req.params.key];
+          await this.configMaps.write('kwirth.store.'+req.params.user,data);
+          res.status(200).json();
+        }      
+        catch (err) {
+          res.status(500).json();
+          console.log(err);
+        }
+      });
     })
     .post( async (req, res) => {
-      try {
-        StoreApi.semaphore.use ( async () => {
-          var content:any= await this.configMaps.read('kwirth.store.'+req.params.user);
-          content.data[req.params.key]=req.body;
-          await this.configMaps.write('kwirth.store.'+req.params.user,content);
+      StoreApi.semaphore.use ( async () => {
+        try {
+          var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});
+          console.log(data);
+          data[req.params.key]=JSON.stringify(req.body);
+          console.log(data);
+          await this.configMaps.write('kwirth.store.'+req.params.user,data);
           res.status(200).send('');
-          });
-      }
-      catch (err) {
-        res.status(500).json();
-        console.log(err);
-      }
+        }
+        catch (err) {
+          res.status(500).json();
+          console.log(err);
+        }
+      });
     });
   }
 }

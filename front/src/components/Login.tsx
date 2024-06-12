@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material';
 
 interface IProps {
-  onClose:(result:boolean,apiKey:string) => {},
+  onClose:(result:boolean,apiKey:string, user:string) => {},
   backend:string
 }
 
@@ -29,7 +29,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
       if (newPassword1===newPassword2) {
         var t = await login(user,password,newPassword1);
         if (t.status===200) 
-          props.onClose(true, await t.text());
+          props.onClose(true, await t.text(), user);
         else {
           setChangingPassword(false);
           setUser('');
@@ -39,10 +39,9 @@ const AddCluster: React.FC<any> = (props:IProps) => {
     }
     else {
       var t = await login(user,password);
-      console.log(t);
       switch (t.status) {
         case 200:
-          props.onClose(true, await t.text());
+          props.onClose(true, await t.text(), user);
           break;
         case 201:
           setChangingPassword(true);
@@ -58,7 +57,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
       setPassword('');
     }
     else {
-      props.onClose(false,'');
+      props.onClose(false,'', '');
     }
   }
 

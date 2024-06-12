@@ -1,6 +1,6 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { Box, Button, Divider, FormControl, IconButton, InputLabel, Menu, MenuItem, MenuList, Select, SelectChangeEvent, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
-import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, Delete, DeleteTwoTone, FileOpenTwoTone, NewReleases, Pause, PlayArrow, RemoveCircleRounded, SaveAsTwoTone, SaveTwoTone, Settings, Start, Stop, Info, Key, Edit, ExitToApp } from '@mui/icons-material';
+import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, Delete, DeleteTwoTone, FileOpenTwoTone, NewReleases, Pause, PlayArrow, RemoveCircleRounded, SaveAsTwoTone, SaveTwoTone, Settings, Start, Stop, Info, Key, Edit, ExitToApp, VerifiedUser } from '@mui/icons-material';
 
 // model
 import { Alert } from './model/Alerts';
@@ -18,11 +18,12 @@ import BlockingAlert from './components/BlockingAlert';
 import AlertConfig from './components/AlertConfig';
 import RenameTab from './components/RenameTab';
 import SaveConfig from './components/SaveConfig';
-import ManageSecurity from './components/ManageSecurity';
+import ManageApiSecurity from './components/ManageApiSecurity';
 import PickList from './components/PickList';
 import Popup from './components/Popup';
 import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
+import ManageUserSecurity from './components/ManageUserSecurity';
 
 const App: React.FC = () => {
   const [logged,setLogged]=useState(false);
@@ -71,6 +72,7 @@ const App: React.FC = () => {
   const [startDisabled, setStartDisabled] = useState<boolean>(false);
   const [controlsVisible, setControlsVisible] = useState<boolean>(false);
 
+  const [user, setUser] = useState<string>('');
   const [filter, setFilter] = useState<string>('');
 
   const [showAlertConfig, setShowAlertConfig]=useState<boolean>(false);
@@ -78,7 +80,8 @@ const App: React.FC = () => {
   const [showRenameTab, setShowRenameTab]=useState<boolean>(false);
   const [showManageClusters, setShowManageClusters]=useState<boolean>(false);
   const [showSaveConfig, setShowSaveConfig]=useState<boolean>(false);
-  const [showSecurity, setShowSecurity]=useState<boolean>(false);
+  const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false);
+  const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false);
   const [showPickList, setShowPickList]=useState<boolean>(false);
   const [showPopup, setShowPopup]=useState<boolean>(false);
   const [blockingAlert, setBlockingAlert] = useState<Alert>();
@@ -436,10 +439,20 @@ const App: React.FC = () => {
       newt.showBackgroundNotification=t.showBackgroundNotification;
       newt.started=t.started;
       newt.tabname=t.tabname;
-      newtabs.push(t);
+      newtabs.push(newt);
     }
-    localStorage.setItem(`kwirth.config.${name}`, JSON.stringify(newtabs));
+    var payload=JSON.stringify(newtabs);
+    fetch (`${backend}/store/${user}/${name}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
     if (configName!==name) setConfigName(name);
+  }
+
+  const loadConfig = async () => {
+    var n:string[] = await (await fetch (`${backend}/store/${user}`)).json();
+    console.log(n);
+    if (n.length===0)
+      popup('Load config...',<Stack direction={'row'} alignItems={'center'}><Info  color='info' fontSize='large'/>You have no config stored in your local store</Stack>,true, false, false, false, false, false);
+    else
+      pickList('Load config...','Please, select the config you want to load:',n,loadConfigSelected);
   }
 
   var clear = () => {
@@ -452,7 +465,7 @@ const App: React.FC = () => {
 
   }
 
-  const onClickMenuConfigOption = (option: string) => {
+  const onClickMenuConfigOption = async (option: string) => {
     switch(option) {
       case 'new':
         clear();
@@ -468,19 +481,12 @@ const App: React.FC = () => {
         setShowSaveConfig(true);
         break;
       case 'open':
-          var n=[];
-          for (var key in localStorage)
-            if (key.startsWith('kwirth.config.')) n.push(key.substring(14));
-          if (n.length===0)
-            popup('Load config...',<Stack direction={'row'} alignItems={'center'}><Info  color='info' fontSize='large'/>You have no config stored in your local store</Stack>,true, false, false, false, false, false);
-          else
-            pickList('Load config...','Please, select the config you want to load:',n,loadConfigSelected);
+        loadConfig();
         break;
       case 'delete':
-        var n=[];
-        for (var key in localStorage)
-            if (key.startsWith('kwirth.config.')) n.push(key.substring(14));
-        if (n.length===0)
+        var n:string[] = await (await fetch (`${backend}/store/${user}`)).json();
+        console.log(n);
+        if (n.length===0)          
           popup('Config delete...',<Stack direction={'row'} alignItems={'center'}><Info  color='info' fontSize='large'/>You have no config stored in your local store</Stack>,true, false, false, false, false, false);
         else
           pickList('Config delete...','Please, select the config you want to delete:',n,deleteConfigSelected);
@@ -488,8 +494,11 @@ const App: React.FC = () => {
       case 'mc':
         setShowManageClusters(true);
         break;
-      case 'sec':
-        setShowSecurity(true);
+      case 'asec':
+        setShowApiSecurity(true);
+        break;
+      case 'usec':
+        setShowUserSecurity(true);
         break;
     }
     onCloseMenuConfig();
@@ -522,11 +531,13 @@ const App: React.FC = () => {
     if (newname!=null) saveConfig(newname);
   }
 
-  const loadConfigSelected = (a:string) => {
+  const loadConfigSelected = async (a:string) => {
     if (a) {
       clear();
-      var configtabs=localStorage.getItem(`kwirth.config.${a}`);
-      var newtabs=JSON.parse(configtabs!) as ATab[];
+      var n = await (await fetch (`${backend}/store/${user}/${a}`)).json();
+      console.log(n);
+
+      var newtabs=JSON.parse(n) as ATab[];
       setControlsVisible(true);
       setTabs(newtabs);
       setConfigLoaded(true);
@@ -535,7 +546,9 @@ const App: React.FC = () => {
   }
 
   const deleteConfigSelected = (a:string) => {
-    if (a) localStorage.removeItem(`kwirth.config.${a}`);
+    if (a) {
+      fetch (`${backend}/store/${user}/${a}`, {method:'DELETE'});
+    }
   }
 
   const pickList = (title:string, message:string, values:string[], onClose:(a:string) => void ) =>{
@@ -583,14 +596,6 @@ const App: React.FC = () => {
     setClusters(cc);
   }
 
-  const removeClusterSelected= (cluster:string) => {
-    if (cluster) {
-      clusters?.splice(clusters.findIndex(c=>c.name===cluster),1);
-      localStorage.setItem('kwirth.clusters', JSON.stringify(clusters));
-    }
-
-  }
-
   const menuConfig=(
     <>
       <Button onClick={onClickMenuConfig} variant='contained' endIcon={<KeyboardArrowDown/>} size='small'>Config</Button>
@@ -603,7 +608,8 @@ const App: React.FC = () => {
           <MenuItem key='delete' onClick={() => onClickMenuConfigOption('delete')}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
           <Divider/>
           <MenuItem key='mc' onClick={() => onClickMenuConfigOption('mc')}><Edit/>&nbsp;Manage cluster list</MenuItem>
-          <MenuItem key='sec' onClick={() => onClickMenuConfigOption('sec')}><Key/>&nbsp;Security</MenuItem>
+          <MenuItem key='asec' onClick={() => onClickMenuConfigOption('asec')}><Key/>&nbsp;API Security</MenuItem>
+          <MenuItem key='usec' onClick={() => onClickMenuConfigOption('usec')}><VerifiedUser />&nbsp;User security</MenuItem>
           <Divider/>
           <MenuItem key='exit' onClick={() => setLogged(false)}><ExitToApp />Exit Kwirth</MenuItem>
         </MenuList>
@@ -611,9 +617,10 @@ const App: React.FC = () => {
     </>
   );
 
-  const onCloseLogin = (result:boolean, apiKey:string) => {
+  const onCloseLogin = (result:boolean, apiKey:string, user:string) => {
     if (result) {
       setLogged(true); 
+      setUser(user);
       setApiKey(apiKey);
     }
   }
@@ -686,6 +693,8 @@ if (!logged) return (<>
               </Select>
           </FormControl>
           <Button variant='contained' onClick={onClickAdd} size='small'>ADD</Button>
+          <Typography>{user}</Typography>
+          
         </Stack>
         <Tabs value={selectedTabname} onChange={onChangeTabs}>
           { tabs.length>0 && tabs.map(t => {
@@ -732,7 +741,8 @@ if (!logged) return (<>
       { showRenameTab && <RenameTab onClose={renameTabClosed} tabs={tabs} oldname={selectedTabObject?.tabname}/> }
       { showSaveConfig && <SaveConfig onClose={saveConfigClosed} name={configName} /> }
       { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
-      { showSecurity && <ManageSecurity onClose={() => setShowSecurity(false)} cluster={currentCluster}/> }
+      { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} cluster={currentCluster}/> }
+      { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
       { pickListConfig!==null && <PickList config={pickListConfig}/> }
       { popupConfig!==null && <Popup config={popupConfig}/> }
     </>
