@@ -8,6 +8,7 @@ export class ATab {
   public namespace:any;
   public obj:any;
   public messages:string[]=[];
+  public default:boolean=false;
   public paused:boolean=false;
   public pending:boolean=false;
   public started:boolean=false;

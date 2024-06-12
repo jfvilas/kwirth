@@ -61,6 +61,12 @@ const AddCluster: React.FC<any> = (props:IProps) => {
     }
   }
 
+  const onClickChangePassword = async () => {
+    if ((await login(user,password)).status===200) {
+      setChangingPassword(true);
+    }
+  }
+
   return (<>
     <Dialog open={true} disableRestoreFocus={true} fullWidth maxWidth={'xs'}>
       <DialogTitle>Enter credentials</DialogTitle>
@@ -68,16 +74,18 @@ const AddCluster: React.FC<any> = (props:IProps) => {
       <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column'}}>
         { !changingPassword &&<>
           <TextField value={user} onChange={(ev) => setUser(ev.target.value)} variant='standard'label='User' autoFocus></TextField>
-          <TextField value={password} onChange={(ev) => setPassword(ev.target.value)} variant='standard'label='Password'></TextField>
+          <TextField value={password} onChange={(ev) => setPassword(ev.target.value)} type='password' variant='standard'label='Password'></TextField>
         </>}
         { changingPassword && <>
           <Typography>Change your password, since it's your first login</Typography>
-          <TextField value={newPassword1} onChange={(ev) => setNewPassword1(ev.target.value)} variant='standard'label='NewPassword' autoFocus></TextField>
-          <TextField value={newPassword2} onChange={(ev) => setNewPassword2(ev.target.value)} variant='standard'label='NewPassword'></TextField>
+          <TextField value={newPassword1} onChange={(ev) => setNewPassword1(ev.target.value)} type='password' variant='standard' label='New Password' autoFocus></TextField>
+          <TextField value={newPassword2} onChange={(ev) => setNewPassword2(ev.target.value)} type='password' variant='standard' label='Repeat New Password'></TextField>
         </>}
       </Stack>
       </DialogContent>
       <DialogActions>
+        <Button onClick={onClickChangePassword} sx={{display:changingPassword?'none':'block'}}>Change Password</Button>
+        <Typography sx={{ flexGrow:1}}></Typography>
         <Button onClick={onClickOk} >OK</Button>
         <Button onClick={onClickCancel}>CANCEL</Button>
       </DialogActions>

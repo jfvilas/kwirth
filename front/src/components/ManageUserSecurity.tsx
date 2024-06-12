@@ -33,19 +33,26 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   }
 
   const onClickCopyPassword = () => {
-    if (password!!=='') copy(password);
+    if (password!!=='') copy(password)
   }
 
   const onClickSave= async () => {
     if (selectedUser!==undefined) {
       // var newkey={ description:name, expire:expire};
       // await fetch(`${props.cluster!.url}/config/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json'}});
+      var user={ id:id, password:password,description:description }
+      await fetch(`${props.backend}/user/id`, {method:'PUT', body:JSON.stringify(user), headers:{'Content-Type':'application/json'}})
     }
     else {
-      var user={ id:id, password:password,description:description };
-      await fetch(`${props.backend}/user`, {method:'POST', body:JSON.stringify(user), headers:{'Content-Type':'application/json'}});
+      var user={ id:id, password:password,description:description }
+      await fetch(`${props.backend}/user`, {method:'POST', body:JSON.stringify(user), headers:{'Content-Type':'application/json'}})
+      setSelectedUser(undefined)
     }
-    await getUsers();
+    setSelectedUser(undefined)
+    setId('')
+    setPassword('')
+    setDescription('')
+  await getUsers()
   }
   
   const onClickNew= () => {
@@ -63,9 +70,9 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   const onClickDelete= async () => {
     if (selectedUser!==undefined) {
       await fetch(`${props.backend}/user/${selectedUser}`, {method:'DELETE'});
-      setId('');
-      setPassword('');
-      setDescription('');
+      setId('')
+      setPassword('')
+      setDescription('')
       getUsers();
     }
   }

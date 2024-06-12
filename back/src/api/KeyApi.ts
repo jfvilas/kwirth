@@ -5,15 +5,17 @@ import { Key } from '../model/Key';
 import Semaphore from 'ts-semaphore';
 
 export class KeyApi {
-  public static keys:Key[]=[];
+  static keys:Key[]=[];
   configMaps:ConfigMaps;
   static semaphore:Semaphore = new Semaphore(1);
   public route = express.Router();
 
   constructor (configMaps:ConfigMaps) {
     this.configMaps = configMaps;
-    configMaps.read('kwirth.keys',[]).then (  (resp) => {
-      KeyApi.keys=resp;
+    configMaps.read('kwirth.keys',{ keys:[] }).then (  (resp) => {
+      console.log('read keys');
+      KeyApi.keys=JSON.parse(resp.keys);
+      console.log(KeyApi.keys);
     })
     .catch ((err) => {
       console.log('err reading keys');
@@ -23,28 +25,19 @@ export class KeyApi {
 
     this.route.route('/')
       .get( async (req, res) => {
-        try {
-          // store keys in secret
-          res.status(200).json(KeyApi.keys);
-        }
-        catch (err) {
-          res.status(200).json([]);
-          console.log(err);
-        }
+        res.status(200).json(KeyApi.keys);
       })
       .post( async (req, res) => {
         try {
           var description=req.body.description;
           var expire=req.body.expire;
-          console.log(req);
           var key={ key:Guid.create().toString(), description:description, expire:expire };
           KeyApi.keys.push(key);
-          console.log(KeyApi.keys);
-          configMaps.write('kwirth.keys',KeyApi.keys);
+          configMaps.write('kwirth.keys',{ keys: JSON.stringify(KeyApi.keys) });
           res.status(200).json(key);
         }
         catch (err) {
-          res.status(200).json({});
+          res.status(500).json({});
           console.log(err);
         }
       });
@@ -60,18 +53,18 @@ export class KeyApi {
 
         }
         catch (err) {
-          res.status(200).json([]);
+          res.status(500).json({});
           console.log(err);
         }
       })
       .delete( async (req, res) => {
         try {
           KeyApi.keys=KeyApi.keys.filter(k => k.key!==req.params.key);
-          configMaps.write('kwirth.keys',KeyApi.keys);
+          configMaps.write('kwirth.keys',{ keys:JSON.stringify(KeyApi.keys) });
           res.status(200).json({});
         }
         catch (err) {
-          res.status(200).json([]);
+          res.status(500).json({});
           console.log(err);
         }
       })
@@ -81,15 +74,14 @@ export class KeyApi {
           KeyApi.keys=KeyApi.keys.filter(k => k.key!==key.key);
           key.key=req.params.key;
           KeyApi.keys.push(key);
-          configMaps.write('kwirth.keys',KeyApi.keys);
+          configMaps.write('kwirth.keys',{ keys:JSON.stringify(KeyApi.keys) });
           res.status(200).json({});
         }
         catch (err) {
-          res.status(200).json({});
+          res.status(500).json({});
           console.log(err);
         }
       });
-
   }
 
 }

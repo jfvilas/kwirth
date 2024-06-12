@@ -52,9 +52,9 @@ export class  ConfigMaps {
                 resolve(ct.body.data);
             }
             catch(err:any){
-                console.log(err.statusCode);
-                if (err.statusCode===404) 
+                if (err.statusCode===404) {
                     resolve (defaultValue);
+                }
                 else {
                     console.log(err);
                     reject (undefined);

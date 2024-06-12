@@ -1,6 +1,6 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { Box, Button, Divider, FormControl, IconButton, InputLabel, Menu, MenuItem, MenuList, Select, SelectChangeEvent, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
-import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, Delete, DeleteTwoTone, FileOpenTwoTone, NewReleases, Pause, PlayArrow, RemoveCircleRounded, SaveAsTwoTone, SaveTwoTone, Settings, Start, Stop, Info, Key, Edit, ExitToApp, VerifiedUser } from '@mui/icons-material';
+import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, Delete, DeleteTwoTone, FileOpenTwoTone, NewReleases, Pause, PlayArrow, RemoveCircleRounded, SaveAsTwoTone, SaveTwoTone, Settings, Start, Stop, Info, Key, Edit, ExitToApp, VerifiedUser, ArrowUpward, ArrowDownward } from '@mui/icons-material';
 
 // model
 import { Alert } from './model/Alerts';
@@ -24,6 +24,7 @@ import Popup from './components/Popup';
 import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
+import { config } from 'process';
 
 const App: React.FC = () => {
   const [logged,setLogged]=useState(false);
@@ -74,6 +75,7 @@ const App: React.FC = () => {
 
   const [user, setUser] = useState<string>('');
   const [filter, setFilter] = useState<string>('');
+  const [search, setSearch] = useState<string>('');
 
   const [showAlertConfig, setShowAlertConfig]=useState<boolean>(false);
   const [showBlockingAlert, setShowBlockingAlert]=useState<boolean>(false);
@@ -208,7 +210,7 @@ const App: React.FC = () => {
     var ev=JSON.parse(event.data);
     var text=ev.text;
     if (tab) {
-      if (tab.addTimestamp) text=(new Date()).toISOString() + ' ' + text;
+      if (tab.addTimestamp) text=(new Date()).toISOString().replace('T',' ').replace('Z','') + ' ' + text;
       tab.messages.push(text);
     }
     else {
@@ -353,6 +355,10 @@ const App: React.FC = () => {
     if (selectedTabObject) selectedTabObject.filter=event.target.value;
   }
 
+  const onChangeSearch = (event:ChangeEvent<HTMLInputElement>) => {
+    setSearch(event.target.value);
+  }
+
 
   const [anchorMenuTabs, setAnchorMenuTabs] = React.useState<null | HTMLElement>(null);
   const menuTabsOpen = Boolean(anchorMenuTabs);
@@ -411,6 +417,9 @@ const App: React.FC = () => {
       case 'rt':
         setShowRenameTab(true);
         break;
+      case 'dt':
+        //+++ set default tab
+        break;
     }
     onCloseMenuTabs();
   };
@@ -434,6 +443,7 @@ const App: React.FC = () => {
       newt.filter=t.filter;
       newt.namespace=t.namespace;
       newt.obj=t.obj;
+      newt.default=t.default;
       newt.paused=t.paused;
       newt.scope=t.scope;
       newt.showBackgroundNotification=t.showBackgroundNotification;
@@ -535,13 +545,13 @@ const App: React.FC = () => {
     if (a) {
       clear();
       var n = await (await fetch (`${backend}/store/${user}/${a}`)).json();
-      console.log(n);
 
       var newtabs=JSON.parse(n) as ATab[];
       setControlsVisible(true);
       setTabs(newtabs);
       setConfigLoaded(true);
       setConfigName(a);
+      //+++ habilitar el tab que este marcada como default
     }
   }
 
@@ -611,7 +621,7 @@ const App: React.FC = () => {
           <MenuItem key='asec' onClick={() => onClickMenuConfigOption('asec')}><Key/>&nbsp;API Security</MenuItem>
           <MenuItem key='usec' onClick={() => onClickMenuConfigOption('usec')}><VerifiedUser />&nbsp;User security</MenuItem>
           <Divider/>
-          <MenuItem key='exit' onClick={() => setLogged(false)}><ExitToApp />Exit Kwirth</MenuItem>
+          <MenuItem key='exit' onClick={() => {setLogged(false); onCloseMenuConfig()}}><ExitToApp />Exit Kwirth</MenuItem>
         </MenuList>
       </Menu>
     </>
@@ -622,6 +632,8 @@ const App: React.FC = () => {
       setLogged(true); 
       setUser(user);
       setApiKey(apiKey);
+      clear();
+      setConfigName('untitled');
     }
   }
 
@@ -633,6 +645,7 @@ const App: React.FC = () => {
         <MenuItem key='dbn' onClick={() => onClickMenuTabsOption('dbn')}>{ selectedTabObject?.showBackgroundNotification &&  <Check/>} Show background notifications</MenuItem>
         <MenuItem key='ats' onClick={() => onClickMenuTabsOption('ats')}>{ selectedTabObject?.addTimestamp &&  <Check/>} Add timestamp to messages</MenuItem>
         <Divider/>
+        <MenuItem key='dt' onClick={() => onClickMenuTabsOption('dt')} disabled={selectedTabIndex<0}> {selectedTabObject?.default && <Check/>} Default tab</MenuItem>
         <MenuItem key='rt' onClick={() => onClickMenuTabsOption('rt')} disabled={selectedTabIndex<0}>Rename tab</MenuItem>
         <MenuItem key='ml' onClick={() => onClickMenuTabsOption('ml')} disabled={selectedTabIndex===0}>Move to left</MenuItem>
         <MenuItem key='mr' onClick={() => onClickMenuTabsOption('mr')} disabled={selectedTabIndex===tabs.length-1}>Move to right</MenuItem>
@@ -693,36 +706,40 @@ if (!logged) return (<>
               </Select>
           </FormControl>
           <Button variant='contained' onClick={onClickAdd} size='small'>ADD</Button>
-          <Typography>{user}</Typography>
+          <Stack direction={'column'} alignItems={'center'} alignSelf={'center'} paddingTop={3}>
+            <Typography fontSize={8} sx={{backgroundColor:'lightGray'}}>&nbsp;{user}&nbsp;</Typography>
+            <Typography fontSize={8} sx={{backgroundColor:'lightYellow'}}>&nbsp;{configName}&nbsp;</Typography>
+          </Stack>
           
         </Stack>
+        <Stack direction={'row'}>
+
+          { controlsVisible && <>
+              <Stack direction="row" spacing={1} sx={{ ml:1}} alignItems="baseline" >
+                <TextField label="Filter" onChange={onChangeFilter} variant="standard" value={filter}/>
+                <TextField value={search} onChange={onChangeSearch} label="Search" variant="standard" />
+                <Typography sx={{ ml:1 }}></Typography>
+                <IconButton  disabled={search===''}><ArrowUpward/> </IconButton>
+                <IconButton disabled={search===''}><ArrowDownward/> </IconButton>
+              </Stack>
+          </>}
+
         <Tabs value={selectedTabname} onChange={onChangeTabs}>
           { tabs.length>0 && tabs.map(t => {
               if (t.scope==='cluster')
                 return <Tab key={t.tabname} label='cluster' value={t.tabname}/>
               else {
                 if (t===selectedTabObject)
-                  return <Tab key={t.tabname} label={t.tabname} value={t.tabname} icon={<IconButton onClick={onClickMenuTabs}><Settings fontSize='small'/></IconButton>} iconPosition='end' sx={{ mb:-2, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':'')}}/>
+                  return <Tab key={t.tabname} label={t.tabname} value={t.tabname} icon={<IconButton onClick={onClickMenuTabs}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-2, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':'')}}/>
                 else
-                  return <Tab key={t.tabname} label={t.tabname} value={t.tabname} sx={{ mb:-2, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':'')}}/>
+                  return <Tab key={t.tabname} label={t.tabname} value={t.tabname} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ mb:-2, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':'')}}/>
               }
             })
           }
         </Tabs>
+        </Stack>
         </div>
 
-        <div style={{ margin:2}}>
-          { controlsVisible && <>
-              <Stack direction="row" spacing={1} sx={{ ml:1}} alignItems="baseline" >
-                {/* <Button variant='contained' onClick={onClickStart} disabled={startDisabled} size='small'>START</Button>
-                <Button variant='contained' onClick={onClickPauseResume} disabled={!startDisabled} size='small'>{paused?"RESUME":"PAUSE"}</Button>
-                <Button variant='contained' onClick={onClickStop} disabled={!startDisabled} size='small'>STOP</Button>
-                <Button variant='contained' onClick={onClickRemove} size='small'>REMOVE</Button> */}
-                <TextField id="logFilter" label="Filter" onChange={onChangeFilter} variant="standard" value={filter}/>
-                <Typography sx={{ ml:1,flexGrow: 1 }}></Typography>
-              </Stack>
-          </>}
-        </div>
         {menuTabs}
         <Box sx={{ flex:1, overflowY: 'auto', ml:1 }}>
           <pre>
