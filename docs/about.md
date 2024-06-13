@@ -1,5 +1,5 @@
 # About
-After hiring several branding and marketing firms for deciding how to name this project, finally we got an agreement on using a name the identify exactly the purpose of this tool. The selected name was **K**ubernetes **logs**, that is, **Klogs**.
+After hiring several branding and marketing firms for deciding how to name this project, finally we got an agreement on using a name that exactly identifies the purpose of this tool. The selected name was **K**ubernetes **logs**, that is, **Klogs**.
 
 On January 1 2024, the year I started this project, Niklaus Wirth passed by. I quote hereafter some information extracted from its [wikipedia entry](https://en.wikipedia.org/wiki/Niklaus_Wirth).
 
@@ -18,10 +18,10 @@ So, Klogs project was finally renamed to *K*ubernetes *Wirth*, or ni*K*laus *Wir
 I'm still learning to better programming. Since I started with BASIC on the ZX81 back in 1984 I've been learning and using:
 
   - BASIC on ZX Spectrum 48K (my very first computer, thanks [Mr. Clive Sinclair](https://en.wikipedia.org/wiki/Clive_Sinclair)), BASIC on AMSTRAD CPC
-  - Pascal using Turbo Pascal IDE on my [MS-DOS](https://en.wikipedia.org/wiki/MS-DOS) 3.22 (on my first PC, AMSTRAD PC1512 (yes, 512KB with just one flexible disk dirve 5"1/4))
+  - Pascal using Turbo Pascal IDE on my [MS-DOS](https://en.wikipedia.org/wiki/MS-DOS) 3.22 (on my first PC, AMSTRAD PC1512 (yes, 512KB with just one flexible disk drive 5"1/4))
   - COBOL using Ryan McFarland's RMCOBOL on MS-DOS 4
   - Assembler for the 80x86 and assembler on IBM360 processors
-  - Prolog and LISP
+  - Forth, Prolog and LISP
   - PL/I on my first water-cooled [3090-200 Model E](https://en.wikipedia.org/wiki/IBM_3090) (still loving it)
   - VB3 (Microsoft's first *usable* version of Visual Basic a somehow structured basic (without line numbering!!))
   - VB5 (Microsoft's first *usable* version of Visual Basic with Object Oriented Programming)
@@ -30,4 +30,4 @@ I'm still learning to better programming. Since I started with BASIC on the ZX81
   - JavaScript
   - TypeScript (these days... ;)) 
 
-Anecdotally, I never worked as a developer.
+I never worked as a developer, I've been always warking on infrastructure and architecture.
