@@ -143,7 +143,7 @@ const launch = (myNamespace:string) => {
     console.log(`Server is listening on port ${PORT}`);
     console.log(`Context being used: ${kc.currentContext}`);
     console.log(`Cluster name: ${kc.getCluster(kc.currentContext)?.name}`);
-    console.log(`KWI1500I Control is being givent to KWirth`);
+    console.log(`KWI1500I Control is being given to KWirth`);
   });
 }
 

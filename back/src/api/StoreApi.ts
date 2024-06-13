@@ -17,7 +17,6 @@ export class StoreApi {
       StoreApi.semaphore.use ( async () => {
         try {
           var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});
-          console.log(data);
           if (data===undefined)
             res.status(200).json([]);
           else

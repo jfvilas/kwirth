@@ -615,7 +615,7 @@ const App: React.FC = () => {
       setTabs(newtabs);
       setConfigLoaded(true);
       setConfigName(a);
-      //+++ habilitar el tab que este marcada como default
+      //+++ habilitar el tab que este marcado como default
     }
   }
 
