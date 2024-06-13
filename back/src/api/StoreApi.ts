@@ -49,7 +49,6 @@ export class StoreApi {
         try {
           var data:any= await this.configMaps.read('kwirth.store.'+req.params.user);
           delete data[req.params.key];
-          console.log(data);
           await this.configMaps.write('kwirth.store.'+req.params.user,data);
           res.status(200).json();
         }      
@@ -63,9 +62,7 @@ export class StoreApi {
       StoreApi.semaphore.use ( async () => {
         try {
           var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});
-          console.log(data);
           data[req.params.key]=JSON.stringify(req.body);
-          console.log(data);
           await this.configMaps.write('kwirth.store.'+req.params.user,data);
           res.status(200).send('');
         }

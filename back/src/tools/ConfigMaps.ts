@@ -12,7 +12,6 @@ export class  ConfigMaps {
     public write = (name:string, data:any): Promise<{}> =>{
         return new Promise(
             async (resolve, reject) => {
-                console.log(data);
                 try {
                     var configMap:V1ConfigMap = {
                         metadata: {
@@ -22,7 +21,6 @@ export class  ConfigMaps {
                         data: data
                     };
                     try {
-                        console.log(configMap);
                         await this.coreApi?.replaceNamespacedConfigMap(name,this.namespace, configMap);
                         resolve ({});
                     }

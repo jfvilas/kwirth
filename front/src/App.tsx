@@ -564,13 +564,11 @@ const App: React.FC = () => {
   }
 
   const handleUpload = (event:any) => {
-    console.log('handleup');
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onload = (e:any) => {
           var allConfigs=JSON.parse(e.target.result);
-          console.log(allConfigs);
           for (var cfg of Object.keys(allConfigs)) {
             var payload=JSON.stringify(allConfigs[cfg]);
             fetch (`${backend}/store/${user}/${cfg}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
@@ -629,8 +627,6 @@ const App: React.FC = () => {
     var plc:PickListConfig=new PickListConfig();
     plc.title=title;
     plc.message=message;
-    console.log('values');
-    console.log(values);
     plc.values=values;
     plc.originOnClose=onClose;
     plc.onClose=pickListClosed;
