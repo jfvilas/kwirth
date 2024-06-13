@@ -10,12 +10,10 @@ export class UserApi {
 
   public route = express.Router();
 
-  constructor (secrets:Secrets, namespace:string='default') {
+  constructor (secrets:Secrets) {
     this.secrets=secrets;
     secrets.read('kwirth.users').then (  (resp) => {
       UserApi.users=resp;
-      console.log('read users');
-      console.log(UserApi.users);
     })
     .catch ((err) => {
       console.log('err reading users');
@@ -26,9 +24,6 @@ export class UserApi {
     .get( (req, res) => {
       UserApi.semaphore.use ( async () => {
         try {
-          // var data:any= await this.secrets.read('kwirth.users');
-          // console.log(data);
-          // res.status(200).json(Object.keys(data));
           res.status(200).json(Object.keys(UserApi.users));
         }
         catch (err) {
@@ -41,10 +36,6 @@ export class UserApi {
     .post( (req, res) => {
       UserApi.semaphore.use ( async () => {
         try {
-          // var data:any= await this.secrets.read('kwirth.users');
-          // data[req.body.id]=btoa(JSON.stringify(req.body));
-          // await this.secrets.write('kwirth.users',data);
-          // res.status(200).send('');
           UserApi.users[req.body.id]=btoa(JSON.stringify(req.body));
           await this.secrets.write('kwirth.users',UserApi.users);
           res.status(200).send('');
@@ -60,9 +51,6 @@ export class UserApi {
     .get( (req, res) => {
       UserApi.semaphore.use ( async () => {
         try {
-          // var data:any= await this.secrets.read('kwirth.users');
-          // console.log(atob(data[req.params.user]));
-          // res.status(200).send(atob(data[req.params.user]));
           res.status(200).send(atob(UserApi.users[req.params.user]));
         }      
         catch (err) {
@@ -74,10 +62,6 @@ export class UserApi {
     .delete( (req, res) => {
         try {
           UserApi.semaphore.use ( async () => {
-            // var data:any= await this.secrets.read('kwirth.users');
-            // delete data[req.params.user];
-            // await this.secrets.write('kwirth.users',data);
-            // res.status(200).json();
             delete UserApi.users[req.params.user];
             await this.secrets.write('kwirth.users',UserApi.users);
             res.status(200).json();

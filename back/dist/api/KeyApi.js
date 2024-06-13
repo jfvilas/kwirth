@@ -21,9 +21,7 @@ class KeyApi {
         this.route = express_1.default.Router();
         this.configMaps = configMaps;
         configMaps.read('kwirth.keys', { keys: [] }).then((resp) => {
-            console.log('read keys');
             KeyApi.keys = JSON.parse(resp.keys);
-            console.log(KeyApi.keys);
         })
             .catch((err) => {
             console.log('err reading keys. kwirth will start with no keys');

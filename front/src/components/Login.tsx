@@ -13,13 +13,13 @@ const AddCluster: React.FC<any> = (props:IProps) => {
   const [newPassword1, setNewPassword1] = useState('');
   const [newPassword2, setNewPassword2] = useState('');
 
-  const login = async (u:string, p:string, n:string='') => {
-    if (n!=='') {
-      var payload=JSON.stringify({user:u, password:p, newpassword:n});
-      return await fetch(props.backend+'/password', {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+  const login = async (user:string, password:string, newPassword:string='') => {
+    if (newPassword!=='') {
+      var payload=JSON.stringify({user:user, password:password, newpassword:newPassword});
+      return await fetch(props.backend+'/login/password', {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
     }
     else {
-      var payload=JSON.stringify({user:u, password:p});
+      var payload=JSON.stringify({user:user, password:password});
       return await fetch(props.backend+'/login', {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
     }
   }
@@ -27,11 +27,11 @@ const AddCluster: React.FC<any> = (props:IProps) => {
   const onClickOk= async () => {
     if(changingPassword) {
       if (newPassword1===newPassword2) {
-        var t = await login(user,password,newPassword1);
-        if (t.status===200) {
+        var result = await login(user,password,newPassword1);
+        if (result.status===200) {
           setUser('');
           setPassword('');
-          props.onClose(true, await t.text(), user);
+          props.onClose(true, await result.text(), user);
         }
         else {
           setUser('');
@@ -41,16 +41,16 @@ const AddCluster: React.FC<any> = (props:IProps) => {
       }
     }
     else {
-      var t = await login(user,password);
-      switch (t.status) {
+      var result = await login(user,password);
+      switch (result.status) {
         case 200:
           setUser('');
           setPassword('');
-          props.onClose(true, await t.text(), user);
+          props.onClose(true, await result.text(), user);
           break;
         case 201:
-          setUser('');
-          setPassword('');
+          setNewPassword1('');
+          setNewPassword2('');
           setChangingPassword(true);
           break;
       }
@@ -93,7 +93,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
       <DialogActions>
         <Button onClick={onClickChangePassword} sx={{display:changingPassword?'none':'block'}}>Change Password</Button>
         <Typography sx={{ flexGrow:1}}></Typography>
-        <Button onClick={onClickOk} >OK</Button>
+        <Button onClick={onClickOk} disabled={((changingPassword && newPassword1!==newPassword2) || user==='' || password==='')}>OK</Button>
         <Button onClick={onClickCancel}>CANCEL</Button>
       </DialogActions>
     </Dialog>

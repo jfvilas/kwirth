@@ -24,7 +24,11 @@ class StoreApi {
             StoreApi.semaphore.use(() => __awaiter(this, void 0, void 0, function* () {
                 try {
                     var data = yield this.configMaps.read('kwirth.store.' + req.params.user, {});
-                    res.status(200).json(Object.keys(data));
+                    console.log(data);
+                    if (data === undefined)
+                        res.status(200).json([]);
+                    else
+                        res.status(200).json(Object.keys(data));
                 }
                 catch (err) {
                     console.log('err');
@@ -51,6 +55,7 @@ class StoreApi {
                 try {
                     var data = yield this.configMaps.read('kwirth.store.' + req.params.user);
                     delete data[req.params.key];
+                    console.log(data);
                     yield this.configMaps.write('kwirth.store.' + req.params.user, data);
                     res.status(200).json();
                 }

@@ -1,6 +1,6 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { Box, Button, Divider, FormControl, IconButton, InputLabel, Menu, MenuItem, MenuList, Select, SelectChangeEvent, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
-import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, Delete, DeleteTwoTone, FileOpenTwoTone, NewReleases, Pause, PlayArrow, RemoveCircleRounded, SaveAsTwoTone, SaveTwoTone, Settings, Start, Stop, Info, Key, Edit, ExitToApp, VerifiedUser, ArrowUpward, ArrowDownward } from '@mui/icons-material';
+import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, DeleteTwoTone, FileOpenTwoTone, Pause, PlayArrow, RemoveCircleRounded, SaveAsTwoTone, SaveTwoTone, Settings, Start, Stop, Info, Key, Edit, ExitToApp, VerifiedUser, ArrowUpward, ArrowDownward, ImportExport } from '@mui/icons-material';
 
 // model
 import { Alert } from './model/Alerts';
@@ -24,7 +24,7 @@ import Popup from './components/Popup';
 import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
-import { config } from 'process';
+//import { config } from 'process';
 
 const App: React.FC = () => {
   const [logged,setLogged]=useState(false);
@@ -76,6 +76,9 @@ const App: React.FC = () => {
   const [user, setUser] = useState<string>('');
   const [filter, setFilter] = useState<string>('');
   const [search, setSearch] = useState<string>('');
+  const [searchPos, setSearchPos] = useState<number>(0);
+  const [searchFirstPos, setSearchFirstPos] = useState<number>(-1);
+  const [searchLastPos, setSearchLastPos] = useState<number>(-1);
 
   const [showAlertConfig, setShowAlertConfig]=useState<boolean>(false);
   const [showBlockingAlert, setShowBlockingAlert]=useState<boolean>(false);
@@ -356,9 +359,25 @@ const App: React.FC = () => {
   }
 
   const onChangeSearch = (event:ChangeEvent<HTMLInputElement>) => {
-    setSearch(event.target.value);
+    var newsearch=event.target.value;
+    if (newsearch!=='') {
+      var first=selectedTabObject!.messages.findIndex(m => m.includes(newsearch));
+      setSearchFirstPos(first);
+      setSearchLastPos(selectedTabObject!.messages.findLastIndex(m => m.includes(newsearch)));
+      setSearchPos(first);
+    }
+    setSearch(newsearch);
   }
 
+  const onClickSearchDown = () => {
+    var i=messages!.findIndex( (m,i) => m.includes(search) && i>searchPos);
+    if (i>=0) setSearchPos(i);
+  }
+
+  const onClickSearchUp = () => {
+    var i=messages!.findLastIndex( (m,i) => m.includes(search) && i<searchPos);
+    if (i>=0) setSearchPos(i);
+  }
 
   const [anchorMenuTabs, setAnchorMenuTabs] = React.useState<null | HTMLElement>(null);
   const menuTabsOpen = Boolean(anchorMenuTabs);
@@ -456,13 +475,15 @@ const App: React.FC = () => {
     if (configName!==name) setConfigName(name);
   }
 
+  const showNoConfigs = () => {
+    popup('Config management...',<Stack direction={'row'} alignItems={'center'}><Info  color='info' fontSize='large'/>&nbsp;You have no config stored in your local store</Stack>,true, false, false, false, false, false);
+  }
   const loadConfig = async () => {
-    var n:string[] = await (await fetch (`${backend}/store/${user}`)).json();
-    console.log(n);
-    if (n.length===0)
-      popup('Load config...',<Stack direction={'row'} alignItems={'center'}><Info  color='info' fontSize='large'/>You have no config stored in your local store</Stack>,true, false, false, false, false, false);
+    var allConfigs:string[] = await (await fetch (`${backend}/store/${user}`)).json();
+    if (allConfigs.length===0)
+      showNoConfigs();
     else
-      pickList('Load config...','Please, select the config you want to load:',n,loadConfigSelected);
+      pickList('Load config...','Please, select the config you want to load:',allConfigs,loadConfigSelected);
   }
 
   var clear = () => {
@@ -494,12 +515,11 @@ const App: React.FC = () => {
         loadConfig();
         break;
       case 'delete':
-        var n:string[] = await (await fetch (`${backend}/store/${user}`)).json();
-        console.log(n);
-        if (n.length===0)          
-          popup('Config delete...',<Stack direction={'row'} alignItems={'center'}><Info  color='info' fontSize='large'/>You have no config stored in your local store</Stack>,true, false, false, false, false, false);
+        var allConfigs:string[] = await (await fetch (`${backend}/store/${user}`)).json();
+        if (allConfigs.length===0)
+          showNoConfigs();
         else
-          pickList('Config delete...','Please, select the config you want to delete:',n,deleteConfigSelected);
+          pickList('Config delete...','Please, select the config you want to delete:',allConfigs,deleteConfigSelected);
         break;
       case 'mc':
         setShowManageClusters(true);
@@ -510,9 +530,56 @@ const App: React.FC = () => {
       case 'usec':
         setShowUserSecurity(true);
         break;
+      case 'cfgexp':
+        var allConfigs:string[] = await (await fetch (`${backend}/store/${user}`)).json();
+        if (allConfigs.length===0)
+          showNoConfigs();
+        else {
+          var content:any={};
+          for (var cfg of allConfigs) {
+            var read = await (await fetch (`${backend}/store/${user}/${cfg}`)).json();
+            content[cfg]=JSON.parse(read);
+          }
+          handleDownload(JSON.stringify(content),`${user}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
+        }
+        break;
+      case 'cfgimp':
+        // nothing to do, the menuitem launches the handleUpload
+        break;
     }
     onCloseMenuConfig();
   };
+
+  const handleDownload = (content:string,filename:string,  mimeType:string='text/plain') => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  const handleUpload = (event:any) => {
+    console.log('handleup');
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e:any) => {
+          var allConfigs=JSON.parse(e.target.result);
+          console.log(allConfigs);
+          for (var cfg of Object.keys(allConfigs)) {
+            var payload=JSON.stringify(allConfigs[cfg]);
+            fetch (`${backend}/store/${user}/${cfg}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+          }
+        };
+        reader.readAsText(file);
+    }
+    setAnchorMenuConfig(null);
+  }
 
   const alertConfigClosed= (a:Alert) => {
     setShowAlertConfig(false);
@@ -545,7 +612,6 @@ const App: React.FC = () => {
     if (a) {
       clear();
       var n = await (await fetch (`${backend}/store/${user}/${a}`)).json();
-
       var newtabs=JSON.parse(n) as ATab[];
       setControlsVisible(true);
       setTabs(newtabs);
@@ -555,16 +621,16 @@ const App: React.FC = () => {
     }
   }
 
-  const deleteConfigSelected = (a:string) => {
-    if (a) {
-      fetch (`${backend}/store/${user}/${a}`, {method:'DELETE'});
-    }
+  const deleteConfigSelected = (cfg:string) => {
+    if (cfg) fetch (`${backend}/store/${user}/${cfg}`, {method:'DELETE'});
   }
 
   const pickList = (title:string, message:string, values:string[], onClose:(a:string) => void ) =>{
     var plc:PickListConfig=new PickListConfig();
     plc.title=title;
     plc.message=message;
+    console.log('values');
+    console.log(values);
     plc.values=values;
     plc.originOnClose=onClose;
     plc.onClose=pickListClosed;
@@ -608,7 +674,7 @@ const App: React.FC = () => {
 
   const menuConfig=(
     <>
-      <Button onClick={onClickMenuConfig} variant='contained' endIcon={<KeyboardArrowDown/>} size='small'>Config</Button>
+      <Button onClick={onClickMenuConfig} variant='contained' endIcon={<KeyboardArrowDown/>} size='small'>Config</Button>      
       <Menu id='menu-kwirth' anchorEl={anchorMenuConfig} open={menuConfigOpen} onClose={onCloseMenuConfig}>
         <MenuList dense>
           <MenuItem key='new' onClick={() => onClickMenuConfigOption('new')}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
@@ -616,6 +682,9 @@ const App: React.FC = () => {
           <MenuItem key='save' onClick={() => onClickMenuConfigOption('save')}><SaveTwoTone/>&nbsp;Save</MenuItem>
           <MenuItem key='saveas' onClick={() => onClickMenuConfigOption('saveas')}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
           <MenuItem key='delete' onClick={() => onClickMenuConfigOption('delete')}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
+          <Divider/>
+          <MenuItem key='cfgexp' onClick={() => onClickMenuConfigOption('cfgexp')}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
+          <MenuItem key='cfgimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={handleUpload}/><ImportExport/>&nbsp;Import new configs (and merge overwriting)</MenuItem>
           <Divider/>
           <MenuItem key='mc' onClick={() => onClickMenuConfigOption('mc')}><Edit/>&nbsp;Manage cluster list</MenuItem>
           <MenuItem key='asec' onClick={() => onClickMenuConfigOption('asec')}><Key/>&nbsp;API Security</MenuItem>
@@ -719,8 +788,8 @@ const App: React.FC = () => {
                 <TextField label="Filter" onChange={onChangeFilter} variant="standard" value={filter}/>
                 <TextField value={search} onChange={onChangeSearch} label="Search" variant="standard" />
                 <Typography sx={{ ml:1 }}></Typography>
-                <IconButton  disabled={search===''}><ArrowUpward/> </IconButton>
-                <IconButton disabled={search===''}><ArrowDownward/> </IconButton>
+                <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
+                <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton>
               </Stack>
           </>}
 
@@ -746,12 +815,22 @@ const App: React.FC = () => {
           {messages.map(m => {
             return m.includes(filter)? m : null;
           })
-          .map((message, index) => (
-              <div key={index}>{message}</div>
-          ))}
-          </pre>
+          .map((message, index) => {
+            if (search!=='') {
+              if (index===searchPos) {
+                //+++ implement scroll into view for the item at the searchPos
+                return <div key={index} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#0000ff\'>'+search+'</span>')}}></div>;
+              }
+              else {
+                return <div key={index} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#ff0000\'>'+search+'</span>')}}></div>;
+              }
+            }
+            else {
+              return <div key={index}>{message}</div>;
+            }
+          })}
+        </pre>
         </Box>
-        
       </Box>
       { showAlertConfig && <AlertConfig onClose={alertConfigClosed} expression={filter}/> }
       { showBlockingAlert && <BlockingAlert onClose={() => setShowBlockingAlert(false)} alert={blockingAlert} /> }

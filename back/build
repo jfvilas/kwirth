@@ -3,6 +3,7 @@
 
 # build back
 npm run build
+rm -R dist/front
 mkdir dist/front
 
 # build front

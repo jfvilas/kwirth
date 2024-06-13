@@ -2,20 +2,18 @@ import express from 'express';
 import { ConfigMaps } from '../tools/ConfigMaps';
 import Guid from 'guid';
 import { Key } from '../model/Key';
-import Semaphore from 'ts-semaphore';
+//import Semaphore from 'ts-semaphore';
 
 export class KeyApi {
   static keys:Key[]=[];
   configMaps:ConfigMaps;
-  static semaphore:Semaphore = new Semaphore(1);
+//  static semaphore:Semaphore = new Semaphore(1);
   public route = express.Router();
 
   constructor (configMaps:ConfigMaps) {
     this.configMaps = configMaps;
     configMaps.read('kwirth.keys',{ keys:[] }).then (  (resp) => {
-      console.log('read keys');
       KeyApi.keys=JSON.parse(resp.keys);
-      console.log(KeyApi.keys);
     })
     .catch ((err) => {
       console.log('err reading keys. kwirth will start with no keys');

@@ -4,15 +4,12 @@ import { VERSION } from './version';
 import { Secrets } from './tools/Secrets';
 import { ConfigMaps } from './tools/ConfigMaps';
 
-import Guid from 'guid';
-const Semaphore = require('ts-semaphore')
-const semaphore = new Semaphore(1);
-
 // HTTP server for serving front, api and websockets
 import WebSocket from 'ws';
 import { StoreApi } from './api/StoreApi';
 import { UserApi } from './api/UserApi';
 import { KeyApi } from './api/KeyApi';
+import { LoginApi } from './api/LoginApi';
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
@@ -27,8 +24,18 @@ const coreApi = kc.makeApiClient(CoreV1Api);
 const appsApi = kc.makeApiClient(AppsV1Api);
 const k8sLog = new Log(kc);
 
-const secrets = new Secrets(coreApi);
-const configMaps = new ConfigMaps(coreApi);
+var secrets:Secrets;
+var configMaps:ConfigMaps;
+
+const getMyNamespace = async () => {
+  var podName=process.env.HOSTNAME;
+  const pods = await coreApi.listPodForAllNamespaces();
+  const pod = pods.body.items.find(p => p.metadata?.name === podName);
+  if (pod && pod.metadata?.namespace) 
+    return pod.metadata.namespace;
+  else
+    return 'default';
+}
 
 const sendLines = (ws:WebSocket, event:any, source:string) => {
   const logLines = source.split('\n');
@@ -113,68 +120,42 @@ app.get('/', (req:any,res:any) => { res.redirect('/front') });
 app.use('/front', express.static('./dist/front'))
 
 
-// authentication
-app.post('/login', async (req:any,res:any) => {
-  semaphore.use( async () => {
-    var users:any = (await secrets.read('kwirth.users') as any);
-    var user:any=JSON.parse(atob(users[req.body.user]));
-    if (user) {
-      if (req.body.password===user.password) {
-        if (user.password==='password')
-          res.status(201).send('');
-        else {
-          user.apiKey=Guid.create().toString();
-          users[req.body.user]=btoa(JSON.stringify(user));
-          secrets.write('kwirth.users',users);
-          res.status(200).send(user.apiKey);
-        }
-      } 
-      else {
-        res.status(401).send('');
-      }
-    }
-    else {
-      res.status(403).send('');
-    }
+
+const launch = (myNamespace:string) => {
+  secrets = new Secrets(coreApi, myNamespace);
+  configMaps = new ConfigMaps(coreApi, myNamespace);
+
+  // serve config API
+  var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi);
+  app.use(`/config`, va.route);
+  var ka:KeyApi = new KeyApi(configMaps);
+  app.use(`/key`, ka.route);
+  var sa:StoreApi = new StoreApi(configMaps);
+  app.use(`/store`, sa.route);
+  var ua:UserApi = new UserApi(secrets);
+  app.use(`/user`, ua.route);
+  var la:UserApi = new LoginApi(secrets);
+  app.use(`/login`, la.route);
+
+
+  // listen
+  server.listen(PORT, () => {
+    console.log(`Server is listening on port ${PORT}`);
+    console.log(`Context being used: ${kc.currentContext}`);
+    console.log(`Cluster name: ${kc.getCluster(kc.currentContext)?.name}`);
+    console.log(`KWI1500I Control is being givent to KWirth`);
   });
-});
+}
 
-app.post('/password', async (req:any,res:any) => { 
-  semaphore.use ( async () => {
-    var users:any = (await secrets.read('kwirth.users') as any);
-    var user:any=JSON.parse (atob(users[req.body.user]));
-    if (user) {
-      if (req.body.password===user.password) {
-        user.password = req.body.newpassword
-        user.apiKey=Guid.create().toString();
-        users[req.body.user]=btoa(JSON.stringify(user));
-        secrets.write('kwirth.users',users);
-        res.status(200).send(users.apiKey);
-      }
-      else {
-        res.status(401).send('');
-      }
-    }
-    else {
-      res.status(403).send('');
-    }
-  });
-});
+////////////////////////////////////////////////////////////// START /////////////////////////////////////////////////////////
+console.log(`KWirth version is ${VERSION}`);
 
-// serve config API
-var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi);
-app.use(`/config`, va.route);
-var ka:KeyApi = new KeyApi(configMaps);
-app.use(`/key`, ka.route);
-var sa:StoreApi = new StoreApi(configMaps);
-app.use(`/store`, sa.route);
-var ua:UserApi = new UserApi(secrets);
-app.use(`/user`, ua.route);
-
-// listen
-server.listen(PORT, () => {
-  console.log(`KWirth version is ${VERSION}`);
-  console.log(`Server is listening on port ${PORT}`);
-  console.log(`Context being used: ${kc.currentContext}`);
-  console.log(`Cluster name: ${kc.getCluster(kc.currentContext)?.name}`);
+getMyNamespace()
+.then ( (namespace) => {
+  console.log('Detected namespace: '+namespace);
+  launch (namespace);
+})
+.catch ( (err) => {
+  console.log('Cannot get namespace, using "default"');
+  launch ('default');
 });

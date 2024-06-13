@@ -5,7 +5,6 @@ metadata:
   namespace: default
 data:
   admin: 'eyAicGFzc3dvcmQiOiAicGFzc3dvcmQiIH0='
-#  dev: 'eyAicGFzc3dvcmQiOiAicGFzc3dvcmQiIH0='
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -20,9 +19,9 @@ metadata:
   namespace: default
 rules:
   # "" indicates the core API group
-  - apiGroups: ["", "apps", "rbac.authorization.k8s.io", "networking.k8s.io"]
+  - apiGroups: ['', 'apps', 'rbac.authorization.k8s.io', 'networking.k8s.io']
     resources: ['*']
-    verbs: ['GET', 'LIST','WATCH']
+    verbs: ['*']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

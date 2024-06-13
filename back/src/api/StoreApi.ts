@@ -9,7 +9,7 @@ export class StoreApi {
 
   public route = express.Router();
 
-  constructor (config:ConfigMaps, namespace:string='default') {
+  constructor (config:ConfigMaps) {
     this.configMaps=config;
 
     this.route.route('/:user')
@@ -17,7 +17,11 @@ export class StoreApi {
       StoreApi.semaphore.use ( async () => {
         try {
           var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});
-          res.status(200).json(Object.keys(data));
+          console.log(data);
+          if (data===undefined)
+            res.status(200).json([]);
+          else
+            res.status(200).json(Object.keys(data));
         }
         catch (err) {
           console.log('err');
@@ -45,6 +49,7 @@ export class StoreApi {
         try {
           var data:any= await this.configMaps.read('kwirth.store.'+req.params.user);
           delete data[req.params.key];
+          console.log(data);
           await this.configMaps.write('kwirth.store.'+req.params.user,data);
           res.status(200).json();
         }      

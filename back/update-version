@@ -8,4 +8,4 @@ rm level
 printf "%s" $LEVEL > level
 export NEXTVERSION=$MAJOR.$MINOR.$LEVEL
 echo Moving $CURRENTVERSION to $NEXTVERSION
-echo "export const VERSION:string=\"$NEXTVERSION\";" > src/version.ts
+printf "%s" "export const VERSION:string=\"$NEXTVERSION\";" > src/version.ts

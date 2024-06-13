@@ -21,8 +21,6 @@ class UserApi {
         this.secrets = secrets;
         secrets.read('kwirth.users').then((resp) => {
             UserApi.users = resp;
-            console.log('read users');
-            console.log(UserApi.users);
         })
             .catch((err) => {
             console.log('err reading users');

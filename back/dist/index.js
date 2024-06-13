@@ -39,6 +39,16 @@ const appsApi = kc.makeApiClient(client_node_1.AppsV1Api);
 const k8sLog = new client_node_1.Log(kc);
 const secrets = new Secrets_1.Secrets(coreApi);
 const configMaps = new ConfigMaps_1.ConfigMaps(coreApi);
+const getMyNamespace = () => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    var podName = process.env.HOSTNAME;
+    const pods = yield coreApi.listPodForAllNamespaces();
+    const pod = pods.body.items.find(p => { var _a; return ((_a = p.metadata) === null || _a === void 0 ? void 0 : _a.name) === podName; });
+    if (pod && ((_a = pod.metadata) === null || _a === void 0 ? void 0 : _a.namespace))
+        return pod.metadata.namespace;
+    else
+        return 'default';
+});
 const sendLines = (ws, event, source) => {
     const logLines = source.split('\n');
     for (var l of logLines) {
@@ -152,20 +162,32 @@ app.post('/password', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         }
     }));
 }));
-// serve config API
-var va = new ConfigApi_1.ConfigApi(kc, coreApi, appsApi);
-app.use(`/config`, va.route);
-var ka = new KeyApi_1.KeyApi(configMaps);
-app.use(`/key`, ka.route);
-var sa = new StoreApi_1.StoreApi(configMaps);
-app.use(`/store`, sa.route);
-var ua = new UserApi_1.UserApi(secrets);
-app.use(`/user`, ua.route);
-// listen
-server.listen(PORT, () => {
-    var _a;
-    console.log(`KWirth version is ${version_1.VERSION}`);
-    console.log(`Server is listening on port ${PORT}`);
-    console.log(`Context being used: ${kc.currentContext}`);
-    console.log(`Cluster name: ${(_a = kc.getCluster(kc.currentContext)) === null || _a === void 0 ? void 0 : _a.name}`);
+const launch = (myNamespace) => {
+    // serve config API
+    var va = new ConfigApi_1.ConfigApi(kc, coreApi, appsApi);
+    app.use(`/config`, va.route);
+    var ka = new KeyApi_1.KeyApi(configMaps);
+    app.use(`/key`, ka.route);
+    var sa = new StoreApi_1.StoreApi(configMaps, myNamespace);
+    app.use(`/store`, sa.route);
+    var ua = new UserApi_1.UserApi(secrets);
+    app.use(`/user`, ua.route);
+    // listen
+    server.listen(PORT, () => {
+        var _a;
+        console.log(`KWirth version is ${version_1.VERSION}`);
+        console.log(`Server is listening on port ${PORT}`);
+        console.log(`Context being used: ${kc.currentContext}`);
+        console.log(`Cluster name: ${(_a = kc.getCluster(kc.currentContext)) === null || _a === void 0 ? void 0 : _a.name}`);
+        console.log(`KWI1500I Control is being givent to KWirth`);
+    });
+};
+getMyNamespace()
+    .then((namespace) => {
+    console.log('Detected namespace: ' + namespace);
+    launch(namespace);
+})
+    .catch((err) => {
+    console.log('Cannot get namespace, using "default"');
+    launch('default');
 });
