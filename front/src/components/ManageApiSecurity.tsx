@@ -45,14 +45,14 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
       var newkey={ description:description, expire:expire};
       await fetch(`${props.cluster!.url}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json'}});
     }
+    setDescrition('');
+    setExpire('');
     await getKeys();
   }
 
   const onClickNew= () => {
     setSelectedKey(undefined);
     setDescrition('');
-    //var x=new Date().getFullYear()+1;
-    //setExpire(new Date(new Date().setFullYear(x,1,1)));
     setExpire('');
   }
 

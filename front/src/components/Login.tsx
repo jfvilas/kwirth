@@ -28,12 +28,15 @@ const AddCluster: React.FC<any> = (props:IProps) => {
     if(changingPassword) {
       if (newPassword1===newPassword2) {
         var t = await login(user,password,newPassword1);
-        if (t.status===200) 
-          props.onClose(true, await t.text(), user);
-        else {
-          setChangingPassword(false);
+        if (t.status===200) {
           setUser('');
           setPassword('');
+          props.onClose(true, await t.text(), user);
+        }
+        else {
+          setUser('');
+          setPassword('');
+          setChangingPassword(false);
         }
       }
     }
@@ -41,9 +44,13 @@ const AddCluster: React.FC<any> = (props:IProps) => {
       var t = await login(user,password);
       switch (t.status) {
         case 200:
+          setUser('');
+          setPassword('');
           props.onClose(true, await t.text(), user);
           break;
         case 201:
+          setUser('');
+          setPassword('');
           setChangingPassword(true);
           break;
       }

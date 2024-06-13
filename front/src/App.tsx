@@ -660,7 +660,7 @@ const App: React.FC = () => {
     </Menu>
   );
 
-if (!logged) return (<>
+  if (!logged) return (<>
     <div style={{ backgroundImage:`url('/front/turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
       <Login onClose={onCloseLogin} backend={backend}></Login>
     </div>

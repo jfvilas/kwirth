@@ -173,7 +173,7 @@ app.use(`/user`, ua.route);
 
 // listen
 server.listen(PORT, () => {
-  console.log(`KLogs version is ${VERSION}`);
+  console.log(`KWirth version is ${VERSION}`);
   console.log(`Server is listening on port ${PORT}`);
   console.log(`Context being used: ${kc.currentContext}`);
   console.log(`Cluster name: ${kc.getCluster(kc.currentContext)?.name}`);

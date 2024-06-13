@@ -18,7 +18,7 @@ export class KeyApi {
       console.log(KeyApi.keys);
     })
     .catch ((err) => {
-      console.log('err reading keys');
+      console.log('err reading keys. kwirth will start with no keys');
       console.log(err);
     });
 
