@@ -1,6 +1,6 @@
 import { Alert } from "./Alerts";
 
-export class ATab {
+export class LogObject {
   public cluster: any;
   public tabname: any;
   public ws:any=null;

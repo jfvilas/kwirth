@@ -4,13 +4,13 @@ import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, DeleteTwoTone, FileOp
 
 
 //icons 
-import KIconDaemonSetPng from'./icons/png/resources/labeled/ds-128.png';
-import KIconStatefulSetPng from'./icons/png/resources/labeled/sts-128.png';
-import KIconReplicaSetPng from'./icons/png/resources/labeled/rs-128.png';
+import IconDaemonSetPng from'./icons/ds.png';
+import IconReplicaSetPng from'./icons/rs.png';
+import IconStatefulSetPng from'./icons/ss.png';
 
 // model
 import { Alert } from './model/Alerts';
-import { ATab } from './model/ATab';
+import { LogObject } from './model/LogObject';
 import { Cluster } from './model/Cluster';
 
 // tools
@@ -31,10 +31,11 @@ import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
 
+
 // icons
-const KIconReplicaSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={KIconReplicaSetPng}/>;
-const KIconDaemonSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={KIconDaemonSetPng}/>;
-const KIconStatefulSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={KIconStatefulSetPng}/>;
+const KIconReplicaSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={IconReplicaSetPng}/>;
+const KIconDaemonSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={IconDaemonSetPng}/>;
+const KIconStatefulSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={IconStatefulSetPng}/>;
 
 const App: React.FC = () => {
   const [logged,setLogged]=useState(false);
@@ -68,8 +69,8 @@ const App: React.FC = () => {
   const [objs, setObjs] = useState<string[]>([]);
   const [objSelectDisabled, setObjSelectDisabled] = useState(true);
 
-  const [tabs, setTabs] = useState<ATab[]>([]);
-  const [highlightedTabs, setHighlightedTabs] = useState<ATab[]>([]);
+  const [tabs, setTabs] = useState<LogObject[]>([]);
+  const [highlightedTabs, setHighlightedTabs] = useState<LogObject[]>([]);
 
   const [selectedTabname, setSelectedTabname] = useState<string>();
   const selectedTabRef = useRef(selectedTabname);
@@ -184,7 +185,7 @@ const App: React.FC = () => {
     var index=-1;
     while (tabs.find (tab => tab.tabname===tabname+index)) index-=1;
 
-    var newtab:ATab= new ATab();
+    var newtab:LogObject= new LogObject();
     newtab.cluster=selectedClusterName;
     newtab.scope=scope;
     newtab.namespace=namespace;
@@ -286,7 +287,7 @@ const App: React.FC = () => {
     }
   }
 
-  const start = (tabObject:ATab) => {
+  const start = (tabObject:LogObject) => {
     tabObject.messages=[];
     var cluster=clusters!.find(c => c.name===tabObject.cluster);
     if (!cluster) {
@@ -323,7 +324,7 @@ const App: React.FC = () => {
     setAnchorMenuTabs(null);
   }
 
-  const stop = (tabObject:ATab) => {
+  const stop = (tabObject:LogObject) => {
     var endline='====================================================================================================';
     tabObject.messages.push(endline);
     setMessages((prev) => [...prev,endline]);
@@ -464,9 +465,9 @@ const App: React.FC = () => {
   };
 
   const saveConfig = (name:string) => {
-    var newtabs:ATab[]=[];
+    var newtabs:LogObject[]=[];
     for (var t of tabs) {
-      var newt = new ATab();
+      var newt = new LogObject();
       newt.addTimestamp=t.addTimestamp;
       newt.alerts=t.alerts;
       newt.cluster=t.cluster;
@@ -621,7 +622,7 @@ const App: React.FC = () => {
     if (a) {
       clear();
       var n = await (await fetch (`${backend}/store/${user}/${a}`)).json();
-      var newtabs=JSON.parse(n) as ATab[];
+      var newtabs=JSON.parse(n) as LogObject[];
       setControlsVisible(true);
       setTabs(newtabs);
       setConfigLoaded(true);
@@ -760,7 +761,7 @@ const App: React.FC = () => {
           <FormControl variant='standard' sx={{ m: 1, minWidth: 200 }} disabled={selectedClusterName===''}>
               <InputLabel id='scope'>Scope</InputLabel>
               <Select labelId='scope' value={scope} onChange={onChangeScope} label='Scope'>
-                  { ['cluster','deployment','pod'].map( (value:string) => {
+                  { ['cluster','deployment'].map( (value:string) => {
                       return <MenuItem key={value} value={value}>{value}</MenuItem>
                   })}
               </Select>

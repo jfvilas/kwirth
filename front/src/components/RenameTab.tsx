@@ -1,10 +1,10 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, IconButton, InputLabel, Menu, MenuItem, MenuList, Select, SelectChangeEvent, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material';
-import { ATab } from '../model/ATab';
+import { LogObject } from '../model/LogObject';
 
 interface IProps {
   onClose:(a:string|null) => {};
-  tabs:ATab[];
+  tabs:LogObject[];
   oldname:string;
 }
 const RenameTab: React.FC<any> = (props:IProps) => {
