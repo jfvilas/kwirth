@@ -1,6 +1,12 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
-import { Box, Button, Divider, FormControl, IconButton, InputLabel, Menu, MenuItem, MenuList, Select, SelectChangeEvent, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { Box, Button, Divider, FormControl, IconButton, InputLabel, Menu, MenuItem, MenuList, Select, SelectChangeEvent, Stack, SvgIcon, Tab, Tabs, TextField, Typography } from '@mui/material';
 import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, DeleteTwoTone, FileOpenTwoTone, Pause, PlayArrow, RemoveCircleRounded, SaveAsTwoTone, SaveTwoTone, Settings, Start, Stop, Info, Key, Edit, ExitToApp, VerifiedUser, ArrowUpward, ArrowDownward, ImportExport } from '@mui/icons-material';
+
+
+//icons 
+import KIconDaemonSetPng from'./icons/png/resources/labeled/ds-128.png';
+import KIconStatefulSetPng from'./icons/png/resources/labeled/sts-128.png';
+import KIconReplicaSetPng from'./icons/png/resources/labeled/rs-128.png';
 
 // model
 import { Alert } from './model/Alerts';
@@ -24,7 +30,11 @@ import Popup from './components/Popup';
 import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
-//import { config } from 'process';
+
+// icons
+const KIconReplicaSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={KIconReplicaSetPng}/>;
+const KIconDaemonSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={KIconDaemonSetPng}/>;
+const KIconStatefulSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={KIconStatefulSetPng}/>;
 
 const App: React.FC = () => {
   const [logged,setLogged]=useState(false);
@@ -140,6 +150,7 @@ const App: React.FC = () => {
   const getObjs = async (namespace:string) => {
     var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${scope}?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.apiKey}});
     var data = await response.json();
+    console.log(data);
     setObjs(data);
   }
   
@@ -765,9 +776,11 @@ const App: React.FC = () => {
           <FormControl variant="standard" sx={{ m: 1, minWidth: 200 }} disabled={objSelectDisabled}>
               <InputLabel id="obj">Object</InputLabel>
               <Select labelId="obj" value={obj} onChange={onChangeObj} label='Object'>
-                  { objs.map( (value:string) => {
-                      return <MenuItem key={value} value={value}>{value}</MenuItem>
-                  })}
+                  { objs.map( (value:any) =>
+                      <MenuItem key={value.name} value={value.name}>
+                        {value.type==='replica'? <KIconReplicaSet/>:value.type==='daemon'?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.name}
+                      </MenuItem>
+                  )}
               </Select>
           </FormControl>
           <Button variant='contained' onClick={onClickAdd} size='small'>ADD</Button>
