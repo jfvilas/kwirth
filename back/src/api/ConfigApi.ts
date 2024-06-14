@@ -40,6 +40,7 @@ export class ConfigApi {
       .get( async (req, res) => {
         try {
           var response= await this.coreApi.listNamespacedPod(req.params.namespace);
+          console.log(response.body);
           var pods = response.body.items.map (n => n?.metadata?.name);
           res.status(200).json(pods);
         }
@@ -49,12 +50,17 @@ export class ConfigApi {
         }
       })
 
-    this.route.route('/:namespace/deployment')
+      this.route.route('/:namespace/deployment')
       .get( async (req, res) => {
         try {
-          var response= await this.appsV1Api.listNamespacedDeployment(req.params.namespace);
-          var deps = response.body.items.map (n => n?.metadata?.name);
-          res.status(200).json(deps);
+          var list:any[]=[];
+          var respDeps = await this.appsV1Api.listNamespacedDeployment(req.params.namespace);
+          list.push (...respDeps.body.items.map (n => { return { name:n?.metadata?.name, type:'replica' }}));
+          var respStat = await this.appsV1Api.listNamespacedStatefulSet(req.params.namespace);
+          list.push (...respStat.body.items.map (n => { return { name:n?.metadata?.name, type:'stateful' }}));
+          var respDae = await this.appsV1Api.listNamespacedDaemonSet(req.params.namespace);
+          list.push (...respDae.body.items.map (n => { return { name:n?.metadata?.name, type:'daemon' }}));
+          res.status(200).json(list);
         }
         catch (err) {
           res.status(200).json([]);
