@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
-import { Key } from '../model/Key';
+import { ApiKey } from '../model/ApiKey';
 import { Cluster } from '../model/Cluster';
 const copy = require('clipboard-copy');
 
@@ -10,11 +10,11 @@ interface IProps {
 }
 
 const ManageApiSecurity: React.FC<any> = (props:IProps) => {
-  const [keys, setKeys] = useState<Key[]|null>();
-  const [selectedKey, setSelectedKey] = useState<Key|null>();
+  const [keys, setKeys] = useState<ApiKey[]|null>();
+  const [selectedKey, setSelectedKey] = useState<ApiKey|null>();
   const [description, setDescrition] = useState<string>('');
   const [expire, setExpire] = useState<string|null>('');
-
+  //+++ implement expire
   const getKeys = async () => {
     var response = await fetch(`${props.cluster!.url}/key`);
     var data = await response.json();

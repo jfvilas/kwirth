@@ -798,6 +798,7 @@ const App: React.FC = () => {
         <Stack direction='row' spacing={1} sx={{ ml:1}} alignItems='baseline' >
 
           {menuConfig}
+          
           <FormControl variant='standard' sx={{ m: 1, minWidth: 200 }}>
               <InputLabel id='cluster'>Cluster</InputLabel>
               <Select labelId='cluster' value={selectedClusterName} onChange={onChangeCluster} label='Cluster'>
