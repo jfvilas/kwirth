@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { SnackbarProvider, useSnackbar } from 'notistack';
+import { SnackbarProvider } from 'notistack';
 
 console.log(`Environment: ${process.env.NODE_ENV}`);
 var backend='http://localhost:3883';
@@ -16,9 +16,9 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <React.StrictMode>
-    <SnackbarProvider>
-      <App />
-    </SnackbarProvider>
+      <SnackbarProvider>
+        <App />
+      </SnackbarProvider>
   </React.StrictMode>
 );
 

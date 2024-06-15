@@ -47,6 +47,7 @@ export class  ConfigMaps {
         return new Promise( async (resolve,reject) => {
             try {
                 var ct = await this.coreApi?.readNamespacedConfigMap(name,this.namespace);
+                if (ct.body.data===undefined) ct.body.data=defaultValue;
                 resolve(ct.body.data);
             }
             catch(err:any){

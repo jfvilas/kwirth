@@ -31,7 +31,7 @@ const AlertConfig: React.FC<any> = ({onClose, expression}) => {
   return (
     <>
     <Dialog open={true} >
-    <DialogTitle>Set backup account</DialogTitle>
+    <DialogTitle>Create alert</DialogTitle>
     <DialogContent>
     <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
       <TextField value={expr} onChange={onChangeExpr} variant='standard'label='Expression'></TextField>

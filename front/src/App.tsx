@@ -1,15 +1,16 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
-import { Box, Button, Divider, FormControl, IconButton, InputLabel, Menu, MenuItem, MenuList, Select, SelectChangeEvent, Stack, SvgIcon, Tab, Tabs, TextField, Typography } from '@mui/material';
-import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, DeleteTwoTone, FileOpenTwoTone, Pause, PlayArrow, RemoveCircleRounded, SaveAsTwoTone, SaveTwoTone, Settings, Start, Stop, Info, Key, Edit, ExitToApp, VerifiedUser, ArrowUpward, ArrowDownward, ImportExport } from '@mui/icons-material';
 
+// material & icons
+import { Collapse, Box, Button, Divider, FormControl, IconButton, InputLabel, Menu, MenuItem, MenuList, Select, SelectChangeEvent, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, DeleteTwoTone, FileOpenTwoTone, Pause, PlayArrow, RemoveCircleRounded, SaveAsTwoTone, SaveTwoTone, Settings, Start, Stop, Info, Key, Edit, ExitToApp, VerifiedUser, ArrowUpward, ArrowDownward, ImportExport, ExpandLess, ExpandMore, Clear } from '@mui/icons-material';
 
-//icons 
+// app icons 
 import IconDaemonSetPng from'./icons/ds.png';
 import IconReplicaSetPng from'./icons/rs.png';
 import IconStatefulSetPng from'./icons/ss.png';
 
 // model
-import { Alert } from './model/Alerts';
+import { Alert } from './model/Alert';
 import { LogObject } from './model/LogObject';
 import { Cluster } from './model/Cluster';
 
@@ -22,7 +23,7 @@ import { PopupConfig } from './model/PopupConfig';
 // components
 import BlockingAlert from './components/BlockingAlert';
 import AlertConfig from './components/AlertConfig';
-import RenameTab from './components/RenameTab';
+import RenameLog from './components/RenameLog';
 import SaveConfig from './components/SaveConfig';
 import ManageApiSecurity from './components/ManageApiSecurity';
 import PickList from './components/PickList';
@@ -32,17 +33,18 @@ import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
 
 
-// icons
+// app icons
 const KIconReplicaSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={IconReplicaSetPng}/>;
 const KIconDaemonSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={IconDaemonSetPng}/>;
 const KIconStatefulSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={IconStatefulSetPng}/>;
 
 const App: React.FC = () => {
-  const [logged,setLogged]=useState(false);
-  const [apiKey,setApiKey]=useState('');
-
   var backend='http://localhost:3883';
   if ( process.env.NODE_ENV==='production') backend=window.location.protocol+'//'+window.location.host;
+
+  const [user, setUser] = useState<string>('');
+  const [logged,setLogged]=useState(false);
+  const [apiKey,setApiKey]=useState('');
 
   const [scope, setScope] = useState('cluster');
   
@@ -65,44 +67,59 @@ const App: React.FC = () => {
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [namespaceSelectDisabled, setNamespaceSelectDisabled] = useState(true);
 
-  const [obj, setObj] = useState('');
-  const [objs, setObjs] = useState<string[]>([]);
-  const [objSelectDisabled, setObjSelectDisabled] = useState(true);
+  const [resource, setResource] = useState('');
+  const [resources, setResources] = useState<string[]>([]);
+  const [resourceSelectDisabled, setResourceSelectDisabled] = useState(true);
 
-  const [tabs, setTabs] = useState<LogObject[]>([]);
-  const [highlightedTabs, setHighlightedTabs] = useState<LogObject[]>([]);
+  const [logs, setLogs] = useState<LogObject[]>([]);
+  const [highlightedLogs, setHighlightedLogs] = useState<LogObject[]>([]);
+  const [pausedLogs, setPausedLogs] = useState<LogObject[]>([]);
 
-  const [selectedTabname, setSelectedTabname] = useState<string>();
-  const selectedTabRef = useRef(selectedTabname);
-  selectedTabRef.current=selectedTabname;
-  var selectedTabObject = tabs.find(t => t.tabname===selectedTabname);
-  var selectedTabIndex = tabs.findIndex(t => t.tabname===selectedTabname);
+  const [selectedLogName, setSelectedLogName] = useState<string>();
+  const selectedLogRef = useRef(selectedLogName);
+  selectedLogRef.current=selectedLogName;
+  var selectedLog = logs.find(t => t.name===selectedLogName);
+  var selectedLogIndex = logs.findIndex(t => t.name===selectedLogName);
 
+  // message list management
   const [paused, setPaused] = useState<boolean>(false);
   const [messages, setMessages] = useState<string[]>([]);
+  const searchLineRef = useRef(null);
+  const lastLineRef = useRef(null);
+
 
   const [startDisabled, setStartDisabled] = useState<boolean>(false);
   const [controlsVisible, setControlsVisible] = useState<boolean>(false);
 
-  const [user, setUser] = useState<string>('');
+  
+  // search & filter
   const [filter, setFilter] = useState<string>('');
   const [search, setSearch] = useState<string>('');
   const [searchPos, setSearchPos] = useState<number>(0);
   const [searchFirstPos, setSearchFirstPos] = useState<number>(-1);
   const [searchLastPos, setSearchLastPos] = useState<number>(-1);
 
+  // menus
+  const [anchorMenuConfig, setAnchorMenuConfig] = React.useState<null | HTMLElement>(null);
+  const menuConfigOpen = Boolean(anchorMenuConfig);
+  const [anchorMenuLogs, setAnchorMenuLogs] = React.useState<null | HTMLElement>(null);
+  const menuLogsOpen = Boolean(anchorMenuLogs);
+
   const [showAlertConfig, setShowAlertConfig]=useState<boolean>(false);
   const [showBlockingAlert, setShowBlockingAlert]=useState<boolean>(false);
-  const [showRenameTab, setShowRenameTab]=useState<boolean>(false);
+  const [showRenameLog, setShowRenameLog]=useState<boolean>(false);
   const [showManageClusters, setShowManageClusters]=useState<boolean>(false);
   const [showSaveConfig, setShowSaveConfig]=useState<boolean>(false);
   const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false);
   const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false);
-  const [showPickList, setShowPickList]=useState<boolean>(false);
-  const [showPopup, setShowPopup]=useState<boolean>(false);
   const [blockingAlert, setBlockingAlert] = useState<Alert>();
   const [configLoaded, setConfigLoaded] = useState<boolean>(false);
   const [configName, setConfigName] = useState('');
+
+  // dialog tools
+  const [showPickList, setShowPickList]=useState<boolean>(false);
+  const [showPopup, setShowPopup]=useState<boolean>(false);
+
 
   useEffect ( () => {
     if (logged && !clustersRef.current) getClusters();
@@ -111,11 +128,11 @@ const App: React.FC = () => {
   useEffect ( () => {
     if (logged) {
       setConfigLoaded(false);
-      if (tabs.length>0) {
-        for (var t of tabs) {
+      if (logs.length>0) {
+        for (var t of logs) {
           start(t);
         }
-        onChangeTabs(null, tabs[0].tabname);
+        onChangeLogs(null, logs[0].name);
       }
     }
   }, [configLoaded]);
@@ -130,16 +147,16 @@ const App: React.FC = () => {
     setCurrentCluster(srcCluster);
 
     // get previously configured clusters
-    var lsClusters:Cluster[]=[];
+    var clusterList:Cluster[]=[];
     var data=localStorage.getItem('kwirth.clusters');
-    if (data) lsClusters=JSON.parse(data);
-    lsClusters=lsClusters.filter (c => c.name!==srcCluster.name);
-    for (var c of lsClusters) {
+    if (data) clusterList=JSON.parse(data);
+    clusterList=clusterList.filter (c => c.name!==srcCluster.name);
+    for (var c of clusterList) {
       if (c.source) delete c.source;
     }
-    lsClusters.push(srcCluster);
-    localStorage.setItem('kwirth.clusters', JSON.stringify(lsClusters));
-    setClusters(lsClusters);
+    clusterList.push(srcCluster);
+    localStorage.setItem('kwirth.clusters', JSON.stringify(clusterList));
+    setClusters(clusterList);
   }
 
   const getNamespaces = async () => {
@@ -148,11 +165,10 @@ const App: React.FC = () => {
     setNamespaces(data);
   }
 
-  const getObjs = async (namespace:string) => {
+  const getResources = async (namespace:string) => {
     var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${scope}?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.apiKey}});
     var data = await response.json();
-    console.log(data);
-    setObjs(data);
+    setResources(data);
   }
   
   const onChangeCluster = (event: SelectChangeEvent) => {
@@ -161,7 +177,7 @@ const App: React.FC = () => {
     setSelectedCluster(clusters?.filter(c => c.name===value)[0]!);
     setScope('cluster');
     setNamespaceSelectDisabled(true);
-    setObjSelectDisabled(true);
+    setResourceSelectDisabled(true);
   };
 
   const onChangeScope = (event: SelectChangeEvent) => {
@@ -169,91 +185,97 @@ const App: React.FC = () => {
     setScope(value);
     if (value!=='cluster') getNamespaces();
     setNamespaceSelectDisabled(value==='cluster')
-    setObjSelectDisabled(value==='cluster')
+    setResourceSelectDisabled(value==='cluster')
   };
+
   const onChangeNamespace = (event: SelectChangeEvent) => {
     setNamespace(event.target.value);
-    getObjs(event.target.value);
-  };
-  const onChangeObj = (event: SelectChangeEvent) => {
-    setObj(event.target.value);
+    getResources(event.target.value);
   };
 
   const onClickAdd = () => {
-    var tabname=namespace+"-"+obj;
-    if (scope==='cluster') tabname='cluster';
+    var loname=namespace+"-"+resource;
+    if (scope==='cluster') loname='cluster';
     var index=-1;
-    while (tabs.find (tab => tab.tabname===tabname+index)) index-=1;
+    while (logs.find (lo => lo.name===loname+index)) index-=1;
 
-    var newtab:LogObject= new LogObject();
-    newtab.cluster=selectedClusterName;
-    newtab.scope=scope;
-    newtab.namespace=namespace;
-    newtab.obj=obj;
-    newtab.tabname=tabname+index;
-    tabs.push(newtab);
+    var newlo:LogObject= new LogObject();
+    newlo.cluster=selectedClusterName;
+    newlo.scope=scope;
+    newlo.namespace=namespace;
+    newlo.obj=resource;
+    newlo.name=loname+index;
+    logs.push(newlo);
     setMessages(['Start log reciever...']);
-    setTabs(tabs);
-    setSelectedTabname(newtab.tabname);
+    setLogs(logs);
+    setSelectedLogName(newlo.name);
     setPaused(false);
     setStartDisabled(false);
     setControlsVisible(true);
     setFilter('');
   };
 
-  const onChangeTabs = (ev:any,val:string)=> {
-    var newtab = tabs.find(t => t.tabname === val);
-    if (newtab) {
-      newtab.pending=false;
-      setHighlightedTabs (highlightedTabs.filter(t => t.pending));
-      setPaused(newtab.paused);
-      setFilter(newtab.filter);
-      setMessages(newtab.messages);
-      setStartDisabled(newtab.started);
-      setTabs(tabs);
+  const onChangeLogs = (ev:any,val:string)=> {
+    var newlo = logs.find(t => t.name === val);
+    if (newlo) {
+      newlo.pending=false;
+      setHighlightedLogs (highlightedLogs.filter(t => t.pending));
+      setPausedLogs (pausedLogs.filter(t => t.paused));
+      setPaused(newlo.paused);
+      setFilter(newlo.filter);
+      setMessages(newlo.messages);
+      setStartDisabled(newlo.started);
+      setLogs(logs);
     }
-    setSelectedTabname(val);
+    setSelectedLogName(val);
   }
 
   const processEvent = (event:any) => {
-    // find the tab who this web socket belongs to, and add the new message
-    var tab=tabs.find(t => t.ws!==null && t.ws===event.target);
-    if (!tab) {
-      return;
-    } 
+    // find the log who this web socket belongs to, and add the new message
+    var log=logs.find(t => t.ws!==null && t.ws===event.target);
+    if (!log) return;
     
-    var ev=JSON.parse(event.data);
+    var ev:any={};
+    try {
+      ev=JSON.parse(event.data);
+    }
+    catch (err) {
+      console.log(err);
+      console.log(event.data);
+    }
+
     var text=ev.text;
-    if (tab) {
-      if (tab.addTimestamp) text=(new Date()).toISOString().replace('T',' ').replace('Z','') + ' ' + text;
-      tab.messages.push(text);
+    if (log) {
+      if (log.addTimestamp) text=(new Date()).toISOString().replace('T',' ').replace('Z','') + ' ' + text;
+      log.messages.push(text);
     }
     else {
-      console.log('tab not found');
+      console.log('log not found');
       return;
     }
 
-    // if this tab is displayed (focused), add message to the screen
-    if (selectedTabRef.current === tab?.tabname) {
-      if (!tab?.paused) {
+    // if this log is displayed (focused), add message to the screen
+    if (selectedLogRef.current === log?.name) {
+      if (!log?.paused) {
         setMessages( (prev) => [...prev, text ]);
+        if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
       }
       else {
-        // tab is paused, so we show nothing;
+        // log is paused, so we show nothing;
       }
     }
     else {
-      // the received message is for a tab that is no selected, so we highlight the tab if background notification is enabled
-      if (tab && tab.showBackgroundNotification) {
-        tab.pending=true;
-        setHighlightedTabs((prev)=> [...prev, tab!]);
-        setTabs(tabs);
+      // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
+      if (log && log.showBackgroundNotification && !log.paused) {
+        log.pending=true;
+        setHighlightedLogs((prev)=> [...prev, log!]);
+        setLogs(logs);
       }
     }
 
     // review alerts
-    if (tab) {
-      for (var alert of tab.alerts) {
+    if (log) {
+      for (var alert of log.alerts) {
         if (text.includes(alert.expression)) {
           if (alert.beep) {
             Beep.beepError();
@@ -266,7 +288,7 @@ const App: React.FC = () => {
           else {
             const action = (snackbarId: SnackbarKey | undefined) => (
               <>
-                <Button onClick={() => { closeSnackbar(snackbarId); onChangeTabs(null,tab?.tabname); }}>
+                <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
                   View
                 </Button>
                 <Button onClick={() => { closeSnackbar(snackbarId) }}>
@@ -287,24 +309,24 @@ const App: React.FC = () => {
     }
   }
 
-  const start = (tabObject:LogObject) => {
-    tabObject.messages=[];
-    var cluster=clusters!.find(c => c.name===tabObject.cluster);
+  const start = (lo:LogObject) => {
+    lo.messages=[];
+    var cluster=clusters!.find(c => c.name===lo.cluster);
     if (!cluster) {
       console.log('nocluster');
       return;
     }
     var ws = new WebSocket(cluster.url+'?key='+cluster.apiKey);
-    tabObject.ws=ws;
+    lo.ws=ws;
     ws.onopen = () => {
       console.log(`Connected to the WebSocket: ${ws.url}`);
-      var payload={ scope:tabObject?.scope, namespace:tabObject?.namespace, deploymentName:tabObject?.obj};
-      if (tabObject) {
+      var payload={ scope:lo?.scope, namespace:lo?.namespace, deploymentName:lo?.obj};
+      if (lo) {
         ws.send(JSON.stringify(payload));
-        tabObject.started=true;
+        lo.started=true;
       }
       else {
-        console.log('no tabobject');
+        console.log('no loobject');
       }
     };
     
@@ -319,170 +341,180 @@ const App: React.FC = () => {
   }
 
   const onClickStart = () => {
-    var tab=tabs.find(t => t.tabname===selectedTabRef.current);
-    if (tab) start(tab);
-    setAnchorMenuTabs(null);
+    var lo=logs.find(t => t.name===selectedLogRef.current);
+    if (lo) start(lo);
+    setAnchorMenuLogs(null);
   }
 
-  const stop = (tabObject:LogObject) => {
+  const stop = (log:LogObject) => {
     var endline='====================================================================================================';
-    tabObject.messages.push(endline);
+    log.messages.push(endline);
+    log.paused=false;
+    setPausedLogs(logs.filter(t => t.paused));
     setMessages((prev) => [...prev,endline]);
-    if (!tabObject) {
+    if (!log) {
       console.log('nto');
     }
-    tabObject.ws?.close();
+    log.ws?.close();
     setStartDisabled(false);
   }
 
   const onClickStop = () => {    
-    if (selectedTabObject) stop(selectedTabObject);
-    setAnchorMenuTabs(null);
+    if (selectedLog) stop(selectedLog);
+    setAnchorMenuLogs(null);
   }
 
   const onClickRemove = () => {
-    if (selectedTabObject) {
+    if (selectedLog) {
       onClickStop();
-      if (tabs.length===1) {
+      if (logs.length===1) {
         setControlsVisible(false);
         setMessages([]);
       }
       else {
-        onChangeTabs(null,tabs[0].tabname);
+        onChangeLogs(null,logs[0].name);
       }
-      setTabs(tabs.filter(t => t!==selectedTabObject));
+      setLogs(logs.filter(t => t!==selectedLog));
     }
-    setAnchorMenuTabs(null);
+    setAnchorMenuLogs(null);
   }
 
   const onClickPauseResume = () => {
-    if (selectedTabObject) {
-      if (selectedTabObject.paused) setMessages(selectedTabObject.messages);
-      selectedTabObject.paused=!selectedTabObject.paused;
-      setPaused(!paused);
-      setTabs(tabs);
+    if (selectedLog) {
+      if (selectedLog.paused) {
+        selectedLog.paused=false;
+        setMessages(selectedLog.messages);
+        setPausedLogs(logs.filter(t => t.paused));
+        setPaused(false);
+        setLogs(logs);
+      }
+      else {
+        selectedLog.paused=true;
+        setPausedLogs( (prev) => [...prev, selectedLog!]);
+        setPaused(true);
+        setLogs(logs);
+      }
     }
-    setAnchorMenuTabs(null);
+    setAnchorMenuLogs(null);
   }
 
   const onChangeFilter = (event:ChangeEvent<HTMLInputElement>) => {
     setFilter(event.target.value);
-    if (selectedTabObject) selectedTabObject.filter=event.target.value;
+    if (selectedLog) selectedLog.filter=event.target.value;
   }
 
   const onChangeSearch = (event:ChangeEvent<HTMLInputElement>) => {
     var newsearch=event.target.value;
     if (newsearch!=='') {
-      var first=selectedTabObject!.messages.findIndex(m => m.includes(newsearch));
+      var first=selectedLog!.messages.findIndex(m => m.includes(newsearch));
       setSearchFirstPos(first);
-      setSearchLastPos(selectedTabObject!.messages.findLastIndex(m => m.includes(newsearch)));
+      setSearchLastPos(selectedLog!.messages.findLastIndex(m => m.includes(newsearch)));
       setSearchPos(first);
+      if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    else {
+      if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ alignToTop:false, behavior: 'smooth', block: 'start' });
     }
     setSearch(newsearch);
   }
 
   const onClickSearchDown = () => {
     var i=messages!.findIndex( (m,i) => m.includes(search) && i>searchPos);
-    if (i>=0) setSearchPos(i);
+    if (i>=0) {
+      setSearchPos(i);
+      (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   const onClickSearchUp = () => {
     var i=messages!.findLastIndex( (m,i) => m.includes(search) && i<searchPos);
-    if (i>=0) setSearchPos(i);
+    if (i>=0) {
+      setSearchPos(i);
+      (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }
 
-  const [anchorMenuTabs, setAnchorMenuTabs] = React.useState<null | HTMLElement>(null);
-  const menuTabsOpen = Boolean(anchorMenuTabs);
-  const onClickMenuTabs = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorMenuTabs(event.currentTarget);
-  };
-  const onCloseMenuTabs = () => {
-    setAnchorMenuTabs(null);
-  };
-  
-  const onClickMenuTabsOption = (option: string) => {
+  const onClickMenuLogsOption = (option: string) => {
     switch(option) {
       case 'ml':
-        if (selectedTabObject) {
-          tabs[selectedTabIndex]=tabs[selectedTabIndex-1];
-          tabs[selectedTabIndex-1]=selectedTabObject;
-          setTabs(tabs);
+        if (selectedLog) {
+          logs[selectedLogIndex]=logs[selectedLogIndex-1];
+          logs[selectedLogIndex-1]=selectedLog;
+          setLogs(logs);
         }
         break;
       case 'mr':
-        if (selectedTabObject) {
-          tabs[selectedTabIndex]=tabs[selectedTabIndex+1];
-          tabs[selectedTabIndex+1]=selectedTabObject;
-          setTabs(tabs);
+        if (selectedLog) {
+          logs[selectedLogIndex]=logs[selectedLogIndex+1];
+          logs[selectedLogIndex+1]=selectedLog;
+          setLogs(logs);
         }
         break;
       case 'ms':
-        if (selectedTabObject) {
-          tabs.splice(selectedTabIndex, 1);
-          tabs.splice(0, 0, selectedTabObject);
-          setTabs(tabs);
+        if (selectedLog) {
+          logs.splice(selectedLogIndex, 1);
+          logs.splice(0, 0, selectedLog);
+          setLogs(logs);
         }
         break;  
       case 'me':
-        if (selectedTabObject) {
-          tabs.splice(selectedTabIndex, 1);
-          tabs.push(selectedTabObject);
-          setTabs(tabs);
+        if (selectedLog) {
+          logs.splice(selectedLogIndex, 1);
+          logs.push(selectedLog);
+          setLogs(logs);
         }
         break;
       case 'dbn':
-        if (selectedTabObject) {
-          selectedTabObject.showBackgroundNotification=!selectedTabObject.showBackgroundNotification;
-          setTabs(tabs);
+        if (selectedLog) {
+          selectedLog.showBackgroundNotification=!selectedLog.showBackgroundNotification;
+          setLogs(logs);
         }
         break;
       case 'ats':
-        if (selectedTabObject) {
-          selectedTabObject.addTimestamp=!selectedTabObject.addTimestamp;
-          setTabs(tabs);
+        if (selectedLog) {
+          selectedLog.addTimestamp=!selectedLog.addTimestamp;
+          setLogs(logs);
         }
         break;
       case 'cfa':
         setShowAlertConfig(true);
         break;
       case 'rt':
-        setShowRenameTab(true);
+        setShowRenameLog(true);
         break;
       case 'dt':
-        //+++ set default tab
+        //+++ set default log
         break;
     }
-    onCloseMenuTabs();
+    setSubmenuActionOpen(false);
+    setSubmenuOptionsOpen(false);
+    setSubmenuReorgOpen(false);
+    setAnchorMenuLogs(null);
   };
 
-  const [anchorMenuConfig, setAnchorMenuConfig] = React.useState<null | HTMLElement>(null);
-  const menuConfigOpen = Boolean(anchorMenuConfig);
   const onClickMenuConfig = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorMenuConfig(event.currentTarget);
   };
-  const onCloseMenuConfig = () => {
-    setAnchorMenuConfig(null);
-  };
 
   const saveConfig = (name:string) => {
-    var newtabs:LogObject[]=[];
-    for (var t of tabs) {
-      var newt = new LogObject();
-      newt.addTimestamp=t.addTimestamp;
-      newt.alerts=t.alerts;
-      newt.cluster=t.cluster;
-      newt.filter=t.filter;
-      newt.namespace=t.namespace;
-      newt.obj=t.obj;
-      newt.default=t.default;
-      newt.paused=t.paused;
-      newt.scope=t.scope;
-      newt.showBackgroundNotification=t.showBackgroundNotification;
-      newt.started=t.started;
-      newt.tabname=t.tabname;
-      newtabs.push(newt);
+    var newlos:LogObject[]=[];
+    for (var lo of logs) {
+      var newlo = new LogObject();
+      newlo.addTimestamp=lo.addTimestamp;
+      newlo.alerts=lo.alerts;
+      newlo.cluster=lo.cluster;
+      newlo.filter=lo.filter;
+      newlo.namespace=lo.namespace;
+      newlo.obj=lo.obj;
+      newlo.default=lo.default;
+      newlo.paused=lo.paused;
+      newlo.scope=lo.scope;
+      newlo.showBackgroundNotification=lo.showBackgroundNotification;
+      newlo.started=lo.started;
+      newlo.name=lo.name;
+      newlos.push(newlo);
     }
-    var payload=JSON.stringify(newtabs);
+    var payload=JSON.stringify(newlos);
     fetch (`${backend}/store/${user}/${name}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
     if (configName!==name) setConfigName(name);
   }
@@ -490,6 +522,7 @@ const App: React.FC = () => {
   const showNoConfigs = () => {
     popup('Config management...',<Stack direction={'row'} alignItems={'center'}><Info  color='info' fontSize='large'/>&nbsp;You have no config stored in your local store</Stack>,true, false, false, false, false, false);
   }
+
   const loadConfig = async () => {
     var allConfigs:string[] = await (await fetch (`${backend}/store/${user}`)).json();
     if (allConfigs.length===0)
@@ -500,10 +533,10 @@ const App: React.FC = () => {
 
   var clear = () => {
     setControlsVisible(false);
-    for (var t of tabs) {
+    for (var t of logs) {
       stop(t);
     }
-    setTabs([]);
+    setLogs([]);
     setMessages([]);
 
   }
@@ -559,7 +592,7 @@ const App: React.FC = () => {
         // nothing to do, the menuitem launches the handleUpload
         break;
     }
-    onCloseMenuConfig();
+    setAnchorMenuConfig(null);
   };
 
   const handleDownload = (content:string,filename:string,  mimeType:string='text/plain') => {
@@ -600,16 +633,17 @@ const App: React.FC = () => {
         alert.message=a.message;
         alert.type=a.type;
         alert.beep=a.beep;
-        selectedTabObject?.alerts.push(alert);
-        setTabs(tabs);
+        selectedLog?.alerts.push(alert);
+        setLogs(logs);
       }
   }
 
-  const renameTabClosed= (newname:string|null) => {
-    setShowRenameTab(false);
+  const renameLogClosed= (newname:string|null) => {
+    setShowRenameLog(false);
     if (newname!=null) {
-      selectedTabObject!.tabname=newname;
-      setTabs(tabs);
+      selectedLog!.name=newname;
+      setLogs(logs);
+      //+++ poner foco en nuevo tab
     }
   }
 
@@ -622,12 +656,12 @@ const App: React.FC = () => {
     if (a) {
       clear();
       var n = await (await fetch (`${backend}/store/${user}/${a}`)).json();
-      var newtabs=JSON.parse(n) as LogObject[];
+      var newlos=JSON.parse(n) as LogObject[];
       setControlsVisible(true);
-      setTabs(newtabs);
+      setLogs(newlos);
       setConfigLoaded(true);
       setConfigName(a);
-      //+++ habilitar el tab que este marcado como default
+      //+++ habilitar el log que este marcado como default
     }
   }
 
@@ -682,8 +716,8 @@ const App: React.FC = () => {
 
   const menuConfig=(
     <>
-      <Button onClick={onClickMenuConfig} variant='contained' endIcon={<KeyboardArrowDown/>} size='small'>Config</Button>      
-      <Menu id='menu-kwirth' anchorEl={anchorMenuConfig} open={menuConfigOpen} onClose={onCloseMenuConfig}>
+      <Button onClick={onClickMenuConfig} variant='contained' endIcon={<KeyboardArrowDown/>} size='small'>Config</Button>
+      <Menu id='menu-kwirth' anchorEl={anchorMenuConfig} open={menuConfigOpen} onClose={() => setAnchorMenuConfig(null)}>
         <MenuList dense>
           <MenuItem key='new' onClick={() => onClickMenuConfigOption('new')}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
           <MenuItem key='open' onClick={() => onClickMenuConfigOption('open')}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
@@ -698,7 +732,7 @@ const App: React.FC = () => {
           <MenuItem key='asec' onClick={() => onClickMenuConfigOption('asec')}><Key/>&nbsp;API Security</MenuItem>
           <MenuItem key='usec' onClick={() => onClickMenuConfigOption('usec')}><VerifiedUser />&nbsp;User security</MenuItem>
           <Divider/>
-          <MenuItem key='exit' onClick={() => {setLogged(false); onCloseMenuConfig()}}><ExitToApp />Exit Kwirth</MenuItem>
+          <MenuItem key='exit' onClick={() => {setLogged(false); setAnchorMenuConfig(null)}}><ExitToApp />Exit Kwirth</MenuItem>
         </MenuList>
       </Menu>
     </>
@@ -714,25 +748,39 @@ const App: React.FC = () => {
     }
   }
 
-  const menuTabs=(
-    <Menu id='menu-tabs' anchorEl={anchorMenuTabs} open={menuTabsOpen} onClose={onCloseMenuTabs}>
-      <MenuList dense>
-        <MenuItem key='cfa' onClick={() => onClickMenuTabsOption('cfa')} disabled={filter===''}>Convert filter to alert...</MenuItem>
+  const [subMenuReorg, setSubmenuReorgOpen] = React.useState(false)
+  const [subMenuAction, setSubmenuActionOpen] = React.useState(false)
+  const [subMenuOptions, setSubmenuOptionsOpen] = React.useState(false)
+
+  const menuLogs=(
+    <Menu id='menu-logs' anchorEl={anchorMenuLogs} open={menuLogsOpen} onClose={() => setAnchorMenuLogs(null)}>
+      <MenuList dense sx={{width:'40vh'}}>
+        <MenuItem key='cfa' onClick={() => onClickMenuLogsOption('cfa')} disabled={filter===''} sx={{ml:3}}>Convert filter to alert...</MenuItem>
         <Divider/>
-        <MenuItem key='dbn' onClick={() => onClickMenuTabsOption('dbn')}>{ selectedTabObject?.showBackgroundNotification &&  <Check/>} Show background notifications</MenuItem>
-        <MenuItem key='ats' onClick={() => onClickMenuTabsOption('ats')}>{ selectedTabObject?.addTimestamp &&  <Check/>} Add timestamp to messages</MenuItem>
-        <Divider/>
-        <MenuItem key='dt' onClick={() => onClickMenuTabsOption('dt')} disabled={selectedTabIndex<0}> {selectedTabObject?.default && <Check/>} Default tab</MenuItem>
-        <MenuItem key='rt' onClick={() => onClickMenuTabsOption('rt')} disabled={selectedTabIndex<0}>Rename tab</MenuItem>
-        <MenuItem key='ml' onClick={() => onClickMenuTabsOption('ml')} disabled={selectedTabIndex===0}>Move to left</MenuItem>
-        <MenuItem key='mr' onClick={() => onClickMenuTabsOption('mr')} disabled={selectedTabIndex===tabs.length-1}>Move to right</MenuItem>
-        <MenuItem key='ms' onClick={() => onClickMenuTabsOption('ms')} disabled={selectedTabIndex===0}>Move to start</MenuItem>
-        <MenuItem key='me' onClick={() => onClickMenuTabsOption('me')} disabled={selectedTabIndex===tabs.length-1}>Move to end</MenuItem>
-        <Divider/>
-        <MenuItem key='tabstart' onClick={onClickStart} disabled={startDisabled} ><Start/>&nbsp;Start</MenuItem>
-        <MenuItem key='tabpr' onClick={onClickPauseResume} disabled={!startDisabled}>{paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
-        <MenuItem key='tabstop' onClick={onClickStop} disabled={!startDisabled}><Stop/>&nbsp;Stop</MenuItem>
-        <MenuItem key='tabremove' onClick={onClickRemove} ><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
+        <MenuItem key='subopt' onClick={() => setSubmenuOptionsOpen(!subMenuOptions)} sx={{ml:3}}>Logging options<Typography sx={{flexGrow:1}}></Typography>{subMenuOptions ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
+        <Collapse in={subMenuOptions} timeout="auto" unmountOnExit sx={{ml:5}}>
+          <MenuItem key='dbn' onClick={() => onClickMenuLogsOption('dbn')} sx={{ml: selectedLog?.showBackgroundNotification?0:3}}>{ selectedLog?.showBackgroundNotification &&  <Check/>} Show background notifications</MenuItem>
+          <MenuItem key='ats' onClick={() => onClickMenuLogsOption('ats')} sx={{ml: selectedLog?.addTimestamp?0:3}}>{ selectedLog?.addTimestamp &&  <Check/>} Add timestamp to messages</MenuItem>
+        </Collapse>
+
+
+        <MenuItem key='subreorg' onClick={() => setSubmenuReorgOpen(!subMenuReorg)} sx={{ml:3}}>Organize<Typography sx={{flexGrow:1}}></Typography>{subMenuReorg ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
+        <Collapse in={subMenuReorg} timeout="auto" unmountOnExit sx={{ml:5}}>
+          <MenuItem key='dt' onClick={() => onClickMenuLogsOption('dt')} disabled={selectedLogIndex<0}> {selectedLog?.default && <Check/>} Default log</MenuItem>
+          <MenuItem key='rt' onClick={() => onClickMenuLogsOption('rt')} disabled={selectedLogIndex<0}>Rename log</MenuItem>
+          <MenuItem key='ml' onClick={() => onClickMenuLogsOption('ml')} disabled={selectedLogIndex===0}>Move to left</MenuItem>
+          <MenuItem key='mr' onClick={() => onClickMenuLogsOption('mr')} disabled={selectedLogIndex===logs.length-1}>Move to right</MenuItem>
+          <MenuItem key='ms' onClick={() => onClickMenuLogsOption('ms')} disabled={selectedLogIndex===0}>Move to start</MenuItem>
+          <MenuItem key='me' onClick={() => onClickMenuLogsOption('me')} disabled={selectedLogIndex===logs.length-1}>Move to end</MenuItem>
+        </Collapse>
+        
+        <MenuItem key='subaction' onClick={() => setSubmenuActionOpen(!subMenuAction)} sx={{ml:3}}>Action<Typography sx={{flexGrow:1}}></Typography>{subMenuAction ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
+        <Collapse in={subMenuAction} timeout="auto" unmountOnExit sx={{ml:5}}>
+          <MenuItem key='logstart' onClick={onClickStart} disabled={startDisabled} ><Start/>&nbsp;Start</MenuItem>
+          <MenuItem key='logpr' onClick={onClickPauseResume} disabled={!startDisabled}>{paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
+          <MenuItem key='logstop' onClick={onClickStop} disabled={!startDisabled}><Stop/>&nbsp;Stop</MenuItem>
+          <MenuItem key='logremove' onClick={onClickRemove} ><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
+        </Collapse>
       </MenuList>
     </Menu>
   );
@@ -774,10 +822,10 @@ const App: React.FC = () => {
                   })}
               </Select>
           </FormControl>
-          <FormControl variant="standard" sx={{ m: 1, minWidth: 200 }} disabled={objSelectDisabled}>
+          <FormControl variant="standard" sx={{ m: 1, minWidth: 200 }} disabled={resourceSelectDisabled}>
               <InputLabel id="obj">Object</InputLabel>
-              <Select labelId="obj" value={obj} onChange={onChangeObj} label='Object'>
-                  { objs.map( (value:any) =>
+              <Select labelId="obj" value={resource} onChange={(event:SelectChangeEvent) => setResource(event.target.value)} label='Object'>
+                  { resources.map( (value:any) =>
                       <MenuItem key={value.name} value={value.name}>
                         {value.type==='replica'? <KIconReplicaSet/>:value.type==='daemon'?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.name}
                       </MenuItem>
@@ -791,60 +839,62 @@ const App: React.FC = () => {
           </Stack>
           
         </Stack>
-        <Stack direction={'row'}>
-
+        <Stack direction={'row'} alignItems={'end'}>
           { controlsVisible && <>
-              <Stack direction="row" spacing={1} sx={{ ml:1}} alignItems="baseline" >
-                <TextField label="Filter" onChange={onChangeFilter} variant="standard" value={filter}/>
-                <TextField value={search} onChange={onChangeSearch} label="Search" variant="standard" />
+              <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
+                <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
+                <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
                 <Typography sx={{ ml:1 }}></Typography>
                 <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
                 <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton>
               </Stack>
           </>}
 
-        <Tabs value={selectedTabname} onChange={onChangeTabs}>
-          { tabs.length>0 && tabs.map(t => {
-              if (t.scope==='cluster')
-                return <Tab key={t.tabname} label='cluster' value={t.tabname}/>
-              else {
-                if (t===selectedTabObject)
-                  return <Tab key={t.tabname} label={t.tabname} value={t.tabname} icon={<IconButton onClick={onClickMenuTabs}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-2, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':'')}}/>
-                else
-                  return <Tab key={t.tabname} label={t.tabname} value={t.tabname} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ mb:-2, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':'')}}/>
-              }
-            })
-          }
-        </Tabs>
+          <Tabs value={selectedLogName} onChange={onChangeLogs}>
+            { logs.length>0 && logs.map(t => {
+                if (t.scope==='cluster')
+                  return <Tab key={t.name} label='cluster' value={t.name}/>
+                else {
+                  if (t===selectedLog)
+                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLogs(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                  else
+                    return <Tab key={t.name} label={t.name} value={t.name} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                }
+              })
+            }
+          </Tabs>
         </Stack>
         </div>
 
-        {menuTabs}
+        {menuLogs}
+
         <Box sx={{ flex:1, overflowY: 'auto', ml:1 }}>
           <pre>
-          {messages.map(m => {
-            return m.includes(filter)? m : null;
-          })
-          .map((message, index) => {
-            if (search!=='') {
-              if (index===searchPos) {
-                //+++ implement scroll into view for the item at the searchPos
-                return <div key={index} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#0000ff\'>'+search+'</span>')}}></div>;
+            {messages.map(m => {
+              return m.includes(filter)? m : null;
+            })
+            .map((message, index) => {
+              if (search!=='') {
+                if (index===searchPos) {
+                  return <div key={index} ref={searchLineRef} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#0000ff\'>'+search+'</span>')}}></div>;
+                }
+                else {
+                  return <div key={index} ref={null} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#ff0000\'>'+search+'</span>')}}></div>;
+                }
               }
               else {
-                return <div key={index} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#ff0000\'>'+search+'</span>')}}></div>;
+                if (index===messages.length-1)
+                  return <><div key={index}>{message}</div><div key={-1} ref={lastLineRef} style={{ marginTop:'15px'}}>&nbsp;</div></>;
+                else
+                  return <div key={index}>{message}</div>;
               }
-            }
-            else {
-              return <div key={index}>{message}</div>;
-            }
-          })}
-        </pre>
+            })}
+          </pre>
         </Box>
       </Box>
       { showAlertConfig && <AlertConfig onClose={alertConfigClosed} expression={filter}/> }
       { showBlockingAlert && <BlockingAlert onClose={() => setShowBlockingAlert(false)} alert={blockingAlert} /> }
-      { showRenameTab && <RenameTab onClose={renameTabClosed} tabs={tabs} oldname={selectedTabObject?.tabname}/> }
+      { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
       { showSaveConfig && <SaveConfig onClose={saveConfigClosed} name={configName} /> }
       { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
       { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} cluster={currentCluster}/> }

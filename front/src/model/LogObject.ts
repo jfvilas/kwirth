@@ -1,8 +1,8 @@
-import { Alert } from "./Alerts";
+import { Alert } from "./Alert";
 
 export class LogObject {
+  public name: any;
   public cluster: any;
-  public tabname: any;
   public ws:any=null;
   public scope:any;
   public namespace:any;
