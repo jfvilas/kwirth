@@ -1,8 +1,8 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
-import { Collapse, Box, Button, Divider, IconButton, Menu, MenuItem, MenuList, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
-import { Check, KeyboardArrowDown, Pause, PlayArrow, RemoveCircleRounded,  Settings, Start, Stop, Info, ArrowUpward, ArrowDownward, ExpandLess, ExpandMore, Clear, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle } from '@mui/icons-material';
+import { Box, Button, IconButton, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { KeyboardArrowDown, Settings, Info, ArrowUpward, ArrowDownward, Clear } from '@mui/icons-material';
 
 // model
 import { Alert } from './model/Alert';
@@ -28,6 +28,8 @@ import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
 import MenuMain from './menus/MenuMain';
 import Selector from './components/ResourceSelector';
+import MenuLog from './menus/MenuLog';
+import LogContent from './components/LogContent';
 
 
 const App: React.FC = () => {
@@ -69,10 +71,8 @@ const App: React.FC = () => {
   const searchLineRef = useRef(null);
   const lastLineRef = useRef(null);
 
-
-  const [startDisabled, setStartDisabled] = useState<boolean>(false);
+  //const [startDisabled, setStartDisabled] = useState<boolean>(false);
   const [controlsVisible, setControlsVisible] = useState<boolean>(false);
-
   
   // search & filter
   const [filter, setFilter] = useState<string>('');
@@ -84,8 +84,8 @@ const App: React.FC = () => {
   // menus
   const [anchorMenuConfig, setAnchorMenuConfig] = React.useState<null | HTMLElement>(null);
   const menuConfigOpen = Boolean(anchorMenuConfig);
-  const [anchorMenuLogs, setAnchorMenuLogs] = React.useState<null | HTMLElement>(null);
-  const menuLogsOpen = Boolean(anchorMenuLogs);
+  const [anchorMenuLog, setAnchorMenuLog] = React.useState<null | HTMLElement>(null);
+  const menuLogOpen = Boolean(anchorMenuLog);
 
   const [showAlertConfig, setShowAlertConfig]=useState<boolean>(false);
   const [showBlockingAlert, setShowBlockingAlert]=useState<boolean>(false);
@@ -162,7 +162,7 @@ const App: React.FC = () => {
     setLogs(logs);
     setSelectedLogName(newLog.name);
     setPaused(false);
-    setStartDisabled(false);
+    //setStartDisabled(false);
     setControlsVisible(true);
     setFilter('');
   };
@@ -176,7 +176,7 @@ const App: React.FC = () => {
       setPaused(newlog.paused);
       setFilter(newlog.filter);
       setMessages(newlog.messages);
-      setStartDisabled(newlog.started);
+      //setStartDisabled(newlog.started);
       setLogs(logs);
     }
     setSelectedLogName(value);
@@ -200,7 +200,7 @@ const App: React.FC = () => {
     if (log.scope==='namespace' || log.scope==='cluster' ) text=msg.podName+'  '+text;
 
     if (log) {
-      //+++ move this to the backend, we dont want to add timestamps in front, just the most close to the origin
+      //+++ move implementation of this feature to the backend, we dont want to add timestamps in front, we want just the most close to the origin
       if (log.addTimestamp) text=(new Date()).toISOString().replace('T',' ').replace('Z','') + ' ' + text;
       log.messages.push(text);
     }
@@ -292,18 +292,19 @@ const App: React.FC = () => {
     };
 
     setMessages([]);
-    setStartDisabled(true);
+    //setStartDisabled(true);
   }
 
   const onClickLogStart = () => {
     var log=logs.find(l => l.name===selectedLogRef.current);
     if (log) start(log);
-    setAnchorMenuLogs(null);
+    setAnchorMenuLog(null);
   }
 
   const stop = (log:LogObject) => {
     var endline='====================================================================================================';
     log.messages.push(endline);
+    log.started=false;
     log.paused=false;
     setPausedLogs(logs.filter(t => t.paused));
     setMessages((prev) => [...prev,endline]);
@@ -311,12 +312,12 @@ const App: React.FC = () => {
       console.log('nto');
     }
     log.ws?.close();
-    setStartDisabled(false);
+    //setStartDisabled(false);
   }
 
   const onClickLogStop = () => {    
     if (selectedLog) stop(selectedLog);
-    setAnchorMenuLogs(null);
+    setAnchorMenuLog(null);
   }
 
   const onClickLogRemove = () => {
@@ -331,7 +332,7 @@ const App: React.FC = () => {
       }
       setLogs(logs.filter(t => t!==selectedLog));
     }
-    setAnchorMenuLogs(null);
+    setAnchorMenuLog(null);
   }
 
   const onClickLogPauseResume = () => {
@@ -350,7 +351,7 @@ const App: React.FC = () => {
         setLogs(logs);
       }
     }
-    setAnchorMenuLogs(null);
+    setAnchorMenuLog(null);
   }
 
   const onChangeFilter = (event:ChangeEvent<HTMLInputElement>) => {
@@ -389,7 +390,7 @@ const App: React.FC = () => {
     }
   }
 
-  const onClickMenuLogsOption = (option: string) => {
+  const menuLogOptionSelected = (option: string) => {
     switch(option) {
       case 'ml':
         if (selectedLog) {
@@ -440,11 +441,20 @@ const App: React.FC = () => {
       case 'dl':
         if (selectedLog) selectedLog.default=true;
         break;
+      case 'ls':
+        onClickLogStart();
+        break;
+      case 'lpr':
+        onClickLogPauseResume();
+        break;
+      case 'lstop':
+        onClickLogStop();
+        break;
+      case 'lr':
+        onClickLogRemove();
+        break;
     }
-    setSubmenuActionOpen(false);
-    setSubmenuOptionsOpen(false);
-    setSubmenuReorgOpen(false);
-    setAnchorMenuLogs(null);
+    setAnchorMenuLog(null);
   };
 
   const saveConfig = (name:string) => {
@@ -679,69 +689,6 @@ const App: React.FC = () => {
     }
   }
 
-  const [subMenuReorg, setSubmenuReorgOpen] = React.useState(false)
-  const [subMenuAction, setSubmenuActionOpen] = React.useState(false)
-  const [subMenuOptions, setSubmenuOptionsOpen] = React.useState(false)
-
-  const menuLogs=(
-    <Menu id='menu-logs' anchorEl={anchorMenuLogs} open={menuLogsOpen} onClose={() => setAnchorMenuLogs(null)}>
-      <MenuList dense sx={{width:'40vh'}}>
-        <MenuItem key='fa' onClick={() => onClickMenuLogsOption('cfa')} disabled={filter===''} sx={{ml:3}}>Convert filter to alert...</MenuItem>
-        <Divider/>
-
-        <MenuItem key='subopt' onClick={() => setSubmenuOptionsOpen(!subMenuOptions)} sx={{ml:3}}>Logging options<Typography sx={{flexGrow:1}}></Typography>{subMenuOptions ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
-        <Collapse in={subMenuOptions} timeout="auto" unmountOnExit sx={{ml:5}}>
-          <MenuItem key='bn' onClick={() => onClickMenuLogsOption('bn')} sx={{ml: selectedLog?.showBackgroundNotification?0:3}}>{ selectedLog?.showBackgroundNotification &&  <Check/>} Show background notifications</MenuItem>
-          <MenuItem key='ts' onClick={() => onClickMenuLogsOption('ts')} sx={{ml: selectedLog?.addTimestamp?0:3}}>{ selectedLog?.addTimestamp &&  <Check/>} Add timestamp to messages</MenuItem>
-        </Collapse>
-
-
-        <MenuItem key='subreorg' onClick={() => setSubmenuReorgOpen(!subMenuReorg)} sx={{ml:3}}>Organize<Typography sx={{flexGrow:1}}></Typography>{subMenuReorg ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
-        <Collapse in={subMenuReorg} timeout="auto" unmountOnExit sx={{ml:5}}>
-          <MenuItem key='dl' onClick={() => onClickMenuLogsOption('dl')} disabled={selectedLogIndex<0} sx={{ml: selectedLog?.default?0:3}}> {selectedLog?.default && <Check/>} Default log</MenuItem>
-          <MenuItem key='rl' onClick={() => onClickMenuLogsOption('rl')} disabled={selectedLogIndex<0}><DriveFileRenameOutline/>&nbsp;Rename log</MenuItem>
-          <MenuItem key='ml' onClick={() => onClickMenuLogsOption('ml')} disabled={selectedLogIndex===0}><KeyboardArrowLeft/>Move to left</MenuItem>
-          <MenuItem key='mr' onClick={() => onClickMenuLogsOption('mr')} disabled={selectedLogIndex===logs.length-1}><KeyboardArrowRight/>Move to right</MenuItem>
-          <MenuItem key='ms' onClick={() => onClickMenuLogsOption('ms')} disabled={selectedLogIndex===0}><KeyboardDoubleArrowLeft/>&nbsp;Move to start</MenuItem>
-          <MenuItem key='me' onClick={() => onClickMenuLogsOption('me')} disabled={selectedLogIndex===logs.length-1}><KeyboardDoubleArrowRight/>&nbsp;Move to end</MenuItem>
-        </Collapse>
-        
-        <MenuItem key='subaction' onClick={() => setSubmenuActionOpen(!subMenuAction)} sx={{ml:3}}>Action<Typography sx={{flexGrow:1}}></Typography>{subMenuAction ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
-        <Collapse in={subMenuAction} timeout="auto" unmountOnExit sx={{ml:5}}>
-          <MenuItem key='logstart' onClick={onClickLogStart} disabled={startDisabled}><PlayCircle/>&nbsp;Start</MenuItem>
-          <MenuItem key='logpr' onClick={onClickLogPauseResume} disabled={!startDisabled}>{paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
-          <MenuItem key='logstop' onClick={onClickLogStop} disabled={!startDisabled}><Stop/>&nbsp;Stop</MenuItem>
-          <MenuItem key='logremove' onClick={onClickLogRemove} ><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
-        </Collapse>
-      </MenuList>
-    </Menu>
-  );
-
-  const showLogContent = () => {
-    return (
-      <Box sx={{ flex:1, overflowY: 'auto', ml:1 }}>
-        <pre>
-          {messages.map(m => {
-            return m.includes(filter)? m : null;
-          })
-          .map((message, index) => {
-            if (search!=='') {
-              if (index===searchPos)
-                return <div key={index} ref={searchLineRef} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#0000ff\'>'+search+'</span>')}}></div>;
-              else
-                return <div key={index} ref={null} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#ff0000\'>'+search+'</span>')}}></div>;
-            }
-            else {
-              if (index===messages.length-1)
-                return <><div key={index}>{message}</div><div key={-1} ref={lastLineRef} style={{ marginTop:'15px'}}>&nbsp;</div></>;
-              else
-                return <div key={index}>{message}</div>;
-            }
-          })}
-        </pre>
-      </Box>);
-  }
-
   const showLogControls = () => {
     return (
       <Stack direction={'row'} alignItems={'end'}>
@@ -758,10 +705,10 @@ const App: React.FC = () => {
         <Tabs value={selectedLogName} onChange={onChangeLogs}>
           { logs.length>0 && logs.map(t => {
               if (t.scope==='cluster')
-                return <Tab key={t.name} label='cluster' value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLogs(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                return <Tab key={t.name} label='cluster' value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
               else {
                 if (t===selectedLog)
-                  return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLogs(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                  return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
                 else
                   return <Tab key={t.name} label={t.name} value={t.name} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
               }
@@ -795,8 +742,8 @@ const App: React.FC = () => {
         {showLogControls()}
       </div>
 
-      {menuLogs}
-      {showLogContent()}
+      { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} menuLogOpen={menuLogOpen} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} logPaused={paused}/>}
+      <LogContent messages={messages} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/>
     </Box>
 
     { showAlertConfig && <AlertConfig onClose={alertConfigClosed} expression={filter}/> }

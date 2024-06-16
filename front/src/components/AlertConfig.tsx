@@ -1,11 +1,16 @@
 import React, { useState, ChangeEvent } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Switch, TextField, Typography } from '@mui/material';
 
-const AlertConfig: React.FC<any> = ({onClose, expression}) => {
-  const [expr, setExpr] = useState(expression);
+interface IProps {
+  onClose:(arg:any) => {};
+  expression:string;
+}
+
+const AlertConfig: React.FC<any> = (props:IProps) => {
+  const [expr, setExpr] = useState(props.expression);
   const [severity, setSeverity] = useState('default');
   const [type, setType] = useState('timed');
-  const [message, setMessage] = useState('Alert received matching expression '+expression);
+  const [message, setMessage] = useState('Alert received matching '+props.expression);
   const [beep, setBeep] = useState(false);
 
   const onChangeExpr = (event:ChangeEvent<HTMLInputElement>) => {
@@ -54,8 +59,8 @@ const AlertConfig: React.FC<any> = ({onClose, expression}) => {
     </Stack>
     </DialogContent>
     <DialogActions>
-      <Button onClick={() => onClose({expression:expression, severity:severity, type:type, message:message, beep:beep})}>OK</Button>
-      <Button onClick={() => onClose({})}>CANCEL</Button>
+      <Button onClick={() => props.onClose({expression:expr, severity:severity, type:type, message:message, beep:beep})}>OK</Button>
+      <Button onClick={() => props.onClose({})}>CANCEL</Button>
     </DialogActions>
   </Dialog>
   </>
