@@ -6,7 +6,6 @@ interface IProps {
     onClose:() => {};
     optionSelected: (a:string) => {};
     uploadSelected: (a:any) => {};
-    menuConfigOpen:boolean;
     anchorMenuConfig:any;
   }
   
@@ -14,7 +13,7 @@ const MenuMain: React.FC<any> = (props:IProps) => {
 
     const menu=(
         <>
-            <Menu id='menu-kwirth' anchorEl={props.anchorMenuConfig} open={props.menuConfigOpen} onClose={() => props.onClose()}>
+            <Menu id='menu-kwirth' anchorEl={props.anchorMenuConfig} open={Boolean(props.anchorMenuConfig)} onClose={() => props.onClose()}>
             <MenuList dense>
                 <MenuItem key='new' onClick={() => props.optionSelected('new')}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
                 <MenuItem key='open' onClick={() => props.optionSelected('open')}><FileOpenTwoTone/>&nbsp;Load</MenuItem>

@@ -52,12 +52,13 @@ const sendLines = (ws:WebSocket, event:any, source:string) => {
 }
 
 // get pod logs
-const getPodLog = async (namespace:string, podName:string, ws:any) => {
+const getPodLog = async (namespace:string, podName:string, ws:any, timestamp:boolean) => {
   try {
     const logStream = new stream.PassThrough();
     logStream.on('data', (chunk:any) => {
       var text=chunk.toString('utf8');
-      var event={namespace:namespace, podName:podName}
+      var event:any = {namespace:namespace, podName:podName};
+      if (timestamp) event.timestamp=new Date();
       sendLines(ws,event,text);
     });
     await k8sLog.log(namespace, podName, '', logStream,  { follow: true, pretty: false });
@@ -70,7 +71,7 @@ const getPodLog = async (namespace:string, podName:string, ws:any) => {
 };
 
 // watch deployment pods
-const watchPods = (apiPath:string, filter:any, ws:any) => {
+const watchPods = (apiPath:string, filter:any, ws:any, timestamp:boolean) => {
   const watch = new Watch(kc);
   watch.watch(
     apiPath, filter, (type:string, obj:any) => {
@@ -78,7 +79,7 @@ const watchPods = (apiPath:string, filter:any, ws:any) => {
         const podName = obj.metadata.name;
         const podNamespace = obj.metadata.namespace;
         console.log(`${type}: ${podName}` );
-        getPodLog(podNamespace, podName, ws);
+        getPodLog(podNamespace, podName, ws, timestamp);
       }
       else if (type === 'DELETED') {
         console.log(`Pod deleted` );
@@ -91,73 +92,23 @@ const watchPods = (apiPath:string, filter:any, ws:any) => {
   );
 };
 
-
-// async function getPodsInNamespace(namespace:string) {
-//   try {
-//       const res = await coreApi.listNamespacedPod(namespace);
-//       return res.body.items;
-//   }
-//   catch (err) {
-//       console.error('Error obteniendo pods:', err);
-//       return [];
-//   }
-// }
-
-// // Obtener y seguir los logs de todos los pods en el namespace
-// async function getNamespaceLog(namespace:string, ws:WebSocket) {
-//   const pods = await getPodsInNamespace(namespace) as V1Pod[];
-//   for (var pod of pods) {
-//     getPodLog(pod.metadata?.namespace!, pod.metadata?.name!,ws);
-//   }
-// }
-
-// // watch deployment pods
-// const watchNamespace = (namespace:string, ws:any) => {
-//   const watch = new Watch(kc);
-
-//   watch.watch(
-//     `/api/v1/namespaces/${namespace}/pods`, {}, (type:string, obj:any) => {
-//       if (type === 'ADDED' || type === 'MODIFIED') {
-//         const podName = obj.metadata.name;
-//         console.log(`${type}: ${podName}` );
-//         getPodLog(namespace, podName, ws);
-//       }
-//       else if (type === 'DELETED') {
-//         const podName = obj.metadata.name;
-//         console.log(`${podName} deleted`);
-//       }
-//     },
-//     (err:any) => {
-//       console.error(err);
-//       ws.send(`Error: ${err.message}`);
-//     }
-//   );
-// };
-
-
-
 // clients send requests to start receiving log
 function processClientMessage(message:string, ws:any) {
-  // {"scope":"namespace", "namespace":"default","deploymentName":"ubuntu3"}
+  // {"scope":"namespace", "namespace":"default","deploymentName":"ubuntu3", "timestamp":true}
 
-  const { scope, namespace, deploymentName } = JSON.parse(message);
+  const { scope, namespace, deploymentName, timestamp } = JSON.parse(message);
   switch (scope) {
     case 'cluster':
-      watchPods(`/api/v1/pods`, {}, ws);
+      watchPods(`/api/v1/pods`, {}, ws, timestamp);
       break;
     case 'namespace':
-      watchPods(`/api/v1/namespaces/${namespace}/pods`, {}, ws);
+      watchPods(`/api/v1/namespaces/${namespace}/pods`, {}, ws, timestamp);
       break;
     case 'deployment':
-      watchPods(`/api/v1/namespaces/${namespace}/pods`, { labelSelector: `app=${deploymentName}` } , ws);
+      watchPods(`/api/v1/namespaces/${namespace}/pods`, { labelSelector: `app=${deploymentName}` } , ws, timestamp);
       break;
   }
 }
-
-
-
-
-
 
 // HTTP server
 const app = express();

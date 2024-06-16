@@ -66,14 +66,10 @@ const App: React.FC = () => {
   var selectedLogIndex = logs.findIndex(t => t.name===selectedLogName);
 
   // message list management
-  const [paused, setPaused] = useState<boolean>(false);
   const [messages, setMessages] = useState<string[]>([]);
   const searchLineRef = useRef(null);
   const lastLineRef = useRef(null);
 
-  //const [startDisabled, setStartDisabled] = useState<boolean>(false);
-  const [controlsVisible, setControlsVisible] = useState<boolean>(false);
-  
   // search & filter
   const [filter, setFilter] = useState<string>('');
   const [search, setSearch] = useState<string>('');
@@ -83,9 +79,9 @@ const App: React.FC = () => {
 
   // menus
   const [anchorMenuConfig, setAnchorMenuConfig] = React.useState<null | HTMLElement>(null);
-  const menuConfigOpen = Boolean(anchorMenuConfig);
+  //const menuConfigOpen = Boolean(anchorMenuConfig);
   const [anchorMenuLog, setAnchorMenuLog] = React.useState<null | HTMLElement>(null);
-  const menuLogOpen = Boolean(anchorMenuLog);
+  //const menuLogOpen = Boolean(anchorMenuLog);
 
   const [showAlertConfig, setShowAlertConfig]=useState<boolean>(false);
   const [showBlockingAlert, setShowBlockingAlert]=useState<boolean>(false);
@@ -161,9 +157,6 @@ const App: React.FC = () => {
     setMessages(['Start log reciever...']);
     setLogs(logs);
     setSelectedLogName(newLog.name);
-    setPaused(false);
-    //setStartDisabled(false);
-    setControlsVisible(true);
     setFilter('');
   };
 
@@ -173,10 +166,8 @@ const App: React.FC = () => {
       newlog.pending=false;
       setHighlightedLogs (highlightedLogs.filter(t => t.pending));
       setPausedLogs (pausedLogs.filter(log => log.paused));
-      setPaused(newlog.paused);
       setFilter(newlog.filter);
       setMessages(newlog.messages);
-      //setStartDisabled(newlog.started);
       setLogs(logs);
     }
     setSelectedLogName(value);
@@ -200,8 +191,7 @@ const App: React.FC = () => {
     if (log.scope==='namespace' || log.scope==='cluster' ) text=msg.podName+'  '+text;
 
     if (log) {
-      //+++ move implementation of this feature to the backend, we dont want to add timestamps in front, we want just the most close to the origin
-      if (log.addTimestamp) text=(new Date()).toISOString().replace('T',' ').replace('Z','') + ' ' + text;
+      if (msg.timestamp) text=msg.timestamp.replace('T',' ').replace('Z','') + ' ' + text;
       log.messages.push(text);
     }
     else {
@@ -275,7 +265,7 @@ const App: React.FC = () => {
     log.ws=ws;
     ws.onopen = () => {
       console.log(`Connected to the WebSocket: ${ws.url}`);
-      var payload={ scope:log?.scope, namespace:log?.namespace, deploymentName:log?.obj};
+      var payload={ scope:log?.scope, namespace:log?.namespace, deploymentName:log?.obj, timestamp:log?.addTimestamp};
       if (log) {
         ws.send(JSON.stringify(payload));
         log.started=true;
@@ -292,7 +282,6 @@ const App: React.FC = () => {
     };
 
     setMessages([]);
-    //setStartDisabled(true);
   }
 
   const onClickLogStart = () => {
@@ -312,7 +301,6 @@ const App: React.FC = () => {
       console.log('nto');
     }
     log.ws?.close();
-    //setStartDisabled(false);
   }
 
   const onClickLogStop = () => {    
@@ -324,7 +312,6 @@ const App: React.FC = () => {
     if (selectedLog) {
       onClickLogStop();
       if (logs.length===1) {
-        setControlsVisible(false);
         setMessages([]);
       }
       else {
@@ -341,13 +328,11 @@ const App: React.FC = () => {
         selectedLog.paused=false;
         setMessages(selectedLog.messages);
         setPausedLogs(logs.filter(t => t.paused));
-        setPaused(false);
         setLogs(logs);
       }
       else {
         selectedLog.paused=true;
         setPausedLogs( (prev) => [...prev, selectedLog!]);
-        setPaused(true);
         setLogs(logs);
       }
     }
@@ -493,7 +478,6 @@ const App: React.FC = () => {
   }
 
   var clear = () => {
-    setControlsVisible(false);
     for (var t of logs) {
       stop(t);
     }
@@ -622,7 +606,6 @@ const App: React.FC = () => {
       clear();
       var n = await (await fetch (`${backend}/store/${user}/${a}`)).json();
       var newlos=JSON.parse(n) as LogObject[];
-      setControlsVisible(true);
       setLogs(newlos);
       setConfigLoaded(true);
       setConfigName(a);
@@ -692,7 +675,7 @@ const App: React.FC = () => {
   const showLogControls = () => {
     return (
       <Stack direction={'row'} alignItems={'end'}>
-        { controlsVisible && <>
+        { (logs.length>0) && <>
             <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
               <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
               <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
@@ -730,9 +713,9 @@ const App: React.FC = () => {
       <div>
         <Stack direction='row' spacing={1} sx={{ ml:1}} alignItems='baseline' >
           <Button onClick={(event) => setAnchorMenuConfig(event.currentTarget)} variant='contained' endIcon={<KeyboardArrowDown/>} >KWirth</Button>
-          { anchorMenuConfig!==null && <MenuMain optionSelected={menuConfigOptionSelected} onClose={() => setAnchorMenuConfig(null)} uploadSelected={handleUpload} menuConfigOpen={menuConfigOpen} anchorMenuConfig={anchorMenuConfig}/> }
+          { anchorMenuConfig!==null && <MenuMain optionSelected={menuConfigOptionSelected} onClose={() => setAnchorMenuConfig(null)} uploadSelected={handleUpload} anchorMenuConfig={anchorMenuConfig}/> }
 
-          <Selector onAdd={onSelectorAdd} clusters={clusters}/>
+          <Selector clusters={clusters} onAdd={onSelectorAdd}/>
 
           <Stack direction={'column'} alignItems={'center'} alignSelf={'center'} paddingTop={3}>
             <Typography fontSize={9} sx={{backgroundColor:'lightGray'}}>&nbsp;{user}&nbsp;</Typography>
@@ -742,7 +725,7 @@ const App: React.FC = () => {
         {showLogControls()}
       </div>
 
-      { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} menuLogOpen={menuLogOpen} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} logPaused={paused}/>}
+      { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} />}
       <LogContent messages={messages} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/>
     </Box>
 

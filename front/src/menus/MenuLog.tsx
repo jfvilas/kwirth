@@ -6,12 +6,10 @@ import { LogObject } from '../model/LogObject';
 interface IProps {
     onClose:() => {};
     optionSelected: (a:string) => {};
-    menuLogOpen:boolean;
     anchorMenuLog:any;
     logs:LogObject[];
     selectedLog:LogObject;
     selectedLogIndex:number;
-    logPaused:boolean;
 }
   
 const MenuLog: React.FC<any> = (props:IProps) => {
@@ -44,7 +42,7 @@ const MenuLog: React.FC<any> = (props:IProps) => {
     }
 
     const menuLogs=(
-        <Menu id='menu-logs' anchorEl={props.anchorMenuLog} open={props.menuLogOpen} onClose={props.onClose}>
+        <Menu id='menu-logs' anchorEl={props.anchorMenuLog} open={Boolean(props.anchorMenuLog)} onClose={props.onClose}>
             <MenuList dense sx={{width:'40vh'}}>
             <MenuItem key='fa' onClick={() => props.optionSelected('fa')} sx={{ml:3}}>Convert filter to alert...</MenuItem>
             <MenuItem key='ma' onClick={() => props.optionSelected('ma')} disabled={true} sx={{ml:3}}>Manage alerts...</MenuItem>
@@ -68,13 +66,9 @@ const MenuLog: React.FC<any> = (props:IProps) => {
             
             <MenuItem key='subaction' onClick={submenuActionClick} sx={{ml:3}}>Actions<Typography sx={{flexGrow:1}}></Typography>{subMenuActions ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={subMenuActions} timeout="auto" unmountOnExit sx={{ml:5}}>
-                {/* <MenuItem key='logstart' onClick={() => props.optionSelected('ls')} disabled={props.startDisabled}><PlayCircle/>&nbsp;Start</MenuItem>
-                <MenuItem key='logpr' onClick={() => props.optionSelected('lpr')} disabled={!props.startDisabled}>{props.logPaused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
-                <MenuItem key='logstop' onClick={() => props.optionSelected('lstop')} disabled={!props.startDisabled}><Stop/>&nbsp;Stop</MenuItem> */}
                 <MenuItem key='logstart' onClick={() => props.optionSelected('ls')} disabled={props.selectedLog.started}><PlayCircle/>&nbsp;Start</MenuItem>
-                <MenuItem key='logpr' onClick={() => props.optionSelected('lpr')} disabled={!props.selectedLog.started}>{props.logPaused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
+                <MenuItem key='logpr' onClick={() => props.optionSelected('lpr')} disabled={!props.selectedLog.started}>{props.selectedLog.paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
                 <MenuItem key='logstop' onClick={() => props.optionSelected('lstop')} disabled={!props.selectedLog.started}><Stop/>&nbsp;Stop</MenuItem>
-
                 <MenuItem key='logremove' onClick={() => props.optionSelected('lr')} ><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
             </Collapse>
             </MenuList>
