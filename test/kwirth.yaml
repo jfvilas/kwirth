@@ -68,3 +68,18 @@ spec:
             requests:
               cpu: 500m
               memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kwirth-svc
+  namespace: default
+spec:
+  selector:
+    app: kwirth
+  ports:
+    - name: kwirth-port
+      protocol: TCP
+      port: 3883
+      targetPort: 3883
+  type: ClusterIP
