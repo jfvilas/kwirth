@@ -1,6 +1,6 @@
 import React from 'react';
 import { Divider, Menu, MenuItem, MenuList } from "@mui/material"
-import { CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, SaveAsTwoTone, SaveTwoTone, VerifiedUser } from '@mui/icons-material';
+import { CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, VerifiedUser } from '@mui/icons-material';
 
 interface IProps {
     onClose:() => {};
@@ -23,13 +23,13 @@ const MenuMain: React.FC<any> = (props:IProps) => {
                 <MenuItem key='delete' onClick={() => props.optionSelected('delete')}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
                 <Divider/>
                 <MenuItem key='cfgexp' onClick={() => props.optionSelected('cfgexp')}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
-                <MenuItem key='cfgimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new configs (and merge overwriting)</MenuItem>
+                <MenuItem key='cfgimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new configs from file (and merge overwriting)</MenuItem>
                 <Divider/>
                 <MenuItem key='mc' onClick={() => props.optionSelected('mc')}><Edit/>&nbsp;Manage cluster list</MenuItem>
                 <MenuItem key='asec' onClick={() => props.optionSelected('asec')}><Key/>&nbsp;API Security</MenuItem>
-                <MenuItem key='usec' onClick={() => props.optionSelected('usec')}><VerifiedUser />&nbsp;User security</MenuItem>
+                <MenuItem key='usec' onClick={() => props.optionSelected('usec')}><Person />&nbsp;User security</MenuItem>
                 <Divider/>
-                <MenuItem key='exit' onClick={() => props.optionSelected('exit')}><ExitToApp />Exit Kwirth</MenuItem>
+                <MenuItem key='exit' onClick={() => props.optionSelected('exit')}><ExitToApp />&nbsp;Exit Kwirth</MenuItem>
             </MenuList>
             </Menu>
         </>);

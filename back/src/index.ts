@@ -1,15 +1,17 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch } from '@kubernetes/client-node';
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod } from '@kubernetes/client-node';
 import { ConfigApi } from './api/ConfigApi';
-import { VERSION } from './version';
 import { Secrets } from './tools/Secrets';
 import { ConfigMaps } from './tools/ConfigMaps';
+import { VERSION } from './version';
 
 // HTTP server for serving front, api and websockets
-import WebSocket from 'ws';
 import { StoreApi } from './api/StoreApi';
 import { UserApi } from './api/UserApi';
 import { KeyApi } from './api/KeyApi';
 import { LoginApi } from './api/LoginApi';
+
+// HTTP server & websockets
+import WebSocket from 'ws';
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
@@ -27,6 +29,7 @@ const k8sLog = new Log(kc);
 var secrets:Secrets;
 var configMaps:ConfigMaps;
 
+// get the namespace where Kwirth is running on
 const getMyNamespace = async () => {
   var podName=process.env.HOSTNAME;
   const pods = await coreApi.listPodForAllNamespaces();
@@ -37,6 +40,7 @@ const getMyNamespace = async () => {
     return 'default';
 }
 
+// split a block of stdout in lines and send them
 const sendLines = (ws:WebSocket, event:any, source:string) => {
   const logLines = source.split('\n');
   for (var l of logLines) {
@@ -47,8 +51,8 @@ const sendLines = (ws:WebSocket, event:any, source:string) => {
   }
 }
 
-// Get pod logs
-const getPodLogs = async (namespace:string, podName:string, ws:any) => {
+// get pod logs
+const getPodLog = async (namespace:string, podName:string, ws:any) => {
   try {
     const logStream = new stream.PassThrough();
     logStream.on('data', (chunk:any) => {
@@ -60,26 +64,24 @@ const getPodLogs = async (namespace:string, podName:string, ws:any) => {
   }
   catch (err:any) {
     console.error(err);
-    ws.send(`Error: ${err.message}`);
+    //+++ decide what to do with errors on back: send them to front?
+    //ws.send(`Error: ${err.message}`);
   }
 };
 
-
 // watch deployment pods
-const watchPods = (namespace:string, deploymentName:string, ws:any) => {
+const watchPods = (apiPath:string, filter:any, ws:any) => {
   const watch = new Watch(kc);
-
   watch.watch(
-    `/api/v1/namespaces/${namespace}/pods`,
-    { labelSelector: `app=${deploymentName}` },
-    (type:string, obj:any) => {
+    apiPath, filter, (type:string, obj:any) => {
       if (type === 'ADDED' || type === 'MODIFIED') {
         const podName = obj.metadata.name;
+        const podNamespace = obj.metadata.namespace;
         console.log(`${type}: ${podName}` );
-        getPodLogs(namespace, podName, ws);
+        getPodLog(podNamespace, podName, ws);
       }
       else if (type === 'DELETED') {
-        console.log(`${type}: ${deploymentName}` );
+        console.log(`Pod deleted` );
       }
     },
     (err:any) => {
@@ -89,11 +91,73 @@ const watchPods = (namespace:string, deploymentName:string, ws:any) => {
   );
 };
 
+
+// async function getPodsInNamespace(namespace:string) {
+//   try {
+//       const res = await coreApi.listNamespacedPod(namespace);
+//       return res.body.items;
+//   }
+//   catch (err) {
+//       console.error('Error obteniendo pods:', err);
+//       return [];
+//   }
+// }
+
+// // Obtener y seguir los logs de todos los pods en el namespace
+// async function getNamespaceLog(namespace:string, ws:WebSocket) {
+//   const pods = await getPodsInNamespace(namespace) as V1Pod[];
+//   for (var pod of pods) {
+//     getPodLog(pod.metadata?.namespace!, pod.metadata?.name!,ws);
+//   }
+// }
+
+// // watch deployment pods
+// const watchNamespace = (namespace:string, ws:any) => {
+//   const watch = new Watch(kc);
+
+//   watch.watch(
+//     `/api/v1/namespaces/${namespace}/pods`, {}, (type:string, obj:any) => {
+//       if (type === 'ADDED' || type === 'MODIFIED') {
+//         const podName = obj.metadata.name;
+//         console.log(`${type}: ${podName}` );
+//         getPodLog(namespace, podName, ws);
+//       }
+//       else if (type === 'DELETED') {
+//         const podName = obj.metadata.name;
+//         console.log(`${podName} deleted`);
+//       }
+//     },
+//     (err:any) => {
+//       console.error(err);
+//       ws.send(`Error: ${err.message}`);
+//     }
+//   );
+// };
+
+
+
+// clients send requests to start receiving log
 function processClientMessage(message:string, ws:any) {
-  // {"namespace":"default","deploymentName":"ubuntu3"}
-  const { namespace, deploymentName } = JSON.parse(message);
-  watchPods(namespace, deploymentName, ws);
+  // {"scope":"namespace", "namespace":"default","deploymentName":"ubuntu3"}
+
+  const { scope, namespace, deploymentName } = JSON.parse(message);
+  switch (scope) {
+    case 'cluster':
+      watchPods(`/api/v1/pods`, {}, ws);
+      break;
+    case 'namespace':
+      watchPods(`/api/v1/namespaces/${namespace}/pods`, {}, ws);
+      break;
+    case 'deployment':
+      watchPods(`/api/v1/namespaces/${namespace}/pods`, { labelSelector: `app=${deploymentName}` } , ws);
+      break;
+  }
 }
+
+
+
+
+
 
 // HTTP server
 const app = express();
@@ -152,7 +216,7 @@ console.log(`KWirth version is ${VERSION}`);
 
 getMyNamespace()
 .then ( (namespace) => {
-  console.log('Detected namespace: '+namespace);
+  console.log('Detected own namespace: '+namespace);
   launch (namespace);
 })
 .catch ( (err) => {

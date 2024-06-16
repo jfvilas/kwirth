@@ -2,7 +2,7 @@ import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
 import { Collapse, Box, Button, Divider, IconButton, Menu, MenuItem, MenuList, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
-import { Check, KeyboardArrowDown, Pause, PlayArrow, RemoveCircleRounded,  Settings, Start, Stop, Info, ArrowUpward, ArrowDownward, ExpandLess, ExpandMore, Clear } from '@mui/icons-material';
+import { Check, KeyboardArrowDown, Pause, PlayArrow, RemoveCircleRounded,  Settings, Start, Stop, Info, ArrowUpward, ArrowDownward, ExpandLess, ExpandMore, Clear, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle } from '@mui/icons-material';
 
 // model
 import { Alert } from './model/Alert';
@@ -27,7 +27,7 @@ import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
 import MenuMain from './menus/MenuMain';
-import Selector from './menus/ResourceSelector';
+import Selector from './components/ResourceSelector';
 
 
 const App: React.FC = () => {
@@ -143,6 +143,7 @@ const App: React.FC = () => {
 
   const onSelectorAdd = (selection:any) => {
     var logName=selection.namespace+"-"+selection.resource;
+    if (selection.resource==='') logName=logName.substring(0,logName.length-1);
     if (selection.scope==='cluster') logName='cluster';
 
     // create unduplicated name
@@ -186,17 +187,20 @@ const App: React.FC = () => {
     var log=logs.find(log => log.ws!==null && log.ws===event.target);
     if (!log) return;
     
-    var ev:any={};
+    var msg:any={};
     try {
-      ev=JSON.parse(event.data);
+      msg=JSON.parse(event.data);
     }
     catch (err) {
       console.log(err);
       console.log(event.data);
     }
 
-    var text=ev.text;
+    var text=msg.text;
+    if (log.scope==='namespace' || log.scope==='cluster' ) text=msg.podName+'  '+text;
+
     if (log) {
+      //+++ move this to the backend, we dont want to add timestamps in front, just the most close to the origin
       if (log.addTimestamp) text=(new Date()).toISOString().replace('T',' ').replace('Z','') + ' ' + text;
       log.messages.push(text);
     }
@@ -260,21 +264,21 @@ const App: React.FC = () => {
     }
   }
 
-  const start = (lo:LogObject) => {
-    lo.messages=[];
-    var cluster=clusters!.find(c => c.name===lo.cluster);
+  const start = (log:LogObject) => {
+    log.messages=[];
+    var cluster=clusters!.find(c => c.name===log.cluster);
     if (!cluster) {
       console.log('nocluster');
       return;
     }
     var ws = new WebSocket(cluster.url+'?key='+cluster.apiKey);
-    lo.ws=ws;
+    log.ws=ws;
     ws.onopen = () => {
       console.log(`Connected to the WebSocket: ${ws.url}`);
-      var payload={ scope:lo?.scope, namespace:lo?.namespace, deploymentName:lo?.obj};
-      if (lo) {
+      var payload={ scope:log?.scope, namespace:log?.namespace, deploymentName:log?.obj};
+      if (log) {
         ws.send(JSON.stringify(payload));
-        lo.started=true;
+        log.started=true;
       }
       else {
         console.log('no loobject');
@@ -292,8 +296,8 @@ const App: React.FC = () => {
   }
 
   const onClickLogStart = () => {
-    var lo=logs.find(t => t.name===selectedLogRef.current);
-    if (lo) start(lo);
+    var log=logs.find(l => l.name===selectedLogRef.current);
+    if (log) start(log);
     setAnchorMenuLogs(null);
   }
 
@@ -415,26 +419,26 @@ const App: React.FC = () => {
           setLogs(logs);
         }
         break;
-      case 'dbn':
+      case 'bn':
         if (selectedLog) {
           selectedLog.showBackgroundNotification=!selectedLog.showBackgroundNotification;
           setLogs(logs);
         }
         break;
-      case 'ats':
+      case 'ts':
         if (selectedLog) {
           selectedLog.addTimestamp=!selectedLog.addTimestamp;
           setLogs(logs);
         }
         break;
-      case 'cfa':
+      case 'fa':
         setShowAlertConfig(true);
         break;
-      case 'rt':
+      case 'rl':
         setShowRenameLog(true);
         break;
-      case 'dt':
-        //+++ set default log
+      case 'dl':
+        if (selectedLog) selectedLog.default=true;
         break;
     }
     setSubmenuActionOpen(false);
@@ -682,28 +686,29 @@ const App: React.FC = () => {
   const menuLogs=(
     <Menu id='menu-logs' anchorEl={anchorMenuLogs} open={menuLogsOpen} onClose={() => setAnchorMenuLogs(null)}>
       <MenuList dense sx={{width:'40vh'}}>
-        <MenuItem key='cfa' onClick={() => onClickMenuLogsOption('cfa')} disabled={filter===''} sx={{ml:3}}>Convert filter to alert...</MenuItem>
+        <MenuItem key='fa' onClick={() => onClickMenuLogsOption('cfa')} disabled={filter===''} sx={{ml:3}}>Convert filter to alert...</MenuItem>
         <Divider/>
+
         <MenuItem key='subopt' onClick={() => setSubmenuOptionsOpen(!subMenuOptions)} sx={{ml:3}}>Logging options<Typography sx={{flexGrow:1}}></Typography>{subMenuOptions ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
         <Collapse in={subMenuOptions} timeout="auto" unmountOnExit sx={{ml:5}}>
-          <MenuItem key='dbn' onClick={() => onClickMenuLogsOption('dbn')} sx={{ml: selectedLog?.showBackgroundNotification?0:3}}>{ selectedLog?.showBackgroundNotification &&  <Check/>} Show background notifications</MenuItem>
-          <MenuItem key='ats' onClick={() => onClickMenuLogsOption('ats')} sx={{ml: selectedLog?.addTimestamp?0:3}}>{ selectedLog?.addTimestamp &&  <Check/>} Add timestamp to messages</MenuItem>
+          <MenuItem key='bn' onClick={() => onClickMenuLogsOption('bn')} sx={{ml: selectedLog?.showBackgroundNotification?0:3}}>{ selectedLog?.showBackgroundNotification &&  <Check/>} Show background notifications</MenuItem>
+          <MenuItem key='ts' onClick={() => onClickMenuLogsOption('ts')} sx={{ml: selectedLog?.addTimestamp?0:3}}>{ selectedLog?.addTimestamp &&  <Check/>} Add timestamp to messages</MenuItem>
         </Collapse>
 
 
         <MenuItem key='subreorg' onClick={() => setSubmenuReorgOpen(!subMenuReorg)} sx={{ml:3}}>Organize<Typography sx={{flexGrow:1}}></Typography>{subMenuReorg ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
         <Collapse in={subMenuReorg} timeout="auto" unmountOnExit sx={{ml:5}}>
-          <MenuItem key='dt' onClick={() => onClickMenuLogsOption('dt')} disabled={selectedLogIndex<0}> {selectedLog?.default && <Check/>} Default log</MenuItem>
-          <MenuItem key='rt' onClick={() => onClickMenuLogsOption('rt')} disabled={selectedLogIndex<0}>Rename log</MenuItem>
-          <MenuItem key='ml' onClick={() => onClickMenuLogsOption('ml')} disabled={selectedLogIndex===0}>Move to left</MenuItem>
-          <MenuItem key='mr' onClick={() => onClickMenuLogsOption('mr')} disabled={selectedLogIndex===logs.length-1}>Move to right</MenuItem>
-          <MenuItem key='ms' onClick={() => onClickMenuLogsOption('ms')} disabled={selectedLogIndex===0}>Move to start</MenuItem>
-          <MenuItem key='me' onClick={() => onClickMenuLogsOption('me')} disabled={selectedLogIndex===logs.length-1}>Move to end</MenuItem>
+          <MenuItem key='dl' onClick={() => onClickMenuLogsOption('dl')} disabled={selectedLogIndex<0} sx={{ml: selectedLog?.default?0:3}}> {selectedLog?.default && <Check/>} Default log</MenuItem>
+          <MenuItem key='rl' onClick={() => onClickMenuLogsOption('rl')} disabled={selectedLogIndex<0}><DriveFileRenameOutline/>&nbsp;Rename log</MenuItem>
+          <MenuItem key='ml' onClick={() => onClickMenuLogsOption('ml')} disabled={selectedLogIndex===0}><KeyboardArrowLeft/>Move to left</MenuItem>
+          <MenuItem key='mr' onClick={() => onClickMenuLogsOption('mr')} disabled={selectedLogIndex===logs.length-1}><KeyboardArrowRight/>Move to right</MenuItem>
+          <MenuItem key='ms' onClick={() => onClickMenuLogsOption('ms')} disabled={selectedLogIndex===0}><KeyboardDoubleArrowLeft/>&nbsp;Move to start</MenuItem>
+          <MenuItem key='me' onClick={() => onClickMenuLogsOption('me')} disabled={selectedLogIndex===logs.length-1}><KeyboardDoubleArrowRight/>&nbsp;Move to end</MenuItem>
         </Collapse>
         
         <MenuItem key='subaction' onClick={() => setSubmenuActionOpen(!subMenuAction)} sx={{ml:3}}>Action<Typography sx={{flexGrow:1}}></Typography>{subMenuAction ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
         <Collapse in={subMenuAction} timeout="auto" unmountOnExit sx={{ml:5}}>
-          <MenuItem key='logstart' onClick={onClickLogStart} disabled={startDisabled}><Start/>&nbsp;Start</MenuItem>
+          <MenuItem key='logstart' onClick={onClickLogStart} disabled={startDisabled}><PlayCircle/>&nbsp;Start</MenuItem>
           <MenuItem key='logpr' onClick={onClickLogPauseResume} disabled={!startDisabled}>{paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
           <MenuItem key='logstop' onClick={onClickLogStop} disabled={!startDisabled}><Stop/>&nbsp;Stop</MenuItem>
           <MenuItem key='logremove' onClick={onClickLogRemove} ><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
@@ -753,7 +758,7 @@ const App: React.FC = () => {
         <Tabs value={selectedLogName} onChange={onChangeLogs}>
           { logs.length>0 && logs.map(t => {
               if (t.scope==='cluster')
-                return <Tab key={t.name} label='cluster' value={t.name}/>
+                return <Tab key={t.name} label='cluster' value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLogs(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
               else {
                 if (t===selectedLog)
                   return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLogs(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
@@ -777,7 +782,7 @@ const App: React.FC = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <div>
         <Stack direction='row' spacing={1} sx={{ ml:1}} alignItems='baseline' >
-          <Button onClick={(event) => setAnchorMenuConfig(event.currentTarget)} variant='contained' endIcon={<KeyboardArrowDown/>} >Config</Button>
+          <Button onClick={(event) => setAnchorMenuConfig(event.currentTarget)} variant='contained' endIcon={<KeyboardArrowDown/>} >KWirth</Button>
           { anchorMenuConfig!==null && <MenuMain optionSelected={menuConfigOptionSelected} onClose={() => setAnchorMenuConfig(null)} uploadSelected={handleUpload} menuConfigOpen={menuConfigOpen} anchorMenuConfig={anchorMenuConfig}/> }
 
           <Selector onAdd={onSelectorAdd} clusters={clusters}/>

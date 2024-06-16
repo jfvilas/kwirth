@@ -75,7 +75,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
 
     const onChangeNamespace = (event: SelectChangeEvent) => {
         setNamespace(event.target.value);
-        getResources(event.target.value);
+        if (scope==='deployment') getResources(event.target.value);
     };
 
     const onChangeResource= (event: SelectChangeEvent) => {
