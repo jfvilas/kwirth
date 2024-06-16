@@ -23,11 +23,11 @@ I'm still learning to better programming. Since I started with BASIC on the ZX81
   - Assembler for the 80x86 and assembler on IBM360 processors
   - Forth, Prolog and LISP
   - PL/I on my first water-cooled [3090-200 Model E](https://en.wikipedia.org/wiki/IBM_3090) (still loving it)
-  - VB3 (Microsoft's first *usable* version of Visual Basic a somehow structured basic (without line numbering!!))
-  - VB5 (Microsoft's first *usable* version of Visual Basic with Object Oriented Programming)
+  - VB3 (Microsoft's first *usable* version of Visual Basic, a somehow structured basic (without line numbering!!))
+  - VB5 (Microsoft's first *usable* version of Visual Basic, including Object Oriented Programming)
   - Java 1.1
   - C# on .NET 1.1 (circa 2001)
   - JavaScript
   - TypeScript (these days... ;)) 
 
-I never worked as a developer, I've been always warking on infrastructure and architecture.
+I never worked as a developer, I've been always working on infrastructure and architecture.

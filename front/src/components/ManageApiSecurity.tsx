@@ -6,7 +6,7 @@ const copy = require('clipboard-copy');
 
 interface IProps {
   onClose:() => {};
-  cluster:Cluster;
+  backend:string;
 }
 
 const ManageApiSecurity: React.FC<any> = (props:IProps) => {
@@ -16,7 +16,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
   const [expire, setExpire] = useState<string|null>('');
   //+++ implement expire
   const getKeys = async () => {
-    var response = await fetch(`${props.cluster!.url}/key`);
+    var response = await fetch(`${props.backend}/key`);
     var data = await response.json();
     setKeys(data);
   }
@@ -39,11 +39,11 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
   const onClickSave= async () => {
     if (selectedKey!==undefined) {
       var key={ key:selectedKey?.key, description:description, expire:expire};
-      await fetch(`${props.cluster!.url}/key/${selectedKey?.key}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json'}});
+      await fetch(`${props.backend}/key/${selectedKey?.key}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json'}});
     }
     else {
       var newkey={ description:description, expire:expire};
-      await fetch(`${props.cluster!.url}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json'}});
+      await fetch(`${props.backend}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json'}});
     }
     setDescrition('');
     setExpire('');
@@ -58,7 +58,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
 
   const onClickDelete= async () => {
     if (selectedKey!==undefined) {
-      await fetch(`${props.cluster!.url}/key/${selectedKey?.key}`, {method:'DELETE'});
+      await fetch(`${props.backend}/key/${selectedKey?.key}`, {method:'DELETE'});
       setDescrition('');
       setExpire('');
       getKeys();

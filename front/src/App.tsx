@@ -1,4 +1,4 @@
-import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
 import { Box, Button, IconButton, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
@@ -39,8 +39,8 @@ const App: React.FC = () => {
   const [user, setUser] = useState<string>('');
   const [logged,setLogged]=useState(false);
   const [apiKey,setApiKey]=useState('');
-
   
+  //+++ move picklist objects to a helper class
   const [pickListConfig, setPickListConfig] = useState<PickListConfig|null>(null);
   var pickListConfigRef=useRef(pickListConfig);
   pickListConfigRef.current=pickListConfig;
@@ -49,11 +49,9 @@ const App: React.FC = () => {
   var popupConfigRef=useRef(popupConfig);
   popupConfigRef.current=popupConfig;
 
-  const [currentCluster, setCurrentCluster] = useState<Cluster>();
   const [clusters, setClusters] = useState<Cluster[]>();
   const clustersRef = useRef(clusters);
   clustersRef.current=clusters;
-
 
   const [logs, setLogs] = useState<LogObject[]>([]);
   const [highlightedLogs, setHighlightedLogs] = useState<LogObject[]>([]);
@@ -78,11 +76,10 @@ const App: React.FC = () => {
   const [searchLastPos, setSearchLastPos] = useState<number>(-1);
 
   // menus
-  const [anchorMenuConfig, setAnchorMenuConfig] = React.useState<null | HTMLElement>(null);
-  //const menuConfigOpen = Boolean(anchorMenuConfig);
-  const [anchorMenuLog, setAnchorMenuLog] = React.useState<null | HTMLElement>(null);
-  //const menuLogOpen = Boolean(anchorMenuLog);
+  const [anchorMenuConfig, setAnchorMenuConfig] = useState<null | HTMLElement>(null);
+  const [anchorMenuLog, setAnchorMenuLog] = useState<null | HTMLElement>(null);
 
+  // components
   const [showAlertConfig, setShowAlertConfig]=useState<boolean>(false);
   const [showBlockingAlert, setShowBlockingAlert]=useState<boolean>(false);
   const [showRenameLog, setShowRenameLog]=useState<boolean>(false);
@@ -93,13 +90,12 @@ const App: React.FC = () => {
   const [blockingAlert, setBlockingAlert] = useState<Alert>();
   const [configLoaded, setConfigLoaded] = useState<boolean>(false);
   const [configName, setConfigName] = useState('');
-
-  // dialog tools
   const [showPickList, setShowPickList]=useState<boolean>(false);
   const [showPopup, setShowPopup]=useState<boolean>(false);
 
-
   useEffect ( () => {
+    //+++ implement admin role (enabling/disabling menu options)
+    //+++ implement role checking on backend
     if (logged && !clustersRef.current) getClusters();
   });
 
@@ -107,9 +103,8 @@ const App: React.FC = () => {
     if (logged) {
       setConfigLoaded(false);
       if (logs.length>0) {
-        for (var t of logs) {
-          start(t);
-        }
+        for (var t of logs)
+          startLog(t);
         onChangeLogs(null, logs[0].name);
       }
     }
@@ -122,7 +117,6 @@ const App: React.FC = () => {
     srcCluster.url=backend;
     srcCluster.source=true;
     srcCluster.apiKey=apiKey;
-    setCurrentCluster(srcCluster);
 
     // get previously configured clusters
     var clusterList:Cluster[]=[];
@@ -142,7 +136,7 @@ const App: React.FC = () => {
     if (selection.resource==='') logName=logName.substring(0,logName.length-1);
     if (selection.scope==='cluster') logName='cluster';
 
-    // create unduplicated name
+    // create unduplicated (unique) name
     var index=-1;
     while (logs.find (l => l.name===logName+index)) index-=1;
 
@@ -154,10 +148,11 @@ const App: React.FC = () => {
     newLog.name=logName+index;
 
     logs.push(newLog);
-    setMessages(['Start log reciever...']);
+    setMessages(['Use tab menu to start log reciever...']);
     setLogs(logs);
     setSelectedLogName(newLog.name);
     setFilter('');
+    setSearch('');
   };
 
   const onChangeLogs = (event:any,value:string)=> {
@@ -173,6 +168,7 @@ const App: React.FC = () => {
     setSelectedLogName(value);
   }
 
+  // process an event received via websocket
   const processEvent = (event:any) => {
     // find the log who this web socket belongs to, and add the new message
     var log=logs.find(log => log.ws!==null && log.ws===event.target);
@@ -205,9 +201,6 @@ const App: React.FC = () => {
         setMessages( (prev) => [...prev, text ]);
         if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
       }
-      else {
-        // log is paused, so we show nothing;
-      }
     }
     else {
       // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
@@ -231,6 +224,7 @@ const App: React.FC = () => {
             setShowBlockingAlert(true);
           }
           else {
+            // in the view action, implement scrollinto view for showing the message that caused the received alert
             const action = (snackbarId: SnackbarKey | undefined) => (
               <>
                 <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
@@ -254,7 +248,7 @@ const App: React.FC = () => {
     }
   }
 
-  const start = (log:LogObject) => {
+  const startLog = (log:LogObject) => {
     log.messages=[];
     var cluster=clusters!.find(c => c.name===log.cluster);
     if (!cluster) {
@@ -286,11 +280,11 @@ const App: React.FC = () => {
 
   const onClickLogStart = () => {
     var log=logs.find(l => l.name===selectedLogRef.current);
-    if (log) start(log);
+    if (log) startLog(log);
     setAnchorMenuLog(null);
   }
 
-  const stop = (log:LogObject) => {
+  const stopLog = (log:LogObject) => {
     var endline='====================================================================================================';
     log.messages.push(endline);
     log.started=false;
@@ -304,19 +298,17 @@ const App: React.FC = () => {
   }
 
   const onClickLogStop = () => {    
-    if (selectedLog) stop(selectedLog);
+    if (selectedLog) stopLog(selectedLog);
     setAnchorMenuLog(null);
   }
 
   const onClickLogRemove = () => {
     if (selectedLog) {
       onClickLogStop();
-      if (logs.length===1) {
+      if (logs.length===1)
         setMessages([]);
-      }
-      else {
+      else
         onChangeLogs(null,logs[0].name);
-      }
       setLogs(logs.filter(t => t!==selectedLog));
     }
     setAnchorMenuLog(null);
@@ -367,6 +359,7 @@ const App: React.FC = () => {
     }
   }
 
+  //+++ review whole functionality of search up/down and first finding regarding message positioning and highliting
   const onClickSearchUp = () => {
     var i=messages!.findLastIndex( (m,i) => m.includes(search) && i<searchPos);
     if (i>=0) {
@@ -406,16 +399,10 @@ const App: React.FC = () => {
         }
         break;
       case 'bn':
-        if (selectedLog) {
-          selectedLog.showBackgroundNotification=!selectedLog.showBackgroundNotification;
-          setLogs(logs);
-        }
+        if (selectedLog) selectedLog.showBackgroundNotification=!selectedLog.showBackgroundNotification;
         break;
       case 'ts':
-        if (selectedLog) {
-          selectedLog.addTimestamp=!selectedLog.addTimestamp;
-          setLogs(logs);
-        }
+        if (selectedLog) selectedLog.addTimestamp=!selectedLog.addTimestamp;
         break;
       case 'fa':
         setShowAlertConfig(true);
@@ -478,12 +465,10 @@ const App: React.FC = () => {
   }
 
   var clear = () => {
-    for (var t of logs) {
-      stop(t);
-    }
+    for (var t of logs)
+      stopLog(t);
     setLogs([]);
     setMessages([]);
-
   }
 
   const menuConfigOptionSelected = async (option: string) => {
@@ -538,7 +523,7 @@ const App: React.FC = () => {
         break;
       case 'exit':
         setLogged(false);
-        setAnchorMenuConfig(null);
+        //setAnchorMenuConfig(null);
         break;
     }
     setAnchorMenuConfig(null);
@@ -573,17 +558,17 @@ const App: React.FC = () => {
     setAnchorMenuConfig(null);
   }
 
-  const alertConfigClosed= (a:Alert) => {
+  const alertConfigClosed= (alert:Alert) => {
     setShowAlertConfig(false);
-    if (a.expression) {
+    if (alert.expression) {
         var alert=new Alert();
-        alert.expression=a.expression;
-        alert.severity=a.severity;
-        alert.message=a.message;
-        alert.type=a.type;
-        alert.beep=a.beep;
+        alert.expression=alert.expression;
+        alert.severity=alert.severity;
+        alert.message=alert.message;
+        alert.type=alert.type;
+        alert.beep=alert.beep;
         selectedLog?.alerts.push(alert);
-        setLogs(logs);
+        //setLogs(logs);
       }
   }
 
@@ -592,7 +577,7 @@ const App: React.FC = () => {
     if (newname!=null) {
       selectedLog!.name=newname;
       setLogs(logs);
-      //+++ poner foco en nuevo tab
+      //+++ set focus to recently renamed tab
     }
   }
 
@@ -609,7 +594,7 @@ const App: React.FC = () => {
       setLogs(newlos);
       setConfigLoaded(true);
       setConfigName(a);
-      //+++ habilitar el log que este marcado como default
+      //+++ move tab focus the the log which has a default check
     }
   }
 
@@ -628,6 +613,7 @@ const App: React.FC = () => {
     setShowPickList(true);
   }
 
+  //+++ move popup to a helper class
   const popup = (title:string, message:JSX.Element, ok:boolean, yes:boolean, yestoall:boolean, no:boolean, notoall:boolean, cancel:boolean, onClose:(a:string) => void = () => {} ) =>{
     var pc:PopupConfig=new PopupConfig();
     pc.title=title;
@@ -667,11 +653,13 @@ const App: React.FC = () => {
       setLogged(true); 
       setUser(user);
       setApiKey(apiKey);
-      clear();
       setConfigName('untitled');
+      clear();
     }
   }
 
+  //+++ review if it is interesting to refactor controls on a new component
+  // refactor Tabs to simplify rendering
   const showLogControls = () => {
     return (
       <Stack direction={'row'} alignItems={'end'}>
@@ -684,7 +672,7 @@ const App: React.FC = () => {
               <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton>
             </Stack>
         </>}
-
+        
         <Tabs value={selectedLogName} onChange={onChangeLogs}>
           { logs.length>0 && logs.map(t => {
               if (t.scope==='cluster')
@@ -734,7 +722,7 @@ const App: React.FC = () => {
     { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
     { showSaveConfig && <SaveConfig onClose={saveConfigClosed} name={configName} /> }
     { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
-    { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} cluster={currentCluster}/> }
+    { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
     { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
     { pickListConfig!==null && <PickList config={pickListConfig}/> }
     { popupConfig!==null && <Popup config={popupConfig}/> }    
