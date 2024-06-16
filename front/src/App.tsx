@@ -1,13 +1,8 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
-import { Collapse, Box, Button, Divider, FormControl, IconButton, InputLabel, Menu, MenuItem, MenuList, Select, SelectChangeEvent, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
-import { Check, KeyboardArrowDown, CreateNewFolderTwoTone, DeleteTwoTone, FileOpenTwoTone, Pause, PlayArrow, RemoveCircleRounded, SaveAsTwoTone, SaveTwoTone, Settings, Start, Stop, Info, Key, Edit, ExitToApp, VerifiedUser, ArrowUpward, ArrowDownward, ImportExport, ExpandLess, ExpandMore, Clear } from '@mui/icons-material';
-
-// app icons 
-import IconDaemonSetPng from'./icons/ds.png';
-import IconReplicaSetPng from'./icons/rs.png';
-import IconStatefulSetPng from'./icons/ss.png';
+import { Collapse, Box, Button, Divider, IconButton, Menu, MenuItem, MenuList, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { Check, KeyboardArrowDown, Pause, PlayArrow, RemoveCircleRounded,  Settings, Start, Stop, Info, ArrowUpward, ArrowDownward, ExpandLess, ExpandMore, Clear } from '@mui/icons-material';
 
 // model
 import { Alert } from './model/Alert';
@@ -31,12 +26,9 @@ import Popup from './components/Popup';
 import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
+import MenuMain from './menus/MenuMain';
+import Selector from './menus/ResourceSelector';
 
-
-// app icons
-const KIconReplicaSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={IconReplicaSetPng}/>;
-const KIconDaemonSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={IconDaemonSetPng}/>;
-const KIconStatefulSet = () => <Box component="img" sx={{  height: 24,    width: 24 }} src={IconStatefulSetPng}/>;
 
 const App: React.FC = () => {
   var backend='http://localhost:3883';
@@ -46,7 +38,6 @@ const App: React.FC = () => {
   const [logged,setLogged]=useState(false);
   const [apiKey,setApiKey]=useState('');
 
-  const [scope, setScope] = useState('cluster');
   
   const [pickListConfig, setPickListConfig] = useState<PickListConfig|null>(null);
   var pickListConfigRef=useRef(pickListConfig);
@@ -57,19 +48,10 @@ const App: React.FC = () => {
   popupConfigRef.current=popupConfig;
 
   const [currentCluster, setCurrentCluster] = useState<Cluster>();
-  const [selectedCluster, setSelectedCluster] = useState<Cluster>();
-  const [selectedClusterName, setSelectedClusterName] = useState('');
   const [clusters, setClusters] = useState<Cluster[]>();
   const clustersRef = useRef(clusters);
   clustersRef.current=clusters;
 
-  const [namespace, setNamespace] = useState('');
-  const [namespaces, setNamespaces] = useState<string[]>([]);
-  const [namespaceSelectDisabled, setNamespaceSelectDisabled] = useState(true);
-
-  const [resource, setResource] = useState('');
-  const [resources, setResources] = useState<string[]>([]);
-  const [resourceSelectDisabled, setResourceSelectDisabled] = useState(true);
 
   const [logs, setLogs] = useState<LogObject[]>([]);
   const [highlightedLogs, setHighlightedLogs] = useState<LogObject[]>([]);
@@ -159,80 +141,49 @@ const App: React.FC = () => {
     setClusters(clusterList);
   }
 
-  const getNamespaces = async () => {
-    var response = await fetch(`${selectedCluster!.url}/config/namespace?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.apiKey}});
-    var data = await response.json();
-    setNamespaces(data);
-  }
+  const onSelectorAdd = (selection:any) => {
+    var logName=selection.namespace+"-"+selection.resource;
+    if (selection.scope==='cluster') logName='cluster';
 
-  const getResources = async (namespace:string) => {
-    var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${scope}?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.apiKey}});
-    var data = await response.json();
-    setResources(data);
-  }
-  
-  const onChangeCluster = (event: SelectChangeEvent) => {
-    var value=event.target.value;
-    setSelectedClusterName(value);
-    setSelectedCluster(clusters?.filter(c => c.name===value)[0]!);
-    setScope('cluster');
-    setNamespaceSelectDisabled(true);
-    setResourceSelectDisabled(true);
-  };
-
-  const onChangeScope = (event: SelectChangeEvent) => {
-    var value=event.target.value;
-    setScope(value);
-    if (value!=='cluster') getNamespaces();
-    setNamespaceSelectDisabled(value==='cluster')
-    setResourceSelectDisabled(value==='cluster')
-  };
-
-  const onChangeNamespace = (event: SelectChangeEvent) => {
-    setNamespace(event.target.value);
-    getResources(event.target.value);
-  };
-
-  const onClickAdd = () => {
-    var loname=namespace+"-"+resource;
-    if (scope==='cluster') loname='cluster';
+    // create unduplicated name
     var index=-1;
-    while (logs.find (lo => lo.name===loname+index)) index-=1;
+    while (logs.find (l => l.name===logName+index)) index-=1;
 
-    var newlo:LogObject= new LogObject();
-    newlo.cluster=selectedClusterName;
-    newlo.scope=scope;
-    newlo.namespace=namespace;
-    newlo.obj=resource;
-    newlo.name=loname+index;
-    logs.push(newlo);
+    var newLog:LogObject= new LogObject();
+    newLog.cluster=selection.clusterName;
+    newLog.scope=selection.scope;
+    newLog.namespace=selection.namespace;
+    newLog.obj=selection.resource;
+    newLog.name=logName+index;
+
+    logs.push(newLog);
     setMessages(['Start log reciever...']);
     setLogs(logs);
-    setSelectedLogName(newlo.name);
+    setSelectedLogName(newLog.name);
     setPaused(false);
     setStartDisabled(false);
     setControlsVisible(true);
     setFilter('');
   };
 
-  const onChangeLogs = (ev:any,val:string)=> {
-    var newlo = logs.find(t => t.name === val);
-    if (newlo) {
-      newlo.pending=false;
+  const onChangeLogs = (event:any,value:string)=> {
+    var newlog = logs.find(log => log.name === value);
+    if (newlog) {
+      newlog.pending=false;
       setHighlightedLogs (highlightedLogs.filter(t => t.pending));
-      setPausedLogs (pausedLogs.filter(t => t.paused));
-      setPaused(newlo.paused);
-      setFilter(newlo.filter);
-      setMessages(newlo.messages);
-      setStartDisabled(newlo.started);
+      setPausedLogs (pausedLogs.filter(log => log.paused));
+      setPaused(newlog.paused);
+      setFilter(newlog.filter);
+      setMessages(newlog.messages);
+      setStartDisabled(newlog.started);
       setLogs(logs);
     }
-    setSelectedLogName(val);
+    setSelectedLogName(value);
   }
 
   const processEvent = (event:any) => {
     // find the log who this web socket belongs to, and add the new message
-    var log=logs.find(t => t.ws!==null && t.ws===event.target);
+    var log=logs.find(log => log.ws!==null && log.ws===event.target);
     if (!log) return;
     
     var ev:any={};
@@ -340,7 +291,7 @@ const App: React.FC = () => {
     setStartDisabled(true);
   }
 
-  const onClickStart = () => {
+  const onClickLogStart = () => {
     var lo=logs.find(t => t.name===selectedLogRef.current);
     if (lo) start(lo);
     setAnchorMenuLogs(null);
@@ -359,14 +310,14 @@ const App: React.FC = () => {
     setStartDisabled(false);
   }
 
-  const onClickStop = () => {    
+  const onClickLogStop = () => {    
     if (selectedLog) stop(selectedLog);
     setAnchorMenuLogs(null);
   }
 
-  const onClickRemove = () => {
+  const onClickLogRemove = () => {
     if (selectedLog) {
-      onClickStop();
+      onClickLogStop();
       if (logs.length===1) {
         setControlsVisible(false);
         setMessages([]);
@@ -379,7 +330,7 @@ const App: React.FC = () => {
     setAnchorMenuLogs(null);
   }
 
-  const onClickPauseResume = () => {
+  const onClickLogPauseResume = () => {
     if (selectedLog) {
       if (selectedLog.paused) {
         selectedLog.paused=false;
@@ -492,10 +443,6 @@ const App: React.FC = () => {
     setAnchorMenuLogs(null);
   };
 
-  const onClickMenuConfig = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorMenuConfig(event.currentTarget);
-  };
-
   const saveConfig = (name:string) => {
     var newlos:LogObject[]=[];
     for (var lo of logs) {
@@ -541,7 +488,7 @@ const App: React.FC = () => {
 
   }
 
-  const onClickMenuConfigOption = async (option: string) => {
+  const menuConfigOptionSelected = async (option: string) => {
     switch(option) {
       case 'new':
         clear();
@@ -582,14 +529,18 @@ const App: React.FC = () => {
         else {
           var content:any={};
           for (var cfg of allConfigs) {
-            var read = await (await fetch (`${backend}/store/${user}/${cfg}`)).json();
-            content[cfg]=JSON.parse(read);
+            var readCfg = await (await fetch (`${backend}/store/${user}/${cfg}`)).json();
+            content[cfg]=JSON.parse(readCfg);
           }
           handleDownload(JSON.stringify(content),`${user}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
         }
         break;
       case 'cfgimp':
         // nothing to do, the menuitem launches the handleUpload
+        break;
+      case 'exit':
+        setLogged(false);
+        setAnchorMenuConfig(null);
         break;
     }
     setAnchorMenuConfig(null);
@@ -714,30 +665,6 @@ const App: React.FC = () => {
     setClusters(cc);
   }
 
-  const menuConfig=(
-    <>
-      <Button onClick={onClickMenuConfig} variant='contained' endIcon={<KeyboardArrowDown/>} size='small'>Config</Button>
-      <Menu id='menu-kwirth' anchorEl={anchorMenuConfig} open={menuConfigOpen} onClose={() => setAnchorMenuConfig(null)}>
-        <MenuList dense>
-          <MenuItem key='new' onClick={() => onClickMenuConfigOption('new')}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
-          <MenuItem key='open' onClick={() => onClickMenuConfigOption('open')}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
-          <MenuItem key='save' onClick={() => onClickMenuConfigOption('save')}><SaveTwoTone/>&nbsp;Save</MenuItem>
-          <MenuItem key='saveas' onClick={() => onClickMenuConfigOption('saveas')}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
-          <MenuItem key='delete' onClick={() => onClickMenuConfigOption('delete')}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
-          <Divider/>
-          <MenuItem key='cfgexp' onClick={() => onClickMenuConfigOption('cfgexp')}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
-          <MenuItem key='cfgimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={handleUpload}/><ImportExport/>&nbsp;Import new configs (and merge overwriting)</MenuItem>
-          <Divider/>
-          <MenuItem key='mc' onClick={() => onClickMenuConfigOption('mc')}><Edit/>&nbsp;Manage cluster list</MenuItem>
-          <MenuItem key='asec' onClick={() => onClickMenuConfigOption('asec')}><Key/>&nbsp;API Security</MenuItem>
-          <MenuItem key='usec' onClick={() => onClickMenuConfigOption('usec')}><VerifiedUser />&nbsp;User security</MenuItem>
-          <Divider/>
-          <MenuItem key='exit' onClick={() => {setLogged(false); setAnchorMenuConfig(null)}}><ExitToApp />Exit Kwirth</MenuItem>
-        </MenuList>
-      </Menu>
-    </>
-  );
-
   const onCloseLogin = (result:boolean, apiKey:string, user:string) => {
     if (result) {
       setLogged(true); 
@@ -776,14 +703,69 @@ const App: React.FC = () => {
         
         <MenuItem key='subaction' onClick={() => setSubmenuActionOpen(!subMenuAction)} sx={{ml:3}}>Action<Typography sx={{flexGrow:1}}></Typography>{subMenuAction ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
         <Collapse in={subMenuAction} timeout="auto" unmountOnExit sx={{ml:5}}>
-          <MenuItem key='logstart' onClick={onClickStart} disabled={startDisabled} ><Start/>&nbsp;Start</MenuItem>
-          <MenuItem key='logpr' onClick={onClickPauseResume} disabled={!startDisabled}>{paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
-          <MenuItem key='logstop' onClick={onClickStop} disabled={!startDisabled}><Stop/>&nbsp;Stop</MenuItem>
-          <MenuItem key='logremove' onClick={onClickRemove} ><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
+          <MenuItem key='logstart' onClick={onClickLogStart} disabled={startDisabled}><Start/>&nbsp;Start</MenuItem>
+          <MenuItem key='logpr' onClick={onClickLogPauseResume} disabled={!startDisabled}>{paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
+          <MenuItem key='logstop' onClick={onClickLogStop} disabled={!startDisabled}><Stop/>&nbsp;Stop</MenuItem>
+          <MenuItem key='logremove' onClick={onClickLogRemove} ><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
         </Collapse>
       </MenuList>
     </Menu>
   );
+
+  const showLogContent = () => {
+    return (
+      <Box sx={{ flex:1, overflowY: 'auto', ml:1 }}>
+        <pre>
+          {messages.map(m => {
+            return m.includes(filter)? m : null;
+          })
+          .map((message, index) => {
+            if (search!=='') {
+              if (index===searchPos)
+                return <div key={index} ref={searchLineRef} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#0000ff\'>'+search+'</span>')}}></div>;
+              else
+                return <div key={index} ref={null} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#ff0000\'>'+search+'</span>')}}></div>;
+            }
+            else {
+              if (index===messages.length-1)
+                return <><div key={index}>{message}</div><div key={-1} ref={lastLineRef} style={{ marginTop:'15px'}}>&nbsp;</div></>;
+              else
+                return <div key={index}>{message}</div>;
+            }
+          })}
+        </pre>
+      </Box>);
+  }
+
+  const showLogControls = () => {
+    return (
+      <Stack direction={'row'} alignItems={'end'}>
+        { controlsVisible && <>
+            <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
+              <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
+              <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
+              <Typography sx={{ ml:1 }}></Typography>
+              <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
+              <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton>
+            </Stack>
+        </>}
+
+        <Tabs value={selectedLogName} onChange={onChangeLogs}>
+          { logs.length>0 && logs.map(t => {
+              if (t.scope==='cluster')
+                return <Tab key={t.name} label='cluster' value={t.name}/>
+              else {
+                if (t===selectedLog)
+                  return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLogs(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                else
+                  return <Tab key={t.name} label={t.name} value={t.name} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+              }
+            })
+          }
+        </Tabs>
+      </Stack>
+    );
+  }
 
   if (!logged) return (<>
     <div style={{ backgroundImage:`url('/front/turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
@@ -791,119 +773,37 @@ const App: React.FC = () => {
     </div>
   </>);
   
-  return (
-    <>
+  return (<>
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <div>
         <Stack direction='row' spacing={1} sx={{ ml:1}} alignItems='baseline' >
+          <Button onClick={(event) => setAnchorMenuConfig(event.currentTarget)} variant='contained' endIcon={<KeyboardArrowDown/>} >Config</Button>
+          { anchorMenuConfig!==null && <MenuMain optionSelected={menuConfigOptionSelected} onClose={() => setAnchorMenuConfig(null)} uploadSelected={handleUpload} menuConfigOpen={menuConfigOpen} anchorMenuConfig={anchorMenuConfig}/> }
 
-          {menuConfig}
-          
-          <FormControl variant='standard' sx={{ m: 1, minWidth: 200 }}>
-              <InputLabel id='cluster'>Cluster</InputLabel>
-              <Select labelId='cluster' value={selectedClusterName} onChange={onChangeCluster} label='Cluster'>
-                { clusters?.map( (value) => {
-                    return <MenuItem key={value.name} value={value.name}>{value.name}</MenuItem>
-                })}
-              </Select>
-          </FormControl>
-          <FormControl variant='standard' sx={{ m: 1, minWidth: 200 }} disabled={selectedClusterName===''}>
-              <InputLabel id='scope'>Scope</InputLabel>
-              <Select labelId='scope' value={scope} onChange={onChangeScope} label='Scope'>
-                  { ['cluster','deployment'].map( (value:string) => {
-                      return <MenuItem key={value} value={value}>{value}</MenuItem>
-                  })}
-              </Select>
-          </FormControl>
-          <FormControl variant='standard' sx={{ m: 1, minWidth: 200 }} disabled={namespaceSelectDisabled}>
-              <InputLabel id='namespace'>Namespace</InputLabel>
-              <Select labelId='namespace' value={namespace} onChange={onChangeNamespace} label='Namespace'>
-                  { namespaces.map( (value:string) => {
-                      return <MenuItem key={value} value={value}>{value}</MenuItem>
-                  })}
-              </Select>
-          </FormControl>
-          <FormControl variant="standard" sx={{ m: 1, minWidth: 200 }} disabled={resourceSelectDisabled}>
-              <InputLabel id="obj">Object</InputLabel>
-              <Select labelId="obj" value={resource} onChange={(event:SelectChangeEvent) => setResource(event.target.value)} label='Object'>
-                  { resources.map( (value:any) =>
-                      <MenuItem key={value.name} value={value.name}>
-                        {value.type==='replica'? <KIconReplicaSet/>:value.type==='daemon'?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.name}
-                      </MenuItem>
-                  )}
-              </Select>
-          </FormControl>
-          <Button variant='contained' onClick={onClickAdd} size='small'>ADD</Button>
+          <Selector onAdd={onSelectorAdd} clusters={clusters}/>
+
           <Stack direction={'column'} alignItems={'center'} alignSelf={'center'} paddingTop={3}>
-            <Typography fontSize={8} sx={{backgroundColor:'lightGray'}}>&nbsp;{user}&nbsp;</Typography>
-            <Typography fontSize={8} sx={{backgroundColor:'lightYellow'}}>&nbsp;{configName}&nbsp;</Typography>
+            <Typography fontSize={9} sx={{backgroundColor:'lightGray'}}>&nbsp;{user}&nbsp;</Typography>
+            <Typography fontSize={9} sx={{backgroundColor:'lightYellow'}}>&nbsp;{configName}&nbsp;</Typography>
           </Stack>
-          
         </Stack>
-        <Stack direction={'row'} alignItems={'end'}>
-          { controlsVisible && <>
-              <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
-                <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
-                <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
-                <Typography sx={{ ml:1 }}></Typography>
-                <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
-                <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton>
-              </Stack>
-          </>}
+        {showLogControls()}
+      </div>
 
-          <Tabs value={selectedLogName} onChange={onChangeLogs}>
-            { logs.length>0 && logs.map(t => {
-                if (t.scope==='cluster')
-                  return <Tab key={t.name} label='cluster' value={t.name}/>
-                else {
-                  if (t===selectedLog)
-                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLogs(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                  else
-                    return <Tab key={t.name} label={t.name} value={t.name} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                }
-              })
-            }
-          </Tabs>
-        </Stack>
-        </div>
+      {menuLogs}
+      {showLogContent()}
+    </Box>
 
-        {menuLogs}
-
-        <Box sx={{ flex:1, overflowY: 'auto', ml:1 }}>
-          <pre>
-            {messages.map(m => {
-              return m.includes(filter)? m : null;
-            })
-            .map((message, index) => {
-              if (search!=='') {
-                if (index===searchPos) {
-                  return <div key={index} ref={searchLineRef} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#0000ff\'>'+search+'</span>')}}></div>;
-                }
-                else {
-                  return <div key={index} ref={null} dangerouslySetInnerHTML={{__html: message!.replaceAll(search,'<span style=\'background-color:#ff0000\'>'+search+'</span>')}}></div>;
-                }
-              }
-              else {
-                if (index===messages.length-1)
-                  return <><div key={index}>{message}</div><div key={-1} ref={lastLineRef} style={{ marginTop:'15px'}}>&nbsp;</div></>;
-                else
-                  return <div key={index}>{message}</div>;
-              }
-            })}
-          </pre>
-        </Box>
-      </Box>
-      { showAlertConfig && <AlertConfig onClose={alertConfigClosed} expression={filter}/> }
-      { showBlockingAlert && <BlockingAlert onClose={() => setShowBlockingAlert(false)} alert={blockingAlert} /> }
-      { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
-      { showSaveConfig && <SaveConfig onClose={saveConfigClosed} name={configName} /> }
-      { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
-      { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} cluster={currentCluster}/> }
-      { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
-      { pickListConfig!==null && <PickList config={pickListConfig}/> }
-      { popupConfig!==null && <Popup config={popupConfig}/> }
-    </>
-  );
+    { showAlertConfig && <AlertConfig onClose={alertConfigClosed} expression={filter}/> }
+    { showBlockingAlert && <BlockingAlert onClose={() => setShowBlockingAlert(false)} alert={blockingAlert} /> }
+    { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
+    { showSaveConfig && <SaveConfig onClose={saveConfigClosed} name={configName} /> }
+    { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
+    { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} cluster={currentCluster}/> }
+    { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
+    { pickListConfig!==null && <PickList config={pickListConfig}/> }
+    { popupConfig!==null && <Popup config={popupConfig}/> }    
+  </>);
 };
 
 export default App;
