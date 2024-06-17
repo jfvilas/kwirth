@@ -1,5 +1,5 @@
 <p align="center">
-    <img width="400px" height=auto src="https://jfvilaspersonal.github.io/kwirth/_media/kwirth-logo-20.png" />
+    <img height=auto src="https://jfvilaspersonal.github.io/kwirth/_media/kwirth-logo-20.png" />
 </p>
 
 [![GitHub stars](https://img.shields.io/badge/contributions-welcome-orange.svg)](https://jfvilaspersonal.github.io/kwirth) [![GitHub stars](https://img.shields.io/badge/project-homepage-8EA8D8.svg)](https://jfvilaspersonal.github.io/kwirth)
