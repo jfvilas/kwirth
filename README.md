@@ -1,7 +1,8 @@
+![Kwirth logo](https://jfvilaspersonal.github.io/kwirth/_media/kwirth-logo-20.png)
 # Kwirth project
 Kwirth is the final implementation of the idea of having a simple way to manage logging inside a Kubernetes cluster. Maybe you feel comfortable with your DataDog or your Grafana and the Loki and the Promtrail. But maybe these (and other tools) are too complex for you.
 
-If this is the case, Kwirth is what you need.
+If this is the case, **Kwirth is what you need**.
 
 Yo can go to Kwirth web site if you prefere a user-friendly (non-developer) interface [here](https://jfvilaspersonal.github.io/kwirth).
 ### What you can do with Kwirth
