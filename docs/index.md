@@ -1,13 +1,15 @@
 # Kwirth
 Kwirth is the final implementation of the idea of having a simple way to manage logging inside a Kubernetes cluster. Maybe you feel comfortable with your DataDog or your Grafana and the Loki and the Promtrail. But maybe these (and other tools) are too complex for you.
 
+You can access the source code [here](https://github.com/jfvilasPersonal/kwirth)
+
 **Kwirth is the answer to your need**. Just *one pod to access all the logs you need* from your main cluster or even **consolidate logging from different clusters**.
 
 ## Installation
 Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirth to your cluster.
 
 ```bash
-kubectl apply -f http://github/jfvilaspersonal/kwirth
+kubectl apply -f https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master/test/kwirth.yaml
 ```
 
 If everithing is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging system.
