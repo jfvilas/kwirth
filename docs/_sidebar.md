@@ -1,4 +1,5 @@
 * [Home](/index)
+* [How it works](how)
 * [Security](security)
 * [Change log](changelog)
 * [Common tasks](commontasks)
