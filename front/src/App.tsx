@@ -45,6 +45,7 @@ const App: React.FC = () => {
   var pickListConfigRef=useRef(pickListConfig);
   pickListConfigRef.current=pickListConfig;
 
+  //+++ move popup objects to a helper class
   const [popupConfig, setPopupConfig] = useState<PopupConfig|null>(null);
   var popupConfigRef=useRef(popupConfig);
   popupConfigRef.current=popupConfig;
@@ -148,7 +149,7 @@ const App: React.FC = () => {
     newLog.name=logName+index;
 
     logs.push(newLog);
-    setMessages(['Use tab menu to start log reciever...']);
+    setMessages(['Use log menu (settings button on tab) to start log reciever...']);
     setLogs(logs);
     setSelectedLogName(newLog.name);
     setFilter('');
@@ -369,6 +370,7 @@ const App: React.FC = () => {
   }
 
   const menuLogOptionSelected = (option: string) => {
+    //+++ convert literals in enumeration
     switch(option) {
       case 'ml':
         if (selectedLog) {
@@ -464,7 +466,7 @@ const App: React.FC = () => {
       pickList('Load config...','Please, select the config you want to load:',allConfigs,loadConfigSelected);
   }
 
-  var clear = () => {
+  var clearLogs = () => {
     for (var t of logs)
       stopLog(t);
     setLogs([]);
@@ -474,7 +476,7 @@ const App: React.FC = () => {
   const menuConfigOptionSelected = async (option: string) => {
     switch(option) {
       case 'new':
-        clear();
+        clearLogs();
         setConfigName('untitled');
         break;
       case 'save':
@@ -523,7 +525,6 @@ const App: React.FC = () => {
         break;
       case 'exit':
         setLogged(false);
-        //setAnchorMenuConfig(null);
         break;
     }
     setAnchorMenuConfig(null);
@@ -568,7 +569,6 @@ const App: React.FC = () => {
         alert.type=alert.type;
         alert.beep=alert.beep;
         selectedLog?.alerts.push(alert);
-        //setLogs(logs);
       }
   }
 
@@ -588,13 +588,13 @@ const App: React.FC = () => {
 
   const loadConfigSelected = async (a:string) => {
     if (a) {
-      clear();
+      clearLogs();
       var n = await (await fetch (`${backend}/store/${user}/${a}`)).json();
       var newlos=JSON.parse(n) as LogObject[];
       setLogs(newlos);
       setConfigLoaded(true);
       setConfigName(a);
-      //+++ move tab focus the the log which has a default check
+      //+++ move log focus the the log which has a default check
     }
   }
 
@@ -613,7 +613,7 @@ const App: React.FC = () => {
     setShowPickList(true);
   }
 
-  //+++ move popup to a helper class
+  //+++ create convenient yes-no dialogs
   const popup = (title:string, message:JSX.Element, ok:boolean, yes:boolean, yestoall:boolean, no:boolean, notoall:boolean, cancel:boolean, onClose:(a:string) => void = () => {} ) =>{
     var pc:PopupConfig=new PopupConfig();
     pc.title=title;
@@ -654,40 +654,8 @@ const App: React.FC = () => {
       setUser(user);
       setApiKey(apiKey);
       setConfigName('untitled');
-      clear();
+      clearLogs();
     }
-  }
-
-  //+++ review if it is interesting to refactor controls on a new component
-  // refactor Tabs to simplify rendering
-  const showLogControls = () => {
-    return (
-      <Stack direction={'row'} alignItems={'end'}>
-        { (logs.length>0) && <>
-            <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
-              <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
-              <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
-              <Typography sx={{ ml:1 }}></Typography>
-              <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
-              <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton>
-            </Stack>
-        </>}
-        
-        <Tabs value={selectedLogName} onChange={onChangeLogs}>
-          { logs.length>0 && logs.map(t => {
-              if (t.scope==='cluster')
-                return <Tab key={t.name} label='cluster' value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-              else {
-                if (t===selectedLog)
-                  return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                else
-                  return <Tab key={t.name} label={t.name} value={t.name} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-              }
-            })
-          }
-        </Tabs>
-      </Stack>
-    );
   }
 
   if (!logged) return (<>
@@ -710,7 +678,33 @@ const App: React.FC = () => {
             <Typography fontSize={9} sx={{backgroundColor:'lightYellow'}}>&nbsp;{configName}&nbsp;</Typography>
           </Stack>
         </Stack>
-        {showLogControls()}
+
+        <Stack direction={'row'} alignItems={'end'}>
+          { (logs.length>0) && <>
+              <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
+                <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
+                <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
+                <Typography sx={{ ml:1 }}></Typography>
+                <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
+                <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton>
+              </Stack>
+          </>}
+          
+          <Tabs value={selectedLogName} onChange={onChangeLogs}>
+            { logs.length>0 && logs.map(t => {
+                if (t.scope==='cluster')
+                  return <Tab key={t.name} label='cluster' value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                else {
+                  if (t===selectedLog)
+                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                  else
+                    return <Tab key={t.name} label={t.name} value={t.name} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                }
+              })
+            }
+          </Tabs>
+        </Stack>
+
       </div>
 
       { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} />}

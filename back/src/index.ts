@@ -7,7 +7,7 @@ import { VERSION } from './version';
 // HTTP server for serving front, api and websockets
 import { StoreApi } from './api/StoreApi';
 import { UserApi } from './api/UserApi';
-import { KeyApi } from './api/KeyApi';
+import { ApiKeyApi } from './api/ApiKeyApi';
 import { LoginApi } from './api/LoginApi';
 
 // HTTP server & websockets
@@ -143,8 +143,8 @@ const launch = (myNamespace:string) => {
   // serve config API
   var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi);
   app.use(`/config`, va.route);
-  var ka:KeyApi = new KeyApi(configMaps);
-  app.use(`/key`, ka.route);
+  var aka:ApiKeyApi = new ApiKeyApi(configMaps);
+  app.use(`/key`, aka.route);
   var sa:StoreApi = new StoreApi(configMaps);
   app.use(`/store`, sa.route);
   var ua:UserApi = new UserApi(secrets);
