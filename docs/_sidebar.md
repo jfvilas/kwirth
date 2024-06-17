@@ -1,5 +1,5 @@
 * [Home](/index)
 * [Security](security)
 * [Change log](changelog)
-* [Reference](reference)
+* [Common tasks](commontasks)
 * [About](about)

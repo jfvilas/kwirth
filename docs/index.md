@@ -19,10 +19,12 @@ Several options here...
 kubectl port-forward svc/kwirth-svc 3883
 ```
 
-2. Using the port forwarding options of your favourite Kubernetes management tool, like Lens, Headlamp, K9S, etc... (etc was not a Kubernetes tool when I wrote this article).
+2. Using the port forwarding options of your favourite Kubernetes management tool, like Lens, Headlamp, K9S, etc... (etc was not a Kubernetes tool when I wrote this article ;) ).
 
-3. Using an Ingress: the best option if you plan to access your Kwirth from Internet and the best option if you plant to share Kwirth with the development team in your corporate private network. For publishing Kwirth to be accesible from outside the cluster create an Ingress resource like this:
++++Add some captures
+
+3. Using an Ingress. It is the best option if you plan to access your Kwirth from Internet and if you also plan to share Kwirth with the development team in your corporate private network. For publishing Kwirth to be accesible from outside the cluster create an Ingress. It is a pending job to enable Kwirth to listen in a non-root path, so you could share the Ingress objecto with other applications, but for the moment Kwirth only works at root. Next sample is for publishing external acces like this (of course, you can rewrite the target URL's in yur reverso-proxy or in the Ingress, stripping part of the local path).
 
 ```yaml
-Ingress
+Pending
 ```
