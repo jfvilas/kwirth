@@ -10,4 +10,4 @@ As we said before, Kwirth needs just one pod **with no persistence** for running
 
 What follows is a self-explaining architecture of a deployment of Kwirth.
 
-![](/_media/kwirth-arch.png)
+![](./_media/kwirth-arch.png)
