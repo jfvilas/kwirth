@@ -1,5 +1,5 @@
 # Kwirth security
-Thera exist three kinds of security that must be taken into account:
+There exist three levels of security that must be taken into account:
 
   1. Administrators security.
   2. User security.
@@ -21,4 +21,3 @@ You can create, modify and delete users using "User security" menu option from t
 
 ### API security
 You can create, modify and delete API keys using "API security" menu option from the main Kwirth menu. If you are not an admin user you will not see this option.
-

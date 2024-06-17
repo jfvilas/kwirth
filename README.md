@@ -9,7 +9,7 @@ Kwirth is the final implementation of the idea of having a simple way to manage 
 
 If this is the case, **Kwirth is what you need**.
 
-Yo can go to Kwirth web site if you prefere a user-friendly (non-developer) interface [here](https://jfvilaspersonal.github.io/kwirth).
+Yo can go to Kwirth web site if you prefer a user-friendly (non-developer) interface [here](https://jfvilaspersonal.github.io/kwirth).
 ## What you can do with Kwirth
 Basically, Kwirth receives logs form one or more Kubernetes clusters in real-time, and with the data received you can do several thinks depending on your role.
 
@@ -26,7 +26,13 @@ kubectl apply -f https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master
 
 If everithing is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging system. You can access Kwrith via your Kubernetes management sofware, via kubectl-port-forwarding, or even creating an ingress. By default, Kwirth listens on root path at port 3883.
 
-If you have created a port forward you should be able to access Kwirth at http://localhost:3883/. Enjoy!!
+If you have created a port forward by entering...
+
+```bash
+kubectl port-forward svc/kwirth-svc 3883
+```
+
+...you should be able to access Kwirth at http://localhost:3883/. Enjoy!!
 
 ## How Kwirth works
 Kwirth is not Loki nor Grafana, Kwirth is not Elastic, Kwirth is not DataDog, Kwirth is not Azure Log Analytics... Kwirth is not an APM tool.
