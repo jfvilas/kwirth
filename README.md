@@ -3,6 +3,7 @@ Kwirth is the final implementation of the idea of having a simple way to manage 
 
 If this is the case, Kwirth is what you need.
 
+Yo can go to Kwirth web site if you prefere a user-friendly (non-developer) interface [here](https://jfvilaspersonal.github.io/kwirth).
 ### What you can do with Kwirth
 Basically, Kwirth receives logs form one or more Kubernetes clusters in real-time, and with the data received you can do several thinks depending on your role.
 
