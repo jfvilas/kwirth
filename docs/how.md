@@ -6,7 +6,7 @@ Basically, Kwirth receives logs form one or more Kubernetes clusters in real-tim
   - A Security team (a SOC) can also configure alerts on messages received from the source logs.
 
 # Architecture
-As we said before, Kwirth needs just one pod **with no persistence** for running (yes, you don't have to deal with PV's PVC's, NFS, CIFS, locla disks and so on). Kwrith stores its users in Kubernetes secrets, that is: **in etcd**. In addition, all user configuration is also stored in config maps, so, **etcd** again.
+As we said before, Kwirth needs just one pod **with no persistence** for running (yes, you don't have to deal with PV's PVC's, NFS, CIFS, local disks and so on). Kwirth stores its users in Kubernetes secrets, that is: **in etcd**. In addition, all user configuration is also stored in config maps, so, **etcd** again.
 
 What follows is a self-explaining architecture of a deployment of Kwirth.
 
