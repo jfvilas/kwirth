@@ -12,7 +12,7 @@ Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirt
 kubectl apply -f https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master/test/kwirth.yaml
 ```
 
-If everithing is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging system.
+If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging and alerting system.
 
 Several options here...
 
@@ -32,7 +32,7 @@ kubectl port-forward svc/kwirth-svc 3883
       ![Lens](./_media/pf-lens.png)
 
 
-3. **Using an Ingress**. It is the best option if you plan to access your Kwirth from Internet and if you also plan to share Kwirth with the development team in your corporate private network. For publishing Kwirth to be accesible from outside the cluster create an Ingress. It is a pending job to enable Kwirth to listen in a non-root path, so you could share the Ingress objecto with other applications, but for the moment Kwirth only works at root. Next sample is for publishing external acces like this (of course, you can rewrite the target URL's in yur reverso-proxy or in the Ingress, stripping part of the local path).
+3. **Using an Ingress**. It is the best option if you plan to access your Kwirth from Internet and if you also plan to share Kwirth with the development team in your corporate private network. For publishing Kwirth to be accesible from outside the cluster, you must create an Ingress. It is a pending job to enable Kwirth to listen in a non-root path, so you could share the Ingress object with other applications, but for the momment Kwirth only works at root path. Next sample is for publishing external access like this (of course, you can rewrite the target URL's in your reverse-proxy or in the Ingress, stripping part of the local path).
 
 ```yaml
 Pending
