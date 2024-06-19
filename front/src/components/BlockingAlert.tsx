@@ -2,7 +2,8 @@ import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText,
 import { Error } from '@mui/icons-material';
 
 const BlockingAlert: React.FC<any> = ({onClose, alert}) => {
-
+    //+++ refactor 'alert' to class and create enums accordingly
+    
     return (
         <Dialog open={true}>
             <DialogTitle>

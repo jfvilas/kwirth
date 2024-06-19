@@ -3,10 +3,10 @@ import { Alert } from "./Alert";
 export class LogObject {
   public name: any;
   public cluster: any;
-  public ws:any=null;
   public scope:any;
   public namespace:any;
   public obj:any;
+  public ws:any=null;
   public messages:string[]=[];
   public default:boolean=false;
   public paused:boolean=false;
@@ -17,5 +17,3 @@ export class LogObject {
   public showBackgroundNotification:boolean=true;
   public alerts:Alert[]=[];
 }
-  
-  

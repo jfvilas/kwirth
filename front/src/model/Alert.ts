@@ -17,6 +17,7 @@ class Alert {
   public severity:SeverityEnum=SeverityEnum.default;
   public message:string='';
   public type:AlertTypeEnum=AlertTypeEnum.timed;
+  //+++ implement sound sets and sound configuration
   public beep:boolean=false;
 }
 

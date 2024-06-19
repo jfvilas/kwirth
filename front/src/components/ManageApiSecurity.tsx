@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
 import { ApiKey } from '../model/ApiKey';
-import { Cluster } from '../model/Cluster';
 const copy = require('clipboard-copy');
 
 interface IProps {

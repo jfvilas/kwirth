@@ -1,5 +1,7 @@
 export class Beep {
 
+    //+++ refactor Beep class to have static const with sounds
+    
     // mp3/wav converter to base64
     // https://dopiaza.org/tools/datauri/index.php
 

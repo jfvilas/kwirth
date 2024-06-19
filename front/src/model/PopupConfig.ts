@@ -1,5 +1,3 @@
-import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
-
 export class PopupConfig {
     title:string='';
     message:JSX.Element|undefined;
@@ -11,6 +9,4 @@ export class PopupConfig {
     cancel:boolean=false;
     originOnClose:(a:string)=>void = (a)=>{};
     onClose:(a:string|null)=>void = (a)=>{} ;
-    constructor () {
-    }
 }

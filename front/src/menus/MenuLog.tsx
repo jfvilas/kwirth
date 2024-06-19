@@ -11,7 +11,7 @@ interface IProps {
     selectedLog:LogObject;
     selectedLogIndex:number;
 }
-  
+
 const MenuLog: React.FC<any> = (props:IProps) => {
     const [subMenuReorg, setSubmenuReorgOpen] = React.useState(false)
     const [subMenuActions, setSubmenuActionsOpen] = React.useState(false)
