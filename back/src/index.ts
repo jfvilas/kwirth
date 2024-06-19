@@ -62,6 +62,9 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
       if (timestamp) event.timestamp=new Date();
       sendLines(ws,event,text);
     });
+    
+    //+++ all these options should be available to end users
+
     /**
      * Follow the log stream of the pod. Defaults to false.
      *
