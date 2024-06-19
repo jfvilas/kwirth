@@ -17,7 +17,12 @@ The first time you access Kwrith you must use the admin credentials, and Kwirth 
 The admin is the only user who can perform security related activities, like creating other users or managing API keys for enabling access to Kwirth from otrher Kwirth fontal apps.
 
 ### User security
-You can create, modify and delete users using "User security" menu option from the main Kwirth menu. If you are not an admin user you will not see this option.
+You can create, modify and delete users using "User security" menu option from the main Kwirth menu. If you are not an admin user you will not see this option. In the initial versions of Kwirth, only one admin user is possible, who is the responsible of creating all non-admin users you need. There is no more RBAC implemented than *being-an-admin* or *just-being-human*.
 
 ### API security
 You can create, modify and delete API keys using "API security" menu option from the main Kwirth menu. If you are not an admin user you will not see this option.
+
+API security is the mean you can use to give access to your Kwirth to users that work with another Kwirth. The diagram below explains how this works.
+
+>> create two-cluster diagram
+
