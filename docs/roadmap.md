@@ -5,4 +5,5 @@ We cite here some interesting capabilities that are missing today:
   - **Consolidated log object**. In addition to the ability to have config views with content that comes from more than one source cluster, it is desirable to create a log object (a tab, not a full config) in which you can consolidate logging from different source clusters.
   - **Non-root path**. In order to be able to share an ingress with other kubernetes services, it is desirable to have the abiity to configure Kwirth (front and API) for receiving requests in a non-root path, that is, something like 'http://your.dns.name/kwirth'.
   - **Starting logs**. When a user starts a log object, he should be able to decide how much logging info to receive from the started log: since pod started, previous pod log, only from now on...
+  - **Import/Export**, for the imp/exp process to be really useful, it should be desirable that the user could select what config views to export or import.
   
