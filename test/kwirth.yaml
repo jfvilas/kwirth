@@ -5,6 +5,7 @@ metadata:
   namespace: default
 data:
   admin: 'eyAicGFzc3dvcmQiOiAicGFzc3dvcmQiIH0='
+#  dev: 'eyAicGFzc3dvcmQiOiAicGFzc3dvcmQiIH0='
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -19,7 +20,7 @@ metadata:
   namespace: default
 rules:
   # "" indicates the core API group
-  - apiGroups: ['', 'apps', 'rbac.authorization.k8s.io', 'networking.k8s.io']
+  - apiGroups: ["", "apps", "rbac.authorization.k8s.io", "networking.k8s.io"]
     resources: ['*']
     verbs: ['*']
 ---
@@ -55,8 +56,8 @@ spec:
       serviceAccount: kwirth-sa
       containers:
         - name: kwirth
-          image: kwirth:latest
-          imagePullPolicy: Never
+          image: jfvilasoutlook/kwirth:latest
+          #imagePullPolicy: Never
           ports:
             - name: kwirth
               containerPort: 3883
@@ -68,18 +69,3 @@ spec:
             requests:
               cpu: 500m
               memory: 1Gi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: kwirth-svc
-  namespace: default
-spec:
-  selector:
-    app: kwirth
-  ports:
-    - name: kwirth-port
-      protocol: TCP
-      port: 3883
-      targetPort: 3883
-  type: ClusterIP
