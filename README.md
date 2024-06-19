@@ -24,7 +24,7 @@ Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirt
 kubectl apply -f https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master/test/kwirth.yaml
 ```
 
-If everithing is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging system. You can access Kwrith via your Kubernetes management sofware, via kubectl-port-forwarding, or even creating an ingress. By default, Kwirth listens on root path at port 3883.
+If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging system. You can access Kwrith via your Kubernetes management software, via kubectl-port-forwarding, or even creating an ingress. By default, Kwirth listens on root path at port 3883.
 
 If you have created a port forward by entering...
 
@@ -39,10 +39,10 @@ Kwirth is not Loki nor Grafana, Kwirth is not Elastic, Kwirth is not DataDog, Kw
 
 Kwirth just **shows the right logging information to the user that needs it**.
 
-It is important to undertand that Kwirth does not store any logging information, it is just a **log visualization and analyse tool**.
+It is important to understand that Kwirth does not store any logging information, it is just a **log visualization and analyse tool**.
 
 The architecture of Kwirth is the one depicted below.
 
 ![](https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master/docs/_media/kwirth-arch.png)
 
-There is only one pod with one only container needed to run Kwirth. Of course, you can create replicas and services and ingresses if you need to scale out, but, generally speaking, Kwirth has no computing needs, since the only function of the pod is receiveing log data and re-sending it to Kwirth front applications.
+There is only one pod with one only container needed to run Kwirth. Of course, you can create replicas and services and ingresses if you need to scale out, but, generally speaking, Kwirth has no computing needs, since the only function of the pod is receiving log data and re-sending it to Kwirth front applications.
