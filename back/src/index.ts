@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod } from '@kubernetes/client-node';
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod, LogOptions } from '@kubernetes/client-node';
 import { ConfigApi } from './api/ConfigApi';
 import { Secrets } from './tools/Secrets';
 import { ConfigMaps } from './tools/ConfigMaps';
@@ -52,16 +52,50 @@ const sendLines = (ws:WebSocket, event:any, source:string) => {
 }
 
 // get pod logs
-const getPodLog = async (namespace:string, podName:string, ws:any, timestamp:boolean) => {
+const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, timestamp:boolean) => {
   try {
     const logStream = new stream.PassThrough();
     logStream.on('data', (chunk:any) => {
       var text=chunk.toString('utf8');
       var event:any = {namespace:namespace, podName:podName};
+      //+++ kubernetes can provide timestamps if indicated on LogOptions object
       if (timestamp) event.timestamp=new Date();
       sendLines(ws,event,text);
     });
-    await k8sLog.log(namespace, podName, '', logStream,  { follow: true, pretty: false });
+    /**
+     * Follow the log stream of the pod. Defaults to false.
+     *
+    follow?: boolean;
+    /**
+     * If set, the number of bytes to read from the server before terminating the log output. This may not display a
+     * complete final line of logging, and may return slightly more or slightly less than the specified limit.
+     *
+    limitBytes?: number;
+    /**
+     * If true, then the output is pretty printed.
+     *
+    pretty?: boolean;
+    /**
+     * Return previous terminated container logs. Defaults to false.
+     *
+    previous?: boolean;
+    /**
+     * A relative time in seconds before the current time from which to show logs. If this value precedes the time a
+     * pod was started, only logs since the pod start will be returned. If this value is in the future, no logs will
+     * be returned. Only one of sinceSeconds or sinceTime may be specified.
+     *
+    sinceSeconds?: number;
+    /**
+     * If set, the number of lines from the end of the logs to show. If not specified, logs are shown from the creation
+     * of the container or sinceSeconds or sinceTime
+     *
+    tailLines?: number;
+    /**
+     * If true, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line of log output. Defaults to false.
+     *
+    timestamps?: boolean;
+    */
+    await k8sLog.log(namespace, podName, '', logStream,  { follow: true, pretty: false  });
   }
   catch (err:any) {
     console.error(err);
@@ -79,7 +113,8 @@ const watchPods = (apiPath:string, filter:any, ws:any, timestamp:boolean) => {
         const podName = obj.metadata.name;
         const podNamespace = obj.metadata.namespace;
         console.log(`${type}: ${podName}` );
-        getPodLog(podNamespace, podName, ws, timestamp);
+        //+++ in the near future add options to log a specific container, now is ''
+        getPodLog(podNamespace, podName, '', ws, timestamp);
       }
       else if (type === 'DELETED') {
         console.log(`Pod deleted` );
