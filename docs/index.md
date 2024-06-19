@@ -31,6 +31,10 @@ kubectl port-forward svc/kwirth-svc 3883
 
       ![Lens](./_media/pf-lens.png)
 
+    - With K9S. Just select the Kwirth pod and press **Caps+F**, then just accept (or change) the port sugegstions from K9s and navigate...
+
+      ![Lens](./_media/pf-k9s.png)
+
 
 3. **Using an Ingress**. It is the best option if you plan to access your Kwirth from Internet and if you also plan to share Kwirth with the development team in your corporate private network. For publishing Kwirth to be accesible from outside the cluster, you must create an Ingress. It is a pending job to enable Kwirth to listen in a non-root path, so you could share the Ingress object with other applications, but for the momment Kwirth only works at root path. Next sample is for publishing external access like this (of course, you can rewrite the target URL's in your reverse-proxy or in the Ingress, stripping part of the local path).
 
