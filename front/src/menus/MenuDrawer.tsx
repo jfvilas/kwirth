@@ -3,40 +3,55 @@ import { Divider, Drawer, Menu, MenuItem, MenuList } from "@mui/material"
 import { CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, VerifiedUser } from '@mui/icons-material';
 import { User } from '../model/User';
 
+enum MenuDrawerOption {
+    ConfigViewNew,
+    ConfigViewOpen,
+    ConfigViewSave,
+    ConfigViewSaveAs,
+    ConfigViewDelete,
+    ConfigViewImport,
+    ConfigViewExport,
+    ManageCluster,
+    UserSecurity,
+    ApiSecurity,
+    Exit
+}
 interface IProps {
-    optionSelected: (a:string) => {};
+    optionSelected: (opt:MenuDrawerOption) => {};
     uploadSelected: (a:any) => {};
     user:User;
   }
   
 const MenuDrawer: React.FC<any> = (props:IProps) => {
 
-    const optionSelected = (a:string) => {
-        props.optionSelected(a);
+    const optionSelected = (opt:MenuDrawerOption) => {
+        props.optionSelected(opt);
     }
 
     const menu=(
         <MenuList>
-            <MenuItem key='new' onClick={() => optionSelected('new')}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
-            <MenuItem key='open' onClick={() => optionSelected('open')}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
-            <MenuItem key='save' onClick={() => optionSelected('save')}><SaveTwoTone/>&nbsp;Save</MenuItem>
-            <MenuItem key='saveas' onClick={() => optionSelected('saveas')}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
-            <MenuItem key='delete' onClick={() => optionSelected('delete')}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
+            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.ConfigViewNew)}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
+            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.ConfigViewOpen)}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
+            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.ConfigViewSave)}><SaveTwoTone/>&nbsp;Save</MenuItem>
+            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.ConfigViewSaveAs)}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
+            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.ConfigViewDelete)}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
             <Divider/>
-            <MenuItem key='cfgexp' onClick={() => optionSelected('cfgexp')}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
+            <MenuItem key='cfgexp' onClick={() => optionSelected(MenuDrawerOption.ConfigViewExport)}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
             <MenuItem key='cfgimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new configs from file (and merge overwriting)</MenuItem>
-            { props.user.roles.includes('admin') && <>
-                <Divider/>
-                <MenuItem key='mc' onClick={() => optionSelected('mc')}><Edit/>&nbsp;Manage cluster list</MenuItem>
-                <MenuItem key='asec' onClick={() => optionSelected('asec')}><Key/>&nbsp;API Security</MenuItem>
-                <MenuItem key='usec' onClick={() => optionSelected('usec')}><Person />&nbsp;User security</MenuItem>
-            </>}
+            { props.user.roles.includes('admin') && 
+                <div>
+                    <Divider/>
+                    <MenuItem key='mc' onClick={() => optionSelected(MenuDrawerOption.ManageCluster)}><Edit/>&nbsp;Manage cluster list</MenuItem>
+                    <MenuItem key='asec' onClick={() => optionSelected(MenuDrawerOption.ApiSecurity)}><Key/>&nbsp;API Security</MenuItem>
+                    <MenuItem key='usec' onClick={() => optionSelected(MenuDrawerOption.UserSecurity)}><Person />&nbsp;User security</MenuItem>
+                </div>
+            }
             <Divider/>
-            <MenuItem key='exit' onClick={() => optionSelected('exit')}><ExitToApp />&nbsp;Exit Kwirth</MenuItem>
+            <MenuItem key='exit' onClick={() => optionSelected(MenuDrawerOption.Exit)}><ExitToApp />&nbsp;Exit Kwirth</MenuItem>
         </MenuList>
     );
     
     return menu;
 };
 
-export default MenuDrawer;
+export { MenuDrawer, MenuDrawerOption };

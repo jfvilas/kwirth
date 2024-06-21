@@ -1,12 +1,12 @@
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
-import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
+import { AppBar, Box, Button, Drawer, IconButton, Stack, SvgIconTypeMap, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
 import { Settings, Info, ArrowUpward, ArrowDownward, Clear, Menu, Person } from '@mui/icons-material';
 
 // model
 import { User } from './model/User';
-import { Alert } from './model/Alert';
+import { Alarm, AlarmType } from './model/Alarm';
 import { LogObject } from './model/LogObject';
 import { Cluster } from './model/Cluster';
 
@@ -17,8 +17,8 @@ import { PickListConfig } from './model/PickListConfig';
 import { PopupConfig } from './model/PopupConfig';
 
 // components
-import BlockingAlert from './components/BlockingAlert';
-import AlertConfig from './components/AlertConfig';
+import BlockingAlarm from './components/BlockingAlarm';
+import AlarmConfig from './components/AlarmConfig';
 import RenameLog from './components/RenameLog';
 import SaveConfig from './components/SaveConfig';
 import ManageApiSecurity from './components/ManageApiSecurity';
@@ -28,10 +28,9 @@ import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
 import Selector from './components/ResourceSelector';
-import MenuLog from './menus/MenuLog';
+import { MenuLog, MenuLogOption } from './menus/MenuLog';
 import LogContent from './components/LogContent';
-import MenuDrawer from './menus/MenuDrawer';
-
+import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer';
 
 const App: React.FC = () => {
   var backend='http://localhost:3883';
@@ -84,27 +83,26 @@ const App: React.FC = () => {
   const [anchorMenuLog, setAnchorMenuLog] = useState<null | HTMLElement>(null);
 
   // components
-  const [showAlertConfig, setShowAlertConfig]=useState<boolean>(false);
-  const [showBlockingAlert, setShowBlockingAlert]=useState<boolean>(false);
+  const [showAlarmConfig, setShowAlarmConfig]=useState<boolean>(false);
+  const [showBlockingAlarm, setShowBlockingAlarm]=useState<boolean>(false);
   const [showRenameLog, setShowRenameLog]=useState<boolean>(false);
   const [showManageClusters, setShowManageClusters]=useState<boolean>(false);
   const [showSaveConfig, setShowSaveConfig]=useState<boolean>(false);
   const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false);
   const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false);
-  const [blockingAlert, setBlockingAlert] = useState<Alert>();
+  const [blockingAlarm, setBlockingAlarm] = useState<Alarm>();
   const [configLoaded, setConfigLoaded] = useState<boolean>(false);
   const [configName, setConfigName] = useState('');
   const [showPickList, setShowPickList]=useState<boolean>(false);
   const [showPopup, setShowPopup]=useState<boolean>(false);
 
   useEffect ( () => {
-    //+++ implement admin role (enabling/disabling menu options)
-    //+++ implement role checking on backend
+    //+++ work on alarms and create and alarm manager
     //+++ when a config view is loaded all messages are received: alarms should not be in effect until everything is received
+    //+++ implement role checking on backend
     //+++ with ephemeral logs, content of 'messages' should be some info on alarms triggered, or even a dashboard
     //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
-    //+++ add navigation to tabs (to allow lots of tabs that will no fit into the browser)
-    //+++ decide wheter to hav collapsibility on teh resource selector (to maximize log space)
+    //+++ decide wheter to have collapsibility on the resource selector (to maximize log space)
     if (logged && !clustersRef.current) getClusters();
   });
 
@@ -220,20 +218,20 @@ const App: React.FC = () => {
       return;
     }
 
-    // review alerts
+    // review alarms
     if (log) {
-      for (var alert of log.alerts) {
-        if (text.includes(alert.expression)) {
-          if (alert.beep) {
+      for (var alarm of log.alarms) {
+        if (text.includes(alarm.expression)) {
+          if (alarm.beep) {
             Beep.beepError();
           }
           
-          if (alert.type==='blocking') {
-            setBlockingAlert(alert);
-            setShowBlockingAlert(true);
+          if (alarm.type===AlarmType.blocking) {
+            setBlockingAlarm(alarm);
+            setShowBlockingAlarm(true);
           }
           else {
-            // in the view action, implement scrollinto view for showing the message that caused the received alert
+            // in the view action, implement scrollinto view for showing the message that caused the received alarm
             const action = (snackbarId: SnackbarKey | undefined) => (
               <>
                 <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
@@ -246,11 +244,11 @@ const App: React.FC = () => {
             );
             var opts:any={
               anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
-              variant:alert.severity,
-              autoHideDuration:(alert.type==='timed'? 3000:null),
+              variant:alarm.severity,
+              autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
               action: action
             };
-            enqueueSnackbar(alert.message, opts);
+            enqueueSnackbar(alarm.message, opts);
           }
         }
       }
@@ -323,7 +321,7 @@ const App: React.FC = () => {
     setAnchorMenuLog(null);
   }
 
-  const onClickLogPauseResume = () => {
+  const onClickLogPause = () => {
     if (selectedLog) {
       if (selectedLog.paused) {
         selectedLog.paused=false;
@@ -345,65 +343,64 @@ const App: React.FC = () => {
     if (selectedLog) selectedLog.filter=event.target.value;
   }
 
-  const menuLogOptionSelected = (option: string) => {
-    //+++ convert literals to enumeration
+  const menuLogOptionSelected = (option: MenuLogOption) => {
     switch(option) {
-      case 'ml':
+      case MenuLogOption.LogOrganizeMoveLeft:
         if (selectedLog) {
           logs[selectedLogIndex]=logs[selectedLogIndex-1];
           logs[selectedLogIndex-1]=selectedLog;
           setLogs(logs);
         }
         break;
-      case 'mr':
+      case MenuLogOption.LogOrganizeMoveRight:
         if (selectedLog) {
           logs[selectedLogIndex]=logs[selectedLogIndex+1];
           logs[selectedLogIndex+1]=selectedLog;
           setLogs(logs);
         }
         break;
-      case 'ms':
+      case MenuLogOption.LogOrganizeMoveFirst:
         if (selectedLog) {
           logs.splice(selectedLogIndex, 1);
           logs.splice(0, 0, selectedLog);
           setLogs(logs);
         }
         break;  
-      case 'me':
+      case MenuLogOption.LogOrganizeMoveLast:
         if (selectedLog) {
           logs.splice(selectedLogIndex, 1);
           logs.push(selectedLog);
           setLogs(logs);
         }
         break;
-      case 'bn':
+      case MenuLogOption.LogOptionsBackground:
         if (selectedLog) selectedLog.showBackgroundNotification=!selectedLog.showBackgroundNotification;
         break;
-      case 'ts':
+      case MenuLogOption.LogOptionsTimestamp:
         if (selectedLog) selectedLog.addTimestamp=!selectedLog.addTimestamp;
         break;
-      case 'fa':
-        setShowAlertConfig(true);
+      case MenuLogOption.LogAlarmCreate:
+        setShowAlarmConfig(true);
         break;
-      case 'rl':
+      case MenuLogOption.LogOrganizeRename:
         setShowRenameLog(true);
         break;
-      case 'dl':
-        if (selectedLog) selectedLog.default=true;
+      case MenuLogOption.LogOrganizeDefault:
+        if (selectedLog) selectedLog.defaultLog=true;
         break;
-      case 'ls':
+      case MenuLogOption.LogActionsStart:
         onClickLogStart();
         break;
-      case 'lpr':
-        onClickLogPauseResume();
+      case MenuLogOption.LogActionsPause:
+        onClickLogPause();
         break;
-      case 'lstop':
+      case MenuLogOption.LogActionsStop:
         onClickLogStop();
         break;
-      case 'lr':
+      case MenuLogOption.LogActionsRemove:
         onClickLogRemove();
         break;
-      case 'manrestart':
+      case MenuLogOption.LogManageRestart:
         switch(selectedLog?.scope) {
           case 'cluster':
             break;
@@ -423,12 +420,12 @@ const App: React.FC = () => {
     for (var lo of logs) {
       var newlo = new LogObject();
       newlo.addTimestamp=lo.addTimestamp;
-      newlo.alerts=lo.alerts;
+      newlo.alarms=lo.alarms;
       newlo.cluster=lo.cluster;
       newlo.filter=lo.filter;
       newlo.namespace=lo.namespace;
       newlo.obj=lo.obj;
-      newlo.default=lo.default;
+      newlo.defaultLog=lo.defaultLog;
       newlo.paused=lo.paused;
       newlo.scope=lo.scope;
       newlo.showBackgroundNotification=lo.showBackgroundNotification;
@@ -442,7 +439,7 @@ const App: React.FC = () => {
   }
 
   const showNoConfigs = () => {
-    popup('Config management...',<Stack direction={'row'} alignItems={'center'}><Info  color='info' fontSize='large'/>&nbsp;You have no config stored in your personal Kwirth space</Stack>,true, false, false, false, false, false);
+    popupInfoOk('Config management','You have no config stored in your personal Kwirth space');
   }
 
   const loadConfig = async () => {
@@ -460,42 +457,42 @@ const App: React.FC = () => {
     setMessages([]);
   }
 
-  const menuConfigOptionSelected = async (option: string) => {
+  const menuConfigOptionSelected = async (option:MenuDrawerOption) => {
     setDrawerOpen(false);
     switch(option) {
-      case 'new':
+      case MenuDrawerOption.ConfigViewNew:
         clearLogs();
         setConfigName('untitled');
         break;
-      case 'save':
+      case MenuDrawerOption.ConfigViewSave:
         if (configName!=='' && configName!=='untitled')
           saveConfig(configName);
         else
           setShowSaveConfig(true);
         break;
-      case 'saveas':
+      case MenuDrawerOption.ConfigViewSaveAs:
         setShowSaveConfig(true);
         break;
-      case 'open':
+      case MenuDrawerOption.ConfigViewOpen:
         loadConfig();
         break;
-      case 'delete':
+      case MenuDrawerOption.ConfigViewDelete:
         var allConfigs:string[] = await (await fetch (`${backend}/store/${user?.id}/configviews`)).json();
         if (allConfigs.length===0)
           showNoConfigs();
         else
           pickList('Config delete...','Please, select the config you want to delete:',allConfigs,deleteConfigSelected);
         break;
-      case 'mc':
+      case MenuDrawerOption.ManageCluster:
         setShowManageClusters(true);
         break;
-      case 'asec':
+      case MenuDrawerOption.ApiSecurity:
         setShowApiSecurity(true);
         break;
-      case 'usec':
+      case MenuDrawerOption.UserSecurity:
         setShowUserSecurity(true);
         break;
-      case 'cfgexp':
+      case MenuDrawerOption.ConfigViewExport:
         var allConfigs:string[] = await (await fetch (`${backend}/store/${user?.id}/configviews`)).json();
         if (allConfigs.length===0)
           showNoConfigs();
@@ -508,10 +505,10 @@ const App: React.FC = () => {
           handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
         }
         break;
-      case 'cfgimp':
+      case MenuDrawerOption.ConfigViewImport:
         // nothing to do, the menuitem launches the handleUpload
         break;
-      case 'exit':
+      case MenuDrawerOption.Exit:
         setLogged(false);
         break;
     }
@@ -545,16 +542,16 @@ const App: React.FC = () => {
     }
   }
 
-  const alertConfigClosed= (alert:Alert) => {
-    setShowAlertConfig(false);
-    if (alert.expression) {
-        var alert=new Alert();
-        alert.expression=alert.expression;
-        alert.severity=alert.severity;
-        alert.message=alert.message;
-        alert.type=alert.type;
-        alert.beep=alert.beep;
-        selectedLog?.alerts.push(alert);
+  const alarmConfigClosed= (alarm:Alarm) => {
+    setShowAlarmConfig(false);
+    if (alarm.expression) {
+        var alarm=new Alarm();
+        alarm.expression=alarm.expression;
+        alarm.severity=alarm.severity;
+        alarm.message=alarm.message;
+        alarm.type=alarm.type;
+        alarm.beep=alarm.beep;
+        selectedLog?.alarms.push(alarm);
       }
   }
 
@@ -563,7 +560,7 @@ const App: React.FC = () => {
     if (newname!=null) {
       selectedLog!.name=newname;
       setLogs(logs);
-      //+++ set focus to recently renamed tab
+      setSelectedLogName(newname);
     }
   }
 
@@ -580,7 +577,8 @@ const App: React.FC = () => {
       setLogs(newlos);
       setConfigLoaded(true);
       setConfigName(cfgName);
-      //+++ move log focus the the log which has a 'default:true' in its properties
+      var defaultLog=newlos.find(l => l.defaultLog);
+      if (defaultLog) setSelectedLogName(defaultLog.name);
     }
   }
 
@@ -599,7 +597,10 @@ const App: React.FC = () => {
     setShowPickList(true);
   }
 
-  //+++ create convenient yes-no dialogs
+  const popupInfoOk = (title:string, msg:string, onClose:(a:string) => void = () => {} ) =>{
+    popup(title,<Stack direction={'row'} alignItems={'center'}><Info color='info' fontSize='large'/>&nbsp;{msg}</Stack>,true, false, false, false, false, false);
+  }
+
   const popup = (title:string, message:JSX.Element, ok:boolean, yes:boolean, yestoall:boolean, no:boolean, notoall:boolean, cancel:boolean, onClose:(a:string) => void = () => {} ) =>{
     var pc:PopupConfig=new PopupConfig();
     pc.title=title;
@@ -645,7 +646,7 @@ const App: React.FC = () => {
   }
 
   useEffect ( () => {
-    if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [search]);
 
   if (!logged) return (<>
@@ -662,7 +663,7 @@ const App: React.FC = () => {
       setSearchFirstPos(pos);
       setSearchLastPos(selectedLog!.messages.findLastIndex(m => m.includes(newsearch)));
       setSearchPos(pos);
-      if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 
@@ -670,7 +671,7 @@ const App: React.FC = () => {
     var pos=messages!.findIndex( (msg,index) => msg.includes(search) && index>searchPos);
     if (pos>=0) {
       setSearchPos(pos);
-      (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 
@@ -678,7 +679,7 @@ const App: React.FC = () => {
     var pos=messages!.findLastIndex( (msg,index) => msg.includes(search) && index<searchPos);
     if (pos>=0) {
       setSearchPos(pos);
-      (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' })
+      (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
 
@@ -718,7 +719,7 @@ const App: React.FC = () => {
                 </Stack>
             </>}
             
-            <Tabs value={selectedLogName} onChange={onChangeLogs}>
+            <Tabs value={selectedLogName} onChange={onChangeLogs} variant="scrollable" scrollButtons="auto">
               { logs.length>0 && logs.map(t => {
                   if (t.scope==='cluster')
                     return <Tab key={t.name} label='cluster' value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
@@ -737,8 +738,8 @@ const App: React.FC = () => {
         <LogContent messages={messages} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/>
       </Box>
 
-      { showAlertConfig && <AlertConfig onClose={alertConfigClosed} expression={filter}/> }
-      { showBlockingAlert && <BlockingAlert onClose={() => setShowBlockingAlert(false)} alert={blockingAlert} /> }
+      { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> }
+      { showBlockingAlarm && <BlockingAlarm onClose={() => setShowBlockingAlarm(false)} alarm={blockingAlarm} /> }
       { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
       { showSaveConfig && <SaveConfig onClose={saveConfigClosed} name={configName} /> }
       { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }

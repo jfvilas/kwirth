@@ -117,7 +117,7 @@ const watchPods = (apiPath:string, filter:any, ws:any, timestamp:boolean) => {
         const podName = obj.metadata.name;
         const podNamespace = obj.metadata.namespace;
         console.log(`${type}: ${podName}` );
-        //+++ in the near future add options to log a specific container, now is ''
+        //+++ in the near future add options to log a specific container, now container name is ''
         getPodLog(podNamespace, podName, '', ws, timestamp);
       }
       else if (type === 'DELETED') {

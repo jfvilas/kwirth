@@ -20,9 +20,9 @@ const LogContent: React.FC<any> = (props:IProps) => {
             .map((message, index) => {
               if (props.search!=='') {
                 if (index===props.searchPos)
-                  return <div key={index} ref={props.searchLineRef} dangerouslySetInnerHTML={{__html: message!.replaceAll(props.search,'<span style=\'background-color:#0000ff\'>'+props.search+'</span>')}}></div>;
+                  return <div key={index} ref={props.searchLineRef} dangerouslySetInnerHTML={{__html: message!.replaceAll(props.search,'<span style=\'background-color:#ee0000\'>'+props.search+'</span>')}}></div>;
                 else
-                  return <div key={index} ref={null} dangerouslySetInnerHTML={{__html: message!.replaceAll(props.search,'<span style=\'background-color:#ff0000\'>'+props.search+'</span>')}}></div>;
+                  return <div key={index} ref={null} dangerouslySetInnerHTML={{__html: message!.replaceAll(props.search,'<span style=\'background-color:#bbbbbb\'>'+props.search+'</span>')}}></div>;
               }
               else {
                 if (index===props.messages.length-1)

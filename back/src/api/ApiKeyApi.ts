@@ -1,13 +1,11 @@
-import express from 'express';
 import { ConfigMaps } from '../tools/ConfigMaps';
-import Guid from 'guid';
 import { ApiKey } from '../model/ApiKey';
-//import Semaphore from 'ts-semaphore';
+import express from 'express';
+import Guid from 'guid';
 
 export class ApiKeyApi {
   static apiKeys:ApiKey[]=[];
   configMaps:ConfigMaps;
-  //+++ review if semaphore is needed (static semaphore:Semaphore = new Semaphore(1);)
   public route = express.Router();
 
   constructor (configMaps:ConfigMaps) {

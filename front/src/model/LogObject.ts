@@ -1,4 +1,4 @@
-import { Alert } from "./Alert";
+import { Alarm } from "./Alarm";
 
 export class LogObject {
   public name: any;
@@ -8,12 +8,12 @@ export class LogObject {
   public obj:any;
   public ws:any=null;
   public messages:string[]=[];
-  public default:boolean=false;
+  public defaultLog:boolean=false;
   public paused:boolean=false;
   public pending:boolean=false;
   public started:boolean=false;
   public filter:string='';
   public addTimestamp:boolean=false;
   public showBackgroundNotification:boolean=true;
-  public alerts:Alert[]=[];
+  public alarms:Alarm[]=[];
 }

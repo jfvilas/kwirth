@@ -5,7 +5,7 @@ interface IProps {
     config:PopupConfig
 }
 
-const PickList: React.FC<any> = (props:IProps) => {
+const Popup: React.FC<any> = (props:IProps) => {
     return (
         <Dialog open={true}>
             <DialogTitle>
@@ -29,4 +29,4 @@ const PickList: React.FC<any> = (props:IProps) => {
         </Dialog>
     )
 }
-export default PickList;
+export default Popup;

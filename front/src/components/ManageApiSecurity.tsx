@@ -13,7 +13,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
   const [selectedKey, setSelectedKey] = useState<ApiKey|null>();
   const [description, setDescrition] = useState<string>('');
   const [expire, setExpire] = useState<string|null>('');
-  //+++ implement expire
+  //+++ implement expire with Date or epoch
   const getKeys = async () => {
     var response = await fetch(`${props.backend}/key`);
     var data = await response.json();

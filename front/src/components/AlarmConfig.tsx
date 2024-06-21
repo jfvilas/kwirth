@@ -6,11 +6,11 @@ interface IProps {
   expression:string;
 }
 
-const AlertConfig: React.FC<any> = (props:IProps) => {
+const AlarmConfig: React.FC<any> = (props:IProps) => {
   const [expr, setExpr] = useState(props.expression);
   const [severity, setSeverity] = useState('default');
   const [type, setType] = useState('timed');
-  const [message, setMessage] = useState('Alert received matching '+props.expression);
+  const [message, setMessage] = useState('Alarm received matching '+props.expression);
   const [beep, setBeep] = useState(false);
 
   const onChangeExpr = (event:ChangeEvent<HTMLInputElement>) => {
@@ -36,7 +36,7 @@ const AlertConfig: React.FC<any> = (props:IProps) => {
   return (
     <>
     <Dialog open={true} >
-    <DialogTitle>Create alert</DialogTitle>
+    <DialogTitle>Create alarm</DialogTitle>
     <DialogContent>
     <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
       <TextField value={expr} onChange={onChangeExpr} variant='standard'label='Expression'></TextField>
@@ -67,4 +67,4 @@ const AlertConfig: React.FC<any> = (props:IProps) => {
   );
 };
 
-export default AlertConfig;
+export default AlarmConfig;
