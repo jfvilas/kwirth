@@ -4,7 +4,7 @@ metadata:
   name: kwirth.users
   namespace: default
 data:
-  admin: 'eyAicGFzc3dvcmQiOiAicGFzc3dvcmQiIH0='
+  admin: 'eyAiaWQiOiJhZG1pbiIsICJwYXNzd29yZCI6ICJwYXNzd29yZCIsICJuYW1lIjogIk5pY2tsYXVzIFdpcnRoIiwgInJvbGVzIjogWyAiYWRtaW4iXSB9'
 ---
 apiVersion: v1
 kind: ServiceAccount

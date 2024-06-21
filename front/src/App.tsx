@@ -5,6 +5,7 @@ import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, T
 import { Settings, Info, ArrowUpward, ArrowDownward, Clear, Menu, Person } from '@mui/icons-material';
 
 // model
+import { User } from './model/User';
 import { Alert } from './model/Alert';
 import { LogObject } from './model/LogObject';
 import { Cluster } from './model/Cluster';
@@ -36,7 +37,7 @@ const App: React.FC = () => {
   var backend='http://localhost:3883';
   if ( process.env.NODE_ENV==='production') backend=window.location.protocol+'//'+window.location.host;
 
-  const [user, setUser] = useState<string>('');
+  const [user, setUser] = useState<User>();
   const [logged,setLogged]=useState(false);
   const [apiKey,setApiKey]=useState('');
 
@@ -128,13 +129,13 @@ const App: React.FC = () => {
 
     // get previously configured clusters
     var clusterList:Cluster[]=[];
-    var response = await fetch (`${backend}/store/${user}/clusters/list`, { headers:{Auhtorization:apiKey}});
+    var response = await fetch (`${backend}/store/${user?.id}/clusters/list`, { headers:{Auhtorization:apiKey}});
     if (response.status===200) {
       clusterList=JSON.parse (await response.json());
       clusterList=clusterList.filter (c => c.name!==srcCluster.name);
     }
     clusterList.push(srcCluster);
-    fetch (`${backend}/store/${user}/clusters/list`, {method:'POST', body:JSON.stringify(clusterList), headers:{'Content-Type':'application/json'}});
+    fetch (`${backend}/store/${user?.id}/clusters/list`, {method:'POST', body:JSON.stringify(clusterList), headers:{'Content-Type':'application/json'}});
     setClusters(clusterList);
   }
 
@@ -196,13 +197,12 @@ const App: React.FC = () => {
     if (log) {
       if (msg.timestamp) text=msg.timestamp.replace('T',' ').replace('Z','') + ' ' + text;
       log.messages.push(text);
-      console.log(log.messages.length);
-      console.log(messages.length);
 
       // if current log is displayed (focused), add message to the screen
       if (selectedLogRef.current === log.name) {
         if (!log.paused) {
-          setMessages((prev) => [...prev, text ]);
+          //setMessages((prev) => [...prev, text ]);
+          setMessages((prev) => log!.messages);
           if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
         }
       }
@@ -437,7 +437,7 @@ const App: React.FC = () => {
       newlos.push(newlo);
     }
     var payload=JSON.stringify(newlos);
-    fetch (`${backend}/store/${user}/configviews/${cfgName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+    fetch (`${backend}/store/${user?.id}/configviews/${cfgName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
     if (configName!==cfgName) setConfigName(cfgName);
   }
 
@@ -446,7 +446,7 @@ const App: React.FC = () => {
   }
 
   const loadConfig = async () => {
-    var allConfigs:string[] = await (await fetch (`${backend}/store/${user}/configviews`)).json();
+    var allConfigs:string[] = await (await fetch (`${backend}/store/${user?.id}/configviews`)).json();
     if (allConfigs.length===0)
       showNoConfigs();
     else
@@ -480,7 +480,7 @@ const App: React.FC = () => {
         loadConfig();
         break;
       case 'delete':
-        var allConfigs:string[] = await (await fetch (`${backend}/store/${user}/configviews`)).json();
+        var allConfigs:string[] = await (await fetch (`${backend}/store/${user?.id}/configviews`)).json();
         if (allConfigs.length===0)
           showNoConfigs();
         else
@@ -496,16 +496,16 @@ const App: React.FC = () => {
         setShowUserSecurity(true);
         break;
       case 'cfgexp':
-        var allConfigs:string[] = await (await fetch (`${backend}/store/${user}/configviews`)).json();
+        var allConfigs:string[] = await (await fetch (`${backend}/store/${user?.id}/configviews`)).json();
         if (allConfigs.length===0)
           showNoConfigs();
         else {
           var content:any={};
           for (var cfgName of allConfigs) {
-            var readCfg = await (await fetch (`${backend}/store/${user}/configviews/${cfgName}`)).json();
+            var readCfg = await (await fetch (`${backend}/store/${user?.id}/configviews/${cfgName}`)).json();
             content[cfgName]=JSON.parse(readCfg);
           }
-          handleDownload(JSON.stringify(content),`${user}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
+          handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
         }
         break;
       case 'cfgimp':
@@ -538,7 +538,7 @@ const App: React.FC = () => {
           var allConfigs=JSON.parse(e.target.result);
           for (var cfgName of Object.keys(allConfigs)) {
             var payload=JSON.stringify(allConfigs[cfgName]);
-            fetch (`${backend}/store/${user}/configviews/${cfgName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+            fetch (`${backend}/store/${user?.id}/configviews/${cfgName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
           }
         };
         reader.readAsText(file);
@@ -575,7 +575,7 @@ const App: React.FC = () => {
   const loadConfigSelected = async (cfgName:string) => {
     if (cfgName) {
       clearLogs();
-      var n = await (await fetch (`${backend}/store/${user}/configviews/${cfgName}`)).json();
+      var n = await (await fetch (`${backend}/store/${user?.id}/configviews/${cfgName}`)).json();
       var newlos=JSON.parse(n) as LogObject[];
       setLogs(newlos);
       setConfigLoaded(true);
@@ -585,7 +585,7 @@ const App: React.FC = () => {
   }
 
   const deleteConfigSelected = (cfgName:string) => {
-    if (cfgName) fetch (`${backend}/store/${user}/configviews/${cfgName}`, {method:'DELETE'});
+    if (cfgName) fetch (`${backend}/store/${user?.id}/configviews/${cfgName}`, {method:'DELETE'});
   }
 
   const pickList = (title:string, message:string, values:string[], onClose:(a:string) => void ) =>{
@@ -630,11 +630,11 @@ const App: React.FC = () => {
 
   const manageClustersClosed = (cc:Cluster[]) => {
     setShowManageClusters(false);
-    fetch (`${backend}/store/${user}/clusters/list`, {method:'POST', body:JSON.stringify(cc), headers:{'Content-Type':'application/json'}});
+    fetch (`${backend}/store/${user?.id}/clusters/list`, {method:'POST', body:JSON.stringify(cc), headers:{'Content-Type':'application/json'}});
     setClusters(cc);
   }
 
-  const onCloseLogin = (result:boolean, apiKey:string, user:string) => {
+  const onCloseLogin = (result:boolean, user:User) => {
     if (result) {
       setLogged(true); 
       setUser(user);
@@ -695,13 +695,13 @@ const App: React.FC = () => {
           <Typography variant="h6" component="div" sx={{mr:2}}>
               {configName}
           </Typography>
-          <Tooltip title={user} sx={{ mr:2 }}>
+          <Tooltip title={user?.id+'\n'+user?.name} sx={{ mr:2 }}>
               <Person/>
           </Tooltip>
         </Toolbar>
       </AppBar>
       <Drawer sx={{  flexShrink: 0,  '& .MuiDrawer-paper': { mt: '64px' }  }} anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <MenuDrawer optionSelected={menuConfigOptionSelected} uploadSelected={handleUpload} />
+        <MenuDrawer optionSelected={menuConfigOptionSelected} uploadSelected={handleUpload} user={user}/>
       </Drawer>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>

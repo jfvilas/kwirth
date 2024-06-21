@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Divider, Drawer, Menu, MenuItem, MenuList } from "@mui/material"
 import { CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, VerifiedUser } from '@mui/icons-material';
+import { User } from '../model/User';
 
 interface IProps {
     optionSelected: (a:string) => {};
     uploadSelected: (a:any) => {};
+    user:User;
   }
   
 const MenuDrawer: React.FC<any> = (props:IProps) => {
-    const [drawerOpen,setDrawerOpen]=useState(true);
 
     const optionSelected = (a:string) => {
         props.optionSelected(a);
@@ -24,10 +25,12 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
             <Divider/>
             <MenuItem key='cfgexp' onClick={() => optionSelected('cfgexp')}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
             <MenuItem key='cfgimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new configs from file (and merge overwriting)</MenuItem>
-            <Divider/>
-            <MenuItem key='mc' onClick={() => optionSelected('mc')}><Edit/>&nbsp;Manage cluster list</MenuItem>
-            <MenuItem key='asec' onClick={() => optionSelected('asec')}><Key/>&nbsp;API Security</MenuItem>
-            <MenuItem key='usec' onClick={() => optionSelected('usec')}><Person />&nbsp;User security</MenuItem>
+            { props.user.roles.includes('admin') && <>
+                <Divider/>
+                <MenuItem key='mc' onClick={() => optionSelected('mc')}><Edit/>&nbsp;Manage cluster list</MenuItem>
+                <MenuItem key='asec' onClick={() => optionSelected('asec')}><Key/>&nbsp;API Security</MenuItem>
+                <MenuItem key='usec' onClick={() => optionSelected('usec')}><Person />&nbsp;User security</MenuItem>
+            </>}
             <Divider/>
             <MenuItem key='exit' onClick={() => optionSelected('exit')}><ExitToApp />&nbsp;Exit Kwirth</MenuItem>
         </MenuList>

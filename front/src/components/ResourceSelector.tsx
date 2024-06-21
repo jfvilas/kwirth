@@ -128,7 +128,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             )}
           </Select>
         </FormControl>
-        <Button variant='contained' onClick={onAdd} sx={{ width:'4%'}}>ADD</Button>
+        <Button onClick={onAdd} sx={{ width:'4%'}}>ADD</Button>
       </Stack>
     </>);
 

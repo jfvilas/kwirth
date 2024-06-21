@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material';
+import { User } from '../model/User';
 
 interface IProps {
-  onClose:(result:boolean,apiKey:string, user:string) => {},
+  onClose:(result:boolean,user:User|null) => {},
   backend:string
 }
 
@@ -31,7 +32,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
         if (result.status===200) {
           setUser('');
           setPassword('');
-          props.onClose(true, await result.text(), user);
+          props.onClose(true, await result.json());
         }
         else {
           setUser('');
@@ -46,7 +47,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
         case 200:
           setUser('');
           setPassword('');
-          props.onClose(true, await result.text(), user);
+          props.onClose(true, await result.json());
           break;
         case 201:
           setNewPassword1('');
@@ -64,7 +65,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
       setPassword('');
     }
     else {
-      props.onClose(false,'', '');
+      props.onClose(false,null);
     }
   }
 

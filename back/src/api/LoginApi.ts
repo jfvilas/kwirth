@@ -24,7 +24,7 @@ export class LoginApi {
               user.apiKey=Guid.create().toString();
               users[req.body.user]=btoa(JSON.stringify(user));
               secrets.write('kwirth.users',users);
-              res.status(200).send(user.apiKey);
+              res.status(200).json(user);
             }
           } 
           else {
@@ -47,7 +47,10 @@ export class LoginApi {
             user.apiKey=Guid.create().toString();
             users[req.body.user]=btoa(JSON.stringify(user));
             secrets.write('kwirth.users',users);
-            res.status(200).send(users.apiKey);
+            var x:any={};
+            Object.assign(x,user);
+            delete x['password'];
+            res.status(200).json(x);
           }
           else {
             res.status(401).send('');

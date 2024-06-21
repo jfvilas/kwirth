@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
+import { User } from '../model/User';
 const copy = require('clipboard-copy');
 
 interface IProps {
@@ -9,9 +10,12 @@ interface IProps {
 
 const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   const [users, setUsers] = useState<[]>();
-  const [selectedUser, setSelectedUser] = useState<string|undefined>(undefined);
+  const [selectedUser, setSelectedUser] = useState<User|undefined>(undefined);
+
   const [id, setId] = useState<string>('');
+  const [name, setName] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [roles, setRoles] = useState<string>('');
   const [description, setDescription] = useState<string>('');
 
   const getUsers = async () => {
@@ -24,12 +28,14 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
     getUsers();
   },[]);
 
-  const onUserSelected = async (uselected:string) => {
-    setId(uselected);
-    setSelectedUser(uselected);
-    var data = await (await fetch(`${props.backend}/user/${uselected}`)).json();
-    setPassword(data.password);
-    setDescription(data.description);
+  const onUserSelected = async (uname:string) => {
+    setId(uname);
+    var data = await (await fetch(`${props.backend}/user/${uname}`)).json();
+    setSelectedUser(data);
+    setName(data.name||'');
+    setPassword(data.password||'');
+    setRoles(data.roles||'');
+    setDescription(data.description||'');
   }
 
   const onClickCopyPassword = () => {
@@ -37,20 +43,21 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   }
 
   const onClickSave= async () => {
+    var user={ id:id, password:password,description:description, roles:[] }
     if (selectedUser!==undefined) {
-      var user={ id:id, password:password,description:description }
-      await fetch(`${props.backend}/user/id`, {method:'PUT', body:JSON.stringify(user), headers:{'Content-Type':'application/json'}})
+      await fetch(`${props.backend}/user/${user.id}`, {method:'PUT', body:JSON.stringify(user), headers:{'Content-Type':'application/json'}})
     }
     else {
-      var user={ id:id, password:password,description:description }
       await fetch(`${props.backend}/user`, {method:'POST', body:JSON.stringify(user), headers:{'Content-Type':'application/json'}})
       setSelectedUser(undefined)
     }
     setSelectedUser(undefined)
     setId('')
+    setName('');
     setPassword('')
+    setRoles('');
     setDescription('')
-  await getUsers()
+    await getUsers()
   }
   
   const onClickNew= () => {
@@ -61,15 +68,19 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
       var pos = Math.random()*60;
       pwd+='ABCDEFGHJKMNOPQRSTUVWXYZabcdefghjkmnopqrstuvwxyz23456789.-#$'.substring(pos,pos+1);
     }
+    setName('');
     setPassword(pwd);
+    setRoles('');
     setDescription('');
   }
 
   const onClickDelete= async () => {
     if (selectedUser!==undefined) {
-      await fetch(`${props.backend}/user/${selectedUser}`, {method:'DELETE'});
+      await fetch(`${props.backend}/user/${selectedUser.id}`, {method:'DELETE'});
       setId('')
+      setName('');
       setPassword('')
+      setRoles('');
       setDescription('')
       getUsers();
     }
@@ -85,9 +96,11 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
           </List>
           { <>
             <Stack sx={{width:'50vh'}} spacing={1}>
-              <TextField value={id} onChange={(e) => setId(e.target.value)} variant='standard' label='Id'></TextField>
-              <TextField value={password} onChange={(e) => setPassword(e.target.value)} variant='standard' label='Password'></TextField>
-              <TextField value={description} onChange={(e) => setDescription(e.target.value)} variant='standard' label='Description'></TextField>
+            <TextField value={id} onChange={(e) => setId(e.target.value)} variant='standard' label='Id'></TextField>
+            <TextField value={name} onChange={(e) => setName(e.target.value)} variant='standard' label='Name'></TextField>
+            <TextField value={password} onChange={(e) => setPassword(e.target.value)} variant='standard' label='Password'></TextField>
+            <TextField value={roles} onChange={(e) => setRoles(e.target.value)} variant='standard' label='Roles'></TextField>
+            <TextField value={description} onChange={(e) => setDescription(e.target.value)} variant='standard' label='Description'></TextField>
             </Stack>
           </>}
         </Stack>
