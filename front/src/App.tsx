@@ -695,7 +695,7 @@ const App: React.FC = () => {
           <Typography variant="h6" component="div" sx={{mr:2}}>
               {configName}
           </Typography>
-          <Tooltip title={user?.id+'\n'+user?.name} sx={{ mr:2 }}>
+          <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}</div>} sx={{ mr:2 }}>
               <Person/>
           </Tooltip>
         </Toolbar>

@@ -43,7 +43,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   }
 
   const onClickSave= async () => {
-    var user={ id:id, password:password,description:description, roles:[] }
+    var user={ id:id, name:name, password:password, roles:roles, description:description }
     if (selectedUser!==undefined) {
       await fetch(`${props.backend}/user/${user.id}`, {method:'PUT', body:JSON.stringify(user), headers:{'Content-Type':'application/json'}})
     }
