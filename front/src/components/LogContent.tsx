@@ -26,7 +26,7 @@ const LogContent: React.FC<any> = (props:IProps) => {
               }
               else {
                 if (index===props.messages.length-1)
-                  return <><div key={index}>{message}</div><div key={-1} ref={props.lastLineRef} style={{ marginTop:'15px'}}>&nbsp;</div></>;
+                  return <><div key={index} ref={props.lastLineRef} >{message}</div><div key={-1} >&nbsp;</div></>;
                 else
                   return <div key={index}>{message}</div>;
               }

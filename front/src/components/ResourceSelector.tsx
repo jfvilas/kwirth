@@ -6,9 +6,9 @@ import { Cluster } from '../model/Cluster';
 import IconDaemonSetPng from'../icons/ds.png';
 import IconReplicaSetPng from'../icons/rs.png';
 import IconStatefulSetPng from'../icons/ss.png';
-const KIconReplicaSet = () => <Box component="img" sx={{ height: 24, width: 24 }} src={IconReplicaSetPng}/>;
-const KIconDaemonSet = () => <Box component="img" sx={{ height: 24, width: 24 }} src={IconDaemonSetPng}/>;
-const KIconStatefulSet = () => <Box component="img" sx={{ height: 24, width: 24 }} src={IconStatefulSetPng}/>;
+const KIconReplicaSet = () => <Box component="img" sx={{ height: 16, width: 16 }} src={IconReplicaSetPng}/>;
+const KIconDaemonSet = () => <Box component="img" sx={{ height: 16, width: 16 }} src={IconDaemonSetPng}/>;
+const KIconStatefulSet = () => <Box component="img" sx={{ height: 16, width: 16 }} src={IconStatefulSetPng}/>;
 
 interface IProps {
     onAdd:(resource:any) => {};
@@ -94,7 +94,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
 
     const selector = (<>
       <Stack direction='row' spacing={1} sx={{...props.sx}} alignItems='baseline'>
-        <FormControl variant='standard' sx={{ m: 1, minWidth: 200, width:'24%' }}>
+        <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'24%' }}>
           <InputLabel id='cluster'>Cluster</InputLabel>
           <Select labelId='cluster' value={selectedClusterName} onChange={onChangeCluster}>
             { props.clusters?.map( (value) => {
@@ -102,7 +102,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             })}
           </Select>
         </FormControl>
-        <FormControl variant='standard' sx={{ m: 1, minWidth: 200, width:'24%' }} disabled={selectedClusterName===''}>
+        <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'24%' }} disabled={selectedClusterName===''}>
           <InputLabel id='scope'>Scope</InputLabel>
           <Select labelId='scope' value={scope} onChange={onChangeScope} >
             { ['cluster','namespace','deployment'].map( (value:string) => {
@@ -110,7 +110,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             })}
           </Select>
         </FormControl>
-        <FormControl variant='standard' sx={{ m: 1, minWidth: 200, width:'24%' }} disabled={namespaceSelectDisabled}>
+        <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'24%' }} disabled={namespaceSelectDisabled}>
           <InputLabel id='namespace'>Namespace</InputLabel>
           <Select labelId='namespace' value={namespace} onChange={onChangeNamespace}>
             { namespaces.map( (value:string) => {
@@ -118,9 +118,9 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             })}
           </Select>
         </FormControl>
-        <FormControl variant="standard" sx={{ m: 1, minWidth: 200, width:'24%' }} disabled={resourceSelectDisabled}>
-          <InputLabel id="obj">Object</InputLabel>
-          <Select labelId="obj" value={resource} onChange={onChangeResource}>
+        <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'24%' }} disabled={resourceSelectDisabled}>
+          <InputLabel id='obj'>Object</InputLabel>
+          <Select labelId='obj' value={resource} onChange={onChangeResource}>
             { resources.map( (value:any) =>
               <MenuItem key={value.name} value={value.name}>
                 {value.type==='replica'? <KIconReplicaSet/>:value.type==='daemon'?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.name}

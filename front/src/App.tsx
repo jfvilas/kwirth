@@ -1,8 +1,8 @@
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
-import { AppBar, Box, Button, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, MenuItem, MenuList, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
-import { KeyboardArrowDown, Settings, Info, ArrowUpward, ArrowDownward, Clear, Beenhere, Rule, ExitToApp, Menu, Person, CreateNewFolderTwoTone, FileOpenTwoTone, SaveTwoTone, SaveAsTwoTone, DeleteTwoTone, ImportExport, Edit, Key } from '@mui/icons-material';
+import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
+import { Settings, Info, ArrowUpward, ArrowDownward, Clear, Menu, Person } from '@mui/icons-material';
 
 // model
 import { Alert } from './model/Alert';
@@ -26,7 +26,6 @@ import Popup from './components/Popup';
 import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
-//import MenuMain from './menus/MenuMain';
 import Selector from './components/ResourceSelector';
 import MenuLog from './menus/MenuLog';
 import LogContent from './components/LogContent';
@@ -43,7 +42,6 @@ const App: React.FC = () => {
 
   //navigation
   const [drawerOpen,setDrawerOpen]=useState(false);
-
   
   //+++ move picklist objects to a helper class
   const [pickListConfig, setPickListConfig] = useState<PickListConfig|null>(null);
@@ -82,7 +80,6 @@ const App: React.FC = () => {
   const [searchLastPos, setSearchLastPos] = useState<number>(-1);
 
   // menus
-  const [anchorMenuConfig, setAnchorMenuConfig] = useState<null | HTMLElement>(null);
   const [anchorMenuLog, setAnchorMenuLog] = useState<null | HTMLElement>(null);
 
   // components
@@ -102,6 +99,11 @@ const App: React.FC = () => {
   useEffect ( () => {
     //+++ implement admin role (enabling/disabling menu options)
     //+++ implement role checking on backend
+    //+++ when a config view is loaded all messages are received: alarms should not be in effect until everything is received
+    //+++ with ephemeral logs, content of 'messages' should be some info on alarms triggered, or even a dashboard
+    //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
+    //+++ add navigation to tabs (to allow lots of tabs that will no fit into the browser)
+    //+++ decide wheter to hav collapsibility on teh resource selector (to maximize log space)
     if (logged && !clustersRef.current) getClusters();
   });
 
@@ -126,18 +128,17 @@ const App: React.FC = () => {
 
     // get previously configured clusters
     var clusterList:Cluster[]=[];
-    var data=localStorage.getItem('kwirth.clusters');
-    if (data) clusterList=JSON.parse(data);
-    clusterList=clusterList.filter (c => c.name!==srcCluster.name);
-    for (var c of clusterList) {
-      if (c.source) delete c.source;
+    var response = await fetch (`${backend}/store/${user}/clusters/list`, { headers:{Auhtorization:apiKey}});
+    if (response.status===200) {
+      clusterList=JSON.parse (await response.json());
+      clusterList=clusterList.filter (c => c.name!==srcCluster.name);
     }
     clusterList.push(srcCluster);
-    localStorage.setItem('kwirth.clusters', JSON.stringify(clusterList));
+    fetch (`${backend}/store/${user}/clusters/list`, {method:'POST', body:JSON.stringify(clusterList), headers:{'Content-Type':'application/json'}});
     setClusters(clusterList);
   }
 
-  const onSelectorAdd = (selection:any) => {
+  const onResourceSelectorAdd = (selection:any) => {
     var logName=selection.namespace+"-"+selection.resource;
     if (selection.resource==='') logName=logName.substring(0,logName.length-1);
     if (selection.scope==='cluster') logName='cluster';
@@ -195,26 +196,28 @@ const App: React.FC = () => {
     if (log) {
       if (msg.timestamp) text=msg.timestamp.replace('T',' ').replace('Z','') + ' ' + text;
       log.messages.push(text);
+      console.log(log.messages.length);
+      console.log(messages.length);
+
+      // if current log is displayed (focused), add message to the screen
+      if (selectedLogRef.current === log.name) {
+        if (!log.paused) {
+          setMessages((prev) => [...prev, text ]);
+          if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+      }
+      else {
+        // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
+        if (log.showBackgroundNotification && !log.paused) {
+          log.pending=true;
+          setHighlightedLogs((prev)=> [...prev, log!]);
+          setLogs(logs);
+        }
+      }
     }
     else {
       console.log('log not found');
       return;
-    }
-
-    // if this log is displayed (focused), add message to the screen
-    if (selectedLogRef.current === log?.name) {
-      if (!log?.paused) {
-        setMessages( (prev) => [...prev, text ]);
-        if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
-      }
-    }
-    else {
-      // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-      if (log && log.showBackgroundNotification && !log.paused) {
-        log.pending=true;
-        setHighlightedLogs((prev)=> [...prev, log!]);
-        setLogs(logs);
-      }
     }
 
     // review alerts
@@ -342,40 +345,8 @@ const App: React.FC = () => {
     if (selectedLog) selectedLog.filter=event.target.value;
   }
 
-  const onChangeSearch = (event:ChangeEvent<HTMLInputElement>) => {
-    var newsearch=event.target.value;
-    if (newsearch!=='') {
-      var first=selectedLog!.messages.findIndex(m => m.includes(newsearch));
-      setSearchFirstPos(first);
-      setSearchLastPos(selectedLog!.messages.findLastIndex(m => m.includes(newsearch)));
-      setSearchPos(first);
-      if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    else {
-      if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ alignToTop:false, behavior: 'smooth', block: 'start' });
-    }
-    setSearch(newsearch);
-  }
-
-  const onClickSearchDown = () => {
-    var i=messages!.findIndex( (m,i) => m.includes(search) && i>searchPos);
-    if (i>=0) {
-      setSearchPos(i);
-      (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }
-
-  //+++ review whole functionality of search up/down and first finding regarding message positioning and highliting
-  const onClickSearchUp = () => {
-    var i=messages!.findLastIndex( (m,i) => m.includes(search) && i<searchPos);
-    if (i>=0) {
-      setSearchPos(i);
-      (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
-
   const menuLogOptionSelected = (option: string) => {
-    //+++ convert literals in enumeration
+    //+++ convert literals to enumeration
     switch(option) {
       case 'ml':
         if (selectedLog) {
@@ -432,11 +403,22 @@ const App: React.FC = () => {
       case 'lr':
         onClickLogRemove();
         break;
+      case 'manrestart':
+        switch(selectedLog?.scope) {
+          case 'cluster':
+            break;
+          case 'namespace':
+            break;
+          case 'deployment':
+            fetch (`${backend}/manage/${selectedLog.namespace}/${selectedLog.obj}`, {method:'POST', body:'', headers:{'Content-Type':'application/json'}});
+            break;
+        }
+        break;
     }
     setAnchorMenuLog(null);
   };
 
-  const saveConfig = (name:string) => {
+  const saveConfig = (cfgName:string) => {
     var newlos:LogObject[]=[];
     for (var lo of logs) {
       var newlo = new LogObject();
@@ -455,8 +437,8 @@ const App: React.FC = () => {
       newlos.push(newlo);
     }
     var payload=JSON.stringify(newlos);
-    fetch (`${backend}/store/${user}/${name}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
-    if (configName!==name) setConfigName(name);
+    fetch (`${backend}/store/${user}/configviews/${cfgName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+    if (configName!==cfgName) setConfigName(cfgName);
   }
 
   const showNoConfigs = () => {
@@ -464,7 +446,7 @@ const App: React.FC = () => {
   }
 
   const loadConfig = async () => {
-    var allConfigs:string[] = await (await fetch (`${backend}/store/${user}`)).json();
+    var allConfigs:string[] = await (await fetch (`${backend}/store/${user}/configviews`)).json();
     if (allConfigs.length===0)
       showNoConfigs();
     else
@@ -498,7 +480,7 @@ const App: React.FC = () => {
         loadConfig();
         break;
       case 'delete':
-        var allConfigs:string[] = await (await fetch (`${backend}/store/${user}`)).json();
+        var allConfigs:string[] = await (await fetch (`${backend}/store/${user}/configviews`)).json();
         if (allConfigs.length===0)
           showNoConfigs();
         else
@@ -514,14 +496,14 @@ const App: React.FC = () => {
         setShowUserSecurity(true);
         break;
       case 'cfgexp':
-        var allConfigs:string[] = await (await fetch (`${backend}/store/${user}`)).json();
+        var allConfigs:string[] = await (await fetch (`${backend}/store/${user}/configviews`)).json();
         if (allConfigs.length===0)
           showNoConfigs();
         else {
           var content:any={};
-          for (var cfg of allConfigs) {
-            var readCfg = await (await fetch (`${backend}/store/${user}/${cfg}`)).json();
-            content[cfg]=JSON.parse(readCfg);
+          for (var cfgName of allConfigs) {
+            var readCfg = await (await fetch (`${backend}/store/${user}/configviews/${cfgName}`)).json();
+            content[cfgName]=JSON.parse(readCfg);
           }
           handleDownload(JSON.stringify(content),`${user}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
         }
@@ -533,7 +515,6 @@ const App: React.FC = () => {
         setLogged(false);
         break;
     }
-    setAnchorMenuConfig(null);
   };
 
   const handleDownload = (content:string,filename:string,  mimeType:string='text/plain') => {
@@ -555,14 +536,13 @@ const App: React.FC = () => {
         const reader = new FileReader();
         reader.onload = (e:any) => {
           var allConfigs=JSON.parse(e.target.result);
-          for (var cfg of Object.keys(allConfigs)) {
-            var payload=JSON.stringify(allConfigs[cfg]);
-            fetch (`${backend}/store/${user}/${cfg}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+          for (var cfgName of Object.keys(allConfigs)) {
+            var payload=JSON.stringify(allConfigs[cfgName]);
+            fetch (`${backend}/store/${user}/configviews/${cfgName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
           }
         };
         reader.readAsText(file);
     }
-    setAnchorMenuConfig(null);
   }
 
   const alertConfigClosed= (alert:Alert) => {
@@ -592,20 +572,20 @@ const App: React.FC = () => {
     if (newname!=null) saveConfig(newname);
   }
 
-  const loadConfigSelected = async (a:string) => {
-    if (a) {
+  const loadConfigSelected = async (cfgName:string) => {
+    if (cfgName) {
       clearLogs();
-      var n = await (await fetch (`${backend}/store/${user}/${a}`)).json();
+      var n = await (await fetch (`${backend}/store/${user}/configviews/${cfgName}`)).json();
       var newlos=JSON.parse(n) as LogObject[];
       setLogs(newlos);
       setConfigLoaded(true);
-      setConfigName(a);
-      //+++ move log focus the the log which has a default check
+      setConfigName(cfgName);
+      //+++ move log focus the the log which has a 'default:true' in its properties
     }
   }
 
-  const deleteConfigSelected = (cfg:string) => {
-    if (cfg) fetch (`${backend}/store/${user}/${cfg}`, {method:'DELETE'});
+  const deleteConfigSelected = (cfgName:string) => {
+    if (cfgName) fetch (`${backend}/store/${user}/configviews/${cfgName}`, {method:'DELETE'});
   }
 
   const pickList = (title:string, message:string, values:string[], onClose:(a:string) => void ) =>{
@@ -650,7 +630,7 @@ const App: React.FC = () => {
 
   const manageClustersClosed = (cc:Cluster[]) => {
     setShowManageClusters(false);
-    localStorage.setItem('kwirth.clusters', JSON.stringify(cc));
+    fetch (`${backend}/store/${user}/clusters/list`, {method:'POST', body:JSON.stringify(cc), headers:{'Content-Type':'application/json'}});
     setClusters(cc);
   }
 
@@ -664,11 +644,43 @@ const App: React.FC = () => {
     }
   }
 
+  useEffect ( () => {
+    if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [search]);
+
   if (!logged) return (<>
     <div style={{ backgroundImage:`url('/front/turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
       <Login onClose={onCloseLogin} backend={backend}></Login>
     </div>
   </>);
+
+  const onChangeSearch = (event:ChangeEvent<HTMLInputElement>) => {
+    var newsearch=event.target.value;
+    setSearch(newsearch);
+    if (newsearch!=='') {
+      var pos=selectedLog!.messages.findIndex(m => m.includes(newsearch));
+      setSearchFirstPos(pos);
+      setSearchLastPos(selectedLog!.messages.findLastIndex(m => m.includes(newsearch)));
+      setSearchPos(pos);
+      if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  const onClickSearchDown = () => {
+    var pos=messages!.findIndex( (msg,index) => msg.includes(search) && index>searchPos);
+    if (pos>=0) {
+      setSearchPos(pos);
+      (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  const onClickSearchUp = () => {
+    var pos=messages!.findLastIndex( (msg,index) => msg.includes(search) && index<searchPos);
+    if (pos>=0) {
+      setSearchPos(pos);
+      (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
 
   return (<>
     <div>
@@ -693,8 +705,7 @@ const App: React.FC = () => {
       </Drawer>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
-        <div>
-          <Selector clusters={clusters} onAdd={onSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
+          <Selector clusters={clusters} onAdd={onResourceSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
 
           <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>
             { (logs.length>0) && <>
@@ -721,8 +732,6 @@ const App: React.FC = () => {
               }
             </Tabs>
           </Stack>
-
-        </div>
 
         { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} />}
         <LogContent messages={messages} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/>

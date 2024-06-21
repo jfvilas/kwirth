@@ -12,6 +12,7 @@ import { LoginApi } from './api/LoginApi';
 
 // HTTP server & websockets
 import WebSocket from 'ws';
+import { ManageApi } from './api/ManageApi';
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
@@ -189,6 +190,8 @@ const launch = (myNamespace:string) => {
   app.use(`/user`, ua.route);
   var la:UserApi = new LoginApi(secrets);
   app.use(`/login`, la.route);
+  var ma:ManageApi = new ManageApi(appsApi);
+  app.use(`/manage`, ma.route);
 
 
   // listen
