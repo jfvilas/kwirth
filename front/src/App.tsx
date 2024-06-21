@@ -671,72 +671,73 @@ const App: React.FC = () => {
   </>);
 
   return (<>
+    <div>
+      <AppBar position="sticky" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
+        <Toolbar>
+          <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setDrawerOpen(true)}>
+              <Menu />
+          </IconButton>
+          <Typography sx={{ ml:1,flexGrow: 1 }}>
+            KWirth
+          </Typography>
+          <Typography variant="h6" component="div" sx={{mr:2}}>
+              {configName}
+          </Typography>
+          <Tooltip title={user} sx={{ mr:2 }}>
+              <Person/>
+          </Tooltip>
+        </Toolbar>
+      </AppBar>
+      <Drawer sx={{  flexShrink: 0,  '& .MuiDrawer-paper': { mt: '64px' }  }} anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <MenuDrawer optionSelected={menuConfigOptionSelected} uploadSelected={handleUpload} />
+      </Drawer>
 
-    <AppBar position="sticky" elevation={0}  sx={{ zIndex: 99, height:'64px' }}>
-      <Toolbar>
-        <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setDrawerOpen(true)}>
-            <Menu />
-        </IconButton>
-        <Typography sx={{ ml:1,flexGrow: 1 }}>
-          KWirth
-        </Typography>
-        <Typography variant="h6" component="div" sx={{mr:2}}>
-            {configName}
-        </Typography>
-        <Tooltip title={user} sx={{ mr:2 }}>
-            <Person/>
-        </Tooltip>
-      </Toolbar>
-    </AppBar>
-    <Drawer sx={{  flexShrink: 0,  '& .MuiDrawer-paper': { mt: '64px' }  }} anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-      <MenuDrawer optionSelected={menuConfigOptionSelected} uploadSelected={handleUpload} />
-    </Drawer>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
+        <div>
+          <Selector clusters={clusters} onAdd={onSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
 
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
-      <div>
-        <Selector clusters={clusters} onAdd={onSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
+          <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>
+            { (logs.length>0) && <>
+                <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
+                  <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
+                  <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
+                  <Typography sx={{ ml:1 }}></Typography>
+                  <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
+                  <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton>
+                </Stack>
+            </>}
+            
+            <Tabs value={selectedLogName} onChange={onChangeLogs}>
+              { logs.length>0 && logs.map(t => {
+                  if (t.scope==='cluster')
+                    return <Tab key={t.name} label='cluster' value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                  else {
+                    if (t===selectedLog)
+                      return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                    else
+                      return <Tab key={t.name} label={t.name} value={t.name} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                  }
+                })
+              }
+            </Tabs>
+          </Stack>
 
-        <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>
-          { (logs.length>0) && <>
-              <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
-                <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
-                <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
-                <Typography sx={{ ml:1 }}></Typography>
-                <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
-                <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton>
-              </Stack>
-          </>}
-          
-          <Tabs value={selectedLogName} onChange={onChangeLogs}>
-            { logs.length>0 && logs.map(t => {
-                if (t.scope==='cluster')
-                  return <Tab key={t.name} label='cluster' value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                else {
-                  if (t===selectedLog)
-                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                  else
-                    return <Tab key={t.name} label={t.name} value={t.name} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                }
-              })
-            }
-          </Tabs>
-        </Stack>
+        </div>
 
-      </div>
+        { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} />}
+        <LogContent messages={messages} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/>
+      </Box>
 
-      { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} />}
-      <LogContent messages={messages} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/>
-    </Box>
-
-    { showAlertConfig && <AlertConfig onClose={alertConfigClosed} expression={filter}/> }
-    { showBlockingAlert && <BlockingAlert onClose={() => setShowBlockingAlert(false)} alert={blockingAlert} /> }
-    { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
-    { showSaveConfig && <SaveConfig onClose={saveConfigClosed} name={configName} /> }
-    { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
-    { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
-    { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
-    { pickListConfig!==null && <PickList config={pickListConfig}/> }
-    { popupConfig!==null && <Popup config={popupConfig}/> }    
+      { showAlertConfig && <AlertConfig onClose={alertConfigClosed} expression={filter}/> }
+      { showBlockingAlert && <BlockingAlert onClose={() => setShowBlockingAlert(false)} alert={blockingAlert} /> }
+      { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
+      { showSaveConfig && <SaveConfig onClose={saveConfigClosed} name={configName} /> }
+      { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
+      { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
+      { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
+      { pickListConfig!==null && <PickList config={pickListConfig}/> }
+      { popupConfig!==null && <Popup config={popupConfig}/> }    
+    </div>
   </>);
 };
 
