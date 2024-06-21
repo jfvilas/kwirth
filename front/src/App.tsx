@@ -1,8 +1,8 @@
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
-import { Box, Button, IconButton, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
-import { KeyboardArrowDown, Settings, Info, ArrowUpward, ArrowDownward, Clear } from '@mui/icons-material';
+import { AppBar, Box, Button, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, MenuItem, MenuList, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
+import { KeyboardArrowDown, Settings, Info, ArrowUpward, ArrowDownward, Clear, Beenhere, Rule, ExitToApp, Menu, Person, CreateNewFolderTwoTone, FileOpenTwoTone, SaveTwoTone, SaveAsTwoTone, DeleteTwoTone, ImportExport, Edit, Key } from '@mui/icons-material';
 
 // model
 import { Alert } from './model/Alert';
@@ -26,10 +26,11 @@ import Popup from './components/Popup';
 import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
-import MenuMain from './menus/MenuMain';
+//import MenuMain from './menus/MenuMain';
 import Selector from './components/ResourceSelector';
 import MenuLog from './menus/MenuLog';
 import LogContent from './components/LogContent';
+import MenuDrawer from './menus/MenuDrawer';
 
 
 const App: React.FC = () => {
@@ -39,6 +40,10 @@ const App: React.FC = () => {
   const [user, setUser] = useState<string>('');
   const [logged,setLogged]=useState(false);
   const [apiKey,setApiKey]=useState('');
+
+  //navigation
+  const [drawerOpen,setDrawerOpen]=useState(false);
+
   
   //+++ move picklist objects to a helper class
   const [pickListConfig, setPickListConfig] = useState<PickListConfig|null>(null);
@@ -455,7 +460,7 @@ const App: React.FC = () => {
   }
 
   const showNoConfigs = () => {
-    popup('Config management...',<Stack direction={'row'} alignItems={'center'}><Info  color='info' fontSize='large'/>&nbsp;You have no config stored in your local store</Stack>,true, false, false, false, false, false);
+    popup('Config management...',<Stack direction={'row'} alignItems={'center'}><Info  color='info' fontSize='large'/>&nbsp;You have no config stored in your personal Kwirth space</Stack>,true, false, false, false, false, false);
   }
 
   const loadConfig = async () => {
@@ -474,6 +479,7 @@ const App: React.FC = () => {
   }
 
   const menuConfigOptionSelected = async (option: string) => {
+    setDrawerOpen(false);
     switch(option) {
       case 'new':
         clearLogs();
@@ -663,23 +669,34 @@ const App: React.FC = () => {
       <Login onClose={onCloseLogin} backend={backend}></Login>
     </div>
   </>);
-  
+
   return (<>
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+
+    <AppBar position="sticky" elevation={0}  sx={{ zIndex: 99, height:'64px' }}>
+      <Toolbar>
+        <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setDrawerOpen(true)}>
+            <Menu />
+        </IconButton>
+        <Typography sx={{ ml:1,flexGrow: 1 }}>
+          KWirth
+        </Typography>
+        <Typography variant="h6" component="div" sx={{mr:2}}>
+            {configName}
+        </Typography>
+        <Tooltip title={user} sx={{ mr:2 }}>
+            <Person/>
+        </Tooltip>
+      </Toolbar>
+    </AppBar>
+    <Drawer sx={{  flexShrink: 0,  '& .MuiDrawer-paper': { mt: '64px' }  }} anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+      <MenuDrawer optionSelected={menuConfigOptionSelected} uploadSelected={handleUpload} />
+    </Drawer>
+
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
       <div>
-        <Stack direction='row' spacing={1} sx={{ ml:1}} alignItems='baseline' >
-          <Button onClick={(event) => setAnchorMenuConfig(event.currentTarget)} variant='contained' endIcon={<KeyboardArrowDown/>} >KWirth</Button>
-          { anchorMenuConfig!==null && <MenuMain optionSelected={menuConfigOptionSelected} onClose={() => setAnchorMenuConfig(null)} uploadSelected={handleUpload} anchorMenuConfig={anchorMenuConfig}/> }
+        <Selector clusters={clusters} onAdd={onSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
 
-          <Selector clusters={clusters} onAdd={onSelectorAdd}/>
-
-          <Stack direction={'column'} alignItems={'center'} alignSelf={'center'} paddingTop={3}>
-            <Typography fontSize={9} sx={{backgroundColor:'lightGray'}}>&nbsp;{user}&nbsp;</Typography>
-            <Typography fontSize={9} sx={{backgroundColor:'lightYellow'}}>&nbsp;{configName}&nbsp;</Typography>
-          </Stack>
-        </Stack>
-
-        <Stack direction={'row'} alignItems={'end'}>
+        <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>
           { (logs.length>0) && <>
               <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
                 <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>

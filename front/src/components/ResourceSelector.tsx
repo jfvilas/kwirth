@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Button, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent } from "@mui/material"
+import { Box, Button, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack } from "@mui/material"
 import { Cluster } from '../model/Cluster';
 
 // app icons 
@@ -13,6 +13,7 @@ const KIconStatefulSet = () => <Box component="img" sx={{ height: 24, width: 24 
 interface IProps {
     onAdd:(resource:any) => {};
     clusters:Cluster[];
+    sx:any;
 }
   
 const ResourceSelector: React.FC<any> = (props:IProps) => {
@@ -92,41 +93,43 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     }
 
     const selector = (<>
-      <FormControl variant='standard' sx={{ m: 1, minWidth: 200 }}>
-        <InputLabel id='cluster'>Cluster</InputLabel>
-        <Select labelId='cluster' value={selectedClusterName} onChange={onChangeCluster}>
-          { props.clusters?.map( (value) => {
-              return <MenuItem key={value.name} value={value.name}>{value.name}</MenuItem>
-          })}
-        </Select>
-      </FormControl>
-      <FormControl variant='standard' sx={{ m: 1, minWidth: 200 }} disabled={selectedClusterName===''}>
-        <InputLabel id='scope'>Scope</InputLabel>
-        <Select labelId='scope' value={scope} onChange={onChangeScope} >
-          { ['cluster','namespace','deployment'].map( (value:string) => {
-              return <MenuItem key={value} value={value}>{value}</MenuItem>
-          })}
-        </Select>
-      </FormControl>
-      <FormControl variant='standard' sx={{ m: 1, minWidth: 200 }} disabled={namespaceSelectDisabled}>
-        <InputLabel id='namespace'>Namespace</InputLabel>
-        <Select labelId='namespace' value={namespace} onChange={onChangeNamespace}>
-          { namespaces.map( (value:string) => {
-              return <MenuItem key={value} value={value}>{value}</MenuItem>
-          })}
-        </Select>
-      </FormControl>
-      <FormControl variant="standard" sx={{ m: 1, minWidth: 200 }} disabled={resourceSelectDisabled}>
-        <InputLabel id="obj">Object</InputLabel>
-        <Select labelId="obj" value={resource} onChange={onChangeResource}>
-          { resources.map( (value:any) =>
-            <MenuItem key={value.name} value={value.name}>
-              {value.type==='replica'? <KIconReplicaSet/>:value.type==='daemon'?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.name}
-            </MenuItem>
-          )}
-        </Select>
-      </FormControl>
-      <Button variant='contained' onClick={onAdd}>ADD</Button>
+      <Stack direction='row' spacing={1} sx={{...props.sx}} alignItems='baseline'>
+        <FormControl variant='standard' sx={{ m: 1, minWidth: 200, width:'24%' }}>
+          <InputLabel id='cluster'>Cluster</InputLabel>
+          <Select labelId='cluster' value={selectedClusterName} onChange={onChangeCluster}>
+            { props.clusters?.map( (value) => {
+                return <MenuItem key={value.name} value={value.name}>{value.name}</MenuItem>
+            })}
+          </Select>
+        </FormControl>
+        <FormControl variant='standard' sx={{ m: 1, minWidth: 200, width:'24%' }} disabled={selectedClusterName===''}>
+          <InputLabel id='scope'>Scope</InputLabel>
+          <Select labelId='scope' value={scope} onChange={onChangeScope} >
+            { ['cluster','namespace','deployment'].map( (value:string) => {
+                return <MenuItem key={value} value={value}>{value}</MenuItem>
+            })}
+          </Select>
+        </FormControl>
+        <FormControl variant='standard' sx={{ m: 1, minWidth: 200, width:'24%' }} disabled={namespaceSelectDisabled}>
+          <InputLabel id='namespace'>Namespace</InputLabel>
+          <Select labelId='namespace' value={namespace} onChange={onChangeNamespace}>
+            { namespaces.map( (value:string) => {
+                return <MenuItem key={value} value={value}>{value}</MenuItem>
+            })}
+          </Select>
+        </FormControl>
+        <FormControl variant="standard" sx={{ m: 1, minWidth: 200, width:'24%' }} disabled={resourceSelectDisabled}>
+          <InputLabel id="obj">Object</InputLabel>
+          <Select labelId="obj" value={resource} onChange={onChangeResource}>
+            { resources.map( (value:any) =>
+              <MenuItem key={value.name} value={value.name}>
+                {value.type==='replica'? <KIconReplicaSet/>:value.type==='daemon'?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.name}
+              </MenuItem>
+            )}
+          </Select>
+        </FormControl>
+        <Button variant='contained' onClick={onAdd} sx={{ width:'4%'}}>ADD</Button>
+      </Stack>
     </>);
 
     return selector;
