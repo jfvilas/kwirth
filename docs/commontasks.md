@@ -30,18 +30,21 @@ A typical view have this form:
 
 Where the content of the view is as follows:
 
-  - Filter.
-  - Search.
-  - Log objects.
+  - Filter. You can filter what info is shown on the log object (a tab in the view). Filters are the basis for the alarms.
+  - Search. Typical search capability for finding text in the log object
+  - Log objects. When you add a source object from the resel (by clicking the 'add' button), a new tab would be added to the view, with a default name automatically created depending on the scope and the source object. Tabs can be renamed once created, but their names must be unique.
   
 ### Alarming
-Closely...
+You can use Kwirth just as an alarming tool (or in addtion to yur logging needs). Alarming in Kwirth consists of:
+
+  - define expressions
+  - define alarm severity and behaviour
 
 ### Multi-cluster
-Closely...
+Is coming...
 
 ### User management
-Closely...
+Is coming...
 
 ### Use-Cases
-Closely...
+Are coming...
