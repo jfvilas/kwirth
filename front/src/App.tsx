@@ -20,7 +20,7 @@ import { PopupConfig } from './model/PopupConfig';
 import BlockingAlarm from './components/BlockingAlarm';
 import AlarmConfig from './components/AlarmConfig';
 import RenameLog from './components/RenameLog';
-import SaveConfig from './components/SaveConfig';
+import SaveView from './components/SaveView';
 import ManageApiSecurity from './components/ManageApiSecurity';
 import PickList from './components/PickList';
 import Popup from './components/Popup';
@@ -87,35 +87,39 @@ const App: React.FC = () => {
   const [showBlockingAlarm, setShowBlockingAlarm]=useState<boolean>(false);
   const [showRenameLog, setShowRenameLog]=useState<boolean>(false);
   const [showManageClusters, setShowManageClusters]=useState<boolean>(false);
-  const [showSaveConfig, setShowSaveConfig]=useState<boolean>(false);
+  const [showSaveView, setShowSaveView]=useState<boolean>(false);
   const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false);
   const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false);
   const [blockingAlarm, setBlockingAlarm] = useState<Alarm>();
-  const [configLoaded, setConfigLoaded] = useState<boolean>(false);
-  const [configName, setConfigName] = useState('');
+  const [viewLoaded, setViewLoaded] = useState<boolean>(false);
+  const [viewName, setViewName] = useState('');
   const [showPickList, setShowPickList]=useState<boolean>(false);
   const [showPopup, setShowPopup]=useState<boolean>(false);
 
   useEffect ( () => {
+    //+++ customize to deploy kwirth in any namespace (i thinks it should work just as is). default should be 'kwirth' or 'default' namespace, since the idea is to view logs of any other namespace
+    //+++ enable non-root path listenting
     //+++ work on alarms and create and alarm manager
-    //+++ when a config view is loaded all messages are received: alarms should not be in effect until everything is received
+    //+++ when a view is loaded all messages are received: alarms should not be in effect until everything is received
     //+++ implement role checking on backend
     //+++ with ephemeral logs, content of 'messages' should be some info on alarms triggered, or even a dashboard
     //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
     //+++ decide wheter to have collapsibility on the resource selector (to maximize log space)
+    //+++ make more user-friendly the login process (show messages on errors)
+    //+++ add an potion to restart kwirth (if image is latest this will update kwirth to the last version)
     if (logged && !clustersRef.current) getClusters();
   });
 
   useEffect ( () => {
     if (logged) {
-      setConfigLoaded(false);
+      setViewLoaded(false);
       if (logs.length>0) {
         for (var t of logs)
           startLog(t);
         onChangeLogs(null, logs[0].name);
       }
     }
-  }, [configLoaded]);
+  }, [viewLoaded]);
 
   const getClusters = async () => {
     // get current cluster
@@ -415,7 +419,7 @@ const App: React.FC = () => {
     setAnchorMenuLog(null);
   };
 
-  const saveConfig = (cfgName:string) => {
+  const saveView = (vwName:string) => {
     var newlos:LogObject[]=[];
     for (var lo of logs) {
       var newlo = new LogObject();
@@ -434,20 +438,20 @@ const App: React.FC = () => {
       newlos.push(newlo);
     }
     var payload=JSON.stringify(newlos);
-    fetch (`${backend}/store/${user?.id}/configviews/${cfgName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
-    if (configName!==cfgName) setConfigName(cfgName);
+    fetch (`${backend}/store/${user?.id}/views/${vwName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+    if (viewName!==vwName) setViewName(vwName);
   }
 
-  const showNoConfigs = () => {
-    popupInfoOk('Config management','You have no config stored in your personal Kwirth space');
+  const showNoViews = () => {
+    popupInfoOk('View management','You have no views stored in your personal Kwirth space');
   }
 
-  const loadConfig = async () => {
-    var allConfigs:string[] = await (await fetch (`${backend}/store/${user?.id}/configviews`)).json();
-    if (allConfigs.length===0)
-      showNoConfigs();
+  const loadView = async () => {
+    var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`)).json();
+    if (allViews.length===0)
+      showNoViews();
     else
-      pickList('Load config...','Please, select the config you want to load:',allConfigs,loadConfigSelected);
+      pickList('Load view...','Please, select the view you want to load:',allViews,loadViewSelected);
   }
 
   var clearLogs = () => {
@@ -457,31 +461,31 @@ const App: React.FC = () => {
     setMessages([]);
   }
 
-  const menuConfigOptionSelected = async (option:MenuDrawerOption) => {
+  const menuViewOptionSelected = async (option:MenuDrawerOption) => {
     setDrawerOpen(false);
     switch(option) {
-      case MenuDrawerOption.ConfigViewNew:
+      case MenuDrawerOption.ViewNew:
         clearLogs();
-        setConfigName('untitled');
+        setViewName('untitled');
         break;
-      case MenuDrawerOption.ConfigViewSave:
-        if (configName!=='' && configName!=='untitled')
-          saveConfig(configName);
+      case MenuDrawerOption.ViewSave:
+        if (viewName!=='' && viewName!=='untitled')
+          saveView(viewName);
         else
-          setShowSaveConfig(true);
+          setShowSaveView(true);
         break;
-      case MenuDrawerOption.ConfigViewSaveAs:
-        setShowSaveConfig(true);
+      case MenuDrawerOption.ViewSaveAs:
+        setShowSaveView(true);
         break;
-      case MenuDrawerOption.ConfigViewOpen:
-        loadConfig();
+      case MenuDrawerOption.ViewOpen:
+        loadView();
         break;
-      case MenuDrawerOption.ConfigViewDelete:
-        var allConfigs:string[] = await (await fetch (`${backend}/store/${user?.id}/configviews`)).json();
-        if (allConfigs.length===0)
-          showNoConfigs();
+      case MenuDrawerOption.ViewDelete:
+        var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`)).json();
+        if (allViews.length===0)
+          showNoViews();
         else
-          pickList('Config delete...','Please, select the config you want to delete:',allConfigs,deleteConfigSelected);
+          pickList('View delete...','Please, select the view you want to delete:',allViews,deleteViewSelected);
         break;
       case MenuDrawerOption.ManageCluster:
         setShowManageClusters(true);
@@ -492,20 +496,20 @@ const App: React.FC = () => {
       case MenuDrawerOption.UserSecurity:
         setShowUserSecurity(true);
         break;
-      case MenuDrawerOption.ConfigViewExport:
-        var allConfigs:string[] = await (await fetch (`${backend}/store/${user?.id}/configviews`)).json();
-        if (allConfigs.length===0)
-          showNoConfigs();
+      case MenuDrawerOption.ViewExport:
+        var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`)).json();
+        if (allViews.length===0)
+          showNoViews();
         else {
           var content:any={};
-          for (var cfgName of allConfigs) {
-            var readCfg = await (await fetch (`${backend}/store/${user?.id}/configviews/${cfgName}`)).json();
-            content[cfgName]=JSON.parse(readCfg);
+          for (var vwName of allViews) {
+            var readView = await (await fetch (`${backend}/store/${user?.id}/views/${vwName}`)).json();
+            content[vwName]=JSON.parse(readView);
           }
           handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
         }
         break;
-      case MenuDrawerOption.ConfigViewImport:
+      case MenuDrawerOption.ViewImport:
         // nothing to do, the menuitem launches the handleUpload
         break;
       case MenuDrawerOption.Exit:
@@ -532,10 +536,10 @@ const App: React.FC = () => {
     if (file) {
         const reader = new FileReader();
         reader.onload = (e:any) => {
-          var allConfigs=JSON.parse(e.target.result);
-          for (var cfgName of Object.keys(allConfigs)) {
-            var payload=JSON.stringify(allConfigs[cfgName]);
-            fetch (`${backend}/store/${user?.id}/configviews/${cfgName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+          var allViews=JSON.parse(e.target.result);
+          for (var vwName of Object.keys(allViews)) {
+            var payload=JSON.stringify(allViews[vwName]);
+            fetch (`${backend}/store/${user?.id}/views/${vwName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
           }
         };
         reader.readAsText(file);
@@ -564,26 +568,26 @@ const App: React.FC = () => {
     }
   }
 
-  const saveConfigClosed = (newname:string|null) => {
-    setShowSaveConfig(false);
-    if (newname!=null) saveConfig(newname);
+  const saveViewClosed = (newname:string|null) => {
+    setShowSaveView(false);
+    if (newname!=null) saveView(newname);
   }
 
-  const loadConfigSelected = async (cfgName:string) => {
-    if (cfgName) {
+  const loadViewSelected = async (vwName:string) => {
+    if (vwName) {
       clearLogs();
-      var n = await (await fetch (`${backend}/store/${user?.id}/configviews/${cfgName}`)).json();
+      var n = await (await fetch (`${backend}/store/${user?.id}/views/${vwName}`)).json();
       var newlos=JSON.parse(n) as LogObject[];
       setLogs(newlos);
-      setConfigLoaded(true);
-      setConfigName(cfgName);
+      setViewLoaded(true);
+      setViewName(vwName);
       var defaultLog=newlos.find(l => l.defaultLog);
       if (defaultLog) setSelectedLogName(defaultLog.name);
     }
   }
 
-  const deleteConfigSelected = (cfgName:string) => {
-    if (cfgName) fetch (`${backend}/store/${user?.id}/configviews/${cfgName}`, {method:'DELETE'});
+  const deleteViewSelected = (vwName:string) => {
+    if (vwName) fetch (`${backend}/store/${user?.id}/views/${vwName}`, {method:'DELETE'});
   }
 
   const pickList = (title:string, message:string, values:string[], onClose:(a:string) => void ) =>{
@@ -640,7 +644,7 @@ const App: React.FC = () => {
       setLogged(true); 
       setUser(user);
       setApiKey(apiKey);
-      setConfigName('untitled');
+      setViewName('untitled');
       clearLogs();
     }
   }
@@ -694,7 +698,7 @@ const App: React.FC = () => {
             KWirth
           </Typography>
           <Typography variant="h6" component="div" sx={{mr:2}}>
-              {configName}
+              {viewName}
           </Typography>
           <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}</div>} sx={{ mr:2 }}>
               <Person/>
@@ -702,7 +706,7 @@ const App: React.FC = () => {
         </Toolbar>
       </AppBar>
       <Drawer sx={{  flexShrink: 0,  '& .MuiDrawer-paper': { mt: '64px' }  }} anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <MenuDrawer optionSelected={menuConfigOptionSelected} uploadSelected={handleUpload} user={user}/>
+        <MenuDrawer optionSelected={menuViewOptionSelected} uploadSelected={handleUpload} user={user}/>
       </Drawer>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
@@ -741,7 +745,7 @@ const App: React.FC = () => {
       { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> }
       { showBlockingAlarm && <BlockingAlarm onClose={() => setShowBlockingAlarm(false)} alarm={blockingAlarm} /> }
       { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
-      { showSaveConfig && <SaveConfig onClose={saveConfigClosed} name={configName} /> }
+      { showSaveView && <SaveView onClose={saveViewClosed} name={viewName} /> }
       { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
       { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
       { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }

@@ -4,13 +4,13 @@ import { CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone
 import { User } from '../model/User';
 
 enum MenuDrawerOption {
-    ConfigViewNew,
-    ConfigViewOpen,
-    ConfigViewSave,
-    ConfigViewSaveAs,
-    ConfigViewDelete,
-    ConfigViewImport,
-    ConfigViewExport,
+    ViewNew,
+    ViewOpen,
+    ViewSave,
+    ViewSaveAs,
+    ViewDelete,
+    ViewImport,
+    ViewExport,
     ManageCluster,
     UserSecurity,
     ApiSecurity,
@@ -30,13 +30,13 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
 
     const menu=(
         <MenuList>
-            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.ConfigViewNew)}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
-            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.ConfigViewOpen)}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
-            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.ConfigViewSave)}><SaveTwoTone/>&nbsp;Save</MenuItem>
-            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.ConfigViewSaveAs)}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
-            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.ConfigViewDelete)}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
+            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.ViewNew)}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
+            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.ViewOpen)}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
+            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.ViewSave)}><SaveTwoTone/>&nbsp;Save</MenuItem>
+            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.ViewSaveAs)}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
+            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.ViewDelete)}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
             <Divider/>
-            <MenuItem key='cfgexp' onClick={() => optionSelected(MenuDrawerOption.ConfigViewExport)}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
+            <MenuItem key='cfgexp' onClick={() => optionSelected(MenuDrawerOption.ViewExport)}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
             <MenuItem key='cfgimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new configs from file (and merge overwriting)</MenuItem>
             { props.user.roles.includes('admin') && 
                 <div>

@@ -5,7 +5,7 @@ interface IProps {
     onClose:(a:string|null) => {},
     name:string
 }
-const SaveConfig: React.FC<any> = (props:IProps) => {
+const SaveView: React.FC<any> = (props:IProps) => {
     const [newname, setNewname] = useState(props.name);
 
     const onChangeNewname = (event:ChangeEvent<HTMLInputElement>) => {
@@ -15,7 +15,7 @@ const SaveConfig: React.FC<any> = (props:IProps) => {
     return (
         <Dialog open={true} disableRestoreFocus={true}>
             <DialogTitle>
-                Save config as...
+                Save view as...
             </DialogTitle>
             <DialogContent>
                 <DialogContentText>
@@ -32,4 +32,4 @@ const SaveConfig: React.FC<any> = (props:IProps) => {
     )
 }
 
-export default SaveConfig;
+export default SaveView;
