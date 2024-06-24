@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-jfvilas
+  namespace: default
+spec:
+  ingressClassName: nginx
+  # if you want to publish Kwirth securely you would need to add somethin glike this:
+  # tls:
+  # - hosts:
+  #   - www.kwirth-dns.com
+  #   secretName: www.kwirth-dns.com.tls
+  rules:
+  - host: localhost
+    http:
+      paths:
+        - path: /kwirth
+          pathType: Prefix
+          backend:
+            service:
+              name: kwirth-svc
+              port:
+                number: 3883

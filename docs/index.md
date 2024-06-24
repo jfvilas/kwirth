@@ -5,7 +5,7 @@ Kwirth is the final implementation of the idea of having a simple way to manage 
 
 You can access the source code [here](https://github.com/jfvilasPersonal/kwirth)
 
-## Installation
+## Get started
 Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirth to your cluster.
 
 ```bash

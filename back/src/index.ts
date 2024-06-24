@@ -170,10 +170,6 @@ wss.on('connection', (ws:any, req) => {
   });
 });
 
-// serve front application
-app.get('/', (req:any,res:any) => { res.redirect(`${rootPath}/front`) });
-app.use(`${rootPath}/front`, express.static('./dist/front'))
-
 const launch = (myNamespace:string) => {
   secrets = new Secrets(coreApi, myNamespace);
   configMaps = new ConfigMaps(coreApi, myNamespace);
@@ -204,6 +200,11 @@ const launch = (myNamespace:string) => {
 
 ////////////////////////////////////////////////////////////// START /////////////////////////////////////////////////////////
 console.log(`KWirth version is ${VERSION}`);
+
+// serve front application
+console.log(`SPA is available at: ${rootPath}/front`)
+app.get(`${rootPath}`, (req:any,res:any) => { res.redirect(`${rootPath}/front`) });
+app.use(`${rootPath}/front`, express.static('./dist/front'))
 
 getMyNamespace()
 .then ( (namespace) => {

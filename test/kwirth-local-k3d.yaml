@@ -59,7 +59,7 @@ spec:
           imagePullPolicy: Never
           env:
             - name: KWIRTH_ROOTPATH
-              value: '/kwirth/dev'
+              value: '/kwirth'
           ports:
             - name: kwirth
               containerPort: 3883

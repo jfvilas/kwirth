@@ -101,8 +101,8 @@ const App: React.FC = () => {
   const [showPopup, setShowPopup]=useState<boolean>(false);
 
   useEffect ( () => {
+    //+++ review initial message receive (just after start): only first ine is shown
     //+++ customize to deploy kwirth in any namespace (i thinks it should work just as is). default should be 'kwirth' or 'default' namespace, since the idea is to view logs of any other namespace
-    //+++ enable non-root path listenting
     //+++ work on alarms and create and alarm manager
     //+++ when a view is loaded all messages are received: alarms should not be in effect until everything is received
     //+++ implement role checking on backend
