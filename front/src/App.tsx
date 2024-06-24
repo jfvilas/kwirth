@@ -1,7 +1,7 @@
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
-import { AppBar, Box, Button, Drawer, IconButton, Stack, SvgIconTypeMap, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
+import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
 import { Settings, Info, ArrowUpward, ArrowDownward, Clear, Menu, Person } from '@mui/icons-material';
 
 // model
@@ -28,13 +28,17 @@ import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
 import Selector from './components/ResourceSelector';
-import { MenuLog, MenuLogOption } from './menus/MenuLog';
 import LogContent from './components/LogContent';
+import { MenuLog, MenuLogOption } from './menus/MenuLog';
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer';
 
 const App: React.FC = () => {
   var backend='http://localhost:3883';
+  const rootPath = window.__PUBLIC_PATH__ || '/';
+
   if ( process.env.NODE_ENV==='production') backend=window.location.protocol+'//'+window.location.host;
+  backend=backend+rootPath;
+  console.log(`Backend to use: ${backend}`);
 
   const [user, setUser] = useState<User>();
   const [logged,setLogged]=useState(false);
@@ -92,7 +96,7 @@ const App: React.FC = () => {
   const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false);
   const [blockingAlarm, setBlockingAlarm] = useState<Alarm>();
   const [viewLoaded, setViewLoaded] = useState<boolean>(false);
-  const [viewName, setViewName] = useState('');
+  const [currentViewName, setCurrentViewName] = useState('');
   const [showPickList, setShowPickList]=useState<boolean>(false);
   const [showPopup, setShowPopup]=useState<boolean>(false);
 
@@ -419,7 +423,7 @@ const App: React.FC = () => {
     setAnchorMenuLog(null);
   };
 
-  const saveView = (vwName:string) => {
+  const saveView = (viewName:string) => {
     var newlos:LogObject[]=[];
     for (var lo of logs) {
       var newlo = new LogObject();
@@ -438,8 +442,8 @@ const App: React.FC = () => {
       newlos.push(newlo);
     }
     var payload=JSON.stringify(newlos);
-    fetch (`${backend}/store/${user?.id}/views/${vwName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
-    if (viewName!==vwName) setViewName(vwName);
+    fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+    if (currentViewName!==viewName) setCurrentViewName(viewName);
   }
 
   const showNoViews = () => {
@@ -466,11 +470,11 @@ const App: React.FC = () => {
     switch(option) {
       case MenuDrawerOption.ViewNew:
         clearLogs();
-        setViewName('untitled');
+        setCurrentViewName('untitled');
         break;
       case MenuDrawerOption.ViewSave:
-        if (viewName!=='' && viewName!=='untitled')
-          saveView(viewName);
+        if (currentViewName!=='' && currentViewName!=='untitled')
+          saveView(currentViewName);
         else
           setShowSaveView(true);
         break;
@@ -502,9 +506,9 @@ const App: React.FC = () => {
           showNoViews();
         else {
           var content:any={};
-          for (var vwName of allViews) {
-            var readView = await (await fetch (`${backend}/store/${user?.id}/views/${vwName}`)).json();
-            content[vwName]=JSON.parse(readView);
+          for (var viewName of allViews) {
+            var readView = await (await fetch (`${backend}/store/${user?.id}/views/${viewName}`)).json();
+            content[viewName]=JSON.parse(readView);
           }
           handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
         }
@@ -537,9 +541,9 @@ const App: React.FC = () => {
         const reader = new FileReader();
         reader.onload = (e:any) => {
           var allViews=JSON.parse(e.target.result);
-          for (var vwName of Object.keys(allViews)) {
-            var payload=JSON.stringify(allViews[vwName]);
-            fetch (`${backend}/store/${user?.id}/views/${vwName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+          for (var viewName of Object.keys(allViews)) {
+            var payload=JSON.stringify(allViews[viewName]);
+            fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
           }
         };
         reader.readAsText(file);
@@ -573,21 +577,21 @@ const App: React.FC = () => {
     if (newname!=null) saveView(newname);
   }
 
-  const loadViewSelected = async (vwName:string) => {
-    if (vwName) {
+  const loadViewSelected = async (viewName:string) => {
+    if (viewName) {
       clearLogs();
-      var n = await (await fetch (`${backend}/store/${user?.id}/views/${vwName}`)).json();
+      var n = await (await fetch (`${backend}/store/${user?.id}/views/${viewName}`)).json();
       var newlos=JSON.parse(n) as LogObject[];
       setLogs(newlos);
       setViewLoaded(true);
-      setViewName(vwName);
+      setCurrentViewName(viewName);
       var defaultLog=newlos.find(l => l.defaultLog);
       if (defaultLog) setSelectedLogName(defaultLog.name);
     }
   }
 
-  const deleteViewSelected = (vwName:string) => {
-    if (vwName) fetch (`${backend}/store/${user?.id}/views/${vwName}`, {method:'DELETE'});
+  const deleteViewSelected = (viewName:string) => {
+    if (viewName) fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'DELETE'});
   }
 
   const pickList = (title:string, message:string, values:string[], onClose:(a:string) => void ) =>{
@@ -644,7 +648,7 @@ const App: React.FC = () => {
       setLogged(true); 
       setUser(user);
       setApiKey(apiKey);
-      setViewName('untitled');
+      setCurrentViewName('untitled');
       clearLogs();
     }
   }
@@ -654,7 +658,7 @@ const App: React.FC = () => {
   }, [search]);
 
   if (!logged) return (<>
-    <div style={{ backgroundImage:`url('/front/turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
+    <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
       <Login onClose={onCloseLogin} backend={backend}></Login>
     </div>
   </>);
@@ -698,7 +702,7 @@ const App: React.FC = () => {
             KWirth
           </Typography>
           <Typography variant="h6" component="div" sx={{mr:2}}>
-              {viewName}
+              {currentViewName}
           </Typography>
           <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}</div>} sx={{ mr:2 }}>
               <Person/>
@@ -745,7 +749,7 @@ const App: React.FC = () => {
       { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> }
       { showBlockingAlarm && <BlockingAlarm onClose={() => setShowBlockingAlarm(false)} alarm={blockingAlarm} /> }
       { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
-      { showSaveView && <SaveView onClose={saveViewClosed} name={viewName} /> }
+      { showSaveView && <SaveView onClose={saveViewClosed} name={currentViewName} /> }
       { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
       { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
       { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }

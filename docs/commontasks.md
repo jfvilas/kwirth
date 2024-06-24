@@ -35,16 +35,31 @@ Where the content of the view is as follows:
   - Log objects. When you add a source object from the resel (by clicking the 'add' button), a new tab would be added to the view, with a default name automatically created depending on the scope and the source object. Tabs can be renamed once created, but their names must be unique.
   
 ### Alarming
-You can use Kwirth just as an alarming tool (or in addtion to yur logging needs). Alarming in Kwirth consists of:
+You can use Kwirth just as an alarming tool (or in addtion to your logging needs). Alarming in Kwirth consists of:
 
-  - define expressions
-  - define alarm severity and behaviour
+  - Define **expressions** that are used to detect anomalies or exceptional situations you want to manage in a special way.
+  - Define alarm **severity** and **behaviour**, that is, how important a situation is and how to handle it.
 
-### Multi-cluster
-Is coming...
+To create an alarm...:
+
+  - Type in a filter in an started log object.
+  - Access the log menu (thru the settnigs icon in the tab header) and selet 'Create alarm from filter.
+  - Configure alarm settings:
+    - Expression
+    - Severity
+    - Behaviour
+    - Sound
+  - When yo click 'Save' the alarm is stored in your View and starts running.
+
+You can manage existent alarms for a log object by accessing the log object menu.
+
+>> log object menu
 
 ### User management
 Is coming...
 
-### Use-Cases
-Are coming...
+### Multi-cluster
+Is coming...
+
+### API key management
+Is coming...

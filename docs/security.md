@@ -19,6 +19,8 @@ The admin is the only user who can perform security related activities, like cre
 ### User security
 You can create, modify and delete users using "User security" menu option from the main Kwirth menu. If you are not an admin user you will not see this option. In the initial versions of Kwirth, only one admin user is possible, who is the responsible of creating all non-admin users you need. There is no more RBAC implemented than *being-an-admin* or *just-being-human*.
 
+In the near future we plan to add roles and specific object roles, so users could have different permission sets on different log objects or viewd. For example, a user could edit a view in a development cluster but have only viewing permissions on a production cluster.
+
 ### API security
 You can create, modify and delete API keys using "API security" menu option from the main Kwirth menu. If you are not an admin user you will not see this option.
 

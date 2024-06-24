@@ -57,6 +57,9 @@ spec:
         - name: kwirth
           image: jfvilasoutlook/kwirth:latest
           #imagePullPolicy: Never
+          env:
+            - name: KWIRTH_ROOTPATH
+              value: '/kwirth'
           ports:
             - name: kwirth
               containerPort: 3883

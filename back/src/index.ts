@@ -29,6 +29,7 @@ const k8sLog = new Log(kc);
 
 var secrets:Secrets;
 var configMaps:ConfigMaps;
+const rootPath = process.env.KWIRTH_ROOTPATH ||'/';
 
 // get the namespace where Kwirth is running on
 const getMyNamespace = async () => {
@@ -170,10 +171,8 @@ wss.on('connection', (ws:any, req) => {
 });
 
 // serve front application
-app.get('/', (req:any,res:any) => { res.redirect('/front') });
-app.use('/front', express.static('./dist/front'))
-
-
+app.get('/', (req:any,res:any) => { res.redirect(`${rootPath}/front`) });
+app.use(`${rootPath}/front`, express.static('./dist/front'))
 
 const launch = (myNamespace:string) => {
   secrets = new Secrets(coreApi, myNamespace);
@@ -181,17 +180,17 @@ const launch = (myNamespace:string) => {
 
   // serve config API
   var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi);
-  app.use(`/config`, va.route);
-  var aka:ApiKeyApi = new ApiKeyApi(configMaps);
-  app.use(`/key`, aka.route);
+  app.use(`${rootPath}/config`, va.route);
+  var ka:ApiKeyApi = new ApiKeyApi(configMaps);
+  app.use(`${rootPath}/key`, ka.route);
   var sa:StoreApi = new StoreApi(configMaps);
-  app.use(`/store`, sa.route);
+  app.use(`${rootPath}/store`, sa.route);
   var ua:UserApi = new UserApi(secrets);
-  app.use(`/user`, ua.route);
+  app.use(`${rootPath}/user`, ua.route);
   var la:UserApi = new LoginApi(secrets);
-  app.use(`/login`, la.route);
+  app.use(`${rootPath}/login`, la.route);
   var ma:ManageApi = new ManageApi(appsApi);
-  app.use(`/manage`, ma.route);
+  app.use(`${rootPath}/manage`, ma.route);
 
 
   // listen

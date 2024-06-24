@@ -1,4 +1,3 @@
-export {}
 
 declare global {
   interface Array<T> {
@@ -8,3 +7,11 @@ declare global {
     ): number
   }
 }
+
+declare global {
+  interface Window {
+    __PUBLIC_PATH__?: string;
+  }
+}
+
+export {}
