@@ -1,4 +1,5 @@
 * [Home](index)
+* [Installation](installation)
 * [How it works](how)
 * [Security](security)
 * [Change log](changelog)
