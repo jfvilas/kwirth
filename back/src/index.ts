@@ -30,7 +30,7 @@ const k8sLog = new Log(kc);
 
 var secrets:Secrets;
 var configMaps:ConfigMaps;
-const rootPath = process.env.KWIRTH_ROOTPATH ||'/';
+const rootPath = process.env.KWIRTH_ROOTPATH || '';
 
 // get the namespace where Kwirth is running on
 const getMyKubernetesData = async () => {

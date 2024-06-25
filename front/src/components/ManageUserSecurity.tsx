@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
 import { User } from '../model/User';
+import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
 const copy = require('clipboard-copy');
 
 interface IProps {
@@ -9,6 +10,7 @@ interface IProps {
 }
 
 const ManageUserSecurity: React.FC<any> = (props:IProps) => {
+  const [msgBox, setMsgBox] = useState(<></>);
   const [users, setUsers] = useState<[]>();
   const [selectedUser, setSelectedUser] = useState<User|undefined>(undefined);
 
@@ -74,7 +76,10 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
     setDescription('');
   }
 
-  const onClickDelete= async () => {
+  const onClickDelete= () => {
+    setMsgBox(MsgBoxYesNo('Delete user',`Are you sure you want to delete user ${selectedUser?.id}?`, setMsgBox, (a:MsgBoxButtons)=> a===MsgBoxButtons.Yes? onConfirmDelete() : {}));
+  }
+  const onConfirmDelete= async () => {
     if (selectedUser!==undefined) {
       await fetch(`${props.backend}/user/${selectedUser.id}`, {method:'DELETE'});
       setId('')
@@ -116,6 +121,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
         <Button onClick={() => props.onClose()}>CLOSE</Button>
       </DialogActions>
     </Dialog>
+    {msgBox}
   </>);
 };
 

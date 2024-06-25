@@ -1,7 +1,7 @@
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
-import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
+import { AppBar, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
 import { Settings, Info, ArrowUpward, ArrowDownward, Clear, Menu, Person } from '@mui/icons-material';
 
 // model
@@ -14,7 +14,6 @@ import { Cluster } from './model/Cluster';
 import { SnackbarKey, closeSnackbar, enqueueSnackbar } from 'notistack';
 import { Beep } from './tools/Beep';
 import { PickListConfig } from './model/PickListConfig';
-import { PopupConfig } from './model/PopupConfig';
 
 // components
 import BlockingAlarm from './components/BlockingAlarm';
@@ -23,7 +22,6 @@ import RenameLog from './components/RenameLog';
 import SaveView from './components/SaveView';
 import ManageApiSecurity from './components/ManageApiSecurity';
 import PickList from './components/PickList';
-import Popup from './components/Popup';
 import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
@@ -32,10 +30,11 @@ import LogContent from './components/LogContent';
 import { MenuLog, MenuLogOption } from './menus/MenuLog';
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer';
 import { VERSION } from './version';
+import { MsgBoxOk } from './tools/MsgBox';
 
 const App: React.FC = () => {
   var backend='http://localhost:3883';
-  const rootPath = window.__PUBLIC_PATH__ || '/';
+  const rootPath = window.__PUBLIC_PATH__ || '';
   if ( process.env.NODE_ENV==='production') backend=window.location.protocol+'//'+window.location.host;
   backend=backend+rootPath;
   console.log(`Backend to use: ${backend}`);
@@ -43,6 +42,8 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User>();
   const [logged,setLogged]=useState(false);
   const [apiKey,setApiKey]=useState('');
+  const [msgBox, setMsgBox] =useState(<></>);
+
 
   //navigation
   const [drawerOpen,setDrawerOpen]=useState(false);
@@ -50,10 +51,6 @@ const App: React.FC = () => {
   const [pickListConfig, setPickListConfig] = useState<PickListConfig|null>(null);
   var pickListConfigRef=useRef(pickListConfig);
   pickListConfigRef.current=pickListConfig;
-
-  const [popupConfig, setPopupConfig] = useState<PopupConfig|null>(null);
-  var popupConfigRef=useRef(popupConfig);
-  popupConfigRef.current=popupConfig;
 
   const [clusters, setClusters] = useState<Cluster[]>();
   const clustersRef = useRef(clusters);
@@ -96,21 +93,17 @@ const App: React.FC = () => {
   const [viewLoaded, setViewLoaded] = useState<boolean>(false);
   const [currentViewName, setCurrentViewName] = useState('');
   const [showPickList, setShowPickList]=useState<boolean>(false);
-  const [showPopup, setShowPopup]=useState<boolean>(false);
-
+  
   useEffect ( () => {
     //+++ move picklist objects to a helper class
-    //+++ move popup objects to a helper class
     //+++ review initial message receive (just after start): only first ine is shown
     //+++ customize to deploy kwirth in any namespace (i thinks it should work just as is). default should be 'kwirth' or 'default' namespace, since the idea is to view logs of any other namespace
     //+++ work on alarms and create and alarm manager
     //+++ when a view is loaded all messages are received: alarms should not be in effect until everything is received
     //+++ implement role checking on backend
-    //+++ with ephemeral logs, content of 'messages' should be some info on alarms triggered, or even a dashboard
+    //+++ with ephemeral logs, the content of 'messages' should be some info on alarms triggered, or even a dashboard
     //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
-    //+++ decide wheter to have collapsibility on the resource selector (to maximize log space)
-    //+++ make more user-friendly the login process (show messages on errors)
-    //+++ add an option to restart kwirth (if image is latest this will update kwirth to the lastest available version)
+    //+++ decide wheter to have collapsibility on the resource selector and the toolbar (to maximize log space)
     if (logged && !clustersRef.current) getClusters();
   });
 
@@ -447,7 +440,7 @@ const App: React.FC = () => {
   }
 
   const showNoViews = () => {
-    popupInfoOk('View management','You have no views stored in your personal Kwirth space');
+    setMsgBox(MsgBoxOk('View management','You have no views stored in your personal Kwirth space', setMsgBox));
   }
 
   const loadView = async () => {
@@ -608,36 +601,10 @@ const App: React.FC = () => {
     setShowPickList(true);
   }
 
-  const popupInfoOk = (title:string, msg:string, onClose:(a:string) => void = () => {} ) =>{
-    popup(title,<Stack direction={'row'} alignItems={'center'}><Info color='info' fontSize='large'/>&nbsp;{msg}</Stack>,true, false, false, false, false, false);
-  }
-
-  const popup = (title:string, message:JSX.Element, ok:boolean, yes:boolean, yestoall:boolean, no:boolean, notoall:boolean, cancel:boolean, onClose:(a:string) => void = () => {} ) =>{
-    var pc:PopupConfig=new PopupConfig();
-    pc.title=title;
-    pc.message=message;
-    pc.ok=ok;
-    pc.yes=yes;
-    pc.yestoall=yestoall;
-    pc.no=no;
-    pc.notoall=notoall;
-    pc.cancel=cancel;
-    pc.originOnClose=onClose;
-    pc.onClose=popupClosed;
-    setPopupConfig(pc);
-    setShowPopup(true);
-  }
-
   const pickListClosed = (a:string|null) => {
     setShowPickList(false);
     if (a!==null) pickListConfigRef?.current?.originOnClose(a);
     setPickListConfig(null);
-  }
-
-  const popupClosed = (a:string|null) => {
-    setShowPopup(false);
-    if (a!==null) popupConfigRef?.current?.originOnClose(a);
-    setPopupConfig(null);
   }
 
   const manageClustersClosed = (cc:Cluster[]) => {
@@ -762,7 +729,7 @@ const App: React.FC = () => {
       { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
       { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
       { pickListConfig!==null && <PickList config={pickListConfig}/> }
-      { popupConfig!==null && <Popup config={popupConfig}/> }    
+      { msgBox }
     </div>
   </>);
 };

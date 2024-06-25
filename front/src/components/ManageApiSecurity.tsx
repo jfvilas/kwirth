@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
 import { ApiKey } from '../model/ApiKey';
+import { MsgBoxButtons, MsgBoxYesNo, MsgBoxYesNoCancel } from '../tools/MsgBox';
 const copy = require('clipboard-copy');
 
 interface IProps {
@@ -9,6 +10,7 @@ interface IProps {
 }
 
 const ManageApiSecurity: React.FC<any> = (props:IProps) => {
+  const [msgBox, setMsgBox] = useState(<></>);
   const [keys, setKeys] = useState<ApiKey[]|null>();
   const [selectedKey, setSelectedKey] = useState<ApiKey|null>();
   const [description, setDescrition] = useState<string>('');
@@ -55,12 +57,17 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
     setExpire('');
   }
 
-  const onClickDelete= async () => {
+  const onClickDelete= () => {
+    setMsgBox(MsgBoxYesNo('Delete API Key',`Are you sure you want to delete API Key ${selectedKey?.key}?`, setMsgBox, (a:MsgBoxButtons)=> a===MsgBoxButtons.Yes? onConfirmDelete() : {}));
+  }
+
+  const onConfirmDelete= async () => {
     if (selectedKey!==undefined) {
       await fetch(`${props.backend}/key/${selectedKey?.key}`, {method:'DELETE'});
       setDescrition('');
       setExpire('');
       getKeys();
+      setSelectedKey(null);
     }
   }
 
@@ -91,6 +98,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
         <Button onClick={() => props.onClose()}>CLOSE</Button>
       </DialogActions>
     </Dialog>
+    {msgBox}
   </>);
 };
 

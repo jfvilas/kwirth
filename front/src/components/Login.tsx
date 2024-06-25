@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material';
 import { User } from '../model/User';
+import { MsgBoxOk, MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox';
 
 interface IProps {
   onClose:(result:boolean,user:User|null) => {},
@@ -8,6 +9,7 @@ interface IProps {
 }
 
 const AddCluster: React.FC<any> = (props:IProps) => {
+  const [msgBox, setMsgBox] = useState(<></>);
   const [user, setUser] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
   const [password, setPassword] = useState('');
@@ -35,6 +37,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
           props.onClose(true, await result.json());
         }
         else {
+          setMsgBox(MsgBoxOkWarning('Login',`Password could not be changesd.`, setMsgBox));
           setUser('');
           setPassword('');
           setChangingPassword(false);
@@ -54,6 +57,10 @@ const AddCluster: React.FC<any> = (props:IProps) => {
           setNewPassword2('');
           setChangingPassword(true);
           break;
+        case 401:
+          setMsgBox(MsgBoxOkError('Login',`You have netered invalid credentials.`, setMsgBox));
+          break;
+
       }
     }
   }
@@ -98,6 +105,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
         <Button onClick={onClickCancel}>CANCEL</Button>
       </DialogActions>
     </Dialog>
+    {msgBox}
   </>);
 };
 
