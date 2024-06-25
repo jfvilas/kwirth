@@ -7,6 +7,7 @@ rm -R dist/front
 mkdir dist/front
 
 # build front
+cp src/version.ts ../front/src/version.ts
 cd ../front
 npm run build
 cp -R build/ ../back/dist/front/

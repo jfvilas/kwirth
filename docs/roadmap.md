@@ -7,3 +7,4 @@ We cite here some interesting capabilities that are missing today:
   - **Starting logs**. When a user starts a log object, he should be able to decide how much logging info to receive from the started log: since pod started, previous pod log, only from now on...
   - **Import/Export**, for the imp/exp process to be really useful, it should be desirable that the user could select what config views to export or import.
   - **Metrics**, we plan to add basic Kubernetes metrics monitoring in the future by checking pod/node status.  
+  - ~~**Update self**, add an option to restart kwirth (if image is latest this will update kwirth to the lastest available version).~~

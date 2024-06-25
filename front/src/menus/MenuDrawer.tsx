@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Divider, Drawer, Menu, MenuItem, MenuList } from "@mui/material"
-import { CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, VerifiedUser } from '@mui/icons-material';
+import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, VerifiedUser } from '@mui/icons-material';
 import { User } from '../model/User';
 
 enum MenuDrawerOption {
@@ -13,6 +13,7 @@ enum MenuDrawerOption {
     ViewExport,
     ManageCluster,
     UserSecurity,
+    UpdateKwirth,
     ApiSecurity,
     Exit
 }
@@ -29,7 +30,7 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
     }
 
     const menu=(
-        <MenuList>
+        <MenuList sx={{height:'85vh'}}>
             <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.ViewNew)}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
             <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.ViewOpen)}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
             <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.ViewSave)}><SaveTwoTone/>&nbsp;Save</MenuItem>
@@ -44,6 +45,8 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
                     <MenuItem key='mc' onClick={() => optionSelected(MenuDrawerOption.ManageCluster)}><Edit/>&nbsp;Manage cluster list</MenuItem>
                     <MenuItem key='asec' onClick={() => optionSelected(MenuDrawerOption.ApiSecurity)}><Key/>&nbsp;API Security</MenuItem>
                     <MenuItem key='usec' onClick={() => optionSelected(MenuDrawerOption.UserSecurity)}><Person />&nbsp;User security</MenuItem>
+                    <Divider/>
+                    <MenuItem key='ukwirth' onClick={() => optionSelected(MenuDrawerOption.UpdateKwirth)}><BrowserUpdated />&nbsp;Update Kwirth</MenuItem>
                 </div>
             }
             <Divider/>

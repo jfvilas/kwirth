@@ -13,6 +13,7 @@ import { LoginApi } from './api/LoginApi';
 // HTTP server & websockets
 import WebSocket from 'ws';
 import { ManageApi } from './api/ManageApi';
+import { ManageKwirth } from './api/ManageKwirth';
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
@@ -32,14 +33,29 @@ var configMaps:ConfigMaps;
 const rootPath = process.env.KWIRTH_ROOTPATH ||'/';
 
 // get the namespace where Kwirth is running on
-const getMyNamespace = async () => {
+const getMyKubernetesData = async () => {
   var podName=process.env.HOSTNAME;
+  var depName='';
   const pods = await coreApi.listPodForAllNamespaces();
-  const pod = pods.body.items.find(p => p.metadata?.name === podName);
-  if (pod && pod.metadata?.namespace) 
-    return pod.metadata.namespace;
+  const pod = pods.body.items.find(p => p.metadata?.name === podName);  
+  if (pod && pod.metadata?.namespace) {
+
+    if (pod.metadata.ownerReferences) {
+      for (const owner of pod.metadata.ownerReferences) {
+        if (owner.kind === 'ReplicaSet') {
+          const rs = await appsApi.readNamespacedReplicaSet(owner.name, pod.metadata.namespace);
+          if (rs.body.metadata && rs.body.metadata.ownerReferences) {
+            for (const rsOwner of rs.body.metadata.ownerReferences) {
+              if (rsOwner.kind === 'Deployment') depName=rsOwner.name;
+            }
+          }
+        }
+      }
+    }
+    return { namespace: pod.metadata.namespace, deployment:depName};
+  }
   else
-    return 'default';
+    return { namespace:'default', deployment:'' };
 }
 
 // split a block of stdout in lines and send them
@@ -170,7 +186,7 @@ wss.on('connection', (ws:any, req) => {
   });
 });
 
-const launch = (myNamespace:string) => {
+const launch = (myNamespace:string, myDeployment:string) => {
   secrets = new Secrets(coreApi, myNamespace);
   configMaps = new ConfigMaps(coreApi, myNamespace);
 
@@ -187,6 +203,8 @@ const launch = (myNamespace:string) => {
   app.use(`${rootPath}/login`, la.route);
   var ma:ManageApi = new ManageApi(appsApi);
   app.use(`${rootPath}/manage`, ma.route);
+  var mk:ManageKwirth = new ManageKwirth(appsApi, myNamespace, myDeployment);
+  app.use(`${rootPath}/managekwirth`, mk.route);
 
 
   // listen
@@ -206,12 +224,13 @@ console.log(`SPA is available at: ${rootPath}/front`)
 app.get(`${rootPath}`, (req:any,res:any) => { res.redirect(`${rootPath}/front`) });
 app.use(`${rootPath}/front`, express.static('./dist/front'))
 
-getMyNamespace()
-.then ( (namespace) => {
-  console.log('Detected own namespace: '+namespace);
-  launch (namespace);
+getMyKubernetesData()
+.then ( (kwirthData) => {
+  console.log('Detected own namespace: '+kwirthData.namespace);
+  console.log('Detected own deployment: '+kwirthData.deployment);
+  launch (kwirthData.namespace, kwirthData.deployment);
 })
 .catch ( (err) => {
   console.log('Cannot get namespace, using "default"');
-  launch ('default');
+  launch ('default','');
 });

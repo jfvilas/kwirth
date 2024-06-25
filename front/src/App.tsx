@@ -31,11 +31,11 @@ import Selector from './components/ResourceSelector';
 import LogContent from './components/LogContent';
 import { MenuLog, MenuLogOption } from './menus/MenuLog';
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer';
+import { VERSION } from './version';
 
 const App: React.FC = () => {
   var backend='http://localhost:3883';
   const rootPath = window.__PUBLIC_PATH__ || '/';
-
   if ( process.env.NODE_ENV==='production') backend=window.location.protocol+'//'+window.location.host;
   backend=backend+rootPath;
   console.log(`Backend to use: ${backend}`);
@@ -47,12 +47,10 @@ const App: React.FC = () => {
   //navigation
   const [drawerOpen,setDrawerOpen]=useState(false);
   
-  //+++ move picklist objects to a helper class
   const [pickListConfig, setPickListConfig] = useState<PickListConfig|null>(null);
   var pickListConfigRef=useRef(pickListConfig);
   pickListConfigRef.current=pickListConfig;
 
-  //+++ move popup objects to a helper class
   const [popupConfig, setPopupConfig] = useState<PopupConfig|null>(null);
   var popupConfigRef=useRef(popupConfig);
   popupConfigRef.current=popupConfig;
@@ -101,6 +99,8 @@ const App: React.FC = () => {
   const [showPopup, setShowPopup]=useState<boolean>(false);
 
   useEffect ( () => {
+    //+++ move picklist objects to a helper class
+    //+++ move popup objects to a helper class
     //+++ review initial message receive (just after start): only first ine is shown
     //+++ customize to deploy kwirth in any namespace (i thinks it should work just as is). default should be 'kwirth' or 'default' namespace, since the idea is to view logs of any other namespace
     //+++ work on alarms and create and alarm manager
@@ -110,7 +110,7 @@ const App: React.FC = () => {
     //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
     //+++ decide wheter to have collapsibility on the resource selector (to maximize log space)
     //+++ make more user-friendly the login process (show messages on errors)
-    //+++ add an potion to restart kwirth (if image is latest this will update kwirth to the last version)
+    //+++ add an option to restart kwirth (if image is latest this will update kwirth to the lastest available version)
     if (logged && !clustersRef.current) getClusters();
   });
 
@@ -516,6 +516,9 @@ const App: React.FC = () => {
       case MenuDrawerOption.ViewImport:
         // nothing to do, the menuitem launches the handleUpload
         break;
+      case MenuDrawerOption.UpdateKwirth:
+        fetch (`${backend}/managekwirth/restart`);
+        break;
       case MenuDrawerOption.Exit:
         setLogged(false);
         break;
@@ -710,7 +713,12 @@ const App: React.FC = () => {
         </Toolbar>
       </AppBar>
       <Drawer sx={{  flexShrink: 0,  '& .MuiDrawer-paper': { mt: '64px' }  }} anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <MenuDrawer optionSelected={menuViewOptionSelected} uploadSelected={handleUpload} user={user}/>
+        <Stack direction={'column'}>
+          <MenuDrawer optionSelected={menuViewOptionSelected} uploadSelected={handleUpload} user={user}/>
+          <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>
+            Version: {VERSION}
+          </Typography>
+        </Stack>
       </Drawer>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
