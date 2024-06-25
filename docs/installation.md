@@ -11,7 +11,7 @@ kubectl apply -f https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master
 If you need to change default Kwirth configuration you may need to edit the YAML files in order to customize de deployment.
 
 ### Access Kwirth
-The default installation of Kwirth publishes Kwirth access via 'http://your.dns.name/kwirth'. But you can change this behaviour publishing Kwirth at eny other path. Let's see a sample deployeing creating (if needed) and creating an Ingress controller.
+The default installation of Kwirth publishes Kwirth access via 'http://your.dns.name/kwirth'. But you can change this behaviour publishing Kwirth at any other path. Let's see a sample deploy creating (if needed) an ingress controller and creating an ingress resource.
 
 #### 1. Deploy an Ingress controller (not needed if you already have one)
 >> Refer to Oberkorn IngressNginx installation
@@ -84,7 +84,7 @@ spec:
               memory: 1Gi
 ```
 
-Pay attention to the 'env' var names **KWIRTH_ROOTPATH**. This is the only thing you need to do.
+Pay attention to the 'env' var named **KWIRTH_ROOTPATH**. This is the only thing you need to do.
 
 #### 4. Access Kwirth
 So, finally, you should be able to access Kwirth at: http://your.dns.name/quirz. For example, if your are working with Minikube, microK8s, k3s or any kind of local Kubernetes, you would access Kwirth at:
