@@ -8,10 +8,10 @@ If you want an express setup of Kwirth, do not loose your time, just type-in thi
 kubectl apply -f https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master/test/kwirth.yaml
 ```
 
-If you need to change default Kwirth configuration you may need to edit the YAML files in order to customize de deployment.
+If you need to change default Kwirth configuration you may need to edit the YAML files in order to customize the deployment.
 
 ### Access Kwirth
-The default installation of Kwirth publishes Kwirth access via 'http://your.dns.name/kwirth'. But you can change this behaviour publishing Kwirth at any other path. Let's see a sample deploy creating (if needed) an ingress controller and creating an ingress resource.
+The default installation of Kwirth publishes Kwirth access via 'http://your.dns.name/kwirth'. But you can change this behaviour by publishing Kwirth at any other path. Let's see a sample deploy creating (if needed) an ingress controller and creating an ingress resource.
 
 #### 1. Deploy an Ingress controller (not needed if you already have one)
 >> Refer to Oberkorn IngressNginx installation
@@ -43,7 +43,7 @@ spec:
 Now Kwirth would be accessible at http://localhost/quirz (the ingress redirects requests to the Kwirth service at port 3883).
 
 #### 3. Configure Kwirth to be accesible
-For Kwirth to run properly in the path you selected (/quirz), the Kwirth pod must be aware of this situation, so you need to modify the Kwirth installation to indicate qhich is the path. The way you can do this is by modifying an environment variables at pod deployment.
+For Kwirth to be served properly in the path you selected (/quirz), the Kwirth pod must be aware of this situation, so you need to modify the Kwirth installation to indicate which is the path. The way you can do this is by modifying an environment variable at pod deployment.
 
 The deployment should look like this:
 
