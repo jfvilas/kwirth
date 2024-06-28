@@ -1,4 +1,4 @@
-import { Info, QuestionMark, Warning, Error } from '@mui/icons-material';
+import { Info, Warning, Error, HelpOutline } from '@mui/icons-material';
 import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography } from '@mui/material';
 import { Dispatch, SetStateAction } from 'react';
 
@@ -14,9 +14,9 @@ enum MsgBoxButtons {
 const MsgBoxOk = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Ok, <Info fontSize='large' color='info'/>, onResult);
 const MsgBoxOkWarning = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Ok, <Warning fontSize='large' color='warning'/>, onResult);
 const MsgBoxOkError = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Ok, <Error fontSize='large' color='error'/>, onResult);
-const MsgBoxOkCancel = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Ok+MsgBoxButtons.Cancel, <QuestionMark fontSize='large' color='primary'/>, onResult);
-const MsgBoxYesNo = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Yes+MsgBoxButtons.No, <QuestionMark fontSize='large' color='primary'/>, onResult);
-const MsgBoxYesNoCancel = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Yes+MsgBoxButtons.No+MsgBoxButtons.Cancel, <QuestionMark  fontSize='large' color='primary'/>, onResult);
+const MsgBoxOkCancel = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Ok+MsgBoxButtons.Cancel, <HelpOutline fontSize='large' color='primary'/>, onResult);
+const MsgBoxYesNo = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Yes+MsgBoxButtons.No, <HelpOutline fontSize='large' color='primary'/>, onResult);
+const MsgBoxYesNoCancel = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Yes+MsgBoxButtons.No+MsgBoxButtons.Cancel, <HelpOutline  fontSize='large' color='primary'/>, onResult);
 
 const MsgBoxShow = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, buttons:MsgBoxButtons, icon:JSX.Element, onResult?:(a:MsgBoxButtons)=>void) => {
     return (

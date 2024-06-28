@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
 import { Cluster } from '../model/Cluster';
+import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
 
 interface IProps {
   onClose:(clusters:Cluster[]) => {};
@@ -13,6 +14,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
   const [name, setName] = useState<string>('');
   const [url, setUrl] = useState<string>('');
   const [apiKey, setApiKey] = useState<string>('');
+  const [msgBox, setMsgBox] =useState(<></>);
 
   const onClusterSelected = (idSelected:string|null) => {
     var cluster=clusters?.find(k => k.id===idSelected);
@@ -50,7 +52,11 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
     setApiKey('');
   }
 
-  const onClickDelete= async () => {
+  const onClickDelete= () => {
+    setMsgBox(MsgBoxYesNo('Delete API Key',`Are you sure you want to delete API Key ${selectedCluster?.name}?`, setMsgBox, (a:MsgBoxButtons)=> a===MsgBoxButtons.Yes? onConfirmDelete() : {}));
+  }
+
+  const onConfirmDelete= async () => {
     if (selectedCluster) {
       clusters.splice(clusters?.findIndex(c => c.id===selectedCluster.id)!,1);
       setName('');
@@ -87,6 +93,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
         <Button onClick={() => props.onClose(clusters)}>CLOSE</Button>
       </DialogActions>
     </Dialog>
+    {msgBox}
   </>);
 };
 

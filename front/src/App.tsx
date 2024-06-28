@@ -1,8 +1,8 @@
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
-import { AppBar, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
-import { Settings, Info, ArrowUpward, ArrowDownward, Clear, Menu, Person } from '@mui/icons-material';
+import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
+import { Settings, ArrowUpward, ArrowDownward, Clear, Menu, Person } from '@mui/icons-material';
 
 // model
 import { User } from './model/User';
@@ -30,7 +30,7 @@ import LogContent from './components/LogContent';
 import { MenuLog, MenuLogOption } from './menus/MenuLog';
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer';
 import { VERSION } from './version';
-import { MsgBoxOk } from './tools/MsgBox';
+import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from './tools/MsgBox';
 
 const App: React.FC = () => {
   var backend='http://localhost:3883';
@@ -43,14 +43,6 @@ const App: React.FC = () => {
   const [logged,setLogged]=useState(false);
   const [apiKey,setApiKey]=useState('');
   const [msgBox, setMsgBox] =useState(<></>);
-
-
-  //navigation
-  const [drawerOpen,setDrawerOpen]=useState(false);
-  
-  const [pickListConfig, setPickListConfig] = useState<PickListConfig|null>(null);
-  var pickListConfigRef=useRef(pickListConfig);
-  pickListConfigRef.current=pickListConfig;
 
   const [clusters, setClusters] = useState<Cluster[]>();
   const clustersRef = useRef(clusters);
@@ -78,8 +70,14 @@ const App: React.FC = () => {
   const [searchFirstPos, setSearchFirstPos] = useState<number>(-1);
   const [searchLastPos, setSearchLastPos] = useState<number>(-1);
 
-  // menus
+  // menus/navigation
   const [anchorMenuLog, setAnchorMenuLog] = useState<null | HTMLElement>(null);
+  const [menuDrawerOpen,setMenuDrawerOpen]=useState(false);
+
+  // dialogs
+  const [pickListConfig, setPickListConfig] = useState<PickListConfig|null>(null);
+  var pickListConfigRef=useRef(pickListConfig);
+  pickListConfigRef.current=pickListConfig;
 
   // components
   const [showAlarmConfig, setShowAlarmConfig]=useState<boolean>(false);
@@ -118,6 +116,10 @@ const App: React.FC = () => {
     }
   }, [viewLoaded]);
 
+  useEffect ( () => {
+    if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [search]);
+
   const getClusters = async () => {
     // get current cluster
     var response = await fetch(`${backend}/config/cluster`, { headers:{Auhtorization:apiKey}});
@@ -155,7 +157,7 @@ const App: React.FC = () => {
     newLog.name=logName+index;
 
     logs.push(newLog);
-    setMessages(['Use log menu (settings button on tab) to start log reciever...']);
+    setMessages(['']);
     setLogs(logs);
     setSelectedLogName(newLog.name);
     setFilter('');
@@ -176,8 +178,9 @@ const App: React.FC = () => {
   }
 
   // process an event received via websocket
-  const processEvent = (event:any) => {
+  const processMessage = (event:any) => {
     // find the log who this web socket belongs to, and add the new message
+    console.log('received '+event)
     var log=logs.find(log => log.ws!==null && log.ws===event.target);
     if (!log) return;
     
@@ -193,64 +196,54 @@ const App: React.FC = () => {
     var text=msg.text;
     if (log.scope==='namespace' || log.scope==='cluster' ) text=msg.podName+'  '+text;
 
-    if (log) {
-      if (msg.timestamp) text=msg.timestamp.replace('T',' ').replace('Z','') + ' ' + text;
-      log.messages.push(text);
+    if (msg.timestamp) text=msg.timestamp.replace('T',' ').replace('Z','') + ' ' + text;
+    log.messages.push(text);
 
-      // if current log is displayed (focused), add message to the screen
-      if (selectedLogRef.current === log.name) {
-        if (!log.paused) {
-          //setMessages((prev) => [...prev, text ]);
-          setMessages((prev) => log!.messages);
-          if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
-        }
-      }
-      else {
-        // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-        if (log.showBackgroundNotification && !log.paused) {
-          log.pending=true;
-          setHighlightedLogs((prev)=> [...prev, log!]);
-          setLogs(logs);
-        }
+
+    // if current log is displayed (focused), add message to the screen
+    if (selectedLogRef.current === log.name) {
+      if (!log.paused) {
+        setMessages((prev) => [...prev, text ]);
+        //setMessages(log.messages);
+        if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
       }
     }
     else {
-      console.log('log not found');
-      return;
+      // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
+      if (log.showBackgroundNotification && !log.paused) {
+        log.pending=true;
+        setHighlightedLogs((prev)=> [...prev, log!]);
+        setLogs(logs);
+      }
     }
 
-    // review alarms
-    if (log) {
-      for (var alarm of log.alarms) {
-        if (text.includes(alarm.expression)) {
-          if (alarm.beep) {
-            Beep.beepError();
-          }
-          
-          if (alarm.type===AlarmType.blocking) {
-            setBlockingAlarm(alarm);
-            setShowBlockingAlarm(true);
-          }
-          else {
-            // in the view action, implement scrollinto view for showing the message that caused the received alarm
-            const action = (snackbarId: SnackbarKey | undefined) => (
-              <>
-                <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
-                  View
-                </Button>
-                <Button onClick={() => { closeSnackbar(snackbarId) }}>
-                  Dismiss
-                </Button>
-              </>
-            );
-            var opts:any={
-              anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
-              variant:alarm.severity,
-              autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
-              action: action
-            };
-            enqueueSnackbar(alarm.message, opts);
-          }
+    for (var alarm of log.alarms) {
+      if (text.includes(alarm.expression)) {
+        if (alarm.beep) Beep.beepError();
+        
+        if (alarm.type===AlarmType.blocking) {
+          setBlockingAlarm(alarm);
+          setShowBlockingAlarm(true);
+        }
+        else {
+          // in the view action, implement scrollinto view for showing the message that caused the received alarm
+          const action = (snackbarId: SnackbarKey | undefined) => (
+            <>
+              <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
+                View
+              </Button>
+              <Button onClick={() => { closeSnackbar(snackbarId) }}>
+                Dismiss
+              </Button>
+            </>
+          );
+          var opts:any={
+            anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
+            variant:alarm.severity,
+            autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
+            action: action
+          };
+          enqueueSnackbar(alarm.message, opts);
         }
       }
     }
@@ -266,24 +259,14 @@ const App: React.FC = () => {
     var ws = new WebSocket(cluster.url+'?key='+cluster.apiKey);
     log.ws=ws;
     ws.onopen = () => {
-      console.log(`Connected to the WebSocket: ${ws.url}`);
-      var payload={ scope:log?.scope, namespace:log?.namespace, deploymentName:log?.obj, timestamp:log?.addTimestamp};
-      if (log) {
-        ws.send(JSON.stringify(payload));
-        log.started=true;
-      }
-      else {
-        console.log('no loobject');
-      }
+      console.log(`WS connected: ${ws.url}`);
+      var payload={ scope:log.scope, namespace:log.namespace, deploymentName:log.obj, timestamp:log.addTimestamp};
+      ws.send(JSON.stringify(payload));
+      log.started=true;
     };
     
-    ws.onmessage = (event) => processEvent(event);
-
-    ws.onclose = (event) => {
-      console.log(`Disconnected from the WebSocket: ${ws.url}`);
-    };
-
-    setMessages([]);
+    ws.onmessage = (event) => processMessage(event);
+    ws.onclose = (event) => console.log(`WS disconnected: ${ws.url}`);
   }
 
   const onClickLogStart = () => {
@@ -297,12 +280,7 @@ const App: React.FC = () => {
     log.messages.push(endline);
     log.started=false;
     log.paused=false;
-    setPausedLogs(logs.filter(t => t.paused));
-    setMessages((prev) => [...prev,endline]);
-    if (!log) {
-      console.log('nto');
-    }
-    log.ws?.close();
+    if (log.ws) log.ws.close();
   }
 
   const onClickLogStop = () => {    
@@ -312,7 +290,7 @@ const App: React.FC = () => {
 
   const onClickLogRemove = () => {
     if (selectedLog) {
-      onClickLogStop();
+      stopLog(selectedLog);
       if (logs.length===1)
         setMessages([]);
       else
@@ -328,23 +306,24 @@ const App: React.FC = () => {
         selectedLog.paused=false;
         setMessages(selectedLog.messages);
         setPausedLogs(logs.filter(t => t.paused));
-        setLogs(logs);
+        // setLogs(logs);
       }
       else {
         selectedLog.paused=true;
         setPausedLogs( (prev) => [...prev, selectedLog!]);
-        setLogs(logs);
+        // setLogs(logs);
       }
     }
     setAnchorMenuLog(null);
   }
 
   const onChangeFilter = (event:ChangeEvent<HTMLInputElement>) => {
-    setFilter(event.target.value);
     if (selectedLog) selectedLog.filter=event.target.value;
+    setFilter(event.target.value);
   }
 
   const menuLogOptionSelected = (option: MenuLogOption) => {
+    setAnchorMenuLog(null);
     switch(option) {
       case MenuLogOption.LogOrganizeMoveLeft:
         if (selectedLog) {
@@ -413,28 +392,27 @@ const App: React.FC = () => {
         }
         break;
     }
-    setAnchorMenuLog(null);
   };
 
   const saveView = (viewName:string) => {
-    var newlos:LogObject[]=[];
-    for (var lo of logs) {
-      var newlo = new LogObject();
-      newlo.addTimestamp=lo.addTimestamp;
-      newlo.alarms=lo.alarms;
-      newlo.cluster=lo.cluster;
-      newlo.filter=lo.filter;
-      newlo.namespace=lo.namespace;
-      newlo.obj=lo.obj;
-      newlo.defaultLog=lo.defaultLog;
-      newlo.paused=lo.paused;
-      newlo.scope=lo.scope;
-      newlo.showBackgroundNotification=lo.showBackgroundNotification;
-      newlo.started=lo.started;
-      newlo.name=lo.name;
-      newlos.push(newlo);
+    var newLogs:LogObject[]=[];
+    for (var log of logs) {
+      var newLog = new LogObject();
+      newLog.addTimestamp=log.addTimestamp;
+      newLog.alarms=log.alarms;
+      newLog.cluster=log.cluster;
+      newLog.filter=log.filter;
+      newLog.namespace=log.namespace;
+      newLog.obj=log.obj;
+      newLog.defaultLog=log.defaultLog;
+      newLog.paused=log.paused;
+      newLog.scope=log.scope;
+      newLog.showBackgroundNotification=log.showBackgroundNotification;
+      newLog.started=log.started;
+      newLog.name=log.name;
+      newLogs.push(newLog);
     }
-    var payload=JSON.stringify(newlos);
+    var payload=JSON.stringify(newLogs);
     fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
     if (currentViewName!==viewName) setCurrentViewName(viewName);
   }
@@ -451,7 +429,7 @@ const App: React.FC = () => {
       pickList('Load view...','Please, select the view you want to load:',allViews,loadViewSelected);
   }
 
-  var clearLogs = () => {
+  const clearLogs = () => {
     for (var t of logs)
       stopLog(t);
     setLogs([]);
@@ -459,7 +437,7 @@ const App: React.FC = () => {
   }
 
   const menuViewOptionSelected = async (option:MenuDrawerOption) => {
-    setDrawerOpen(false);
+    setMenuDrawerOpen(false);
     switch(option) {
       case MenuDrawerOption.ViewNew:
         clearLogs();
@@ -518,6 +496,15 @@ const App: React.FC = () => {
     }
   };
 
+  const deleteViewSelected = (viewName:string) => {
+    setMsgBox(MsgBoxYesNo('Delete view',`Are you ure you want to delete view ${viewName}`,setMsgBox, (button) => {
+      if (button===MsgBoxButtons.Yes) {
+        fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'DELETE'});
+        setCurrentViewName('');
+      }
+    }));
+  }
+
   const handleDownload = (content:string,filename:string,  mimeType:string='text/plain') => {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -534,19 +521,19 @@ const App: React.FC = () => {
   const handleUpload = (event:any) => {
     const file = event.target.files[0];
     if (file) {
-        const reader = new FileReader();
-        reader.onload = (e:any) => {
-          var allViews=JSON.parse(e.target.result);
-          for (var viewName of Object.keys(allViews)) {
-            var payload=JSON.stringify(allViews[viewName]);
-            fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
-          }
-        };
-        reader.readAsText(file);
+      const reader = new FileReader();
+      reader.onload = (e:any) => {
+        var allViews=JSON.parse(e.target.result);
+        for (var viewName of Object.keys(allViews)) {
+          var payload=JSON.stringify(allViews[viewName]);
+          fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+        }
+      };
+      reader.readAsText(file);
     }
   }
 
-  const alarmConfigClosed= (alarm:Alarm) => {
+  const alarmConfigClosed = (alarm:Alarm) => {
     setShowAlarmConfig(false);
     if (alarm.expression) {
         var alarm=new Alarm();
@@ -559,7 +546,7 @@ const App: React.FC = () => {
       }
   }
 
-  const renameLogClosed= (newname:string|null) => {
+  const renameLogClosed = (newname:string|null) => {
     setShowRenameLog(false);
     if (newname!=null) {
       selectedLog!.name=newname;
@@ -568,26 +555,22 @@ const App: React.FC = () => {
     }
   }
 
-  const saveViewClosed = (newname:string|null) => {
+  const saveViewClosed = (viewName:string|null) => {
     setShowSaveView(false);
-    if (newname!=null) saveView(newname);
+    if (viewName!=null) saveView(viewName);
   }
 
   const loadViewSelected = async (viewName:string) => {
     if (viewName) {
       clearLogs();
       var n = await (await fetch (`${backend}/store/${user?.id}/views/${viewName}`)).json();
-      var newlos=JSON.parse(n) as LogObject[];
-      setLogs(newlos);
+      var newLogs=JSON.parse(n) as LogObject[];
+      setLogs(newLogs);
       setViewLoaded(true);
       setCurrentViewName(viewName);
-      var defaultLog=newlos.find(l => l.defaultLog);
+      var defaultLog=newLogs.find(l => l.defaultLog);
       if (defaultLog) setSelectedLogName(defaultLog.name);
     }
-  }
-
-  const deleteViewSelected = (viewName:string) => {
-    if (viewName) fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'DELETE'});
   }
 
   const pickList = (title:string, message:string, values:string[], onClose:(a:string) => void ) =>{
@@ -623,16 +606,6 @@ const App: React.FC = () => {
     }
   }
 
-  useEffect ( () => {
-    if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [search]);
-
-  if (!logged) return (<>
-    <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
-      <Login onClose={onCloseLogin} backend={backend}></Login>
-    </div>
-  </>);
-
   const onChangeSearch = (event:ChangeEvent<HTMLInputElement>) => {
     var newsearch=event.target.value;
     setSearch(newsearch);
@@ -661,11 +634,17 @@ const App: React.FC = () => {
     }
   }
 
+  if (!logged) return (<>
+    <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
+      <Login onClose={onCloseLogin} backend={backend}></Login>
+    </div>
+  </>);
+
   return (<>
     <div>
       <AppBar position="sticky" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
         <Toolbar>
-          <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setDrawerOpen(true)}>
+          <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}>
               <Menu />
           </IconButton>
           <Typography sx={{ ml:1,flexGrow: 1 }}>
@@ -679,7 +658,7 @@ const App: React.FC = () => {
           </Tooltip>
         </Toolbar>
       </AppBar>
-      <Drawer sx={{  flexShrink: 0,  '& .MuiDrawer-paper': { mt: '64px' }  }} anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+      <Drawer sx={{  flexShrink: 0,  '& .MuiDrawer-paper': { mt: '64px' }  }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
         <Stack direction={'column'}>
           <MenuDrawer optionSelected={menuViewOptionSelected} uploadSelected={handleUpload} user={user}/>
           <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>
