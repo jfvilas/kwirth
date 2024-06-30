@@ -2,7 +2,7 @@ import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
 import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
-import { Settings, ArrowUpward, ArrowDownward, Clear, Menu, Person } from '@mui/icons-material';
+import { Settings, ArrowUpward, ArrowDownward, Clear, Menu, Person, Remove } from '@mui/icons-material';
 
 // model
 import { User } from './model/User';
@@ -31,6 +31,7 @@ import { MenuLog, MenuLogOption } from './menus/MenuLog';
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer';
 import { VERSION } from './version';
 import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from './tools/MsgBox';
+import { Message } from './model/Message';
 
 const App: React.FC = () => {
   var backend='http://localhost:3883';
@@ -59,7 +60,7 @@ const App: React.FC = () => {
   var selectedLogIndex = logs.findIndex(t => t.name===selectedLogName);
 
   // message list management
-  const [messages, setMessages] = useState<string[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const searchLineRef = useRef(null);
   const lastLineRef = useRef(null);
 
@@ -157,7 +158,7 @@ const App: React.FC = () => {
     newLog.name=logName+index;
 
     logs.push(newLog);
-    setMessages(['']);
+    setMessages([]);
     setLogs(logs);
     setSelectedLogName(newLog.name);
     setFilter('');
@@ -178,33 +179,101 @@ const App: React.FC = () => {
   }
 
   // process an event received via websocket
-  const processMessage = (event:any) => {
+  // const processMessageOld = (event:any) => {
+  //   // find the log who this web socket belongs to, and add the new message
+  //   console.log('received '+event)
+  //   var log=logs.find(log => log.ws!==null && log.ws===event.target);
+  //   if (!log) return;
+    
+  //   var msg:any={};
+  //   try {
+  //     msg=JSON.parse(event.data);
+  //   }
+  //   catch (err) {
+  //     console.log(err);
+  //     console.log(event.data);
+  //   }
+
+  //   var text=msg.text;
+  //   if (log.scope==='namespace' || log.scope==='cluster' ) text=msg.podName+'  '+text;
+
+  //   if (msg.timestamp) text=msg.timestamp.replace('T',' ').replace('Z','') + ' ' + text;
+  //   log.messages.push(text);
+
+
+  //   // if current log is displayed (focused), add message to the screen
+  //   if (selectedLogRef.current === log.name) {
+  //     if (!log.paused) {
+  //       setMessages((prev) => [...prev, text ]);
+  //       //setMessages(log.messages);
+  //       if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
+  //     }
+  //   }
+  //   else {
+  //     // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
+  //     if (log.showBackgroundNotification && !log.paused) {
+  //       log.pending=true;
+  //       setHighlightedLogs((prev)=> [...prev, log!]);
+  //       setLogs(logs);
+  //     }
+  //   }
+
+  //   for (var alarm of log.alarms) {
+  //     if (text.includes(alarm.expression)) {
+  //       if (alarm.beep) Beep.beepError();
+        
+  //       if (alarm.type===AlarmType.blocking) {
+  //         setBlockingAlarm(alarm);
+  //         setShowBlockingAlarm(true);
+  //       }
+  //       else {
+  //         // in the view action, implement scrollinto view for showing the message that caused the received alarm
+  //         const action = (snackbarId: SnackbarKey | undefined) => (
+  //           <>
+  //             <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
+  //               View
+  //             </Button>
+  //             <Button onClick={() => { closeSnackbar(snackbarId) }}>
+  //               Dismiss
+  //             </Button>
+  //           </>
+  //         );
+  //         var opts:any={
+  //           anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
+  //           variant:alarm.severity,
+  //           autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
+  //           action: action
+  //         };
+  //         enqueueSnackbar(alarm.message, opts);
+  //       }
+  //     }
+  //   }
+  // }
+
+  const wsOnMessage = (event:any) => {
     // find the log who this web socket belongs to, and add the new message
-    console.log('received '+event)
     var log=logs.find(log => log.ws!==null && log.ws===event.target);
     if (!log) return;
     
-    var msg:any={};
+    var e:any={};
     try {
-      msg=JSON.parse(event.data);
+      e=JSON.parse(event.data);
     }
     catch (err) {
       console.log(err);
       console.log(event.data);
     }
 
-    var text=msg.text;
-    if (log.scope==='namespace' || log.scope==='cluster' ) text=msg.podName+'  '+text;
-
-    if (msg.timestamp) text=msg.timestamp.replace('T',' ').replace('Z','') + ' ' + text;
-    log.messages.push(text);
-
+    var msg=new Message(e.text);
+    msg.cluster=log.cluster.name;
+    msg.namespace=e.namespace;
+    msg.resource=e.podName;
+    log.messages.push(msg);
 
     // if current log is displayed (focused), add message to the screen
     if (selectedLogRef.current === log.name) {
       if (!log.paused) {
-        setMessages((prev) => [...prev, text ]);
-        //setMessages(log.messages);
+        setMessages((prev) => [...prev, msg ]);
         if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
       }
     }
@@ -218,7 +287,7 @@ const App: React.FC = () => {
     }
 
     for (var alarm of log.alarms) {
-      if (text.includes(alarm.expression)) {
+      if (msg.text.includes(alarm.expression)) {
         if (alarm.beep) Beep.beepError();
         
         if (alarm.type===AlarmType.blocking) {
@@ -265,8 +334,9 @@ const App: React.FC = () => {
       log.started=true;
     };
     
-    ws.onmessage = (event) => processMessage(event);
+    ws.onmessage = (event) => wsOnMessage(event);
     ws.onclose = (event) => console.log(`WS disconnected: ${ws.url}`);
+    setMessages([]);
   }
 
   const onClickLogStart = () => {
@@ -277,10 +347,12 @@ const App: React.FC = () => {
 
   const stopLog = (log:LogObject) => {
     var endline='====================================================================================================';
-    log.messages.push(endline);
+    log.messages.push(new Message(endline));
     log.started=false;
     log.paused=false;
     if (log.ws) log.ws.close();
+    setPausedLogs(logs.filter(t => t.paused));
+    setMessages(log.messages);
   }
 
   const onClickLogStop = () => {    
@@ -306,12 +378,10 @@ const App: React.FC = () => {
         selectedLog.paused=false;
         setMessages(selectedLog.messages);
         setPausedLogs(logs.filter(t => t.paused));
-        // setLogs(logs);
       }
       else {
         selectedLog.paused=true;
         setPausedLogs( (prev) => [...prev, selectedLog!]);
-        // setLogs(logs);
       }
     }
     setAnchorMenuLog(null);
@@ -610,16 +680,16 @@ const App: React.FC = () => {
     var newsearch=event.target.value;
     setSearch(newsearch);
     if (newsearch!=='') {
-      var pos=selectedLog!.messages.findIndex(m => m.includes(newsearch));
+      var pos=selectedLog!.messages.findIndex(m => m.text.includes(newsearch));
       setSearchFirstPos(pos);
-      setSearchLastPos(selectedLog!.messages.findLastIndex(m => m.includes(newsearch)));
+      setSearchLastPos(selectedLog!.messages.findLastIndex(m => m.text.includes(newsearch)));
       setSearchPos(pos);
       if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 
   const onClickSearchDown = () => {
-    var pos=messages!.findIndex( (msg,index) => msg.includes(search) && index>searchPos);
+    var pos=messages!.findIndex( (msg,index) => msg.text.includes(search) && index>searchPos);
     if (pos>=0) {
       setSearchPos(pos);
       (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -627,7 +697,7 @@ const App: React.FC = () => {
   }
 
   const onClickSearchUp = () => {
-    var pos=messages!.findLastIndex( (msg,index) => msg.includes(search) && index<searchPos);
+    var pos=messages!.findLastIndex( (msg,index) => msg.text.includes(search) && index<searchPos);
     if (pos>=0) {
       setSearchPos(pos);
       (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -641,7 +711,6 @@ const App: React.FC = () => {
   </>);
 
   return (<>
-    <div>
       <AppBar position="sticky" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
         <Toolbar>
           <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}>
@@ -658,6 +727,7 @@ const App: React.FC = () => {
           </Tooltip>
         </Toolbar>
       </AppBar>
+
       <Drawer sx={{  flexShrink: 0,  '& .MuiDrawer-paper': { mt: '64px' }  }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
         <Stack direction={'column'}>
           <MenuDrawer optionSelected={menuViewOptionSelected} uploadSelected={handleUpload} user={user}/>
@@ -669,7 +739,6 @@ const App: React.FC = () => {
 
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
           <Selector clusters={clusters} onAdd={onResourceSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
-
           <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>
             { (logs.length>0) && <>
                 <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
@@ -683,21 +752,17 @@ const App: React.FC = () => {
             
             <Tabs value={selectedLogName} onChange={onChangeLogs} variant="scrollable" scrollButtons="auto">
               { logs.length>0 && logs.map(t => {
-                  if (t.scope==='cluster')
-                    return <Tab key={t.name} label='cluster' value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                  else {
-                    if (t===selectedLog)
-                      return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                    else
-                      return <Tab key={t.name} label={t.name} value={t.name} icon={<Settings fontSize='small'/>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                  }
+                  if (t===selectedLog)
+                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                  else
+                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton><Box sx={{minWidth:'20px'}} /></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
                 })
               }
             </Tabs>
           </Stack>
-
         { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} />}
-        <LogContent messages={messages} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/>
+        {/* <LogContent messages={messages} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/> */}
+        <LogContent log={selectedLog} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/>
       </Box>
 
       { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> }
@@ -709,7 +774,6 @@ const App: React.FC = () => {
       { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
       { pickListConfig!==null && <PickList config={pickListConfig}/> }
       { msgBox }
-    </div>
   </>);
 };
 

@@ -1,5 +1,5 @@
-import React, { useState, useRef, ChangeEvent } from 'react';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, IconButton, InputLabel, Menu, MenuItem, MenuList, Select, SelectChangeEvent, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material';
+import React, { useState, ChangeEvent } from 'react';
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material';
 import { LogObject } from '../model/LogObject';
 
 interface IProps {

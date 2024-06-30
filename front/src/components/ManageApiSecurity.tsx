@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
 import { ApiKey } from '../model/ApiKey';
-import { MsgBoxButtons, MsgBoxYesNo, MsgBoxYesNoCancel } from '../tools/MsgBox';
+import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
 const copy = require('clipboard-copy');
 
 interface IProps {

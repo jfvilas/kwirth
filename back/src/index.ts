@@ -70,53 +70,45 @@ const sendLines = (ws:WebSocket, event:any, source:string) => {
 }
 
 // get pod logs
-const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, timestamp:boolean) => {
+const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, config:any) => {
   try {
     const logStream = new stream.PassThrough();
     logStream.on('data', (chunk:any) => {
       var text=chunk.toString('utf8');
       var event:any = {namespace:namespace, podName:podName};
-      //+++ kubernetes can provide timestamps if indicated on LogOptions object
-      if (timestamp) event.timestamp=new Date();
+      //if (config.timestamp) event.timestamp=new Date();
       sendLines(ws,event,text);
     });
     
-    //+++ all these options should be available to end users
-
     /**
      * Follow the log stream of the pod. Defaults to false.
-     *
     follow?: boolean;
-    /**
      * If set, the number of bytes to read from the server before terminating the log output. This may not display a
      * complete final line of logging, and may return slightly more or slightly less than the specified limit.
-     *
     limitBytes?: number;
-    /**
      * If true, then the output is pretty printed.
-     *
     pretty?: boolean;
-    /**
      * Return previous terminated container logs. Defaults to false.
-     *
     previous?: boolean;
-    /**
      * A relative time in seconds before the current time from which to show logs. If this value precedes the time a
      * pod was started, only logs since the pod start will be returned. If this value is in the future, no logs will
      * be returned. Only one of sinceSeconds or sinceTime may be specified.
-     *
     sinceSeconds?: number;
-    /**
      * If set, the number of lines from the end of the logs to show. If not specified, logs are shown from the creation
      * of the container or sinceSeconds or sinceTime
-     *
     tailLines?: number;
-    /**
      * If true, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line of log output. Defaults to false.
-     *
     timestamps?: boolean;
     */
-    await k8sLog.log(namespace, podName, '', logStream,  { follow: true, pretty: false  });
+    var streamConfig:any={ 
+      follow: true, 
+      pretty: false, 
+      timestamps:config.timestamp, 
+    }
+    if (config.previous) streamConfig.previous=config.previous
+    if (config.since) streamConfig.sinceSeconds=config.since;
+    if (config.tail) streamConfig.tailLines=config.tail;
+    await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig );
   }
   catch (err:any) {
     console.error(err);
@@ -126,16 +118,17 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
 };
 
 // watch deployment pods
-const watchPods = (apiPath:string, filter:any, ws:any, timestamp:boolean) => {
+const watchPods = (apiPath:string, filter:any, ws:any, config:any) => {
   const watch = new Watch(kc);
   watch.watch(
     apiPath, filter, (type:string, obj:any) => {
       if (type === 'ADDED' || type === 'MODIFIED') {
         const podName = obj.metadata.name;
         const podNamespace = obj.metadata.namespace;
-        console.log(`${type}: ${podName}` );
-        //+++ in the near future add options to log a specific container, now container name is ''
-        getPodLog(podNamespace, podName, '', ws, timestamp);
+        for (var container of obj.spec.containers) {
+          console.log(`${type}: ${podNamespace}/${podName}/${container.name}`);
+          getPodLog(podNamespace, podName, container.name, ws, config);
+        }
       }
       else if (type === 'DELETED') {
         console.log(`Pod deleted` );
@@ -152,16 +145,17 @@ const watchPods = (apiPath:string, filter:any, ws:any, timestamp:boolean) => {
 function processClientMessage(message:string, ws:any) {
   // {"scope":"namespace", "namespace":"default","deploymentName":"ubuntu3", "timestamp":true}
 
-  const { scope, namespace, deploymentName, timestamp } = JSON.parse(message);
-  switch (scope) {
+  //const { scope, namespace, deploymentName, timestamp, previous } = JSON.parse(message);
+  const config = JSON.parse(message);
+  switch (config.scope) {
     case 'cluster':
-      watchPods(`/api/v1/pods`, {}, ws, timestamp);
+      watchPods(`/api/v1/pods`, {}, ws, config);
       break;
     case 'namespace':
-      watchPods(`/api/v1/namespaces/${namespace}/pods`, {}, ws, timestamp);
+      watchPods(`/api/v1/namespaces/${config.namespace}/pods`, {}, ws, config);
       break;
     case 'deployment':
-      watchPods(`/api/v1/namespaces/${namespace}/pods`, { labelSelector: `app=${deploymentName}` } , ws, timestamp);
+      watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector: `app=${config.deploymentName}` } , ws, config);
       break;
   }
 }

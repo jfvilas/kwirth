@@ -50,6 +50,24 @@ export class ConfigApi {
         }
       })
 
+      this.route.route('/:namespace/:pod/container')
+      .get( async (req, res) => {
+        try {
+          var response= await this.coreApi.listNamespacedPod(req.params.namespace);
+          var searchPod = response.body.items.filter (p => p?.metadata?.name===req.params.pod);
+          if (searchPod.length===0) {
+            res.status(200).json([]);
+            return;
+          }
+          var conts = searchPod[0].spec?.containers.map(c => c.name);
+          res.status(200).json(conts);
+        }
+        catch (err) {
+          res.status(200).json([]);
+          console.log(err);
+        }
+      })
+
       this.route.route('/:namespace/deployment')
       .get( async (req, res) => {
         try {

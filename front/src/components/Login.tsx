@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material';
 import { User } from '../model/User';
-import { MsgBoxOk, MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox';
+import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox';
 
 interface IProps {
   onClose:(result:boolean,user:User|null) => {},

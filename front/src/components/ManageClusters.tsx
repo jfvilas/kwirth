@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
 import { Cluster } from '../model/Cluster';
 import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';

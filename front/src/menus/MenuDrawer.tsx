@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Divider, Drawer, Menu, MenuItem, MenuList } from "@mui/material"
-import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, VerifiedUser } from '@mui/icons-material';
+import React from 'react';
+import { Divider, MenuItem, MenuList } from "@mui/material"
+import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone } from '@mui/icons-material';
 import { User } from '../model/User';
 
 enum MenuDrawerOption {

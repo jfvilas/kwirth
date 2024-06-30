@@ -1,4 +1,5 @@
 import { Alarm } from "./Alarm";
+import { Message } from "./Message";
 
 export class LogObject {
   public name: any;
@@ -7,7 +8,7 @@ export class LogObject {
   public namespace:any;
   public obj:any;
   public ws:any=null;
-  public messages:string[]=[];
+  public messages:Message[]=[];
   public defaultLog:boolean=false;
   public paused:boolean=false;
   public pending:boolean=false;
