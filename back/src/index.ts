@@ -120,20 +120,36 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
 // watch deployment pods
 const watchPods = (apiPath:string, filter:any, ws:any, config:any) => {
   const watch = new Watch(kc);
-  watch.watch(
-    apiPath, filter, (type:string, obj:any) => {
-      if (type === 'ADDED' || type === 'MODIFIED') {
-        const podName = obj.metadata.name;
-        const podNamespace = obj.metadata.namespace;
-        for (var container of obj.spec.containers) {
-          console.log(`${type}: ${podNamespace}/${podName}/${container.name}`);
-          getPodLog(podNamespace, podName, container.name, ws, config);
-        }
+  watch.watch(apiPath, filter, (type:string, obj:any) => {
+    if (type === 'ADDED' || type === 'MODIFIED') {
+      const podName = obj.metadata.name;
+      const podNamespace = obj.metadata.namespace;
+      console.log(`${type}: ${podNamespace}/${podName}`);
+      switch(config.scope) {
+        case 'cluster':
+        case 'namespace':
+        case 'deployment':
+          getPodLog(podNamespace, podName, '', ws, config);
+        case 'pod':
+          console.log(obj.spec);
+          for (var container of obj.spec.containers) {
+            console.log(container.name);
+            getPodLog(podNamespace, podName, container.name, ws, config);
+          }
+          break;
+        case 'container':
+          for (var container of obj.spec.containers) {
+            console.log(container.name+'=='+config.container);
+            if (container.name===config.container) {
+              getPodLog(podNamespace, podName, container.name, ws, config);
+            }
+          }
+          break;
       }
-      else if (type === 'DELETED') {
-        console.log(`Pod deleted` );
-      }
-    },
+    }
+    else if (type === 'DELETED') {
+      console.log(`Pod deleted` );
+    }},
     (err:any) => {
       console.error(err);
       ws.send(`Error: ${err.message}`);
@@ -142,11 +158,12 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:any) => {
 };
 
 // clients send requests to start receiving log
-function processClientMessage(message:string, ws:any) {
-  // {"scope":"namespace", "namespace":"default","deploymentName":"ubuntu3", "timestamp":true}
+async function processClientMessage(message:string, ws:any) {
+  // {"scope":"namespace", "namespace":"default","set":"ubuntu3", "timestamp":true}
 
   //const { scope, namespace, deploymentName, timestamp, previous } = JSON.parse(message);
   const config = JSON.parse(message);
+  console.log(config);
   switch (config.scope) {
     case 'cluster':
       watchPods(`/api/v1/pods`, {}, ws, config);
@@ -154,8 +171,45 @@ function processClientMessage(message:string, ws:any) {
     case 'namespace':
       watchPods(`/api/v1/namespaces/${config.namespace}/pods`, {}, ws, config);
       break;
+    case 'pod':
+    case 'container':
     case 'deployment':
-      watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector: `app=${config.deploymentName}` } , ws, config);
+      var res:any;
+      switch (config.setType) {
+        case'replica':
+          res=await appsApi.readNamespacedReplicaSet(config.set, config.namespace);
+          break;
+        case'daemon':
+          res=await appsApi.readNamespacedDaemonSet(config.set, config.namespace);
+          break;
+        case'stateful':
+          res=await appsApi.readNamespacedStatefulSet(config.set, config.namespace);
+          break;
+      }
+      const matchLabels = res.body.spec?.selector?.matchLabels;
+      if (matchLabels) {
+        var labelSelector='';
+        const matchLabels = res.body.spec?.selector?.matchLabels;
+        if (matchLabels) {
+            labelSelector = Object.entries(matchLabels).map(([key, value]) => `${key}=${value}`).join(',');
+            console.log(labelSelector);
+            watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector:labelSelector }, ws, config);
+            // res=await coreApi.listNamespacedPod(config.namespace, undefined, undefined, undefined, undefined, labelSelector);
+            // for (var pod of res.body.items as V1Pod[]) {
+            //   console.log(pod.metadata!.name);
+            //   console.log(pod.spec!.containers);
+            // }
+            // switch(config.scope) {
+            //   case 'deployment':
+                
+            //     break;
+            //   case 'pod':
+            //     break;
+            //   case 'container':
+            //     break;
+            // }            
+        }
+      }
       break;
   }
 }

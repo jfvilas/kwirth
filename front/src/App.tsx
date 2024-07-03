@@ -25,7 +25,7 @@ import PickList from './components/PickList';
 import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
-import Selector from './components/ResourceSelector';
+import ResourceSelector from './components/ResourceSelector';
 import LogContent from './components/LogContent';
 import { MenuLog, MenuLogOption } from './menus/MenuLog';
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer';
@@ -142,9 +142,10 @@ const App: React.FC = () => {
   }
 
   const onResourceSelectorAdd = (selection:any) => {
-    var logName=selection.namespace+"-"+selection.resource;
-    if (selection.resource==='') logName=logName.substring(0,logName.length-1);
-    if (selection.scope==='cluster') logName='cluster';
+    //var logName=selection.namespace+"-"+selection.resource;
+    // if (selection.resource==='') logName=logName.substring(0,logName.length-1);
+    // if (selection.scope==='cluster') logName='cluster';
+    var logName=selection.logName;
 
     // create unduplicated (unique) name
     var index=-1;
@@ -154,7 +155,10 @@ const App: React.FC = () => {
     newLog.cluster=selection.clusterName;
     newLog.scope=selection.scope;
     newLog.namespace=selection.namespace;
-    newLog.obj=selection.resource;
+    newLog.set=selection.set;
+    newLog.setType=selection.setType;
+    newLog.pod=selection.pod;
+    newLog.container=selection.container;
     newLog.name=logName+index;
 
     logs.push(newLog);
@@ -325,11 +329,12 @@ const App: React.FC = () => {
       console.log('nocluster');
       return;
     }
+    console.log(cluster);
     var ws = new WebSocket(cluster.url+'?key='+cluster.apiKey);
     log.ws=ws;
     ws.onopen = () => {
       console.log(`WS connected: ${ws.url}`);
-      var payload={ scope:log.scope, namespace:log.namespace, deploymentName:log.obj, timestamp:log.addTimestamp};
+      var payload={ scope:log.scope, namespace:log.namespace, set:log.set, setType:log.setType, pod:log.pod, container:log.container, timestamp:log.addTimestamp};
       ws.send(JSON.stringify(payload));
       log.started=true;
     };
@@ -457,7 +462,7 @@ const App: React.FC = () => {
           case 'namespace':
             break;
           case 'deployment':
-            fetch (`${backend}/manage/${selectedLog.namespace}/${selectedLog.obj}`, {method:'POST', body:'', headers:{'Content-Type':'application/json'}});
+            fetch (`${backend}/manage/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json'}});
             break;
         }
         break;
@@ -473,7 +478,9 @@ const App: React.FC = () => {
       newLog.cluster=log.cluster;
       newLog.filter=log.filter;
       newLog.namespace=log.namespace;
-      newLog.obj=log.obj;
+      newLog.set=log.set;
+      newLog.pod=log.pod;
+      newLog.container=log.container;
       newLog.defaultLog=log.defaultLog;
       newLog.paused=log.paused;
       newLog.scope=log.scope;
@@ -738,7 +745,7 @@ const App: React.FC = () => {
       </Drawer>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
-          <Selector clusters={clusters} onAdd={onResourceSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
+          <ResourceSelector clusters={clusters} onAdd={onResourceSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
           <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>
             { (logs.length>0) && <>
                 <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
