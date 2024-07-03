@@ -269,6 +269,7 @@ console.log(`KWirth version is ${VERSION}`);
 
 // serve front application
 console.log(`SPA is available at: ${rootPath}/front`)
+app.get(`/`, (req:any,res:any) => { res.redirect(`${rootPath}`) });
 app.get(`${rootPath}`, (req:any,res:any) => { res.redirect(`${rootPath}/front`) });
 app.use(`${rootPath}/front`, express.static('./dist/front'))
 

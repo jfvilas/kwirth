@@ -95,7 +95,6 @@ const App: React.FC = () => {
   
   useEffect ( () => {
     //+++ move picklist objects to a helper class
-    //+++ review initial message receive (just after start): only first ine is shown
     //+++ customize to deploy kwirth in any namespace (i thinks it should work just as is). default should be 'kwirth' or 'default' namespace, since the idea is to view logs of any other namespace
     //+++ work on alarms and create and alarm manager
     //+++ when a view is loaded all messages are received: alarms should not be in effect until everything is received
@@ -181,78 +180,6 @@ const App: React.FC = () => {
     }
     setSelectedLogName(value);
   }
-
-  // process an event received via websocket
-  // const processMessageOld = (event:any) => {
-  //   // find the log who this web socket belongs to, and add the new message
-  //   console.log('received '+event)
-  //   var log=logs.find(log => log.ws!==null && log.ws===event.target);
-  //   if (!log) return;
-    
-  //   var msg:any={};
-  //   try {
-  //     msg=JSON.parse(event.data);
-  //   }
-  //   catch (err) {
-  //     console.log(err);
-  //     console.log(event.data);
-  //   }
-
-  //   var text=msg.text;
-  //   if (log.scope==='namespace' || log.scope==='cluster' ) text=msg.podName+'  '+text;
-
-  //   if (msg.timestamp) text=msg.timestamp.replace('T',' ').replace('Z','') + ' ' + text;
-  //   log.messages.push(text);
-
-
-  //   // if current log is displayed (focused), add message to the screen
-  //   if (selectedLogRef.current === log.name) {
-  //     if (!log.paused) {
-  //       setMessages((prev) => [...prev, text ]);
-  //       //setMessages(log.messages);
-  //       if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
-  //     }
-  //   }
-  //   else {
-  //     // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-  //     if (log.showBackgroundNotification && !log.paused) {
-  //       log.pending=true;
-  //       setHighlightedLogs((prev)=> [...prev, log!]);
-  //       setLogs(logs);
-  //     }
-  //   }
-
-  //   for (var alarm of log.alarms) {
-  //     if (text.includes(alarm.expression)) {
-  //       if (alarm.beep) Beep.beepError();
-        
-  //       if (alarm.type===AlarmType.blocking) {
-  //         setBlockingAlarm(alarm);
-  //         setShowBlockingAlarm(true);
-  //       }
-  //       else {
-  //         // in the view action, implement scrollinto view for showing the message that caused the received alarm
-  //         const action = (snackbarId: SnackbarKey | undefined) => (
-  //           <>
-  //             <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
-  //               View
-  //             </Button>
-  //             <Button onClick={() => { closeSnackbar(snackbarId) }}>
-  //               Dismiss
-  //             </Button>
-  //           </>
-  //         );
-  //         var opts:any={
-  //           anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
-  //           variant:alarm.severity,
-  //           autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
-  //           action: action
-  //         };
-  //         enqueueSnackbar(alarm.message, opts);
-  //       }
-  //     }
-  //   }
-  // }
 
   const wsOnMessage = (event:any) => {
     // find the log who this web socket belongs to, and add the new message
@@ -768,7 +695,6 @@ const App: React.FC = () => {
             </Tabs>
           </Stack>
         { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} />}
-        {/* <LogContent messages={messages} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/> */}
         <LogContent log={selectedLog} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/>
       </Box>
 
