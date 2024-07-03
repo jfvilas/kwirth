@@ -55,12 +55,6 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     var data = await response.json();
     setPods(data);
     setPodSelectDisabled(false);
-    if (data.length===1) {
-      setPod(data[0]);
-      setContainer('');
-      setContainerSelectDisabled(false);
-      getContainers(namespace, data[0]);
-    }
   }
 
   const getContainers = async (namespace:string,pod:string) => {
@@ -87,44 +81,49 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
   const onChangeScope = (event: SelectChangeEvent) => {
     var value=event.target.value;
     setScope(value);
-    if (value!=='cluster') getNamespaces();
-    switch (value) {
-      case 'cluster':
-        setNamespaceSelectDisabled(true);
-        setPodSelectDisabled(true);
-        setNamespace('');
-        break;
-      case 'namespace':
-        setNamespaceSelectDisabled(false);
-        setPod('');
-        setPodSelectDisabled(true);
-        break;
-      case 'deployment':
-      case 'pod':
-      case 'container':
-        setNamespaceSelectDisabled(false);
-        break;
+    if (value==='cluster') {
+      setNamespace('');
+      setNamespaceSelectDisabled(true);
     }
+    else {
+      setNamespace('');
+      getNamespaces();
+      setNamespaceSelectDisabled(false);
+    }
+    setPod('');
+    setPodSelectDisabled(true);
+    setSet(undefined);
+    setSetSelectDisabled(true);
+    setContainer('');
+    setContainerSelectDisabled(true);
   };
 
   const onChangeNamespace = (event: SelectChangeEvent) => {
     setNamespace(event.target.value);
-    setSet(undefined);
-    setSetSelectDisabled(false);
     setPod('');
-    if (scope!=='cluster' && scope!=='namespace') getSets(event.target.value);
+    if (scope!=='cluster' && scope!=='namespace') {
+      setSet(undefined);
+      getSets(event.target.value);
+      setSetSelectDisabled(false);
+    }
   };
 
   const onChangeSet = (event: SelectChangeEvent) => {
     var selectedSet=sets.find(s => s.name===event.target.value);
     setSet(selectedSet);
-    if (scope!=='cluster' && scope!=='namespace') getPods(namespace,selectedSet!);
+    if (scope==='pod' || scope==='container') {
+      getPods(namespace,selectedSet!);
+      setPodSelectDisabled(false);
+    }
   }
 
   const onChangePod= (event: SelectChangeEvent) => {
     setPod(event.target.value)    
-    setContainer('');
-    getContainers(namespace, event.target.value);
+    if (scope==='container') {
+      setContainer('');
+      setContainerSelectDisabled(false);
+      getContainers(namespace, event.target.value);
+    }
   }
 
   const onChangeContainer = (event: SelectChangeEvent) => {

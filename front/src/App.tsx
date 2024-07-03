@@ -2,7 +2,7 @@ import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
 import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
-import { Settings, ArrowUpward, ArrowDownward, Clear, Menu, Person, Remove } from '@mui/icons-material';
+import { Settings, ArrowUpward, ArrowDownward, Clear, Menu, Person } from '@mui/icons-material';
 
 // model
 import { User } from './model/User';
@@ -95,13 +95,12 @@ const App: React.FC = () => {
   
   useEffect ( () => {
     //+++ move picklist objects to a helper class
-    //+++ customize to deploy kwirth in any namespace (i thinks it should work just as is). default should be 'kwirth' or 'default' namespace, since the idea is to view logs of any other namespace
     //+++ work on alarms and create and alarm manager
     //+++ when a view is loaded all messages are received: alarms should not be in effect until everything is received
     //+++ implement role checking on backend
-    //+++ with ephemeral logs, the content of 'messages' should be some info on alarms triggered, or even a dashboard
+    //+++ with ephemeral logs, the content of 'messages' should contain some info on alarms triggered, or even a dashboard
     //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
-    //+++ decide wheter to have collapsibility on the resource selector and the toolbar (to maximize log space)
+    //+++ decide whether to have collapsibility on the resource selector and the toolbar (to maximize log space)
     if (logged && !clustersRef.current) getClusters();
   });
 
