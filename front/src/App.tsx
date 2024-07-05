@@ -2,7 +2,7 @@ import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
 import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
-import { Settings, ArrowUpward, ArrowDownward, Clear, Menu, Person } from '@mui/icons-material';
+import { Settings as SettingsIcon, ArrowUpward, ArrowDownward, Clear, Menu, Person, Newspaper } from '@mui/icons-material';
 
 // model
 import { User } from './model/User';
@@ -27,11 +27,13 @@ import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
 import ResourceSelector from './components/ResourceSelector';
 import LogContent from './components/LogContent';
+import SettingsConfig from './components/SettingsConfig';
 import { MenuLog, MenuLogOption } from './menus/MenuLog';
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer';
 import { VERSION } from './version';
 import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from './tools/MsgBox';
 import { Message } from './model/Message';
+import { Settings } from './model/Settings';
 
 const App: React.FC = () => {
   var backend='http://localhost:3883';
@@ -71,6 +73,11 @@ const App: React.FC = () => {
   const [searchFirstPos, setSearchFirstPos] = useState<number>(-1);
   const [searchLastPos, setSearchLastPos] = useState<number>(-1);
 
+  // general
+  const [settings, setSettings] = useState<Settings>();
+  const settingsRef = useRef(settings);
+  settingsRef.current=settings;
+
   // menus/navigation
   const [anchorMenuLog, setAnchorMenuLog] = useState<null | HTMLElement>(null);
   const [menuDrawerOpen,setMenuDrawerOpen]=useState(false);
@@ -88,12 +95,18 @@ const App: React.FC = () => {
   const [showSaveView, setShowSaveView]=useState<boolean>(false);
   const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false);
   const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false);
+  const [showSettings, setShowSettings]=useState<boolean>(false);
   const [blockingAlarm, setBlockingAlarm] = useState<Alarm>();
   const [viewLoaded, setViewLoaded] = useState<boolean>(false);
   const [currentViewName, setCurrentViewName] = useState('');
   const [showPickList, setShowPickList]=useState<boolean>(false);
   
   useEffect ( () => {
+    //+++ add a settings section for configuren general parameters like: 
+    // get previous container messages
+    // how backward go when starting a log
+    // add a settings section for a log object (like settings, but specific)
+    // ...
     //+++ move picklist objects to a helper class
     //+++ work on alarms and create and alarm manager
     //+++ when a view is loaded all messages are received: alarms should not be in effect until everything is received
@@ -101,7 +114,10 @@ const App: React.FC = () => {
     //+++ with ephemeral logs, the content of 'messages' should contain some info on alarms triggered, or even a dashboard
     //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
     //+++ decide whether to have collapsibility on the resource selector and the toolbar (to maximize log space)
-    if (logged && !clustersRef.current) getClusters();
+    if (logged) {
+      if (!clustersRef.current) getClusters();
+      if (!settingsRef.current) readSettings();
+    }
   });
 
   useEffect ( () => {
@@ -139,10 +155,27 @@ const App: React.FC = () => {
     setClusters(clusterList);
   }
 
+  const readSettings = async () => {
+    var resp=await fetch (`${backend}/store/${user?.id}/settings/general`);
+    if (resp.status===200) {
+      var json=await resp.json();
+      if (json) {
+        var a:Settings=json as Settings;
+        setSettings(a);
+      }
+    }
+    else {
+      setSettings(new Settings());
+    }
+  }
+
+  const writeSettings = async (newSettings:Settings) => {
+    setSettings(newSettings);
+    var payload=JSON.stringify(newSettings);
+    console.log ((await fetch (`${backend}/store/${user?.id}/settings/general`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}})).status);
+  }
+
   const onResourceSelectorAdd = (selection:any) => {
-    //var logName=selection.namespace+"-"+selection.resource;
-    // if (selection.resource==='') logName=logName.substring(0,logName.length-1);
-    // if (selection.scope==='cluster') logName='cluster';
     var logName=selection.logName;
 
     // create unduplicated (unique) name
@@ -199,6 +232,7 @@ const App: React.FC = () => {
     msg.namespace=e.namespace;
     msg.resource=e.podName;
     log.messages.push(msg);
+    while (log.messages.length>log.maxMessages) log.messages.splice(0,1);
 
     // if current log is displayed (focused), add message to the screen
     if (selectedLogRef.current === log.name) {
@@ -249,6 +283,8 @@ const App: React.FC = () => {
   }
 
   const startLog = (log:LogObject) => {
+    log.maxMessages=settings!.maxMessages;
+    log.previous=settings!.previous;
     log.messages=[];
     var cluster=clusters!.find(c => c.name===log.cluster);
     if (!cluster) {
@@ -442,23 +478,23 @@ const App: React.FC = () => {
   const menuViewOptionSelected = async (option:MenuDrawerOption) => {
     setMenuDrawerOpen(false);
     switch(option) {
-      case MenuDrawerOption.ViewNew:
+      case MenuDrawerOption.New:
         clearLogs();
         setCurrentViewName('untitled');
         break;
-      case MenuDrawerOption.ViewSave:
+      case MenuDrawerOption.Save:
         if (currentViewName!=='' && currentViewName!=='untitled')
           saveView(currentViewName);
         else
           setShowSaveView(true);
         break;
-      case MenuDrawerOption.ViewSaveAs:
+      case MenuDrawerOption.SaveAs:
         setShowSaveView(true);
         break;
-      case MenuDrawerOption.ViewOpen:
+      case MenuDrawerOption.Open:
         loadView();
         break;
-      case MenuDrawerOption.ViewDelete:
+      case MenuDrawerOption.Delete:
         var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`)).json();
         if (allViews.length===0)
           showNoViews();
@@ -474,7 +510,7 @@ const App: React.FC = () => {
       case MenuDrawerOption.UserSecurity:
         setShowUserSecurity(true);
         break;
-      case MenuDrawerOption.ViewExport:
+      case MenuDrawerOption.Export:
         var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`)).json();
         if (allViews.length===0)
           showNoViews();
@@ -487,8 +523,14 @@ const App: React.FC = () => {
           handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
         }
         break;
-      case MenuDrawerOption.ViewImport:
+      case MenuDrawerOption.Import:
         // nothing to do, the menuitem launches the handleUpload
+        break;
+      case MenuDrawerOption.Settings:
+        selectedLog=new LogObject();
+        selectedLog.maxMessages=10001;
+        selectedLog.previous=true;
+        setShowSettings(true);
         break;
       case MenuDrawerOption.UpdateKwirth:
         fetch (`${backend}/managekwirth/restart`);
@@ -547,6 +589,11 @@ const App: React.FC = () => {
         alarm.beep=alarm.beep;
         selectedLog?.alarms.push(alarm);
       }
+  }
+
+  const settingsClosed = (newSettings:Settings) => {
+    setShowSettings(false);
+    if (newSettings) writeSettings(newSettings);
   }
 
   const renameLogClosed = (newname:string|null) => {
@@ -686,7 +733,7 @@ const App: React.FC = () => {
             <Tabs value={selectedLogName} onChange={onChangeLogs} variant="scrollable" scrollButtons="auto">
               { logs.length>0 && logs.map(t => {
                   if (t===selectedLog)
-                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><Settings fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
                   else
                     return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton><Box sx={{minWidth:'20px'}} /></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
                 })
@@ -704,6 +751,7 @@ const App: React.FC = () => {
       { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
       { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
       { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
+      { showSettings && <SettingsConfig  onClose={settingsClosed} settings={settingsRef.current} /> }
       { pickListConfig!==null && <PickList config={pickListConfig}/> }
       { msgBox }
   </>);

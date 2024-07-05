@@ -12,6 +12,8 @@ export class LogObject {
   public container:any;
   public ws:any=null;
   public messages:Message[]=[];
+  public maxMessages:number=10000;
+  public previous:boolean=false;
   public defaultLog:boolean=false;
   public paused:boolean=false;
   public pending:boolean=false;

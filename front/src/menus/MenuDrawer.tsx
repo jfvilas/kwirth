@@ -1,16 +1,17 @@
 import React from 'react';
 import { Divider, MenuItem, MenuList } from "@mui/material"
-import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone } from '@mui/icons-material';
+import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, Settings } from '@mui/icons-material';
 import { User } from '../model/User';
 
 enum MenuDrawerOption {
-    ViewNew,
-    ViewOpen,
-    ViewSave,
-    ViewSaveAs,
-    ViewDelete,
-    ViewImport,
-    ViewExport,
+    New,
+    Open,
+    Save,
+    SaveAs,
+    Delete,
+    Import,
+    Export,
+    Settings,
     ManageCluster,
     UserSecurity,
     UpdateKwirth,
@@ -31,14 +32,15 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
 
     const menu=(
         <MenuList sx={{height:'85vh'}}>
-            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.ViewNew)}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
-            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.ViewOpen)}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
-            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.ViewSave)}><SaveTwoTone/>&nbsp;Save</MenuItem>
-            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.ViewSaveAs)}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
-            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.ViewDelete)}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
+            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.New)}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
+            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.Open)}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
+            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.Save)}><SaveTwoTone/>&nbsp;Save</MenuItem>
+            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveAs)}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
+            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.Delete)}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
             <Divider/>
-            <MenuItem key='cfgexp' onClick={() => optionSelected(MenuDrawerOption.ViewExport)}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
+            <MenuItem key='cfgexp' onClick={() => optionSelected(MenuDrawerOption.Export)}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
             <MenuItem key='cfgimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new configs from file (and merge overwriting)</MenuItem>
+            <MenuItem key='settings' onClick={() => optionSelected(MenuDrawerOption.Settings)}><Settings/>&nbsp;Settings</MenuItem>
             { props.user.roles.includes('admin') && 
                 <div>
                     <Divider/>
