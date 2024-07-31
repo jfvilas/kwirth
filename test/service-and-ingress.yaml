@@ -20,7 +20,7 @@ metadata:
   namespace: default
 spec:
   ingressClassName: nginx
-  # if you want to publish Kwirth securely you would need to add somethin glike this:
+  # if you want to publish Kwirth securely you would need to add something like this:
   # tls:
   # - hosts:
   #   - www.kwirth-dns.com

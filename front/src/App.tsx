@@ -516,6 +516,7 @@ const App: React.FC = () => {
           case 'namespace':
             break;
           case 'deployment':
+            // restart a deployment
             fetch (`${backend}/manage/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json'}});
             break;
         }
@@ -811,26 +812,31 @@ const App: React.FC = () => {
 
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
           <ResourceSelector clusters={clusters} onAdd={onResourceSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
-          <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>
-            { (logs.length>0) && <>
-                <Stack direction="row" sx={{ ml:1}} alignItems="bottom" >
-                  <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
-                  <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
-                  <Typography sx={{ ml:1 }}></Typography>
-                  <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
-                  <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton>
-                </Stack>
-            </>}
-            
-            <Tabs value={selectedLogName} onChange={onChangeLogs} variant="scrollable" scrollButtons="auto">
+          <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
+            <Tabs value={selectedLogName} onChange={onChangeLogs} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
               { logs.length>0 && logs.map(t => {
                   if (t===selectedLog)
-                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
                   else
-                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton><Box sx={{minWidth:'20px'}} /></IconButton>} iconPosition='end' sx={{ backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                    return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton><Box sx={{minWidth:'20px'}} /></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
                 })
               }
             </Tabs>
+
+            <Typography sx={{ flexGrow: 1 }}></Typography>
+
+            { (logs.length>0) && <>
+                <Stack direction="row" alignItems="bottom" sx={{ width:'200px', mr:1}}>
+                  <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
+
+                  {/* <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
+                  <Typography sx={{ ml:1 }}></Typography>
+                  <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
+                  <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton> */}
+
+                </Stack>
+            </>}
+
           </Stack>
         { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} />}
         <LogContent log={selectedLog} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/>
