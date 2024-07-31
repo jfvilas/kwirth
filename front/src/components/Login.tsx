@@ -58,7 +58,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
           setChangingPassword(true);
           break;
         case 401:
-          setMsgBox(MsgBoxOkError('Login',`You have netered invalid credentials.`, setMsgBox));
+          setMsgBox(MsgBoxOkError('Login',`You have entered invalid credentials.`, setMsgBox));
           break;
 
       }

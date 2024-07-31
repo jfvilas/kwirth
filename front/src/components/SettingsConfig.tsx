@@ -8,22 +8,28 @@ interface IProps {
 }
 
 const SettingsConfig: React.FC<any> = (props:IProps) => {
+  const [settings, setSettings] = useState<Settings>(props.settings);
   const [maxMessages, setMaxMessages] = useState(props.settings.maxMessages);
   const [previous, setPrevious] = useState(props.settings.previous);
+  const [timestamp, setTimestamp] = useState(props.settings.timestamp);
 
   const onChangeMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
     setMaxMessages(+event.target.value);
   }
 
   const onChangePrevious = (event:ChangeEvent<HTMLInputElement>) => {
-    console.log(event.target.value);
     setPrevious(event.target.checked);
+  }
+
+  const onChangeTimestamp = (event:ChangeEvent<HTMLInputElement>) => {
+    setTimestamp(event.target.checked);
   }
 
   const closeOk = () =>{
     var newSettings=new Settings();
     newSettings.maxMessages=maxMessages;
     newSettings.previous=Boolean(previous);
+    newSettings.timestamp=Boolean(timestamp);
     props.onClose(newSettings);
   }
 
@@ -33,9 +39,12 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
       <DialogTitle>Settings</DialogTitle>
       <DialogContent>
       <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-        <TextField value={maxMessages} onChange={onChangeMaxMessages} variant='standard'label='Max messages' SelectProps={{native: true}}></TextField>
+        <TextField value={maxMessages} onChange={onChangeMaxMessages} variant='standard'label='Max messages' SelectProps={{native: true}} type='number'></TextField>
         <Stack direction='row' alignItems={'baseline'}>
           <Switch checked={previous} onChange={onChangePrevious}/><Typography>Get messages of previous deployment</Typography>
+        </Stack>
+        <Stack direction='row' alignItems={'baseline'}>
+          <Switch checked={timestamp} onChange={onChangeTimestamp}/><Typography>Add timestamp to messages</Typography>
         </Stack>
       </Stack>
       </DialogContent>

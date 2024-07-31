@@ -40,7 +40,7 @@ const App: React.FC = () => {
   const rootPath = window.__PUBLIC_PATH__ || '';
   if ( process.env.NODE_ENV==='production') backend=window.location.protocol+'//'+window.location.host;
   backend=backend+rootPath;
-  console.log(`Backend to use: ${backend}`);
+  //console.log(`Backend to use: ${backend}`);
 
   const [user, setUser] = useState<User>();
   const [logged,setLogged]=useState(false);
@@ -95,18 +95,14 @@ const App: React.FC = () => {
   const [showSaveView, setShowSaveView]=useState<boolean>(false);
   const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false);
   const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false);
-  const [showSettings, setShowSettings]=useState<boolean>(false);
+  const [showSettingsConfig, setShowSettingsConfig]=useState<boolean>(false);
   const [blockingAlarm, setBlockingAlarm] = useState<Alarm>();
   const [viewLoaded, setViewLoaded] = useState<boolean>(false);
   const [currentViewName, setCurrentViewName] = useState('');
   const [showPickList, setShowPickList]=useState<boolean>(false);
   
   useEffect ( () => {
-    //+++ add a settings section for configuren general parameters like: 
-    // get previous container messages
-    // how backward go when starting a log
-    // add a settings section for a log object (like settings, but specific)
-    // ...
+    //+++ add a settings section for a log object (like settings, but specific)
     //+++ move picklist objects to a helper class
     //+++ work on alarms and create and alarm manager
     //+++ when a view is loaded all messages are received: alarms should not be in effect until everything is received
@@ -160,8 +156,8 @@ const App: React.FC = () => {
     if (resp.status===200) {
       var json=await resp.json();
       if (json) {
-        var a:Settings=json as Settings;
-        setSettings(a);
+        var st:Settings=JSON.parse(json) as Settings;
+        setSettings(st);
       }
     }
     else {
@@ -170,9 +166,10 @@ const App: React.FC = () => {
   }
 
   const writeSettings = async (newSettings:Settings) => {
+    console.log(newSettings);
     setSettings(newSettings);
     var payload=JSON.stringify(newSettings);
-    console.log ((await fetch (`${backend}/store/${user?.id}/settings/general`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}})).status);
+    fetch (`${backend}/store/${user?.id}/settings/general`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
   }
 
   const onResourceSelectorAdd = (selection:any) => {
@@ -213,9 +210,78 @@ const App: React.FC = () => {
     setSelectedLogName(value);
   }
 
-  const wsOnMessage = (event:any) => {
+  // const wsOnMessage = (event:any) => {
+  //   // find the log who this web socket belongs to, and add the new message
+  //   var log=logs.find(log => log.ws!==null && log.ws===event.target);
+  //   if (!log) return;
+    
+  //   var e:any={};
+  //   try {
+  //     e=JSON.parse(event.data);
+  //   }
+  //   catch (err) {
+  //     console.log(err);
+  //     console.log(event.data);
+  //   }
+
+  //   var msg=new Message(e.text);
+  //   msg.cluster=log.cluster.name;
+  //   msg.namespace=e.namespace;
+  //   msg.resource=e.podName;
+  //   log.messages.push(msg);
+  //   while (log.messages.length>log.maxMessages) log.messages.splice(0,1);
+
+  //   // if current log is displayed (focused), add message to the screen
+  //   if (selectedLogRef.current === log.name) {
+  //     if (!log.paused) {
+  //       setMessages((prev) => [...prev, msg ]);
+  //       if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
+  //     }
+  //   }
+  //   else {
+  //     // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
+  //     if (log.showBackgroundNotification && !log.paused) {
+  //       log.pending=true;
+  //       setHighlightedLogs((prev)=> [...prev, log!]);
+  //       setLogs(logs);
+  //     }
+  //   }
+
+  //   for (var alarm of log.alarms) {
+  //     if (msg.text.includes(alarm.expression)) {
+  //       if (alarm.beep) Beep.beepError();
+        
+  //       if (alarm.type===AlarmType.blocking) {
+  //         setBlockingAlarm(alarm);
+  //         setShowBlockingAlarm(true);
+  //       }
+  //       else {
+  //         // in the view action, implement scrollinto view for showing the message that caused the received alarm
+  //         const action = (snackbarId: SnackbarKey | undefined) => (
+  //           <>
+  //             <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
+  //               View
+  //             </Button>
+  //             <Button onClick={() => { closeSnackbar(snackbarId) }}>
+  //               Dismiss
+  //             </Button>
+  //           </>
+  //         );
+  //         var opts:any={
+  //           anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
+  //           variant:alarm.severity,
+  //           autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
+  //           action: action
+  //         };
+  //         enqueueSnackbar(alarm.message, opts);
+  //       }
+  //     }
+  //   }
+  // }
+
+  const wsOnChunk = (event:any) => {
     // find the log who this web socket belongs to, and add the new message
-    var log=logs.find(log => log.ws!==null && log.ws===event.target);
+    var log=logs.find(log => log.ws!==null && log.ws===event.target) as LogObject;
     if (!log) return;
     
     var e:any={};
@@ -225,9 +291,24 @@ const App: React.FC = () => {
     catch (err) {
       console.log(err);
       console.log(event.data);
+      return;
     }
 
-    var msg=new Message(e.text);
+    var msg=new Message(log.buffer+e.text);
+    //var msg=new Message(e.text);
+    if (!msg.text.endsWith('\n')) {
+      var i=msg.text.lastIndexOf('\n');
+      if (i>=0) {
+        console.log('***buf****');
+        console.log(msg.text.substring(i+1));
+        console.log('***txt****');
+        console.log(msg.text.substring(0,40));
+      }
+      else {
+        console.log('incomplete chunk');
+      }
+    }
+
     msg.cluster=log.cluster.name;
     msg.namespace=e.namespace;
     msg.resource=e.podName;
@@ -237,7 +318,8 @@ const App: React.FC = () => {
     // if current log is displayed (focused), add message to the screen
     if (selectedLogRef.current === log.name) {
       if (!log.paused) {
-        setMessages((prev) => [...prev, msg ]);
+        //setMessages((prev) => [...prev, msg ]);
+        setMessages((prev) => [ msg ]);
         if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
       }
     }
@@ -285,23 +367,33 @@ const App: React.FC = () => {
   const startLog = (log:LogObject) => {
     log.maxMessages=settings!.maxMessages;
     log.previous=settings!.previous;
+    log.addTimestamp=settings!.timestamp;
     log.messages=[];
     var cluster=clusters!.find(c => c.name===log.cluster);
     if (!cluster) {
       console.log('nocluster');
       return;
     }
-    console.log(cluster);
     var ws = new WebSocket(cluster.url+'?key='+cluster.apiKey);
     log.ws=ws;
     ws.onopen = () => {
       console.log(`WS connected: ${ws.url}`);
-      var payload={ scope:log.scope, namespace:log.namespace, set:log.set, setType:log.setType, pod:log.pod, container:log.container, timestamp:log.addTimestamp};
+      var payload={ 
+        scope:log.scope, 
+        namespace:log.namespace, 
+        set:log.set, 
+        setType:log.setType, 
+        pod:log.pod, 
+        container:log.container, 
+        timestamp:log.addTimestamp,
+        previous:log.previous,
+        maxMessages:log.maxMessages
+      };
       ws.send(JSON.stringify(payload));
       log.started=true;
     };
     
-    ws.onmessage = (event) => wsOnMessage(event);
+    ws.onmessage = (event) => wsOnChunk(event);
     ws.onclose = (event) => console.log(`WS disconnected: ${ws.url}`);
     setMessages([]);
   }
@@ -328,6 +420,7 @@ const App: React.FC = () => {
   }
 
   const onClickLogRemove = () => {
+    setAnchorMenuLog(null);
     if (selectedLog) {
       stopLog(selectedLog);
       if (logs.length===1)
@@ -336,7 +429,6 @@ const App: React.FC = () => {
         onChangeLogs(null,logs[0].name);
       setLogs(logs.filter(t => t!==selectedLog));
     }
-    setAnchorMenuLog(null);
   }
 
   const onClickLogPause = () => {
@@ -530,7 +622,7 @@ const App: React.FC = () => {
         selectedLog=new LogObject();
         selectedLog.maxMessages=10001;
         selectedLog.previous=true;
-        setShowSettings(true);
+        setShowSettingsConfig(true);
         break;
       case MenuDrawerOption.UpdateKwirth:
         fetch (`${backend}/managekwirth/restart`);
@@ -592,7 +684,7 @@ const App: React.FC = () => {
   }
 
   const settingsClosed = (newSettings:Settings) => {
-    setShowSettings(false);
+    setShowSettingsConfig(false);
     if (newSettings) writeSettings(newSettings);
   }
 
@@ -751,7 +843,7 @@ const App: React.FC = () => {
       { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
       { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
       { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
-      { showSettings && <SettingsConfig  onClose={settingsClosed} settings={settingsRef.current} /> }
+      { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
       { pickListConfig!==null && <PickList config={pickListConfig}/> }
       { msgBox }
   </>);

@@ -59,25 +59,32 @@ const getMyKubernetesData = async () => {
 }
 
 // split a block of stdout in lines and send them
-const sendLines = (ws:WebSocket, event:any, source:string) => {
-  const logLines = source.split('\n');
-  for (var l of logLines) {
-    if (l!=='') {
-      event.text=l;
-      ws.send(JSON.stringify(event));    
-    }
-  }
-}
+// const sendLines = (ws:WebSocket, event:any, source:string) => {
+//   const logLines = source.split('\n');
+//   for (var line of logLines) {
+//     if (line!=='') {
+//       event.text=line;
+//       ws.send(JSON.stringify(event));    
+//     }
+//   }
+// }
 
 // get pod logs
 const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, config:any) => {
   try {
     const logStream = new stream.PassThrough();
+    // logStream.on('data', (chunk:any) => {
+    //   var text=chunk.toString('utf8');
+    //   var event:any = {namespace:namespace, podName:podName};
+    //   sendLines(ws,event,text);
+    // });
+
     logStream.on('data', (chunk:any) => {
       var text=chunk.toString('utf8');
       var event:any = {namespace:namespace, podName:podName};
-      //if (config.timestamp) event.timestamp=new Date();
-      sendLines(ws,event,text);
+      event.text=text;
+      console.log(JSON.stringify(event));
+      ws.send(JSON.stringify(event));
     });
     
     /**
@@ -105,9 +112,10 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
       pretty: false, 
       timestamps:config.timestamp, 
     }
-    if (config.previous) streamConfig.previous=config.previous
-    if (config.since) streamConfig.sinceSeconds=config.since;
-    if (config.tail) streamConfig.tailLines=config.tail;
+    if (config.previous) streamConfig.previous=config.previous;
+    if (config.maxMessages) streamConfig.tailLines=config.maxMessages;
+    streamConfig.previous=false;
+    console.log('SC:'+JSON.stringify(streamConfig));
     await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig );
   }
   catch (err:any) {
@@ -130,16 +138,14 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:any) => {
         case 'namespace':
         case 'deployment':
           getPodLog(podNamespace, podName, '', ws, config);
+          break;
         case 'pod':
-          console.log(obj.spec);
           for (var container of obj.spec.containers) {
-            console.log(container.name);
             getPodLog(podNamespace, podName, container.name, ws, config);
           }
           break;
         case 'container':
           for (var container of obj.spec.containers) {
-            console.log(container.name+'=='+config.container);
             if (container.name===config.container) {
               getPodLog(podNamespace, podName, container.name, ws, config);
             }
@@ -163,7 +169,7 @@ async function processClientMessage(message:string, ws:any) {
 
   //const { scope, namespace, deploymentName, timestamp, previous } = JSON.parse(message);
   const config = JSON.parse(message);
-  console.log(config);
+  console.log('CONFIG:'+JSON.stringify(config));
   switch (config.scope) {
     case 'cluster':
       watchPods(`/api/v1/pods`, {}, ws, config);
@@ -194,20 +200,6 @@ async function processClientMessage(message:string, ws:any) {
             labelSelector = Object.entries(matchLabels).map(([key, value]) => `${key}=${value}`).join(',');
             console.log(labelSelector);
             watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector:labelSelector }, ws, config);
-            // res=await coreApi.listNamespacedPod(config.namespace, undefined, undefined, undefined, undefined, labelSelector);
-            // for (var pod of res.body.items as V1Pod[]) {
-            //   console.log(pod.metadata!.name);
-            //   console.log(pod.spec!.containers);
-            // }
-            // switch(config.scope) {
-            //   case 'deployment':
-                
-            //     break;
-            //   case 'pod':
-            //     break;
-            //   case 'container':
-            //     break;
-            // }            
         }
       }
       break;

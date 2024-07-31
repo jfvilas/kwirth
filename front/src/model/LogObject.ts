@@ -12,6 +12,7 @@ export class LogObject {
   public container:any;
   public ws:any=null;
   public messages:Message[]=[];
+  public buffer:string='';
   public maxMessages:number=10000;
   public previous:boolean=false;
   public defaultLog:boolean=false;
