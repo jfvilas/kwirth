@@ -5,7 +5,7 @@ import { LogObject } from '../model/LogObject';
 
 enum MenuLogOption {
     LogAlarmCreate,
-    LogAlarmManage,
+    LogManageAlarms,
     LogOptionsBackground,
     LogOptionsTimestamp,
     LogOrganizeRename,
@@ -76,7 +76,7 @@ const MenuLog: React.FC<any> = (props:IProps) => {
         <Menu id='menu-logs' anchorEl={props.anchorMenuLog} open={Boolean(props.anchorMenuLog)} onClose={props.onClose}>
             <MenuList dense sx={{width:'40vh'}}>
             <MenuItem key='fa' onClick={() => props.optionSelected(MenuLogOption.LogAlarmCreate)} sx={{ml:3}}>Convert filter to alarm...</MenuItem>
-            <MenuItem key='ma' onClick={() => props.optionSelected(MenuLogOption.LogAlarmManage)} disabled={true} sx={{ml:3}}>Manage alarms...</MenuItem>
+            <MenuItem key='ma' onClick={() => props.optionSelected(MenuLogOption.LogManageAlarms)} sx={{ml:3}}>Manage alarms...</MenuItem>
             <Divider/>
         
             <MenuItem key='subopt' onClick={submenuOptionsClick} sx={{ml:3}}>Logging options<Typography sx={{flexGrow:1}}></Typography>{subMenuOptionsOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>

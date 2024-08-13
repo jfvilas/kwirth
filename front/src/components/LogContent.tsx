@@ -15,14 +15,16 @@ interface IProps {
 const LogContent: React.FC<any> = (props:IProps) => {
 
   const formatMessage = (message:Message|null, index:number, color:number=0, ) => {
-    var txt=message!.text;
+    if (!message) return null;
+    
+    var txt=message.text;
     if (props.log.scope==='cluster') {
-      var fill=message!.namespace!.length+1+message!.resource!.length+1;
+      var fill=message.namespace!.length+1+message.resource!.length+1;
       var f=' '.repeat(fill);
       txt=txt.replaceAll('\n','\n'+f).trim();
     }
     else if (props.log.scope==='namespace'){
-      var fill=message!.resource!.length+1;
+      var fill=message.resource!.length+1;
       var f=' '.repeat(fill);
       txt=txt.replaceAll('\n','\n'+f).trim();
     }
@@ -42,10 +44,10 @@ const LogContent: React.FC<any> = (props:IProps) => {
     }
 
     if (props.log.scope==='cluster') {
-      return <div key={index}><span style={{color:"red"}}>{message!.namespace}</span>&nbsp;<span style={{color:"blue"}}>{message!.resource}</span>&nbsp;{t}</div>;
+      return <div key={index}><span style={{color:"red"}}>{message.namespace}</span>&nbsp;<span style={{color:"blue"}}>{message.resource}</span>&nbsp;{t}</div>;
     }
     else if (props.log.scope==='namespace') {
-      return <div key={index}><span style={{color:"blue"}}>{message!.resource}</span>&nbsp;{t}</div>;
+      return <div key={index}><span style={{color:"blue"}}>{message.resource}</span>&nbsp;{t}</div>;
     }
     else
       return <div key={index}>{t}</div>;

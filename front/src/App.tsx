@@ -25,6 +25,7 @@ import PickList from './components/PickList';
 import Login from './components/Login';
 import ManageClusters from './components/ManageClusters';
 import ManageUserSecurity from './components/ManageUserSecurity';
+import ManageAlarms from './components/ManageAlarms';
 import ResourceSelector from './components/ResourceSelector';
 import LogContent from './components/LogContent';
 import SettingsConfig from './components/SettingsConfig';
@@ -95,6 +96,7 @@ const App: React.FC = () => {
   const [showSaveView, setShowSaveView]=useState<boolean>(false);
   const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false);
   const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false);
+  const [showManageAlarms, setShowManageAlarms]=useState<boolean>(false);
   const [showSettingsConfig, setShowSettingsConfig]=useState<boolean>(false);
   const [blockingAlarm, setBlockingAlarm] = useState<Alarm>();
   const [viewLoaded, setViewLoaded] = useState<boolean>(false);
@@ -491,8 +493,8 @@ const App: React.FC = () => {
       case MenuLogOption.LogAlarmCreate:
         setShowAlarmConfig(true);
         break;
-      case MenuLogOption.LogOrganizeRename:
-        setShowRenameLog(true);
+      case MenuLogOption.LogManageAlarms:
+        setShowManageAlarms(true);
         break;
       case MenuLogOption.LogOrganizeDefault:
         if (selectedLog) selectedLog.defaultLog=true;
@@ -674,13 +676,13 @@ const App: React.FC = () => {
   const alarmConfigClosed = (alarm:Alarm) => {
     setShowAlarmConfig(false);
     if (alarm.expression) {
-        var alarm=new Alarm();
-        alarm.expression=alarm.expression;
-        alarm.severity=alarm.severity;
-        alarm.message=alarm.message;
-        alarm.type=alarm.type;
-        alarm.beep=alarm.beep;
-        selectedLog?.alarms.push(alarm);
+        var al=new Alarm();
+        al.expression=alarm.expression;
+        al.severity=alarm.severity;
+        al.message=alarm.message;
+        al.type=alarm.type;
+        al.beep=alarm.beep;
+        selectedLog?.alarms.push(al);
       }
   }
 
@@ -849,6 +851,7 @@ const App: React.FC = () => {
       { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
       { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
       { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
+      { showManageAlarms && <ManageAlarms onClose={() => setShowManageAlarms(false)} log={selectedLog}/> }
       { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
       { pickListConfig!==null && <PickList config={pickListConfig}/> }
       { msgBox }

@@ -13,6 +13,7 @@ enum AlarmSeverity {
 }
 
 class Alarm {
+  public id:string='';
   public expression:string='';
   public severity:AlarmSeverity=AlarmSeverity.default;
   public message:string='';
