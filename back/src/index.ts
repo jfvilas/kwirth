@@ -15,7 +15,7 @@ import { LoginApi } from './api/LoginApi';
 import WebSocket from 'ws';
 import { ManageApi } from './api/ManageApi';
 import { ManageKwirth } from './api/ManageKwirth';
-import { setDefaultAutoSelectFamily } from 'net';
+//import { setDefaultAutoSelectFamily } from 'net';
 import { LogConfig } from './model/LogConfig';
 const stream = require('stream');
 const express = require('express');
@@ -64,32 +64,32 @@ const getMyKubernetesData = async () => {
 //+++ add options to asterisk lines containing a specific text (like 'password', 'pw', etc...)
 
 // split a block of stdout into several lines and send them
-// const sendLines = (ws:WebSocket, event:any, source:string) => {
-//   const logLines = source.split('\n');
-//   for (var line of logLines) {
-//     if (line!=='') {
-//       event.text=line;
-//       ws.send(JSON.stringify(event));    
-//     }
-//   }
-// }
+const sendLines = (ws:WebSocket, event:any, source:string) => {
+  const logLines = source.split('\n');
+  for (var line of logLines) {
+    if (line!=='') {
+      event.text=line;
+      ws.send(JSON.stringify(event));    
+    }
+  }
+}
 
 // get pod logs
 const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, config:LogConfig) => {
   try {
     const logStream = new stream.PassThrough();
-    // logStream.on('data', (chunk:any) => {
-    //   var text=chunk.toString('utf8');
-    //   var event:any = {namespace:namespace, podName:podName};
-    //   sendLines(ws,event,text);
-    // });
-
     logStream.on('data', (chunk:any) => {
       var text=chunk.toString('utf8');
       var event:any = {namespace:namespace, podName:podName};
-      event.text=text;
-      ws.send(JSON.stringify(event));
+      sendLines(ws,event,text);
     });
+
+    // logStream.on('data', (chunk:any) => {
+    //   var text=chunk.toString('utf8');
+    //   var event:any = {namespace:namespace, podName:podName};
+    //   event.text=text;
+    //   ws.send(JSON.stringify(event));
+    // });
     
     /**
      * Follow the log stream of the pod. Defaults to false.
