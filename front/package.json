@@ -26,13 +26,11 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start-wsl": "WATCHPACK_POLLING=true react-scripts start",
     "start": "react-scripts start",
+    "start-wsl": "WATCHPACK_POLLING=true react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "wpstart": "webpack serve --open",
-    "wpbuild": "webpack --mode production"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
@@ -55,14 +53,8 @@
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@types/guid": "^1.0.3",
-    "clean-webpack-plugin": "^4.0.0",
     "css-loader": "^7.1.2",
-    "html-webpack-plugin": "^5.6.0",
     "style-loader": "^4.0.0",
-    "terser-webpack-plugin": "^5.3.10",
-    "ts-loader": "^9.5.1",
-    "webpack": "^5.92.1",
-    "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^5.0.4"
+    "ts-loader": "^9.5.1"
   }
 }
