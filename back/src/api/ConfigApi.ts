@@ -1,6 +1,5 @@
 import express from 'express';
 import { CoreV1Api, AppsV1Api, KubeConfig } from '@kubernetes/client-node';
-import Guid from 'guid';
 
 export class ConfigApi {
   public route = express.Router();
@@ -14,7 +13,7 @@ export class ConfigApi {
     this.route.route('/cluster')
       .get( async (req, res) => {
         try {
-          var cluster={ name:kc.getCurrentCluster()?.name, apiKey:Guid.create().toString() };
+          var cluster={ name:kc.getCurrentCluster()?.name };
           res.status(200).json(cluster);
         }
         catch (err) {

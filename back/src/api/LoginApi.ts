@@ -2,6 +2,8 @@ import express from 'express';
 import Semaphore from 'ts-semaphore';
 import { Secrets } from '../tools/Secrets';
 import Guid from 'guid';
+import { ApiKeyApi } from './ApiKeyApi';
+import { ApiKey } from '../model/ApiKey';
 
 export class LoginApi {
   secrets:Secrets;
@@ -21,7 +23,7 @@ export class LoginApi {
             if (user.password==='password')
               res.status(201).send('');
             else {
-              user.apiKey=Guid.create().toString();
+              user.apiKey=createApiKey(req.body.user);
               users[req.body.user]=btoa(JSON.stringify(user));
               secrets.write('kwirth.users',users);
               res.status(200).json(user);
@@ -44,7 +46,7 @@ export class LoginApi {
         if (user) {
           if (req.body.password===user.password) {
             user.password = req.body.newpassword
-            user.apiKey=Guid.create().toString();
+            user.apiKey=createApiKey(req.body.user);
             users[req.body.user]=btoa(JSON.stringify(user));
             secrets.write('kwirth.users',users);
             var x:any={};
@@ -62,5 +64,14 @@ export class LoginApi {
       });
     });
 
+    function createApiKey(username:string) {
+      var apiKey:ApiKey= {
+        key: Guid.create().toString(),
+        description: `Login user '${username}' at ${Date.now().toLocaleString()}`,
+        expire: null
+      };
+      ApiKeyApi.apiKeys.push(apiKey);
+      return apiKey.key;
+    }
   }
 }

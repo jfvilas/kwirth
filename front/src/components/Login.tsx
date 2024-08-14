@@ -4,11 +4,11 @@ import { User } from '../model/User';
 import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox';
 
 interface IProps {
-  onClose:(result:boolean,user:User|null) => {},
+  onClose:(result:boolean,user:User|null, apiKey:string) => {},
   backend:string
 }
 
-const AddCluster: React.FC<any> = (props:IProps) => {
+const Login: React.FC<any> = (props:IProps) => {
   const [msgBox, setMsgBox] = useState(<></>);
   const [user, setUser] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
@@ -27,6 +27,11 @@ const AddCluster: React.FC<any> = (props:IProps) => {
     }
   }
 
+  const loginOk = (jsonResult:any) => {
+    var receivedUser:User=jsonResult as User;
+    props.onClose(true, receivedUser, jsonResult.apiKey);
+  }
+
   const onClickOk= async () => {
     if(changingPassword) {
       if (newPassword1===newPassword2) {
@@ -34,7 +39,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
         if (result.status===200) {
           setUser('');
           setPassword('');
-          props.onClose(true, await result.json());
+          loginOk(await result.json());
         }
         else {
           setMsgBox(MsgBoxOkWarning('Login',`Password could not be changesd.`, setMsgBox));
@@ -50,7 +55,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
         case 200:
           setUser('');
           setPassword('');
-          props.onClose(true, await result.json());
+          loginOk(await result.json());
           break;
         case 201:
           setNewPassword1('');
@@ -72,7 +77,7 @@ const AddCluster: React.FC<any> = (props:IProps) => {
       setPassword('');
     }
     else {
-      props.onClose(false,null);
+      props.onClose(false,null,'');
     }
   }
 
@@ -109,4 +114,4 @@ const AddCluster: React.FC<any> = (props:IProps) => {
   </>);
 };
 
-export default AddCluster;
+export default Login;

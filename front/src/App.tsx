@@ -45,7 +45,7 @@ const App: React.FC = () => {
 
   const [user, setUser] = useState<User>();
   const [logged,setLogged]=useState(false);
-  const [apiKey,setApiKey]=useState('');
+  const [apiKey,setApiKey]=useState('');  //+++ es posible qu eno sea necesaria, ya que tenemos srcCluster
   const [msgBox, setMsgBox] =useState(<></>);
 
   const [clusters, setClusters] = useState<Cluster[]>();
@@ -139,7 +139,6 @@ const App: React.FC = () => {
     var srcCluster = await response.json() as Cluster;
     srcCluster.url=backend;
     srcCluster.source=true;
-    srcCluster.apiKey=apiKey;
 
     // get previously configured clusters
     var clusterList:Cluster[]=[];
@@ -376,11 +375,13 @@ const App: React.FC = () => {
       console.log('nocluster');
       return;
     }
-    var ws = new WebSocket(cluster.url+'?key='+cluster.apiKey);
+    console.log(cluster);
+    var ws = new WebSocket(cluster.url);
     log.ws=ws;
     ws.onopen = () => {
       console.log(`WS connected: ${ws.url}`);
       var payload={ 
+        key:apiKey,
         scope:log.scope, 
         namespace:log.namespace, 
         set:log.set, 
@@ -741,9 +742,11 @@ const App: React.FC = () => {
     setClusters(cc);
   }
 
-  const onCloseLogin = (result:boolean, user:User) => {
+  const onCloseLogin = (result:boolean, user:User, apiKey:string) => {
     if (result) {
-      setLogged(true); 
+      console.log(result);
+      console.log(user);
+      setLogged(true);
       setUser(user);
       setApiKey(apiKey);
       setCurrentViewName('untitled');

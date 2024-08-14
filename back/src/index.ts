@@ -88,7 +88,6 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
       var text=chunk.toString('utf8');
       var event:any = {namespace:namespace, podName:podName};
       event.text=text;
-      console.log(JSON.stringify(event));
       ws.send(JSON.stringify(event));
     });
     
@@ -122,7 +121,6 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
     streamConfig.previous=Boolean(config.previous);
     streamConfig.tailLines=config.maxMessages;
     //streamConfig.previous=false;
-    console.log('SC:'+JSON.stringify(streamConfig));
     await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig );
   }
   catch (err:any) {
@@ -176,9 +174,19 @@ async function processClientMessage(message:string, ws:any) {
 
   //const { scope, namespace, deploymentName, timestamp, previous } = JSON.parse(message);
   const config = JSON.parse(message) as LogConfig;
-  //var key:string=config.key;
-  // +++ validate key
-  console.group('Received key: '+config.key);
+  console.log('Received key: '+config.key);
+  if (!config.key) {
+    console.log('ERROR: No key received');
+    ws.close();
+    return;
+  }
+  if (!ApiKeyApi.apiKeys.some(ak => ak.key===config.key)) {
+    console.log(`ERROR: Invalid API key: ${config.key}`);
+    console.log(ApiKeyApi.apiKeys);
+    ws.close();
+    return;
+  }
+
   console.log('CONFIG:'+JSON.stringify(config));
   if (config.key.startsWith('resource|')) {
     var keyParts:string[]=config.key.split('|');
