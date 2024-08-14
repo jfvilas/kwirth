@@ -1,4 +1,5 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod, LogOptions } from '@kubernetes/client-node';
+//import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod, LogOptions } from '@kubernetes/client-node';
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch } from '@kubernetes/client-node';
 import { ConfigApi } from './api/ConfigApi';
 import { Secrets } from './tools/Secrets';
 import { ConfigMaps } from './tools/ConfigMaps';
@@ -14,6 +15,8 @@ import { LoginApi } from './api/LoginApi';
 import WebSocket from 'ws';
 import { ManageApi } from './api/ManageApi';
 import { ManageKwirth } from './api/ManageKwirth';
+import { setDefaultAutoSelectFamily } from 'net';
+import { LogConfig } from './model/LogConfig';
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
@@ -58,7 +61,9 @@ const getMyKubernetesData = async () => {
     return { namespace:'default', deployment:'' };
 }
 
-// split a block of stdout in lines and send them
+//+++ add options to asterisk lines containing a specific text (like 'password', 'pw', etc...)
+
+// split a block of stdout into several lines and send them
 // const sendLines = (ws:WebSocket, event:any, source:string) => {
 //   const logLines = source.split('\n');
 //   for (var line of logLines) {
@@ -70,7 +75,7 @@ const getMyKubernetesData = async () => {
 // }
 
 // get pod logs
-const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, config:any) => {
+const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, config:LogConfig) => {
   try {
     const logStream = new stream.PassThrough();
     // logStream.on('data', (chunk:any) => {
@@ -112,9 +117,11 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
       pretty: false, 
       timestamps:config.timestamp, 
     }
-    if (config.previous) streamConfig.previous=config.previous;
-    if (config.maxMessages) streamConfig.tailLines=config.maxMessages;
-    streamConfig.previous=false;
+    // if (config.previous) streamConfig.previous=config.previous;
+    // if (config.maxMessages) streamConfig.tailLines=config.maxMessages;
+    streamConfig.previous=Boolean(config.previous);
+    streamConfig.tailLines=config.maxMessages;
+    //streamConfig.previous=false;
     console.log('SC:'+JSON.stringify(streamConfig));
     await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig );
   }
@@ -126,7 +133,7 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
 };
 
 // watch deployment pods
-const watchPods = (apiPath:string, filter:any, ws:any, config:any) => {
+const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
   const watch = new Watch(kc);
   watch.watch(apiPath, filter, (type:string, obj:any) => {
     if (type === 'ADDED' || type === 'MODIFIED') {
@@ -168,8 +175,24 @@ async function processClientMessage(message:string, ws:any) {
   // {"scope":"namespace", "namespace":"default","set":"ubuntu3", "timestamp":true}
 
   //const { scope, namespace, deploymentName, timestamp, previous } = JSON.parse(message);
-  const config = JSON.parse(message);
+  const config = JSON.parse(message) as LogConfig;
+  //var key:string=config.key;
+  // +++ validate key
+  console.group('Received key: '+config.key);
   console.log('CONFIG:'+JSON.stringify(config));
+  if (config.key.startsWith('resource|')) {
+    var keyParts:string[]=config.key.split('|');
+    var type=keyParts[0];
+    var resource=keyParts[1];
+    var guid=keyParts[2];
+    // cluster:scope:namespace:set:pod:container
+    var resParts:string[]=resource.split(':');
+    config.scope=resParts[1];
+    config.namespace=resParts[2];
+    config.setType=resParts[3];
+    config.pod=resParts[4];
+    config.container=resParts[5];
+  }
   switch (config.scope) {
     case 'cluster':
       watchPods(`/api/v1/pods`, {}, ws, config);
@@ -183,13 +206,13 @@ async function processClientMessage(message:string, ws:any) {
       var res:any;
       switch (config.setType) {
         case'replica':
-          res=await appsApi.readNamespacedReplicaSet(config.set, config.namespace);
+          res=await appsApi.readNamespacedReplicaSet(config.setType, config.namespace);
           break;
         case'daemon':
-          res=await appsApi.readNamespacedDaemonSet(config.set, config.namespace);
+          res=await appsApi.readNamespacedDaemonSet(config.setType, config.namespace);
           break;
         case'stateful':
-          res=await appsApi.readNamespacedStatefulSet(config.set, config.namespace);
+          res=await appsApi.readNamespacedStatefulSet(config.setType, config.namespace);
           break;
       }
       const matchLabels = res.body.spec?.selector?.matchLabels;
@@ -245,7 +268,6 @@ const launch = (myNamespace:string, myDeployment:string) => {
   app.use(`${rootPath}/manage`, ma.route);
   var mk:ManageKwirth = new ManageKwirth(appsApi, myNamespace, myDeployment);
   app.use(`${rootPath}/managekwirth`, mk.route);
-
 
   // listen
   server.listen(PORT, () => {

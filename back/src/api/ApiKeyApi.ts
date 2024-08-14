@@ -25,13 +25,33 @@ export class ApiKeyApi {
       })
       .post( async (req, res) => {
         try {
+          /*
+            TYPE:
+            kwirth
+            resource
+          */
+          var type=req.body.type.toLowerCase();
+          /*
+            RESOURCE:
+            cluster:scope:namespace:set:pod:container
+            cluster: name
+            scope: cluster|namespace|set|pod|container
+            namespace: name
+            set: name
+            pod: name
+            container: name
+          */
+          var resource=req.body.resource.toLowerCase();  // optional (mandatory if type is 'temporary')
           var description=req.body.description;
           var expire=req.body.expire;
-          var key={ key:Guid.create().toString(), description:description, expire:expire };
-          ApiKeyApi.apiKeys.push(key);
-          configMaps.write('kwirth.keys',{ keys: JSON.stringify(ApiKeyApi.apiKeys) });
-          res.status(200).json(key);
-        }
+          var key=type+'|'+resource+'|'+Guid.create().toString()
+          var keyObject={ key:key, description:description, expire:expire };
+          ApiKeyApi.apiKeys.push(keyObject);
+          if (type==='kwirth') {
+            configMaps.write('kwirth.keys',{ keys: JSON.stringify(ApiKeyApi.apiKeys) });
+          }
+          res.status(200).json(keyObject);
+      }
         catch (err) {
           res.status(500).json({});
           console.log(err);
@@ -56,7 +76,9 @@ export class ApiKeyApi {
       .delete( async (req, res) => {
         try {
           ApiKeyApi.apiKeys=ApiKeyApi.apiKeys.filter(k => k.key!==req.params.key);
-          configMaps.write('kwirth.keys',{ keys:JSON.stringify(ApiKeyApi.apiKeys) });
+          if (req.params.key.startsWith('kwirth')) {
+            configMaps.write('kwirth.keys',{ keys:JSON.stringify(ApiKeyApi.apiKeys) });
+          }
           res.status(200).json({});
         }
         catch (err) {
@@ -70,7 +92,9 @@ export class ApiKeyApi {
           ApiKeyApi.apiKeys=ApiKeyApi.apiKeys.filter(k => k.key!==key.key);
           key.key=req.params.key;
           ApiKeyApi.apiKeys.push(key);
-          configMaps.write('kwirth.keys',{ keys:JSON.stringify(ApiKeyApi.apiKeys) });
+          if (req.params.key.startsWith('kwirth')) {
+            configMaps.write('kwirth.keys',{ keys:JSON.stringify(ApiKeyApi.apiKeys) });
+          }
           res.status(200).json({});
         }
         catch (err) {
@@ -79,5 +103,4 @@ export class ApiKeyApi {
         }
       });
   }
-
 }

@@ -43,7 +43,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
       await fetch(`${props.backend}/key/${selectedKey?.key}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json'}});
     }
     else {
-      var newkey={ description:description, expire:expire};
+      var newkey={ description:description, expire:expire, type:'kwirth', resource:'in-cluster:cluster::::'};
       await fetch(`${props.backend}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json'}});
     }
     setDescrition('');
