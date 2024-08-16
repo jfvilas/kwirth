@@ -3,7 +3,7 @@ import { AppsV1Api } from '@kubernetes/client-node';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { validKey } from '../tools/AuthorizationManagement';
 
-export class ManageCluster {
+export class ManageClusterApi {
   public route = express.Router();
   coreV1Api:CoreV1Api;
   appsV1Api:AppsV1Api;

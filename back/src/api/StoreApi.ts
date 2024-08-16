@@ -34,9 +34,8 @@ export class StoreApi {
             }
           }
           catch (err) {
-            console.log('err');
             console.log(err);
-            res.status(500).send();
+            res.status(500).json();
           }
         });
       });
@@ -57,9 +56,8 @@ export class StoreApi {
               res.status(200).json(Object.keys(data).filter(k => k.startsWith(req.params.group+'-')).map(k => k.substring(k.indexOf('-')+1)));
           }
           catch (err) {
-            console.log('err');
             console.log(err);
-            res.status(500).send();
+            res.status(500).json();
           }
         });
       });
@@ -79,8 +77,8 @@ export class StoreApi {
               res.status(200).json(data[req.params.group+'-'+req.params.key]);
           }      
           catch (err) {
-            res.status(500).json();
             console.log(err);
+            res.status(500).json();
           }
         });
       })
@@ -93,8 +91,8 @@ export class StoreApi {
             res.status(200).json();
           }      
           catch (err) {
-            res.status(500).json();
             console.log(err);
+            res.status(500).json();
           }
         });
       })
@@ -104,7 +102,7 @@ export class StoreApi {
             var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});
             data[req.params.group+'-'+req.params.key]=JSON.stringify(req.body);
             await this.configMaps.write('kwirth.store.'+req.params.user,data);
-            res.status(200).send('');
+            res.status(200).json();
           }
           catch (err) {
             res.status(500).json();

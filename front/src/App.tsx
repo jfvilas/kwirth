@@ -142,7 +142,6 @@ const App: React.FC = () => {
     srcCluster.url=backend;
     srcCluster.apiKey=apiKey;
     srcCluster.source=true;
-    console.log(srcCluster);
 
     // get previously configured clusters
     var clusterList:Cluster[]=[];
@@ -153,9 +152,9 @@ const App: React.FC = () => {
     }
 
     // store updated cluster list (excluding this cluster if current kwirth is running inCluster)
-    var clonedList=Array.from(clusterList);
-    if (!srcCluster.inCluster) clonedList.push(srcCluster);
-    fetch (`${backend}/store/${user?.id}/clusters/list`, {method:'POST', body:JSON.stringify(clonedList), headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey}});
+    // var clonedList=Array.from(clusterList);
+    // if (!srcCluster.inCluster) clonedList.push(srcCluster);
+    // fetch (`${backend}/store/${user?.id}/clusters/list`, {method:'POST', body:JSON.stringify(clonedList), headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey}});
 
     clusterList.push(srcCluster);
     setClusters(clusterList);
@@ -369,6 +368,7 @@ const App: React.FC = () => {
     var cluster=clusters!.find(c => c.name===log.cluster);
     if (!cluster) {
       console.log('nocluster');
+      setMsgBox(MsgBoxOk('Kwirth',`Cluster set at log configuration ${log.cluster} does not exist.`, setMsgBox));
       return;
     }
     console.log(cluster);

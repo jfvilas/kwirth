@@ -4,7 +4,7 @@ import { KwirthData } from '../model/KwirthData';
 import { pauseDeployment, restartDeployment } from '../tools/KubernetesOperations';
 import { validKey } from '../tools/AuthorizationManagement';
 
-export class ManageKwirth {
+export class ManageKwirthApi {
   public route = express.Router();
   appsV1Api:AppsV1Api;
  

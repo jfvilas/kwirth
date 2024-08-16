@@ -4,11 +4,27 @@ import { Secrets } from '../tools/Secrets';
 import Guid from 'guid';
 import { ApiKeyApi } from './ApiKeyApi';
 import { ApiKey } from '../model/ApiKey';
+import { ConfigMaps } from '../tools/ConfigMaps';
 
 export class LoginApi {
   secrets:Secrets;
+  configMaps:ConfigMaps;
   static semaphore:Semaphore = new Semaphore(1);
   public route = express.Router();
+
+  createApiKey = async (req:any, username:string) => {
+    var ip=req.clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    var apiKey:ApiKey= {
+      key: Guid.create().toString()+'|permanent|'+'cluster:::::',
+      description: `Login user '${username}' at ${new Date().toISOString()} from ${ip}`,
+      expire: ''
+    };
+    var storedKeys = await this.configMaps.read('kwirth.keys', []);
+    storedKeys.push(apiKey);
+    this.configMaps.write('kwirth.keys', storedKeys );
+    ApiKeyApi.apiKeys=storedKeys;
+    return apiKey.key;
+  }
 
   okResponse = (user:any) => {
     var newObject:any={};
@@ -17,10 +33,11 @@ export class LoginApi {
     return newObject;
   }
   
-  constructor (secrets:Secrets) {
+  constructor (secrets:Secrets, configMaps:ConfigMaps) {
     this.secrets = secrets;
+    this.configMaps = configMaps;
 
-    // authentication
+    // authentication (login)
     this.route.post('/', async (req:any,res:any) => {
       LoginApi.semaphore.use ( async () => {
         var users:any = (await secrets.read('kwirth.users') as any);
@@ -30,14 +47,12 @@ export class LoginApi {
             if (user.password==='password')
               res.status(201).send('');
             else {
-              user.apiKey=createApiKey(req.body.user);
-              users[req.body.user]=btoa(JSON.stringify(user));
-              secrets.write('kwirth.users',users);
+              user.apiKey=await this.createApiKey(req, req.body.user);
               res.status(200).json(this.okResponse(user));
             }
           } 
           else {
-            res.status(401).send('');
+            res.status(401).json();
           }
         }
         else {
@@ -46,6 +61,7 @@ export class LoginApi {
       });
     });
 
+    // change password
     this.route.post('/password', async (req:any,res:any) => { 
       LoginApi.semaphore.use ( async () => {
         var users:any = (await secrets.read('kwirth.users') as any);
@@ -53,9 +69,9 @@ export class LoginApi {
         if (user) {
           if (req.body.password===user.password) {
             user.password = req.body.newpassword
-            user.apiKey=createApiKey(req.body.user);
+            user.apiKey=await this.createApiKey(req, req.body.user);
             users[req.body.user]=btoa(JSON.stringify(user));
-            secrets.write('kwirth.users',users);
+            await secrets.write('kwirth.users',users);
             res.status(200).json(this.okResponse(user));
           }
           else {
@@ -68,14 +84,5 @@ export class LoginApi {
       });
     });
 
-    function createApiKey(username:string) {
-      var apiKey:ApiKey= {
-        key: Guid.create().toString(),
-        description: `Login user '${username}' at ${Date.now().toString()}`,
-        expire: null
-      };
-      ApiKeyApi.apiKeys.push(apiKey);
-      return apiKey.key;
-    }
   }
 }

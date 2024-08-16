@@ -1,6 +1,6 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1ConfigMap } from '@kubernetes/client-node';
+import { CoreV1Api, V1ConfigMap } from '@kubernetes/client-node';
 
-export class  ConfigMaps {
+export class ConfigMaps {
     coreApi:CoreV1Api;
     namespace:string;
 
@@ -9,56 +9,53 @@ export class  ConfigMaps {
         this.namespace=namespace;
     }
 
-    public write = (name:string, data:any): Promise<{}> =>{
-        return new Promise(
-            async (resolve, reject) => {
+    public write = async (name:string, data:any) =>{
+        try {
+            var configMap:V1ConfigMap = {
+                metadata: {
+                    name: name,
+                    namespace: this.namespace
+                },
+                data: { data: JSON.stringify(data) }
+            };
+            try {
+                await this.coreApi?.replaceNamespacedConfigMap(name,this.namespace, configMap);
+                return {};
+            }
+            catch (err) {
+                console.log('err replacing try to create');
+                console.log(err);
                 try {
-                    var configMap:V1ConfigMap = {
-                        metadata: {
-                            name: name,
-                            namespace: this.namespace
-                        },
-                        data: data
-                    };
-                    try {
-                        await this.coreApi?.replaceNamespacedConfigMap(name,this.namespace, configMap);
-                        resolve ({});
-                    }
-                    catch (err) {
-                        console.log('err replacing try to create');
-                        try {
-                            await this.coreApi?.createNamespacedConfigMap(this.namespace, configMap);
-                            resolve ({});
-                        }
-                        catch (err) {
-                            console.log(err);
-                            reject ({});
-                        }
-                    }
+                    await this.coreApi?.createNamespacedConfigMap(this.namespace, configMap);
+                    return {};
                 }
                 catch (err) {
-                    reject ({});
+                    console.log(err);
+                    return {};
                 }
             }
-        );
+        }
+        catch (err) {
+            console.log(err);
+            return undefined;
+        }
+    
     }
     
-    public read = async (name:string, defaultValue:any=undefined):Promise<any> =>{
-        return new Promise( async (resolve,reject) => {
-            try {
-                var ct = await this.coreApi?.readNamespacedConfigMap(name,this.namespace);
-                if (ct.body.data===undefined) ct.body.data=defaultValue;
-                resolve(ct.body.data);
+    public read = async (name:string, defaultValue:any=undefined) => {
+        try {
+            var ct = await this.coreApi?.readNamespacedConfigMap(name,this.namespace);
+            if (ct.body.data===undefined) ct.body.data={ data: defaultValue };
+            return JSON.parse(ct.body.data.data);
+        }
+        catch(err:any){
+            if (err.statusCode===404) {
+                return defaultValue;
             }
-            catch(err:any){
-                if (err.statusCode===404) {
-                    resolve (defaultValue);
-                }
-                else {
-                    console.log(err);
-                    reject (undefined);
-                }
+            else {
+                console.log(err);
+                return undefined;
             }
-        });
-    }  
+        }
+    }
 }

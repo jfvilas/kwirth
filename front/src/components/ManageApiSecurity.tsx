@@ -44,7 +44,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
       await fetch(`${backendUrl}/key/${selectedKey?.key}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey}});
     }
     else {
-      var newkey={ description:description, expire:expire, type:'kwirth', resource:'in-cluster:cluster::::'};
+      var newkey={ description:description, expire:expire, type:'permanent', resource:'cluster:::::'};
       await fetch(`${backendUrl}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey}});
     }
     setDescrition('');
@@ -93,7 +93,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
           <Button onClick={onClickNew}>NEW</Button>
           <Button onClick={onClickSave} disabled={description==='' || expire===''}>SAVE</Button>
           <Button onClick={onClickCopy} disabled={selectedKey===undefined}>COPY</Button>
-          <Button onClick={onClickDelete} disabled={selectedKey===undefined}>DELETE</Button>
+          <Button onClick={onClickDelete} disabled={selectedKey===undefined || selectedKey?.key===apiKey}>DELETE</Button>
         </Stack>
         <Typography sx={{flexGrow:1}}></Typography>
         <Button onClick={() => props.onClose()}>CLOSE</Button>

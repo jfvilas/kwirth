@@ -14,16 +14,17 @@ import { LoginApi } from './api/LoginApi';
 // HTTP server & websockets
 import WebSocket from 'ws';
 import { OperateApi } from './api/OperateApi';
-import { ManageKwirth } from './api/ManageKwirth';
-//import { setDefaultAutoSelectFamily } from 'net';
+import { ManageKwirthApi } from './api/ManageKwirth';
 import { LogConfig } from './model/LogConfig';
-import { ManageCluster } from './api/ManageCluster';
+import { ManageClusterApi } from './api/ManageClusterApi';
 import { KwirthData } from './model/KwirthData';
+import { extractResource } from './tools/AuthorizationManagement';
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const bodyParser = require('body-parser')
+const requestIp = require ('request-ip');
 const PORT = 3883;
 const buffer:Map<WebSocket,string>= new Map();
 
@@ -58,10 +59,11 @@ const getMyKubernetesData = async ():Promise<KwirthData> => {
         }
       }
     }
-    return { namespace: pod.metadata.namespace, deployment:depName, inCluster:true };
+    return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true };
   }
   else {
-    return { namespace:'default', deployment:'', inCluster:false };
+    // this namespace will be used to access secrets and configmaps
+    return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false };
   }
 }
 
@@ -202,19 +204,9 @@ async function processClientMessage(message:string, ws:any) {
   }
 
   console.log('RECEIVED CONFIG:'+JSON.stringify(config));
-  // if (config.key.startsWith('resource|')) {
-  //   var keyParts:string[]=config.key.split('|');
-  //   var type=keyParts[0];
-  //   var resource=keyParts[1];
-  //   var guid=keyParts[2];
-  //   // cluster:scope:namespace:set:pod:container
-  //   var resParts:string[]=resource.split(':');
-  //   config.scope=resParts[1];
-  //   config.namespace=resParts[2];
-  //   config.setName=resParts[3];
-  //   config.pod=resParts[4];
-  //   config.container=resParts[5];
-  // }
+  var resource = extractResource(config.key);
+  if (config.key.startsWith('resource|')) {
+  }
   
   switch (config.scope) {
     case 'cluster':
@@ -288,15 +280,18 @@ const launch = (kwrithData: KwirthData) => {
   app.use(`${rootPath}/store`, sa.route);
   var ua:UserApi = new UserApi(secrets);
   app.use(`${rootPath}/user`, ua.route);
-  var la:LoginApi = new LoginApi(secrets);
+  var la:LoginApi = new LoginApi(secrets, configMaps);
   app.use(`${rootPath}/login`, la.route);
   var oa:OperateApi = new OperateApi(appsApi);
   app.use(`${rootPath}/manage`, oa.route);
-  var mk:ManageKwirth = new ManageKwirth(appsApi, kwrithData);
+  var mk:ManageKwirthApi = new ManageKwirthApi(appsApi, kwrithData);
   app.use(`${rootPath}/managekwirth`, mk.route);
-  var mc:ManageCluster = new ManageCluster(coreApi, appsApi);
+  var mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi);
   app.use(`${rootPath}/managecluster`, mc.route);
 
+  // obtain remote ip
+  app.use(requestIp.mw())
+  
   // listen
   server.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
@@ -304,7 +299,7 @@ const launch = (kwrithData: KwirthData) => {
     if (kwrithData.inCluster)
       console.log(`Running inside cluster`);
     else
-      console.log(`Cluster name: ${kc.getCluster(kc.currentContext)?.name}`);
+      console.log(`Cluster name (according to kubeconfig context): ${kc.getCluster(kc.currentContext)?.name}`);
     console.log(`KWI1500I Control is being given to KWirth`);
   });
 }
@@ -319,16 +314,17 @@ app.get(`${rootPath}`, (req:any,res:any) => { res.redirect(`${rootPath}/front`) 
 app.use(`${rootPath}/front`, express.static('./dist/front'))
 
 getMyKubernetesData()
-.then ( (kwirthData) => {
-  console.log('Detected own namespace: '+kwirthData.namespace);
-  console.log('Detected own deployment: '+kwirthData.deployment);
-  launch (kwirthData);
-})
-.catch ( (err) => {
-  console.log('Cannot get namespace, using "default"');
-  launch ({
-    inCluster: false,
-    namespace: '',
-    deployment: ''
+  .then ( (kwirthData) => {
+    console.log('Detected own namespace: '+kwirthData.namespace);
+    console.log('Detected own deployment: '+kwirthData.deployment);
+    launch (kwirthData);
+  })
+  .catch ( (err) => {
+    console.log('Cannot get namespace, using "default"');
+    launch ({
+      clusterName: 'error-starting',
+      inCluster: false,
+      namespace: 'default',
+      deployment: ''
+    });
   });
-});

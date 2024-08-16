@@ -19,7 +19,7 @@ export class ConfigApi {
       })
       .get( async (req, res) => {
         try {
-          var cluster={ name:kc.getCurrentCluster()?.name, inCluster:kwirthData.inCluster };
+          var cluster={ name:kwirthData.clusterName, inCluster:kwirthData.inCluster };
           res.status(200).json(cluster);
         }
         catch (err) {

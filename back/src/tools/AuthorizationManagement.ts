@@ -1,4 +1,5 @@
 import { ApiKeyApi } from "../api/ApiKeyApi";
+import { ResourceIdentifier } from "../model/ResourceIdentifier";
 
 export const validKey = (req:any,res:any) => {
     if (req.headers.authorization && req.headers.authorization) {
@@ -14,3 +15,15 @@ export const validKey = (req:any,res:any) => {
       return false;
     }
   }
+
+export const extractResource = (key:string) : ResourceIdentifier => {
+  var parts=key.split(':');
+  return {
+    scope:parts[0],
+    namespace:parts[1],
+    setType:parts[2],
+    setName:parts[3],
+    pod:parts[4],
+    container:parts[5]
+  }
+}
