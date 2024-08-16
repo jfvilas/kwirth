@@ -1,7 +1,7 @@
 import express from 'express';
 import { AppsV1Api } from '@kubernetes/client-node';
 
-export class ManageApi {
+export class OperateApi {
   public route = express.Router();
   appsV1Api:AppsV1Api;
 

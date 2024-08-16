@@ -1,6 +1,7 @@
 import express from 'express';
 import { AppsV1Api } from '@kubernetes/client-node';
 import { CoreV1Api } from '@kubernetes/client-node';
+import { validKey } from '../tools/AuthorizationManagement';
 
 export class ManageCluster {
   public route = express.Router();
@@ -13,6 +14,10 @@ export class ManageCluster {
     this.appsV1Api=appsV1Api
 
     this.route.route('/find')
+      .all( async (req,res, next) => {
+        if (!validKey(req,res)) return;
+        next();
+      })
       .get( async (req, res) => {
         try {
           var label:string=req.query.label as string;

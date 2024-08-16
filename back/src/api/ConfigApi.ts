@@ -1,6 +1,7 @@
 import express from 'express';
 import { CoreV1Api, AppsV1Api, KubeConfig } from '@kubernetes/client-node';
 import { KwirthData } from '../model/KwirthData';
+import { validKey } from '../tools/AuthorizationManagement';
 
 export class ConfigApi {
   public route = express.Router();
@@ -12,6 +13,10 @@ export class ConfigApi {
     this.appsV1Api=appsV1Api
 
     this.route.route('/cluster')
+      .all( async (req,res, next) => {
+        if (!validKey(req,res)) return;
+        next();
+      })
       .get( async (req, res) => {
         try {
           var cluster={ name:kc.getCurrentCluster()?.name, inCluster:kwirthData.inCluster };
@@ -24,7 +29,11 @@ export class ConfigApi {
     });
     
     // get all namespaces
-    this.route.route('/namespaces')
+    this.route.route('/namespace')
+      .all( async (req,res, next) => {
+        if (!validKey(req,res)) return;
+        next();
+      })
       .get( async (req, res) => {
         try {
           var response = await this.coreApi.listNamespace();
@@ -38,7 +47,11 @@ export class ConfigApi {
       });
 
       // get all deployments in a namespace
-      this.route.route('/:namespace/sets')
+    this.route.route('/:namespace/sets')
+      .all( async (req,res, next) => {
+        if (!validKey(req,res)) return;
+        next();
+      })
       .get( async (req, res) => {
         try {
           var list:any[]=[];
@@ -57,7 +70,11 @@ export class ConfigApi {
       });
 
       // get all pods in a namespace in a set
-      this.route.route('/:namespace/:set/pods')
+    this.route.route('/:namespace/:set/pods')
+      .all( async (req,res, next) => {
+        if (!validKey(req,res)) return;
+        next();
+      })
       .get( async (req, res) => {
         try {
           var response= await this.coreApi.listNamespacedPod(req.params.namespace);
@@ -70,7 +87,11 @@ export class ConfigApi {
         }
       });
 
-      this.route.route('/:namespace/:pod/containers')
+    this.route.route('/:namespace/:pod/containers')
+      .all( async (req,res, next) => {
+        if (!validKey(req,res)) return;
+        next();
+      })
       .get( async (req, res) => {
         try {
           var response= await this.coreApi.listNamespacedPod(req.params.namespace);

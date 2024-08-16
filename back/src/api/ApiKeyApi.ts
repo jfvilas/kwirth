@@ -2,6 +2,7 @@ import { ConfigMaps } from '../tools/ConfigMaps';
 import { ApiKey } from '../model/ApiKey';
 import express from 'express';
 import Guid from 'guid';
+import { validKey } from '../tools/AuthorizationManagement';
 
 export class ApiKeyApi {
   static apiKeys:ApiKey[]=[];
@@ -18,30 +19,15 @@ export class ApiKeyApi {
       console.log(err);
     });
 
-    const validKey = (req:any,res:any) => {
-      if (req.headers.authorization && req.headers.authorization) {
-        var key=req.headers.authorization.replaceAll('Bearer ','').trim();
-        console.log(ApiKeyApi.apiKeys);
-        if (ApiKeyApi.apiKeys.some(k => k.key===key)) return true;
-        console.log('Invalid key: '+key);
-        res.status(403).json({});
-        return false;
-      }
-      else {
-        console.log('No valid key present in headers');
-        res.status(403).json({});
-        return false;
-      }
-    }
-
     this.route.route('/')
-      .get( async (req, res) => {
+      .all( async (req,res, next) => {
         if (!validKey(req,res)) return;
+        next();
+      })
+      .get( async (req, res) => {
         res.status(200).json(ApiKeyApi.apiKeys);
       })
       .post( async (req, res) => {
-        if (!validKey(req,res)) return;
-
         try {
           /*
             TYPE:
@@ -78,8 +64,11 @@ export class ApiKeyApi {
       });
 
     this.route.route('/:key')
-      .get( async (req, res) => {
+      .all( async (req,res, next) => {
         if (!validKey(req,res)) return;
+        next();
+      })
+      .get( async (req, res) => {
         try {
           var key=ApiKeyApi.apiKeys.filter(k => k.key!==req.params.key);
           if (key)
@@ -93,7 +82,6 @@ export class ApiKeyApi {
         }
       })
       .delete( async (req, res) => {
-        if (!validKey(req,res)) return;
         try {
           ApiKeyApi.apiKeys=ApiKeyApi.apiKeys.filter(k => k.key!==req.params.key);
           if (req.params.key.startsWith('kwirth')) {
@@ -107,7 +95,6 @@ export class ApiKeyApi {
         }
       })
       .put( async (req, res) => {
-        if (!validKey(req,res)) return;
         try {
           var key=req.body as ApiKey;
           ApiKeyApi.apiKeys=ApiKeyApi.apiKeys.filter(k => k.key!==key.key);

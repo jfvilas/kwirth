@@ -138,7 +138,9 @@ const App: React.FC = () => {
     var response = await fetch(`${backend}/config/cluster`, {headers:{Authorization:'Bearer '+apiKey}});
     var srcCluster = await response.json() as Cluster;
     srcCluster.url=backend;
+    srcCluster.apiKey=apiKey;
     srcCluster.source=true;
+    console.log(srcCluster);
 
     // get previously configured clusters
     var clusterList:Cluster[]=[];
@@ -302,18 +304,21 @@ const App: React.FC = () => {
 
     var msg=new Message(log.buffer+e.text);
     //var msg=new Message(e.text);
-    if (!msg.text.endsWith('\n')) {
-      var i=msg.text.lastIndexOf('\n');
-      if (i>=0) {
-        console.log('***buf****');
-        console.log(msg.text.substring(i+1));
-        console.log('***txt****');
-        console.log(msg.text.substring(0,40));
-      }
-      else {
-        console.log('incomplete chunk');
-      }
-    }
+    // if (!msg.text.endsWith('\n')) {
+    //     console.log('incomplete chunk');
+    //     var i=msg.text.lastIndexOf('\n');
+    //   if (i>=0) {
+    //     console.log('***buf****');
+    //     console.log(msg.text.substring(i+1));
+    //     console.log('***txt****');
+    //     console.log(msg.text.substring(0,40));
+    //   }
+    //   else {
+    //     // console.log('***txt****');
+    //     // console.log(msg.text);
+    //     // console.log('incomplete chunk');
+    //   }
+    // }
 
     msg.cluster=log.cluster.name;
     msg.namespace=e.namespace;

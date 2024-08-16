@@ -13,7 +13,7 @@ import { LoginApi } from './api/LoginApi';
 
 // HTTP server & websockets
 import WebSocket from 'ws';
-import { ManageApi } from './api/ManageApi';
+import { OperateApi } from './api/OperateApi';
 import { ManageKwirth } from './api/ManageKwirth';
 //import { setDefaultAutoSelectFamily } from 'net';
 import { LogConfig } from './model/LogConfig';
@@ -25,6 +25,7 @@ const http = require('http');
 const cors = require('cors');
 const bodyParser = require('body-parser')
 const PORT = 3883;
+const buffer:Map<WebSocket,string>= new Map();
 
 // Kubernetes API access
 const kc = new KubeConfig();
@@ -82,7 +83,19 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
   try {
     const logStream = new stream.PassThrough();
     logStream.on('data', (chunk:any) => {
-      var text=chunk.toString('utf8');
+      var text:string=chunk.toString('utf8');
+      if (buffer.get(ws)!==undefined) {
+        // if we have some text from a previous incompleted chunk, we prepend it now
+        text=buffer.get(ws)+text;
+        buffer.delete(ws);
+      }
+      if (!text.endsWith('\n')) {
+        //incomplete chunk
+        var i=text.lastIndexOf('\n');
+        var next=text.substring(i);
+        buffer.set(ws,next);
+        text=text.substring(0,i);        
+      }
       var event:any = {namespace:namespace, podName:podName};
       sendLines(ws,event,text);
     });
@@ -279,8 +292,8 @@ const launch = (kwrithData: KwirthData) => {
   app.use(`${rootPath}/user`, ua.route);
   var la:LoginApi = new LoginApi(secrets);
   app.use(`${rootPath}/login`, la.route);
-  var ma:ManageApi = new ManageApi(appsApi);
-  app.use(`${rootPath}/manage`, ma.route);
+  var oa:OperateApi = new OperateApi(appsApi);
+  app.use(`${rootPath}/manage`, oa.route);
   var mk:ManageKwirth = new ManageKwirth(appsApi, kwrithData);
   app.use(`${rootPath}/managekwirth`, mk.route);
   var mc:ManageCluster = new ManageCluster(coreApi, appsApi);

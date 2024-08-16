@@ -39,9 +39,10 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
   const [containerSelectDisabled, setContainerSelectDisabled] = useState(true);
 
   const getNamespaces = async () => {
-      var response = await fetch(`${selectedCluster!.url}/config/namespaces?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.apiKey}});
-      var data = await response.json();
-      setNamespaces(data);
+    console.log(selectedCluster);
+    var response = await fetch(`${selectedCluster!.url}/config/namespace?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.apiKey}});
+    var data = await response.json();
+    setNamespaces(data);
   }
   
   const getSets = async (namespace:string) => {
