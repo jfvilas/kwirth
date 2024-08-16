@@ -1,8 +1,8 @@
-import { useState, useRef, ChangeEvent, useEffect } from 'react';
+import { useState, useRef, ChangeEvent, useEffect, createContext } from 'react';
 
 // material & icons
 import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
-import { Settings as SettingsIcon, ArrowUpward, ArrowDownward, Clear, Menu, Person, Newspaper } from '@mui/icons-material';
+import { Settings as SettingsIcon, Clear, Menu, Person } from '@mui/icons-material';
 
 // model
 import { User } from './model/User';
@@ -35,17 +35,17 @@ import { VERSION } from './version';
 import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from './tools/MsgBox';
 import { Message } from './model/Message';
 import { Settings } from './model/Settings';
+import { SessionContext, SessionContextType } from './model/SessionContext';
 
 const App: React.FC = () => {
   var backend='http://localhost:3883';
   const rootPath = window.__PUBLIC_PATH__ || '';
   if ( process.env.NODE_ENV==='production') backend=window.location.protocol+'//'+window.location.host;
   backend=backend+rootPath;
-  //console.log(`Backend to use: ${backend}`);
 
   const [user, setUser] = useState<User>();
   const [logged,setLogged]=useState(false);
-  const [apiKey,setApiKey]=useState('');  //+++ es posible qu eno sea necesaria, ya que tenemos srcCluster
+  const [apiKey,setApiKey]=useState('');
   const [msgBox, setMsgBox] =useState(<></>);
 
   const [clusters, setClusters] = useState<Cluster[]>();
@@ -135,42 +135,47 @@ const App: React.FC = () => {
 
   const getClusters = async () => {
     // get current cluster
-    var response = await fetch(`${backend}/config/cluster`, { headers:{Auhtorization:apiKey}});
+    var response = await fetch(`${backend}/config/cluster`, {headers:{Authorization:'Bearer '+apiKey}});
     var srcCluster = await response.json() as Cluster;
     srcCluster.url=backend;
     srcCluster.source=true;
 
     // get previously configured clusters
     var clusterList:Cluster[]=[];
-    var response = await fetch (`${backend}/store/${user?.id}/clusters/list`, { headers:{Auhtorization:apiKey}});
+    var response = await fetch (`${backend}/store/${user?.id}/clusters/list`, {headers:{Authorization:'Bearer '+apiKey}});
     if (response.status===200) {
       clusterList=JSON.parse (await response.json());
       clusterList=clusterList.filter (c => c.name!==srcCluster.name);
     }
+
+    // store updated cluster list (excluding this cluster if current kwirth is running inCluster)
+    var clonedList=Array.from(clusterList);
+    if (!srcCluster.inCluster) clonedList.push(srcCluster);
+    fetch (`${backend}/store/${user?.id}/clusters/list`, {method:'POST', body:JSON.stringify(clonedList), headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey}});
+
     clusterList.push(srcCluster);
-    fetch (`${backend}/store/${user?.id}/clusters/list`, {method:'POST', body:JSON.stringify(clusterList), headers:{'Content-Type':'application/json'}});
     setClusters(clusterList);
   }
 
   const readSettings = async () => {
-    var resp=await fetch (`${backend}/store/${user?.id}/settings/general`);
+    var resp=await fetch (`${backend}/store/${user?.id}/settings/general`, {headers:{Authorization:'Bearer '+apiKey}});
     if (resp.status===200) {
       var json=await resp.json();
       if (json) {
-        var st:Settings=JSON.parse(json) as Settings;
-        setSettings(st);
+        var readSettings:Settings=JSON.parse(json) as Settings;
+        setSettings(readSettings);
       }
     }
     else {
       setSettings(new Settings());
+      writeSettings(new Settings());
     }
   }
 
   const writeSettings = async (newSettings:Settings) => {
-    console.log(newSettings);
     setSettings(newSettings);
     var payload=JSON.stringify(newSettings);
-    fetch (`${backend}/store/${user?.id}/settings/general`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+    fetch (`${backend}/store/${user?.id}/settings/general`, {method:'POST', body:payload, headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey}});
   }
 
   const onResourceSelectorAdd = (selection:any) => {
@@ -520,7 +525,7 @@ const App: React.FC = () => {
             break;
           case 'deployment':
             // restart a deployment
-            fetch (`${backend}/manage/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json'}});
+            fetch (`${backend}/manage/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey}});
             break;
         }
         break;
@@ -548,7 +553,7 @@ const App: React.FC = () => {
       newLogs.push(newLog);
     }
     var payload=JSON.stringify(newLogs);
-    fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+    fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey}});
     if (currentViewName!==viewName) setCurrentViewName(viewName);
   }
 
@@ -557,7 +562,7 @@ const App: React.FC = () => {
   }
 
   const loadView = async () => {
-    var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`)).json();
+    var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`, {headers:{Authorization:'Bearer '+apiKey}})).json();
     if (allViews.length===0)
       showNoViews();
     else
@@ -591,7 +596,7 @@ const App: React.FC = () => {
         loadView();
         break;
       case MenuDrawerOption.Delete:
-        var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`)).json();
+        var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`, {headers:{Authorization:'Bearer '+apiKey}})).json();
         if (allViews.length===0)
           showNoViews();
         else
@@ -607,13 +612,13 @@ const App: React.FC = () => {
         setShowUserSecurity(true);
         break;
       case MenuDrawerOption.Export:
-        var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`)).json();
+        var allViews:string[] = await (await fetch (`${backend}/store/${user?.id}/views`, {headers:{Authorization:'Bearer '+apiKey}})).json();
         if (allViews.length===0)
           showNoViews();
         else {
           var content:any={};
           for (var viewName of allViews) {
-            var readView = await (await fetch (`${backend}/store/${user?.id}/views/${viewName}`)).json();
+            var readView = await (await fetch (`${backend}/store/${user?.id}/views/${viewName}`, {headers:{Authorization:'Bearer '+apiKey}})).json();
             content[viewName]=JSON.parse(readView);
           }
           handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
@@ -629,7 +634,7 @@ const App: React.FC = () => {
         setShowSettingsConfig(true);
         break;
       case MenuDrawerOption.UpdateKwirth:
-        fetch (`${backend}/managekwirth/restart`);
+        fetch (`${backend}/managekwirth/restart`, {headers:{Authorization:'Bearer '+apiKey}});
         break;
       case MenuDrawerOption.Exit:
         setLogged(false);
@@ -640,7 +645,7 @@ const App: React.FC = () => {
   const deleteViewSelected = (viewName:string) => {
     setMsgBox(MsgBoxYesNo('Delete view',`Are you ure you want to delete view ${viewName}`,setMsgBox, (button) => {
       if (button===MsgBoxButtons.Yes) {
-        fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'DELETE'});
+        fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'DELETE', headers:{Authorization:'Bearer '+apiKey}});
         setCurrentViewName('');
       }
     }));
@@ -667,7 +672,7 @@ const App: React.FC = () => {
         var allViews=JSON.parse(e.target.result);
         for (var viewName of Object.keys(allViews)) {
           var payload=JSON.stringify(allViews[viewName]);
-          fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+          fetch (`${backend}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json', Authorization:'Bearer '+apiKey}});
         }
       };
       reader.readAsText(file);
@@ -709,7 +714,7 @@ const App: React.FC = () => {
   const loadViewSelected = async (viewName:string) => {
     if (viewName) {
       clearLogs();
-      var n = await (await fetch (`${backend}/store/${user?.id}/views/${viewName}`)).json();
+      var n = await (await fetch (`${backend}/store/${user?.id}/views/${viewName}`, {headers:{Authorization:'Bearer '+apiKey}})).json();
       var newLogs=JSON.parse(n) as LogObject[];
       setLogs(newLogs);
       setViewLoaded(true);
@@ -738,7 +743,7 @@ const App: React.FC = () => {
 
   const manageClustersClosed = (cc:Cluster[]) => {
     setShowManageClusters(false);
-    fetch (`${backend}/store/${user?.id}/clusters/list`, {method:'POST', body:JSON.stringify(cc), headers:{'Content-Type':'application/json'}});
+    fetch (`${backend}/store/${user?.id}/clusters/list`, {method:'POST', body:JSON.stringify(cc), headers:{'Content-Type':'application/json', Authorization:'Bearer '+apiKey}});
     setClusters(cc);
   }
 
@@ -789,6 +794,7 @@ const App: React.FC = () => {
   </>);
 
   return (<>
+    <SessionContext.Provider value={{ user: user, apiKey:apiKey, logged:logged }}>
       <AppBar position="sticky" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
         <Toolbar>
           <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}>
@@ -853,11 +859,12 @@ const App: React.FC = () => {
       { showSaveView && <SaveView onClose={saveViewClosed} name={currentViewName} /> }
       { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
       { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
-      { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend}/> }
+      { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend} /> }
       { showManageAlarms && <ManageAlarms onClose={() => setShowManageAlarms(false)} log={selectedLog}/> }
       { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
       { pickListConfig!==null && <PickList config={pickListConfig}/> }
       { msgBox }
+    </SessionContext.Provider>
   </>);
 };
 

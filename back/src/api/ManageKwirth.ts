@@ -1,5 +1,6 @@
 import express from 'express';
 import { AppsV1Api } from '@kubernetes/client-node';
+import { KwirthData } from '../model/KwirthData';
 
 export class ManageKwirth {
   public route = express.Router();
@@ -27,13 +28,13 @@ export class ManageKwirth {
     await this.appsV1Api.replaceNamespacedDeployment(deploymentName, namespace, deployment.body);
   }
   
-  constructor (appsV1Api:AppsV1Api, namespace:string, deployment:string) {
+  constructor (appsV1Api:AppsV1Api, kwirthData:KwirthData) {
     this.appsV1Api=appsV1Api
 
     this.route.route('/restart')
       .get( async (req, res) => {
         try {
-            this.restartDeployment(namespace, deployment);
+            this.restartDeployment(kwirthData.namespace, kwirthData.deployment);
             res.status(200).json();
         }
         catch (err) {
@@ -44,7 +45,7 @@ export class ManageKwirth {
       this.route.route('/pause')
       .get( async (req, res) => {
         try {
-            this.pauseDeployment(namespace, deployment);
+            this.pauseDeployment(kwirthData.namespace, kwirthData.deployment);
             res.status(200).json();
         }
         catch (err) {

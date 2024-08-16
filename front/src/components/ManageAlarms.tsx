@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, Switch, TextField, Typography} from '@mui/material';
 import { Alarm, AlarmSeverity, AlarmType } from '../model/Alarm';
 import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
 import { LogObject } from '../model/LogObject';
+import { SessionContext, SessionContextType } from '../model/SessionContext';
 
 interface IProps {
   onClose:() => {};
@@ -10,8 +11,9 @@ interface IProps {
 }
 
 const ManageAlarms: React.FC<any> = (props:IProps) => {
-  const [msgBox, setMsgBox] = useState(<></>);
+  const {apiKey} = useContext(SessionContext) as SessionContextType;
   const [alarms, setAlarms] = useState<Alarm[]>();
+  const [msgBox, setMsgBox] = useState(<></>);
   const [selectedAlarm, setSelectedAlarm] = useState<Alarm|undefined>(undefined);
 
   const [id, setId] = useState<string>('');

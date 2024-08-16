@@ -6,6 +6,7 @@ export class Cluster {
     public url:string='';
     public apiKey:string='';
     public source:boolean|undefined=false;
+    public inCluster:boolean=false;
 
     constructor () {
         this.id=Guid.create().toString();

@@ -18,6 +18,7 @@ import { ManageKwirth } from './api/ManageKwirth';
 //import { setDefaultAutoSelectFamily } from 'net';
 import { LogConfig } from './model/LogConfig';
 import { ManageCluster } from './api/ManageCluster';
+import { KwirthData } from './model/KwirthData';
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
@@ -37,7 +38,7 @@ var configMaps:ConfigMaps;
 const rootPath = process.env.KWIRTH_ROOTPATH || '';
 
 // get the namespace where Kwirth is running on
-const getMyKubernetesData = async () => {
+const getMyKubernetesData = async ():Promise<KwirthData> => {
   var podName=process.env.HOSTNAME;
   var depName='';
   const pods = await coreApi.listPodForAllNamespaces();
@@ -56,10 +57,11 @@ const getMyKubernetesData = async () => {
         }
       }
     }
-    return { namespace: pod.metadata.namespace, deployment:depName};
+    return { namespace: pod.metadata.namespace, deployment:depName, inCluster:true };
   }
-  else
-    return { namespace:'default', deployment:'' };
+  else {
+    return { namespace:'default', deployment:'', inCluster:false };
+  }
 }
 
 //+++ add options to asterisk lines containing a specific text (like 'password', 'pw', etc...)
@@ -262,12 +264,12 @@ wss.on('connection', (ws:any, req) => {
   });
 });
 
-const launch = (myNamespace:string, myDeployment:string) => {
-  secrets = new Secrets(coreApi, myNamespace);
-  configMaps = new ConfigMaps(coreApi, myNamespace);
+const launch = (kwrithData: KwirthData) => {
+  secrets = new Secrets(coreApi, kwrithData.namespace);
+  configMaps = new ConfigMaps(coreApi, kwrithData.namespace);
 
   // serve config API
-  var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi);
+  var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi, kwrithData);
   app.use(`${rootPath}/config`, va.route);
   var ka:ApiKeyApi = new ApiKeyApi(configMaps);
   app.use(`${rootPath}/key`, ka.route);
@@ -279,7 +281,7 @@ const launch = (myNamespace:string, myDeployment:string) => {
   app.use(`${rootPath}/login`, la.route);
   var ma:ManageApi = new ManageApi(appsApi);
   app.use(`${rootPath}/manage`, ma.route);
-  var mk:ManageKwirth = new ManageKwirth(appsApi, myNamespace, myDeployment);
+  var mk:ManageKwirth = new ManageKwirth(appsApi, kwrithData);
   app.use(`${rootPath}/managekwirth`, mk.route);
   var mc:ManageCluster = new ManageCluster(coreApi, appsApi);
   app.use(`${rootPath}/managecluster`, mc.route);
@@ -288,7 +290,10 @@ const launch = (myNamespace:string, myDeployment:string) => {
   server.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
     console.log(`Context being used: ${kc.currentContext}`);
-    console.log(`Cluster name: ${kc.getCluster(kc.currentContext)?.name}`);
+    if (kwrithData.inCluster)
+      console.log(`Running inside cluster`);
+    else
+      console.log(`Cluster name: ${kc.getCluster(kc.currentContext)?.name}`);
     console.log(`KWI1500I Control is being given to KWirth`);
   });
 }
@@ -306,9 +311,13 @@ getMyKubernetesData()
 .then ( (kwirthData) => {
   console.log('Detected own namespace: '+kwirthData.namespace);
   console.log('Detected own deployment: '+kwirthData.deployment);
-  launch (kwirthData.namespace, kwirthData.deployment);
+  launch (kwirthData);
 })
 .catch ( (err) => {
   console.log('Cannot get namespace, using "default"');
-  launch ('default','');
+  launch ({
+    inCluster: false,
+    namespace: '',
+    deployment: ''
+  });
 });

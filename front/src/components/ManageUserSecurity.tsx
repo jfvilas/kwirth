@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
 import { User } from '../model/User';
 import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
+import { SessionContext, SessionContextType } from '../model/SessionContext';
 const copy = require('clipboard-copy');
 
 interface IProps {
@@ -10,9 +11,10 @@ interface IProps {
 }
 
 const ManageUserSecurity: React.FC<any> = (props:IProps) => {
-  const [msgBox, setMsgBox] = useState(<></>);
+  const {apiKey} = useContext(SessionContext) as SessionContextType;
   const [users, setUsers] = useState<[]>();
   const [selectedUser, setSelectedUser] = useState<User|undefined>(undefined);
+  const [msgBox, setMsgBox] = useState(<></>);
 
   const [id, setId] = useState<string>('');
   const [name, setName] = useState<string>('');
@@ -21,7 +23,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   const [description, setDescription] = useState<string>('');
 
   const getUsers = async () => {
-    var response = await fetch(`${props.backend}/user`);
+    var response = await fetch(`${props.backend}/user`, { headers: { 'Authorization':'Bearer '+apiKey }});
     var data = await response.json();
     setUsers(data);
   }
@@ -32,7 +34,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
 
   const onUserSelected = async (uname:string) => {
     setId(uname);
-    var data = await (await fetch(`${props.backend}/user/${uname}`)).json();
+    var data = await (await fetch(`${props.backend}/user/${uname}`, { headers: { 'Authorization':'Bearer '+apiKey }})).json();
     setSelectedUser(data);
     setName(data.name||'');
     setPassword(data.password||'');
@@ -47,19 +49,19 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   const onClickSave= async () => {
     var user={ id:id, name:name, password:password, roles:roles, description:description }
     if (selectedUser!==undefined) {
-      await fetch(`${props.backend}/user/${user.id}`, {method:'PUT', body:JSON.stringify(user), headers:{'Content-Type':'application/json'}})
+      await fetch(`${props.backend}/user/${user.id}`, {method:'PUT', body:JSON.stringify(user), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey }});
     }
     else {
-      await fetch(`${props.backend}/user`, {method:'POST', body:JSON.stringify(user), headers:{'Content-Type':'application/json'}})
-      setSelectedUser(undefined)
+      await fetch(`${props.backend}/user`, {method:'POST', body:JSON.stringify(user), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey }});
+      setSelectedUser(undefined);
     }
-    setSelectedUser(undefined)
+    setSelectedUser(undefined);
     setId('')
     setName('');
-    setPassword('')
+    setPassword('');
     setRoles('');
-    setDescription('')
-    await getUsers()
+    setDescription('');
+    await getUsers();
   }
   
   const onClickNew= () => {
@@ -81,7 +83,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   }
   const onConfirmDelete= async () => {
     if (selectedUser!==undefined) {
-      await fetch(`${props.backend}/user/${selectedUser.id}`, {method:'DELETE'});
+      await fetch(`${props.backend}/user/${selectedUser.id}`, {method:'DELETE', headers: { 'Authorization':'Bearer '+apiKey }});
       setId('')
       setName('');
       setPassword('')

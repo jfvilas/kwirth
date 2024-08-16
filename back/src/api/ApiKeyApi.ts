@@ -19,11 +19,16 @@ export class ApiKeyApi {
     });
 
     const validKey = (req:any,res:any) => {
-      if (req.body.key.startsWith('kwirth|') && ApiKeyApi.apiKeys.some(k => k.key!==req.body.key)) {
-        return true;
+      if (req.headers.authorization && req.headers.authorization) {
+        var key=req.headers.authorization.replaceAll('Bearer ','').trim();
+        console.log(ApiKeyApi.apiKeys);
+        if (ApiKeyApi.apiKeys.some(k => k.key===key)) return true;
+        console.log('Invalid key: '+key);
+        res.status(403).json({});
+        return false;
       }
       else {
-        console.log('No valid key present in body');
+        console.log('No valid key present in headers');
         res.status(403).json({});
         return false;
       }
@@ -31,6 +36,7 @@ export class ApiKeyApi {
 
     this.route.route('/')
       .get( async (req, res) => {
+        if (!validKey(req,res)) return;
         res.status(200).json(ApiKeyApi.apiKeys);
       })
       .post( async (req, res) => {
@@ -73,6 +79,7 @@ export class ApiKeyApi {
 
     this.route.route('/:key')
       .get( async (req, res) => {
+        if (!validKey(req,res)) return;
         try {
           var key=ApiKeyApi.apiKeys.filter(k => k.key!==req.params.key);
           if (key)
@@ -86,6 +93,7 @@ export class ApiKeyApi {
         }
       })
       .delete( async (req, res) => {
+        if (!validKey(req,res)) return;
         try {
           ApiKeyApi.apiKeys=ApiKeyApi.apiKeys.filter(k => k.key!==req.params.key);
           if (req.params.key.startsWith('kwirth')) {
@@ -99,6 +107,7 @@ export class ApiKeyApi {
         }
       })
       .put( async (req, res) => {
+        if (!validKey(req,res)) return;
         try {
           var key=req.body as ApiKey;
           ApiKeyApi.apiKeys=ApiKeyApi.apiKeys.filter(k => k.key!==key.key);

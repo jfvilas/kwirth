@@ -1,19 +1,20 @@
 import express from 'express';
 import { CoreV1Api, AppsV1Api, KubeConfig } from '@kubernetes/client-node';
+import { KwirthData } from '../model/KwirthData';
 
 export class ConfigApi {
   public route = express.Router();
   coreApi:CoreV1Api;
   appsV1Api:AppsV1Api;
 
-  constructor (kc:KubeConfig, coreApi:CoreV1Api, appsV1Api:AppsV1Api) {
+  constructor (kc:KubeConfig, coreApi:CoreV1Api, appsV1Api:AppsV1Api, kwirthData:KwirthData) {
     this.coreApi=coreApi;
     this.appsV1Api=appsV1Api
 
     this.route.route('/cluster')
       .get( async (req, res) => {
         try {
-          var cluster={ name:kc.getCurrentCluster()?.name };
+          var cluster={ name:kc.getCurrentCluster()?.name, inCluster:kwirthData.inCluster };
           res.status(200).json(cluster);
         }
         catch (err) {
