@@ -17,6 +17,7 @@ import { ManageApi } from './api/ManageApi';
 import { ManageKwirth } from './api/ManageKwirth';
 //import { setDefaultAutoSelectFamily } from 'net';
 import { LogConfig } from './model/LogConfig';
+import { ManageCluster } from './api/ManageCluster';
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
@@ -160,6 +161,7 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
     }
     else if (type === 'DELETED') {
       console.log(`Pod deleted` );
+      //+++ finish ws
     }},
     (err:any) => {
       console.error(err);
@@ -176,31 +178,31 @@ async function processClientMessage(message:string, ws:any) {
   const config = JSON.parse(message) as LogConfig;
   console.log('Received key: '+config.key);
   if (!config.key) {
-    console.log('ERROR: No key received');
+    console.error('No key received');
     ws.close();
     return;
   }
   if (!ApiKeyApi.apiKeys.some(ak => ak.key===config.key)) {
-    console.log(`ERROR: Invalid API key: ${config.key}`);
-    console.log(ApiKeyApi.apiKeys);
+    console.error(`ERROR: Invalid API key: ${config.key}`);
     ws.close();
     return;
   }
 
-  console.log('CONFIG:'+JSON.stringify(config));
-  if (config.key.startsWith('resource|')) {
-    var keyParts:string[]=config.key.split('|');
-    var type=keyParts[0];
-    var resource=keyParts[1];
-    var guid=keyParts[2];
-    // cluster:scope:namespace:set:pod:container
-    var resParts:string[]=resource.split(':');
-    config.scope=resParts[1];
-    config.namespace=resParts[2];
-    config.setType=resParts[3];
-    config.pod=resParts[4];
-    config.container=resParts[5];
-  }
+  console.log('RECEIVED CONFIG:'+JSON.stringify(config));
+  // if (config.key.startsWith('resource|')) {
+  //   var keyParts:string[]=config.key.split('|');
+  //   var type=keyParts[0];
+  //   var resource=keyParts[1];
+  //   var guid=keyParts[2];
+  //   // cluster:scope:namespace:set:pod:container
+  //   var resParts:string[]=resource.split(':');
+  //   config.scope=resParts[1];
+  //   config.namespace=resParts[2];
+  //   config.setName=resParts[3];
+  //   config.pod=resParts[4];
+  //   config.container=resParts[5];
+  // }
+  
   switch (config.scope) {
     case 'cluster':
       watchPods(`/api/v1/pods`, {}, ws, config);
@@ -214,13 +216,13 @@ async function processClientMessage(message:string, ws:any) {
       var res:any;
       switch (config.setType) {
         case'replica':
-          res=await appsApi.readNamespacedReplicaSet(config.setType, config.namespace);
+          res=await appsApi.readNamespacedReplicaSet(config.setName, config.namespace);
           break;
         case'daemon':
-          res=await appsApi.readNamespacedDaemonSet(config.setType, config.namespace);
+          res=await appsApi.readNamespacedDaemonSet(config.setName, config.namespace);
           break;
         case'stateful':
-          res=await appsApi.readNamespacedStatefulSet(config.setType, config.namespace);
+          res=await appsApi.readNamespacedStatefulSet(config.setName, config.namespace);
           break;
       }
       const matchLabels = res.body.spec?.selector?.matchLabels;
@@ -231,6 +233,9 @@ async function processClientMessage(message:string, ws:any) {
             labelSelector = Object.entries(matchLabels).map(([key, value]) => `${key}=${value}`).join(',');
             console.log(labelSelector);
             watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector:labelSelector }, ws, config);
+        }
+        else {
+          //+++ errro, notfound
         }
       }
       break;
@@ -270,12 +275,14 @@ const launch = (myNamespace:string, myDeployment:string) => {
   app.use(`${rootPath}/store`, sa.route);
   var ua:UserApi = new UserApi(secrets);
   app.use(`${rootPath}/user`, ua.route);
-  var la:UserApi = new LoginApi(secrets);
+  var la:LoginApi = new LoginApi(secrets);
   app.use(`${rootPath}/login`, la.route);
   var ma:ManageApi = new ManageApi(appsApi);
   app.use(`${rootPath}/manage`, ma.route);
   var mk:ManageKwirth = new ManageKwirth(appsApi, myNamespace, myDeployment);
   app.use(`${rootPath}/managekwirth`, mk.route);
+  var mc:ManageCluster = new ManageCluster(coreApi, appsApi);
+  app.use(`${rootPath}/managecluster`, mc.route);
 
   // listen
   server.listen(PORT, () => {

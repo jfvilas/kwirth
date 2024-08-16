@@ -18,12 +18,24 @@ export class ApiKeyApi {
       console.log(err);
     });
 
+    const validKey = (req:any,res:any) => {
+      if (req.body.key.startsWith('kwirth|') && ApiKeyApi.apiKeys.some(k => k.key!==req.body.key)) {
+        return true;
+      }
+      else {
+        console.log('No valid key present in body');
+        res.status(403).json({});
+        return false;
+      }
+    }
 
     this.route.route('/')
       .get( async (req, res) => {
         res.status(200).json(ApiKeyApi.apiKeys);
       })
       .post( async (req, res) => {
+        if (!validKey(req,res)) return;
+
         try {
           /*
             TYPE:
@@ -34,6 +46,7 @@ export class ApiKeyApi {
           /*
             RESOURCE:
             cluster:scope:namespace:set:pod:container
+            
             cluster: name
             scope: cluster|namespace|set|pod|container
             namespace: name
@@ -41,13 +54,13 @@ export class ApiKeyApi {
             pod: name
             container: name
           */
-          var resource=req.body.resource.toLowerCase();  // optional (mandatory if type is 'temporary')
+          var resource=req.body.resource.toLowerCase();  // optional (mandatory if type is 'resource')
           var description=req.body.description;
           var expire=req.body.expire;
-          var key=type+'|'+resource+'|'+Guid.create().toString()
+          var key=type+'|'+resource+'|'+Guid.create().toString();
           var keyObject={ key:key, description:description, expire:expire };
           ApiKeyApi.apiKeys.push(keyObject);
-          if (type==='kwirth') {
+          if (type!=='resource') {
             configMaps.write('kwirth.keys',{ keys: JSON.stringify(ApiKeyApi.apiKeys) });
           }
           res.status(200).json(keyObject);
@@ -66,7 +79,6 @@ export class ApiKeyApi {
             res.status(200).json(key);
           else
             res.status(404).json({});
-
         }
         catch (err) {
           res.status(500).json({});

@@ -6,7 +6,7 @@ export class LogObject {
   public cluster: any;
   public scope:any;
   public namespace:any;
-  public set:any;
+  public setName:any;
   public setType:any;
   public pod:any;
   public container:any;

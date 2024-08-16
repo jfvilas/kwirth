@@ -184,7 +184,7 @@ const App: React.FC = () => {
     newLog.cluster=selection.clusterName;
     newLog.scope=selection.scope;
     newLog.namespace=selection.namespace;
-    newLog.set=selection.set;
+    newLog.setName=selection.set;
     newLog.setType=selection.setType;
     newLog.pod=selection.pod;
     newLog.container=selection.container;
@@ -384,7 +384,7 @@ const App: React.FC = () => {
         key:apiKey,
         scope:log.scope, 
         namespace:log.namespace, 
-        set:log.set, 
+        setName:log.setName, 
         setType:log.setType, 
         pod:log.pod, 
         container:log.container, 
@@ -536,7 +536,7 @@ const App: React.FC = () => {
       newLog.cluster=log.cluster;
       newLog.filter=log.filter;
       newLog.namespace=log.namespace;
-      newLog.set=log.set;
+      newLog.setName=log.setName;
       newLog.pod=log.pod;
       newLog.container=log.container;
       newLog.defaultLog=log.defaultLog;

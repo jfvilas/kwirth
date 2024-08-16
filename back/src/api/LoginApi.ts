@@ -10,6 +10,13 @@ export class LoginApi {
   static semaphore:Semaphore = new Semaphore(1);
   public route = express.Router();
 
+  okResponse = (user:any) => {
+    var newObject:any={};
+    Object.assign(newObject,user);
+    delete newObject['password'];
+    return newObject;
+  }
+  
   constructor (secrets:Secrets) {
     this.secrets = secrets;
 
@@ -26,7 +33,7 @@ export class LoginApi {
               user.apiKey=createApiKey(req.body.user);
               users[req.body.user]=btoa(JSON.stringify(user));
               secrets.write('kwirth.users',users);
-              res.status(200).json(user);
+              res.status(200).json(this.okResponse(user));
             }
           } 
           else {
@@ -49,10 +56,7 @@ export class LoginApi {
             user.apiKey=createApiKey(req.body.user);
             users[req.body.user]=btoa(JSON.stringify(user));
             secrets.write('kwirth.users',users);
-            var x:any={};
-            Object.assign(x,user);
-            delete x['password'];
-            res.status(200).json(x);
+            res.status(200).json(this.okResponse(user));
           }
           else {
             res.status(401).send('');
@@ -67,7 +71,7 @@ export class LoginApi {
     function createApiKey(username:string) {
       var apiKey:ApiKey= {
         key: Guid.create().toString(),
-        description: `Login user '${username}' at ${Date.now().toLocaleString()}`,
+        description: `Login user '${username}' at ${Date.now().toString()}`,
         expire: null
       };
       ApiKeyApi.apiKeys.push(apiKey);
