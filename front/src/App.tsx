@@ -1,4 +1,4 @@
-import { useState, useRef, ChangeEvent, useEffect, createContext } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
 
 // material & icons
 import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material';
@@ -109,9 +109,11 @@ const App: React.FC = () => {
     //+++ work on alarms and create and alarm manager
     //+++ when a view is loaded all messages are received: alarms should not be in effect until everything is received
     //+++ implement role checking on backend
-    //+++ with ephemeral logs, the content of 'messages' should contain some info on alarms triggered, or even a dashboard
+    //+++ with ephemeral logs, the content of 'messages' should contain some info on alarms triggered, or even a dashboard (ephemeral logs do not contains log lines)
     //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
     //+++ decide whether to have collapsibility on the resource selector and the toolbar (to maximize log space)
+    //+++ add options to asterisk lines containing a specific text (like 'password', 'pw', etc...)
+
     if (logged) {
       if (!clustersRef.current) getClusters();
       if (!settingsRef.current) readSettings();
@@ -303,22 +305,6 @@ const App: React.FC = () => {
     }
 
     var msg=new Message(log.buffer+e.text);
-    //var msg=new Message(e.text);
-    // if (!msg.text.endsWith('\n')) {
-    //     console.log('incomplete chunk');
-    //     var i=msg.text.lastIndexOf('\n');
-    //   if (i>=0) {
-    //     console.log('***buf****');
-    //     console.log(msg.text.substring(i+1));
-    //     console.log('***txt****');
-    //     console.log(msg.text.substring(0,40));
-    //   }
-    //   else {
-    //     // console.log('***txt****');
-    //     // console.log(msg.text);
-    //     // console.log('incomplete chunk');
-    //   }
-    // }
 
     msg.cluster=log.cluster.name;
     msg.namespace=e.namespace;
@@ -799,7 +785,7 @@ const App: React.FC = () => {
   </>);
 
   return (<>
-    <SessionContext.Provider value={{ user: user, apiKey:apiKey, logged:logged }}>
+    <SessionContext.Provider value={{ user: user, apiKey:apiKey, logged:logged, backendUrl:backend }}>
       <AppBar position="sticky" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
         <Toolbar>
           <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}>
@@ -863,8 +849,8 @@ const App: React.FC = () => {
       { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
       { showSaveView && <SaveView onClose={saveViewClosed} name={currentViewName} /> }
       { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
-      { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} backend={backend}/> }
-      { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} backend={backend} /> }
+      { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
+      { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
       { showManageAlarms && <ManageAlarms onClose={() => setShowManageAlarms(false)} log={selectedLog}/> }
       { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
       { pickListConfig!==null && <PickList config={pickListConfig}/> }

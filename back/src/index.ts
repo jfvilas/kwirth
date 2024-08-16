@@ -65,8 +65,6 @@ const getMyKubernetesData = async ():Promise<KwirthData> => {
   }
 }
 
-//+++ add options to asterisk lines containing a specific text (like 'password', 'pw', etc...)
-
 // split a block of stdout into several lines and send them
 const sendLines = (ws:WebSocket, event:any, source:string) => {
   const logLines = source.split('\n');

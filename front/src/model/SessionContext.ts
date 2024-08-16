@@ -5,6 +5,7 @@ export type SessionContextType = {
     user: User|undefined;
     logged:boolean;
     apiKey:string;
+    backendUrl:string;
 };
 
 export const SessionContext = createContext<SessionContextType|null>(null);

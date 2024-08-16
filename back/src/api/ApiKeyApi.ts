@@ -30,31 +30,42 @@ export class ApiKeyApi {
       .post( async (req, res) => {
         try {
           /*
-            TYPE:
-            kwirth
-            resource
+            TYPE
+
+            VALUES
+            permanent
+            volatile
           */
           var type=req.body.type.toLowerCase();
           /*
-            RESOURCE:
-            cluster:scope:namespace:set:pod:container
+            RESOURCE
+
+            FORMAT:
+            scope:namespace:setType:setName:pod:container
             
-            cluster: name
+            VALUES:
             scope: cluster|namespace|set|pod|container
             namespace: name
-            set: name
+            setType: replica|daemon|stateful
+            setName: name
             pod: name
             container: name
+
+            EXAMPLES:
+            cluster:::::  // all the cluster logs
+            namespace:default::::  // all logs in 'default' namespace
+            set:default:replica:abcd::  // all pods in 'abcd' replicaset inside namespace 'default'
+            pod:default::abcd::  // all pods with name 'abcd' inside namespace 'default'
+            pod:::abcd::  // all pods with name 'abcd'
           */
+          var type=req.body.type.toLowerCase();  // volatile or permanent
           var resource=req.body.resource.toLowerCase();  // optional (mandatory if type is 'resource')
           var description=req.body.description;
           var expire=req.body.expire;
-          var key=type+'|'+resource+'|'+Guid.create().toString();
+          var key=Guid.create().toString()+'|'+type+'|'+resource+'|';
           var keyObject={ key:key, description:description, expire:expire };
           ApiKeyApi.apiKeys.push(keyObject);
-          if (type!=='resource') {
-            configMaps.write('kwirth.keys',{ keys: JSON.stringify(ApiKeyApi.apiKeys) });
-          }
+          if (type!=='permanent') configMaps.write('kwirth.keys',{ keys: JSON.stringify(ApiKeyApi.apiKeys) });
           res.status(200).json(keyObject);
       }
         catch (err) {

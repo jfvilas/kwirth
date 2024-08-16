@@ -7,11 +7,10 @@ const copy = require('clipboard-copy');
 
 interface IProps {
   onClose:() => {};
-  backend:string;
 }
 
 const ManageUserSecurity: React.FC<any> = (props:IProps) => {
-  const {apiKey} = useContext(SessionContext) as SessionContextType;
+  const {apiKey, backendUrl} = useContext(SessionContext) as SessionContextType;
   const [users, setUsers] = useState<[]>();
   const [selectedUser, setSelectedUser] = useState<User|undefined>(undefined);
   const [msgBox, setMsgBox] = useState(<></>);
@@ -23,7 +22,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   const [description, setDescription] = useState<string>('');
 
   const getUsers = async () => {
-    var response = await fetch(`${props.backend}/user`, { headers: { 'Authorization':'Bearer '+apiKey }});
+    var response = await fetch(`${backendUrl}/user`, { headers: { 'Authorization':'Bearer '+apiKey }});
     var data = await response.json();
     setUsers(data);
   }
@@ -34,7 +33,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
 
   const onUserSelected = async (uname:string) => {
     setId(uname);
-    var data = await (await fetch(`${props.backend}/user/${uname}`, { headers: { 'Authorization':'Bearer '+apiKey }})).json();
+    var data = await (await fetch(`${backendUrl}/user/${uname}`, { headers: { 'Authorization':'Bearer '+apiKey }})).json();
     setSelectedUser(data);
     setName(data.name||'');
     setPassword(data.password||'');
@@ -49,10 +48,10 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   const onClickSave= async () => {
     var user={ id:id, name:name, password:password, roles:roles, description:description }
     if (selectedUser!==undefined) {
-      await fetch(`${props.backend}/user/${user.id}`, {method:'PUT', body:JSON.stringify(user), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey }});
+      await fetch(`${backendUrl}/user/${user.id}`, {method:'PUT', body:JSON.stringify(user), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey }});
     }
     else {
-      await fetch(`${props.backend}/user`, {method:'POST', body:JSON.stringify(user), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey }});
+      await fetch(`${backendUrl}/user`, {method:'POST', body:JSON.stringify(user), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey }});
       setSelectedUser(undefined);
     }
     setSelectedUser(undefined);
@@ -83,7 +82,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
   }
   const onConfirmDelete= async () => {
     if (selectedUser!==undefined) {
-      await fetch(`${props.backend}/user/${selectedUser.id}`, {method:'DELETE', headers: { 'Authorization':'Bearer '+apiKey }});
+      await fetch(`${backendUrl}/user/${selectedUser.id}`, {method:'DELETE', headers: { 'Authorization':'Bearer '+apiKey }});
       setId('')
       setName('');
       setPassword('')

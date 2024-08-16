@@ -7,11 +7,10 @@ const copy = require('clipboard-copy');
 
 interface IProps {
   onClose:() => {};
-  backend:string;
 }
 
 const ManageApiSecurity: React.FC<any> = (props:IProps) => {
-  const {apiKey} = useContext(SessionContext) as SessionContextType;
+  const {apiKey, backendUrl} = useContext(SessionContext) as SessionContextType;
   const [msgBox, setMsgBox] = useState(<></>);
   const [keys, setKeys] = useState<ApiKey[]|null>();
   const [selectedKey, setSelectedKey] = useState<ApiKey|null>();
@@ -19,7 +18,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
   const [expire, setExpire] = useState<string|null>('');
   //+++ implement expire with Date or epoch
   const getKeys = async () => {
-    var response = await fetch(`${props.backend}/key`, { headers: { 'Authorization':'Bearer '+apiKey }});
+    var response = await fetch(`${backendUrl}/key`, { headers: { 'Authorization':'Bearer '+apiKey }});
     var data = await response.json();
     setKeys(data);
   }
@@ -42,11 +41,11 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
   const onClickSave= async () => {
     if (selectedKey!==undefined) {
       var key={ key:selectedKey?.key, description:description, expire:expire};
-      await fetch(`${props.backend}/key/${selectedKey?.key}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey}});
+      await fetch(`${backendUrl}/key/${selectedKey?.key}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey}});
     }
     else {
       var newkey={ description:description, expire:expire, type:'kwirth', resource:'in-cluster:cluster::::'};
-      await fetch(`${props.backend}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey}});
+      await fetch(`${backendUrl}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey}});
     }
     setDescrition('');
     setExpire('');
@@ -65,7 +64,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
 
   const onConfirmDelete= async () => {
     if (selectedKey!==undefined) {
-      await fetch(`${props.backend}/key/${selectedKey?.key}`, {method:'DELETE', headers:{ 'Authorization':'Bearer '+apiKey }});
+      await fetch(`${backendUrl}/key/${selectedKey?.key}`, {method:'DELETE', headers:{ 'Authorization':'Bearer '+apiKey }});
       setDescrition('');
       setExpire('');
       getKeys();
