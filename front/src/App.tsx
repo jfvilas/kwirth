@@ -63,7 +63,7 @@ const App: React.FC = () => {
   var selectedLogIndex = logs.findIndex(t => t.name===selectedLogName);
 
   // message list management
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);  //+++ i think this is not being used right now
   const searchLineRef = useRef(null);
   const lastLineRef = useRef(null);
 

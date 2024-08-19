@@ -6,7 +6,7 @@ import { validKey } from '../tools/AuthorizationManagement';
 export class StoreApi {
   configMaps:ConfigMaps;
   static semaphore:Semaphore = new Semaphore(1);
-  static namespace:string;
+  //static namespace:string;
 
   public route = express.Router();
 

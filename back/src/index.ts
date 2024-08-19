@@ -146,6 +146,11 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
   }
 };
 
+const checkPermission = (config:LogConfig) => {
+  // +++ validate config.key with the rest of config parameters
+  return true;
+}
+
 // watch deployment pods
 const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
   const watch = new Watch(kc);
@@ -198,16 +203,24 @@ async function processClientMessage(message:string, ws:any) {
     return;
   }
   if (!ApiKeyApi.apiKeys.some(ak => ak.key===config.key)) {
-    console.error(`ERROR: Invalid API key: ${config.key}`);
+    console.error(`ERROR: Invalid API key: ${JSON.stringify(config.key)}`);
     ws.close();
     return;
   }
 
-  console.log('RECEIVED CONFIG:'+JSON.stringify(config));
-  var resource = extractResource(config.key);
-  if (config.key.startsWith('resource|')) {
-  }
+  // console.log('RECEIVED CONFIG:'+JSON.stringify(config));
+  // var resource = extractResource(config.key);
+  // if (config.key.startsWith('resource|')) {
+  // }
   
+  var accepted=checkPermission(config);
+  if (!accepted) {
+    console.log('Access denied');
+    console.log(config);
+    ws.close();
+    return;
+  }
+
   switch (config.scope) {
     case 'cluster':
       watchPods(`/api/v1/pods`, {}, ws, config);
@@ -255,8 +268,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws:any, req) => {
-  var key=req.url?.replace('/?key=','');
-  console.log('Client connected: '+key);
+  console.log('Client connected');
 
   ws.on('message', (message:string) => {
     processClientMessage(message, ws);

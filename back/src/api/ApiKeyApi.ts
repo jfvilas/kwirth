@@ -12,6 +12,12 @@ export class ApiKeyApi {
   constructor (configMaps:ConfigMaps) {
     this.configMaps = configMaps;
 
+    configMaps.read('kwirth.keys',[]).then( result => {
+      ApiKeyApi.apiKeys=result;
+      console.log('read keys:');
+      console.log(ApiKeyApi.apiKeys);
+    });
+
     this.route.route('/')
       .all( async (req,res, next) => {
         if (!validKey(req,res)) return;
@@ -59,10 +65,15 @@ export class ApiKeyApi {
           var key=Guid.create().toString()+'|'+type+'|'+resource;
           var keyObject={ key:key, description:description, expire:expire };
 
-          var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
-          storedKeys.push(keyObject);
-          await configMaps.write('kwirth.keys',storedKeys);
-          ApiKeyApi.apiKeys=storedKeys;
+          if (type==='permanent') {
+            var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
+            storedKeys.push(keyObject);
+            await configMaps.write('kwirth.keys',storedKeys);
+            ApiKeyApi.apiKeys=storedKeys;
+          }
+          else {
+            ApiKeyApi.apiKeys.push(keyObject);
+          }
 
           res.status(200).json(keyObject);
       }
