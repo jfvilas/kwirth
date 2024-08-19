@@ -35,9 +35,9 @@ kubectl port-forward svc/kwirth-svc 3883
 ...you should be able to access Kwirth at http://localhost:3883/.
 
 When you first deploy Kwirth there will exist an admin account. The credentials for the admin account are strong credentials like these:
-  - User: admin
-  - Password: password
-  
+  - User: `admin`
+  - Password: `password`
+
 Enjoy!!
 
 ## How Kwirth works
