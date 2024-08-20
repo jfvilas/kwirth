@@ -9,6 +9,7 @@
   "author": "jfvilas",
   "license": "ISC",
   "dependencies": {
+    "@types/guid": "^1.0.3",
     "guid": "^0.0.12"
   }
 }

@@ -4,7 +4,7 @@ import { Secrets } from '../tools/Secrets';
 import { ApiKeyApi } from './ApiKeyApi';
 import { ApiKey } from '../model/ApiKey';
 import { ConfigMaps } from '../tools/ConfigMaps';
-import { AccessKey } from '../model/AccessKey';
+import { AccessKey, accessKeyCreate } from 'common/dist';
 
 export class LoginApi {
   secrets:Secrets;
@@ -14,10 +14,10 @@ export class LoginApi {
 
   createApiKey = async (req:any, username:string) : Promise<ApiKey> => {
     var ip=req.clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    var apiKey:ApiKey= {
-      accessKey: new AccessKey ('permanent', 'cluster:::::'),
+    var apiKey:ApiKey={
+      accessKey: accessKeyCreate('permanent', 'cluster:::::'),
       description: `Login user '${username}' at ${new Date().toISOString()} from ${ip}`,
-      expire: ''
+      expire: Date.now() + 24*60*60*1000  // 24h
     };
     var storedKeys = await this.configMaps.read('kwirth.keys', []);
     storedKeys.push(apiKey);
@@ -39,6 +39,7 @@ export class LoginApi {
 
     // authentication (login)
     this.route.post('/', async (req:any,res:any) => {
+
       LoginApi.semaphore.use ( async () => {
         var users:any = (await secrets.read('kwirth.users') as any);
         var user:any=JSON.parse(atob(users[req.body.user]));

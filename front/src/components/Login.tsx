@@ -3,7 +3,8 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextF
 import { User } from '../model/User';
 import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
-import { AccessKey } from '../../../common'
+import { accessKeySerialize, accessKeyBuild } from 'common/dist';
+
 interface IProps {
   onClose:(result:boolean,user:User|null, accessKey:string) => {}
 }
@@ -30,8 +31,8 @@ const Login: React.FC<any> = (props:IProps) => {
 
   const loginOk = (jsonResult:any) => {
     var receivedUser:User=jsonResult as User;
-    var accessKey:AccessKey=jsonResult.accessKey as AccessKey;
-    props.onClose(true, receivedUser, accessKey.toString());
+    var accessKey=accessKeyBuild(jsonResult.accessKey.id, jsonResult.accessKey.type, jsonResult.accessKey.resource);
+    props.onClose(true, receivedUser, accessKeySerialize(accessKey));
   }
 
   const onClickOk = async () => {

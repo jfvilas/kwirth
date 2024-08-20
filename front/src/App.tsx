@@ -36,6 +36,7 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from './tools/MsgBox';
 import { Message } from './model/Message';
 import { Settings } from './model/Settings';
 import { SessionContext, SessionContextType } from './model/SessionContext';
+//import { access } from 'fs';
 
 const App: React.FC = () => {
   var backendUrl='http://localhost:3883';
@@ -742,6 +743,7 @@ const App: React.FC = () => {
     if (result) {
       console.log(result);
       console.log(user);
+      console.log(accessKey);
       setLogged(true);
       setUser(user);
       setAccessKey(accessKey);

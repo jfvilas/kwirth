@@ -1,9 +1,9 @@
 import { ConfigMaps } from '../tools/ConfigMaps';
 import { ApiKey } from '../model/ApiKey';
 import express from 'express';
-import Guid from 'guid';
 import { validKey } from '../tools/AuthorizationManagement';
-import { AccessKey } from '../../../common';
+import { AccessKey, accessKeyCreate, accessKeyDeserialize, accessKeySerialize } from 'common/dist';
+import { read } from 'fs';
 
 export class ApiKeyApi {
   configMaps:ConfigMaps;
@@ -63,8 +63,8 @@ export class ApiKeyApi {
           var resource=req.body.resource.toLowerCase();  // optional (mandatory if type is 'resource')
           var description=req.body.description;
           var expire=req.body.expire;
-          var accessKey:AccessKey={ id: Guid.create().toString(), type: type, resource: resource };
-          var keyObject:ApiKey={ accessKey:accessKey, description:description, expire:expire };
+          var accessKey:AccessKey=accessKeyCreate(type, resource);
+          var keyObject:ApiKey={ accessKey, description, expire };
 
           if (type==='permanent') {
             var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
@@ -92,7 +92,7 @@ export class ApiKeyApi {
       .get( async (req, res) => {
         try {
           var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
-          var key=storedKeys.filter(apiKey => apiKey.accessKey.toString()===req.params.key);
+          var key=storedKeys.filter(apiKey => apiKey.accessKey.id===req.params.key);
           if (key.length>0)
             res.status(200).json(key[0]);
           else
@@ -106,7 +106,7 @@ export class ApiKeyApi {
       .delete( async (req, res) => {
         try {
           var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
-          storedKeys=storedKeys.filter(apiKey => apiKey.accessKey.toString()!==req.params.key);
+          storedKeys=storedKeys.filter(apiKey => apiKey.accessKey.id!==req.params.key);
           await configMaps.write('kwirth.keys', storedKeys );
           ApiKeyApi.apiKeys=storedKeys;
 
@@ -119,10 +119,11 @@ export class ApiKeyApi {
       })
       .put( async (req, res) => {
         try {
+          //+++ review
           var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
           var key=req.body as ApiKey;
-          storedKeys=storedKeys.filter(k => k.accessKey!==key.accessKey);
-          key.accessKey=AccessKey.fromString(req.params.key);
+          storedKeys=storedKeys.filter(k => k.accessKey.id!==key.accessKey.id);
+          key.accessKey=accessKeyDeserialize(req.params.key);
           storedKeys.push(key);
           await configMaps.write('kwirth.keys',storedKeys);
           ApiKeyApi.apiKeys=storedKeys;

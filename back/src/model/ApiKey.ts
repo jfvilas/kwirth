@@ -1,7 +1,7 @@
-import { AccessKey } from "./AccessKey";
+import { AccessKey } from 'common/dist';
 
 export interface ApiKey {
     accessKey:AccessKey;
     description:string;
-    expire:string;
+    expire:number;
 }

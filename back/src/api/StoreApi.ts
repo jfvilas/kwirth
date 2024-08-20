@@ -2,11 +2,11 @@ import express from 'express';
 import { ConfigMaps } from '../tools/ConfigMaps';
 import Semaphore from 'ts-semaphore';
 import { validKey } from '../tools/AuthorizationManagement';
+import { ApiKeyApi } from './ApiKeyApi';
 
 export class StoreApi {
   configMaps:ConfigMaps;
   static semaphore:Semaphore = new Semaphore(1);
-  //static namespace:string;
 
   public route = express.Router();
 

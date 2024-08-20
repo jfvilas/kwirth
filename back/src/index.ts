@@ -19,6 +19,7 @@ import { LogConfig } from './model/LogConfig';
 import { ManageClusterApi } from './api/ManageClusterApi';
 import { KwirthData } from './model/KwirthData';
 import { getScopeLevel, parseResource } from './tools/AuthorizationManagement';
+import { accessKeyDeserialize, accessKeySerialize } from 'common/dist';
 
 const stream = require('stream');
 const express = require('express');
@@ -184,10 +185,10 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
 };
 
 const checkPermission = (config:LogConfig) => {
-  var resource=parseResource(config.accessKey.resource);
+  var resource=parseResource(accessKeyDeserialize(config.accessKey).resource);
   var haveLevel=getScopeLevel(resource.scope);
   var reqLevel=getScopeLevel(config.scope);
-  console.log('Check levels:', haveLevel, '>', reqLevel, '?');
+  console.log('Check levels:', haveLevel, '>=', reqLevel, '?', haveLevel>=reqLevel);
   //+++ check names requested
   return (haveLevel>=reqLevel);
 }
@@ -196,14 +197,13 @@ const checkPermission = (config:LogConfig) => {
 async function processClientMessage(message:string, ws:any) {
 
   const config = JSON.parse(message) as LogConfig;
-  console.log(config);
   if (!config.accessKey) {
     console.error('No key received');
     ws.close();
     return;
   }
 
-  if (!ApiKeyApi.apiKeys.some(apiKey => apiKey.accessKey.toString()===config.accessKey.toString())) {
+  if (!ApiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===config.accessKey)) {
     console.error(`Invalid API key: ${config.accessKey.toString()}`);
     ws.close();
     return;
