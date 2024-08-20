@@ -1,10 +1,10 @@
 import express from 'express';
 import Semaphore from 'ts-semaphore';
 import { Secrets } from '../tools/Secrets';
-import Guid from 'guid';
 import { ApiKeyApi } from './ApiKeyApi';
 import { ApiKey } from '../model/ApiKey';
 import { ConfigMaps } from '../tools/ConfigMaps';
+import { AccessKey } from '../model/AccessKey';
 
 export class LoginApi {
   secrets:Secrets;
@@ -15,7 +15,7 @@ export class LoginApi {
   createApiKey = async (req:any, username:string) => {
     var ip=req.clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     var apiKey:ApiKey= {
-      key: Guid.create().toString()+'|permanent|'+'cluster:::::',
+      accessKey: new AccessKey ('permanent', 'cluster:::::'),
       description: `Login user '${username}' at ${new Date().toISOString()} from ${ip}`,
       expire: ''
     };
@@ -23,7 +23,7 @@ export class LoginApi {
     storedKeys.push(apiKey);
     this.configMaps.write('kwirth.keys', storedKeys );
     ApiKeyApi.apiKeys=storedKeys;
-    return apiKey.key;
+    return apiKey.accessKey;
   }
 
   okResponse = (user:any) => {

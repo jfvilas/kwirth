@@ -4,3 +4,4 @@ kubectl config use-context k3d-kwirth
 timeout 5 > NUL
 rem deploy an igress controller
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/cloud/deploy.yaml
+kubectl apply -f .\kwirth-users-secret.yaml

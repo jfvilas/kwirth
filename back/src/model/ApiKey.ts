@@ -1,5 +1,7 @@
-export class ApiKey {
-    public key:string|null=null;
-    public description:string|null=null;
-    public expire:string|null=null;
+import { AccessKey } from "./AccessKey";
+
+export interface ApiKey {
+    accessKey:AccessKey;
+    description:string;
+    expire:string;
 }

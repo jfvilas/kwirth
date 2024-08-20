@@ -1,5 +1,7 @@
+import { AccessKey } from "./AccessKey";
+
 export interface LogConfig {
-    key:string;
+    accessKey:AccessKey;
     timestamp:boolean;
     previous:boolean;
     maxMessages:number;

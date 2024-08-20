@@ -18,7 +18,9 @@ import { ManageKwirthApi } from './api/ManageKwirth';
 import { LogConfig } from './model/LogConfig';
 import { ManageClusterApi } from './api/ManageClusterApi';
 import { KwirthData } from './model/KwirthData';
-import { extractResource } from './tools/AuthorizationManagement';
+import { getScopeLevel, parseAccessKey, parseResource } from './tools/AuthorizationManagement';
+import { AccessKey } from './model/AccessKey';
+
 const stream = require('stream');
 const express = require('express');
 const http = require('http');
@@ -132,11 +134,8 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
       pretty: false, 
       timestamps:config.timestamp, 
     }
-    // if (config.previous) streamConfig.previous=config.previous;
-    // if (config.maxMessages) streamConfig.tailLines=config.maxMessages;
     streamConfig.previous=Boolean(config.previous);
     streamConfig.tailLines=config.maxMessages;
-    //streamConfig.previous=false;
     await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig );
   }
   catch (err:any) {
@@ -145,11 +144,6 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
     //ws.send(`Error: ${err.message}`);
   }
 };
-
-const checkPermission = (config:LogConfig) => {
-  // +++ validate config.key with the rest of config parameters
-  return true;
-}
 
 // watch deployment pods
 const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
@@ -190,37 +184,40 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
   );
 };
 
+const checkPermission = (config:LogConfig) => {
+  var resource=parseResource(config.accessKey.resource);
+  var haveLevel=getScopeLevel(resource.scope);
+  var reqLevel=getScopeLevel(config.scope);
+  console.log('levels', haveLevel, reqLevel);
+  //+++ check names requested
+  return (haveLevel>=reqLevel);
+}
+
 // clients send requests to start receiving log
 async function processClientMessage(message:string, ws:any) {
-  // {"scope":"namespace", "namespace":"default","set":"ubuntu3", "timestamp":true}
 
-  //const { scope, namespace, deploymentName, timestamp, previous } = JSON.parse(message);
   const config = JSON.parse(message) as LogConfig;
-  console.log('Received key: '+config.key);
-  if (!config.key) {
+  console.log(config);
+  if (!config.accessKey) {
     console.error('No key received');
     ws.close();
     return;
   }
-  if (!ApiKeyApi.apiKeys.some(ak => ak.key===config.key)) {
-    console.error(`ERROR: Invalid API key: ${JSON.stringify(config.key)}`);
+  if (!ApiKeyApi.apiKeys.some(apiKey => apiKey.accessKey.toString()===config.accessKey.toString())) {
+    console.error(`Invalid API key: ${JSON.stringify(config.accessKey)}`);
     ws.close();
     return;
   }
 
-  // console.log('RECEIVED CONFIG:'+JSON.stringify(config));
-  // var resource = extractResource(config.key);
-  // if (config.key.startsWith('resource|')) {
-  // }
-  
   var accepted=checkPermission(config);
   if (!accepted) {
-    console.log('Access denied');
+    console.error('Access denied');
     console.log(config);
     ws.close();
     return;
   }
-
+  console.log('Access accepted!!');
+  
   switch (config.scope) {
     case 'cluster':
       watchPods(`/api/v1/pods`, {}, ws, config);
