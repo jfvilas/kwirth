@@ -193,8 +193,7 @@ const App: React.FC = () => {
     newLog.cluster=selection.clusterName;
     newLog.scope=selection.scope;
     newLog.namespace=selection.namespace;
-    newLog.setName=selection.set;
-    newLog.setType=selection.setType;
+    newLog.set=selection.set;
     newLog.pod=selection.pod;
     newLog.container=selection.container;
     newLog.name=logName+index;
@@ -378,16 +377,15 @@ const App: React.FC = () => {
     ws.onopen = () => {
       console.log(`WS connected: ${ws.url}`);
       var payload={ 
-        accessKey:accessKey,
-        scope:log.scope, 
-        namespace:log.namespace, 
-        setName:log.setName, 
-        setType:log.setType, 
-        pod:log.pod, 
-        container:log.container, 
-        timestamp:log.addTimestamp,
-        previous:log.previous,
-        maxMessages:log.maxMessages
+        accessKey: accessKey,
+        scope: log.scope, 
+        namespace: log.namespace, 
+        set: log.set,
+        pod: log.pod, 
+        container: log.container, 
+        timestamp: log.addTimestamp,
+        previous: log.previous,
+        maxMessages: log.maxMessages
       };
       ws.send(JSON.stringify(payload));
       log.started=true;
@@ -454,6 +452,9 @@ const App: React.FC = () => {
   const menuLogOptionSelected = (option: MenuLogOption) => {
     setAnchorMenuLog(null);
     switch(option) {
+      case MenuLogOption.LogOrganizeRename:
+        setShowRenameLog(true);
+        break;
       case MenuLogOption.LogOrganizeMoveLeft:
         if (selectedLog) {
           logs[selectedLogIndex]=logs[selectedLogIndex-1];
@@ -533,7 +534,7 @@ const App: React.FC = () => {
       newLog.cluster=log.cluster;
       newLog.filter=log.filter;
       newLog.namespace=log.namespace;
-      newLog.setName=log.setName;
+      newLog.set=log.set;
       newLog.pod=log.pod;
       newLog.container=log.container;
       newLog.defaultLog=log.defaultLog;

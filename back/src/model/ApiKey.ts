@@ -1,4 +1,4 @@
-import { AccessKey } from 'common/dist';
+import { AccessKey } from '../model/AccessKey';
 
 export interface ApiKey {
     accessKey:AccessKey;

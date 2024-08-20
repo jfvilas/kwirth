@@ -18,8 +18,8 @@ import { ManageKwirthApi } from './api/ManageKwirth';
 import { LogConfig } from './model/LogConfig';
 import { ManageClusterApi } from './api/ManageClusterApi';
 import { KwirthData } from './model/KwirthData';
-import { getScopeLevel, parseResource } from './tools/AuthorizationManagement';
-import { accessKeyDeserialize, accessKeySerialize } from 'common/dist';
+import { getScopeLevel } from './tools/AuthorizationManagement';
+import { accessKeyDeserialize, accessKeySerialize, parseResource } from './model/AccessKey';
 
 const stream = require('stream');
 const express = require('express');
@@ -203,8 +203,10 @@ async function processClientMessage(message:string, ws:any) {
     return;
   }
 
+  console.log(config);
+  console.log(accessKeySerialize(ApiKeyApi.apiKeys[0].accessKey));
   if (!ApiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===config.accessKey)) {
-    console.error(`Invalid API key: ${config.accessKey.toString()}`);
+    console.error(`Invalid API key: ${config.accessKey}`);
     ws.close();
     return;
   }
@@ -231,15 +233,16 @@ async function processClientMessage(message:string, ws:any) {
     case 'container':
     case 'set':
       var res:any;
-      switch (config.setType) {
+      var [setType, setName]=config.set.split('+');
+      switch (setType) {
         case'replica':
-          res=await appsApi.readNamespacedReplicaSet(config.setName, config.namespace);
+          res=await appsApi.readNamespacedReplicaSet(setName, config.namespace);
           break;
         case'daemon':
-          res=await appsApi.readNamespacedDaemonSet(config.setName, config.namespace);
+          res=await appsApi.readNamespacedDaemonSet(setName, config.namespace);
           break;
         case'stateful':
-          res=await appsApi.readNamespacedStatefulSet(config.setName, config.namespace);
+          res=await appsApi.readNamespacedStatefulSet(setName, config.namespace);
           break;
       }
       const matchLabels = res.body.spec?.selector?.matchLabels;

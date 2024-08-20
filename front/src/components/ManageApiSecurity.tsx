@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, List, ListItem, ListItemButton, MenuItem, Select, SelectChangeEvent, Stack, TextField, Typography} from '@mui/material';
 import { ApiKey } from '../model/ApiKey';
 import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
-import { AccessKey, accessKeyDeserialize, accessKeySerialize } from 'common/dist';
+import { AccessKey, accessKeySerialize, buildResource, parseResource } from '../model/AccessKey';
 const copy = require('clipboard-copy');
 
 interface IProps {
@@ -17,6 +17,13 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
   const [selectedKey, setSelectedKey] = useState<ApiKey>();
   const [description, setDescrition] = useState<string>('');
   const [expire, setExpire] = useState<number>(0);
+  const [keyType, setKeyType] = useState('volatile');
+  const [scope, setScope] = useState('cluster');
+  const [namespace, setNamespace] = useState('');
+  const [setType, setSetType] = useState('');
+  const [setName, setSetName] = useState('');
+  const [pod, setPod] = useState('');
+  const [container, setContainer] = useState('');
 
   const getKeys = async () => {
     var response = await fetch(`${backendUrl}/key`, { headers: { 'Authorization':'Bearer '+accessKey }});
@@ -33,19 +40,34 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
     setSelectedKey(key);
     setDescrition(key?.description!);
     setExpire(key?.expire!);
+    console.log(key);
+    var res=parseResource(key?.accessKey.resource!);
+    console.log(res);
+    setScope(res.scope);
+    setKeyType(key?.accessKey.type!);
+    setNamespace(res.namespace);
+    var [setType, setName]=res.set.split('+');
+    setSetType(setType);
+    setSetName(setName);
+    setPod(res.pod);
+    setContainer(res.container);
   }
 
   const onClickCopy = () => {
-    if (selectedKey) copy(selectedKey?.accessKey);
+    if (selectedKey) copy(accessKeySerialize(selectedKey?.accessKey));
   }
 
   const onClickSave= async () => {
+    var res=buildResource(scope, namespace, setType, setName, pod, container);
     if (selectedKey!==undefined) {
-      var key={ accessKey:selectedKey?.accessKey, description, expire};
+      console.log(selectedKey);
+      selectedKey.accessKey.type=keyType;
+      selectedKey.accessKey.resource=res;
+      var key={ accessKey:selectedKey?.accessKey, description, expire };
       await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+accessKey}});
     }
     else {
-      var newkey={ description, expire, type:'permanent', resource:'cluster:::::'};
+      var newkey={ description, expire, type:'volatile', resource:res};
       await fetch(`${backendUrl}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+accessKey}});
     }
     setDescrition('');
@@ -60,7 +82,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
   }
 
   const onClickDelete= () => {
-    setMsgBox(MsgBoxYesNo('Delete API Key',`Are you sure you want to delete API Key ${selectedKey?.accessKey}?`, setMsgBox, (a:MsgBoxButtons)=> a===MsgBoxButtons.Yes? onConfirmDelete() : {}));
+    setMsgBox(MsgBoxYesNo('Delete API Key',`Are you sure you want to delete API Key ${selectedKey?.accessKey.id}?`, setMsgBox, (a:MsgBoxButtons)=> a===MsgBoxButtons.Yes? onConfirmDelete() : {}));
   }
 
   const onConfirmDelete= async () => {
@@ -84,6 +106,42 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
             <Stack sx={{width:'50vh'}} spacing={1}>
               <TextField value={description} onChange={(e) => setDescrition(e.target.value)} variant='standard' label='Description'></TextField>
               <TextField value={expire} onChange={(e) => setExpire(+e.target.value)} variant='standard' label='Expire'></TextField>
+              <FormControl variant='standard'>
+                <InputLabel id='keytype'>Scope</InputLabel>
+                <Select labelId='keytype' value={keyType} onChange={(e) => setKeyType(e.target.value)} >
+                  { ['volatile','permanent'].map( (value:string) => {
+                      return <MenuItem key={value} value={value}>{value}</MenuItem>
+                  })}
+                </Select>
+              </FormControl>
+              <FormControl variant='standard'>
+                <InputLabel id='scope'>Scope</InputLabel>
+                <Select labelId='scope' value={scope} onChange={(e) => setScope(e.target.value)} >
+                  { ['cluster','namespace','set','pod','container'].map( (value:string) => {
+                      return <MenuItem key={value} value={value}>{value}</MenuItem>
+                  })}
+                </Select>
+              </FormControl>
+              <TextField value={namespace} onChange={(e) => setNamespace(e.target.value)} variant='standard' label='Namespace'></TextField>
+              <Grid container direction='row'>
+                <Grid item xs={4}>
+                  <FormControl variant='standard' style={{width:'100%'}}>
+                    <InputLabel id='settype'>SetType</InputLabel>
+                    <Select labelId='settype' value={setType} onChange={(e) => setSetType(e.target.value) }>
+                      { ['','replica','stateful','daemon'].map( (value:string) => {
+                          return <MenuItem key={value} value={value}>{value}</MenuItem>
+                      })}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={1}></Grid>
+                <Grid item xs={7}>
+                  <TextField value={setName} onChange={(e) => setSetName(e.target.value)} variant='standard' label='Set' style={{width:'100%'}}></TextField>
+                </Grid>
+              </Grid>
+              <TextField value={pod} onChange={(e) => setPod(e.target.value)} variant='standard' label='Pod'></TextField>
+              <TextField value={container} onChange={(e) => setContainer(e.target.value)} variant='standard' label='Container'></TextField>
+
             </Stack>
           </>}
         </Stack>

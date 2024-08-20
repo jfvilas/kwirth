@@ -2,8 +2,7 @@ import { ConfigMaps } from '../tools/ConfigMaps';
 import { ApiKey } from '../model/ApiKey';
 import express from 'express';
 import { validKey } from '../tools/AuthorizationManagement';
-import { AccessKey, accessKeyCreate, accessKeyDeserialize, accessKeySerialize } from 'common/dist';
-import { read } from 'fs';
+import { AccessKey, accessKeyCreate, accessKeyDeserialize, accessKeySerialize } from '../model/AccessKey';
 
 export class ApiKeyApi {
   configMaps:ConfigMaps;
@@ -26,6 +25,8 @@ export class ApiKeyApi {
       })
       .get( async (req, res) => {
         var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
+        for (var apikey of ApiKeyApi.apiKeys)
+          if (!storedKeys.some(s => accessKeySerialize(s.accessKey)===accessKeySerialize(apikey.accessKey))) storedKeys.push(apikey);
         res.status(200).json(storedKeys);
       })
       .post( async (req, res) => {
@@ -42,22 +43,21 @@ export class ApiKeyApi {
             RESOURCE
 
             FORMAT:
-            scope:namespace:setType:setName:pod:container
+            scope:namespace:set:pod:container
             
             VALUES:
             scope: cluster|namespace|set|pod|container
             namespace: name
-            setType: replica|daemon|stateful
-            setName: name
+            set: replica|daemon|stateful-name   (type of set, a dash, name of set)
             pod: name
             container: name
 
             EXAMPLES:
-            cluster:::::  // all the cluster logs
-            namespace:default::::  // all logs in 'default' namespace
-            set:default:replica:abcd::  // all pods in 'abcd' replicaset inside namespace 'default'
-            pod:default::abcd::  // all pods with name 'abcd' inside namespace 'default'
-            pod:::abcd::  // all pods with name 'abcd'
+            cluster::::  // all the cluster logs
+            namespace:default:::  // all logs in 'default' namespace
+            set:default:replica-abcd::  // all pods in 'abcd' replicaset inside namespace 'default'
+            pod:default::abcd:  // all pods with name 'abcd' inside namespace 'default'
+            pod:::abcd:  // all pods with name 'abcd'
           */
           var type=req.body.type.toLowerCase();  // volatile or permanent
           var resource=req.body.resource.toLowerCase();  // optional (mandatory if type is 'resource')
@@ -119,11 +119,9 @@ export class ApiKeyApi {
       })
       .put( async (req, res) => {
         try {
-          //+++ review
           var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
           var key=req.body as ApiKey;
           storedKeys=storedKeys.filter(k => k.accessKey.id!==key.accessKey.id);
-          key.accessKey=accessKeyDeserialize(req.params.key);
           storedKeys.push(key);
           await configMaps.write('kwirth.keys',storedKeys);
           ApiKeyApi.apiKeys=storedKeys;

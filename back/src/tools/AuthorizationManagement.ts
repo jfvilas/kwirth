@@ -1,6 +1,5 @@
 import { ApiKeyApi } from '../api/ApiKeyApi';
-import { ResourceIdentifier } from "../model/ResourceIdentifier";
-import { accessKeySerialize } from 'common/dist';
+import { accessKeySerialize } from '../model/AccessKey';
 
 export const validKey = (req:any,res:any) => {
     if (req.headers.authorization && req.headers.authorization) {
@@ -28,18 +27,6 @@ export const validKey = (req:any,res:any) => {
       return false;
     }
   }
-
-export const parseResource = (key:string) : ResourceIdentifier => {
-    var parts=key.split(':');
-    return {
-        scope:parts[0],
-        namespace:parts[1],
-        setType:parts[2],
-        setName:parts[3],
-        pod:parts[4],
-        container:parts[5]
-    }
-}
 
 export const getScopeLevel = (scope:string) => {
     const levelScopes = ['','container','pod','set','namespace','cluster'];

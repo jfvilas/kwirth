@@ -4,7 +4,7 @@ import { Secrets } from '../tools/Secrets';
 import { ApiKeyApi } from './ApiKeyApi';
 import { ApiKey } from '../model/ApiKey';
 import { ConfigMaps } from '../tools/ConfigMaps';
-import { AccessKey, accessKeyCreate } from 'common/dist';
+import { accessKeyCreate } from '../model/AccessKey';
 
 export class LoginApi {
   secrets:Secrets;

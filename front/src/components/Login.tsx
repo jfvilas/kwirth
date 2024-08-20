@@ -3,7 +3,7 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextF
 import { User } from '../model/User';
 import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
-import { accessKeySerialize, accessKeyBuild } from 'common/dist';
+import { accessKeySerialize, accessKeyBuild } from '../model/AccessKey';
 
 interface IProps {
   onClose:(result:boolean,user:User|null, accessKey:string) => {}

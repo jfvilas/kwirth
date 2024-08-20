@@ -17,8 +17,9 @@ interface IProps {
 }
 
 interface ResourceSet {
-  name:string,
+  // these names match with the ones returned in the "/config/sets" fetch.
   type:string  // rs, ds, ss
+  name:string,
 }
 
 const ResourceSelector: React.FC<any> = (props:IProps) => {
@@ -136,8 +137,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     selection.clusterName=selectedClusterName;
     selection.scope=scope;
     selection.namespace=namespace;
-    selection.setType=set?.type;
-    selection.set=set?.name;
+    selection.set=set? (set.type+'+'+set?.name) : undefined;
     selection.pod=pod;
     selection.container=container;
 

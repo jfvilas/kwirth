@@ -1,14 +1,11 @@
-import { AccessKey } from "./AccessKey";
-
 export interface LogConfig {
-    accessKey:AccessKey;
+    accessKey:string;
     timestamp:boolean;
     previous:boolean;
     maxMessages:number;
     scope:string;
     namespace:string;
-    setType:string;
-    setName:string;
+    set:string;
     pod:string;
     container:string;
 }
