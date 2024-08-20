@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material';
 import { User } from '../model/User';
 import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox';
-
+import { SessionContext, SessionContextType } from '../model/SessionContext';
+import { AccessKey } from '../../../common'
 interface IProps {
-  onClose:(result:boolean,user:User|null, apiKey:string) => {},
-  backend:string
+  onClose:(result:boolean,user:User|null, accessKey:string) => {}
 }
 
 const Login: React.FC<any> = (props:IProps) => {
+  const {backendUrl} = useContext(SessionContext) as SessionContextType;
   const [msgBox, setMsgBox] = useState(<></>);
   const [user, setUser] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
@@ -19,20 +20,21 @@ const Login: React.FC<any> = (props:IProps) => {
   const login = async (user:string, password:string, newPassword:string='') => {
     if (newPassword!=='') {
       var payload=JSON.stringify({user:user, password:password, newpassword:newPassword});
-      return await fetch(props.backend+'/login/password', {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+      return await fetch(backendUrl+'/login/password', {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
     }
     else {
       var payload=JSON.stringify({user:user, password:password});
-      return await fetch(props.backend+'/login', {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+      return await fetch(backendUrl+'/login', {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
     }
   }
 
   const loginOk = (jsonResult:any) => {
     var receivedUser:User=jsonResult as User;
-    props.onClose(true, receivedUser, jsonResult.apiKey);
+    var accessKey:AccessKey=jsonResult.accessKey as AccessKey;
+    props.onClose(true, receivedUser, accessKey.toString());
   }
 
-  const onClickOk= async () => {
+  const onClickOk = async () => {
     if(changingPassword) {
       if (newPassword1===newPassword2) {
         var result = await login(user,password,newPassword1);

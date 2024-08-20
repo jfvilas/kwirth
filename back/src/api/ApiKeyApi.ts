@@ -2,8 +2,8 @@ import { ConfigMaps } from '../tools/ConfigMaps';
 import { ApiKey } from '../model/ApiKey';
 import express from 'express';
 import Guid from 'guid';
-import { parseAccessKey, validKey } from '../tools/AuthorizationManagement';
-import { AccessKey } from '../model/AccessKey';
+import { validKey } from '../tools/AuthorizationManagement';
+import { AccessKey } from '../../../common';
 
 export class ApiKeyApi {
   configMaps:ConfigMaps;
@@ -122,7 +122,7 @@ export class ApiKeyApi {
           var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
           var key=req.body as ApiKey;
           storedKeys=storedKeys.filter(k => k.accessKey!==key.accessKey);
-          key.accessKey=parseAccessKey(req.params.key);
+          key.accessKey=AccessKey.fromString(req.params.key);
           storedKeys.push(key);
           await configMaps.write('kwirth.keys',storedKeys);
           ApiKeyApi.apiKeys=storedKeys;

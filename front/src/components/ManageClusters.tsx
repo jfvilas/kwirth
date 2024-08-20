@@ -13,7 +13,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
   const [selectedCluster, setSelectedCluster] = useState<Cluster|null>();
   const [name, setName] = useState<string>('');
   const [url, setUrl] = useState<string>('');
-  const [apiKey, setApiKey] = useState<string>('');
+  const [accessKey, setAccessKey] = useState<string>('');
   const [msgBox, setMsgBox] =useState(<></>);
 
   const onClusterSelected = (idSelected:string|null) => {
@@ -21,12 +21,12 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
     setSelectedCluster(cluster);
     setName(cluster?.name!);
     setUrl(cluster?.url!);
-    setApiKey(cluster?.apiKey!);
+    setAccessKey(cluster?.accessKey!);
   }
 
   const onClickSave= async () => {
     if (selectedCluster) {
-      selectedCluster.apiKey=apiKey;
+      selectedCluster.accessKey=accessKey;
       selectedCluster.name=name;
       selectedCluster.url=url;
       clusters.splice(clusters?.findIndex(c => c.id===selectedCluster.id)!,1);
@@ -34,14 +34,14 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
     }
     else {
       var c=new Cluster();
-      c.apiKey=apiKey;
+      c.accessKey=accessKey;
       c.name=name;
       c.url=url;
       clusters?.push(c);
     }
     setName('');
     setUrl('');
-    setApiKey('');
+    setAccessKey('');
     setClusters(clusters);
   }
 
@@ -49,7 +49,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
     setSelectedCluster(undefined);
     setName('');
     setUrl('');
-    setApiKey('');
+    setAccessKey('');
   }
 
   const onClickDelete= () => {
@@ -61,7 +61,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
       clusters.splice(clusters?.findIndex(c => c.id===selectedCluster.id)!,1);
       setName('');
       setUrl('');
-      setApiKey('');
+      setAccessKey('');
       setSelectedCluster(undefined);
     }
   }
@@ -78,7 +78,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
             <Stack sx={{width:'50vh'}} spacing={1}>
               <TextField value={name} onChange={(e) => setName(e.target.value)} disabled={selectedCluster?.source} variant='standard' label='Name'></TextField>
               <TextField value={url} onChange={(e) => setUrl(e.target.value)} disabled={selectedCluster?.source}variant='standard' label='URL'></TextField>
-              <TextField value={apiKey} onChange={(e) => setApiKey(e.target.value)} disabled={selectedCluster?.source} variant='standard' label='API Key'></TextField>
+              <TextField value={accessKey} onChange={(e) => setAccessKey(e.target.value)} disabled={selectedCluster?.source} variant='standard' label='API Key'></TextField>
             </Stack>
           </>}
         </Stack>

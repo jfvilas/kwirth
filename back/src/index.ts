@@ -18,8 +18,7 @@ import { ManageKwirthApi } from './api/ManageKwirth';
 import { LogConfig } from './model/LogConfig';
 import { ManageClusterApi } from './api/ManageClusterApi';
 import { KwirthData } from './model/KwirthData';
-import { getScopeLevel, parseAccessKey, parseResource } from './tools/AuthorizationManagement';
-import { AccessKey } from './model/AccessKey';
+import { getScopeLevel, parseResource } from './tools/AuthorizationManagement';
 
 const stream = require('stream');
 const express = require('express');
@@ -156,7 +155,7 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
       switch(config.scope) {
         case 'cluster':
         case 'namespace':
-        case 'deployment':
+        case 'set':
           getPodLog(podNamespace, podName, '', ws, config);
           break;
         case 'pod':
@@ -188,7 +187,7 @@ const checkPermission = (config:LogConfig) => {
   var resource=parseResource(config.accessKey.resource);
   var haveLevel=getScopeLevel(resource.scope);
   var reqLevel=getScopeLevel(config.scope);
-  console.log('levels', haveLevel, reqLevel);
+  console.log('Check levels:', haveLevel, '>', reqLevel, '?');
   //+++ check names requested
   return (haveLevel>=reqLevel);
 }
@@ -203,21 +202,24 @@ async function processClientMessage(message:string, ws:any) {
     ws.close();
     return;
   }
+
   if (!ApiKeyApi.apiKeys.some(apiKey => apiKey.accessKey.toString()===config.accessKey.toString())) {
-    console.error(`Invalid API key: ${JSON.stringify(config.accessKey)}`);
+    console.error(`Invalid API key: ${config.accessKey.toString()}`);
     ws.close();
     return;
   }
 
   var accepted=checkPermission(config);
-  if (!accepted) {
+  if (accepted) {
+    console.log('Access accepted');
+  }
+  else {
     console.error('Access denied');
     console.log(config);
     ws.close();
     return;
   }
-  console.log('Access accepted!!');
-  
+
   switch (config.scope) {
     case 'cluster':
       watchPods(`/api/v1/pods`, {}, ws, config);
@@ -227,7 +229,7 @@ async function processClientMessage(message:string, ws:any) {
       break;
     case 'pod':
     case 'container':
-    case 'deployment':
+    case 'set':
       var res:any;
       switch (config.setType) {
         case'replica':

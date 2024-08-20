@@ -40,26 +40,26 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
 
   const getNamespaces = async () => {
     console.log(selectedCluster);
-    var response = await fetch(`${selectedCluster!.url}/config/namespace?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.apiKey}});
+    var response = await fetch(`${selectedCluster!.url}/config/namespace?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.accessKey}});
     var data = await response.json();
     setNamespaces(data);
   }
   
   const getSets = async (namespace:string) => {
-    var response = await fetch(`${selectedCluster!.url}/config/${namespace}/sets?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.apiKey}});
+    var response = await fetch(`${selectedCluster!.url}/config/${namespace}/sets?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.accessKey}});
     var data = await response.json();
     setSets(data);
   }
   
   const getPods = async (namespace:string, set:ResourceSet) => {
-    var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${set.name}/pods?type=${set.type}&cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.apiKey}});
+    var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${set.name}/pods?type=${set.type}&cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.accessKey}});
     var data = await response.json();
     setPods(data);
     setPodSelectDisabled(false);
   }
 
   const getContainers = async (namespace:string,pod:string) => {
-      var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${pod}/containers?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.apiKey}});
+      var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${pod}/containers?cluster=${selectedClusterName}`,{headers:{'Authorization':selectedCluster!.accessKey}});
       var data = await response.json();
       setContainers(data);
   }
@@ -144,7 +144,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     var logName='cluster';
     if (scope==='namespace')
       logName=namespace;
-    else if (scope==='deployment')
+    else if (scope==='set')
       logName=namespace+'-'+set?.name;
     else if (scope==='pod')
       logName=namespace+'-'+pod;
@@ -168,7 +168,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
       <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={selectedClusterName===''}>
         <InputLabel id='scope'>Scope</InputLabel>
         <Select labelId='scope' value={scope} onChange={onChangeScope} >
-          { ['cluster','namespace','deployment','pod','container'].map( (value:string) => {
+          { ['cluster','namespace','set','pod','container'].map( (value:string) => {
               return <MenuItem key={value} value={value}>{value}</MenuItem>
           })}
         </Select>

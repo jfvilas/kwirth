@@ -11,7 +11,7 @@ interface IProps {
 }
 
 const ManageAlarms: React.FC<any> = (props:IProps) => {
-  const {apiKey} = useContext(SessionContext) as SessionContextType;
+  const {accessKey} = useContext(SessionContext) as SessionContextType;
   const [alarms, setAlarms] = useState<Alarm[]>();
   const [msgBox, setMsgBox] = useState(<></>);
   const [selectedAlarm, setSelectedAlarm] = useState<Alarm|undefined>(undefined);

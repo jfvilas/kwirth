@@ -12,7 +12,7 @@ export class LoginApi {
   static semaphore:Semaphore = new Semaphore(1);
   public route = express.Router();
 
-  createApiKey = async (req:any, username:string) => {
+  createApiKey = async (req:any, username:string) : Promise<ApiKey> => {
     var ip=req.clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     var apiKey:ApiKey= {
       accessKey: new AccessKey ('permanent', 'cluster:::::'),
@@ -23,7 +23,7 @@ export class LoginApi {
     storedKeys.push(apiKey);
     this.configMaps.write('kwirth.keys', storedKeys );
     ApiKeyApi.apiKeys=storedKeys;
-    return apiKey.accessKey;
+    return apiKey;
   }
 
   okResponse = (user:any) => {
@@ -47,7 +47,7 @@ export class LoginApi {
             if (user.password==='password')
               res.status(201).send('');
             else {
-              user.apiKey=await this.createApiKey(req, req.body.user);
+              user.accessKey=(await this.createApiKey(req, req.body.user)).accessKey;
               res.status(200).json(this.okResponse(user));
             }
           } 
@@ -69,7 +69,7 @@ export class LoginApi {
         if (user) {
           if (req.body.password===user.password) {
             user.password = req.body.newpassword
-            user.apiKey=await this.createApiKey(req, req.body.user);
+            user.accessKey=(await this.createApiKey(req, req.body.user)).accessKey;
             users[req.body.user]=btoa(JSON.stringify(user));
             await secrets.write('kwirth.users',users);
             res.status(200).json(this.okResponse(user));

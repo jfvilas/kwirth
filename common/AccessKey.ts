@@ -20,8 +20,15 @@ export class AccessKey {
         this.type = type;
         this.resource = resource;
     }
+
     public toString() {
         return `${this.id}|${this.type}|${this.resource}`;
     }
 
+    public static fromString = (key:string) : AccessKey => {
+        var parts=key.split('|');
+        var accessKey=new AccessKey(parts[1],parts[2]);
+        accessKey.id=parts[0];
+        return accessKey;
+      }      
 }
