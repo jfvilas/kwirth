@@ -20,25 +20,26 @@ const MsgBoxYesNoCancel = (title:string, message:string, onClose:Dispatch<SetSta
 
 const MsgBoxShow = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, buttons:MsgBoxButtons, icon:JSX.Element, onResult?:(a:MsgBoxButtons)=>void) => {
     return (
-      <Dialog open={true}>
-          <DialogTitle>
-              {title}
-          </DialogTitle>
-          <DialogContent >
-              <DialogContentText>
-                  <Stack sx={{mt:2}} direction='row' alignItems={'center'}>
+        <Dialog open={true}>
+            <DialogTitle>
+                {title}
+            </DialogTitle>
+            <DialogContent >
+                <DialogContentText>
+                    <Stack sx={{mt:2}} direction='row' alignItems={'center'}>
                         {icon}
                         <Typography sx={{ml:2}}>{message}</Typography>
-                  </Stack>
-              </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-          { buttons & MsgBoxButtons.Ok? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Ok)}}>ok</Button>:<></>}
-          { buttons & MsgBoxButtons.Yes? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Yes)}}>yes</Button>:<></>}
-          { buttons & MsgBoxButtons.No? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.No)}}>no</Button>:<></>}
-          { buttons & MsgBoxButtons.Cancel? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Cancel)}}>cancel</Button>:<></>}
-          </DialogActions>
-      </Dialog>)
+                    </Stack>
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                { buttons & MsgBoxButtons.Ok? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Ok)}}>ok</Button>:<></>}
+                { buttons & MsgBoxButtons.Yes? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Yes)}}>yes</Button>:<></>}
+                { buttons & MsgBoxButtons.No? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.No)}}>no</Button>:<></>}
+                { buttons & MsgBoxButtons.Cancel? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Cancel)}}>cancel</Button>:<></>}
+            </DialogActions>
+        </Dialog>
+    );
 }
 
 export { MsgBoxButtons, MsgBoxOk, MsgBoxOkWarning, MsgBoxOkError, MsgBoxOkCancel, MsgBoxYesNo, MsgBoxYesNoCancel }

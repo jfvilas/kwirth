@@ -72,7 +72,11 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
       <DialogContent>
         <Stack sx={{ display: 'flex', flexDirection: 'row' }}>
           <List sx={{flexGrow:1, mr:2, width:'50vh' }}>
-            { clusters?.map(c => <ListItemButton key={c.id} onClick={() => onClusterSelected(c.id)}><ListItem>{c.name}</ListItem></ListItemButton>)}
+            { clusters?.map(c => 
+              <ListItemButton key={c.id} onClick={() => onClusterSelected(c.id)} style={{backgroundColor:(c.id===selectedCluster?.id?'lightgray':'')}}>
+                <ListItem>{c.name}</ListItem>
+              </ListItemButton>
+            )}
           </List>
           { <>
             <Stack sx={{width:'50vh'}} spacing={1}>

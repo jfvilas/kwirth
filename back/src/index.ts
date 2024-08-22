@@ -1,5 +1,4 @@
-//import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod, LogOptions } from '@kubernetes/client-node';
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch } from '@kubernetes/client-node';
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod } from '@kubernetes/client-node';
 import { ConfigApi } from './api/ConfigApi';
 import { Secrets } from './tools/Secrets';
 import { ConfigMaps } from './tools/ConfigMaps';
@@ -43,223 +42,246 @@ const rootPath = process.env.KWIRTH_ROOTPATH || '';
 
 // get the namespace where Kwirth is running on
 const getMyKubernetesData = async ():Promise<KwirthData> => {
-  var podName=process.env.HOSTNAME;
-  var depName='';
-  const pods = await coreApi.listPodForAllNamespaces();
-  const pod = pods.body.items.find(p => p.metadata?.name === podName);  
-  if (pod && pod.metadata?.namespace) {
+    var podName=process.env.HOSTNAME;
+    var depName='';
+    const pods = await coreApi.listPodForAllNamespaces();
+    const pod = pods.body.items.find(p => p.metadata?.name === podName);  
+    if (pod && pod.metadata?.namespace) {
 
-    if (pod.metadata.ownerReferences) {
-      for (const owner of pod.metadata.ownerReferences) {
-        if (owner.kind === 'ReplicaSet') {
-          const rs = await appsApi.readNamespacedReplicaSet(owner.name, pod.metadata.namespace);
-          if (rs.body.metadata && rs.body.metadata.ownerReferences) {
-            for (const rsOwner of rs.body.metadata.ownerReferences) {
-              if (rsOwner.kind === 'Deployment') depName=rsOwner.name;
+        if (pod.metadata.ownerReferences) {
+            for (const owner of pod.metadata.ownerReferences) {
+                if (owner.kind === 'ReplicaSet') {
+                    const rs = await appsApi.readNamespacedReplicaSet(owner.name, pod.metadata.namespace);
+                    if (rs.body.metadata && rs.body.metadata.ownerReferences) {
+                        for (const rsOwner of rs.body.metadata.ownerReferences) {
+                            if (rsOwner.kind === 'Deployment') depName=rsOwner.name;
+                        }
+                    }
+                }
             }
-          }
         }
-      }
+        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true };
     }
-    return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true };
-  }
-  else {
-    // this namespace will be used to access secrets and configmaps
-    return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false };
-  }
+    else {
+        // this namespace will be used to access secrets and configmaps
+        return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false };
+    }
 }
 
 // split a block of stdout into several lines and send them
 const sendLines = (ws:WebSocket, event:any, source:string) => {
-  const logLines = source.split('\n');
-  for (var line of logLines) {
-    if (line!=='') {
-      event.text=line;
-      ws.send(JSON.stringify(event));    
+    const logLines = source.split('\n');
+    event.type='log';
+    for (var line of logLines) {
+        if (line!=='') {
+            event.text=line;
+            ws.send(JSON.stringify(event));    
+        }
     }
-  }
 }
 
 // get pod logs
 const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, config:LogConfig) => {
-  try {
-    const logStream = new stream.PassThrough();
-    logStream.on('data', (chunk:any) => {
-      var text:string=chunk.toString('utf8');
-      if (buffer.get(ws)!==undefined) {
-        // if we have some text from a previous incompleted chunk, we prepend it now
-        text=buffer.get(ws)+text;
-        buffer.delete(ws);
-      }
-      if (!text.endsWith('\n')) {
-        //incomplete chunk
-        var i=text.lastIndexOf('\n');
-        var next=text.substring(i);
-        buffer.set(ws,next);
-        text=text.substring(0,i);        
-      }
-      var event:any = {namespace:namespace, podName:podName};
-      sendLines(ws,event,text);
-    });
+    try {
+        const logStream = new stream.PassThrough();
+        logStream.on('data', (chunk:any) => {
+            var text:string=chunk.toString('utf8');
+            if (buffer.get(ws)!==undefined) {
+                // if we have some text from a previous incompleted chunk, we prepend it now
+                text=buffer.get(ws)+text;
+                buffer.delete(ws);
+            }
+            if (!text.endsWith('\n')) {
+                //incomplete chunk
+                var i=text.lastIndexOf('\n');
+                var next=text.substring(i);
+                buffer.set(ws,next);
+                text=text.substring(0,i);        
+            }
+            var event:any = {namespace:namespace, podName:podName};
+            sendLines(ws,event,text);
+        });
 
-    // logStream.on('data', (chunk:any) => {
-    //   var text=chunk.toString('utf8');
-    //   var event:any = {namespace:namespace, podName:podName};
-    //   event.text=text;
-    //   ws.send(JSON.stringify(event));
-    // });
-    
-    /**
-     * Follow the log stream of the pod. Defaults to false.
-    follow?: boolean;
-     * If set, the number of bytes to read from the server before terminating the log output. This may not display a
-     * complete final line of logging, and may return slightly more or slightly less than the specified limit.
-    limitBytes?: number;
-     * If true, then the output is pretty printed.
-    pretty?: boolean;
-     * Return previous terminated container logs. Defaults to false.
-    previous?: boolean;
-     * A relative time in seconds before the current time from which to show logs. If this value precedes the time a
-     * pod was started, only logs since the pod start will be returned. If this value is in the future, no logs will
-     * be returned. Only one of sinceSeconds or sinceTime may be specified.
-    sinceSeconds?: number;
-     * If set, the number of lines from the end of the logs to show. If not specified, logs are shown from the creation
-     * of the container or sinceSeconds or sinceTime
-    tailLines?: number;
-     * If true, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line of log output. Defaults to false.
-    timestamps?: boolean;
-    */
-    var streamConfig:any={ 
-      follow: true, 
-      pretty: false, 
-      timestamps:config.timestamp, 
+        var streamConfig:any={ 
+            follow: true, 
+            pretty: false, 
+            timestamps:config.timestamp, 
+        }
+        streamConfig.previous=Boolean(config.previous);
+        streamConfig.tailLines=config.maxMessages;
+        await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig );
     }
-    streamConfig.previous=Boolean(config.previous);
-    streamConfig.tailLines=config.maxMessages;
-    await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig );
-  }
-  catch (err:any) {
-    console.error(err);
-    //+++ decide what to do with errors on back: send them to front?
-    //ws.send(`Error: ${err.message}`);
-  }
+    catch (err:any) {
+        console.log(err);
+        socketCloseOnError(ws,JSON.stringify(err));
+    }
 };
 
 // watch deployment pods
 const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
-  const watch = new Watch(kc);
-  watch.watch(apiPath, filter, (type:string, obj:any) => {
-    if (type === 'ADDED' || type === 'MODIFIED') {
-      const podName = obj.metadata.name;
-      const podNamespace = obj.metadata.namespace;
-      console.log(`${type}: ${podNamespace}/${podName}`);
-      switch(config.scope) {
-        case 'cluster':
-        case 'namespace':
-        case 'set':
-          getPodLog(podNamespace, podName, '', ws, config);
-          break;
-        case 'pod':
-          for (var container of obj.spec.containers) {
-            getPodLog(podNamespace, podName, container.name, ws, config);
-          }
-          break;
-        case 'container':
-          for (var container of obj.spec.containers) {
-            if (container.name===config.container) {
-              getPodLog(podNamespace, podName, container.name, ws, config);
-            }
-          }
-          break;
-      }
-    }
-    else if (type === 'DELETED') {
-      console.log(`Pod deleted` );
-      //+++ finish ws
-    }},
-    (err:any) => {
-      console.error(err);
-      ws.send(`Error: ${err.message}`);
-    }
-  );
+    const watch = new Watch(kc);
+
+    watch.watch(apiPath, filter, (type:string, obj:any) => {
+        if (type === 'ADDED' || type === 'MODIFIED') {
+        const podName = obj.metadata.name;
+        const podNamespace = obj.metadata.namespace;
+        console.log(`${type}: ${podNamespace}/${podName}`);
+        switch(config.scope) {
+            case 'cluster':
+            case 'namespace':
+            case 'set':
+                getPodLog(podNamespace, podName, '', ws, config);
+                break;
+            case 'pod':
+                for (var container of obj.spec.containers) {
+                    getPodLog(podNamespace, podName, container.name, ws, config);
+                }
+                break;
+            case 'container':
+                for (var container of obj.spec.containers) {
+                    if (container.name===config.container) {
+                        getPodLog(podNamespace, podName, container.name, ws, config);
+                    }
+                }
+                break;
+        }
+        }
+        else if (type === 'DELETED') {
+            console.log(`Pod deleted` );
+            //+++ finish ws???
+        }},
+        (err:any) => {
+            console.log(err);
+            socketCloseOnError(ws,JSON.stringify({type:'error',text:JSON.stringify(err)}));
+        }
+    );
 };
 
 const checkPermission = (config:LogConfig) => {
-  var resource=parseResource(accessKeyDeserialize(config.accessKey).resource);
-  var haveLevel=getScopeLevel(resource.scope);
-  var reqLevel=getScopeLevel(config.scope);
-  console.log('Check levels:', haveLevel, '>=', reqLevel, '?', haveLevel>=reqLevel);
-  //+++ check names requested
-  return (haveLevel>=reqLevel);
+    var resource=parseResource(accessKeyDeserialize(config.accessKey).resource);
+    var haveLevel=getScopeLevel(resource.scope);
+    var reqLevel=getScopeLevel(config.scope);
+    console.log('Check levels:', haveLevel, '>=', reqLevel, '?', haveLevel>=reqLevel);
+    return (haveLevel>=reqLevel);
+}
+
+function socketCloseOnError (ws:WebSocket, text:string) {
+    console.log(text);
+    ws.send(JSON.stringify({type:'error',text}));
+    ws.close();
 }
 
 // clients send requests to start receiving log
-async function processClientMessage(message:string, ws:any) {
+async function processClientMessage(message:string, webSocket:any) {
 
-  const config = JSON.parse(message) as LogConfig;
-  if (!config.accessKey) {
-    console.error('No key received');
-    ws.close();
-    return;
-  }
+    const config = JSON.parse(message) as LogConfig;
+    if (!config.accessKey) {
+      socketCloseOnError(webSocket,'No key received');
+      return;
+    }
 
-  console.log(config);
-  console.log(accessKeySerialize(ApiKeyApi.apiKeys[0].accessKey));
-  if (!ApiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===config.accessKey)) {
-    console.error(`Invalid API key: ${config.accessKey}`);
-    ws.close();
-    return;
-  }
+    if (!ApiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===config.accessKey)) {
+        socketCloseOnError(webSocket,`Invalid API key: ${config.accessKey}`);
+        return;
+    }
 
-  var accepted=checkPermission(config);
-  if (accepted) {
-    console.log('Access accepted');
-  }
-  else {
-    console.error('Access denied');
-    console.log(config);
-    ws.close();
-    return;
-  }
+    var accepted=checkPermission(config);
+    if (accepted) {
+        console.log('Access accepted');
+    }
+    else {
+        socketCloseOnError(webSocket, 'Access denied: permission denied');
+        return;
+    }
 
-  switch (config.scope) {
-    case 'cluster':
-      watchPods(`/api/v1/pods`, {}, ws, config);
-      break;
-    case 'namespace':
-      watchPods(`/api/v1/namespaces/${config.namespace}/pods`, {}, ws, config);
-      break;
-    case 'pod':
-    case 'container':
-    case 'set':
-      var res:any;
-      var [setType, setName]=config.set.split('+');
-      switch (setType) {
-        case'replica':
-          res=await appsApi.readNamespacedReplicaSet(setName, config.namespace);
-          break;
-        case'daemon':
-          res=await appsApi.readNamespacedDaemonSet(setName, config.namespace);
-          break;
-        case'stateful':
-          res=await appsApi.readNamespacedStatefulSet(setName, config.namespace);
-          break;
-      }
-      const matchLabels = res.body.spec?.selector?.matchLabels;
-      if (matchLabels) {
-        var labelSelector='';
-        const matchLabels = res.body.spec?.selector?.matchLabels;
-        if (matchLabels) {
-            labelSelector = Object.entries(matchLabels).map(([key, value]) => `${key}=${value}`).join(',');
-            console.log(labelSelector);
-            watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector:labelSelector }, ws, config);
-        }
-        else {
-          //+++ errro, notfound
-        }
-      }
-      break;
-  }
+    var resource=parseResource(accessKeyDeserialize(config.accessKey).resource);
+
+    var allowedNamespaces=resource.namespace.split(',').filter(ns => ns!=='');
+    var requestedNamespaces=config.namespace.split(',').filter(ns => ns!=='');
+    var validNamespaces=requestedNamespaces.filter(ns => allowedNamespaces.includes(ns));
+
+    var allowedPods=resource.pod.split(',').filter(podName => podName!=='');
+    var requestedPods=config.pod.split(',').filter(podName => podName!=='');
+    var validPods=requestedPods.filter(podName => allowedPods.includes(podName));
+
+    switch (config.scope) {
+        case 'filter':
+            if (resource.scope!==config.scope) {
+                socketCloseOnError(webSocket, `Access denied: scope 'filter' not allowed`);
+                return;
+            }
+
+            var allPods=await coreApi.listPodForAllNamespaces(); //+++ can be optimized if config.namespace is specified
+            var selectedPods:V1Pod[]=[];
+            for (var pod of allPods.body.items) {
+                console.log(`Validating ${pod.metadata?.namespace}/${pod.metadata?.name} access`);
+                var valid=true;
+                if (resource.namespace!=='') valid &&= validNamespaces.includes(pod.metadata?.namespace!);
+                //+++ other filters pending implementation
+                if (resource.pod) valid &&= validPods.includes(pod.metadata?.name!);
+                if (valid)
+                    selectedPods.push(pod);
+                else {
+                    console.log(`Access denied: access to ${pod.metadata?.namespace}/${pod.metadata?.name} has not been granted.`)
+                }
+            }
+            if (selectedPods.length===0) {
+              socketCloseOnError(webSocket,`Access denied: there are no filters that matches requested config`)
+            }
+            else {
+                for (var pod of selectedPods) {
+                    var podConfig:LogConfig={
+                        accessKey: '',
+                        timestamp: config.timestamp,
+                        previous: config.previous,
+                        maxMessages: config.maxMessages,
+                        scope: 'pod',
+                        namespace: pod.metadata?.namespace!,
+                        set: '',
+                        pod: pod.metadata?.name!,
+                        container: ''
+                    };
+                    console.log('launch pod', podConfig);
+                    var ml:any=pod.metadata?.labels;
+                    var labelSelector = Object.entries(ml).map(([key, value]) => `${key}=${value}`).join(',');
+                    console.log(labelSelector);
+                    watchPods(`/api/v1/namespaces/${podConfig.namespace}/pods`, { labelSelector }, webSocket, podConfig);
+                }
+            }
+            break;
+        case 'cluster':
+            watchPods(`/api/v1/pods`, {}, webSocket, config);
+            break;
+        case 'namespace':
+            watchPods(`/api/v1/namespaces/${config.namespace}/pods`, {}, webSocket, config);
+            break;
+        case 'pod':
+        case 'container':
+        case 'set':
+            var setPods:any;
+            var [setType, setName]=config.set.split('+');
+            switch (setType) {
+                case'replica':
+                    setPods=await appsApi.readNamespacedReplicaSet(setName, config.namespace);
+                    break;
+                case'daemon':
+                    setPods=await appsApi.readNamespacedDaemonSet(setName, config.namespace);
+                    break;
+                case'stateful':
+                    setPods=await appsApi.readNamespacedStatefulSet(setName, config.namespace);
+                    break;
+            }
+
+            const matchLabels = setPods.body.spec?.selector?.matchLabels;
+            if (matchLabels) {
+                var labelSelector = Object.entries(matchLabels).map(([key, value]) => `${key}=${value}`).join(',');
+                watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector }, webSocket, config);
+            }
+            break;
+        default:
+            socketCloseOnError(webSocket, `Access denied: invalid scope ${config.scope}`);
+            return;
+    }
 }
 
 // HTTP server

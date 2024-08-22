@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch } from '@kubernetes/client-node';
+import { CoreV1Api } from '@kubernetes/client-node';
 
 export class  Secrets {
     coreApi:CoreV1Api;

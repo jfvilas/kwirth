@@ -53,7 +53,9 @@ function parseResource (key:string) : ResourceIdentifier {
 }
 
 function buildResource (scope:string, namespace:string, setType:string, setName:string, pod:string, container:string) : string {
-    return `${scope}:${namespace}:${setType}+${setName}:${pod}:${container}`;
+    var set=`${setType}+${setName}`;
+    if (set==='+') set='';
+    return `${scope}:${namespace}:${set}:${pod}:${container}`;
 }
 
 /*

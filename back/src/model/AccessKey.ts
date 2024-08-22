@@ -59,34 +59,47 @@ function buildResource (scope:string, namespace:string, setType:string, setName:
 /*
     ResourceIdentifier is composed by:
 
-        scope: one of: cluster(5), namespace(4), set(3), pod(2), container(1)
+        scope: one of: cluster(6), namespace(5), set(4), pod(3), container(2), filter(1) 
         setType is the type of set: replica, stateful or daemon      
         The rest of fields are names according to this rules:
             - it can be a direct name, like: 'mynamespace', 'your-replica-set', 'our-pod'...
-            - it can be an '*' (without the apostrophe or ''), indicating any resource of the scope is valid
+            - it can be an '', indicating any resource of the scope is valid
             - it can be an array of names, like: namespace ['dev','pre'], or pod ['my-pod','our-pod','your-pod']
 
-        For example, an accessKey that gives access to namespaces production and staging would be something like
+        Full access is created by using cluster scope:
+            scope: cluster
+            namespace: ''
+            set: ''
+            pod: ''
+            container: ''
 
+        For example, an accessKey that gives access to namespaces production and staging would be something like
             scope: namespace
             namespace: ['production','staging']
-            set: *
-            pod: *
-            container: *
+            set: ''
+            pod: ''
+            container: ''
+
+        Access to just 'default' namespace is like this (remember, '' means no limits, defualt namespace must be specified):
+            scope: namespace
+            namespace: 'default'
+            set: ''
+            pod: ''
+            container: ''
 
         An accessKey that gives access to pod 'my-pod' in the whole cluster would be something like:
             scope: pod
-            namespace: *
-            set: *
+            namespace: namespace1
+            set: set1
             pod: my-pod
-            container: *
+            container: ''
         
-        If you want to restrict access to 'dev' and 'pre' namespaces, you should modify previous ResourceIdentifier this way:
-            scope: pod
+        If you want to restrict access to 'dev' and 'pre' namespaces for a specific pod (my-pod'), you should use 'filter' scope, and create a ResourceIdentifier like this:
+            scope: filter
             namespace: ['dev','pre']
-            set: *
+            set: ''
             pod: my-pod
-            container: *
+            container: ''
 
             That is, 'scope' keeps being 'pod', but we restrict namespace.
 */
