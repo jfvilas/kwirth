@@ -79,13 +79,3 @@ You can manage existent alarms for a log object by accessing the log object menu
 
 ![log menu](./_media/log-menu.png)
 
-### User management
-User management is easy and self-explaining.
-
-![user managment](./_media/user-managment.png)
-
-### Multi-cluster
-Is coming...
-
-### API key management
-Is coming...
