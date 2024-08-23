@@ -28,3 +28,5 @@ API security is the mean you can use to give access to your Kwirth to users that
 
 >> create two-cluster diagram
 
+### API keys and Access Keys
+*Pending*

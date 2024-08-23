@@ -38,8 +38,8 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
             <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveAs)}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
             <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.Delete)}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
             <Divider/>
-            <MenuItem key='cfgexp' onClick={() => optionSelected(MenuDrawerOption.Export)}><ImportExport/>&nbsp;Export all configs (to downloadable file)</MenuItem>
-            <MenuItem key='cfgimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new configs from file (and merge overwriting)</MenuItem>
+            <MenuItem key='viewexp' onClick={() => optionSelected(MenuDrawerOption.Export)}><ImportExport/>&nbsp;Export all views (to downloadable file)</MenuItem>
+            <MenuItem key='viewimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new views from file (and merge overwriting)</MenuItem>
             <MenuItem key='settings' onClick={() => optionSelected(MenuDrawerOption.Settings)}><Settings/>&nbsp;Settings</MenuItem>
             { props.user.roles.includes('admin') && 
                 <div>
