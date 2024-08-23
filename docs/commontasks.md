@@ -4,7 +4,7 @@ Explain how to perform common tasks.
 ### Your first log
 The first time you access your fresh copy of Kwirth you must login with admin credentials, **admin/password** (yes the password is password).
 
- ![login](./_media/login.png)
+ &nbsp;&nbsp;&nbsp;&nbsp;![login](./_media/login.png)
 
 So, if everything is ok, you should see the main Kwirth page:
 

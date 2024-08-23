@@ -17,10 +17,10 @@ To add a cluster to your profile you only need to enter three simple data:
 
 That is, something like this:
 
-![new-cluster](./_media/new-cluster.png)
+&nbsp;&nbsp;&nbsp;&nbsp;![new-cluster](./_media/new-cluster.png)
 
 And that's all.
 
 Now, in the cluster selector in the main resource selector you should see the new cluster, something like this:
 
-![new-cluster-selector](./_media/new-cluster-selector.png)
+&nbsp;&nbsp;&nbsp;&nbsp;![new-cluster-selector](./_media/new-cluster-selector.png)

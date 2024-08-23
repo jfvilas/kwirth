@@ -11,3 +11,4 @@ We cite here some interesting capabilities that are missing today:
   - **Helm**. Although Kwirth installation is simple and straightforward, we should create a helm chart for installing Kwirth.
   - ~~**Update self**, add an option to restart kwirth (if image is latest this will update kwirth to the lastest available version).~~
   - **Secure log text**, we plan to add an option to protect log lines that contain a specific sensible text, like 'passord', 'pw', 'email', etc..., so lines including these words are treated in a special way by asterisking sensible content.
+  - **API Key expire**, we need to add something useful for humans in the API management at front application.
