@@ -63,4 +63,4 @@ If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and run
                   port:
                     number: 3883
     ```
-    NOTE: You can **change the path** where to publish KWirth, it is explained in [installation section](./installation).
+    NOTE: You can **change the path** where to publish KWirth, it is explained in [installation section](installation?id=installation).
