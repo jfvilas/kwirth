@@ -30,6 +30,7 @@ What you can see in the main Kwirth is:
   - The main menu gives you access to several configuration and operation options of your Kwirth installation.
 
     ![main menu](./_media/main-menu.png)
+
     These are the actions in the menu:
     - In the first block you can manage your views by creating (new), loading (load) saving (save and 'save as') and deleting views.
     - Next you have options for exporting your views (a set of logs) to a file or import them from a file.
@@ -54,7 +55,7 @@ A typical view have this form:
 
 Where the content of the view is as follows:
 
-  - Log objects. When you add a source object from the resel (by clicking the 'add' button), a new tab would be added to the view, with a default name automatically created depending on the scope and the source object. Tabs can be renamed once created, but their names must be unique.
+  - Log objects. When you add a source object from the resource selector (by clicking the 'add' button), a new tab would be added to the view, with a default name automatically created depending on the scope and the source object. Tabs can be renamed once created, but their names must be unique.
   - Filter. You can filter what info is shown on the log object (a tab in the view). Filters are the basis for the alarms.
   
 ### Alarming
@@ -76,7 +77,7 @@ To create an alarm...:
 
 You can manage existent alarms for a log object by accessing the log object menu.
 
-![log menu](./media/log-menu.png)
+![log menu](./_media/log-menu.png)
 
 ### User management
 User management is easy and self-explaining.
