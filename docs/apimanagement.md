@@ -4,6 +4,7 @@ Access to Kwirth is secured by the use of APIs. When you access Kwirth via its o
 But there are situations in which you want to create and share an API for another external use. In this case, you need to use this API Management tool.
 
 ![api-management](./_media/api-management.png)
+
 An API key requirres following information to be created:
 
 - **Description**. For obious reasons it is important to write down what an API key has been created for,
@@ -36,3 +37,6 @@ Which would take this aspect:
 ```
 
 This is the API key you should use in your client application.
+
+## Multi cluster support
+When you use an instance of Kwirth as a gate to a multi-cluster log management system, you need to add clusters, as shown in (cluster managment)[clustermanagemnet]. For a cluster to be added to another Kwirth instance, you must previously create an API like we've just explained, but the scop must be **'cluster'**.
