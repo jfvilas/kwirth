@@ -3,7 +3,7 @@ Kwirth is the final implementation of the idea of having a simple way to manage 
 
 **Kwirth is the answer to your need**. Just *one pod to access all the logs you need* from your main cluster or even **consolidate logging from different clusters**.
 
-You can access the source code [here](https://github.com/jfvilasPersonal/kwirth)
+You can access the source code [**HERE**](https://github.com/jfvilasPersonal/kwirth).
 
 ## Get started
 Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirth to your cluster.
@@ -12,16 +12,14 @@ Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirt
 kubectl apply -f https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master/test/kwirth.yaml
 ```
 
-If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging and alerting system.
+If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging and alerting system. Several options here...
 
-Several options here...
+1. You can just access via **command line port forwarding**:
+    ```bash
+    kubectl port-forward svc/kwirth-svc 3883
+    ```
 
-1. You can just access via **port forwarding** on the command line:
-```bash
-kubectl port-forward svc/kwirth-svc 3883
-```
-
-2. Using the port forwarding options of your favourite Kubernetes management tool, like Lens, Headlamp, K9S, etc... (etc was not a Kubernetes tool when I wrote this article ;) ).
+2. **Using the port forwarding** options of your favourite Kubernetes management tool, like Lens, Headlamp, K9S, etc... (etc was not a Kubernetes tool when I wrote this article ;) ).
 
     - With Headlamp...
       
@@ -36,8 +34,33 @@ kubectl port-forward svc/kwirth-svc 3883
       ![Lens](./_media/pf-k9s.png)
 
 
-3. **Using an Ingress**. It is the best option if you plan to access your Kwirth from Internet and if you also plan to share Kwirth with the development team in your corporate private network. For publishing Kwirth to be accesible from outside the cluster, you must create an Ingress. It is a pending job to enable Kwirth to listen in a non-root path, so you could share the Ingress object with other applications, but for the momment Kwirth only works at root path. Next sample is for publishing external access like this (of course, you can rewrite the target URL's in your reverse-proxy or in the Ingress, stripping part of the local path).
+3. **Using an Ingress**. It is the best option if you plan to access your Kwirth from Internet and if you also plan to share Kwirth with the development team in your corporate private network. For publishing Kwirth to be accesible from outside the cluster, you must create an Ingress (be sure, you need to deploy an ingress controller, you hove info on how to perform a simple ingress installation [**HERE**](https://jfvilaspersonal.github.io/oberkorn/#/ingins)).
 
-```yaml
-Pending, we wish to add non-root path first
-```
+    It is a pending job to enable Kwirth to listen in a non-root path, so you could share the Ingress object with other applications, but for the momment Kwirth only works at root path. Next sample is for publishing external access like this (of course, you can rewrite the target URL's in your reverse-proxy or in the Ingress, stripping part of the local path).
+
+    ```yaml
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: ingress-jfvilas
+      namespace: default
+    spec:
+      ingressClassName: nginx
+      # if you want to publish Kwirth securely you would need to add something like this:
+      # tls:
+      # - hosts:
+      #   - www.kwirth-dns.com
+      #     secretName: www.kwirth-dns.com.tls
+      rules:
+      - host: localhost
+        http:
+          paths:
+            - path: /kwirth
+              pathType: Prefix
+              backend:
+                service:
+                  name: kwirth-svc
+                  port:
+                    number: 3883
+    ```
+    NOTE: You can **change the path** where to publish KWirth, it is explained in [installation section](../installation).
