@@ -57,8 +57,10 @@ Where the content of the view is as follows:
 
   - Log objects. When you add a source object from the resource selector (by clicking the 'add' button), a new tab would be added to the view, with a default name automatically created depending on the scope and the source object. Tabs can be renamed once created, but their names must be unique.
   - Filter. You can filter what info is shown on the log object (a tab in the view). Filters are the basis for the alarms.
-  
+
+
 ### Alarming
+
 You can use Kwirth just as an alarming tool (or in addtion to your logging needs). Alarming in Kwirth consists of:
 
   - Define **expressions** that are used to detect anomalies or exceptional situations you want to manage in a special way.
