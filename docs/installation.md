@@ -14,7 +14,14 @@ If you need to change default Kwirth configuration you may need to edit the YAML
 The default installation of Kwirth publishes Kwirth access via 'http://your.dns.name/kwirth'. But you can change this behaviour by publishing Kwirth at any other path. Let's see a sample deploy creating (if needed) an ingress controller and creating an ingress resource.
 
 #### 1. Deploy an Ingress controller (not needed if you already have one)
->> Refer to Oberkorn IngressNginx installation
+There are lots of options for doing this job. You can use a managed ingress controller if you are using a managed Kubernetes cluster (like EKS, AKS, GKE...), or you can deploy your own ingress controller (even if you are using a CaaS approach for deploying your Kubernetes cluster).
+
+We have provided detailed installation on how to install and configure different types of ingress controllers in our [**Oberkorn**](https://jfvilaspersonal.github.io/oberkorn/#/README) project.
+
+In the [**installation section**](https://jfvilaspersonal.github.io/oberkorn/#/ingins) you can get detailed info on the simplest way to deploy:
+  - Ingress Nginx
+  - NGINX Ingress
+  - Traefik
 
 #### 2. Create an Ingress
 Once you have deployed an Ingress controller (Ingress Nginx or whatever you like), next step is to create a simple Ingress resource. This YAML code shows how to create an ingress for accessing your Kwirth in this path: '/quirz'.
