@@ -60,7 +60,6 @@ Where the content of the view is as follows:
 
 
 ### Alarming
-
 You can use Kwirth just as an alarming tool (or in addtion to your logging needs). Alarming in Kwirth consists of:
 
   - Define **expressions** that are used to detect anomalies or exceptional situations you want to manage in a special way.
