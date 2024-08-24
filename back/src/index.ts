@@ -86,7 +86,6 @@ function sendError (ws:WebSocket, text:string, close:boolean) {
     if (close) ws.close();
 }
 
-
 // get pod logs
 const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, config:LogConfig) => {
     try {
@@ -116,7 +115,6 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
         }
         streamConfig.previous=Boolean(config.previous);
         streamConfig.tailLines=config.maxMessages;
-        // this wont work for pods with mor than one container
         await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig );
     }
     catch (err:any) {
@@ -129,41 +127,32 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
 const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
     const watch = new Watch(kc);
 
-    watch.watch(apiPath, filter, (type:string, obj:any) => {
-        if (type === 'ADDED' || type === 'MODIFIED') {
+    watch.watch(apiPath, filter, (eventType:string, obj:any) => {
         const podName = obj.metadata.name;
         const podNamespace = obj.metadata.namespace;
-        console.log(`${type}: ${podNamespace}/${podName}`);
-        switch(config.scope) {
-            case 'cluster':
-            case 'namespace':
-            case 'set':
-                getPodLog(podNamespace, podName, '', ws, config);
-                break;
-            case 'pod':
-                for (var container of obj.spec.containers) {
+        if (eventType === 'ADDED' || eventType === 'MODIFIED') {
+            console.log(`${eventType}: ${podNamespace}/${podName}`);
+            ws.send(JSON.stringify({type:'info',text:`Pod ${eventType}: ${podNamespace}/${podName}`}));
+
+            for (var container of obj.spec.containers) {
+                if (config.scope==='container') {
+                    if (container.name===config.container) getPodLog(podNamespace, podName, container.name, ws, config);
+                }
+                else {
                     getPodLog(podNamespace, podName, container.name, ws, config);
                 }
-                break;
-            case 'container':
-                for (var container of obj.spec.containers) {
-                    if (container.name===config.container) {
-                        getPodLog(podNamespace, podName, container.name, ws, config);
-                    }
-                }
-                break;
+            }
         }
-        }
-        else if (type === 'DELETED') {
+        else if (eventType === 'DELETED') {
             console.log(`Pod deleted` );
-            //+++ finish ws???
-        }},
-        (err:any) => {
-            console.log(err);
-            sendError(ws,JSON.stringify({type:'error',text:JSON.stringify(err)}), true);
+            ws.send(JSON.stringify({type:'info',text:`Pod deleted: ${podNamespace}/${podName}`}));
         }
-    );
-};
+    },
+    (err:any) => {
+        console.log(err);
+        sendError(ws,JSON.stringify({type:'error',text:JSON.stringify(err)}), true);
+    })
+}
 
 const checkPermission = (config:LogConfig) => {
     var resource=parseResource(accessKeyDeserialize(config.accessKey).resource);
