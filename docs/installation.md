@@ -1,5 +1,5 @@
 # Installation
-Add here detailed installation instructions
+Follow these simple steps to get your Kwirth running in 2 to 3 minutes.
 
 ### Deploy Kwirth to your cluster
 If you want an express setup of Kwirth, do not loose your time, just type-in this kubectl in your console:
