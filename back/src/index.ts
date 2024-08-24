@@ -86,7 +86,7 @@ function sendError (ws:WebSocket, text:string, close:boolean) {
     if (close) ws.close();
 }
 
-// get pod logs
+// get pods logs
 const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, config:LogConfig) => {
     try {
         const logStream = new stream.PassThrough();
