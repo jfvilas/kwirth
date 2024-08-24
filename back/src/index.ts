@@ -80,6 +80,13 @@ const sendLines = (ws:WebSocket, event:any, source:string) => {
     }
 }
 
+function sendError (ws:WebSocket, text:string, close:boolean) {
+    console.log(text);
+    ws.send(JSON.stringify({type:'error',text}));
+    if (close) ws.close();
+}
+
+
 // get pod logs
 const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, config:LogConfig) => {
     try {
@@ -109,11 +116,12 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
         }
         streamConfig.previous=Boolean(config.previous);
         streamConfig.tailLines=config.maxMessages;
+        // this wont work for pods with mor than one container
         await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig );
     }
     catch (err:any) {
         console.log(err);
-        socketCloseOnError(ws,JSON.stringify(err));
+        sendError(ws,JSON.stringify(err), false);
     }
 };
 
@@ -152,7 +160,7 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
         }},
         (err:any) => {
             console.log(err);
-            socketCloseOnError(ws,JSON.stringify({type:'error',text:JSON.stringify(err)}));
+            sendError(ws,JSON.stringify({type:'error',text:JSON.stringify(err)}), true);
         }
     );
 };
@@ -165,23 +173,17 @@ const checkPermission = (config:LogConfig) => {
     return (haveLevel>=reqLevel);
 }
 
-function socketCloseOnError (ws:WebSocket, text:string) {
-    console.log(text);
-    ws.send(JSON.stringify({type:'error',text}));
-    ws.close();
-}
-
 // clients send requests to start receiving log
 async function processClientMessage(message:string, webSocket:any) {
 
     const config = JSON.parse(message) as LogConfig;
     if (!config.accessKey) {
-      socketCloseOnError(webSocket,'No key received');
+      sendError(webSocket,'No key received', true);
       return;
     }
 
     if (!ApiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===config.accessKey)) {
-        socketCloseOnError(webSocket,`Invalid API key: ${config.accessKey}`);
+        sendError(webSocket,`Invalid API key: ${config.accessKey}`, true);
         return;
     }
 
@@ -190,7 +192,7 @@ async function processClientMessage(message:string, webSocket:any) {
         console.log('Access accepted');
     }
     else {
-        socketCloseOnError(webSocket, 'Access denied: permission denied');
+        sendError(webSocket, 'Access denied: permission denied', true);
         return;
     }
 
@@ -207,7 +209,7 @@ async function processClientMessage(message:string, webSocket:any) {
     switch (config.scope) {
         case 'filter':
             if (resource.scope!==config.scope) {
-                socketCloseOnError(webSocket, `Access denied: scope 'filter' not allowed`);
+                sendError(webSocket, `Access denied: scope 'filter' not allowed`, true);
                 return;
             }
 
@@ -219,14 +221,15 @@ async function processClientMessage(message:string, webSocket:any) {
                 if (resource.namespace!=='') valid &&= validNamespaces.includes(pod.metadata?.namespace!);
                 //+++ other filters pending implementation
                 if (resource.pod) valid &&= validPods.includes(pod.metadata?.name!);
-                if (valid)
+                if (valid) {
                     selectedPods.push(pod);
+                }
                 else {
-                    console.log(`Access denied: access to ${pod.metadata?.namespace}/${pod.metadata?.name} has not been granted.`)
+                    console.log(`Access denied: access to ${pod.metadata?.namespace}/${pod.metadata?.name} has not been granted.`);
                 }
             }
             if (selectedPods.length===0) {
-              socketCloseOnError(webSocket,`Access denied: there are no filters that matches requested config`)
+              sendError(webSocket,`Access denied: there are no filters that matches requested config`, true);
             }
             else {
                 for (var pod of selectedPods) {
@@ -279,7 +282,7 @@ async function processClientMessage(message:string, webSocket:any) {
             }
             break;
         default:
-            socketCloseOnError(webSocket, `Access denied: invalid scope ${config.scope}`);
+            sendError(webSocket, `Access denied: invalid scope ${config.scope}`, true);
             return;
     }
 }

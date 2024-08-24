@@ -151,11 +151,6 @@ const App: React.FC = () => {
         clusterList=clusterList.filter (c => c.name!==srcCluster.name);
         }
 
-        // store updated cluster list (excluding this cluster if current kwirth is running inCluster)
-        // var clonedList=Array.from(clusterList);
-        // if (!srcCluster.inCluster) clonedList.push(srcCluster);
-        // fetch (`${backend}/store/${user?.id}/clusters/list`, {method:'POST', body:JSON.stringify(clonedList), headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
-
         clusterList.push(srcCluster);
         setClusters(clusterList);
     }
@@ -304,6 +299,7 @@ const App: React.FC = () => {
 
         var msg=new Message(log.buffer+e.text);
 
+        msg.type=e.type;
         msg.cluster=log.cluster.name;
         msg.namespace=e.namespace;
         msg.resource=e.podName;
@@ -624,7 +620,11 @@ const App: React.FC = () => {
             setShowSettingsConfig(true);
             break;
         case MenuDrawerOption.UpdateKwirth:
-            fetch (`${backendUrl}/managekwirth/restart`, {headers:{Authorization:'Bearer '+accessKey}});
+            setMsgBox(MsgBoxYesNo('Update Kwirth',`This action will restart the Kwirth instance and users won't be able to work during 7 to 10 seconds. In addition, all volatile API keys will be deleted. Do you want to continue?`,setMsgBox, (button) => {
+                if (button===MsgBoxButtons.Yes) {
+                    fetch (`${backendUrl}/managekwirth/restart`, {headers:{Authorization:'Bearer '+accessKey}});
+                }
+            }));
             break;
         case MenuDrawerOption.Exit:
             setLogged(false);
@@ -644,8 +644,8 @@ const App: React.FC = () => {
     const handleDownload = (content:string,filename:string,  mimeType:string='text/plain') => {
         const blob = new Blob([content], { type: mimeType });
         const url = URL.createObjectURL(blob);
-
         const link = document.createElement('a');
+        
         link.href = url;
         link.download = filename;
         document.body.appendChild(link);

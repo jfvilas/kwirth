@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, List, ListItem, ListItemButton, MenuItem, Select, SelectChangeEvent, Stack, TextField, Typography} from '@mui/material';
+import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, InputLabel, List, ListItem, ListItemButton, MenuItem, Select, SelectChangeEvent, Stack, TextField, Typography} from '@mui/material';
 import { ApiKey } from '../model/ApiKey';
 import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
@@ -75,7 +75,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
             await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+accessKey}});
         }
         else {
-            var newkey={ description, expire, type:'volatile', resource:res};
+            var newkey={ description, expire, type:keyType, resource:res};
             await fetch(`${backendUrl}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+accessKey}});
         }
         setDescrition('');
@@ -103,20 +103,32 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
     }
 
     return (<>
-        <Dialog open={true} fullWidth maxWidth='md'>
+        <Dialog open={true} fullWidth maxWidth='md' PaperProps={{ style: {height: '60vh' }}}>
             <DialogTitle>API Key management</DialogTitle>
-            <DialogContent>
-                <Checkbox checked={showPermanent} onChange={() => setShowPermanent(!showPermanent)}/>Permanent
-                <Checkbox checked={showVolatile} onChange={() => setShowVolatile(!showVolatile)}/>Volatile
-                <Stack sx={{ display: 'flex', flexDirection: 'row' }}>
-                    <List sx={{flexGrow:1, mr:2, width:'50vh' }}>
-                        { keys?.filter(k => (showPermanent && k.accessKey.type==='permanent') || (showVolatile && k.accessKey.type==='volatile')).map( (k,index) => 
-                        <ListItemButton key={index} onClick={() => onKeySelected(k.accessKey)} style={{backgroundColor:(k.accessKey.id===selectedKey?.accessKey.id?'lightgray':'')}}>
-                            <ListItem>{accessKeySerialize(k.accessKey)}</ListItem>
-                        </ListItemButton>
-                        )}
-                    </List>
-                    <Stack sx={{width:'50vh'}} spacing={1}>
+            <DialogContent style={{ display:'flex', height:'100%'}}>
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', maxWidth: 'calc(50% - 8px)'}}>
+                    <Box alignSelf={'center'}>
+                        <Stack flexDirection={'row'} alignItems={'center'}>
+                            <Checkbox checked={showPermanent} onChange={() => setShowPermanent(!showPermanent)}/><Typography>Permanent</Typography>
+                            <Checkbox checked={showVolatile} onChange={() => setShowVolatile(!showVolatile)}/><Typography>Volatile</Typography>
+                        </Stack>
+                    </Box>
+
+                    <Box sx={{ flex: 1, overflowY: 'auto' }}>
+                        <div style={{ flex:0.9, overflowY: 'auto', overflowX:'hidden'}} >
+                            <List sx={{flexGrow:1, mr:2, width:'50vh', overflowY:'auto' }}>
+                                { keys?.filter(k => (showPermanent && k.accessKey.type==='permanent') || (showVolatile && k.accessKey.type==='volatile')).map( (k,index) => 
+                                    <ListItemButton key={index} onClick={() => onKeySelected(k.accessKey)} style={{backgroundColor:(k.accessKey.id===selectedKey?.accessKey.id?'lightgray':'')}}>
+                                        <ListItem>{accessKeySerialize(k.accessKey)}</ListItem>
+                                    </ListItemButton>
+                                )}
+                            </List>                            
+                        </div>
+                    </Box>
+                </Box>
+
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'start', paddingLeft: '16px'}} >
+                    <Stack spacing={1} style={{width:'100%'}}>
                         <TextField value={description} onChange={(e) => setDescrition(e.target.value)} variant='standard' label='Description'></TextField>
                         <TextField value={expire} onChange={(e) => setExpire(+e.target.value)} variant='standard' label='Expire'></TextField>
                         <FormControl variant='standard'>
@@ -147,15 +159,15 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
                                     </Select>
                                 </FormControl>
                             </Grid>
-                            <Grid xs={1}></Grid>
-                            <Grid item xs={7}>
+                            <Grid xs={0.5}></Grid>
+                            <Grid item xs={7.5}>
                                 <TextField value={setName} onChange={(e) => setSetName(e.target.value)} disabled={setType===''} variant='standard' label='Set' style={{width:'100%'}}></TextField>
                             </Grid>
                         </Grid>
                         <TextField value={pod} onChange={(e) => setPod(e.target.value)} variant='standard' label='Pod'></TextField>
                         <TextField value={container} onChange={(e) => setContainer(e.target.value)} variant='standard' label='Container'></TextField>
                     </Stack>
-                </Stack>
+                </Box>   
             </DialogContent>
             <DialogActions>
                 <Stack direction='row' spacing={1}>

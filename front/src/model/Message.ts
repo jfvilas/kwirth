@@ -4,6 +4,7 @@ class Message {
     public namespace?:string='';
     public resource?:string='';
     public text:string='';
+    public type:string='';
 
     constructor (text:string) {
         this.text=text;
