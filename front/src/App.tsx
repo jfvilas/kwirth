@@ -366,20 +366,20 @@ const App: React.FC = () => {
         var ws = new WebSocket(cluster.url);
         log.ws=ws;
         ws.onopen = () => {
-        console.log(`WS connected: ${ws.url}`);
-        var payload={ 
-            accessKey: accessKey,
-            scope: log.scope, 
-            namespace: log.namespace, 
-            set: log.set,
-            pod: log.pod, 
-            container: log.container, 
-            timestamp: log.addTimestamp,
-            previous: log.previous,
-            maxMessages: log.maxMessages
-        };
-        ws.send(JSON.stringify(payload));
-        log.started=true;
+            console.log(`WS connected: ${ws.url}`);
+            var payload={ 
+                accessKey: cluster!.accessKey,
+                scope: log.scope, 
+                namespace: log.namespace, 
+                set: log.set,
+                pod: log.pod, 
+                container: log.container, 
+                timestamp: log.addTimestamp,
+                previous: log.previous,
+                maxMessages: log.maxMessages
+            };
+            ws.send(JSON.stringify(payload));
+            log.started=true;
         };
         
         ws.onmessage = (event) => wsOnChunk(event);

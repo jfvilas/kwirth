@@ -53,8 +53,11 @@ const LogContent: React.FC<any> = (props:IProps) => {
             else
                 return <div key={index}>{t}</div>;
         }
-        else {
+        else if (message.type==='info') {
             return <div key={index}><span style={{color:"red"}}><b>*****{message.text}</b></span></div>
+        }
+        else  {
+            return <div key={index}>{message.text}</div>
         }
     }
 
