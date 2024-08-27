@@ -3,13 +3,13 @@ Kwirth is the final implementation of the idea of having a simple way to manage 
 
 **Kwirth is the answer to your need**. Just *one pod to access all the logs you need* from your main cluster or even **consolidate logging from different clusters**.
 
-You can access the source code [**HERE**](https://github.com/jfvilasPersonal/kwirth).
+You can access the source code [**HERE**](https://github.com/jfvilas/kwirth).
 
 ## Get started
 Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirth to your cluster.
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master/test/kwirth.yaml
+kubectl apply -f https://raw.githubusercontent.com/jfvilas/kwirth/master/test/kwirth.yaml
 ```
 
 If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging and alerting system. Several options here...
@@ -34,7 +34,7 @@ If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and run
       ![Lens](./_media/pf-k9s.png)
 
 
-3. **Using an Ingress**. It is the best option if you plan to access your Kwirth from Internet and if you also plan to share Kwirth with the development team in your corporate private network. For publishing Kwirth to be accesible from outside the cluster, you must create an Ingress (be sure, you need to deploy an ingress controller, you hove info on how to perform a simple ingress installation [**HERE**](https://jfvilaspersonal.github.io/oberkorn/#/ingins)).
+3. **Using an Ingress**. It is the best option if you plan to access your Kwirth from Internet and if you also plan to share Kwirth with the development team in your corporate private network. For publishing Kwirth to be accesible from outside the cluster, you must create an Ingress (be sure, you need to deploy an ingress controller, you hove info on how to perform a simple ingress installation [**HERE**](https://jfvilas.github.io/oberkorn/#/ingins)).
 
     It is a pending job to enable Kwirth to listen in a non-root path, so you could share the Ingress object with other applications, but for the momment Kwirth only works at root path. Next sample is for publishing external access like this (of course, you can rewrite the target URL's in your reverse-proxy or in the Ingress, stripping part of the local path).
 

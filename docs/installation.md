@@ -5,7 +5,7 @@ Follow these simple steps to get your Kwirth running in 2 to 3 minutes.
 If you want an express setup of Kwirth, do not loose your time, just type-in this kubectl in your console:
 
 ```yaml
-kubectl apply -f https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master/test/kwirth.yaml
+kubectl apply -f https://raw.githubusercontent.com/jfvilas/kwirth/master/test/kwirth.yaml
 ```
 
 If you need to change default Kwirth configuration you may need to edit the YAML files in order to customize the deployment.
@@ -16,9 +16,9 @@ The default installation of Kwirth publishes Kwirth access via 'http://your.dns.
 #### 1. Deploy an Ingress controller (not needed if you already have one)
 There are lots of options for doing this job. You can use a managed ingress controller if you are using a managed Kubernetes cluster (like EKS, AKS, GKE...), or you can deploy your own ingress controller (even if you are using a CaaS approach for deploying your Kubernetes cluster).
 
-We have provided detailed installation on how to install and configure different types of ingress controllers in our [**Oberkorn**](https://jfvilaspersonal.github.io/oberkorn/#/README) project.
+We have provided detailed installation on how to install and configure different types of ingress controllers in our [**Oberkorn**](https://jfvilas.github.io/oberkorn/#/README) project.
 
-In the [**installation section**](https://jfvilaspersonal.github.io/oberkorn/#/ingins) you can get detailed info on the simplest way to deploy:
+In the [**installation section**](https://jfvilas.github.io/oberkorn/#/ingins) you can get detailed info on the simplest way to deploy:
   - Ingress Nginx
   - NGINX Ingress
   - Traefik

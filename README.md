@@ -1,7 +1,7 @@
 <p align="center">
-    <img height=auto src="https://jfvilaspersonal.github.io/kwirth/_media/kwirth-logo-20.png" /><br/>
-    <a href='https://jfvilaspersonal.github.io/kwirth'><img src='https://img.shields.io/badge/contributions-welcome-orange.svg'/></a>
-    <a href='https://jfvilaspersonal.github.io/kwirth'><img src='https://img.shields.io/badge/project-homepage-8EA8D8.svg'/></a>
+    <img height=auto src="https://jfvilas.github.io/kwirth/_media/kwirth-logo-20.png" /><br/>
+    <a href='https://jfvilas.github.io/kwirth'><img src='https://img.shields.io/badge/contributions-welcome-orange.svg'/></a>
+    <a href='https://jfvilas.github.io/kwirth'><img src='https://img.shields.io/badge/project-homepage-8EA8D8.svg'/></a>
 </p>
 
 # Kwirth project
@@ -9,7 +9,7 @@ Kwirth is the final implementation of the idea of having a simple way to manage 
 
 If this is the case, **Kwirth is what you need**.
 
-Yo can go to Kwirth web site if you prefer a user-friendly (non-developer) interface [here](https://jfvilaspersonal.github.io/kwirth).
+Yo can go to Kwirth web site if you prefer a user-friendly (non-developer) interface [here](https://jfvilas.github.io/kwirth).
 ## What you can do with Kwirth
 Basically, Kwirth receives logs form one or more Kubernetes clusters in real-time, and with the data received you can do several thinks depending on your role.
 
@@ -21,7 +21,7 @@ Basically, Kwirth receives logs form one or more Kubernetes clusters in real-tim
 Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirth to your cluster.
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master/test/kwirth.yaml
+kubectl apply -f https://raw.githubusercontent.com/jfvilas/kwirth/master/test/kwirth.yaml
 ```
 
 If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging system. You can access Kwrith via your Kubernetes management software, via kubectl-port-forwarding, or even creating an ingress. By default, Kwirth listens on root path at port 3883.
@@ -49,6 +49,6 @@ It is important to understand that Kwirth does not store any logging information
 
 The architecture of Kwirth is the one depicted below.
 
-![](https://raw.githubusercontent.com/jfvilasPersonal/kwirth/master/docs/_media/kwirth-arch.png)
+![](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/_media/kwirth-arch.png)
 
 There is only one pod with one only container needed to run Kwirth. Of course, you can create replicas and services and ingresses if you need to scale out, but, generally speaking, Kwirth has no computing needs, since the only function of the pod is receiving log data and re-sending it to Kwirth front applications.

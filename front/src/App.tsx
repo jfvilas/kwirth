@@ -806,10 +806,12 @@ const App: React.FC = () => {
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
                     <Tabs value={selectedLogName} onChange={onChangeLogs} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
                     { logs.length>0 && logs.map(t => {
-                        if (t===selectedLog)
+                        if (t===selectedLog) {
                             return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                        else
+                        }
+                        else {
                             return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton><Box sx={{minWidth:'20px'}} /></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
+                        }
                         })
                     }
                     </Tabs>

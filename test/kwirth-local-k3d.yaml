@@ -41,6 +41,8 @@ kind: Deployment
 metadata:
   name: kwirth
   namespace: default
+  labels:
+    backstage.io/kubernetes-id: 'kwth'
 spec:
   replicas: 1
   selector:
@@ -51,6 +53,7 @@ spec:
       name: kwirth
       labels:
         app: kwirth
+        backstage.io/kubernetes-id: 'kwth'        
     spec:
       serviceAccount: kwirth-sa
       containers:

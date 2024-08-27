@@ -6,7 +6,7 @@
 - Consolidates logs from different pods, deployments or even **clusters**.
 - Create multiple-severity alarms
 
-[GitHub](https://github.com/jfvilasPersonal/kwirth/)
+[GitHub](https://github.com/jfvilas/kwirth/)
 [Get Started](/index)
 
 ![color](#ffffff)
