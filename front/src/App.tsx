@@ -503,16 +503,23 @@ const App: React.FC = () => {
             break;
         case MenuLogOption.LogManageRestart:
             switch(selectedLog?.scope) {
-            case 'cluster':
-                break;
-            case 'namespace':
-                break;
-            case 'set':
-                // restart a deployment
-                fetch (`${backendUrl}/manage/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
-                break;
+                case 'cluster':
+                    break;
+                case 'namespace':
+                    break;
+                case 'set':
+                    // restart a deployment
+                    //+++ fetch (`${backendUrl}/manage/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+                    console.log('selectedLog.set');
+                    console.log(selectedLog.set);
+                    fetch (`${backendUrl}/managecluster/restartdeployment/${selectedLog.namespace}/${selectedLog.set}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+                    break;
+                case 'pod':
+                    // restart a deployment
+                    //+++ fetch (`${backendUrl}/manage/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+                    fetch (`${backendUrl}/managecluster/restartpod/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+                    break;
             }
-            break;
         }
     };
 

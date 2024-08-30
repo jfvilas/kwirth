@@ -4,14 +4,13 @@ import { accessKeySerialize } from '../model/AccessKey';
 export const validKey = (req:any,res:any) => {
     if (req.headers.authorization && req.headers.authorization) {
         var key=req.headers.authorization.replaceAll('Bearer ','').trim();
-        //if (ApiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===key)) return true;
         var apiKey=ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===key);
         if (!apiKey) {
-            console.error('Inexistent key: '+key);
+            console.log('Inexistent key: '+key);
         }
         else {
             if (apiKey.expire<Date.now()) {
-                console.error('Expired key: '+key);
+                console.log('Expired key: '+key);
             }
             else {
                 console.log(apiKey.expire, '>', Date.now(), '?');
@@ -22,7 +21,7 @@ export const validKey = (req:any,res:any) => {
         return false;
     }
     else {
-        console.error('No valid key present in headers');
+        console.log('No valid key present in headers');
         res.status(403).json({});
         return false;
     }

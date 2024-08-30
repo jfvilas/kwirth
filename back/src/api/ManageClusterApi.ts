@@ -2,16 +2,17 @@ import express from 'express';
 import { AppsV1Api } from '@kubernetes/client-node';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { validKey } from '../tools/AuthorizationManagement';
+import { restartDeployment, restartPod } from '../tools/KubernetesOperations';
 
 export class ManageClusterApi {
     public route = express.Router();
-    coreV1Api:CoreV1Api;
-    appsV1Api:AppsV1Api;
+    coreApi:CoreV1Api;
+    appsApi:AppsV1Api;
 
     
-    constructor (coreV1Api:CoreV1Api, appsV1Api:AppsV1Api) {
-        this.coreV1Api=coreV1Api
-        this.appsV1Api=appsV1Api
+    constructor (coreApi:CoreV1Api, appsApi:AppsV1Api) {
+        this.coreApi=coreApi
+        this.appsApi=appsApi
 
         this.route.route('/find')
             .all( async (req,res, next) => {
@@ -21,9 +22,9 @@ export class ManageClusterApi {
             .get( async (req, res) => {
                 try {
                 var label:string=req.query.label as string;
-                var entity:string=req.query.entity as string;
-                const labelSelector=`${label}=${entity}`;
-                const kresp = await this.coreV1Api.listPodForAllNamespaces(undefined, undefined, undefined, labelSelector);
+                var value:string=req.query.entity as string;
+                const labelSelector=`${label}=${value}`;
+                const kresp = await this.coreApi.listPodForAllNamespaces(undefined, undefined, undefined, labelSelector);
                 var podList=kresp.body.items.map(pod => {
                     var owners = pod.metadata!.ownerReferences;
                     if (owners) {
@@ -39,6 +40,41 @@ export class ManageClusterApi {
                     console.log(err);
                 }
             });
+
+        this.route.route('/restartdeployment/:namespace/:deployment')
+            .all( async (req,res, next) => {
+                if (!validKey(req,res)) return;
+                next();
+            })
+            .post( async (req, res) => {
+                try {
+                    restartDeployment(this.appsApi, req.params.namespace, req.params.deployment);
+                    res.status(200).json();
+                }
+                catch (err) {
+                    res.status(200).json([]);
+                    console.log(err);
+                }
+            });
+
+        this.route.route('/restartpod/:namespace/:podName')
+            .all( async (req,res, next) => {
+                if (!validKey(req,res)) return;
+                next();
+            })
+            .post( async (req, res) => {
+                try {
+                    console.log(`Restart pod ${req.params.podName}`);
+                    console.log(req.headers);
+                    restartPod(appsApi, coreApi, req.params.namespace, req.params.podName);
+                    res.status(200).json();
+                }
+                catch (err) {
+                    res.status(200).json([]);
+                    console.log(err);
+                }
+            });   
+
     }
 
 }

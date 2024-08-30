@@ -12,13 +12,14 @@ import { LoginApi } from './api/LoginApi';
 
 // HTTP server & websockets
 import WebSocket from 'ws';
-import { OperateApi } from './api/OperateApi';
-import { ManageKwirthApi } from './api/ManageKwirth';
+import { ManageKwirthApi } from './api/ManageKwirthApi';
 import { LogConfig } from './model/LogConfig';
 import { ManageClusterApi } from './api/ManageClusterApi';
 import { KwirthData } from './model/KwirthData';
 import { getScopeLevel } from './tools/AuthorizationManagement';
-import { accessKeyDeserialize, accessKeySerialize, parseResource } from './model/AccessKey';
+import { accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier } from './model/AccessKey';
+import { timeStamp } from 'console';
+import { response } from 'express';
 
 const stream = require('stream');
 const express = require('express');
@@ -68,7 +69,7 @@ const getMyKubernetesData = async ():Promise<KwirthData> => {
     }
 }
 
-// split a block of stdout into several lines and send them
+// split a block of stdout into several lines and send them over the websocket
 const sendLines = (ws:WebSocket, event:any, source:string) => {
     const logLines = source.split('\n');
     event.type='log';
@@ -80,9 +81,15 @@ const sendLines = (ws:WebSocket, event:any, source:string) => {
     }
 }
 
+// sends an informatory message over the websocket
+function sendInfo (ws:WebSocket, text:string) {
+    ws.send(JSON.stringify({type:'info',text, timestamp:new Date()}));
+}
+
+// sends an error message over the websocket and optionally closes the websocket
 function sendError (ws:WebSocket, text:string, close:boolean) {
     console.log(text);
-    ws.send(JSON.stringify({type:'error',text}));
+    ws.send(JSON.stringify({type:'error',text, timestamp:new Date()}));
     if (close) ws.close();
 }
 
@@ -132,7 +139,7 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
         const podNamespace = obj.metadata.namespace;
         if (eventType === 'ADDED' || eventType === 'MODIFIED') {
             console.log(`${eventType}: ${podNamespace}/${podName}`);
-            ws.send(JSON.stringify({type:'info',text:`Pod ${eventType}: ${podNamespace}/${podName}`}));
+            sendInfo(ws, `Pod ${eventType}: ${podNamespace}/${podName}`);
 
             for (var container of obj.spec.containers) {
                 if (config.scope==='container') {
@@ -145,21 +152,42 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
         }
         else if (eventType === 'DELETED') {
             console.log(`Pod deleted` );
-            ws.send(JSON.stringify({type:'info',text:`Pod deleted: ${podNamespace}/${podName}`}));
+            sendInfo(ws, `Pod deleted: ${podNamespace}/${podName}`);
         }
     },
     (err:any) => {
         console.log(err);
-        sendError(ws,JSON.stringify({type:'error',text:JSON.stringify(err)}), true);
+        sendError(ws,JSON.stringify(err), true);
     })
 }
 
-const checkPermission = (config:LogConfig) => {
+// validates the permission level requested qith the one stated in the accessKey
+const checkPermissionLevel = (config:LogConfig) => {
     var resource=parseResource(accessKeyDeserialize(config.accessKey).resource);
     var haveLevel=getScopeLevel(resource.scope);
     var reqLevel=getScopeLevel(config.scope);
     console.log('Check levels:', haveLevel, '>=', reqLevel, '?', haveLevel>=reqLevel);
     return (haveLevel>=reqLevel);
+}
+
+// reates a list of pods that the requestor has access to
+const getSelectedPods = async (resource:ResourceIdentifier, validNamespaces:string[], validPodNames:string[]) => {
+    var allPods=await coreApi.listPodForAllNamespaces(); //+++ can be optimized if config.namespace is specified
+    var selectedPods:V1Pod[]=[];
+    for (var pod of allPods.body.items) {
+        console.log(`Validating ${pod.metadata?.namespace}/${pod.metadata?.name} access`);
+        var valid=true;
+        if (resource.namespace!=='') valid &&= validNamespaces.includes(pod.metadata?.namespace!);
+        //+++ other filters pending implementation
+        if (resource.pod) valid &&= validPodNames.includes(pod.metadata?.name!);
+        if (valid) {
+            selectedPods.push(pod);
+        }
+        else {
+            console.log(`Access denied: access to ${pod.metadata?.namespace}/${pod.metadata?.name} has not been granted.`);
+        }
+    }
+    return selectedPods;
 }
 
 // clients send requests to start receiving log
@@ -176,7 +204,7 @@ async function processClientMessage(message:string, webSocket:any) {
         return;
     }
 
-    var accepted=checkPermission(config);
+    var accepted=checkPermissionLevel(config);
     if (accepted) {
         console.log('Access accepted');
     }
@@ -193,30 +221,32 @@ async function processClientMessage(message:string, webSocket:any) {
 
     var allowedPods=resource.pod.split(',').filter(podName => podName!=='');
     var requestedPods=config.pod.split(',').filter(podName => podName!=='');
-    var validPods=requestedPods.filter(podName => allowedPods.includes(podName));
+    var validPodNames=requestedPods.filter(podName => allowedPods.includes(podName));
 
     switch (config.scope) {
+        case 'view':
         case 'filter':
             if (resource.scope!==config.scope) {
-                sendError(webSocket, `Access denied: scope 'filter' not allowed`, true);
+                sendError(webSocket, `Access denied: scope 'filter'/'view' not allowed`, true);
                 return;
             }
 
-            var allPods=await coreApi.listPodForAllNamespaces(); //+++ can be optimized if config.namespace is specified
-            var selectedPods:V1Pod[]=[];
-            for (var pod of allPods.body.items) {
-                console.log(`Validating ${pod.metadata?.namespace}/${pod.metadata?.name} access`);
-                var valid=true;
-                if (resource.namespace!=='') valid &&= validNamespaces.includes(pod.metadata?.namespace!);
-                //+++ other filters pending implementation
-                if (resource.pod) valid &&= validPods.includes(pod.metadata?.name!);
-                if (valid) {
-                    selectedPods.push(pod);
-                }
-                else {
-                    console.log(`Access denied: access to ${pod.metadata?.namespace}/${pod.metadata?.name} has not been granted.`);
-                }
-            }
+            // var allPods=await coreApi.listPodForAllNamespaces(); //+++ can be optimized if config.namespace is specified
+            // var selectedPods:V1Pod[]=[];
+            // for (var pod of allPods.body.items) {
+            //     console.log(`Validating ${pod.metadata?.namespace}/${pod.metadata?.name} access`);
+            //     var valid=true;
+            //     if (resource.namespace!=='') valid &&= validNamespaces.includes(pod.metadata?.namespace!);
+            //     //+++ other filters pending implementation
+            //     if (resource.pod) valid &&= validPodNames.includes(pod.metadata?.name!);
+            //     if (valid) {
+            //         selectedPods.push(pod);
+            //     }
+            //     else {
+            //         console.log(`Access denied: access to ${pod.metadata?.namespace}/${pod.metadata?.name} has not been granted.`);
+            //     }
+            // }
+            var selectedPods=await getSelectedPods(resource, validNamespaces, validPodNames);
             if (selectedPods.length===0) {
               sendError(webSocket,`Access denied: there are no filters that matches requested config`, true);
             }
@@ -310,8 +340,6 @@ const launch = (kwrithData: KwirthData) => {
   app.use(`${rootPath}/user`, ua.route);
   var la:LoginApi = new LoginApi(secrets, configMaps);
   app.use(`${rootPath}/login`, la.route);
-  var oa:OperateApi = new OperateApi(appsApi);
-  app.use(`${rootPath}/manage`, oa.route);
   var mk:ManageKwirthApi = new ManageKwirthApi(appsApi, kwrithData);
   app.use(`${rootPath}/managekwirth`, mk.route);
   var mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi);

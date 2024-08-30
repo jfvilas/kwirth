@@ -105,7 +105,7 @@ const MenuLog: React.FC<any> = (props:IProps) => {
 
             <MenuItem key='submanage' onClick={submenuManageClick} sx={{ml:3}}>Manage<Typography sx={{flexGrow:1}}></Typography>{subMenuManageOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={subMenuManageOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
-                <MenuItem key='manstart' onClick={() => props.optionSelected(MenuLogOption.LogManageRestart)} disabled={props.selectedLog.scope!=='set'}><RestartAlt/>&nbsp;Restart</MenuItem>
+                <MenuItem key='manstart' onClick={() => props.optionSelected(MenuLogOption.LogManageRestart)} disabled={props.selectedLog.scope!=='set' && props.selectedLog.scope!=='pod'}><RestartAlt/>&nbsp;Restart</MenuItem>
             </Collapse>
             </MenuList>
         </Menu>

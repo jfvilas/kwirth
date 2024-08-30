@@ -3,12 +3,14 @@ import { Box, Button, FormControl, InputLabel, MenuItem, Select, SelectChangeEve
 import { Cluster } from '../model/Cluster';
 
 // app icons 
-import IconDaemonSetPng from'../icons/ds.png';
-import IconReplicaSetPng from'../icons/rs.png';
-import IconStatefulSetPng from'../icons/ss.png';
-const KIconReplicaSet = () => <Box component="img" sx={{ height: 16, width: 16 }} src={IconReplicaSetPng}/>;
-const KIconDaemonSet = () => <Box component="img" sx={{ height: 16, width: 16 }} src={IconDaemonSetPng}/>;
-const KIconStatefulSet = () => <Box component="img" sx={{ height: 16, width: 16 }} src={IconStatefulSetPng}/>;
+import IconDaemonSet from'../icons/svg/ds.svg';
+import IconReplicaSet from'../icons/svg/rs.svg';
+import IconStatefulSet from'../icons/svg/ss.svg';
+const KIconDaemonSet = () => <img src={IconDaemonSet} height={'16px'}/>;;
+const KIconReplicaSet = () => <img src={IconReplicaSet} height={'16px'}/>;
+const KIconStatefulSet = () => <img src={IconStatefulSet} height={'16px'}/>;;
+
+
 
 interface IProps {
     onAdd:(resource:any) => {};
@@ -186,7 +188,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 <Select labelId='set' value={set?.name?set.name:''} onChange={onChangeSet}>
                 { sets.map( (value:ResourceSet) => 
                     <MenuItem key={value.name} value={value.name}>
-                    {value.type==='replica'? <KIconReplicaSet/>:value.type==='daemon'?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.name}
+                    {value.type==='replica'? <KIconReplicaSet/>:value.type==='daemon'?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.name}                    
                     </MenuItem>
                 )}
                 </Select>
