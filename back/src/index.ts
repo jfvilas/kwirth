@@ -18,8 +18,7 @@ import { ManageClusterApi } from './api/ManageClusterApi';
 import { KwirthData } from './model/KwirthData';
 import { getScopeLevel } from './tools/AuthorizationManagement';
 import { accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier } from './model/AccessKey';
-import { timeStamp } from 'console';
-import { response } from 'express';
+import { getPodsFromGroup } from './tools/KubernetesOperations';
 
 const stream = require('stream');
 const express = require('express');
@@ -165,21 +164,21 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
 const checkPermissionLevel = (config:LogConfig) => {
     var resource=parseResource(accessKeyDeserialize(config.accessKey).resource);
     var haveLevel=getScopeLevel(resource.scope);
-    var reqLevel=getScopeLevel(config.scope);
-    console.log('Check levels:', haveLevel, '>=', reqLevel, '?', haveLevel>=reqLevel);
-    return (haveLevel>=reqLevel);
+    var requiredLevel=getScopeLevel(config.scope);
+    console.log('Check levels:', haveLevel, '>=', requiredLevel, '?', haveLevel>=requiredLevel);
+    return (haveLevel>=requiredLevel);
 }
 
-// reates a list of pods that the requestor has access to
-const getSelectedPods = async (resource:ResourceIdentifier, validNamespaces:string[], validPodNames:string[]) => {
+// creates a list of pods that the requestor has access to
+const getSelectedPods = async (resId:ResourceIdentifier, validNamespaces:string[], validPodNames:string[]) => {
     var allPods=await coreApi.listPodForAllNamespaces(); //+++ can be optimized if config.namespace is specified
     var selectedPods:V1Pod[]=[];
     for (var pod of allPods.body.items) {
         console.log(`Validating ${pod.metadata?.namespace}/${pod.metadata?.name} access`);
         var valid=true;
-        if (resource.namespace!=='') valid &&= validNamespaces.includes(pod.metadata?.namespace!);
+        if (resId.namespace!=='') valid &&= validNamespaces.includes(pod.metadata?.namespace!);
         //+++ other filters pending implementation
-        if (resource.pod) valid &&= validPodNames.includes(pod.metadata?.name!);
+        if (resId.pod) valid &&= validPodNames.includes(pod.metadata?.name!);
         if (valid) {
             selectedPods.push(pod);
         }
@@ -230,22 +229,6 @@ async function processClientMessage(message:string, webSocket:any) {
                 sendError(webSocket, `Access denied: scope 'filter'/'view' not allowed`, true);
                 return;
             }
-
-            // var allPods=await coreApi.listPodForAllNamespaces(); //+++ can be optimized if config.namespace is specified
-            // var selectedPods:V1Pod[]=[];
-            // for (var pod of allPods.body.items) {
-            //     console.log(`Validating ${pod.metadata?.namespace}/${pod.metadata?.name} access`);
-            //     var valid=true;
-            //     if (resource.namespace!=='') valid &&= validNamespaces.includes(pod.metadata?.namespace!);
-            //     //+++ other filters pending implementation
-            //     if (resource.pod) valid &&= validPodNames.includes(pod.metadata?.name!);
-            //     if (valid) {
-            //         selectedPods.push(pod);
-            //     }
-            //     else {
-            //         console.log(`Access denied: access to ${pod.metadata?.namespace}/${pod.metadata?.name} has not been granted.`);
-            //     }
-            // }
             var selectedPods=await getSelectedPods(resource, validNamespaces, validPodNames);
             if (selectedPods.length===0) {
               sendError(webSocket,`Access denied: there are no filters that matches requested config`, true);
@@ -263,7 +246,6 @@ async function processClientMessage(message:string, webSocket:any) {
                         pod: pod.metadata?.name!,
                         container: ''
                     };
-                    console.log('launch pod', podConfig);
                     var ml:any=pod.metadata?.labels;
                     var labelSelector = Object.entries(ml).map(([key, value]) => `${key}=${value}`).join(',');
                     console.log(labelSelector);
@@ -280,25 +262,27 @@ async function processClientMessage(message:string, webSocket:any) {
         case 'pod':
         case 'container':
         case 'set':
-            var setPods:any;
-            var [setType, setName]=config.set.split('+');
-            switch (setType) {
-                case'replica':
-                    setPods=await appsApi.readNamespacedReplicaSet(setName, config.namespace);
-                    break;
-                case'daemon':
-                    setPods=await appsApi.readNamespacedDaemonSet(setName, config.namespace);
-                    break;
-                case'stateful':
-                    setPods=await appsApi.readNamespacedStatefulSet(setName, config.namespace);
-                    break;
-            }
+            // var setPods:any;
+            // var [setType, setName]=config.set.split('+');
+            // switch (setType) {
+            //     case'replica':
+            //         setPods=await appsApi.readNamespacedReplicaSet(setName, config.namespace);
+            //         break;
+            //     case'daemon':
+            //         setPods=await appsApi.readNamespacedDaemonSet(setName, config.namespace);
+            //         break;
+            //     case'stateful':
+            //         setPods=await appsApi.readNamespacedStatefulSet(setName, config.namespace);
+            //         break;
+            // }
 
-            const matchLabels = setPods.body.spec?.selector?.matchLabels;
-            if (matchLabels) {
-                var labelSelector = Object.entries(matchLabels).map(([key, value]) => `${key}=${value}`).join(',');
-                watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector }, webSocket, config);
-            }
+            // const matchLabels = setPods.body.spec?.selector?.matchLabels;
+            // if (matchLabels) {
+            //     var labelSelector = Object.entries(matchLabels).map(([key, value]) => `${key}=${value}`).join(',');
+            //     watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector }, webSocket, config);
+            // }
+            var labelSelector = (await getPodsFromGroup(coreApi, appsApi, config.namespace, config.set)).labelSelector;
+            watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector }, webSocket, config);
             break;
         default:
             sendError(webSocket, `Access denied: invalid scope ${config.scope}`, true);

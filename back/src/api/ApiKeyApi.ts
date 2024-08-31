@@ -18,6 +18,11 @@ export class ApiKeyApi {
             console.log(ApiKeyApi.apiKeys);
         });
 
+        const cleanApiKeys = (apiKeys:ApiKey[]) => {
+            apiKeys=apiKeys.filter(a => a.expire>=Date.now());
+            return apiKeys;
+        }
+
         this.route.route('/')
             .all( async (req,res, next) => {
                 if (!validKey(req,res)) return;
@@ -46,15 +51,16 @@ export class ApiKeyApi {
                         scope:namespace:set:pod:container
                         
                         VALUES:
-                        scope: cluster|namespace|set|pod|container|filter
+                        scope: cluster|api|filter|view|restart
                         namespace: name
-                        set: {replica|daemon|stateful}+name   (type of set, a plus sign, name of set)
+                        set: {deployment|replica|daemon|stateful}+name   (type of pod group, a plus sign, name of the group)
                         pod: name
                         container: name
 
                         EXAMPLES:
                         cluster::::  // all the cluster logs
                         namespace:default:::  // all logs in 'default' namespace
+                        set::deployment+kwirth::  // deployment 'kwirth' in all namespaces
                         set:default:replica+abcd::  // all pods in 'abcd' replicaset inside namespace 'default'
                         pod:default:replica+abcd:abcd:  // all pods with name 'abcd' inside namespace 'default'
                         filter:pre,dev::pod1:  // pod named 'pod1' in namespaces 'pre' and 'dev'
@@ -71,6 +77,7 @@ export class ApiKeyApi {
 
                     if (type==='permanent') {
                         var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
+                        storedKeys=cleanApiKeys(storedKeys);
                         storedKeys.push(keyObject);
                         await configMaps.write('kwirth.keys',storedKeys);
                         ApiKeyApi.apiKeys=storedKeys;
@@ -109,6 +116,7 @@ export class ApiKeyApi {
             .delete( async (req, res) => {
                 try {
                     var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
+                    storedKeys=cleanApiKeys(storedKeys);
                     storedKeys=storedKeys.filter(apiKey => apiKey.accessKey.id!==req.params.key);
                     await configMaps.write('kwirth.keys', storedKeys );
                     ApiKeyApi.apiKeys=storedKeys;
@@ -122,8 +130,9 @@ export class ApiKeyApi {
             })
             .put( async (req, res) => {
                 try {
-                    var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
                     var key=req.body as ApiKey;
+                    var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
+                    storedKeys=cleanApiKeys(storedKeys);
                     storedKeys=storedKeys.filter(k => k.accessKey.id!==key.accessKey.id);
                     storedKeys.push(key);
                     await configMaps.write('kwirth.keys',storedKeys);

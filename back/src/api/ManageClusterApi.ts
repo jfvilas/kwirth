@@ -1,8 +1,8 @@
 import express from 'express';
 import { AppsV1Api } from '@kubernetes/client-node';
 import { CoreV1Api } from '@kubernetes/client-node';
-import { validKey } from '../tools/AuthorizationManagement';
-import { restartDeployment, restartPod } from '../tools/KubernetesOperations';
+import { validAuth, validKey } from '../tools/AuthorizationManagement';
+import { restartPod, restartGroup } from '../tools/KubernetesOperations';
 
 export class ManageClusterApi {
     public route = express.Router();
@@ -47,8 +47,9 @@ export class ManageClusterApi {
                 next();
             })
             .post( async (req, res) => {
+                if (!validAuth(req,res, 'restart',req.params.namespace,'deployment+'+req.params.deployment,'','')) return;
                 try {
-                    restartDeployment(this.appsApi, req.params.namespace, req.params.deployment);
+                    restartGroup(this.coreApi, this.appsApi, req.params.namespace, req.params.deployment);
                     res.status(200).json();
                 }
                 catch (err) {
@@ -63,10 +64,11 @@ export class ManageClusterApi {
                 next();
             })
             .post( async (req, res) => {
+                if (!validAuth(req,res, 'restart',req.params.namespace,'',req.params.podName,'')) return;
                 try {
                     console.log(`Restart pod ${req.params.podName}`);
                     console.log(req.headers);
-                    restartPod(appsApi, coreApi, req.params.namespace, req.params.podName);
+                    restartPod(coreApi, req.params.namespace, req.params.podName);
                     res.status(200).json();
                 }
                 catch (err) {
@@ -74,7 +76,5 @@ export class ManageClusterApi {
                     console.log(err);
                 }
             });   
-
     }
-
 }

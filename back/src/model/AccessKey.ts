@@ -59,49 +59,56 @@ function buildResource (scope:string, namespace:string, setType:string, setName:
 /*
     ResourceIdentifier is composed by:
 
-        scope: one of: cluster(6), namespace(5), set(4), pod(3), container(2), filter(1) 
-        setType is the type of set: replica, stateful or daemon      
-        The rest of fields are names according to this rules:
+        scope can a comma-separated list of: cluster, api, view|filter, restart
+            cluster is the admin level, can do everything
+            api can create api keys
+            view or filter, can view logs
+            restart, can restart pods or deployments
+
+            for example, a user that can view and restart would have the scope 'view,restart'
+
+        NOTE: set is the type and name of a set: replica, stateful or daemon plus '+' plus the name, example: 'replica+rs1', 'stateful+mongo'
+
+        the rest of fields are names (regex in fact) according to this rules:
             - it can be a direct name, like: 'mynamespace', 'your-replica-set', 'our-pod'...
             - it can be an '', indicating any resource of the scope is valid
-            - it can be an array of names, like: namespace ['dev','pre'], or pod ['my-pod','our-pod','your-pod']
+            - it can be a comma-separated list of names, like: namespace 'dev,pre', or pod 'my-pod,our-pod,your-pod'
 
-        Full access is created by using cluster scope:
+        full access is created by using cluster scope:
             scope: cluster
             namespace: ''
             set: ''
             pod: ''
             container: ''
 
-        For example, an accessKey that gives access to namespaces production and staging would be something like
-            scope: namespace
+        for example, an accessKey that gives access to view logs of namespaces production and staging would be something like
+            scope: view
             namespace: ['production','staging']
             set: ''
             pod: ''
             container: ''
 
-        Access to just 'default' namespace is like this (remember, '' means no limits, defualt namespace must be specified):
-            scope: namespace
-            namespace: 'default'
+        access to restart any pod in 'development' namespace is like this:
+            scope: restart
+            namespace: 'development'
             set: ''
             pod: ''
             container: ''
 
-        An accessKey that gives access to pod 'my-pod' in the whole cluster would be something like:
-            scope: pod
-            namespace: namespace1
-            set: set1
-            pod: my-pod
-            container: ''
-        
-        If you want to restrict access to 'dev' and 'pre' namespaces for a specific pod (my-pod'), you should use 'filter' scope, and create a ResourceIdentifier like this:
-            scope: filter
-            namespace: ['dev','pre']
+        an accessKey that allows viewing logs of pod 'my-pod' in the whole cluster would be something like:
+            scope: view
+            namespace: ''
             set: ''
             pod: my-pod
-            container: ''
+            container: ''      
 
-            That is, 'scope' keeps being 'pod', but we restrict namespace.
+        the names are infact regex, so you, for allowing a requestor to restart any pod of the accounting application in preproduction environment you would use this:
+            scope: restart
+            namespace: 'preproduction'
+            set: ''
+            pod: '^account-'
+            container: ''      
+
 */
 
 interface ResourceIdentifier {

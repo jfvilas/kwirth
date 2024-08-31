@@ -1,5 +1,5 @@
 import { ApiKeyApi } from '../api/ApiKeyApi';
-import { accessKeySerialize } from '../model/AccessKey';
+import { accessKeyDeserialize, accessKeySerialize, parseResource } from '../model/AccessKey';
 
 export const validKey = (req:any,res:any) => {
     if (req.headers.authorization && req.headers.authorization) {
@@ -13,7 +13,6 @@ export const validKey = (req:any,res:any) => {
                 console.log('Expired key: '+key);
             }
             else {
-                console.log(apiKey.expire, '>', Date.now(), '?');
                 return true;
             }
         }
@@ -30,4 +29,17 @@ export const validKey = (req:any,res:any) => {
 export const getScopeLevel = (scope:string) => {
     const levelScopes = ['','filter','container','pod','set','namespace','cluster'];
     return levelScopes.indexOf(scope);
+}
+
+export const validAuth = (req:any,res:any, scope:string, namespace:string, set:string, pod:string, container:string) => {
+    var key=req.headers.authorization.replaceAll('Bearer ','').trim();
+    var accessKey=accessKeyDeserialize(key);
+    var resId=parseResource(accessKey.resource);
+
+    if (!(resId.scope==='cluster' || scope===resId.scope)) return false;
+    if (!(namespace==='' || namespace===resId.namespace)) return false;
+    if (!(set==='' || set===resId.set)) return false;
+    if (!(pod==='' || pod===resId.pod)) return false;
+    if (!(container==='' || container===resId.container)) return false;
+    return true;
 }
