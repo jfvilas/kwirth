@@ -87,6 +87,13 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
         setSelectedKey(undefined);
         setDescrition('');
         setExpire(0);
+        setKeyType('permanent');
+        setScope('');
+        setNamespace('');
+        setSetType('');
+        setSetName('');
+        setPod('');
+        setContainer('');
     }
 
     const onClickDelete= () => {
@@ -133,7 +140,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
                         <TextField value={expire} onChange={(e) => setExpire(+e.target.value)} variant='standard' label='Expire'></TextField>
                         <FormControl variant='standard'>
                             <InputLabel id='keytype'>Scope</InputLabel>
-                            <Select labelId='keytype' value={keyType} onChange={(e) => setKeyType(e.target.value)} >
+                            <Select labelId='keytype' value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={true}>
                                 { ['volatile','permanent'].map( (value:string) => {
                                     return <MenuItem key={value} value={value}>{value}</MenuItem>
                                 })}
@@ -142,7 +149,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
                         <FormControl variant='standard'>
                             <InputLabel id='scope'>Scope</InputLabel>
                             <Select labelId='scope' value={scope} onChange={(e) => setScope(e.target.value)} >
-                                { ['cluster','namespace','set','pod','container','filter'].map( (value:string) => {
+                                { ['cluster','api','restart','view'].map( (value:string) => {
                                     return <MenuItem key={value} value={value}>{value}</MenuItem>
                                 })}
                             </Select>
@@ -172,9 +179,18 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
             <DialogActions>
                 <Stack direction='row' spacing={1}>
                     <Button onClick={onClickNew}>NEW</Button>
-                    <Button onClick={onClickSave} disabled={description==='' || expire===0}>SAVE</Button>
+                    <Button onClick={onClickSave} disabled={
+                        description==='' ||
+                        expire===0 ||
+                        selectedKey?.accessKey.type==='volatile' ||
+                        accessKeySerialize(selectedKey?.accessKey!)===accessKey
+                        }>SAVE</Button>
                     <Button onClick={onClickCopy} disabled={selectedKey===undefined}>COPY</Button>
-                    <Button onClick={onClickDelete} disabled={selectedKey===undefined || accessKeySerialize(selectedKey?.accessKey!)===accessKey}>DELETE</Button>
+                    <Button onClick={onClickDelete} disabled={
+                        selectedKey===undefined || 
+                        accessKeySerialize(selectedKey?.accessKey!)===accessKey ||
+                        selectedKey.accessKey.type==='volatile'
+                        }>DELETE</Button>
                 </Stack>
                 <Typography sx={{flexGrow:1}}></Typography>
                 <Button onClick={() => props.onClose()}>CLOSE</Button>

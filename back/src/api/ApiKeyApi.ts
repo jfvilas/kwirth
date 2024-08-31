@@ -75,7 +75,7 @@ export class ApiKeyApi {
                         storedKeys=cleanApiKeys(storedKeys);
                         storedKeys.push(keyObject);
                         await configMaps.write('kwirth.keys',storedKeys);
-                        ApiKeyApi.apiKeys=storedKeys;
+                        ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type==='volatile'), ...storedKeys];
                     }
                     else {
                         ApiKeyApi.apiKeys.push(keyObject);
@@ -110,12 +110,12 @@ export class ApiKeyApi {
             })
             .delete( async (req, res) => {
                 try {
+                    // remove api key from permanent store (if exists)
                     var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[];
                     storedKeys=cleanApiKeys(storedKeys);
                     storedKeys=storedKeys.filter(apiKey => apiKey.accessKey.id!==req.params.key);
                     await configMaps.write('kwirth.keys', storedKeys );
-                    ApiKeyApi.apiKeys=storedKeys;
-
+                    ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type==='volatile'), ...storedKeys];
                     res.status(200).json({});
                 }
                 catch (err) {
@@ -131,7 +131,7 @@ export class ApiKeyApi {
                     storedKeys=storedKeys.filter(k => k.accessKey.id!==key.accessKey.id);
                     storedKeys.push(key);
                     await configMaps.write('kwirth.keys',storedKeys);
-                    ApiKeyApi.apiKeys=storedKeys;
+                    ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type==='volatile'), ...storedKeys];
 
                     res.status(200).json({});
                 }

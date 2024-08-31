@@ -33,6 +33,7 @@ function accessKeyBuild(id:string, type:string, resource:string) : AccessKey {
 }
 
 function accessKeySerialize (accessKey:AccessKey) : string {
+    if (!accessKey) return '';
     return `${accessKey.id}|${accessKey.type}|${accessKey.resource}`;
 }
 
