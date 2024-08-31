@@ -43,7 +43,7 @@ export const restartPod = async (coreApi:CoreV1Api, namespace:string, podName:st
     await coreApi.deleteNamespacedPod(podName, namespace);
 }
 
-export const pauseDeployment = async (namespace:string, appsApi:AppsV1Api, deploymentName:string) => {
+export const pauseDeployment = async (appsApi:AppsV1Api, namespace:string, deploymentName:string) => {
     console.log(`Pausing ${namespace}/${deploymentName}`);
     const deployment = await appsApi.readNamespacedDeployment(deploymentName, namespace);
     deployment.body.spec!.paused = true;

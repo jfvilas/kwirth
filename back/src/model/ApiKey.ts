@@ -5,3 +5,8 @@ export interface ApiKey {
     description:string;
     expire:number;
 }
+
+export const cleanApiKeys = (apiKeys:ApiKey[]) => {
+    apiKeys=apiKeys.filter(a => a.expire>=Date.now());
+    return apiKeys;
+}

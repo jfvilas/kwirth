@@ -2,7 +2,7 @@ import express from 'express';
 import Semaphore from 'ts-semaphore';
 import { Secrets } from '../tools/Secrets';
 import { ApiKeyApi } from './ApiKeyApi';
-import { ApiKey } from '../model/ApiKey';
+import { ApiKey, cleanApiKeys } from '../model/ApiKey';
 import { ConfigMaps } from '../tools/ConfigMaps';
 import { accessKeyCreate } from '../model/AccessKey';
 
@@ -14,15 +14,16 @@ export class LoginApi {
 
     createApiKey = async (req:any, username:string) : Promise<ApiKey> => {
         var ip=req.clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-        var apiKey:ApiKey={
+        var apiKey:ApiKey = {
             accessKey: accessKeyCreate('permanent', 'cluster:::::'),
             description: `Login user '${username}' at ${new Date().toISOString()} from ${ip}`,
             expire: Date.now() + 24*60*60*1000  // 24h
         };
         var storedKeys = await this.configMaps.read('kwirth.keys', []);
+        storedKeys = cleanApiKeys(storedKeys);
         storedKeys.push(apiKey);
         this.configMaps.write('kwirth.keys', storedKeys );
-        ApiKeyApi.apiKeys=storedKeys;
+        ApiKeyApi.apiKeys = storedKeys;
         return apiKey;
     }
 

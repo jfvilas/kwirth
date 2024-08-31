@@ -324,7 +324,7 @@ const launch = (kwrithData: KwirthData) => {
   app.use(`${rootPath}/user`, ua.route);
   var la:LoginApi = new LoginApi(secrets, configMaps);
   app.use(`${rootPath}/login`, la.route);
-  var mk:ManageKwirthApi = new ManageKwirthApi(appsApi, kwrithData);
+  var mk:ManageKwirthApi = new ManageKwirthApi(coreApi, appsApi, kwrithData);
   app.use(`${rootPath}/managekwirth`, mk.route);
   var mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi);
   app.use(`${rootPath}/managecluster`, mc.route);

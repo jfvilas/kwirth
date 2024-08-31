@@ -1,5 +1,5 @@
 import { ConfigMaps } from '../tools/ConfigMaps';
-import { ApiKey } from '../model/ApiKey';
+import { ApiKey, cleanApiKeys } from '../model/ApiKey';
 import express from 'express';
 import { validKey } from '../tools/AuthorizationManagement';
 import { AccessKey, accessKeyCreate, accessKeyDeserialize, accessKeySerialize } from '../model/AccessKey';
@@ -17,11 +17,6 @@ export class ApiKeyApi {
             console.log('read keys:');
             console.log(ApiKeyApi.apiKeys);
         });
-
-        const cleanApiKeys = (apiKeys:ApiKey[]) => {
-            apiKeys=apiKeys.filter(a => a.expire>=Date.now());
-            return apiKeys;
-        }
 
         this.route.route('/')
             .all( async (req,res, next) => {
