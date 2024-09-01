@@ -503,20 +503,12 @@ const App: React.FC = () => {
             break;
         case MenuLogOption.LogManageRestart:
             switch(selectedLog?.scope) {
-                case 'cluster':
-                    break;
-                case 'namespace':
-                    break;
                 case 'set':
                     // restart a deployment
-                    //+++ fetch (`${backendUrl}/manage/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
-                    console.log('selectedLog.set');
-                    console.log(selectedLog.set);
                     fetch (`${backendUrl}/managecluster/restartdeployment/${selectedLog.namespace}/${selectedLog.set}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
                     break;
                 case 'pod':
-                    // restart a deployment
-                    //+++ fetch (`${backendUrl}/manage/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+                    // restart a pod
                     fetch (`${backendUrl}/managecluster/restartpod/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
                     break;
             }
@@ -797,11 +789,11 @@ const App: React.FC = () => {
                 <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
                 <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth</Typography>
                 <Typography variant="h6" component="div" sx={{mr:2}}>{currentViewName}</Typography>
-                <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}</div>} sx={{ mr:2 }}><Person/></Tooltip>
+                <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user?.scope}]</div>} sx={{ mr:2 }}><Person/></Tooltip>
                 </Toolbar>
             </AppBar>
 
-            <Drawer sx={{  flexShrink: 0,  '& .MuiDrawer-paper': { mt: '64px' }  }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
+            <Drawer sx={{ flexShrink: 0, '& .MuiDrawer-paper': {mt: '64px'} }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
                 <Stack direction={'column'}>
                 <MenuDrawer optionSelected={menuViewOptionSelected} uploadSelected={handleUpload} user={user}/>
                 <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>

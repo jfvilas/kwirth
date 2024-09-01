@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { Box, Button, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack } from "@mui/material"
 import { Cluster } from '../model/Cluster';
 
@@ -6,6 +6,7 @@ import { Cluster } from '../model/Cluster';
 import IconDaemonSet from'../icons/svg/ds.svg';
 import IconReplicaSet from'../icons/svg/rs.svg';
 import IconStatefulSet from'../icons/svg/ss.svg';
+import { SessionContext, SessionContextType } from '../model/SessionContext';
 const KIconDaemonSet = () => <img src={IconDaemonSet} height={'16px'}/>;;
 const KIconReplicaSet = () => <img src={IconReplicaSet} height={'16px'}/>;
 const KIconStatefulSet = () => <img src={IconStatefulSet} height={'16px'}/>;;
@@ -25,6 +26,7 @@ interface ResourceSet {
 }
 
 const ResourceSelector: React.FC<any> = (props:IProps) => {
+    const {user} = useContext(SessionContext) as SessionContextType;
     const [scope, setScope] = useState('cluster');
     const [selectedCluster, setSelectedCluster] = useState<Cluster>();
     const [selectedClusterName, setSelectedClusterName] = useState('');
@@ -42,9 +44,9 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     const [containerSelectDisabled, setContainerSelectDisabled] = useState(true);
 
     const getNamespaces = async () => {
-        console.log(selectedCluster);
         var response = await fetch(`${selectedCluster!.url}/config/namespace?cluster=${selectedClusterName}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
         var data = await response.json();
+        if (user?.namespace!=='') data=(data as string[]).filter(ns => user?.namespace.includes(ns));
         setNamespaces(data);
     }
     

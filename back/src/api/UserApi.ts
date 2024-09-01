@@ -6,7 +6,6 @@ import { validKey } from '../tools/AuthorizationManagement';
 export class UserApi {
     secrets:Secrets;
     static semaphore:Semaphore = new Semaphore(1);
-    //static namespace:string;
 
     public route = express.Router();
 
@@ -21,7 +20,7 @@ export class UserApi {
         .get( (req, res) => {
             UserApi.semaphore.use ( async () => {
                 try {
-                    var users:any = (await secrets.read('kwirth.users') as any);
+                    var users:any = (await secrets.read('kwirth.users'));
                     res.status(200).json(Object.keys(users));
                 }
                 catch (err) {
@@ -33,7 +32,7 @@ export class UserApi {
         .post( (req, res) => {
             UserApi.semaphore.use ( async () => {
                 try {
-                    var users:any = (await secrets.read('kwirth.users') as any);
+                    var users:any = (await secrets.read('kwirth.users'));
                     users[req.body.id]=btoa(JSON.stringify(req.body));
                     await this.secrets.write('kwirth.users',users);
                     res.status(200).json();
@@ -53,9 +52,9 @@ export class UserApi {
         .get( (req, res) => {
             UserApi.semaphore.use ( async () => {
                 try {
-                    var users:any = (await secrets.read('kwirth.users') as any);
+                    var users:any = (await secrets.read('kwirth.users'));
                     res.status(200).send(atob(users[req.params.user]));
-                }      
+                }
                 catch (err) {
                     console.log(err);
                     res.status(500).send();

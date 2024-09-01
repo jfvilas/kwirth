@@ -165,7 +165,7 @@ const checkPermissionLevel = (config:LogConfig) => {
     var resource=parseResource(accessKeyDeserialize(config.accessKey).resource);
     var haveLevel=getScopeLevel(resource.scope);
     var requiredLevel=getScopeLevel(config.scope);
-    console.log('Check levels:', haveLevel, '>=', requiredLevel, '?', haveLevel>=requiredLevel);
+    console.log(`Check levels: have ${resource.scope}(${haveLevel}) >= requiered ${config.scope}(${requiredLevel}) ? ${haveLevel>=requiredLevel}`);
     return (haveLevel>=requiredLevel);
 }
 

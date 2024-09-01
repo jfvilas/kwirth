@@ -73,7 +73,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
         <Stack sx={{ display: 'flex', flexDirection: 'row' }}>
           <List sx={{flexGrow:1, mr:2, width:'50vh' }}>
             { clusters?.map(c => 
-              <ListItemButton key={c.id} onClick={() => onClusterSelected(c.id)} style={{backgroundColor:(c.id===selectedCluster?.id?'lightgray':'')}}>
+              <ListItemButton key={c.name+c.id} onClick={() => onClusterSelected(c.id)} style={{backgroundColor:(c.id===selectedCluster?.id?'lightgray':'')}}>
                 <ListItem>{c.name}</ListItem>
               </ListItemButton>
             )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, List, ListItem, ListItemButton, MenuItem, Select, Stack, TextField, Typography} from '@mui/material';
 import { User } from '../model/User';
 import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
@@ -18,9 +18,14 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
     const [id, setId] = useState<string>('');
     const [name, setName] = useState<string>('');
     const [password, setPassword] = useState<string>('');
-    const [roles, setRoles] = useState<string>('');
-    const [description, setDescription] = useState<string>('');
 
+    const [scope, setScope] = useState('cluster');
+    const [namespace, setNamespace] = useState('');
+    const [groupType, setGroupType] = useState('');
+    const [groupName, setGroupName] = useState('');
+    const [pod, setPod] = useState('');
+    const [container, setContainer] = useState('');
+    
     const getUsers = async () => {
         var response = await fetch(`${backendUrl}/user`, { headers: { 'Authorization':'Bearer '+accessKey }});
         var data = await response.json();
@@ -37,8 +42,13 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
         setSelectedUser(data);
         setName(data.name||'');
         setPassword(data.password||'');
-        setRoles(data.roles||'');
-        setDescription(data.description||'');
+        setScope(data.scope||'');
+        setNamespace(data.namespace||'');
+        var [type,name]=data.group.split('+');
+        setGroupType(type||'');
+        setGroupName(name||'');
+        setPod(data.pod||'');
+        setContainer(data.container||'');
     }
 
     const onClickCopyPassword = () => {
@@ -46,7 +56,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
     }
 
     const onClickSave= async () => {
-        var user={ id:id, name:name, password:password, roles:roles, description:description }
+        var user={ id, name, password, scope, namespace, group: (groupType!==''? groupType+'+'+groupName:''), pod, container }
         if (selectedUser!==undefined) {
             await fetch(`${backendUrl}/user/${user.id}`, {method:'PUT', body:JSON.stringify(user), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+accessKey }});
         }
@@ -58,8 +68,12 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
         setId('')
         setName('');
         setPassword('');
-        setRoles('');
-        setDescription('');
+        setScope('');
+        setNamespace('');
+        setGroupType('');
+        setGroupName('');
+        setPod('');
+        setContainer('');
         await getUsers();
     }
     
@@ -73,8 +87,12 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
         }
         setName('');
         setPassword(pwd);
-        setRoles('');
-        setDescription('');
+        setScope('');
+        setNamespace('');
+        setGroupType('');
+        setGroupName('');
+        setPod('');
+        setContainer('');
     }
 
     const onClickDelete= () => {
@@ -86,8 +104,12 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
             setId('')
             setName('');
             setPassword('')
-            setRoles('');
-            setDescription('')
+            setScope('');
+            setNamespace('');
+            setGroupType('');
+            setGroupName('');
+            setPod('');
+            setContainer('');
             getUsers();
         }
     }
@@ -104,12 +126,44 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
                         </ListItemButton>
                         )}
                     </List>
+                    
                     <Stack sx={{width:'50vh'}} spacing={1}>
-                        <TextField value={id} onChange={(e) => setId(e.target.value)} variant='standard' label='Id'></TextField>
-                        <TextField value={name} onChange={(e) => setName(e.target.value)} variant='standard' label='Name'></TextField>
-                        <TextField value={password} onChange={(e) => setPassword(e.target.value)} variant='standard' label='Password'></TextField>
-                        <TextField value={roles} onChange={(e) => setRoles(e.target.value)} variant='standard' label='Roles'></TextField>
-                        <TextField value={description} onChange={(e) => setDescription(e.target.value)} variant='standard' label='Description'></TextField>
+                        <Box sx={{ flex: 1, display: 'flex', alignItems: 'start', paddingLeft: '16px'}} >
+
+                            <Stack spacing={1} style={{width:'100%'}}>
+                                <TextField value={id} onChange={(e) => setId(e.target.value)} variant='standard' label='Id'></TextField>
+                                <TextField value={name} onChange={(e) => setName(e.target.value)} variant='standard' label='Name'></TextField>
+                                <TextField value={password} onChange={(e) => setPassword(e.target.value)} variant='standard' label='Password'></TextField>
+
+                                <FormControl variant='standard'>
+                                    <InputLabel id='scope'>Scope</InputLabel>
+                                    <Select labelId='scope' value={scope} onChange={(e) => setScope(e.target.value)} >
+                                        { ['cluster','api','restart','view'].map( (value:string) => {
+                                            return <MenuItem key={value} value={value}>{value}</MenuItem>
+                                        })}
+                                    </Select>
+                                </FormControl>
+                                <TextField value={namespace} onChange={(e) => setNamespace(e.target.value)} variant='standard' label='Namespace'></TextField>
+                                <Grid container direction='row'>
+                                    <Grid item xs={4}>
+                                        <FormControl variant='standard' style={{width:'100%'}}>
+                                            <InputLabel id='settype'>SetType</InputLabel>
+                                            <Select labelId='settype' value={groupType} onChange={(e) => setGroupType(e.target.value) }>
+                                            { ['','replica','stateful','daemon'].map( (value:string) => {
+                                                return <MenuItem key={value} value={value}>{value}</MenuItem>
+                                            })}
+                                            </Select>
+                                        </FormControl>
+                                    </Grid>
+                                    <Grid item xs={0.5}></Grid>
+                                    <Grid item xs={7.5}>
+                                        <TextField value={groupName} onChange={(e) => setGroupName(e.target.value)} disabled={groupType===''} variant='standard' label='Set' style={{width:'100%'}}></TextField>
+                                    </Grid>
+                                </Grid>
+                                <TextField value={pod} onChange={(e) => setPod(e.target.value)} variant='standard' label='Pod'></TextField>
+                                <TextField value={container} onChange={(e) => setContainer(e.target.value)} variant='standard' label='Container'></TextField>
+                            </Stack>
+                        </Box>
                     </Stack>
                 </Stack>
             </DialogContent>

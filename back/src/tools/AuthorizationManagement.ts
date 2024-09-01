@@ -27,7 +27,7 @@ export const validKey = (req:any,res:any) => {
 }
 
 export const getScopeLevel = (scope:string) => {
-    const levelScopes = ['','filter','container','pod','set','namespace','cluster'];
+    const levelScopes = ['','filter','view','restart','api','cluster'];
     return levelScopes.indexOf(scope);
 }
 

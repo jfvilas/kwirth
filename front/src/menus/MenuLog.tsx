@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Collapse, Divider, Menu, MenuItem, MenuList, Typography } from "@mui/material"
 import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, RestartAlt } from '@mui/icons-material';
 import { LogObject } from '../model/LogObject';
+import { SessionContext, SessionContextType } from '../model/SessionContext';
 
 enum MenuLogOption {
     LogAlarmCreate,
@@ -31,6 +32,7 @@ interface IProps {
 }
 
 const MenuLog: React.FC<any> = (props:IProps) => {
+    const {user} = useContext(SessionContext) as SessionContextType;
     const [subMenuOptionsOpen, setSubmenuOptionsOpen] = React.useState(false)
     const [subMenuOrganizeOpen, setSubmenuOrganizeOpen] = React.useState(false)
     const [subMenuActionsOpen, setSubmenuActionsOpen] = React.useState(false)
@@ -105,7 +107,7 @@ const MenuLog: React.FC<any> = (props:IProps) => {
 
             <MenuItem key='submanage' onClick={submenuManageClick} sx={{ml:3}}>Manage<Typography sx={{flexGrow:1}}></Typography>{subMenuManageOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={subMenuManageOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
-                <MenuItem key='manstart' onClick={() => props.optionSelected(MenuLogOption.LogManageRestart)} disabled={props.selectedLog.scope!=='set' && props.selectedLog.scope!=='pod'}><RestartAlt/>&nbsp;Restart</MenuItem>
+                <MenuItem key='manstart' onClick={() => props.optionSelected(MenuLogOption.LogManageRestart)} disabled={user?.scope==='view' || (props.selectedLog.scope!=='set' && props.selectedLog.scope!=='pod')}><RestartAlt/>&nbsp;Restart</MenuItem>
             </Collapse>
             </MenuList>
         </Menu>
