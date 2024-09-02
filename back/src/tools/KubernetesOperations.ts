@@ -35,7 +35,7 @@ export const restartGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespa
 
     }
     catch (error) {
-        console.log(`Error restarting set: ${error}`);
+        console.log(`Error restarting group: ${error}`);
     }
 }
 

@@ -9,7 +9,6 @@ export class ManageClusterApi {
     coreApi:CoreV1Api;
     appsApi:AppsV1Api;
 
-    
     constructor (coreApi:CoreV1Api, appsApi:AppsV1Api) {
         this.coreApi=coreApi
         this.appsApi=appsApi
@@ -47,7 +46,7 @@ export class ManageClusterApi {
                 next();
             })
             .post( async (req, res) => {
-                if (!validAuth(req,res, 'restart',req.params.namespace,'deployment+'+req.params.deployment,'','')) return;
+                if (!validAuth(req,res, 'restart',req.params.namespace,req.params.deployment,'','')) return;
                 try {
                     restartGroup(this.coreApi, this.appsApi, req.params.namespace, req.params.deployment);
                     res.status(200).json();

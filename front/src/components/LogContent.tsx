@@ -19,45 +19,50 @@ const LogContent: React.FC<any> = (props:IProps) => {
 
         if (message.type==='log') {
             var txt=message.text;
-            if (props.log.scope==='cluster') {
+            if (props.log.view==='cluster') {
                 var fill=message.namespace!.length+1+message.resource!.length+1;
                 var f=' '.repeat(fill);
-                txt=txt.replaceAll('\n','\n'+f).trim();
+                txt=txt.replaceAll('\n','\n'+f).trimEnd();
             }
-            else if (props.log.scope==='namespace'){
+            else if (props.log.view==='namespace'){
                 var fill=message.resource!.length+1;
                 var f=' '.repeat(fill);
-                txt=txt.replaceAll('\n','\n'+f).trim();
+                txt=txt.replaceAll('\n','\n'+f).trimEnd();
             }
 
-            var t:JSX.Element;
-            if (color===0) {
-                t=<span>{txt}</span>
-            }
-            else {
-                // var i=txt.indexOf(props.search);
-                // if (i>=0) {
-                //     t=<>{txt.substring(0,i)}<span style={{background:index===props.searchPos?'#ee0000':'#bbbbbb'}}>{props.search}</span>{txt.substring(i+props.search.length)}</>;
-                // }
-                // else {
-                    t=<>{txt}</>;
-                // }
-            }
+            // var t:JSX.Element;
+            // t=<>{txt}</>;
 
-            if (props.log.scope==='cluster') {
-                return <div key={index}><span style={{color:"red"}}>{message.namespace}</span>&nbsp;<span style={{color:"blue"}}>{message.resource}</span>&nbsp;{t}</div>;
+            // if (color===0) {
+            //     t=<span >{txt}</span>
+            // }
+            // else {
+            //     // var i=txt.indexOf(props.search);
+            //     // if (i>=0) {
+            //     //     t=<>{txt.substring(0,i)}<span style={{background:index===props.searchPos?'#ee0000':'#bbbbbb'}}>{props.search}</span>{txt.substring(i+props.search.length)}</>;
+            //     // }
+            //     // else {
+            //         t=<>{txt}</>;
+            //     // }
+            // }
+
+            if (props.log.view==='cluster') {
+                return <><span style={{color:"red"}}>{message.namespace}</span><span style={{color:"blue"}}>{' '+message.resource+' '}</span>{txt}</>;
             }
-            else if (props.log.scope==='namespace') {
-                return <div key={index}><span style={{color:"blue"}}>{message.resource}</span>&nbsp;{t}</div>;
+            else if (props.log.view==='namespace') {
+                return <><span style={{color:"blue"}}>{message.resource+' '}</span>{txt}</>;
             }
             else
-                return <div key={index}>{t}</div>;
+                return txt;
         }
         else if (message.type==='info') {
-            return <div key={index}><span style={{color:"red"}}><b>*****{message.text}</b></span></div>
+            return <span style={{color:"blue"}}><b>{"***** "+message.text+" *****"}</b></span>
+        }
+        else if (message.type==='error') {
+            return <span style={{color:"red"}}><b>{"***** "+message.text+" *****"}</b></span>
         }
         else  {
-            return <div key={index}>{message.text}</div>
+            return <span>{message.text}</span>
         }
     }
 
@@ -65,7 +70,7 @@ const LogContent: React.FC<any> = (props:IProps) => {
         <Box sx={{ flex:1, overflowY: 'auto', ml:1 }}>
             <pre>
                 {props.log && props.log.messages.map(m => {
-                    return m.text.includes(props.filter)? m : null;}).map((message, index) => {
+                    return m.text.includes(props.filter)? m : null}).map((message, index) => {
                         // if (props.search!=='') {
                         //     if (index===props.searchPos)
                         //         return <div key={index} ref={null} dangerouslySetInnerHTML={{__html: message!.text.replaceAll(props.search,'<span style=\'background-color:#ee0000\'>'+props.search+'</span>')}}></div>;
@@ -76,9 +81,9 @@ const LogContent: React.FC<any> = (props:IProps) => {
                         // }
                         // else {
                             if (index===props.log.messages.length-1)
-                                return <><div key={index} ref={props.lastLineRef} >{formatMessage(message, index,0)}</div><div key={-1} >&nbsp;</div></>;
+                                return <><div key={index} ref={props.lastLineRef} >{formatMessage(message, index, 0)}</div><div key={-1} >&nbsp;</div></>;
                             else 
-                                return <div key={index}>{formatMessage(message, index,0)}</div>;
+                                return <div key={index}>{formatMessage(message, index, 0)}</div>;
                         // }
                 })}
             </pre>

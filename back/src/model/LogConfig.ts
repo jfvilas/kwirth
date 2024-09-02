@@ -3,8 +3,10 @@ export interface LogConfig {
     timestamp:boolean;
     previous:boolean;
     maxMessages:number;
+    view:string;
     scope:string;
     namespace:string;
+    group:string;
     set:string;
     pod:string;
     container:string;

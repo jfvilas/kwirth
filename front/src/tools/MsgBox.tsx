@@ -28,7 +28,7 @@ const MsgBoxShow = (title:string, message:string, onClose:Dispatch<SetStateActio
                 <DialogContentText>
                     <Stack sx={{mt:2}} direction='row' alignItems={'center'}>
                         {icon}
-                        <Typography sx={{ml:2}}>{message}</Typography>
+                        <Typography sx={{ml:2}}><div dangerouslySetInnerHTML={{__html: message}}/></Typography>
                     </Stack>
                 </DialogContentText>
             </DialogContent>

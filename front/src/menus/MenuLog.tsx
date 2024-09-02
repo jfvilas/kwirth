@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Collapse, Divider, Menu, MenuItem, MenuList, Typography } from "@mui/material"
-import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, RestartAlt } from '@mui/icons-material';
+import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, RestartAlt, Info } from '@mui/icons-material';
 import { LogObject } from '../model/LogObject';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
 
@@ -9,6 +9,7 @@ enum MenuLogOption {
     LogManageAlarms,
     LogOptionsBackground,
     LogOptionsTimestamp,
+    LogOrganizeInfo,
     LogOrganizeRename,
     LogOrganizeDefault,
     LogOrganizeMoveLeft,
@@ -89,8 +90,9 @@ const MenuLog: React.FC<any> = (props:IProps) => {
 
             <MenuItem key='subreorg' onClick={submenuOrganizeClick} sx={{ml:3}}>Organize<Typography sx={{flexGrow:1}}></Typography>{subMenuOrganizeOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={subMenuOrganizeOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
-                <MenuItem key='dl' onClick={() => props.optionSelected(MenuLogOption.LogOrganizeDefault)} disabled={props.selectedLogIndex<0} sx={{ml: props.selectedLog?.defaultLog?0:3}}> {props.selectedLog?.defaultLog && <Check/>} Default log</MenuItem>
+                <MenuItem key='il' onClick={() => props.optionSelected(MenuLogOption.LogOrganizeInfo)} disabled={props.selectedLogIndex<0}><Info/>&nbsp;Log information</MenuItem>
                 <MenuItem key='rl' onClick={() => props.optionSelected(MenuLogOption.LogOrganizeRename)} disabled={props.selectedLogIndex<0}><DriveFileRenameOutline/>&nbsp;Rename log</MenuItem>
+                <MenuItem key='dl' onClick={() => props.optionSelected(MenuLogOption.LogOrganizeDefault)} disabled={props.selectedLogIndex<0} sx={{ml: props.selectedLog?.defaultLog?0:3}}> {props.selectedLog?.defaultLog && <Check/>} Default log</MenuItem>
                 <MenuItem key='ml' onClick={() => props.optionSelected(MenuLogOption.LogOrganizeMoveLeft)} disabled={props.selectedLogIndex===0}><KeyboardArrowLeft/>Move to left</MenuItem>
                 <MenuItem key='mr' onClick={() => props.optionSelected(MenuLogOption.LogOrganizeMoveRight)} disabled={props.selectedLogIndex===props.logs.length-1}><KeyboardArrowRight/>Move to right</MenuItem>
                 <MenuItem key='ms' onClick={() => props.optionSelected(MenuLogOption.LogOrganizeMoveFirst)} disabled={props.selectedLogIndex===0}><KeyboardDoubleArrowLeft/>&nbsp;Move to start</MenuItem>
@@ -107,7 +109,7 @@ const MenuLog: React.FC<any> = (props:IProps) => {
 
             <MenuItem key='submanage' onClick={submenuManageClick} sx={{ml:3}}>Manage<Typography sx={{flexGrow:1}}></Typography>{subMenuManageOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={subMenuManageOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
-                <MenuItem key='manstart' onClick={() => props.optionSelected(MenuLogOption.LogManageRestart)} disabled={user?.scope==='view' || (props.selectedLog.scope!=='set' && props.selectedLog.scope!=='pod')}><RestartAlt/>&nbsp;Restart</MenuItem>
+                <MenuItem key='manstart' onClick={() => props.optionSelected(MenuLogOption.LogManageRestart)} disabled={user?.scope==='view' || (props.selectedLog.view!=='group' && props.selectedLog.view!=='pod')}><RestartAlt/>&nbsp;Restart</MenuItem>
             </Collapse>
             </MenuList>
         </Menu>

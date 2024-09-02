@@ -4,13 +4,13 @@ import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp,
 import { User } from '../model/User';
 
 enum MenuDrawerOption {
-    New,
-    Open,
-    Save,
-    SaveAs,
-    Delete,
-    Import,
-    Export,
+    NewView,
+    OpenView,
+    SaveView,
+    SaveViewAs,
+    DeleteView,
+    ImportViews,
+    ExportViews,
     Settings,
     ManageCluster,
     UserSecurity,
@@ -32,14 +32,14 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
 
     const menu=(
         <MenuList sx={{height:'85vh'}}>
-            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.New)}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
-            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.Open)}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
-            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.Save)}><SaveTwoTone/>&nbsp;Save</MenuItem>
-            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveAs)}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
-            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.Delete)}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
+            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.NewView)}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
+            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.OpenView)}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
+            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.SaveView)}><SaveTwoTone/>&nbsp;Save</MenuItem>
+            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveViewAs)}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
+            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.DeleteView)}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
             <Divider/>
-            <MenuItem key='viewexp' onClick={() => optionSelected(MenuDrawerOption.Export)}><ImportExport/>&nbsp;Export all views (to downloadable file)</MenuItem>
-            <MenuItem key='viewimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new views from file (and merge overwriting)</MenuItem>
+            <MenuItem key='boardexp' onClick={() => optionSelected(MenuDrawerOption.ExportViews)}><ImportExport/>&nbsp;Export all boards (to downloadable file)</MenuItem>
+            <MenuItem key='boardimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new boards from file (and merge overwriting)</MenuItem>
             <MenuItem key='settings' onClick={() => optionSelected(MenuDrawerOption.Settings)}><Settings/>&nbsp;Settings</MenuItem>
             <Divider/>
             { props.user.scope==='cluster' && 

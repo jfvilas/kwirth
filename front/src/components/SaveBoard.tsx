@@ -5,7 +5,7 @@ interface IProps {
     onClose:(a:string|null) => {},
     name:string
 }
-const SaveView: React.FC<any> = (props:IProps) => {
+const SaveBoard: React.FC<any> = (props:IProps) => {
     const [newname, setNewname] = useState(props.name);
 
     const onChangeNewname = (event:ChangeEvent<HTMLInputElement>) => {
@@ -15,7 +15,7 @@ const SaveView: React.FC<any> = (props:IProps) => {
     return (
         <Dialog open={true} disableRestoreFocus={true}>
             <DialogTitle>
-                Save view as...
+                Save board as...
             </DialogTitle>
             <DialogContent>
                 <DialogContentText>
@@ -32,4 +32,4 @@ const SaveView: React.FC<any> = (props:IProps) => {
     )
 }
 
-export default SaveView;
+export default SaveBoard;

@@ -1,17 +1,16 @@
 import React, { useContext, useState } from 'react';
-import { Box, Button, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack } from "@mui/material"
+import { Button, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack, Typography } from "@mui/material"
 import { Cluster } from '../model/Cluster';
+import { SessionContext, SessionContextType } from '../model/SessionContext';
+import { MsgBoxOk } from '../tools/MsgBox';
 
 // app icons 
 import IconDaemonSet from'../icons/svg/ds.svg';
 import IconReplicaSet from'../icons/svg/rs.svg';
 import IconStatefulSet from'../icons/svg/ss.svg';
-import { SessionContext, SessionContextType } from '../model/SessionContext';
 const KIconDaemonSet = () => <img src={IconDaemonSet} height={'16px'}/>;;
 const KIconReplicaSet = () => <img src={IconReplicaSet} height={'16px'}/>;
 const KIconStatefulSet = () => <img src={IconStatefulSet} height={'16px'}/>;;
-
-
 
 interface IProps {
     onAdd:(resource:any) => {};
@@ -19,116 +18,89 @@ interface IProps {
     sx:any;
 }
 
-interface ResourceSet {
-    // these names match with the ones returned in the "/config/sets" fetch.
-    type:string  // rs, ds, ss
-    name:string,
+interface GroupData {
+    // these names match with the ones returned in the "/config/groups" fetch.
+    //namespace:string,
+    type:string,  // rs, ds, ss
+    name:string
 }
 
 const ResourceSelector: React.FC<any> = (props:IProps) => {
     const {user} = useContext(SessionContext) as SessionContextType;
-    const [scope, setScope] = useState('cluster');
-    const [selectedCluster, setSelectedCluster] = useState<Cluster>();
-    const [selectedClusterName, setSelectedClusterName] = useState('');
+    const [view, setView] = useState('');
+    const [selectedCluster, setSelectedCluster] = useState<Cluster>(new Cluster());
     const [namespace, setNamespace] = useState('');
-    const [namespaces, setNamespaces] = useState<string[]>([]);
-    const [namespaceSelectDisabled, setNamespaceSelectDisabled] = useState(true);
-    const [set, setSet] = useState<ResourceSet>();
-    const [sets, setSets] = useState<(ResourceSet)[]>([]);
-    const [setSelectDisabled, setSetSelectDisabled] = useState(true);
+    const [allNamespaces, setAllNamespaces] = useState<string[]>([]);
+    const [group, setGroup] = useState<string>('');
+    const [allGroups, setAllGroups] = useState<GroupData[]>([]);
     const [pod, setPod] = useState('');
     const [pods, setPods] = useState<string[]>([]);
-    const [podSelectDisabled, setPodSelectDisabled] = useState(true);
     const [container, setContainer] = useState('');
     const [containers, setContainers] = useState<string[]>([]);
-    const [containerSelectDisabled, setContainerSelectDisabled] = useState(true);
 
-    const getNamespaces = async () => {
-        var response = await fetch(`${selectedCluster!.url}/config/namespace?cluster=${selectedClusterName}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
-        var data = await response.json();
-        if (user?.namespace!=='') data=(data as string[]).filter(ns => user?.namespace.includes(ns));
-        setNamespaces(data);
+    const [msgBox, setMsgBox] =useState(<></>);
+
+    const getNamespaces = async (cluster:Cluster) => {
+        if (cluster) {
+            var response = await fetch(`${cluster.url}/config/namespace?cluster=${cluster.name}`,{headers:{'Authorization':'Bearer '+cluster!.accessKey}});
+            if (response.status!==200) {
+                setMsgBox(MsgBoxOk('Resource Selector',`Error accessing cluster: ${JSON.stringify(response.status)}`, setMsgBox));
+            }
+            else {
+                var data = await response.json();
+                if (user?.namespace!=='') data=(data as string[]).filter(ns => user?.namespace.includes(ns));
+                setAllNamespaces(data);
+            }
+        }
     }
     
-    const getSets = async (namespace:string) => {
-        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/sets?cluster=${selectedClusterName}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
-        var data = await response.json();
-        setSets(data);
+    const getGroups = async (cluster:Cluster,namespace:string) => {
+        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/groups?cluster=${cluster.name}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
+        var data = await response.json() as GroupData[];
+        setAllGroups(data);
+        setGroup('');
     }
-    
-    const getPods = async (namespace:string, set:ResourceSet) => {
-        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${set.name}/pods?type=${set.type}&cluster=${selectedClusterName}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
+
+    const getPods = async (namespace:string, group:GroupData) => {
+        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${group.name}/pods?type=${group.type}&cluster=${selectedCluster?.name}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
         var data = await response.json();
         setPods(data);
-        setPodSelectDisabled(false);
     }
 
     const getContainers = async (namespace:string,pod:string) => {
-        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${pod}/containers?cluster=${selectedClusterName}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
+        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${pod}/containers?cluster=${selectedCluster?.name}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
         var data = await response.json();
         setContainers(data);
     }
         
     const onChangeCluster = (event: SelectChangeEvent) => {
         var value=event.target.value;
-        setSelectedClusterName(value);
-        setSelectedCluster(props.clusters?.filter(c => c.name===value)[0]!);
-        setScope('cluster');
+        setSelectedCluster(props.clusters?.find(c => c.name===value)!);
+        setView('');
         setNamespace('');
-        setNamespaceSelectDisabled(true);
-        setSet(undefined);
-        setSetSelectDisabled(true);
+        setAllNamespaces([]);
+        setGroup('');
+        setAllGroups([]);
         setPod('');
-        setPodSelectDisabled(true);
         setContainer('');
-        setContainerSelectDisabled(true);
     };
-        
-    const onChangeScope = (event: SelectChangeEvent) => {
+
+    const onChangeView = (event: SelectChangeEvent) => {
         var value=event.target.value;
-        setScope(value);
-        if (value==='cluster') {
-            setNamespace('');
-            setNamespaceSelectDisabled(true);
-        }
-        else {
-            setNamespace('');
-            getNamespaces();
-            setNamespaceSelectDisabled(false);
-        }
+        setView(value);
+        setNamespace('');
+        setGroup('');
+        setAllGroups([]);
         setPod('');
-        setPodSelectDisabled(true);
-        setSet(undefined);
-        setSetSelectDisabled(true);
         setContainer('');
-        setContainerSelectDisabled(true);
+        getNamespaces(props.clusters?.find(c => c.name===selectedCluster.name)!);
     };
-
-    const onChangeNamespace = (event: SelectChangeEvent) => {
-        setNamespace(event.target.value);
-        setPod('');
-        if (scope!=='cluster' && scope!=='namespace') {
-            setSet(undefined);
-            getSets(event.target.value);
-            setSetSelectDisabled(false);
-        }
-    };
-
-    const onChangeSet = (event: SelectChangeEvent) => {
-        var selectedSet=sets.find(s => s.name===event.target.value);
-        setSet(selectedSet);
-        if (scope==='pod' || scope==='container') {
-            getPods(namespace,selectedSet!);
-            setPodSelectDisabled(false);
-        }
-    }
 
     const onChangePod= (event: SelectChangeEvent) => {
         setPod(event.target.value)    
-        if (scope==='container') {
+        if (view==='container') {
             setContainer('');
-            setContainerSelectDisabled(false);
-            getContainers(namespace, event.target.value);
+            //+++getContainers(namespace, event.target.value);
         }
     }
 
@@ -137,73 +109,116 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     }
 
     const onAdd = () => {
+        console.log('pod',pod);
         var selection:any={};
-        selection.clusterName=selectedClusterName;
-        selection.scope=scope;
+        selection.clusterName=selectedCluster?.name;
+        selection.view=view;
         selection.namespace=namespace;
-        selection.set=set? (set.type+'+'+set?.name) : undefined;
+        console.log(allGroups);
+        console.log(group);
+        var g:GroupData=allGroups.find(g => g.name===group)!;
+        selection.group=g? (g.type+'+'+g.name) : '';
         selection.pod=pod;
         selection.container=container;
 
-        var logName='cluster';
-        if (scope==='namespace')
-            logName=namespace;
-        else if (scope==='set')
-            logName=namespace+'-'+set?.name;
-        else if (scope==='pod')
-            logName=namespace+'-'+pod;
-        else if (scope==='container')
-            logName=namespace+'-'+pod+'-'+container;
-        selection.logName=logName;
+        console.log(g);
+        if (view==='namespace')
+            selection.logName=namespace;
+        else if (view==='group')
+            selection.logName=namespace+'-'+g.name;
+        else if (view==='pod')
+            selection.logName=namespace+'-'+pod;
+        else if (view==='container')
+            selection.logName=namespace+'-'+pod+'-'+container;
 
+
+
+        console.log('selection');
+        console.log(selection);
         props.onAdd(selection);
+    }
+
+    const onChangeNamespace = (event:SelectChangeEvent) => {
+        var ns=event.target.value;
+        setNamespace(ns);
+        setGroup('');
+        setAllGroups([]);
+        setPod('');
+        setContainer('');
+        if (view!=='namespace') getGroups(selectedCluster, ns);
+    }
+
+    const onChangeGroup = (event:SelectChangeEvent) => {
+        var groupName=event.target.value;
+        setGroup(groupName);
+        var groupData=allGroups.find(g => g.name===groupName)!;
+        if (view!=='group') getPods(namespace,groupData);
+    }
+
+    const addable = () => {
+        if (selectedCluster===undefined) return false;
+        if (view==='') return false;
+        if (namespace==='') return false;
+        if (view==='namespace') return true;
+        if (group==='') return false;
+        if (view==='group') return true;
+        if (pod==='') return false;
+        if (view==='pod') return true;
+        if (container==='') return false;
+        return true;
     }
 
     const selector = (<>
         <Stack direction='row' spacing={1} sx={{...props.sx}} alignItems='baseline'>
+
             <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }}>
                 <InputLabel id='cluster'>Cluster</InputLabel>
-                <Select labelId='cluster' value={selectedClusterName} onChange={onChangeCluster}>
+                <Select labelId='cluster' value={selectedCluster?.name} onChange={onChangeCluster}>
                 { props.clusters?.map( (value) => {
                     return <MenuItem key={value.name} value={value.name}>{value.name}</MenuItem>
                 })}
                 </Select>
             </FormControl>
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={selectedClusterName===''}>
-                <InputLabel id='scope'>Scope</InputLabel>
-                <Select labelId='scope' value={scope} onChange={onChangeScope} >
-                { ['cluster','namespace','set','pod','container'].map( (value:string) => {
+
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={selectedCluster===undefined}>
+                <InputLabel id='view'>View</InputLabel>
+                <Select labelId='view' value={view} onChange={onChangeView} >
+                { ['namespace','group','pod','container'].map( (value:string) => {
                     return <MenuItem key={value} value={value}>{value}</MenuItem>
                 })}
                 </Select>
             </FormControl>
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={namespaceSelectDisabled}>
+
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={view===''}>
                 <InputLabel id='namespace'>Namespace</InputLabel>
-                <Select labelId='namespace' value={namespace} onChange={onChangeNamespace}>
-                { namespaces.map( (value:string) => {
-                    return <MenuItem key={value} value={value}>{value}</MenuItem>
+                <Select labelId='namespace' onChange={onChangeNamespace} value={namespace}>
+                { allNamespaces && allNamespaces.map( (namespace:string) => {
+                    return <MenuItem key={namespace} value={namespace}><Typography>{namespace}</Typography></MenuItem>
                 })}
                 </Select>
             </FormControl>
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={setSelectDisabled}>
-                <InputLabel id='set'>Set</InputLabel>
-                <Select labelId='set' value={set?.name?set.name:''} onChange={onChangeSet}>
-                { sets.map( (value:ResourceSet) => 
-                    <MenuItem key={value.name} value={value.name}>
-                    {value.type==='replica'? <KIconReplicaSet/>:value.type==='daemon'?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.name}                    
+
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={namespace==='' || view==='namespace'}>
+                <InputLabel id='group'>Group</InputLabel>
+                <Select labelId='group' onChange={onChangeGroup} value={group}>
+                { allGroups && allGroups.map( (value:GroupData) => 
+                    <MenuItem key={value.name} value={value.name} sx={{alignContent:'center'}}>
+                        {value.type==='replica'? <KIconReplicaSet/>:value.type==='daemon'?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.name}
                     </MenuItem>
                 )}
                 </Select>
             </FormControl>
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={podSelectDisabled}>
+
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={group==='' || view==='namespace' || view==='group'}>
                 <InputLabel id='pod'>Pod</InputLabel>
-                <Select labelId='pos' value={pod} onChange={onChangePod}>
-                { pods.map( (value:string) =>
-                    <MenuItem key={value} value={value}>{value}</MenuItem>
+                <Select labelId='pod' value={pod} onChange={onChangePod}>
+                { pods.map( (podName:string) =>
+                    <MenuItem key={podName} value={podName}>{podName}</MenuItem>
                 )}
                 </Select>
             </FormControl>
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={containerSelectDisabled}>
+
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={pod==='' || view==='namespace' || view==='group' || view==='pod'}>
                 <InputLabel id='container'>Container</InputLabel>
                 <Select labelId='container' value={container} onChange={onChangeContainer}>
                 { containers.map( (value:string) => {
@@ -211,8 +226,9 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 })}
                 </Select>
             </FormControl>
-            <Button onClick={onAdd} sx={{ width:'4%'}}>ADD</Button>
+            <Button onClick={onAdd} sx={{ width:'4%'}} disabled={!addable()}>ADD</Button>
         </Stack>
+        { msgBox }
     </>);
 
     return selector;

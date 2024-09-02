@@ -4,9 +4,9 @@ import { Message } from "./Message";
 export class LogObject {
     public name: any;
     public cluster: any;
-    public scope:any;
+    public view:any;
     public namespace:any;
-    public set:any;
+    public group:any;
     public pod:any;
     public container:any;
     public ws:any=null;

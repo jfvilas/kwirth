@@ -47,7 +47,7 @@ export class ConfigApi {
             });
 
         // get all deployments in a namespace
-        this.route.route('/:namespace/sets')
+        this.route.route(['/:namespace/sets','/:namespace/groups'])
             .all( async (req,res, next) => {
                 if (!validKey(req,res)) return;
                 next();
@@ -69,8 +69,8 @@ export class ConfigApi {
                 }
             });
 
-        // get all pods in a namespace in a set
-        this.route.route('/:namespace/:set/pods')
+        // get all pods in a namespace in a group
+        this.route.route('/:namespace/:group/pods')
             .all( async (req,res, next) => {
                 if (!validKey(req,res)) return;
                 next();
@@ -78,7 +78,7 @@ export class ConfigApi {
             .get( async (req, res) => {
                 try {
                     var response= await this.coreApi.listNamespacedPod(req.params.namespace);
-                    var pods = response.body.items.filter (n => n?.metadata?.ownerReferences![0].name===req.params.set).map (n => n?.metadata?.name);
+                    var pods = response.body.items.filter (n => n?.metadata?.ownerReferences![0].name===req.params.group).map (n => n?.metadata?.name);
                     res.status(200).json(pods);
                 }
                 catch (err) {

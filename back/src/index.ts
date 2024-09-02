@@ -165,7 +165,7 @@ const checkPermissionLevel = (config:LogConfig) => {
     var resource=parseResource(accessKeyDeserialize(config.accessKey).resource);
     var haveLevel=getScopeLevel(resource.scope);
     var requiredLevel=getScopeLevel(config.scope);
-    console.log(`Check levels: have ${resource.scope}(${haveLevel}) >= requiered ${config.scope}(${requiredLevel}) ? ${haveLevel>=requiredLevel}`);
+    console.log(`Check levels: have ${resource.scope}(${haveLevel}) >= required ${config.scope}(${requiredLevel}) ? ${haveLevel>=requiredLevel}`);
     return (haveLevel>=requiredLevel);
 }
 
@@ -193,6 +193,7 @@ const getSelectedPods = async (resId:ResourceIdentifier, validNamespaces:string[
 async function processClientMessage(message:string, webSocket:any) {
 
     const config = JSON.parse(message) as LogConfig;
+    if (!config.group) config.group=config.set;
     if (!config.accessKey) {
       sendError(webSocket,'No key received', true);
       return;
@@ -225,67 +226,63 @@ async function processClientMessage(message:string, webSocket:any) {
     switch (config.scope) {
         case 'view':
         case 'filter':
-            if (resource.scope!==config.scope) {
+            if (!config.view) config.view='pod';
+            if (getScopeLevel(resource.scope)<getScopeLevel(config.scope)) {
                 sendError(webSocket, `Access denied: scope 'filter'/'view' not allowed`, true);
                 return;
             }
             var selectedPods=await getSelectedPods(resource, validNamespaces, validPodNames);
             if (selectedPods.length===0) {
-              sendError(webSocket,`Access denied: there are no filters that matches requested config`, true);
+                sendError(webSocket,`Access denied: there are no filters that matches requested config`, true);
             }
             else {
-                for (var pod of selectedPods) {
-                    var podConfig:LogConfig={
-                        accessKey: '',
-                        timestamp: config.timestamp,
-                        previous: config.previous,
-                        maxMessages: config.maxMessages,
-                        scope: 'pod',
-                        namespace: pod.metadata?.namespace!,
-                        set: '',
-                        pod: pod.metadata?.name!,
-                        container: ''
-                    };
-                    var ml:any=pod.metadata?.labels;
-                    var labelSelector = Object.entries(ml).map(([key, value]) => `${key}=${value}`).join(',');
-                    console.log(labelSelector);
-                    watchPods(`/api/v1/namespaces/${podConfig.namespace}/pods`, { labelSelector }, webSocket, podConfig);
+                switch (config.view) {
+                    case 'cluster':
+                        watchPods(`/api/v1/pods`, {}, webSocket, config);
+                        break;
+                    case 'namespace':
+                        watchPods(`/api/v1/namespaces/${config.namespace}/pods`, {}, webSocket, config);
+                        break;
+                    case 'group':
+                        var labelSelector = (await getPodsFromGroup(coreApi, appsApi, config.namespace, config.group)).labelSelector;
+                        watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector }, webSocket, config);
+                        break;
+                    case 'pod':
+                        var validPod=selectedPods.find(p => p.metadata?.name === config.pod)
+                        if (validPod) {
+                            var podConfig:LogConfig={
+                                accessKey: '',
+                                timestamp: config.timestamp,
+                                previous: config.previous,
+                                maxMessages: config.maxMessages,
+                                view: config.view,
+                                scope: config.scope,
+                                namespace: validPod.metadata?.namespace!,
+                                group: '',
+                                set: '',
+                                pod: validPod.metadata?.name!,
+                                container: ''
+                            }
+                            var ml:any=validPod.metadata?.labels;
+                            var labelSelector = Object.entries(ml).map(([key, value]) => `${key}=${value}`).join(',');
+                            console.log(labelSelector);
+                            watchPods(`/api/v1/namespaces/${podConfig.namespace}/pods`, { labelSelector }, webSocket, podConfig);
+                        }
+                        else {
+                            sendError(webSocket, `Access denied: your accesskey has no access to pod '${config.pod}'`, true);
+                        }
+                        break;
+                    case 'container':
+                        // pending
+                        break;
+                    default:
+                        sendError(webSocket, `Access denied: invalid view '${config.view}'`, true);
+                        break;
                 }
             }
             break;
-        case 'cluster':
-            watchPods(`/api/v1/pods`, {}, webSocket, config);
-            break;
-        case 'namespace':
-            watchPods(`/api/v1/namespaces/${config.namespace}/pods`, {}, webSocket, config);
-            break;
-        case 'pod':
-        case 'container':
-        case 'set':
-            // var setPods:any;
-            // var [setType, setName]=config.set.split('+');
-            // switch (setType) {
-            //     case'replica':
-            //         setPods=await appsApi.readNamespacedReplicaSet(setName, config.namespace);
-            //         break;
-            //     case'daemon':
-            //         setPods=await appsApi.readNamespacedDaemonSet(setName, config.namespace);
-            //         break;
-            //     case'stateful':
-            //         setPods=await appsApi.readNamespacedStatefulSet(setName, config.namespace);
-            //         break;
-            // }
-
-            // const matchLabels = setPods.body.spec?.selector?.matchLabels;
-            // if (matchLabels) {
-            //     var labelSelector = Object.entries(matchLabels).map(([key, value]) => `${key}=${value}`).join(',');
-            //     watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector }, webSocket, config);
-            // }
-            var labelSelector = (await getPodsFromGroup(coreApi, appsApi, config.namespace, config.set)).labelSelector;
-            watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector }, webSocket, config);
-            break;
         default:
-            sendError(webSocket, `Access denied: invalid scope ${config.scope}`, true);
+            sendError(webSocket, `Access denied: invalid scope '${config.scope}'`, true);
             return;
     }
 }
@@ -336,16 +333,20 @@ const launch = (kwrithData: KwirthData) => {
   server.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
     console.log(`Context being used: ${kc.currentContext}`);
-    if (kwrithData.inCluster)
-      console.log(`Running inside cluster`);
-    else
-      console.log(`Cluster name (according to kubeconfig context): ${kc.getCluster(kc.currentContext)?.name}`);
+    if (kwrithData.inCluster) {
+        console.log(`Kwirth is running INSIDE cluster`);
+    }
+    else {
+        console.log(`Kwirth is NOT running on a cluster`);
+        console.log(`Cluster name (according to kubeconfig context): ${kc.getCluster(kc.currentContext)?.name}`);
+    }
     console.log(`KWI1500I Control is being given to KWirth`);
   });
 }
 
 ////////////////////////////////////////////////////////////// START /////////////////////////////////////////////////////////
-console.log(`KWirth version is ${VERSION}`);
+console.log(`Kwirth version is ${VERSION}`);
+console.log(`Kwirth started at ${new Date().toISOString()}`);
 
 // serve front application
 console.log(`SPA is available at: ${rootPath}/front`)
@@ -354,17 +355,17 @@ app.get(`${rootPath}`, (req:any,res:any) => { res.redirect(`${rootPath}/front`) 
 app.use(`${rootPath}/front`, express.static('./dist/front'))
 
 getMyKubernetesData()
-  .then ( (kwirthData) => {
-    console.log('Detected own namespace: '+kwirthData.namespace);
-    console.log('Detected own deployment: '+kwirthData.deployment);
-    launch (kwirthData);
-  })
-  .catch ( (err) => {
-    console.log('Cannot get namespace, using "default"');
-    launch ({
-      clusterName: 'error-starting',
-      inCluster: false,
-      namespace: 'default',
-      deployment: ''
+    .then ( (kwirthData) => {
+        console.log('Detected own namespace: '+kwirthData.namespace);
+        console.log('Detected own deployment: '+kwirthData.deployment);
+        launch (kwirthData);
+    })
+    .catch ( (err) => {
+        console.log('Cannot get namespace, using "default"');
+        launch ({
+        clusterName: 'error-starting',
+        inCluster: false,
+        namespace: 'default',
+        deployment: ''
+        });
     });
-  });

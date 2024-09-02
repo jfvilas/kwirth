@@ -31,15 +31,35 @@ export const getScopeLevel = (scope:string) => {
     return levelScopes.indexOf(scope);
 }
 
-export const validAuth = (req:any,res:any, scope:string, namespace:string, set:string, pod:string, container:string) => {
+export const validAuth = (req:any,res:any, scope:string, namespace:string, group:string, pod:string, container:string) => {
     var key=req.headers.authorization.replaceAll('Bearer ','').trim();
     var accessKey=accessKeyDeserialize(key);
     var resId=parseResource(accessKey.resource);
 
-    if (!(resId.scope==='cluster' || scope===resId.scope)) return false;
-    if (!(namespace==='' || namespace===resId.namespace)) return false;
-    if (!(set==='' || set===resId.set)) return false;
-    if (!(pod==='' || pod===resId.pod)) return false;
-    if (!(container==='' || container===resId.container)) return false;
+
+    console.log('presented resourceId',resId);
+    console.log('requested access',scope,namespace, group, pod, container);
+    if (resId.scope==='cluster') return true;
+    if (!(getScopeLevel(scope)>getScopeLevel(resId.scope))) {
+        console.log('insufficeint scope level');
+        return false;
+    }
+    if (!(namespace==='' || namespace===resId.namespace)) {
+        console.log('insufficient namespace capabilities');
+        return false;
+    }
+    if (!(group==='' || group===resId.set)) {
+        console.log('insufficient group capabilities');
+        return false;
+    }
+    if (!(pod==='' || pod===resId.pod)) {
+        console.log('insufficient pod capabilities');
+        return false;
+    }
+    if (!(container==='' || container===resId.container)) {
+        console.log('insufficient container capabilities');
+        return false;
+    }
+    console.log('authorized');
     return true;
 }

@@ -19,7 +19,7 @@ import { PickListConfig } from './model/PickListConfig';
 import BlockingAlarm from './components/BlockingAlarm';
 import AlarmConfig from './components/AlarmConfig';
 import RenameLog from './components/RenameLog';
-import SaveView from './components/SaveView';
+import SaveBoard from './components/SaveBoard';
 import ManageApiSecurity from './components/ManageApiSecurity';
 import PickList from './components/PickList';
 import Login from './components/Login';
@@ -94,20 +94,20 @@ const App: React.FC = () => {
     const [showBlockingAlarm, setShowBlockingAlarm]=useState<boolean>(false);
     const [showRenameLog, setShowRenameLog]=useState<boolean>(false);
     const [showManageClusters, setShowManageClusters]=useState<boolean>(false);
-    const [showSaveView, setShowSaveView]=useState<boolean>(false);
+    const [showSaveBoard, setShowSaveBoard]=useState<boolean>(false);
     const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false);
     const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false);
     const [showManageAlarms, setShowManageAlarms]=useState<boolean>(false);
     const [showSettingsConfig, setShowSettingsConfig]=useState<boolean>(false);
     const [blockingAlarm, setBlockingAlarm] = useState<Alarm>();
-    const [viewLoaded, setViewLoaded] = useState<boolean>(false);
-    const [currentViewName, setCurrentViewName] = useState('');
+    const [boardLoaded, setBoardLoaded] = useState<boolean>(false);
+    const [currentBoardName, setCurrentBoardName] = useState('');
     const [showPickList, setShowPickList]=useState<boolean>(false);
     
     useEffect ( () => {
         //+++ add a settings section for a log object (like settings, but specific)
         //+++ work on alarms and create and alarm manager
-        //+++ when a view is loaded all messages are received: alarms should not be in effect until everything is received
+        //+++ when a board is loaded all messages are received: alarms should not be in effect until everything is received
         //+++ implement role checking on backend
         //+++ with ephemeral logs, the content of 'messages' should contain some info on alarms triggered, or even a dashboard (ephemeral logs do not contains log lines)
         //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
@@ -122,18 +122,14 @@ const App: React.FC = () => {
 
     useEffect ( () => {
         if (logged) {
-        setViewLoaded(false);
+        setBoardLoaded(false);
         if (logs.length>0) {
             for (var t of logs)
             startLog(t);
             onChangeLogs(null, logs[0].name);
         }
         }
-    }, [viewLoaded]);
-
-    // useEffect ( () => {
-    //     if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // }, [search]);
+    }, [boardLoaded]);
 
     const getClusters = async () => {
         // get current cluster
@@ -177,6 +173,7 @@ const App: React.FC = () => {
     }
 
     const onResourceSelectorAdd = (selection:any) => {
+        console.log(selection);
         var logName=selection.logName;
 
         // create unduplicated (unique) name
@@ -185,9 +182,9 @@ const App: React.FC = () => {
 
         var newLog:LogObject= new LogObject();
         newLog.cluster=selection.clusterName;
-        newLog.scope=selection.scope;
+        newLog.view=selection.view;
         newLog.namespace=selection.namespace;
-        newLog.set=selection.set;
+        newLog.group=selection.group;
         newLog.pod=selection.pod;
         newLog.container=selection.container;
         newLog.name=logName+index;
@@ -203,84 +200,15 @@ const App: React.FC = () => {
     const onChangeLogs = (event:any,value:string)=> {
         var newlog = logs.find(log => log.name === value);
         if (newlog) {
-        newlog.pending=false;
-        setHighlightedLogs (highlightedLogs.filter(t => t.pending));
-        setPausedLogs (pausedLogs.filter(log => log.paused));
-        setFilter(newlog.filter);
-        setMessages(newlog.messages);
-        setLogs(logs);
+            newlog.pending=false;
+            setHighlightedLogs (highlightedLogs.filter(t => t.pending));
+            setPausedLogs (pausedLogs.filter(log => log.paused));
+            setFilter(newlog.filter);
+            setMessages(newlog.messages);
+            setLogs(logs);
         }
         setSelectedLogName(value);
     }
-
-    // const wsOnMessage = (event:any) => {
-    //   // find the log who this web socket belongs to, and add the new message
-    //   var log=logs.find(log => log.ws!==null && log.ws===event.target);
-    //   if (!log) return;
-        
-    //   var e:any={};
-    //   try {
-    //     e=JSON.parse(event.data);
-    //   }
-    //   catch (err) {
-    //     console.log(err);
-    //     console.log(event.data);
-    //   }
-
-    //   var msg=new Message(e.text);
-    //   msg.cluster=log.cluster.name;
-    //   msg.namespace=e.namespace;
-    //   msg.resource=e.podName;
-    //   log.messages.push(msg);
-    //   while (log.messages.length>log.maxMessages) log.messages.splice(0,1);
-
-    //   // if current log is displayed (focused), add message to the screen
-    //   if (selectedLogRef.current === log.name) {
-    //     if (!log.paused) {
-    //       setMessages((prev) => [...prev, msg ]);
-    //       if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' });
-    //     }
-    //   }
-    //   else {
-    //     // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-    //     if (log.showBackgroundNotification && !log.paused) {
-    //       log.pending=true;
-    //       setHighlightedLogs((prev)=> [...prev, log!]);
-    //       setLogs(logs);
-    //     }
-    //   }
-
-    //   for (var alarm of log.alarms) {
-    //     if (msg.text.includes(alarm.expression)) {
-    //       if (alarm.beep) Beep.beepError();
-            
-    //       if (alarm.type===AlarmType.blocking) {
-    //         setBlockingAlarm(alarm);
-    //         setShowBlockingAlarm(true);
-    //       }
-    //       else {
-    //         // in the view action, implement scrollinto view for showing the message that caused the received alarm
-    //         const action = (snackbarId: SnackbarKey | undefined) => (
-    //           <>
-    //             <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
-    //               View
-    //             </Button>
-    //             <Button onClick={() => { closeSnackbar(snackbarId) }}>
-    //               Dismiss
-    //             </Button>
-    //           </>
-    //         );
-    //         var opts:any={
-    //           anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
-    //           variant:alarm.severity,
-    //           autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
-    //           action: action
-    //         };
-    //         enqueueSnackbar(alarm.message, opts);
-    //       }
-    //     }
-    //   }
-    // }
 
     const wsOnChunk = (event:any) => {
         // find the log who this web socket belongs to, and add the new message
@@ -331,7 +259,6 @@ const App: React.FC = () => {
                     setShowBlockingAlarm(true);
                 }
                 else {
-                    // in the view action, implement scrollinto view for showing the message that caused the received alarm
                     const action = (snackbarId: SnackbarKey | undefined) => (<>
                         <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
                             View
@@ -360,24 +287,28 @@ const App: React.FC = () => {
         var cluster=clusters!.find(c => c.name===log.cluster);
         if (!cluster) {
             console.log('nocluster');
-            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at log configuration ${log.cluster} does not exist.`, setMsgBox));
+            setMsgBox(MsgBoxOk('Kwirth',`Cluster established at log configuration ${log.cluster} does not exist.`, setMsgBox));
             return;
         }
         var ws = new WebSocket(cluster.url);
         log.ws=ws;
         ws.onopen = () => {
             console.log(`WS connected: ${ws.url}`);
-            var payload={ 
+            var payload={
                 accessKey: cluster!.accessKey,
-                scope: log.scope, 
+                scope: 'view',
+                view: log.view,
                 namespace: log.namespace, 
-                set: log.set,
+                set: log.group,
+                group: log.group,
                 pod: log.pod, 
                 container: log.container, 
                 timestamp: log.addTimestamp,
                 previous: log.previous,
                 maxMessages: log.maxMessages
             };
+            console.log('payload');
+            console.log(payload);
             ws.send(JSON.stringify(payload));
             log.started=true;
         };
@@ -443,6 +374,17 @@ const App: React.FC = () => {
     const menuLogOptionSelected = (option: MenuLogOption) => {
         setAnchorMenuLog(null);
         switch(option) {
+        case MenuLogOption.LogOrganizeInfo:
+            var a=`
+                <b>Name</b>: ${selectedLog?.name}<br/>
+                <b>View</b>: ${selectedLog?.view}<br/>
+                <b>Namespace</b>: ${selectedLog?.namespace}<br/>
+                <b>Group</b>: ${selectedLog?.group}<br/>
+                <b>Pod</b>: ${selectedLog?.pod}<br/>
+                <b>Container</b>: ${selectedLog?.container}
+            `;
+            setMsgBox(MsgBoxOk('Log info',a,setMsgBox));
+            break;
         case MenuLogOption.LogOrganizeRename:
             setShowRenameLog(true);
             break;
@@ -502,10 +444,10 @@ const App: React.FC = () => {
             onClickLogRemove();
             break;
         case MenuLogOption.LogManageRestart:
-            switch(selectedLog?.scope) {
+            switch(selectedLog?.view) {
                 case 'set':
                     // restart a deployment
-                    fetch (`${backendUrl}/managecluster/restartdeployment/${selectedLog.namespace}/${selectedLog.set}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+                    fetch (`${backendUrl}/managecluster/restartdeployment/${selectedLog.namespace}/${selectedLog.group}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
                     break;
                 case 'pod':
                     // restart a pod
@@ -515,41 +457,41 @@ const App: React.FC = () => {
         }
     };
 
-    const saveView = (viewName:string) => {
+    const saveBoard = (boardName:string) => {
         var newLogs:LogObject[]=[];
         for (var log of logs) {
-        var newLog = new LogObject();
-        newLog.addTimestamp=log.addTimestamp;
-        newLog.alarms=log.alarms;
-        newLog.cluster=log.cluster;
-        newLog.filter=log.filter;
-        newLog.namespace=log.namespace;
-        newLog.set=log.set;
-        newLog.pod=log.pod;
-        newLog.container=log.container;
-        newLog.defaultLog=log.defaultLog;
-        newLog.paused=log.paused;
-        newLog.scope=log.scope;
-        newLog.showBackgroundNotification=log.showBackgroundNotification;
-        newLog.started=log.started;
-        newLog.name=log.name;
-        newLogs.push(newLog);
+            var newLog = new LogObject();
+            newLog.addTimestamp=log.addTimestamp;
+            newLog.alarms=log.alarms;
+            newLog.cluster=log.cluster;
+            newLog.filter=log.filter;
+            newLog.view=log.view;
+            newLog.namespace=log.namespace;
+            newLog.group=log.group;
+            newLog.pod=log.pod;
+            newLog.container=log.container;
+            newLog.defaultLog=log.defaultLog;
+            newLog.paused=log.paused;
+            newLog.showBackgroundNotification=log.showBackgroundNotification;
+            newLog.started=log.started;
+            newLog.name=log.name;
+            newLogs.push(newLog);
         }
         var payload=JSON.stringify(newLogs);
-        fetch (`${backendUrl}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
-        if (currentViewName!==viewName) setCurrentViewName(viewName);
+        fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+        if (currentBoardName!==boardName) setCurrentBoardName(boardName);
     }
 
-    const showNoViews = () => {
-        setMsgBox(MsgBoxOk('View management','You have no views stored in your personal Kwirth space', setMsgBox));
+    const showNoBoards = () => {
+        setMsgBox(MsgBoxOk('Board management','You have no boards stored in your personal Kwirth space', setMsgBox));
     }
 
-    const loadView = async () => {
-        var allViews:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/views`, {headers:{Authorization:'Bearer '+accessKey}})).json();
-        if (allViews.length===0)
-            showNoViews();
+    const loadBoard = async () => {
+        var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, {headers:{Authorization:'Bearer '+accessKey}})).json();
+        if (allBoards.length===0)
+            showNoBoards();
         else
-            pickList('Load view...','Please, select the view you want to load:',allViews,loadViewSelected);
+            pickList('Load board...','Please, select the board you want to load:',allBoards,loadBoardSelected);
     }
 
     const clearLogs = () => {
@@ -560,31 +502,31 @@ const App: React.FC = () => {
         setMessages([]);
     }
 
-    const menuViewOptionSelected = async (option:MenuDrawerOption) => {
+    const menuBoardOptionSelected = async (option:MenuDrawerOption) => {
         setMenuDrawerOpen(false);
         switch(option) {
-        case MenuDrawerOption.New:
+        case MenuDrawerOption.NewView:
             clearLogs();
-            setCurrentViewName('untitled');
+            setCurrentBoardName('untitled');
             break;
-        case MenuDrawerOption.Save:
-            if (currentViewName!=='' && currentViewName!=='untitled')
-            saveView(currentViewName);
+        case MenuDrawerOption.SaveView:
+            if (currentBoardName!=='' && currentBoardName!=='untitled')
+            saveBoard(currentBoardName);
             else
-            setShowSaveView(true);
+            setShowSaveBoard(true);
             break;
-        case MenuDrawerOption.SaveAs:
-            setShowSaveView(true);
+        case MenuDrawerOption.SaveViewAs:
+            setShowSaveBoard(true);
             break;
-        case MenuDrawerOption.Open:
-            loadView();
+        case MenuDrawerOption.OpenView:
+            loadBoard();
             break;
-        case MenuDrawerOption.Delete:
-            var allViews:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/views`, {headers:{Authorization:'Bearer '+accessKey}})).json();
-            if (allViews.length===0)
-                showNoViews();
+        case MenuDrawerOption.DeleteView:
+            var allallBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, {headers:{Authorization:'Bearer '+accessKey}})).json();
+            if (allallBoards.length===0)
+                showNoBoards();
             else
-                pickList('View delete...','Please, select the view you want to delete:',allViews,deleteViewSelected);
+                pickList('Board delete...','Please, select the board you want to delete:',allallBoards,deleteBoardSelected);
             break;
         case MenuDrawerOption.ManageCluster:
             setShowManageClusters(true);
@@ -595,21 +537,21 @@ const App: React.FC = () => {
         case MenuDrawerOption.UserSecurity:
             setShowUserSecurity(true);
             break;
-        case MenuDrawerOption.Export:
-            var allViews:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/views`, {headers:{Authorization:'Bearer '+accessKey}})).json();
-            if (allViews.length===0) {
-                showNoViews();
+        case MenuDrawerOption.ExportViews:
+            var allallBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, {headers:{Authorization:'Bearer '+accessKey}})).json();
+            if (allallBoards.length===0) {
+                showNoBoards();
             }
             else {
                 var content:any={};
-                for (var viewName of allViews) {
-                    var readView = await (await fetch (`${backendUrl}/store/${user?.id}/views/${viewName}`, {headers:{Authorization:'Bearer '+accessKey}})).json();
-                    content[viewName]=JSON.parse(readView);
+                for (var boardName of allallBoards) {
+                    var readBoard = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, {headers:{Authorization:'Bearer '+accessKey}})).json();
+                    content[boardName]=JSON.parse(readBoard);
                 }
                 handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
             }
             break;
-        case MenuDrawerOption.Import:
+        case MenuDrawerOption.ImportViews:
             // nothing to do, the menuitem launches the handleUpload
             break;
         case MenuDrawerOption.Settings:
@@ -631,11 +573,11 @@ const App: React.FC = () => {
         }
     };
 
-    const deleteViewSelected = (viewName:string) => {
-        setMsgBox(MsgBoxYesNo('Delete view',`Are you ure you want to delete view ${viewName}`,setMsgBox, (button) => {
+    const deleteBoardSelected = (boardName:string) => {
+        setMsgBox(MsgBoxYesNo('Delete board',`Are you ure you want to delete board ${boardName}`,setMsgBox, (button) => {
             if (button===MsgBoxButtons.Yes) {
-                fetch (`${backendUrl}/store/${user?.id}/views/${viewName}`, {method:'DELETE', headers:{Authorization:'Bearer '+accessKey}});
-                setCurrentViewName('');
+                fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, {method:'DELETE', headers:{Authorization:'Bearer '+accessKey}});
+                setCurrentBoardName('');
             }
         }));
     }
@@ -658,10 +600,10 @@ const App: React.FC = () => {
         if (file) {
             const reader = new FileReader();
             reader.onload = (e:any) => {
-                var allViews=JSON.parse(e.target.result);
-                for (var viewName of Object.keys(allViews)) {
-                    var payload=JSON.stringify(allViews[viewName]);
-                    fetch (`${backendUrl}/store/${user?.id}/views/${viewName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json', Authorization:'Bearer '+accessKey}});
+                var allBoards=JSON.parse(e.target.result);
+                for (var boardName of Object.keys(allBoards)) {
+                    var payload=JSON.stringify(allBoards[boardName]);
+                    fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json', Authorization:'Bearer '+accessKey}});
                 }
             };
             reader.readAsText(file);
@@ -695,19 +637,19 @@ const App: React.FC = () => {
         }
     }
 
-    const saveViewClosed = (viewName:string|null) => {
-        setShowSaveView(false);
-        if (viewName!=null) saveView(viewName);
+    const saveBoardClosed = (boardName:string|null) => {
+        setShowSaveBoard(false);
+        if (boardName!=null) saveBoard(boardName);
     }
 
-    const loadViewSelected = async (viewName:string) => {
-        if (viewName) {
+    const loadBoardSelected = async (boardName:string) => {
+        if (boardName) {
             clearLogs();
-            var n = await (await fetch (`${backendUrl}/store/${user?.id}/views/${viewName}`, {headers:{Authorization:'Bearer '+accessKey}})).json();
+            var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, {headers:{Authorization:'Bearer '+accessKey}})).json();
             var newLogs=JSON.parse(n) as LogObject[];
             setLogs(newLogs);
-            setViewLoaded(true);
-            setCurrentViewName(viewName);
+            setBoardLoaded(true);
+            setCurrentBoardName(boardName);
             var defaultLog=newLogs.find(l => l.defaultLog);
             if (defaultLog) setSelectedLogName(defaultLog.name);
         }
@@ -741,38 +683,10 @@ const App: React.FC = () => {
             setLogged(true);
             setUser(user);
             setAccessKey(accessKey);
-            setCurrentViewName('untitled');
+            setCurrentBoardName('untitled');
             clearLogs();
         }
     }
-
-    // const onChangeSearch = (event:ChangeEvent<HTMLInputElement>) => {
-    //     var newsearch=event.target.value;
-    //     setSearch(newsearch);
-    //     if (newsearch!=='') {
-    //     var pos=selectedLog!.messages.findIndex(m => m.text.includes(newsearch));
-    //     setSearchFirstPos(pos);
-    //     setSearchLastPos(selectedLog!.messages.findLastIndex(m => m.text.includes(newsearch)));
-    //     setSearchPos(pos);
-    //     if (searchLineRef.current) (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
-    //     }
-    // }
-
-    // const onClickSearchDown = () => {
-    //     var pos=messages!.findIndex( (msg,index) => msg.text.includes(search) && index>searchPos);
-    //     if (pos>=0) {
-    //     setSearchPos(pos);
-    //     (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
-    //     }
-    // }
-
-    // const onClickSearchUp = () => {
-    //     var pos=messages!.findLastIndex( (msg,index) => msg.text.includes(search) && index<searchPos);
-    //     if (pos>=0) {
-    //     setSearchPos(pos);
-    //     (searchLineRef.current as any).scrollIntoView({ behavior: 'smooth', block: 'center' })
-    //     }
-    // }
 
     if (!logged) return (<>
         <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
@@ -788,14 +702,14 @@ const App: React.FC = () => {
                 <Toolbar>
                 <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
                 <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth</Typography>
-                <Typography variant="h6" component="div" sx={{mr:2}}>{currentViewName}</Typography>
+                <Typography variant="h6" component="div" sx={{mr:2}}>{currentBoardName}</Typography>
                 <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user?.scope}]</div>} sx={{ mr:2 }}><Person/></Tooltip>
                 </Toolbar>
             </AppBar>
 
             <Drawer sx={{ flexShrink: 0, '& .MuiDrawer-paper': {mt: '64px'} }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
                 <Stack direction={'column'}>
-                <MenuDrawer optionSelected={menuViewOptionSelected} uploadSelected={handleUpload} user={user}/>
+                <MenuDrawer optionSelected={menuBoardOptionSelected} uploadSelected={handleUpload} user={user}/>
                 <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>
                 </Stack>
             </Drawer>
@@ -838,7 +752,7 @@ const App: React.FC = () => {
             { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> }
             { showBlockingAlarm && <BlockingAlarm onClose={() => setShowBlockingAlarm(false)} alarm={blockingAlarm} /> }
             { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
-            { showSaveView && <SaveView onClose={saveViewClosed} name={currentViewName} /> }
+            { showSaveBoard && <SaveBoard onClose={saveBoardClosed} name={currentBoardName} /> }
             { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
