@@ -141,7 +141,8 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
             sendInfo(ws, `Pod ${eventType}: ${podNamespace}/${podName}`);
 
             for (var container of obj.spec.containers) {
-                if (config.scope==='container') {
+                if (config.view==='container') {
+                    console.log('here');
                     if (container.name===config.container) getPodLog(podNamespace, podName, container.name, ws, config);
                 }
                 else {
@@ -248,9 +249,10 @@ async function processClientMessage(message:string, webSocket:any) {
                         watchPods(`/api/v1/namespaces/${config.namespace}/pods`, { labelSelector }, webSocket, config);
                         break;
                     case 'pod':
+                    case 'container':
                         var validPod=selectedPods.find(p => p.metadata?.name === config.pod)
                         if (validPod) {
-                            var podConfig:LogConfig={
+                            var podLogConfig:LogConfig={
                                 accessKey: '',
                                 timestamp: config.timestamp,
                                 previous: config.previous,
@@ -261,19 +263,18 @@ async function processClientMessage(message:string, webSocket:any) {
                                 group: '',
                                 set: '',
                                 pod: validPod.metadata?.name!,
-                                container: ''
+                                container: config.view==='container'? config.container:''
                             }
+
                             var ml:any=validPod.metadata?.labels;
                             var labelSelector = Object.entries(ml).map(([key, value]) => `${key}=${value}`).join(',');
                             console.log(labelSelector);
-                            watchPods(`/api/v1/namespaces/${podConfig.namespace}/pods`, { labelSelector }, webSocket, podConfig);
+                            console.log(podLogConfig);
+                            watchPods(`/api/v1/namespaces/${podLogConfig.namespace}/pods`, { labelSelector }, webSocket, podLogConfig);
                         }
                         else {
                             sendError(webSocket, `Access denied: your accesskey has no access to pod '${config.pod}'`, true);
                         }
-                        break;
-                    case 'container':
-                        // pending
                         break;
                     default:
                         sendError(webSocket, `Access denied: invalid view '${config.view}'`, true);

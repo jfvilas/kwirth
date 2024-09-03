@@ -21,7 +21,6 @@ interface IProps {
 
 interface GroupData {
     // these names match with the ones returned in the "/config/groups" fetch.
-    //namespace:string,
     type:string,  // rs, ds, ss
     name:string
 }
@@ -97,11 +96,30 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
         getNamespaces(props.clusters?.find(c => c.name===selectedCluster.name)!);
     };
 
+    const onChangeNamespace = (event:SelectChangeEvent) => {
+        var ns=event.target.value;
+        setNamespace(ns);
+        setGroup('');
+        setAllGroups([]);
+        setPod('');
+        setContainer('');
+        if (view!=='namespace') getGroups(selectedCluster, ns);
+    }
+
+    const onChangeGroup = (event:SelectChangeEvent) => {
+        var groupName=event.target.value;
+        setGroup(groupName);
+        setPod('');
+        setContainer('');
+        var groupData=allGroups.find(g => g.name===groupName)!;
+        if (view!=='group') getPods(namespace,groupData);
+    }
+
     const onChangePod= (event: SelectChangeEvent) => {
         setPod(event.target.value)    
         if (view==='container') {
             setContainer('');
-            //+++getContainers(namespace, event.target.value);
+            getContainers(namespace, event.target.value);
         }
     }
 
@@ -131,31 +149,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             selection.logName=namespace+'-'+pod;
         else if (view==='container')
             selection.logName=namespace+'-'+pod+'-'+container;
-
-
-
-        console.log('selection');
-        console.log(selection);
         props.onAdd(selection);
-    }
-
-    const onChangeNamespace = (event:SelectChangeEvent) => {
-        var ns=event.target.value;
-        setNamespace(ns);
-        setGroup('');
-        setAllGroups([]);
-        setPod('');
-        setContainer('');
-        if (view!=='namespace') getGroups(selectedCluster, ns);
-    }
-
-    const onChangeGroup = (event:SelectChangeEvent) => {
-        var groupName=event.target.value;
-        setGroup(groupName);
-        setPod('');
-        setContainer('');
-        var groupData=allGroups.find(g => g.name===groupName)!;
-        if (view!=='group') getPods(namespace,groupData);
     }
 
     const addable = () => {
@@ -183,7 +177,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={selectedCluster===undefined}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={selectedCluster.name===''}>
                 <InputLabel id='view'>View</InputLabel>
                 <Select labelId='view' value={view} onChange={onChangeView} >
                 { ['namespace','group','pod','container'].map( (value:string) => {

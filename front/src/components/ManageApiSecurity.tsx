@@ -89,7 +89,9 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
     const onClickNew= () => {
         setSelectedKey(undefined);
         setDescrition('');
-        setExpire(0);
+        var a = Date.now();
+        a+=1000*60*60*24*30; // 30 days
+        setExpire(a);
         setKeyType('permanent');
         setScope('');
         setNamespace('');
