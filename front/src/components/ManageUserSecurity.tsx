@@ -3,6 +3,7 @@ import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormCon
 import { User } from '../model/User';
 import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
+import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addPutAuthorization } from '../tools/AuthorizationManagement';
 const copy = require('clipboard-copy');
 
 interface IProps {
@@ -10,7 +11,7 @@ interface IProps {
 }
 
 const ManageUserSecurity: React.FC<any> = (props:IProps) => {
-    const {accessKey, backendUrl} = useContext(SessionContext) as SessionContextType;
+    const {accessKey: accessString, backendUrl} = useContext(SessionContext) as SessionContextType;
     const [users, setUsers] = useState<string[]>();
     const [selectedUser, setSelectedUser] = useState<User|undefined>(undefined);
     const [msgBox, setMsgBox] = useState(<></>);
@@ -27,7 +28,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
     const [container, setContainer] = useState('');
     
     const getUsers = async () => {
-        var response = await fetch(`${backendUrl}/user`, { headers: { 'Authorization':'Bearer '+accessKey }});
+        var response = await fetch(`${backendUrl}/user`, addGetAuthorization(accessString));
         var data = await response.json();
         setUsers(data);
     }
@@ -38,7 +39,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
 
     const onUserSelected = async (uname:string) => {
         setId(uname);
-        var data = await (await fetch(`${backendUrl}/user/${uname}`, { headers: { 'Authorization':'Bearer '+accessKey }})).json();
+        var data = await (await fetch(`${backendUrl}/user/${uname}`, addGetAuthorization(accessString))).json();
         setSelectedUser(data);
         setName(data.name||'');
         setPassword(data.password||'');
@@ -57,11 +58,12 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
 
     const onClickSave= async () => {
         var user={ id, name, password, scope, namespace, group: (groupType!==''? groupType+'+'+groupName:''), pod, container }
+        var payload=JSON.stringify(user);
         if (selectedUser!==undefined) {
-            await fetch(`${backendUrl}/user/${user.id}`, {method:'PUT', body:JSON.stringify(user), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+accessKey }});
+            await fetch(`${backendUrl}/user/${user.id}`, addPutAuthorization(accessString, payload));
         }
         else {
-            await fetch(`${backendUrl}/user`, {method:'POST', body:JSON.stringify(user), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+accessKey }});
+            await fetch(`${backendUrl}/user`, addPostAuthorization(accessString, payload));
             setSelectedUser(undefined);
         }
         setSelectedUser(undefined);
@@ -100,7 +102,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
     }
     const onConfirmDelete= async () => {
         if (selectedUser!==undefined) {
-            await fetch(`${backendUrl}/user/${selectedUser.id}`, {method:'DELETE', headers: { 'Authorization':'Bearer '+accessKey }});
+            await fetch(`${backendUrl}/user/${selectedUser.id}`, addDeleteAuthorization(accessString));
             setId('')
             setName('');
             setPassword('')

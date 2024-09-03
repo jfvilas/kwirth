@@ -36,7 +36,7 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from './tools/MsgBox';
 import { Message } from './model/Message';
 import { Settings } from './model/Settings';
 import { SessionContext, SessionContextType } from './model/SessionContext';
-import { flushSync } from 'react-dom';
+import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement';
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883';
@@ -46,7 +46,7 @@ const App: React.FC = () => {
 
     const [user, setUser] = useState<User>();
     const [logged,setLogged]=useState(false);
-    const [accessKey,setAccessKey]=useState('');
+    const [accessString,setAccessString]=useState('');
     const [msgBox, setMsgBox] =useState(<></>);
 
     const [clusters, setClusters] = useState<Cluster[]>();
@@ -133,15 +133,15 @@ const App: React.FC = () => {
 
     const getClusters = async () => {
         // get current cluster
-        var response = await fetch(`${backendUrl}/config/cluster`, {headers:{Authorization:'Bearer '+accessKey}});
+        var response = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString));
         var srcCluster = await response.json() as Cluster;
         srcCluster.url=backendUrl;
-        srcCluster.accessKey=accessKey;
+        srcCluster.accessKey=accessString;
         srcCluster.source=true;
 
         // get previously configured clusters
         var clusterList:Cluster[]=[];
-        var response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, {headers:{Authorization:'Bearer '+accessKey}});
+        var response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString));
         if (response.status===200) {
         clusterList=JSON.parse (await response.json());
         clusterList=clusterList.filter (c => c.name!==srcCluster.name);
@@ -152,7 +152,7 @@ const App: React.FC = () => {
     }
 
     const readSettings = async () => {
-        var resp=await fetch (`${backendUrl}/store/${user?.id}/settings/general`, {headers:{Authorization:'Bearer '+accessKey}});
+        var resp=await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString));
         if (resp.status===200) {
         var json=await resp.json();
         if (json) {
@@ -169,7 +169,7 @@ const App: React.FC = () => {
     const writeSettings = async (newSettings:Settings) => {
         setSettings(newSettings);
         var payload=JSON.stringify(newSettings);
-        fetch (`${backendUrl}/store/${user?.id}/settings/general`, {method:'POST', body:payload, headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+        fetch (`${backendUrl}/store/${user?.id}/settings/general`, addPostAuthorization(accessString, payload));
     }
 
     const onResourceSelectorAdd = (selection:any) => {
@@ -447,11 +447,11 @@ const App: React.FC = () => {
             switch(selectedLog?.view) {
                 case 'set':
                     // restart a deployment
-                    fetch (`${backendUrl}/managecluster/restartdeployment/${selectedLog.namespace}/${selectedLog.group}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+                    fetch (`${backendUrl}/managecluster/restartdeployment/${selectedLog.namespace}/${selectedLog.group}`, addPostAuthorization(accessString));
                     break;
                 case 'pod':
                     // restart a pod
-                    fetch (`${backendUrl}/managecluster/restartpod/${selectedLog.namespace}/${selectedLog.pod}`, {method:'POST', body:'', headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+                    fetch (`${backendUrl}/managecluster/restartpod/${selectedLog.namespace}/${selectedLog.pod}`, addPostAuthorization(accessString));
                     break;
             }
         }
@@ -478,7 +478,7 @@ const App: React.FC = () => {
             newLogs.push(newLog);
         }
         var payload=JSON.stringify(newLogs);
-        fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessKey}});
+        fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addPostAuthorization(accessString, payload));
         if (currentBoardName!==boardName) setCurrentBoardName(boardName);
     }
 
@@ -487,7 +487,7 @@ const App: React.FC = () => {
     }
 
     const loadBoard = async () => {
-        var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, {headers:{Authorization:'Bearer '+accessKey}})).json();
+        var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json();
         if (allBoards.length===0)
             showNoBoards();
         else
@@ -522,7 +522,7 @@ const App: React.FC = () => {
             loadBoard();
             break;
         case MenuDrawerOption.DeleteView:
-            var allallBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, {headers:{Authorization:'Bearer '+accessKey}})).json();
+            var allallBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json();
             if (allallBoards.length===0)
                 showNoBoards();
             else
@@ -538,14 +538,14 @@ const App: React.FC = () => {
             setShowUserSecurity(true);
             break;
         case MenuDrawerOption.ExportViews:
-            var allallBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, {headers:{Authorization:'Bearer '+accessKey}})).json();
+            var allallBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json();
             if (allallBoards.length===0) {
                 showNoBoards();
             }
             else {
                 var content:any={};
                 for (var boardName of allallBoards) {
-                    var readBoard = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, {headers:{Authorization:'Bearer '+accessKey}})).json();
+                    var readBoard = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json();
                     content[boardName]=JSON.parse(readBoard);
                 }
                 handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`);
@@ -563,7 +563,7 @@ const App: React.FC = () => {
         case MenuDrawerOption.UpdateKwirth:
             setMsgBox(MsgBoxYesNo('Update Kwirth',`This action will restart the Kwirth instance and users won't be able to work during 7 to 10 seconds. In addition, all volatile API keys will be deleted. Do you want to continue?`,setMsgBox, (button) => {
                 if (button===MsgBoxButtons.Yes) {
-                    fetch (`${backendUrl}/managekwirth/restart`, {headers:{Authorization:'Bearer '+accessKey}});
+                    fetch (`${backendUrl}/managekwirth/restart`, addGetAuthorization(accessString));
                 }
             }));
             break;
@@ -576,7 +576,7 @@ const App: React.FC = () => {
     const deleteBoardSelected = (boardName:string) => {
         setMsgBox(MsgBoxYesNo('Delete board',`Are you ure you want to delete board ${boardName}`,setMsgBox, (button) => {
             if (button===MsgBoxButtons.Yes) {
-                fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, {method:'DELETE', headers:{Authorization:'Bearer '+accessKey}});
+                fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addDeleteAuthorization(accessString));
                 setCurrentBoardName('');
             }
         }));
@@ -603,7 +603,7 @@ const App: React.FC = () => {
                 var allBoards=JSON.parse(e.target.result);
                 for (var boardName of Object.keys(allBoards)) {
                     var payload=JSON.stringify(allBoards[boardName]);
-                    fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, {method:'POST', body:payload, headers:{'Content-Type':'application/json', Authorization:'Bearer '+accessKey}});
+                    fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addPostAuthorization(accessString, payload));
                 }
             };
             reader.readAsText(file);
@@ -645,7 +645,7 @@ const App: React.FC = () => {
     const loadBoardSelected = async (boardName:string) => {
         if (boardName) {
             clearLogs();
-            var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, {headers:{Authorization:'Bearer '+accessKey}})).json();
+            var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json();
             var newLogs=JSON.parse(n) as LogObject[];
             setLogs(newLogs);
             setBoardLoaded(true);
@@ -674,7 +674,8 @@ const App: React.FC = () => {
 
     const manageClustersClosed = (cc:Cluster[]) => {
         setShowManageClusters(false);
-        fetch (`${backendUrl}/store/${user?.id}/clusters/list`, {method:'POST', body:JSON.stringify(cc), headers:{'Content-Type':'application/json', Authorization:'Bearer '+accessKey}});
+        var payload=JSON.stringify(cc);
+        fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addPostAuthorization(accessString, payload));
         setClusters(cc);
     }
 
@@ -682,7 +683,7 @@ const App: React.FC = () => {
         if (result) {
             setLogged(true);
             setUser(user);
-            setAccessKey(accessKey);
+            setAccessString(accessKey);
             setCurrentBoardName('untitled');
             clearLogs();
         }
@@ -690,14 +691,14 @@ const App: React.FC = () => {
 
     if (!logged) return (<>
         <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
-            <SessionContext.Provider value={{ user, accessKey, logged, backendUrl }}>
+            <SessionContext.Provider value={{ user, accessKey: accessString, logged, backendUrl }}>
                 <Login onClose={onCloseLogin}></Login>
             </SessionContext.Provider>
         </div>
     </>);
 
     return (<>
-        <SessionContext.Provider value={{ user, accessKey, logged, backendUrl }}>
+        <SessionContext.Provider value={{ user, accessKey: accessString, logged, backendUrl }}>
             <AppBar position="sticky" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
                 <Toolbar>
                 <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>

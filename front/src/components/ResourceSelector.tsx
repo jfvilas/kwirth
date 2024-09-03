@@ -8,6 +8,7 @@ import { MsgBoxOk } from '../tools/MsgBox';
 import IconDaemonSet from'../icons/svg/ds.svg';
 import IconReplicaSet from'../icons/svg/rs.svg';
 import IconStatefulSet from'../icons/svg/ss.svg';
+import { addGetAuthorization } from '../tools/AuthorizationManagement';
 const KIconDaemonSet = () => <img src={IconDaemonSet} height={'16px'}/>;;
 const KIconReplicaSet = () => <img src={IconReplicaSet} height={'16px'}/>;
 const KIconStatefulSet = () => <img src={IconStatefulSet} height={'16px'}/>;;
@@ -27,8 +28,8 @@ interface GroupData {
 
 const ResourceSelector: React.FC<any> = (props:IProps) => {
     const {user} = useContext(SessionContext) as SessionContextType;
-    const [view, setView] = useState('');
     const [selectedCluster, setSelectedCluster] = useState<Cluster>(new Cluster());
+    const [view, setView] = useState('');
     const [namespace, setNamespace] = useState('');
     const [allNamespaces, setAllNamespaces] = useState<string[]>([]);
     const [group, setGroup] = useState<string>('');
@@ -42,7 +43,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
 
     const getNamespaces = async (cluster:Cluster) => {
         if (cluster) {
-            var response = await fetch(`${cluster.url}/config/namespace?cluster=${cluster.name}`,{headers:{'Authorization':'Bearer '+cluster!.accessKey}});
+            var response = await fetch(`${cluster.url}/config/namespace?cluster=${cluster.name}`, addGetAuthorization(cluster!.accessKey));
             if (response.status!==200) {
                 setMsgBox(MsgBoxOk('Resource Selector',`Error accessing cluster: ${JSON.stringify(response.status)}`, setMsgBox));
             }
@@ -55,20 +56,20 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     }
     
     const getGroups = async (cluster:Cluster,namespace:string) => {
-        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/groups?cluster=${cluster.name}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
+        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/groups?cluster=${cluster.name}`, addGetAuthorization(selectedCluster!.accessKey));
         var data = await response.json() as GroupData[];
         setAllGroups(data);
         setGroup('');
     }
 
     const getPods = async (namespace:string, group:GroupData) => {
-        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${group.name}/pods?type=${group.type}&cluster=${selectedCluster?.name}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
+        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${group.name}/pods?type=${group.type}&cluster=${selectedCluster?.name}`, addGetAuthorization(selectedCluster!.accessKey));
         var data = await response.json();
         setPods(data);
     }
 
     const getContainers = async (namespace:string,pod:string) => {
-        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${pod}/containers?cluster=${selectedCluster?.name}`,{headers:{'Authorization':'Bearer '+selectedCluster!.accessKey}});
+        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${pod}/containers?cluster=${selectedCluster?.name}`, addGetAuthorization(selectedCluster!.accessKey));
         var data = await response.json();
         setContainers(data);
     }
@@ -151,6 +152,8 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     const onChangeGroup = (event:SelectChangeEvent) => {
         var groupName=event.target.value;
         setGroup(groupName);
+        setPod('');
+        setContainer('');
         var groupData=allGroups.find(g => g.name===groupName)!;
         if (view!=='group') getPods(namespace,groupData);
     }

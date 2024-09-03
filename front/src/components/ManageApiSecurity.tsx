@@ -4,6 +4,7 @@ import { ApiKey } from '../model/ApiKey';
 import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
 import { AccessKey, accessKeySerialize, buildResource, parseResource } from '../model/AccessKey';
+import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addPutAuthorization } from '../tools/AuthorizationManagement';
 const copy = require('clipboard-copy');
 
 interface IProps {
@@ -11,7 +12,7 @@ interface IProps {
 }
 
 const ManageApiSecurity: React.FC<any> = (props:IProps) => {
-    const {accessKey, backendUrl} = useContext(SessionContext) as SessionContextType;
+    const {accessKey: accessString, backendUrl} = useContext(SessionContext) as SessionContextType;
     const [msgBox, setMsgBox] = useState(<></>);
     const [keys, setKeys] = useState<ApiKey[]|null>();
     const [selectedKey, setSelectedKey] = useState<ApiKey>();
@@ -28,7 +29,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
     const [showVolatile, setShowVolatile] = useState<boolean>(false);
 
     const getKeys = async () => {
-        var response = await fetch(`${backendUrl}/key`, { headers: { 'Authorization':'Bearer '+accessKey }});
+        var response = await fetch(`${backendUrl}/key`, addGetAuthorization(accessString));
         var data = await response.json();
         setKeys(data);
     }
@@ -72,11 +73,13 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
             selectedKey.accessKey.type=keyType;
             selectedKey.accessKey.resource=res;
             var key={ accessKey:selectedKey?.accessKey, description, expire };
-            await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, {method:'PUT', body:JSON.stringify(key), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+accessKey}});
+            var payload=JSON.stringify(key);
+            await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, addPutAuthorization(accessString, payload));
         }
         else {
             var newkey={ description, expire, type:keyType, resource:res};
-            await fetch(`${backendUrl}/key`, {method:'POST', body:JSON.stringify(newkey), headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+accessKey}});
+            var payload=JSON.stringify(newkey);
+            await fetch(`${backendUrl}/key`, addPostAuthorization(accessString, payload));
         }
         setDescrition('');
         setExpire(0);
@@ -102,7 +105,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
 
     const onConfirmDelete= async () => {
         if (selectedKey!==undefined) {
-            await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, {method:'DELETE', headers:{ 'Authorization':'Bearer '+accessKey }});
+            await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, addDeleteAuthorization(accessString));
             setDescrition('');
             setExpire(0);
             getKeys();
@@ -183,12 +186,12 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
                         description==='' ||
                         expire===0 ||
                         selectedKey?.accessKey.type==='volatile' ||
-                        accessKeySerialize(selectedKey?.accessKey!)===accessKey
+                        accessKeySerialize(selectedKey?.accessKey!)===accessString
                         }>SAVE</Button>
                     <Button onClick={onClickCopy} disabled={selectedKey===undefined}>COPY</Button>
                     <Button onClick={onClickDelete} disabled={
                         selectedKey===undefined || 
-                        accessKeySerialize(selectedKey?.accessKey!)===accessKey ||
+                        accessKeySerialize(selectedKey?.accessKey!)===accessString ||
                         selectedKey.accessKey.type==='volatile'
                         }>DELETE</Button>
                 </Stack>

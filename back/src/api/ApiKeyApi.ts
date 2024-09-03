@@ -13,7 +13,7 @@ export class ApiKeyApi {
         this.configMaps = configMaps;
 
         configMaps.read('kwirth.keys',[]).then( result => {
-            result=cleanApiKeys(result);
+            if (result) result=cleanApiKeys(result);
             ApiKeyApi.apiKeys=result;
         });
 

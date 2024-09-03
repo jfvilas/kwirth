@@ -4,6 +4,7 @@ import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
 import { accessKeySerialize, accessKeyBuild } from '../model/AccessKey';
 import { User } from '../model/User';
+import { addPostAuthorization } from '../tools/AuthorizationManagement';
 
 interface IProps {
       onClose:(result:boolean,user:User|null, accessKey:string) => {}
@@ -21,11 +22,11 @@ const Login: React.FC<any> = (props:IProps) => {
     const login = async (user:string, password:string, newPassword:string='') => {
         if (newPassword!=='') {
             var payload=JSON.stringify({user:user, password:password, newpassword:newPassword});
-            return await fetch(backendUrl+'/login/password', {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+            return await fetch(backendUrl+'/login/password', addPostAuthorization('',payload));
         }
         else {
             var payload=JSON.stringify({user:user, password:password});
-            return await fetch(backendUrl+'/login', {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
+            return await fetch(backendUrl+'/login', addPostAuthorization('',payload));
         }
     }
 
