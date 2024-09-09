@@ -4,7 +4,7 @@ export class Cluster {
     public id:string;
     public name:string='';
     public url:string='';
-    public accessKey:string='';
+    public accessString:string='';
     public source:boolean|undefined=false;
     public inCluster:boolean=false;
 

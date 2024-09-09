@@ -42,7 +42,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
 
     const getNamespaces = async (cluster:Cluster) => {
         if (cluster) {
-            var response = await fetch(`${cluster.url}/config/namespace?cluster=${cluster.name}`, addGetAuthorization(cluster!.accessKey));
+            var response = await fetch(`${cluster.url}/config/namespace?cluster=${cluster.name}`, addGetAuthorization(cluster!.accessString));
             if (response.status!==200) {
                 setMsgBox(MsgBoxOk('Resource Selector',`Error accessing cluster: ${JSON.stringify(response.status)}`, setMsgBox));
             }
@@ -55,20 +55,20 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     }
     
     const getGroups = async (cluster:Cluster,namespace:string) => {
-        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/groups?cluster=${cluster.name}`, addGetAuthorization(selectedCluster!.accessKey));
+        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/groups?cluster=${cluster.name}`, addGetAuthorization(selectedCluster!.accessString));
         var data = await response.json() as GroupData[];
         setAllGroups(data);
         setGroup('');
     }
 
     const getPods = async (namespace:string, group:GroupData) => {
-        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${group.name}/pods?type=${group.type}&cluster=${selectedCluster?.name}`, addGetAuthorization(selectedCluster!.accessKey));
+        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${group.name}/pods?type=${group.type}&cluster=${selectedCluster?.name}`, addGetAuthorization(selectedCluster!.accessString));
         var data = await response.json();
         setPods(data);
     }
 
     const getContainers = async (namespace:string,pod:string) => {
-        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${pod}/containers?cluster=${selectedCluster?.name}`, addGetAuthorization(selectedCluster!.accessKey));
+        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${pod}/containers?cluster=${selectedCluster?.name}`, addGetAuthorization(selectedCluster!.accessString));
         var data = await response.json();
         setContainers(data);
     }

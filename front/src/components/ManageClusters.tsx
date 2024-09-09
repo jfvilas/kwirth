@@ -13,7 +13,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
   const [selectedCluster, setSelectedCluster] = useState<Cluster|null>();
   const [name, setName] = useState<string>('');
   const [url, setUrl] = useState<string>('');
-  const [accessKey, setAccessKey] = useState<string>('');
+  const [accessString, setAccessKey] = useState<string>('');
   const [msgBox, setMsgBox] =useState(<></>);
 
   const onClusterSelected = (idSelected:string|null) => {
@@ -21,12 +21,12 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
     setSelectedCluster(cluster);
     setName(cluster?.name!);
     setUrl(cluster?.url!);
-    setAccessKey(cluster?.accessKey!);
+    setAccessKey(cluster?.accessString!);
   }
 
   const onClickSave= async () => {
     if (selectedCluster) {
-      selectedCluster.accessKey=accessKey;
+      selectedCluster.accessString=accessString;
       selectedCluster.name=name;
       selectedCluster.url=url;
       clusters.splice(clusters?.findIndex(c => c.id===selectedCluster.id)!,1);
@@ -34,7 +34,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
     }
     else {
       var c=new Cluster();
-      c.accessKey=accessKey;
+      c.accessString=accessString;
       c.name=name;
       c.url=url;
       clusters?.push(c);
@@ -82,7 +82,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
             <Stack sx={{width:'50vh'}} spacing={1}>
               <TextField value={name} onChange={(e) => setName(e.target.value)} disabled={selectedCluster?.source} variant='standard' label='Name'></TextField>
               <TextField value={url} onChange={(e) => setUrl(e.target.value)} disabled={selectedCluster?.source}variant='standard' label='URL'></TextField>
-              <TextField value={accessKey} onChange={(e) => setAccessKey(e.target.value)} disabled={selectedCluster?.source} variant='standard' label='API Key'></TextField>
+              <TextField value={accessString} onChange={(e) => setAccessKey(e.target.value)} disabled={selectedCluster?.source} variant='standard' label='API Key'></TextField>
             </Stack>
           </>}
         </Stack>

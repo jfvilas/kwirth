@@ -136,7 +136,7 @@ const App: React.FC = () => {
         var response = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString));
         var srcCluster = await response.json() as Cluster;
         srcCluster.url=backendUrl;
-        srcCluster.accessKey=accessString;
+        srcCluster.accessString=accessString;
         srcCluster.source=true;
 
         // get previously configured clusters
@@ -295,7 +295,7 @@ const App: React.FC = () => {
         ws.onopen = () => {
             console.log(`WS connected: ${ws.url}`);
             var payload={
-                accessKey: cluster!.accessKey,
+                accessKey: cluster!.accessString,
                 scope: 'view',
                 view: log.view,
                 namespace: log.namespace, 

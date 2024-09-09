@@ -3,14 +3,14 @@ import { accessKeyDeserialize, accessKeySerialize, parseResource } from '../mode
 
 export const validKey = (req:any,res:any) => {
     if (req.headers.authorization && req.headers.authorization) {
-        var key=req.headers.authorization.replaceAll('Bearer ','').trim();
-        var apiKey=ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===key);
-        if (!apiKey) {
-            console.log('Inexistent key: '+key);
+        var receivedAccessString=req.headers.authorization.replaceAll('Bearer ','').trim();
+        var key=ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString);
+        if (!key) {
+            console.log('Inexistent key: '+receivedAccessString);
         }
         else {
-            if (apiKey.expire<Date.now()) {
-                console.log('Expired key: '+key);
+            if (key.expire<Date.now()) {
+                console.log('Expired key: '+receivedAccessString);
             }
             else {
                 return true;
@@ -31,32 +31,32 @@ export const getScopeLevel = (scope:string) => {
     return levelScopes.indexOf(scope);
 }
 
-export const validAuth = (req:any,res:any, scope:string, namespace:string, group:string, pod:string, container:string) => {
+export const validAuth = (req:any,res:any, reqScope:string, namespace:string, group:string, pod:string, container:string) => {
     var key=req.headers.authorization.replaceAll('Bearer ','').trim();
     var accessKey=accessKeyDeserialize(key);
     var resId=parseResource(accessKey.resource);
 
 
     console.log('presented resourceId',resId);
-    console.log('requested access',scope,namespace, group, pod, container);
+    console.log('requested access', reqScope, namespace, group, pod, container);
     if (resId.scope==='cluster') return true;
-    if (!(getScopeLevel(scope)>getScopeLevel(resId.scope))) {
-        console.log('insufficeint scope level');
+    if (getScopeLevel(reqScope) < getScopeLevel(resId.scope)) {
+        console.log('insufficient scope level');
         return false;
     }
-    if (!(namespace==='' || namespace===resId.namespace)) {
+    if ((namespace !== '') && (namespace !== resId.namespace)) {
         console.log('insufficient namespace capabilities');
         return false;
     }
-    if (!(group==='' || group===resId.set)) {
+    if ((group !== '') && (group !== resId.set)) {
         console.log('insufficient group capabilities');
         return false;
     }
-    if (!(pod==='' || pod===resId.pod)) {
+    if ((pod !== '') && (pod !== resId.pod)) {
         console.log('insufficient pod capabilities');
         return false;
     }
-    if (!(container==='' || container===resId.container)) {
+    if ((container !== '') && (container !== resId.container)) {
         console.log('insufficient container capabilities');
         return false;
     }
