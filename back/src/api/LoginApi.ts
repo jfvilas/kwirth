@@ -46,10 +46,10 @@ export class LoginApi {
                 if (user) {
                     if (req.body.password===user.password) {
                         if (user.password==='password')
-                        res.status(201).send('');
+                            res.status(201).send('');
                         else {
-                        user.accessKey=(await this.createApiKey(req, req.body.user)).accessKey;
-                        res.status(200).json(this.okResponse(user));
+                            user.accessKey=(await this.createApiKey(req, req.body.user)).accessKey;
+                            res.status(200).json(this.okResponse(user));
                         }
                     } 
                     else {

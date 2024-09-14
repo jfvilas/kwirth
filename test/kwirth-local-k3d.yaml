@@ -58,7 +58,7 @@ spec:
       serviceAccount: kwirth-sa
       containers:
         - name: kwirth
-          image: kwirth:latest
+          image: kwirth:0.1.217
           imagePullPolicy: Never
           env:
             - name: KWIRTH_ROOTPATH
@@ -74,18 +74,3 @@ spec:
             requests:
               cpu: 500m
               memory: 1Gi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: kwirth-svc
-  namespace: default
-spec:
-  selector:
-    app: kwirth
-  ports:
-    - name: kwirth-port
-      protocol: TCP
-      port: 3883
-      targetPort: 3883
-  type: ClusterIP

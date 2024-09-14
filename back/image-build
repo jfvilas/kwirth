@@ -1,8 +1,13 @@
 #!/bin/bash
 ./build
 
-docker image rm kwirth:latest
+export MAJOR=$(cat major)
+export MINOR=$(cat minor)
+export LEVEL=$(cat level)
+export CURRENTVERSION=$MAJOR.$MINOR.$LEVEL
+
+docker image rm kwirth:$CURRENTVERSION
 # export  DOCKER_BUILDKIT=1
 # export COMPOSE_DOCKER_CLI_BUILD=0
-docker build . -t kwirth:latest
-k3d image import kwirth:latest -c kwirth
+docker build . -t kwirth:$CURRENTVERSION
+
