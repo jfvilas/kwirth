@@ -29,10 +29,6 @@ An API key requires following information to be created:
 
 On the left side of the dialog you can see a list of currently existing API keys, and you can filter the list by selecting Permanent or Volatile on top of the list.
 
-The union of key type, scope, namespace, group (type and name), pod and container is what we call an **ACCESS KEY**. It is important to differentiate an API Key (which contains a date), and the namespace, group, pod and container together form what we call the **RESOURCE ID**.
-
-That is, an API Key contains an **expiration date and an Access Key**. And an access key contains the **type, the scope and the resource id**. And the resource id is a declaration of a set of names (nad list of names) of objects from the cluster that match with the names declared in the resource id.
-
 ## Example
 If you want to concede permissions to an external application like Kubelog to view all logs in your 'production' namespace you shoult create an API key like this:
 
@@ -45,6 +41,20 @@ Which would take this aspect:
 ```
 
 This is the API key you should configure in your client application.
+
+
+## API Keys, Access Keys and Resource Id
+The union of key type (permanent or volatile), scope (view, restart...), namespace, group (type and name), pod and container is what we call an **ACCESS KEY**. That is, the API key is the sum of the Access Key plus its expiration date.
+
+When we talk about Access Keys we need to explain its content deeply. This is what an Access Key contains:
+  - An unique Id (a GUID).
+  - The type of key (permant, volatile or whatever)
+  - The scope and the resoure identifier:
+    - Scope is points to the kind of actions that can be done: view logs, restart pods, manage apis...
+    - Resource id is a pattern which states what resrouces can be managed (accoriding to scope) by using this Access Key.
+
+That is, an API Key contains an **expiration date and an Access Key**. And an access key contains the **type, the scope and the resource id**. And the resource id is a declaration of a set of names (nad list of names) of objects from the cluster that match with the names declared in the resource id.
+
 
 ## Multi cluster support
 When you use an instance of Kwirth as a gate to a multi-cluster log management system, you need to add clusters, as shown in (cluster managment)[clustermanagemnet]. For a cluster to be added to another Kwirth instance, you must previously create an API like we've just explained.

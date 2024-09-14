@@ -24,9 +24,6 @@ In the near future we plan to add roles and specific object roles, so users coul
 ### API security
 You can create, modify and delete API keys using "API security" menu option from the main Kwirth menu. If you are not an admin user you will not see this option.
 
-API security is the mean you can use to give access to your Kwirth to users that work with another Kwirth. The diagram below explains how this works.
+API security is the mean you can use to give access to your Kwirth to users that work with another Kwirth. The diagram below explains how this works (refer to API Management documentation to undertand basic concepts and it works).
 
->> create two-cluster diagram
-
-### API keys and Access Keys
-*Pending*
+>> +++ create two-cluster diagram
