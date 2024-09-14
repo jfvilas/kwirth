@@ -23,13 +23,13 @@ export class ConfigMaps {
                 return {};
             }
             catch (err) {
-                console.log('err replacing try to create');
-                console.log(err);
+                console.log(`Error replacing (${(err as any).response.body.message}) try to create`);
                 try {
                     await this.coreApi?.createNamespacedConfigMap(this.namespace, configMap);
                     return {};
                 }
                 catch (err) {
+                    console.log(`Error creating (${(err as any).response.body.message}).`);
                     console.log(err);
                     return {};
                 }

@@ -1,11 +1,11 @@
-# API management
+# API management [PENDING RE-WRITING]
 Access to Kwirth is secured by the use of APIs. When you access Kwirth via its own frontend application, this React application obtains an API key fro you to work with Kwirth.
 
 But there are situations in which you want to create and share an API for another external use. In this case, you need to use this API Management tool.
 
 ![api-management](./_media/api-management.png)
 
-An API key requirres following information to be created:
+An API key requires following information to be created:
 
 - **Description**. For obious reasons it is important to write down what an API key has been created for,
 - **Expire**. In milliseconds, absolute expire moment for the API Key.

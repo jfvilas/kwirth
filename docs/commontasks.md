@@ -59,7 +59,7 @@ Where the content of the board is as follows:
   - Filter. You can filter what info is shown on the log object (a tab in the board). Filters are the basis for the alarms.
 
 
-### Alarming
+### Alarming [PENDING REFINEMENT]
 You can use Kwirth just as an alarming tool (or in addtion to your logging needs). Alarming in Kwirth consists of:
 
   - Define **expressions** that are used to detect anomalies or exceptional situations you want to manage in a special way.

@@ -175,7 +175,6 @@ const getSelectedPods = async (resId:ResourceIdentifier, validNamespaces:string[
     var allPods=await coreApi.listPodForAllNamespaces(); //+++ can be optimized if config.namespace is specified
     var selectedPods:V1Pod[]=[];
     for (var pod of allPods.body.items) {
-        console.log(`Validating ${pod.metadata?.namespace}/${pod.metadata?.name} access`);
         var valid=true;
         if (resId.namespace!=='') valid &&= validNamespaces.includes(pod.metadata?.namespace!);
         //+++ other filters pending implementation
@@ -268,8 +267,7 @@ async function processClientMessage(message:string, webSocket:any) {
 
                             var ml:any=validPod.metadata?.labels;
                             var labelSelector = Object.entries(ml).map(([key, value]) => `${key}=${value}`).join(',');
-                            console.log(labelSelector);
-                            console.log(podLogConfig);
+                            console.log(`Label selector: ${labelSelector}`);
                             watchPods(`/api/v1/namespaces/${podLogConfig.namespace}/pods`, { labelSelector }, webSocket, podLogConfig);
                         }
                         else {
@@ -311,6 +309,12 @@ const launch = (kwrithData: KwirthData) => {
   secrets = new Secrets(coreApi, kwrithData.namespace);
   configMaps = new ConfigMaps(coreApi, kwrithData.namespace);
 
+  // serve front
+  console.log(`SPA is available at: ${rootPath}/front`)
+  app.get(`/`, (req:any,res:any) => { res.redirect(`${rootPath}/front`) });
+  app.get(`${rootPath}`, (req:any,res:any) => { res.redirect(`${rootPath}/front`) });
+  app.use(`${rootPath}/front`, express.static('./dist/front'))
+
   // serve config API
   var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi, kwrithData);
   app.use(`${rootPath}/config`, va.route);
@@ -350,10 +354,6 @@ console.log(`Kwirth version is ${VERSION}`);
 console.log(`Kwirth started at ${new Date().toISOString()}`);
 
 // serve front application
-console.log(`SPA is available at: ${rootPath}/front`)
-app.get(`/`, (req:any,res:any) => { res.redirect(`${rootPath}`) });
-app.get(`${rootPath}`, (req:any,res:any) => { res.redirect(`${rootPath}/front`) });
-app.use(`${rootPath}/front`, express.static('./dist/front'))
 
 getMyKubernetesData()
     .then ( (kwirthData) => {

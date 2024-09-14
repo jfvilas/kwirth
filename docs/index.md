@@ -1,7 +1,7 @@
 # Kwirth
 Kwirth is the final implementation of the idea of having a simple way to manage logging inside a Kubernetes cluster. Maybe you feel comfortable with your DataDog or your Grafana and the Loki and the Promtrail. But maybe these (and other tools) are too complex for you.
 
-**Kwirth is the answer to your need**. Just *one pod to access all the logs you need* from your main cluster or even **consolidate logging from different clusters**.
+**Kwirth is the answer to your needs**. Just *one pod to access all the logs you need* from your main cluster or even **consolidate logging from different clusters**.
 
 You can access the source code [**HERE**](https://github.com/jfvilas/kwirth).
 
@@ -42,7 +42,7 @@ If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and run
     apiVersion: networking.k8s.io/v1
     kind: Ingress
     metadata:
-      name: ingress-jfvilas
+      name: ingress-kwirth
       namespace: default
     spec:
       ingressClassName: nginx

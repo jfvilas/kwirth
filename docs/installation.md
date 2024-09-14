@@ -30,7 +30,7 @@ Once you have deployed an Ingress controller (Ingress Nginx or whatever you like
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingress-jfvilas
+  name: ingress-kwirth
   namespace: default
 spec:
   ingressClassName: nginx
