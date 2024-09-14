@@ -60,11 +60,11 @@ const getMyKubernetesData = async ():Promise<KwirthData> => {
                 }
             }
         }
-        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true };
+        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, version:VERSION };
     }
     else {
         // this namespace will be used to access secrets and configmaps
-        return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false };
+        return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false, version:VERSION };
     }
 }
 
@@ -152,7 +152,7 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
         }
         else if (eventType === 'DELETED') {
             console.log(`Pod deleted` );
-            sendInfo(ws, `Pod deleted: ${podNamespace}/${podName}`);
+            sendInfo(ws, `POD DELETED: ${podNamespace}/${podName}`);
         }
     },
     (err:any) => {
@@ -341,7 +341,7 @@ const launch = (kwrithData: KwirthData) => {
         console.log(`Kwirth is NOT running on a cluster`);
         console.log(`Cluster name (according to kubeconfig context): ${kc.getCluster(kc.currentContext)?.name}`);
     }
-    console.log(`KWI1500I Control is being given to KWirth`);
+    console.log(`KWI1500I Control is being given to Kwirth`);
   });
 }
 
@@ -364,9 +364,10 @@ getMyKubernetesData()
     .catch ( (err) => {
         console.log('Cannot get namespace, using "default"');
         launch ({
-        clusterName: 'error-starting',
-        inCluster: false,
-        namespace: 'default',
-        deployment: ''
+            version:VERSION,
+            clusterName: 'error-starting',
+            inCluster: false,
+            namespace: 'default',
+            deployment: ''
         });
     });

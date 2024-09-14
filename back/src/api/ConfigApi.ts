@@ -2,16 +2,30 @@ import express from 'express';
 import { CoreV1Api, AppsV1Api, KubeConfig } from '@kubernetes/client-node';
 import { KwirthData } from '../model/KwirthData';
 import { validKey } from '../tools/AuthorizationManagement';
+import { VERSION } from '../version';
 
 export class ConfigApi {
     public route = express.Router();
     coreApi:CoreV1Api;
     appsV1Api:AppsV1Api;
+    kwirthData:KwirthData;
 
     constructor (kc:KubeConfig, coreApi:CoreV1Api, appsV1Api:AppsV1Api, kwirthData:KwirthData) {
-        this.coreApi=coreApi;
+        this.coreApi=coreApi
         this.appsV1Api=appsV1Api
+        this.kwirthData=kwirthData;
 
+        this.route.route('/version')
+            .get( async (req, res) => {
+                try {
+                    res.status(200).json(this.kwirthData)
+                }
+                catch (err) {
+                    res.status(200).json([])
+                    console.log(err)
+                }
+            });
+        
         this.route.route('/cluster')
             .all( async (req,res, next) => {
                 if (!validKey(req,res)) return;

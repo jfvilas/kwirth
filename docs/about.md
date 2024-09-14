@@ -12,7 +12,7 @@ In 1995, he popularized the adage now named **Wirth's law**. In his 1995 paper "
 ### Turbo Pascal
 The first time I worked with structured programming it was by using Borland's Turbo Pascal. I'd been working with imperative spaghetti-code written in BASIC for several years, and moving to procedural structured Pascal was a challenge for me.
 
-So, Klogs project needed a homage name, and it was finally renamed to *K*ubernetes *Wirth*, or ni*K*laus *Wirth*, or **KWirth**.
+So, Klogs project needed a homage name, and it was finally renamed to *K*ubernetes *Wirth*, or ni*K*laus *Wirth*, or **Kwirth**.
 
 ### Still learning...
 I'm still learning to better programming. Since I started with BASIC on the ZX81 back in 1984 I've been learning and using:

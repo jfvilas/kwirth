@@ -1,6 +1,7 @@
 export interface KwirthData {
-    clusterName:string;
-    inCluster:boolean;
-    namespace:string;
-    deployment:string;
+    version:string
+    clusterName:string
+    inCluster:boolean
+    namespace:string
+    deployment:string
 }

@@ -143,8 +143,8 @@ const App: React.FC = () => {
         var clusterList:Cluster[]=[];
         var response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString));
         if (response.status===200) {
-        clusterList=JSON.parse (await response.json());
-        clusterList=clusterList.filter (c => c.name!==srcCluster.name);
+            clusterList=JSON.parse (await response.json());
+            clusterList=clusterList.filter (c => c.name!==srcCluster.name);
         }
 
         clusterList.push(srcCluster);
