@@ -53,17 +53,17 @@ function parseResource (key:string) : ResourceIdentifier {
     }
 }
 
-function buildResource (scope:string, namespace:string, setType:string, setName:string, pod:string, container:string) : string {
-    var set=`${setType}+${setName}`;
-    if (set==='+') set='';
-    return `${scope}:${namespace}:${set}:${pod}:${container}`;
+function buildResource (scope:string, namespace:string, groupType:string, groupName:string, pod:string, container:string) : string {
+    var group=`${groupType}+${groupName}`;
+    if (group==='+') group='';
+    return `${scope}:${namespace}:${group}:${pod}:${container}`;
 }
 
 /*
     ResourceIdentifier is composed by:
 
         scope: one of: cluster(5), namespace(4), set(3), pod(2), container(1)
-        setType is the type of set: replica, stateful or daemon      
+        groupType is the type of set: replica, stateful or daemon      
         The rest of fields are names according to this rules:
             - it can be a direct name, like: 'mynamespace', 'your-replica-set', 'our-pod'...
             - it can be an '*' (without the apostrophe or ''), indicating any resource of the scope is valid

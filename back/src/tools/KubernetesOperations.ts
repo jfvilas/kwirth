@@ -60,24 +60,24 @@ export const pauseDeployment = async (appsApi:AppsV1Api, namespace:string, deplo
  */
 export const getPodsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, group:string) => {
     var response:any;
-    var setName, setType;
+    var groupName, groupType;
     if (group.includes('+'))
-        [setType, setName]=group.split('+');
+        [groupType, groupName]=group.split('+');
     else
-        [setType, setName]=['deployment', group];
+        [groupType, groupName]=['deployment', group];
 
-    switch (setType) {
+    switch (groupType) {
         case'deployment':
-            response=await appsApi.readNamespacedDeployment(setName, namespace);
+            response=await appsApi.readNamespacedDeployment(groupName, namespace);
             break;
         case'replica':
-            response=await appsApi.readNamespacedReplicaSet(setName, namespace);
+            response=await appsApi.readNamespacedReplicaSet(groupName, namespace);
             break;
         case'daemon':
-            response=await appsApi.readNamespacedDaemonSet(setName, namespace);
+            response=await appsApi.readNamespacedDaemonSet(groupName, namespace);
             break;
         case'stateful':
-            response=await appsApi.readNamespacedStatefulSet(setName, namespace);
+            response=await appsApi.readNamespacedStatefulSet(groupName, namespace);
             break;
     }
 

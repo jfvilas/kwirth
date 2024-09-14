@@ -54,9 +54,9 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
             setGroupName('');
         }
         else {
-            var [setType, setName]=res.set.split('+');
-            setGroupType(setType);
-            setGroupName(setName);
+            var [groupType, groupName]=res.set.split('+');
+            setGroupType(groupType);
+            setGroupName(groupName);
         }
         setPod(res.pod);
         setContainer(res.container);
@@ -144,7 +144,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
                         <TextField value={description} onChange={(e) => setDescrition(e.target.value)} variant='standard' label='Description'></TextField>
                         <TextField value={expire} onChange={(e) => setExpire(+e.target.value)} variant='standard' label='Expire'></TextField>
                         <FormControl variant='standard'>
-                            <InputLabel id='keytype'>Scope</InputLabel>
+                            <InputLabel id='keytype'>Key type</InputLabel>
                             <Select labelId='keytype' value={keyType} onChange={(e) => setKeyType(e.target.value)} disabled={true}>
                                 { ['volatile','permanent'].map( (value:string) => {
                                     return <MenuItem key={value} value={value}>{value}</MenuItem>
@@ -152,8 +152,8 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
                             </Select>
                         </FormControl>
                         <FormControl variant='standard'>
-                            <InputLabel id='scope'>Scope</InputLabel>
-                            <Select labelId='scope' value={scope} onChange={(e) => setScope(e.target.value)} >
+                            <InputLabel id='type'>Type</InputLabel>
+                            <Select labelId='type' value={scope} onChange={(e) => setScope(e.target.value)} >
                                 { ['cluster','api','restart','view'].map( (value:string) => {
                                     return <MenuItem key={value} value={value}>{value}</MenuItem>
                                 })}
@@ -163,8 +163,8 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
                         <Grid container direction='row'>
                             <Grid item xs={4}>
                                 <FormControl variant='standard' style={{width:'100%'}}>
-                                    <InputLabel id='settype'>SetType</InputLabel>
-                                    <Select labelId='settype' value={groupType} onChange={(e) => setGroupType(e.target.value) }>
+                                    <InputLabel id='grouptype'>GroupType</InputLabel>
+                                    <Select labelId='grouptype' value={groupType} onChange={(e) => setGroupType(e.target.value) }>
                                     { ['','replica','stateful','daemon'].map( (value:string) => {
                                         return <MenuItem key={value} value={value}>{value}</MenuItem>
                                     })}
@@ -173,7 +173,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
                             </Grid>
                             <Grid item xs={0.5}></Grid>
                             <Grid item xs={7.5}>
-                                <TextField value={groupName} onChange={(e) => setGroupName(e.target.value)} disabled={groupType===''} variant='standard' label='Set' style={{width:'100%'}}></TextField>
+                                <TextField value={groupName} onChange={(e) => setGroupName(e.target.value)} disabled={groupType===''} variant='standard' label='Group name' style={{width:'100%'}}></TextField>
                             </Grid>
                         </Grid>
                         <TextField value={pod} onChange={(e) => setPod(e.target.value)} variant='standard' label='Pod'></TextField>

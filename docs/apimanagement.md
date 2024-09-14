@@ -1,42 +1,50 @@
 # API management [PENDING RE-WRITING]
-Access to Kwirth is secured by the use of APIs. When you access Kwirth via its own frontend application, this React application obtains an API key fro you to work with Kwirth.
+Access to Kwirth is performed by using APIs that are secured. When you access Kwirth via its own frontend application, this React application obtains an API key for you to work with Kwirth.
 
-But there are situations in which you want to create and share an API for another external use. In this case, you need to use this API Management tool.
+But there are situations in which you want to create and share an API for another external use, like integrating [Backstage Kubelog](https://github.com/jfvilas/kubelog), for example. In this case, you need to use this API Management tool.
 
 ![api-management](./_media/api-management.png)
 
+The API management tool (names **API Security**) is on the main menu (the burger icon) but is only vicible to admins and users with the API scope.
+![api security menu option](api-security-menu-option.png)
+
+
+## API Keys explained
+
 An API key requires following information to be created:
 
-- **Description**. For obious reasons it is important to write down what an API key has been created for,
+- **Description**. For obious reasons it is important to write down what an API key has been created for.
 - **Expire**. In milliseconds, absolute expire moment for the API Key.
-- **Type**. There are 2 types: 'permanent', that are stored in a secure site and keep alive even if Kwirth crashes, or 'volatile' they only live in memory, they are not persisted to any storage.
-- **Scope**. As explained in other parts of this documentation, the scope is used to decide what resrouces a user can access. This are the valid scopes and their meaning:
-    - cluster: this scope means you can access log all along the cluster
-    - namespace: this scopes reduces de number of pods an API key can access to the pods included in the namespace list (see below).
-    - set
-    - pod
-    - container
-    - filter
-- **Namespace**. It's  **a comma separated list** of namespaces (or just a single one, or nothing)
-- **Set Type**. It's the type of set (replica, stateful or daemon) that you want to give access.
-- **Set Name**. It's a comma separated list of sets the API can have access to, these can be replica sets, stateful sets or daemon sets.
+- **Type**. There are 2 types: 'permanent', that are stored in a secure site and keep alive even if Kwirth crashes, or 'volatile' they only live in memory, they are not persisted to any storage. When you create Key s manually you can only create 'permanent' keys. 'volatile' keys are expected to be created by other applications.
+- **Scope**. As explained in other parts of this documentation, the scope is used to decide what an API Key owner can do with the resuources declared in the key. This are the valid scopes and their meaning:
+    - cluster: this scope means you can permform any Kwirth action on the cluster.
+    - api: this scopes allows you to manage api keys
+    - restart: this scope allows the owner of the key restartin pods or deployments in the cluster where de key has been created
+    - view: this scope allows viewing logs (is the more basic scope)
+- **Namespace**. It's  **a comma separated list** of namespaces (or just a single one, or nothing).
+- **Group Type**. It's the type of set (replica, stateful or daemon) that you want to give access.
+- **Group Name**. It's a comma separated list of sets the API can have access to, these can be replica sets, stateful sets or daemon sets.
 - **Pod**. A comma separated list of pods.
 - **Container**. A comma separated list of container inside a pod that an API key can access.
 
-On the left side of the dialog you can see a list of currently existing API keys, an d yu can filter the list by selecting Permanent or Volatile on top of the list.
+On the left side of the dialog you can see a list of currently existing API keys, and you can filter the list by selecting Permanent or Volatile on top of the list.
+
+The union of key type, scope, namespace, group (type and name), pod and container is what we call an **ACCESS KEY**. It is important to differentiate an API Key (which contains a date), and the namespace, group, pod and container together form what we call the **RESOURCE ID**.
+
+That is, an API Key contains an **expiration date and an Access Key**. And an access key contains the **type, the scope and the resource id**. And the resource id is a declaration of a set of names (nad list of names) of objects from the cluster that match with the names declared in the resource id.
 
 ## Example
-If you want to concede permissions to an external application to access all logs in your 'production' namespace you shoult create an API key like this:
+If you want to concede permissions to an external application like Kubelog to view all logs in your 'production' namespace you shoult create an API key like this:
 
 ![production-logs](./_media/production-logs.png)
 
 Which would take this aspect:
 
 ```code
-4cccfd58-a823-f1a1-5f4b-756d753b3bc3|permanent|namespace:production:::
+93df417c-e124-7d66-12a1-277d3f246bf7|permanent|view:production:::
 ```
 
-This is the API key you should use in your client application.
+This is the API key you should configure in your client application.
 
 ## Multi cluster support
-When you use an instance of Kwirth as a gate to a multi-cluster log management system, you need to add clusters, as shown in (cluster managment)[clustermanagemnet]. For a cluster to be added to another Kwirth instance, you must previously create an API like we've just explained, but the scop must be **'cluster'**.
+When you use an instance of Kwirth as a gate to a multi-cluster log management system, you need to add clusters, as shown in (cluster managment)[clustermanagemnet]. For a cluster to be added to another Kwirth instance, you must previously create an API like we've just explained.

@@ -149,8 +149,8 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
                                 <Grid container direction='row'>
                                     <Grid item xs={4}>
                                         <FormControl variant='standard' style={{width:'100%'}}>
-                                            <InputLabel id='settype'>SetType</InputLabel>
-                                            <Select labelId='settype' value={groupType} onChange={(e) => setGroupType(e.target.value) }>
+                                            <InputLabel id='grouptype'>GroupType</InputLabel>
+                                            <Select labelId='grouptype' value={groupType} onChange={(e) => setGroupType(e.target.value) }>
                                             { ['','replica','stateful','daemon'].map( (value:string) => {
                                                 return <MenuItem key={value} value={value}>{value}</MenuItem>
                                             })}
