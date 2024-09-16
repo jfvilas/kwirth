@@ -15,14 +15,15 @@ import WebSocket from 'ws';
 import { ManageKwirthApi } from './api/ManageKwirthApi'
 import { LogConfig } from './model/LogConfig'
 import { ManageClusterApi } from './api/ManageClusterApi'
-import { KwirthData } from './model/KwirthData'
 import { getScopeLevel } from './tools/AuthorizationManagement'
 import { getPodsFromGroup } from './tools/KubernetesOperations'
-import { accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier } from '@jfvilas/kwirth-common'
+import { accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier, KwirthData } from '@jfvilas/kwirth-common'
 import { StreamMessage } from '@jfvilas/kwirth-common'
 
+import express, { Request, Response} from 'express';
+
 const stream = require('stream')
-const express = require('express')
+//const express = require('express')
 const http = require('http')
 const cors = require('cors')
 const bodyParser = require('body-parser')
@@ -108,7 +109,7 @@ const sendError = (ws:WebSocket, text:string, close:boolean) => {
 }
 
 // get pods logs
-const getPodLog = async (namespace:string, podName:string, containerName:string, ws:any, config:LogConfig) => {
+const getPodLog = async (namespace:string, podName:string, containerName:string, ws:WebSocket, config:LogConfig) => {
     try {
         const logStream = new stream.PassThrough();
         logStream.on('data', (chunk:any) => {
@@ -128,23 +129,23 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
             sendLines(ws,namespace, podName,text);
         });
 
-        var streamConfig:any={ 
+        var streamConfig = { 
             follow: true, 
             pretty: false, 
-            timestamps:config.timestamp, 
+            timestamps:config.timestamp,
+            previous:Boolean(config.previous),
+            tailLines:config.maxMessages
         }
-        streamConfig.previous=Boolean(config.previous);
-        streamConfig.tailLines=config.maxMessages;
-        await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig );
+        await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig);
     }
-    catch (err:any) {
+    catch (err) {
         console.log(err);
         sendError(ws,JSON.stringify(err), false);
     }
 };
 
 // watch deployment pods
-const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
+const watchPods = (apiPath:string, filter:any, ws:WebSocket, config:LogConfig) => {
     const watch = new Watch(kc);
 
     watch.watch(apiPath, filter, (eventType:string, obj:any) => {
@@ -169,7 +170,7 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
             sendInfo(ws, `Pod DELETED: ${podNamespace}/${podName}`);
         }
     },
-    (err:any) => {
+    (err) => {
         console.log(err);
         sendError(ws,JSON.stringify(err), true);
     })
@@ -204,7 +205,7 @@ const getSelectedPods = async (resId:ResourceIdentifier, validNamespaces:string[
 }
 
 // clients send requests to start receiving log
-const processClientMessage = async (message:string, webSocket:any) => {
+const processClientMessage = async (message:string, webSocket:WebSocket) => {
 
     const config = JSON.parse(message) as LogConfig;
     if (!config.group) config.group=config.set;
@@ -279,10 +280,15 @@ const processClientMessage = async (message:string, webSocket:any) => {
                                 view: config.view
                             }
 
-                            var ml:any=validPod.metadata?.labels;
-                            var labelSelector = Object.entries(ml).map(([key, value]) => `${key}=${value}`).join(',');
-                            console.log(`Label selector: ${labelSelector}`);
-                            watchPods(`/api/v1/namespaces/${podLogConfig.namespace}/pods`, { labelSelector }, webSocket, podLogConfig);
+                            var metadataLabels = validPod.metadata?.labels;
+                            if (metadataLabels) {
+                                var labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',');
+                                console.log(`Label selector: ${labelSelector}`);
+                                watchPods(`/api/v1/namespaces/${podLogConfig.namespace}/pods`, { labelSelector }, webSocket, podLogConfig);
+                            }
+                            else {
+                                sendError(webSocket, `Access denied: cannot get metadata labels`, true);
+                            }
                         }
                         else {
                             sendError(webSocket, `Access denied: your accesskey has no access to pod '${config.pod}'`, true);
@@ -307,7 +313,7 @@ app.use(cors());
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-wss.on('connection', (ws:any, req) => {
+wss.on('connection', (ws:WebSocket, req) => {
   console.log('Client connected');
 
   ws.on('message', (message:string) => {
@@ -325,8 +331,9 @@ const launch = (kwrithData: KwirthData) => {
 
   // serve front
   console.log(`SPA is available at: ${rootPath}/front`)
-  app.get(`/`, (req:any,res:any) => { res.redirect(`${rootPath}/front`) });
-  app.get(`${rootPath}`, (req:any,res:any) => { res.redirect(`${rootPath}/front`) });
+  app.get(`/`, (req:Request,res:Response) => { res.redirect(`${rootPath}/front`) });
+
+  app.get(`${rootPath}`, (req:Request,res:Response) => { res.redirect(`${rootPath}/front`) });
   app.use(`${rootPath}/front`, express.static('./dist/front'))
 
   // serve config API
@@ -356,8 +363,8 @@ const launch = (kwrithData: KwirthData) => {
         console.log(`Kwirth is running INSIDE cluster`);
     }
     else {
-        console.log(`Kwirth is NOT running on a cluster`);
         console.log(`Cluster name (according to kubeconfig context): ${kc.getCluster(kc.currentContext)?.name}`);
+        console.log(`Kwirth is NOT running on a cluster`);
     }
     console.log(`KWI1500I Control is being given to Kwirth`);
   });

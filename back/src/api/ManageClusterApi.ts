@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response} from 'express';
 import { AppsV1Api } from '@kubernetes/client-node';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { validAuth, validKey } from '../tools/AuthorizationManagement';
@@ -18,7 +18,7 @@ export class ManageClusterApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get( async (req, res) => {
+            .get( async (req:Request, res:Response) => {
                 try {
                     var label:string=req.query.label as string;
                     var value:string=req.query.entity as string;
@@ -45,7 +45,7 @@ export class ManageClusterApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .post( async (req, res) => {
+            .post( async (req:Request, res:Response) => {
                 if (!validAuth(req,res, 'restart',req.params.namespace,req.params.deployment,'','')) return;
                 try {
                     restartGroup(this.coreApi, this.appsApi, req.params.namespace, req.params.deployment);
@@ -62,7 +62,7 @@ export class ManageClusterApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .post( async (req, res) => {
+            .post( async (req:Request, res:Response) => {
                 if (!validAuth(req,res, 'restart',req.params.namespace,'',req.params.podName,'')) return;
                 try {
                     console.log(`Restart pod ${req.params.podName}`);

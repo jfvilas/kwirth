@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response} from 'express';
 import { ConfigMaps } from '../tools/ConfigMaps';
 import Semaphore from 'ts-semaphore';
 import { validKey } from '../tools/AuthorizationManagement';
@@ -20,7 +20,7 @@ export class StoreApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get(async (req, res) => {
+            .get(async (req:Request, res:Response) => {
                 StoreApi.semaphore.use ( async () => {
                     try {
                         var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});
@@ -45,7 +45,7 @@ export class StoreApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get(async (req, res) => {
+            .get(async (req:Request, res:Response) => {
                 StoreApi.semaphore.use ( async () => {
                     try {
                         var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});
@@ -66,7 +66,7 @@ export class StoreApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get( async (req, res) => {
+            .get( async (req:Request, res:Response) => {
                 StoreApi.semaphore.use ( async () => {
                     try {
                         var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});
@@ -81,7 +81,7 @@ export class StoreApi {
                     }
                 });
             })
-            .delete( async (req, res) => {
+            .delete( async (req:Request, res:Response) => {
                 StoreApi.semaphore.use ( async () => {
                     try {
                         var data:any= await this.configMaps.read('kwirth.store.'+req.params.user);
@@ -95,7 +95,7 @@ export class StoreApi {
                     }
                 });
             })
-            .post( async (req, res) => {
+            .post( async (req:Request, res:Response) => {
                 StoreApi.semaphore.use ( async () => {
                     try {
                         var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{});

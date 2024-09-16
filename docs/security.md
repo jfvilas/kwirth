@@ -24,6 +24,16 @@ In the near future we plan to add roles and specific object roles, so users coul
 ### API security
 You can create, modify and delete API keys using "API security" menu option from the main Kwirth menu. If you are not an admin user you will not see this option.
 
-API security is the mean you can use to give access to your Kwirth to users that work with another Kwirth. The diagram below explains how this works (refer to API Management documentation to undertand basic concepts and it works).
+API Security is the mechanism you use to give API Keys to another external application like Kubelog in order for them to access Kwirth resources like log streams.
 
->> +++ create two-cluster diagram
+On the other side, API security is the way you can use to give access to your Kwirth to users that work with another Kwirth. The diagram below explains how this works (refer to API Management documentation to undertand basic concepts).
+
+![two-cluster](./_media/kwirth-two-cluster.png)
+
+As you can see...:
+
+  1. The user logs to Kwirth at Kubernetes cluster "A".
+  2. Another adminstartor at cluster "B" gave him an API Key that he adds to his "API Security".
+  3. When the user wants to see a log stream from cluster "B" he doesn't need to logout cluster "A" nor login cluster "B". When the user selects cluster "B" in his "Resource Selector", Kwirth will use the appropriate API Key.
+
+It's easy to work with. Enjoy!

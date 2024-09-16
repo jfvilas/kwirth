@@ -1,6 +1,6 @@
-import { ApiKeyApi } from '../api/ApiKeyApi';
-import { accessKeyDeserialize, accessKeySerialize, parseResource } from '@jfvilas/kwirth-common';
-import { ApiKey } from '@jfvilas/kwirth-common';
+import { ApiKeyApi } from '../api/ApiKeyApi'
+import { accessKeyDeserialize, accessKeySerialize, parseResource } from '@jfvilas/kwirth-common'
+import { ApiKey } from '@jfvilas/kwirth-common'
 
 export const cleanApiKeys = (apiKeys:ApiKey[]) => {
     apiKeys=apiKeys.filter(a => a.expire>=Date.now());

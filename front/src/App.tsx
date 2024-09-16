@@ -11,7 +11,7 @@ import { LogObject } from './model/LogObject';
 import { Cluster } from './model/Cluster';
 
 // tools
-import { SnackbarKey, closeSnackbar, enqueueSnackbar } from 'notistack';
+import { OptionsObject, SnackbarKey, closeSnackbar, enqueueSnackbar } from 'notistack';
 import { Beep } from './tools/Beep';
 import { PickListConfig } from './model/PickListConfig';
 
@@ -35,7 +35,7 @@ import { VERSION } from './version';
 import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from './tools/MsgBox';
 import { Message } from './model/Message';
 import { Settings } from './model/Settings';
-import { SessionContext, SessionContextType } from './model/SessionContext';
+import { SessionContext } from './model/SessionContext';
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement';
 
 const App: React.FC = () => {
@@ -197,8 +197,8 @@ const App: React.FC = () => {
         setSearch('');
     };
 
-    const onChangeLogs = (event:any,value:string)=> {
-        var newlog = logs.find(log => log.name === value);
+    const onChangeLogs = (event:any,logName?:string)=> {
+        var newlog = logs.find(log => log.name === logName);
         if (newlog) {
             newlog.pending=false;
             setHighlightedLogs (highlightedLogs.filter(t => t.pending));
@@ -206,8 +206,8 @@ const App: React.FC = () => {
             setFilter(newlog.filter);
             setMessages(newlog.messages);
             setLogs(logs);
+            setSelectedLogName(logName);
         }
-        setSelectedLogName(value);
     }
 
     const wsOnChunk = (event:any) => {
@@ -260,14 +260,14 @@ const App: React.FC = () => {
                 }
                 else {
                     const action = (snackbarId: SnackbarKey | undefined) => (<>
-                        <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log?.name); }}>
+                        <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log.name); }}>
                             View
                         </Button>
                         <Button onClick={() => { closeSnackbar(snackbarId) }}>
                             Dismiss
                         </Button>
                     </>);
-                    var opts:any={
+                    var opts:OptionsObject = {
                         anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
                         variant:alarm.severity,
                         autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
@@ -523,11 +523,11 @@ const App: React.FC = () => {
             loadBoard();
             break;
         case MenuDrawerOption.DeleteView:
-            var allallBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json();
-            if (allallBoards.length===0)
+            var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json();
+            if (allBoards.length===0)
                 showNoBoards();
             else
-                pickList('Board delete...','Please, select the board you want to delete:',allallBoards,deleteBoardSelected);
+                pickList('Board delete...','Please, select the board you want to delete:',allBoards,deleteBoardSelected);
             break;
         case MenuDrawerOption.ManageCluster:
             setShowManageClusters(true);
@@ -539,13 +539,13 @@ const App: React.FC = () => {
             setShowUserSecurity(true);
             break;
         case MenuDrawerOption.ExportViews:
-            var allallBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json();
-            if (allallBoards.length===0) {
+            var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json();
+            if (allBoards.length===0) {
                 showNoBoards();
             }
             else {
                 var content:any={};
-                for (var boardName of allallBoards) {
+                for (var boardName of allBoards) {
                     var readBoard = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json();
                     content[boardName]=JSON.parse(readBoard);
                 }

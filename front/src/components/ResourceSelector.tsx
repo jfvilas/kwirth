@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { Button, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack, Typography } from "@mui/material"
+import { Button, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack, SxProps, Typography } from "@mui/material"
 import { Cluster } from '../model/Cluster';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
 import { MsgBoxOk } from '../tools/MsgBox';
@@ -14,9 +14,9 @@ const KIconReplicaSet = () => <img src={IconReplicaSet} height={'16px'}/>;
 const KIconStatefulSet = () => <img src={IconStatefulSet} height={'16px'}/>;;
 
 interface IProps {
-    onAdd:(resource:any) => {};
-    clusters:Cluster[];
-    sx:any;
+    onAdd:(resource:any) => {}
+    clusters:Cluster[]
+    sx:SxProps
 }
 
 interface GroupData {

@@ -1,6 +1,6 @@
-import express from 'express';
+import express, { Request, Response} from 'express';
 import { AppsV1Api, CoreV1Api } from '@kubernetes/client-node';
-import { KwirthData } from '../model/KwirthData';
+import { KwirthData } from '../../../common/src/KwirthData';
 import { pauseDeployment, restartGroup } from '../tools/KubernetesOperations';
 import { validKey } from '../tools/AuthorizationManagement';
 
@@ -18,7 +18,7 @@ export class ManageKwirthApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get( async (req, res) => {
+            .get( async (req:Request, res:Response) => {
                 try {
                     restartGroup(this.coreApi, this.appsApi, kwirthData.namespace, kwirthData.deployment);
                     res.status(200).json();
@@ -34,7 +34,7 @@ export class ManageKwirthApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get( async (req, res) => {
+            .get( async (req:Request, res:Response) => {
                 try {
                     pauseDeployment(this.appsApi, kwirthData.namespace, kwirthData.deployment);
                     res.status(200).json();

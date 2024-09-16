@@ -5,10 +5,12 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "./src",
-    "module": "commonjs",
     "target": "es6",
+    "module": "commonjs",
     "strict": true,
     "esModuleInterop": true,
-    "declaration": true,   
+    "declaration": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   }
 }

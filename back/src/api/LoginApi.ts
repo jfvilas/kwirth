@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response} from 'express';
 import Semaphore from 'ts-semaphore';
 import { Secrets } from '../tools/Secrets';
 import { ApiKeyApi } from './ApiKeyApi';
@@ -13,8 +13,8 @@ export class LoginApi {
     static semaphore:Semaphore = new Semaphore(1);
     public route = express.Router();
 
-    createApiKey = async (req:any, username:string) : Promise<ApiKey> => {
-        var ip=req.clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    createApiKey = async (req:Request, username:string) : Promise<ApiKey> => {
+        var ip=(req as any).clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         var apiKey:ApiKey = {
             accessKey: accessKeyCreate('permanent', 'cluster:::::'),
             description: `Login user '${username}' at ${new Date().toISOString()} from ${ip}`,
@@ -40,14 +40,14 @@ export class LoginApi {
         this.configMaps = configMaps;
 
         // authentication (login)
-        this.route.post('/', async (req:any,res:any) => {
+        this.route.post('/', async (req:Request,res:Response) => {
             LoginApi.semaphore.use ( async () => {
                 var users:any = (await secrets.read('kwirth.users') as any);
                 var user:any=JSON.parse(atob(users[req.body.user]));
                 if (user) {
                     if (req.body.password===user.password) {
                         if (user.password==='password')
-                            res.status(201).send('');
+                            res.status(201).send();
                         else {
                             user.accessKey=(await this.createApiKey(req, req.body.user)).accessKey;
                             res.status(200).json(this.okResponse(user));
@@ -58,13 +58,13 @@ export class LoginApi {
                     }
                 }
                 else {
-                    res.status(403).send('');
+                    res.status(403).json();
                 }
             });
         });
 
         // change password
-        this.route.post('/password', async (req:any,res:any) => { 
+        this.route.post('/password', async (req:Request,res:Response) => { 
             LoginApi.semaphore.use ( async () => {
                 var users:any = (await secrets.read('kwirth.users') as any);
                 var user:any=JSON.parse (atob(users[req.body.user]));
@@ -77,11 +77,11 @@ export class LoginApi {
                         res.status(200).json(this.okResponse(user));
                     }
                     else {
-                        res.status(401).send('');
+                        res.status(401).send();
                     }
                 }
                 else {
-                res.status(403).send('');
+                res.status(403).send();
                 }
             });
         });

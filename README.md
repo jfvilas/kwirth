@@ -49,6 +49,6 @@ It is important to understand that Kwirth does not store any logging information
 
 The architecture of Kwirth is the one depicted below.
 
-![](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/_media/kwirth-arch.png)
+![](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/_media/kwirth-kwirth-arch.png)
 
 There is only one pod with one only container needed to run Kwirth. Of course, you can create replicas and services and ingresses if you need to scale out, but, generally speaking, Kwirth has no computing needs, since the only function of the pod is receiving log data and re-sending it to Kwirth front applications.

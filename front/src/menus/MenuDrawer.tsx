@@ -20,7 +20,7 @@ enum MenuDrawerOption {
 }
 interface IProps {
     optionSelected: (opt:MenuDrawerOption) => {};
-    uploadSelected: (a:any) => {};
+    uploadSelected: (a:React.ChangeEvent<HTMLInputElement>) => {};
     user:User;
   }
   

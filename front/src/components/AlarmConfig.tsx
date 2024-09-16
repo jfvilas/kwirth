@@ -1,20 +1,21 @@
 import React, { useState, ChangeEvent } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Switch, TextField, Typography } from '@mui/material';
+import { Alarm, AlarmSeverity, AlarmType } from '../model/Alarm';
 
 interface IProps {
-    onClose:(arg:any) => {};
+    onClose:(arg:Alarm|undefined) => {};
     expression:string;
 }
 
 const AlarmConfig: React.FC<any> = (props:IProps) => {
-    const [expr, setExpr] = useState(props.expression);
+    const [expression, setExpression] = useState(props.expression);
     const [severity, setSeverity] = useState('default');
     const [type, setType] = useState('timed');
     const [message, setMessage] = useState('Alarm received matching '+props.expression);
     const [beep, setBeep] = useState(false);
 
     const onChangeExpr = (event:ChangeEvent<HTMLInputElement>) => {
-        setExpr(event.target.value);
+        setExpression(event.target.value);
     }
 
     const onChangeSeverity = (event:ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +39,7 @@ const AlarmConfig: React.FC<any> = (props:IProps) => {
             <DialogTitle>Create alarm</DialogTitle>
             <DialogContent>
                 <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                <TextField value={expr} onChange={onChangeExpr} variant='standard'label='Expression'></TextField>
+                <TextField value={expression} onChange={onChangeExpr} variant='standard'label='Expression'></TextField>
                 <TextField select value={severity} onChange={onChangeSeverity} variant='standard' label='Severity' SelectProps={{native: true}}>
                     {['default','info','success','warning','error'].map((option) => (
                         <option key={option} value={option}>
@@ -58,8 +59,8 @@ const AlarmConfig: React.FC<any> = (props:IProps) => {
                 </Stack>
                 </DialogContent>
             <DialogActions>
-                <Button onClick={() => props.onClose({expression:expr, severity:severity, type:type, message:message, beep:beep})}>OK</Button>
-                <Button onClick={() => props.onClose({})}>CANCEL</Button>
+                <Button onClick={() => props.onClose({id:'', expression, severity:AlarmSeverity[severity as keyof typeof AlarmSeverity], type:AlarmType[type as keyof typeof AlarmType], message, beep})}>OK</Button>
+                <Button onClick={() => props.onClose(undefined)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>);

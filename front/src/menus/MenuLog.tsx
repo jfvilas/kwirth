@@ -26,7 +26,7 @@ enum MenuLogOption {
 interface IProps {
     onClose:() => {};
     optionSelected: (opt:MenuLogOption) => {};
-    anchorMenuLog:any;
+    anchorMenuLog:Element;
     logs:LogObject[];
     selectedLog:LogObject;
     selectedLogIndex:number;

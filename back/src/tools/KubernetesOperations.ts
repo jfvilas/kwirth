@@ -59,12 +59,13 @@ export const pauseDeployment = async (appsApi:AppsV1Api, namespace:string, deplo
  * @returns an object iwth the list of pods and the labelSelector used
  */
 export const getPodsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, group:string) => {
-    var response:any;
-    var groupName, groupType;
+    var response:any
+    var groupName, groupType
+
     if (group.includes('+'))
-        [groupType, groupName]=group.split('+');
+        [groupType, groupName]=group.split('+')
     else
-        [groupType, groupName]=['deployment', group];
+        [groupType, groupName]=['deployment', group]
 
     switch (groupType) {
         case'deployment':
@@ -81,11 +82,11 @@ export const getPodsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, nam
             break;
     }
 
-    const matchLabels = response.body.spec?.selector.matchLabels;
+    const matchLabels = response.body.spec?.selector.matchLabels
     const labelSelector = Object.entries(matchLabels || {})
       .map(([key, value]) => `${key}=${value}`)
       .join(',');
 
-    const pods = (await coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)).body.items;
-    return  { pods, labelSelector };
+    const pods = (await coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)).body.items
+    return  { pods, labelSelector }
 }

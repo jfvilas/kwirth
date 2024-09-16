@@ -1,6 +1,6 @@
-import express from 'express';
-import { CoreV1Api, AppsV1Api, KubeConfig } from '@kubernetes/client-node';
-import { KwirthData } from '../model/KwirthData';
+import express, { Request, Response} from 'express';
+import { CoreV1Api, AppsV1Api } from '@kubernetes/client-node';
+import { KwirthData } from '../../../common/src/KwirthData';
 import { validKey } from '../tools/AuthorizationManagement';
 
 export class ConfigApi {
@@ -15,7 +15,7 @@ export class ConfigApi {
         this.kwirthData=kwirthData;
 
         this.route.route('/version')
-            .get( async (req, res) => {
+            .get( async (req:Request, res:Response) => {
                 try {
                     res.status(200).json(this.kwirthData)
                 }
@@ -30,7 +30,7 @@ export class ConfigApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get( async (req, res) => {
+            .get( async (req:Request, res:Response) => {
                 try {
                     var cluster={ name:kwirthData.clusterName, inCluster:kwirthData.inCluster };
                     res.status(200).json(cluster);
@@ -47,7 +47,7 @@ export class ConfigApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get( async (req, res) => {
+            .get( async (req:Request, res:Response) => {
                 try {
                     var response = await this.coreApi.listNamespace();
                     var namespaces = response.body.items.map (n => n?.metadata?.name);
@@ -61,11 +61,11 @@ export class ConfigApi {
 
         // get all deployments in a namespace
         this.route.route(['/:namespace/sets','/:namespace/groups'])
-            .all( async (req,res, next) => {
+            .all( async (req:Request, res:Response, next) => {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get( async (req, res) => {
+            .get( async (req:Request, res:Response) => {
                 try {
                     var list:any[]=[];
                     var respDeps = await this.appsV1Api.listNamespacedReplicaSet(req.params.namespace);
@@ -88,7 +88,7 @@ export class ConfigApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get( async (req, res) => {
+            .get( async (req:Request, res:Response) => {
                 try {
                     var response= await this.coreApi.listNamespacedPod(req.params.namespace);
                     var pods = response.body.items.filter (n => n?.metadata?.ownerReferences![0].name===req.params.group).map (n => n?.metadata?.name);
@@ -105,7 +105,7 @@ export class ConfigApi {
                 if (!validKey(req,res)) return;
                 next();
             })
-            .get( async (req, res) => {
+            .get( async (req:Request, res:Response) => {
                 try {
                     var response= await this.coreApi.listNamespacedPod(req.params.namespace);
                     var searchPod = response.body.items.filter (p => p?.metadata?.name===req.params.pod);
