@@ -1,5 +1,11 @@
 import { ApiKeyApi } from '../api/ApiKeyApi';
-import { accessKeyDeserialize, accessKeySerialize, parseResource } from '../model/AccessKey';
+import { accessKeyDeserialize, accessKeySerialize, parseResource } from '@jfvilas/kwirth-common';
+import { ApiKey } from '@jfvilas/kwirth-common';
+
+export const cleanApiKeys = (apiKeys:ApiKey[]) => {
+    apiKeys=apiKeys.filter(a => a.expire>=Date.now());
+    return apiKeys;
+}
 
 export const validKey = (req:any,res:any) => {
     if (req.headers.authorization && req.headers.authorization) {
@@ -16,12 +22,12 @@ export const validKey = (req:any,res:any) => {
                 return true;
             }
         }
-        res.status(403).json({});
+        res.status(403).json();
         return false;
     }
     else {
         console.log('No valid key present in headers');
-        res.status(403).json({});
+        res.status(403).json();
         return false;
     }
 }

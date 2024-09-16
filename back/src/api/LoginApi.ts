@@ -2,9 +2,10 @@ import express from 'express';
 import Semaphore from 'ts-semaphore';
 import { Secrets } from '../tools/Secrets';
 import { ApiKeyApi } from './ApiKeyApi';
-import { ApiKey, cleanApiKeys } from '../model/ApiKey';
+import { ApiKey } from '@jfvilas/kwirth-common';
 import { ConfigMaps } from '../tools/ConfigMaps';
-import { accessKeyCreate } from '../model/AccessKey';
+import { accessKeyCreate } from '@jfvilas/kwirth-common';
+import { cleanApiKeys } from '../tools/AuthorizationManagement';
 
 export class LoginApi {
     secrets:Secrets;

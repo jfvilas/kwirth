@@ -1,44 +1,45 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod } from '@kubernetes/client-node';
-import { ConfigApi } from './api/ConfigApi';
-import { Secrets } from './tools/Secrets';
-import { ConfigMaps } from './tools/ConfigMaps';
-import { VERSION } from './version';
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod } from '@kubernetes/client-node'
+import { ConfigApi } from './api/ConfigApi'
+import { Secrets } from './tools/Secrets'
+import { ConfigMaps } from './tools/ConfigMaps'
+import { VERSION } from './version'
 
 // HTTP server for serving front, api and websockets
-import { StoreApi } from './api/StoreApi';
-import { UserApi } from './api/UserApi';
-import { ApiKeyApi } from './api/ApiKeyApi';
-import { LoginApi } from './api/LoginApi';
+import { StoreApi } from './api/StoreApi'
+import { UserApi } from './api/UserApi'
+import { ApiKeyApi } from './api/ApiKeyApi'
+import { LoginApi } from './api/LoginApi'
 
 // HTTP server & websockets
 import WebSocket from 'ws';
-import { ManageKwirthApi } from './api/ManageKwirthApi';
-import { LogConfig } from './model/LogConfig';
-import { ManageClusterApi } from './api/ManageClusterApi';
-import { KwirthData } from './model/KwirthData';
-import { getScopeLevel } from './tools/AuthorizationManagement';
-import { accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier } from './model/AccessKey';
-import { getPodsFromGroup } from './tools/KubernetesOperations';
+import { ManageKwirthApi } from './api/ManageKwirthApi'
+import { LogConfig } from './model/LogConfig'
+import { ManageClusterApi } from './api/ManageClusterApi'
+import { KwirthData } from './model/KwirthData'
+import { getScopeLevel } from './tools/AuthorizationManagement'
+import { getPodsFromGroup } from './tools/KubernetesOperations'
+import { accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier } from '@jfvilas/kwirth-common'
+import { StreamMessage } from '@jfvilas/kwirth-common'
 
-const stream = require('stream');
-const express = require('express');
-const http = require('http');
-const cors = require('cors');
+const stream = require('stream')
+const express = require('express')
+const http = require('http')
+const cors = require('cors')
 const bodyParser = require('body-parser')
-const requestIp = require ('request-ip');
-const PORT = 3883;
-const buffer:Map<WebSocket,string>= new Map();
+const requestIp = require ('request-ip')
+const PORT = 3883
+const buffer:Map<WebSocket,string>= new Map()
 
 // Kubernetes API access
-const kc = new KubeConfig();
-kc.loadFromDefault();
-const coreApi = kc.makeApiClient(CoreV1Api);
-const appsApi = kc.makeApiClient(AppsV1Api);
-const k8sLog = new Log(kc);
+const kc = new KubeConfig()
+kc.loadFromDefault()
+const coreApi = kc.makeApiClient(CoreV1Api)
+const appsApi = kc.makeApiClient(AppsV1Api)
+const k8sLog = new Log(kc)
 
-var secrets:Secrets;
-var configMaps:ConfigMaps;
-const rootPath = process.env.KWIRTH_ROOTPATH || '';
+var secrets:Secrets
+var configMaps:ConfigMaps
+const rootPath = process.env.KWIRTH_ROOTPATH || ''
 
 // get the namespace where Kwirth is running on
 const getMyKubernetesData = async ():Promise<KwirthData> => {
@@ -60,36 +61,50 @@ const getMyKubernetesData = async ():Promise<KwirthData> => {
                 }
             }
         }
-        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, version:VERSION };
+        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, version:VERSION }
     }
     else {
         // this namespace will be used to access secrets and configmaps
-        return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false, version:VERSION };
+        return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false, version:VERSION }
     }
 }
 
 // split a block of stdout into several lines and send them over the websocket
-const sendLines = (ws:WebSocket, event:any, source:string) => {
-    const logLines = source.split('\n');
-    event.type='log';
+const sendLines = (ws:WebSocket, namespace:string, podName:string, source:string) => {
+    const logLines = source.split('\n')
+    var msg:StreamMessage = {
+        namespace,
+        podName,
+        type: 'log',
+        text: ''
+    }
     for (var line of logLines) {
         if (line!=='') {
-            event.text=line;
-            ws.send(JSON.stringify(event));    
+            msg.text=line
+            ws.send(JSON.stringify(msg))   
         }
     }
 }
 
 // sends an informatory message over the websocket
-function sendInfo (ws:WebSocket, text:string) {
-    ws.send(JSON.stringify({type:'info',text, timestamp:new Date()}));
+const sendInfo = (ws:WebSocket, text:string) => {
+    var msg:StreamMessage= {
+        type: 'info',
+        text: text,
+        timestamp: new Date()
+    }
+    ws.send(JSON.stringify(msg))
 }
 
 // sends an error message over the websocket and optionally closes the websocket
-function sendError (ws:WebSocket, text:string, close:boolean) {
-    console.log(text);
-    ws.send(JSON.stringify({type:'error',text, timestamp:new Date()}));
-    if (close) ws.close();
+const sendError = (ws:WebSocket, text:string, close:boolean) => {
+    var msg:StreamMessage= {
+        type: 'error',
+        text: text,
+        timestamp: new Date()
+    }
+    ws.send(JSON.stringify(msg))
+    if (close) ws.close()
 }
 
 // get pods logs
@@ -110,8 +125,7 @@ const getPodLog = async (namespace:string, podName:string, containerName:string,
                 buffer.set(ws,next);
                 text=text.substring(0,i);        
             }
-            var event:any = {namespace:namespace, podName:podName};
-            sendLines(ws,event,text);
+            sendLines(ws,namespace, podName,text);
         });
 
         var streamConfig:any={ 
@@ -152,7 +166,7 @@ const watchPods = (apiPath:string, filter:any, ws:any, config:LogConfig) => {
         }
         else if (eventType === 'DELETED') {
             console.log(`Pod deleted` );
-            sendInfo(ws, `POD DELETED: ${podNamespace}/${podName}`);
+            sendInfo(ws, `Pod DELETED: ${podNamespace}/${podName}`);
         }
     },
     (err:any) => {
@@ -183,14 +197,14 @@ const getSelectedPods = async (resId:ResourceIdentifier, validNamespaces:string[
             selectedPods.push(pod);
         }
         else {
-            console.log(`Access denied: access to ${pod.metadata?.namespace}/${pod.metadata?.name} has not been granted.`);
+            //console.log(`Access denied: access to ${pod.metadata?.namespace}/${pod.metadata?.name} has not been granted.`);
         }
     }
     return selectedPods;
 }
 
 // clients send requests to start receiving log
-async function processClientMessage(message:string, webSocket:any) {
+const processClientMessage = async (message:string, webSocket:any) => {
 
     const config = JSON.parse(message) as LogConfig;
     if (!config.group) config.group=config.set;
@@ -256,13 +270,13 @@ async function processClientMessage(message:string, webSocket:any) {
                                 timestamp: config.timestamp,
                                 previous: config.previous,
                                 maxMessages: config.maxMessages,
-                                view: config.view,
                                 scope: config.scope,
                                 namespace: validPod.metadata?.namespace!,
                                 group: '',
                                 set: '',
                                 pod: validPod.metadata?.name!,
-                                container: config.view==='container'? config.container:''
+                                container: config.view==='container'? config.container:'',
+                                view: config.view
                             }
 
                             var ml:any=validPod.metadata?.labels;
@@ -316,7 +330,7 @@ const launch = (kwrithData: KwirthData) => {
   app.use(`${rootPath}/front`, express.static('./dist/front'))
 
   // serve config API
-  var va:ConfigApi = new ConfigApi(kc, coreApi, appsApi, kwrithData);
+  var va:ConfigApi = new ConfigApi(coreApi, appsApi, kwrithData);
   app.use(`${rootPath}/config`, va.route);
   var ka:ApiKeyApi = new ApiKeyApi(configMaps);
   app.use(`${rootPath}/key`, ka.route);
@@ -364,7 +378,7 @@ getMyKubernetesData()
     .catch ( (err) => {
         console.log('Cannot get namespace, using "default"');
         launch ({
-            version:VERSION,
+            version: VERSION,
             clusterName: 'error-starting',
             inCluster: false,
             namespace: 'default',

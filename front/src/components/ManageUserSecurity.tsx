@@ -159,7 +159,7 @@ const ManageUserSecurity: React.FC<any> = (props:IProps) => {
                                     </Grid>
                                     <Grid item xs={0.5}></Grid>
                                     <Grid item xs={7.5}>
-                                        <TextField value={groupName} onChange={(e) => setGroupName(e.target.value)} disabled={groupType===''} variant='standard' label='Set' style={{width:'100%'}}></TextField>
+                                        <TextField value={groupName} onChange={(e) => setGroupName(e.target.value)} disabled={groupType===''} variant='standard' label='Group' style={{width:'100%'}}></TextField>
                                     </Grid>
                                 </Grid>
                                 <TextField value={pod} onChange={(e) => setPod(e.target.value)} variant='standard' label='Pod'></TextField>

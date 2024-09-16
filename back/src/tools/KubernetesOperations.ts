@@ -18,7 +18,7 @@ import { AppsV1Api, CoreV1Api } from "@kubernetes/client-node";
  * @param coreApi K8 core API
  * @param appsApi K8 apps API
  * @param namespace namespace
- * @param group a name of a deployment or a qualified name of a set, thta is 'type+name', example: replica+rs1, stateful+mongo, daemon+monitoring 
+ * @param group a name of a deployment or a qualified name of a group, thta is 'type+name', example: replica+rs1, stateful+mongo, daemon+monitoring 
  */
 export const restartGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, group:string) => {
     try {
@@ -55,7 +55,7 @@ export const pauseDeployment = async (appsApi:AppsV1Api, namespace:string, deplo
  * @param coreApi K8 core API
  * @param appsApi K8 apps API
  * @param namespace 
- * @param group a name of a deployment or a qualified name of a set, thta is 'type+name', example: replica+rs1, stateful+mongo, daemon+monitoring
+ * @param group a name of a deployment or a qualified name of a group, thta is 'type+name', example: replica+rs1, stateful+mongo, daemon+monitoring
  * @returns an object iwth the list of pods and the labelSelector used
  */
 export const getPodsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, group:string) => {

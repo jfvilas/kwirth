@@ -1,0 +1,38 @@
+{
+  "name": "@jfvilas/kwirth-common",
+  "version": "0.2.4",
+  "description": "Common interfaces for integrating applications with Kwirth",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "del .\\dist\\* /s /q && tsc"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jfvilas/kwirth-common.git"
+  },
+  "keywords": [
+    "kwrith",
+    "kubernetes",
+    "log",
+    "observability",
+    "kubelog"
+  ],
+  "author": "Julio Fernandez",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jfvilas/kwirth-common/issues"
+  },
+  "homepage": "https://github.com/jfvilas/kwirth-common#readme",
+  "dependencies": {
+    "guid": "^0.0.12"
+  },
+  "devDependencies": {
+    "@types/guid": "^1.0.3"
+  }
+}

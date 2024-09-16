@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material';
 import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
-import { accessKeySerialize, accessKeyBuild } from '../model/AccessKey';
+import { accessKeySerialize, accessKeyBuild } from '@jfvilas/kwirth-common';
 import { User } from '../model/User';
 import { addPostAuthorization } from '../tools/AuthorizationManagement';
 

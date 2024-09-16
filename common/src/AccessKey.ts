@@ -67,10 +67,10 @@ function buildResource (scope:string, namespace:string, groupType:string, groupN
 
             for example, a user that can view and restart would have the scope 'view,restart'
 
-        NOTE: set is the type and name of a set: replica, stateful or daemon plus '+' plus the name, example: 'replica+rs1', 'stateful+mongo'
+        NOTE: group is the type and name of a group: 'replica', 'stateful' or 'daemon', a plus sign ('+'), and the name of the group, example: 'replica+rs1', 'stateful+mongo'
 
         the rest of fields are names (regex in fact) according to this rules:
-            - it can be a direct name, like: 'mynamespace', 'your-replica-set', 'our-pod'...
+            - it can be a direct name, like: 'mynamespace', 'your-replicaset', 'our-pod'...
             - it can be an '', indicating any resource of the scope is valid
             - it can be a comma-separated list of names, like: namespace 'dev,pre', or pod 'my-pod,our-pod,your-pod'
 

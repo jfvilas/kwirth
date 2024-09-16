@@ -1,8 +1,8 @@
 import { ConfigMaps } from '../tools/ConfigMaps';
-import { ApiKey, cleanApiKeys } from '../model/ApiKey';
+import { ApiKey } from '@jfvilas/kwirth-common';
 import express from 'express';
-import { validKey } from '../tools/AuthorizationManagement';
-import { AccessKey, accessKeyCreate, accessKeyDeserialize, accessKeySerialize } from '../model/AccessKey';
+import { cleanApiKeys, validKey } from '../tools/AuthorizationManagement';
+import { AccessKey, accessKeyCreate, accessKeySerialize } from '@jfvilas/kwirth-common';
 
 export class ApiKeyApi {
     configMaps:ConfigMaps;
@@ -42,23 +42,23 @@ export class ApiKeyApi {
                         RESOURCE
 
                         FORMAT:
-                        scope:namespace:set:pod:container
+                        scope:namespace:group:pod:container
                         
                         VALUES:
                         scope: cluster|api|filter|view|restart
                         namespace: name
-                        set: {deployment|replica|daemon|stateful}+name   (type of pod group, a plus sign, name of the group)
+                        group: {deployment|replica|daemon|stateful}+name   (type of pod group, a plus sign, name of the group)
                         pod: name
                         container: name
 
                         EXAMPLES:
                         cluster::::  // all the cluster logs
-                        namespace:default:::  // all logs in 'default' namespace
-                        set::deployment+kwirth::  // deployment 'kwirth' in all namespaces
-                        set:default:replica+abcd::  // all pods in 'abcd' replicaset inside namespace 'default'
-                        pod:default:replica+abcd:abcd:  // all pods with name 'abcd' inside namespace 'default'
-                        filter:pre,dev::pod1:  // pod named 'pod1' in namespaces 'pre' and 'dev'
-                        filter:::pod2:  // all instances of 'pod2'
+                        view:default:::  // view all logs in 'default' namespace
+                        restart::deployment+kwirth::  // restart deployment 'kwirth' in all namespaces
+                        restart:default:replica+abcd::  // restart all pods in 'abcd' replicaset inside namespace 'default'
+                        view:default:replica+abcd:abcd:  // view all pod logs with name 'abcd' inside namespace 'default'
+                        filter:pre,dev::pod1:  // search pod named 'pod1' in namespaces 'pre' and 'dev'
+                        filter:::pod2:  // search for all instances of 'pod2' (any namespace)
                         filter::replica+rs1::  // all pods of replicaset 'rs1' in any namespace
                         filter:default:replica+rs1::cont1  // 'container1' on replicaset 'rs1' on namespace 'default'
                     */

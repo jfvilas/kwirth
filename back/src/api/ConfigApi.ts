@@ -2,7 +2,6 @@ import express from 'express';
 import { CoreV1Api, AppsV1Api, KubeConfig } from '@kubernetes/client-node';
 import { KwirthData } from '../model/KwirthData';
 import { validKey } from '../tools/AuthorizationManagement';
-import { VERSION } from '../version';
 
 export class ConfigApi {
     public route = express.Router();
@@ -10,7 +9,7 @@ export class ConfigApi {
     appsV1Api:AppsV1Api;
     kwirthData:KwirthData;
 
-    constructor (kc:KubeConfig, coreApi:CoreV1Api, appsV1Api:AppsV1Api, kwirthData:KwirthData) {
+    constructor (coreApi:CoreV1Api, appsV1Api:AppsV1Api, kwirthData:KwirthData) {
         this.coreApi=coreApi
         this.appsV1Api=appsV1Api
         this.kwirthData=kwirthData;

@@ -445,6 +445,7 @@ const App: React.FC = () => {
             break;
         case MenuLogOption.LogManageRestart:
             switch(selectedLog?.view) {
+                case 'group':
                 case 'set':
                     // restart a deployment
                     fetch (`${backendUrl}/managecluster/restartdeployment/${selectedLog.namespace}/${selectedLog.group}`, addPostAuthorization(accessString));

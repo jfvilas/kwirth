@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, InputLabel, List, ListItem, ListItemButton, MenuItem, Select, SelectChangeEvent, Stack, TextField, Typography} from '@mui/material';
-import { ApiKey } from '../model/ApiKey';
+import { ApiKey } from '@jfvilas/kwirth-common';
 import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
-import { AccessKey, accessKeySerialize, buildResource, parseResource } from '../model/AccessKey';
+import { AccessKey, accessKeySerialize, buildResource, parseResource } from '@jfvilas/kwirth-common';
 import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addPutAuthorization } from '../tools/AuthorizationManagement';
 const copy = require('clipboard-copy');
 
