@@ -248,7 +248,7 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
             }
             var selectedPods=await getSelectedPods(resource, validNamespaces, validPodNames);
             if (selectedPods.length===0) {
-                sendError(webSocket,`Access denied: there are no filters that matches requested config`, true);
+                sendError(webSocket,`Access denied: there are no filters that match requested config`, true);
             }
             else {
                 switch (config.view) {

@@ -43,9 +43,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
         setSelectedKey(key);
         setDescrition(key?.description!);
         setExpire(key?.expire!);
-        console.log(key);
         var res=parseResource(key?.accessKey.resource!);
-        console.log(res);
         setScope(res.scope);
         setKeyType(key?.accessKey.type!);
         setNamespace(res.namespace);
@@ -69,7 +67,6 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
     const onClickSave= async () => {
         var res=buildResource(scope, namespace, groupType, groupName, pod, container);
         if (selectedKey!==undefined) {
-            console.log(selectedKey);
             selectedKey.accessKey.type=keyType;
             selectedKey.accessKey.resource=res;
             var key={ accessKey:selectedKey?.accessKey, description, expire };
