@@ -3,6 +3,7 @@ import { Collapse, Divider, Menu, MenuItem, MenuList, Typography } from "@mui/ma
 import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, RestartAlt, Info } from '@mui/icons-material';
 import { LogObject } from '../model/LogObject';
 import { SessionContext, SessionContextType } from '../model/SessionContext';
+import { MetricsObject } from '../model/MetricsObject';
 
 enum MenuLogOption {
     LogAlarmCreate,
@@ -20,16 +21,19 @@ enum MenuLogOption {
     LogActionsPause,
     LogActionsStop,
     LogActionsRemove,
+    LogMetricsStart,
+    LogMetricsStop,
     LogManageRestart
 }
 
 interface IProps {
-    onClose:() => {};
-    optionSelected: (opt:MenuLogOption) => {};
-    anchorMenuLog:Element;
-    logs:LogObject[];
-    selectedLog:LogObject;
-    selectedLogIndex:number;
+    onClose:() => {}
+    optionSelected: (opt:MenuLogOption) => {}
+    anchorMenuLog:Element
+    logs:LogObject[]
+    selectedLog:LogObject
+    selectedLogIndex:number
+    selectedMetrics:MetricsObject
 }
 
 const MenuLog: React.FC<any> = (props:IProps) => {
@@ -37,6 +41,7 @@ const MenuLog: React.FC<any> = (props:IProps) => {
     const [subMenuOptionsOpen, setSubmenuOptionsOpen] = React.useState(false)
     const [subMenuOrganizeOpen, setSubmenuOrganizeOpen] = React.useState(false)
     const [subMenuActionsOpen, setSubmenuActionsOpen] = React.useState(false)
+    const [submenuMetricsOpen, setSubmenuMetricsOpen] = React.useState(false)
     const [subMenuManageOpen, setSubmenuManageOpen] = React.useState(false)
 
     const submenuOptionsClick = () => {
@@ -44,6 +49,7 @@ const MenuLog: React.FC<any> = (props:IProps) => {
             setSubmenuActionsOpen(false);
             setSubmenuOrganizeOpen(false);
             setSubmenuManageOpen(false);
+            setSubmenuMetricsOpen(false);
         }
         setSubmenuOptionsOpen(!subMenuOptionsOpen);
     }
@@ -53,6 +59,7 @@ const MenuLog: React.FC<any> = (props:IProps) => {
             setSubmenuOptionsOpen(false);
             setSubmenuActionsOpen(false);
             setSubmenuManageOpen(false);
+            setSubmenuMetricsOpen(false);
         }
         setSubmenuOrganizeOpen(!subMenuOrganizeOpen);
     }
@@ -62,8 +69,19 @@ const MenuLog: React.FC<any> = (props:IProps) => {
             setSubmenuOptionsOpen(false);
             setSubmenuOrganizeOpen(false);
             setSubmenuManageOpen(false);
+            setSubmenuMetricsOpen(false);
         }
         setSubmenuActionsOpen(!subMenuActionsOpen);
+    }
+
+    const submenuMetricsClick = () => {
+        if (!submenuMetricsOpen) {
+            setSubmenuOptionsOpen(false);
+            setSubmenuActionsOpen(false);
+            setSubmenuOrganizeOpen(false);
+            setSubmenuManageOpen(false);
+        }
+        setSubmenuMetricsOpen(!submenuMetricsOpen);
     }
 
     const submenuManageClick = () => {
@@ -105,6 +123,12 @@ const MenuLog: React.FC<any> = (props:IProps) => {
                 <MenuItem key='logpr' onClick={() => props.optionSelected(MenuLogOption.LogActionsPause)} disabled={!props.selectedLog.started}>{props.selectedLog.paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
                 <MenuItem key='logstop' onClick={() => props.optionSelected(MenuLogOption.LogActionsStop)} disabled={!props.selectedLog.started}><Stop/>&nbsp;Stop</MenuItem>
                 <MenuItem key='logremove' onClick={() => props.optionSelected(MenuLogOption.LogActionsRemove)} ><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
+            </Collapse>
+
+            <MenuItem key='submetrics' onClick={submenuMetricsClick} sx={{ml:3}}>Metrics<Typography sx={{flexGrow:1}}></Typography>{subMenuActionsOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
+            <Collapse in={submenuMetricsOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
+                <MenuItem key='logmetricsstart' onClick={() => props.optionSelected(MenuLogOption.LogMetricsStart)} disabled={props.selectedMetrics?.started}><PlayCircle/>&nbsp;Start</MenuItem>
+                <MenuItem key='logmetricsstop' onClick={() => props.optionSelected(MenuLogOption.LogMetricsStop)} disabled={!props.selectedMetrics?.started}><Stop/>&nbsp;Stop</MenuItem>
             </Collapse>
 
             <MenuItem key='submanage' onClick={submenuManageClick} sx={{ml:3}}>Manage<Typography sx={{flexGrow:1}}></Typography>{subMenuManageOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>

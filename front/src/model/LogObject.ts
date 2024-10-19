@@ -1,5 +1,5 @@
 import { Alarm } from "./Alarm";
-import { Message } from "./Message";
+import { LogMessage } from "@jfvilas/kwirth-common";
 
 export class LogObject {
     public name?: string
@@ -10,8 +10,7 @@ export class LogObject {
     public pod?: string
     public container?: string
     public ws:WebSocket|null = null
-    public messages:Message[]=[]
-    public buffer:string=''
+    public messages:LogMessage[]=[]
     public maxMessages:number=10000
     public previous:boolean=false
     public defaultLog:boolean=false

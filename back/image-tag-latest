@@ -4,8 +4,10 @@ export MINOR=$(cat minor)
 export LEVEL=$(cat level)
 export CURRENTVERSION=$MAJOR.$MINOR.$LEVEL
 
-# docker image rm kwirth:latest
+docker rmi kwirth:latest
 docker rmi jfvilasoutlook/kwirth:latest
-docker pull jfvilasoutlook/kwirth:$CURRENTVERSION
-docker tag jfvilasoutlook/kwirth:$CURRENTVERSION jfvilasoutlook/kwirth:latest
+docker tag kwirth:$CURRENTVERSION kwirth:latest
+docker tag kwirth:$CURRENTVERSION jfvilasoutlook/kwirth:latest
+docker tag kwirth:$CURRENTVERSION jfvilasoutlook/kwirth:$CURRENTVERSION
 docker push jfvilasoutlook/kwirth:latest
+docker push jfvilasoutlook/kwirth:$CURRENTVERSION

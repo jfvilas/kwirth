@@ -30,6 +30,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 __exportStar(require("./StreamMessage"), exports);
+__exportStar(require("./ServiceMessage"), exports);
+__exportStar(require("./LogMessage"), exports);
+__exportStar(require("./MetricsMessage"), exports);
 __exportStar(require("./ApiKey"), exports);
 __exportStar(require("./AccessKey"), exports);
 __exportStar(require("./KwirthData"), exports);
+__exportStar(require("./ServiceConfig"), exports);
+__exportStar(require("./LogConfig"), exports);
+__exportStar(require("./MetricsConfig"), exports);

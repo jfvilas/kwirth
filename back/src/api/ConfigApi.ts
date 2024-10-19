@@ -1,6 +1,6 @@
 import express, { Request, Response} from 'express';
 import { CoreV1Api, AppsV1Api } from '@kubernetes/client-node';
-import { KwirthData } from '../../../common/src/KwirthData';
+import { KwirthData } from '@jfvilas/kwirth-common';
 import { validKey } from '../tools/AuthorizationManagement';
 
 export class ConfigApi {

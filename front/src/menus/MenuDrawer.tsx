@@ -9,8 +9,8 @@ enum MenuDrawerOption {
     SaveView,
     SaveViewAs,
     DeleteView,
-    ImportViews,
-    ExportViews,
+    ImportBoards,
+    ExportBoards,
     Settings,
     ManageCluster,
     UserSecurity,
@@ -38,7 +38,7 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
             <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveViewAs)}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
             <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.DeleteView)}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
             <Divider/>
-            <MenuItem key='boardexp' onClick={() => optionSelected(MenuDrawerOption.ExportViews)}><ImportExport/>&nbsp;Export all boards (to downloadable file)</MenuItem>
+            <MenuItem key='boardexp' onClick={() => optionSelected(MenuDrawerOption.ExportBoards)}><ImportExport/>&nbsp;Export all boards (to downloadable file)</MenuItem>
             <MenuItem key='boardimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new boards from file (and merge overwriting)</MenuItem>
             <MenuItem key='settings' onClick={() => optionSelected(MenuDrawerOption.Settings)}><Settings/>&nbsp;Settings</MenuItem>
             <Divider/>

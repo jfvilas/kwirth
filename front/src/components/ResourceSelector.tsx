@@ -128,19 +128,15 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     }
 
     const onAdd = () => {
-        console.log('pod',pod);
         var selection:any={};
         selection.clusterName=selectedCluster?.name;
         selection.view=view;
         selection.namespace=namespace;
-        console.log(allGroups);
-        console.log(group);
         var g:GroupData=allGroups.find(g => g.name===group)!;
         selection.group=g? (g.type+'+'+g.name) : '';
         selection.pod=pod;
         selection.container=container;
 
-        console.log(g);
         if (view==='namespace')
             selection.logName=namespace;
         else if (view==='group')

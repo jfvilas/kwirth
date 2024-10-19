@@ -14,6 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 export * from './StreamMessage'
+export * from './ServiceMessage'
+export * from './LogMessage'
+export * from './MetricsMessage'
 export * from './ApiKey'
 export * from './AccessKey'
 export * from './KwirthData'
+export * from './ServiceConfig'
+export * from './LogConfig'
+export * from './MetricsConfig'

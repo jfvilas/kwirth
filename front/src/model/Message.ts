@@ -1,14 +1,17 @@
-class Message {
-    public timestamp?:Date;
-    public cluster?:string='';
-    public namespace?:string='';
-    public resource?:string='';
-    public text:string='';
-    public type:string='';
+//+++ use kwirth-common message types
 
-    constructor (text:string) {
-        this.text=text;
-    }
-}
+// class Message {
+//     public timestamp?:Date;
+//     public cluster?:string='';
+//     public namespace?:string='';
+//     public resource?:string='';
+//     public text:string='';
+//     public type:string='';
 
-export { Message };
+//     constructor (text:string) {
+//         this.text=text;
+//     }
+// }
+
+// export { Message };
+export { }
