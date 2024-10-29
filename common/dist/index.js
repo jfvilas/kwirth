@@ -39,3 +39,4 @@ __exportStar(require("./KwirthData"), exports);
 __exportStar(require("./ServiceConfig"), exports);
 __exportStar(require("./LogConfig"), exports);
 __exportStar(require("./MetricsConfig"), exports);
+__exportStar(require("./Version"), exports);

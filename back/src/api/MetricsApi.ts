@@ -8,8 +8,6 @@ export class MetricsApi {
     metrics:Metrics
 
     constructor (metrics:Metrics) {
-        console.log('metrics')
-        console.log(metrics)
         this.metrics=metrics
 
         this.route.route('/')

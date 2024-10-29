@@ -1,7 +1,7 @@
 # Test folder
 This project folder contains some testing artifacts:
 
-  - **kwrith.yaml**, a yaml for deploying Kwirth to any cluster:
+  - **kwirth.yaml**, a yaml for deploying Kwirth to any cluster:
     - Uses 'default' namespace
     - Access to application is located at '/kwirth'
     - Does not provide Service nor Ingress.

@@ -1,18 +1,18 @@
-import React, { useState, ChangeEvent } from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material';
-import { LogObject } from '../model/LogObject';
+import React, { useState, ChangeEvent } from 'react'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material'
+import { TabObject } from '../model/TabObject'
 
 interface IProps {
-    onClose:(a:string|null) => {};
-    logs:LogObject[];
-    oldname:string;
+    onClose:(a:string|null) => {}
+    tabs:TabObject[]
+    oldname:string
 }
 
-const RenameLog: React.FC<any> = (props:IProps) => {
-    const [newname, setNewname] = useState(props.oldname);
+const RenameTab: React.FC<any> = (props:IProps) => {
+    const [newname, setNewname] = useState(props.oldname)
 
     const onChangeNewname = (event:ChangeEvent<HTMLInputElement>) => {
-        setNewname(event.target.value);
+        setNewname(event.target.value)
     }
 
     return (<>
@@ -25,11 +25,11 @@ const RenameLog: React.FC<any> = (props:IProps) => {
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button onClick={() => props.onClose(newname)} disabled={props.logs.some(t => t.name===newname)}>OK</Button>
+                <Button onClick={() => props.onClose(newname)} disabled={props.tabs.some(t => t.name===newname)}>OK</Button>
                 <Button onClick={() => props.onClose(null)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>);
 };
 
-export default RenameLog;
+export default RenameTab

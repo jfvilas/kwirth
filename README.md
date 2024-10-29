@@ -24,7 +24,7 @@ Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirt
 kubectl apply -f https://raw.githubusercontent.com/jfvilas/kwirth/master/test/kwirth.yaml
 ```
 
-If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging system. You can access Kwrith via your Kubernetes management software, via kubectl-port-forwarding, or even creating an ingress. By default, Kwirth listens on root path at port 3883.
+If everything is ok, in no more than 8 to 10 seconds Kwirth should be up and running. So next step is accessing the front application of your fresh new logging system. You can access Kwirth via your Kubernetes management software, via kubectl-port-forwarding, or even creating an ingress. By default, Kwirth listens on root path at port 3883.
 
 If you have created a port forward by entering...
 

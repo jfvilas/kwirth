@@ -11,8 +11,8 @@ export class ClusterData {
     public init = async () => {
         var resp = await this.coreApi.listNode()
         for (var element of resp.body.items) {
-            var x = element.status?.addresses!.find(a => a.type==='InternalIP')
-            if (x) ClusterData.nodes.set(element.metadata?.name!,x.address)
+            var internalIp = element.status?.addresses!.find(a => a.type==='InternalIP')
+            if (internalIp) ClusterData.nodes.set(element.metadata?.name!,internalIp.address)
         }
         console.log('Node config loaded',ClusterData.nodes);
     }

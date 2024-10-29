@@ -1,5 +1,6 @@
 import Guid from 'guid';
 import { MetricDescription } from './MetricDescription';
+import { KwirthData } from '@jfvilas/kwirth-common';
 
 export class Cluster {
     public id:string
@@ -9,6 +10,7 @@ export class Cluster {
     public source:boolean|undefined=false
     public inCluster:boolean=false
     public metricList:Map<string,MetricDescription> = new Map()
+    public kwirthData?: KwirthData
     
     constructor () {
         this.id=Guid.create().toString()

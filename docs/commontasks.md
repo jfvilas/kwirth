@@ -8,7 +8,7 @@ The first time you access your fresh copy of Kwirth you must login with admin cr
 
 So, if everything is ok, you should see the main Kwirth page:
 
- ![main kwrith page](./_media/main-page.png)
+ ![main kwirth page](./_media/main-page.png)
 
 What you can see in the main Kwirth is:
 

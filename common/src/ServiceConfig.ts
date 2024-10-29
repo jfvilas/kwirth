@@ -1,11 +1,23 @@
 export enum ServiceConfigTypeEnum {
     LOG='log',
     METRICS='metrics',
-    // OPER='oper' will be implemented for segregating restart from log
+}
+
+export enum ServiceConfigActionEnum {
+    START='start',
+    STOP='stop',
+}
+
+export enum ServiceConfigFlowEnum {
+    REQUEST='request',
+    RESPONSE='response'
 }
 
 export interface ServiceConfig {
+    action:ServiceConfigActionEnum
+    flow:ServiceConfigFlowEnum
     type:ServiceConfigTypeEnum
+    instance:string
     accessKey:string
     view:string
     scope:string

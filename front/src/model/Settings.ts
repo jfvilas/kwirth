@@ -1,7 +1,19 @@
+import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
+
 class Settings {
-    public maxMessages:number=1000;
-    public previous:boolean=false;
-    public timestamp:boolean=false;
+    public logMaxMessages:number = 1000
+    public logPrevious:boolean = false
+    public logTimestamp:boolean = false
+
+    public metricsMode:MetricsConfigModeEnum = MetricsConfigModeEnum.STREAM
+    public metricsMetrics:string[] = [
+        'container_fs_writes_total',
+        'container_fs_reads_total',
+        'container_cpu_usage_seconds_total',
+        'container_memory_usage_bytes',
+        'container_network_receive_bytes_total',
+        'container_network_transmit_bytes_total'
+    ]
 }
 
-export { Settings };
+export { Settings }

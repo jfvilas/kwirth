@@ -8,3 +8,4 @@ export * from './KwirthData';
 export * from './ServiceConfig';
 export * from './LogConfig';
 export * from './MetricsConfig';
+export * from './Version';

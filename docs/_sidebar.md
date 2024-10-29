@@ -1,6 +1,7 @@
 * [Home](index)
 * [Installation](installation)
 * [How it works](how)
+* [Data streaming](datastreaming)
 * [Security](security)
 * [Change log](changelog)
 * [Common tasks](commontasks)

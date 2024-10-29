@@ -14,7 +14,7 @@ export class Metrics {
         try {
             const response = await this.customApi.listClusterCustomObject(
                 'metrics.k8s.io', // Group
-                'v1beta1',         // Version
+                'v1beta1',        // Version
                 'nodes'
             );
             console.log(JSON.stringify(response.body, null, 2))
@@ -109,6 +109,7 @@ export class Metrics {
                 }
             }
         })
+        // +++ reduce by sum, reduce by avg
         var sum={ value:0 }
         if (samples.length>0) {
             console.log(samples)

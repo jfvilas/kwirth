@@ -1,57 +1,88 @@
-import React, { useState, ChangeEvent, useEffect } from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Switch, TextField, Typography } from '@mui/material';
-import { Settings } from '../model/Settings';
+import React, { useState, ChangeEvent } from 'react'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
+import { Settings } from '../model/Settings'
+import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
 interface IProps {
-    onClose:(newSettings:Settings|undefined) => {};
-    settings:Settings;
+    onClose:(newSettings:Settings|undefined) => {}
+    settings:Settings
 }
 
 const SettingsConfig: React.FC<any> = (props:IProps) => {
-    const [maxMessages, setMaxMessages] = useState(props.settings.maxMessages);
-    const [previous, setPrevious] = useState(props.settings.previous);
-    const [timestamp, setTimestamp] = useState(props.settings.timestamp);
+    const [value, setValue] = React.useState('log')
+    const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages)
+    const [logPrevious, setLogPrevious] = useState(props.settings.logPrevious)
+    const [logTimestamp, setLogTimestamp] = useState(props.settings.logTimestamp)
+    const [metricsMode, setMetricsMode] = useState(props.settings.metricsMode.toString())
+    const [metricsMetrics, setMetricsMetrics] = useState(props.settings.metricsMetrics.join(','))
 
-    const onChangeMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
-        setMaxMessages(+event.target.value);
+    const onChangeLogMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
+        setLogMaxMessages(+event.target.value)
     }
 
-    const onChangePrevious = (event:ChangeEvent<HTMLInputElement>) => {
-        setPrevious(event.target.checked);
+    const onChangeLogPrevious = (event:ChangeEvent<HTMLInputElement>) => {
+        setLogPrevious(event.target.checked)
     }
 
-    const onChangeTimestamp = (event:ChangeEvent<HTMLInputElement>) => {
-        setTimestamp(event.target.checked);
+    const onChangeLogTimestamp = (event:ChangeEvent<HTMLInputElement>) => {
+        setLogTimestamp(event.target.checked)
+    }
+
+    const onChangeMetricsMode = (event: SelectChangeEvent) => {
+        setMetricsMode(event.target.value)
+    }
+
+    const onChangeMetricsMetrics = (event:ChangeEvent<HTMLInputElement>) => {
+        setMetricsMetrics(event.target.value)
     }
 
     const closeOk = () =>{
-        var newSettings=new Settings();
-        newSettings.maxMessages=maxMessages;
-        newSettings.previous=Boolean(previous);
-        newSettings.timestamp=Boolean(timestamp);
-        props.onClose(newSettings);
+        var newSettings=new Settings()
+        newSettings.logMaxMessages=logMaxMessages
+        newSettings.logPrevious=Boolean(logPrevious)
+        newSettings.logTimestamp=Boolean(logTimestamp)
+        newSettings.metricsMode = MetricsConfigModeEnum[metricsMode as keyof typeof MetricsConfigModeEnum]
+        newSettings.metricsMetrics = metricsMetrics.split(',')
+        props.onClose(newSettings)
     }
 
     return (<>
         <Dialog open={true}>
             <DialogTitle>Settings</DialogTitle>
             <DialogContent>
-            <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                <TextField value={maxMessages} onChange={onChangeMaxMessages} variant='standard'label='Max messages' SelectProps={{native: true}} type='number'></TextField>
-                <Stack direction='row' alignItems={'baseline'}>
-                    <Switch checked={previous} onChange={onChangePrevious}/><Typography>Get messages of previous deployment</Typography>
+                <Tabs value={value} onChange={(_: React.SyntheticEvent, newValue: string) => { setValue(newValue)}}>
+                    <Tab key='log' label='Log' value='log' />
+                    <Tab key='metrics' label='Metrics' value='metrics' />
+                </Tabs>
+
+                <Stack visibility={value==='log'?'visible':'hidden'} spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
+                    <TextField value={logMaxMessages} onChange={onChangeLogMaxMessages} variant='standard'label='Max messages' SelectProps={{native: true}} type='number'></TextField>
+                    <Stack direction='row' alignItems={'baseline'}>
+                        <Switch checked={logPrevious} onChange={onChangeLogPrevious}/><Typography>Get messages of previous deployment</Typography>
+                    </Stack>
+                    <Stack direction='row' alignItems={'baseline'}>
+                        <Switch checked={logTimestamp} onChange={onChangeLogTimestamp}/><Typography>Add timestamp to messages</Typography>
+                    </Stack>
                 </Stack>
-                <Stack direction='row' alignItems={'baseline'}>
-                    <Switch checked={timestamp} onChange={onChangeTimestamp}/><Typography>Add timestamp to messages</Typography>
+                
+                <Stack visibility={value==='metrics'?'visible':'hidden'} spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
+                    <FormControl fullWidth>
+                        <InputLabel id="modelabel">Age</InputLabel>
+                        <Select value={metricsMode} onChange={onChangeMetricsMode} labelId="modelabel" label="Mode">
+                            <MenuItem value={'SNAPSHOT'}>Snapshot</MenuItem>
+                            <MenuItem value={'STREAM'}>Stream</MenuItem>
+                        </Select>
+                        </FormControl>
+                    <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField>
                 </Stack>
-            </Stack>
+
             </DialogContent>
             <DialogActions>
                 <Button onClick={closeOk}>OK</Button>
                 <Button onClick={() => props.onClose(undefined)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
-    </>);
-};
+    </>)
+}
 
-export default SettingsConfig;
+export default SettingsConfig

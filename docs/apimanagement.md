@@ -10,13 +10,12 @@ The API management tool (names **API Security**) is on the main menu (the burger
 
 
 ## API Keys explained
-
 An API key requires following information to be created:
 
 - **Description**. For obious reasons it is important to write down what an API key has been created for.
 - **Expire**. In milliseconds, absolute expire moment for the API Key.
 - **Type**. There are 2 types: 'permanent', that are stored in a secure site and keep alive even if Kwirth crashes, or 'volatile' they only live in memory, they are not persisted to any storage. When you create Key s manually you can only create 'permanent' keys. 'volatile' keys are expected to be created by other applications.
-- **Scope**. As explained in other parts of this documentation, the scope is used to decide what an API Key owner can do with the resuources declared in the key. This are the valid scopes and their meaning:
+- **Scope**. As explained in other parts of this documentation, the scope is used to decide what an API Key owner can do with the resources declared in the key. This are the valid scopes and their meaning:
     - cluster: this scope means you can permform any Kwirth action on the cluster.
     - api: this scopes allows you to manage api keys
     - restart: this scope allows the owner of the key restartin pods or deployments in the cluster where de key has been created

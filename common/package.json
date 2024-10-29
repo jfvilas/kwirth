@@ -1,6 +1,6 @@
 {
   "name": "@jfvilas/kwirth-common",
-  "version": "0.3.5",
+  "version": "0.3.12",
   "description": "Common interfaces for integrating applications with Kwirth",
   "scripts": {
     "build": "del .\\dist\\* /s /q && tsc"
@@ -20,7 +20,7 @@
     "url": "git+https://github.com/jfvilas/kwirth-common.git"
   },
   "keywords": [
-    "kwrith",
+    "kwirth",
     "kubernetes",
     "log",
     "observability",

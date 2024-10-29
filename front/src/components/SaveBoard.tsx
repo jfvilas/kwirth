@@ -2,7 +2,7 @@ import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText,
 import { ChangeEvent, useState } from 'react';
 
 interface IProps {
-    onClose:(a:string|null) => {},
+    onClose:(a?:string) => {},
     name:string
 }
 const SaveBoard: React.FC<any> = (props:IProps) => {
@@ -26,7 +26,7 @@ const SaveBoard: React.FC<any> = (props:IProps) => {
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => props.onClose(newname)} disabled={newname===props.name}>OK</Button>
-                <Button onClick={() => props.onClose(null)}>CANCEL</Button>
+                <Button onClick={() => props.onClose(undefined)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     )

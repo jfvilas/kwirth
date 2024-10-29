@@ -1,4 +1,4 @@
-import { useState, useRef, ChangeEvent, useEffect } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react'
 
 // material & icons
 import { AppBar, Box, Button, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material'
@@ -18,7 +18,7 @@ import { PickListConfig } from './model/PickListConfig'
 // components
 import BlockingAlarm from './components/BlockingAlarm'
 import AlarmConfig from './components/AlarmConfig'
-import RenameLog from './components/RenameLog'
+import RenameTab from './components/RenameTab'
 import SaveBoard from './components/SaveBoard'
 import ManageApiSecurity from './components/ManageApiSecurity'
 import PickList from './components/PickList'
@@ -29,15 +29,17 @@ import ManageAlarms from './components/ManageAlarms'
 import ResourceSelector from './components/ResourceSelector'
 import LogContent from './components/LogContent'
 import SettingsConfig from './components/SettingsConfig'
-import { MenuLog, MenuLogOption } from './menus/MenuLog'
+import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
 import { VERSION } from './version'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from './tools/MsgBox'
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfigTypeEnum } from '@jfvilas/kwirth-common'
-import { MetricsObject } from './model/MetricsObject';
+import { KwirthData, LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigTypeEnum, versionGreatOrEqualThan } from '@jfvilas/kwirth-common'
+import { MetricsObject } from './model/MetricsObject'
+import { TabObject } from './model/TabObject'
+import MetricsSelector from './components/MetricsSelector'
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883'
@@ -54,28 +56,30 @@ const App: React.FC = () => {
     const clustersRef = useRef(clusters)
     clustersRef.current=clusters
 
-    const [logs, setLogs] = useState<LogObject[]>([])
-    const [highlightedLogs, setHighlightedLogs] = useState<LogObject[]>([])
-    const [pausedLogs, setPausedLogs] = useState<LogObject[]>([])
+    const [tabs, setTabs] = useState<TabObject[]>([])
+    const [highlightedTabs, setHighlightedTabs] = useState<TabObject[]>([])
+    const [pausedTabs, setPausedTabs] = useState<TabObject[]>([])
 
-    const [selectedLogName, setSelectedLogName] = useState<string>()
-    const selectedLogRef = useRef(selectedLogName)
-    selectedLogRef.current=selectedLogName
-    var selectedLog = logs.find(t => t.name===selectedLogName)
-    var selectedLogIndex = logs.findIndex(t => t.name===selectedLogName)
+    const [selectedTabName, setSelectedTabName] = useState<string>()
+    const selectedTabRef = useRef(selectedTabName)
+    selectedTabRef.current=selectedTabName
+    var selectedTab = tabs.find(t => t.name===selectedTabName)
+    var selectedTabIndex = tabs.findIndex(t => t.name===selectedTabName)
+
+    // const [selectedLogName, setSelectedLogName] = useState<string>()
+    // const selectedLogRef = useRef(selectedLogName)
+    // selectedLogRef.current=selectedLogName
+    // var selectedLog = logs.find(t => t.name===selectedLogName)
+    // var selectedLogIndex = logs.findIndex(t => t.name===selectedLogName)
     const [receivedMetrics, setReceivedMetrics] = useState<MetricsMessage[]>([])
 
     // message list management
     const [logMessages, setLogMessages] = useState<LogMessage[]>([])  //+++ i think this is not being used right now
-    //const searchLineRef = useRef(null)
     const lastLineRef = useRef(null)
 
     // search & filter
     const [filter, setFilter] = useState<string>('')
     const [search, setSearch] = useState<string>('')
-    // const [searchPos, setSearchPos] = useState<number>(0);
-    // const [searchFirstPos, setSearchFirstPos] = useState<number>(-1);
-    // const [searchLastPos, setSearchLastPos] = useState<number>(-1);
 
     // general
     const [settings, setSettings] = useState<Settings>()
@@ -83,7 +87,7 @@ const App: React.FC = () => {
     settingsRef.current=settings
 
     // menus/navigation
-    const [anchorMenuLog, setAnchorMenuLog] = useState<null | HTMLElement>(null)
+    const [anchorMenuTab, setAnchorMenuTab] = useState<null | HTMLElement>(null)
     const [menuDrawerOpen,setMenuDrawerOpen]=useState(false)
 
     // dialogs
@@ -94,16 +98,18 @@ const App: React.FC = () => {
     // components
     const [showAlarmConfig, setShowAlarmConfig]=useState<boolean>(false)
     const [showBlockingAlarm, setShowBlockingAlarm]=useState<boolean>(false)
-    const [showRenameLog, setShowRenameLog]=useState<boolean>(false)
+    const [showRenameTab, setShowRenameLog]=useState<boolean>(false)
     const [showManageClusters, setShowManageClusters]=useState<boolean>(false)
     const [showSaveBoard, setShowSaveBoard]=useState<boolean>(false)
     const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false)
     const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false)
     const [showManageAlarms, setShowManageAlarms]=useState<boolean>(false)
     const [showSettingsConfig, setShowSettingsConfig]=useState<boolean>(false)
+    const [initialMessage, setInitialMessage]=useState<string>('')
     const [blockingAlarm, setBlockingAlarm] = useState<Alarm>()
     const [boardLoaded, setBoardLoaded] = useState<boolean>(false)
     const [currentBoardName, setCurrentBoardName] = useState('')
+    const [showMetricsSelector, setShowMetricsSelector]=useState<boolean>(false)
     const [showPickList, setShowPickList]=useState<boolean>(false)
     
     useEffect ( () => {
@@ -125,10 +131,10 @@ const App: React.FC = () => {
     useEffect ( () => {
         if (logged) {
             setBoardLoaded(false)
-            if (logs.length>0) {
-                for (var t of logs)
-                    startLog(t)
-                onChangeLogs(null, logs[0].name)
+            if (tabs.length>0) {
+                for (var t of tabs)
+                    startTab(t)
+                onChangeTabs(null, tabs[0].name)
             }
         }
     }, [boardLoaded])
@@ -140,6 +146,11 @@ const App: React.FC = () => {
         srcCluster.url=backendUrl
         srcCluster.accessString=accessString
         srcCluster.source=true
+        var response = await fetch(`${backendUrl}/config/version`, addGetAuthorization(accessString))
+        srcCluster.kwirthData = await response.json() as KwirthData
+        if (versionGreatOrEqualThan(srcCluster.kwirthData.version,srcCluster.kwirthData.lastVersion)) {
+            setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
+        }
 
         // get previously configured clusters
         var clusterList:Cluster[]=[]
@@ -175,73 +186,113 @@ const App: React.FC = () => {
     }
 
     const onResourceSelectorAdd = (selection:any) => {
-        var logName=selection.logName
+        var cluster=clusters!.find(c => c.name===selection.cluster)
+        if (!cluster) {
+            console.log('nocluster')
+            setMsgBox(MsgBoxOk('Kwirth',`Cluster established at tab configuration ${selection.cluster} does not exist.`, setMsgBox))
+            return
+        }            
+        if (!cluster.metricList) getMetricsNames(cluster)
+
+        var tabName=selection.logName
+        var serviceConfigType=selection.serviceConfigType as ServiceConfigTypeEnum
 
         // create unduplicated (unique) name
         var index=-1
-        while (logs.find (l => l.name===logName+index)) index-=1
+        while (tabs.find (t => t.name===tabName+index)) index-=1
+        var newTab = new TabObject()
+        newTab.name = tabName+index
+        tabs.push(newTab)
 
-        var newLog:LogObject= new LogObject()
-        newLog.cluster=selection.clusterName
-        newLog.view=selection.view
-        newLog.namespace=selection.namespace
-        newLog.group=selection.group
-        newLog.pod=selection.pod
-        newLog.container=selection.container
-        newLog.name=logName+index
+        newTab.ws = new WebSocket(cluster.url)
+        newTab.ws.onopen = () => {
+            console.log(`WS connected: ${newTab.ws!.url}`)
+        }
+        newTab.ws.onerror = () => {
+            console.log(`Error detected on WS: ${newTab.ws!.url}`)
+        }
+        newTab.ws.onmessage = (event) => wsOnTabMessage(event)
+        newTab.ws.onclose = (event) => console.log(`WS tab disconnected: ${newTab.ws!.url}`)
 
-        logs.push(newLog)
-        setLogMessages([])
-        setLogs(logs)
-        setSelectedLogName(newLog.name)
+        switch(serviceConfigType) {
+            case ServiceConfigTypeEnum.LOG:
+                var newLog = new LogObject()
+                newLog.cluster=selection.clusterName
+                newLog.view=selection.view
+                newLog.namespace=selection.namespace
+                newLog.group=selection.group
+                newLog.pod=selection.pod
+                newLog.container=selection.container        
+                newTab.logObject=newLog
+                setLogMessages([])
+                break
+
+            case ServiceConfigTypeEnum.METRICS:
+                var newMetrics = new MetricsObject()
+                newMetrics.cluster=selection.clusterName
+                newMetrics.view=selection.view
+                newMetrics.namespace=selection.namespace
+                newMetrics.group=selection.group
+                newMetrics.pod=selection.pod
+                newMetrics.container=selection.container        
+                newTab.metricsObject=newMetrics
+                break
+        }
+
         setFilter('')
         setSearch('')
+        setTabs(tabs)
+        setSelectedTabName(newTab.name)
     }
 
-    const onChangeLogs = (event:any,logName?:string)=> {
-        var newlog = logs.find(log => log.name === logName);
-        if (newlog) {
-            newlog.pending=false
-            setHighlightedLogs (highlightedLogs.filter(t => t.pending))
-            setPausedLogs (pausedLogs.filter(log => log.paused))
-            setFilter(newlog.filter)
-            setLogMessages(newlog.messages)
-            setLogs(logs)
-            setSelectedLogName(logName)
+    const onChangeTabs = (event:any,tabName?:string)=> {
+        var newTab = tabs.find(tab => tab.name === tabName)
+        if (newTab) {
+            if (newTab.logObject) {
+                newTab.logObject.pending=false
+                setHighlightedTabs (highlightedTabs.filter(t => t.logObject && t.logObject.pending))
+                setPausedTabs (pausedTabs.filter(t => t.logObject && t.logObject.paused))
+                setFilter(newTab.logObject.filter)
+                setLogMessages(newTab.logObject.messages)
+            }
+            setTabs(tabs)
+            setSelectedTabName(tabName)
         }
     }
 
     const processSignalMessage = (event:any) => {
-        // console.log('SIGNAL MESSAGE')
-        // console.log(event)
+        // +++ decide how to show signal messages
+        console.log('SIGNAL MESSAGE')
+        console.log(event)
     }
 
-    const processLogMessage = (event:any) => {
+    const processLogMessage = (wsEvent:any) => {
         // find the log who this web socket belongs to, and add the new message
-        var log=logs.find(log => log.ws!==null && log.ws===event.target) as LogObject
-        if (!log) return
+        //var tab=tabs.find(tab => tab.logObject && tab.logObject.ws!==null && tab.logObject.ws===event.target)
+        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
+        if (!tab || !tab.logObject) return
 
-        var msg = JSON.parse(event.data) as LogMessage
-        log.messages.push(msg)
-        while (log.messages.length>log.maxMessages) log.messages.splice(0,1)
+        var msg = JSON.parse(wsEvent.data) as LogMessage
+        tab.logObject.messages.push(msg)
+        while (tab.logObject.messages.length>tab.logObject.maxMessages) tab.logObject.messages.splice(0,1)
 
         // if current log is displayed (focused), add message to the screen
-        if (selectedLogRef.current === log.name) {
-            if (!log.paused) {
-                setLogMessages([]);  //+++ this forces LogContent to re-render +++ change to any other thing
+        if (selectedTabRef.current === tab.name) {
+            if (!tab.logObject.paused) {
+                setLogMessages([])  //+++ this forces LogContent to re-render +++ change to any other thing
                 if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
             }
         }
         else {
             // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-            if (log.showBackgroundNotification && !log.paused) {
-                log.pending=true
-                setHighlightedLogs((prev)=> [...prev, log!])
-                setLogs(logs)
+            if (tab.logObject.showBackgroundNotification && !tab.logObject.paused) {
+                tab.logObject.pending=true
+                setHighlightedTabs((prev)=> [...prev, tab!])
+                setTabs(tabs)
             }
         }
 
-        for (var alarm of log.alarms) {
+        for (var alarm of tab.logObject.alarms) {
             if (msg.text.includes(alarm.expression)) {
                 if (alarm.beep) Beep.beepError()
                 
@@ -251,7 +302,10 @@ const App: React.FC = () => {
                 }
                 else {
                     const action = (snackbarId: SnackbarKey | undefined) => (<>
-                        <Button onClick={() => { closeSnackbar(snackbarId); onChangeLogs(null,log.name); }}>
+                        <Button onClick={() => { 
+                            closeSnackbar(snackbarId)
+                            onChangeTabs(null,tab!.name)
+                        }}>
                             View
                         </Button>
                         <Button onClick={() => { closeSnackbar(snackbarId) }}>
@@ -270,34 +324,44 @@ const App: React.FC = () => {
         }
     }
 
-    const wsOnLogMessage = (event:any) => {
-        var e:any={}
+    const wsOnTabMessage = (wsEvent:any) => {
+        var event:any={}
         try {
-            e=JSON.parse(event.data)
+            event=JSON.parse(wsEvent.data)
         }
         catch (err) {
             console.log(err)
-            console.log(event.data)
+            console.log(wsEvent.data)
             return
         }
 
-        switch(e.type) {
+        switch(event.type) {
             case 'info':
             case 'warning':
             case 'error':
-                processSignalMessage(event)
+                processSignalMessage(wsEvent)
                 break
             case 'log':
-                processLogMessage(event)
+                processLogMessage(wsEvent)
                 break
             case 'metrics':
-                processMetricsMessage(event)
+                processMetricsMessage(wsEvent)
+                break
+            // case 'oper':
+            //     processMetricsMessage(wsEvent)
+            //     break
+            // case 'audit':
+            //     processMetricsMessage(wsEvent)
+            //     break
+            default:
+                console.log('invalid event type: ',event.type)
                 break
         }
     }
 
-    const processMetricsMessage = (event:any) => {
-        var msg=JSON.parse(event.data) as MetricsMessage
+    const processMetricsMessage = (wsEvent:any) => {
+        var msg = JSON.parse(wsEvent.data) as MetricsMessage
+        // +++ pending change comm model: names are set on open, only vlaues are received on stream (a number array with the same order)
         var pos = receivedMetrics.findIndex( m => m.namespace===msg.namespace && m.podName===msg.podName && m.metrics.join(',')===msg.metrics.join(','))
         if (pos>=0)
             receivedMetrics[pos]=msg
@@ -306,29 +370,6 @@ const App: React.FC = () => {
         setReceivedMetrics(Array.from(receivedMetrics))
     }
     
-    const wsOnMetricsMessage = (event:any) => {
-        var e:any={}
-        try {
-            e=JSON.parse(event.data)
-        }
-        catch (err) {
-            console.log(err)
-            console.log(event.data)
-            return
-        }
-
-        switch(e.type) {
-            case 'info':
-            case 'warning':
-            case 'error':
-                processSignalMessage(event)
-                break
-            case 'metrics':
-                processMetricsMessage(event)
-                break
-        }
-    }
-
     const getMetricsNames = async (cluster:Cluster) => {
         cluster.metricList=new Map()
         var response = await fetch (`${backendUrl}/metrics`, addGetAuthorization(accessString))
@@ -352,316 +393,340 @@ const App: React.FC = () => {
         console.log(cluster.metricList)
     }
 
-    const startMetrics = (log:LogObject) => {
-        var cluster=clusters!.find(c => c.name===log.cluster)
+    const onClickMetricsStart = () => {
+        setShowMetricsSelector(true)
+    }
+
+    const startMetrics = (tab:TabObject) => {
+        if (!tab || !tab.metricsObject) return
+        var cluster=clusters!.find(c => c.name===tab.metricsObject!.cluster)
         if (!cluster) {
-            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at metrics configuration (${log.cluster}) does not exist.`, setMsgBox))
+            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at metrics configuration (${tab.metricsObject.cluster}) does not exist.`, setMsgBox))
             return
         }
-
-        if (!cluster.metricList) getMetricsNames(cluster)
-        var mo:MetricsObject={
-            name:'metric1',
-            cluster:log.cluster,
-            view:log.view,
-            namespace:log.namespace,
-            group:log.group,
-            pod:log.pod,
-            container:log.container,
-            started: false,
-            ws:log.ws,
-            alarms: []
-        }
-
-        if (mo.ws===null)  {
-            mo.ws = new WebSocket(cluster.url)
-            mo.ws.onopen = () => {
-                console.log(`WS Metrics connected: ${mo.ws!.url}`)
-                var mc:MetricsConfig = {
-                    type: ServiceConfigTypeEnum.METRICS,
-                    interval: 5,
-                    accessKey: cluster!.accessString,
-                    scope: 'stream',
-                    view: log.view!,
-                    namespace: log.namespace!,
-                    set: log.group!,
-                    group: log.group!,
-                    pod: log.pod!,
-                    container: log.container!,
-                    mode: MetricsConfigModeEnum.STREAM,
-                    metrics: ['container_fs_writes_total',
-                        'container_fs_reads_total',
-                        'container_cpu_usage_seconds_total',
-                        'container_memory_usage_bytes',
-                        'container_network_receive_bytes_total',
-                        'container_network_transmit_bytes_total'
-                    ]
-                }
-                mo.ws!.send(JSON.stringify(mc))
-                log.started=true
-            }
-        }
-        else {
+ 
+        if (tab.ws?.OPEN) {
             var mc:MetricsConfig = {
+                action: ServiceConfigActionEnum.START,
+                flow: ServiceConfigFlowEnum.REQUEST,
                 type: ServiceConfigTypeEnum.METRICS,
+                instance: '',
                 interval: 5,
                 accessKey: cluster!.accessString,
                 scope: 'stream',
-                view: log.view!,
-                namespace: log.namespace!,
-                set: log.group!,
-                group: log.group!,
-                pod: log.pod!,
-                container: log.container!,
-                mode: MetricsConfigModeEnum.STREAM,
-                metrics: ['container_fs_writes_total',
-                    'container_fs_reads_total',
-                    'container_cpu_usage_seconds_total',
-                    'container_memory_usage_bytes',
-                    'container_network_receive_bytes_total',
-                    'container_network_transmit_bytes_total'
-                ]
+                view: tab.metricsObject.view!,
+                namespace: tab.metricsObject.namespace!,
+                set: tab.metricsObject.group!,
+                group: tab.metricsObject.group!,
+                pod: tab.metricsObject.pod!,
+                container: tab.metricsObject.container!,
+                mode: tab.metricsObject.mode,
+                metrics: tab.metricsObject.metrics
             }
-            mo.ws!.send(JSON.stringify(mc))
-        }
-        mo.ws.onmessage = (event) => wsOnMetricsMessage(event)
-        mo.ws.onclose = (event) => console.log(`WS metrics disconnected: ${mo.ws!.url}`)
-    }
-
-    const onClickMetricsStart = () => {
-        var log=logs.find(l => l.name===selectedLogRef.current)
-        if (log) {
-            startMetrics(log)
+            tab.ws.send(JSON.stringify(mc))
+            tab.metricsObject.started=true
         }
         else {
-            setMsgBox(MsgBoxOk('Log object', 'No log selected',setMsgBox))
+            console.log('Tab web socket is not started')
         }
-        setAnchorMenuLog(null)
-    }
-
-    const startLog = (log:LogObject) => {
-        log.maxMessages=settings!.maxMessages
-        log.previous=settings!.previous
-        log.addTimestamp=settings!.timestamp
-        log.messages=[]
-        var cluster=clusters!.find(c => c.name===log.cluster)
-        if (!cluster) {
-            console.log('nocluster')
-            setMsgBox(MsgBoxOk('Kwirth',`Cluster established at log configuration ${log.cluster} does not exist.`, setMsgBox))
-            return
-        }
-        if (!cluster.metricList) getMetricsNames(cluster)
-
-        var ws = new WebSocket(cluster.url)
-        log.ws=ws
-        ws.onopen = () => {
-            console.log(`WS connected: ${ws.url}`)
-            var lc:LogConfig={
-                type: ServiceConfigTypeEnum.LOG,
-                accessKey: cluster!.accessString,
-                scope: 'view',
-                view: log.view!,
-                namespace: log.namespace!, 
-                set: log.group!,
-                group: log.group!,
-                pod: log.pod!, 
-                container: log.container!,
-                timestamp: log.addTimestamp!,
-                previous: log.previous!,
-                maxMessages: log.maxMessages!
-            }                
-            ws.send(JSON.stringify(lc))
-            log.started=true
-        }
-        
-        ws.onmessage = (event) => wsOnLogMessage(event)
-        ws.onclose = (event) => console.log(`WS disconnected: ${ws.url}`)
-        setLogMessages([])
-    }
-
-    const onClickLogStart = () => {
-        var log=logs.find(l => l.name===selectedLogRef.current)
-        if (log) startLog(log)
-        setAnchorMenuLog(null)
-    }
-
-    const stopLog = (log:LogObject) => {
-        var endline='=============================================================================================='
-        log.messages.push({ text:endline} as LogMessage)
-        log.started=false
-        log.paused=false
-        if (log.ws) log.ws.close()
-        setPausedLogs(logs.filter(t => t.paused))
-        setLogMessages(log.messages)
-    }
-
-    const stopMetrics = (log:LogObject) => {
-        // var endline='=============================================================================================='
-        // log.messages.push({ text:endline} as LogMessage)
-        // log.started=false
-        // log.paused=false
-        // if (log.ws) log.ws.close()
-        // setPausedLogs(logs.filter(t => t.paused))
-        // setLogMessages(log.messages)
-    }
-
-    const onClickLogStop = () => {    
-        setAnchorMenuLog(null)
-        if (selectedLog) stopLog(selectedLog)
     }
 
     const onClickMetricsStop = () => {    
-        setAnchorMenuLog(null)
-        if (selectedLog) stopMetrics(selectedLog)
+        setAnchorMenuTab(null)
+        if (selectedTab && selectedTab.logObject) stopMetrics(selectedTab)
     }
 
-    const onClickLogRemove = () => {
-        setAnchorMenuLog(null);
-        if (!selectedLog) return
+    const onClickMetricsRemove = () => {    
+        setAnchorMenuTab(null)
+        if (selectedTab && selectedTab.metricsObject) selectedTab.metricsObject=undefined
+    }
 
-        stopLog(selectedLog)
-        if (logs.length===1)
+    const stopMetrics = (tab:TabObject) => {
+        if (!tab.metricsObject) return
+        var mc:MetricsConfig = {
+            action: ServiceConfigActionEnum.STOP,
+            flow: ServiceConfigFlowEnum.REQUEST,
+            type: ServiceConfigTypeEnum.METRICS,
+            instance: tab.metricsObject.serviceInstance,
+            mode: MetricsConfigModeEnum.SNAPSHOT,
+            metrics: [],
+            accessKey: '',
+            view: '',
+            scope: '',
+            namespace: '',
+            group: '',
+            set: '',
+            pod: '',
+            container: ''
+        }
+        if (tab.ws) tab.ws.send(JSON.stringify(mc))
+        tab.metricsObject.started=false
+    }
+
+    const onClickMetricsPause = () => {
+        setAnchorMenuTab(null)
+        if (!selectedTab) return
+    }
+
+    const startTab = (tab:TabObject) => {
+        if (tab.logObject) startLog(tab)
+        if (tab.metricsObject) startMetrics(tab)
+    }
+
+    const onClickStopTab = () => {    
+        setAnchorMenuTab(null)
+        if (selectedTab) stopTab(selectedTab)
+    }
+
+    const stopTab = (tab:TabObject) => {
+        if (tab.logObject) stopLog(tab)
+        if (tab.metricsObject) stopMetrics(tab)
+    }
+
+    const onClickStartLog = () => {
+        setAnchorMenuTab(null)
+        var tab=tabs.find(t => t.name===selectedTabRef.current)
+        if (tab && tab.logObject) startLog(tab)
+    }
+
+    const startLog = (tab:TabObject) => {
+        if (!tab || !tab.logObject) return
+        tab.logObject.maxMessages=settings!.logMaxMessages
+        tab.logObject.previous=settings!.logPrevious
+        tab.logObject.addTimestamp=settings!.logTimestamp
+        tab.logObject.messages=[]
+        var cluster=clusters!.find(c => c.name===tab.logObject!.cluster)
+        if (!cluster) {
+            console.log('nocluster')
+            setMsgBox(MsgBoxOk('Kwirth',`Cluster established at log configuration ${tab.logObject.cluster} does not exist.`, setMsgBox))
+            return
+        }
+
+        if (tab.ws?.OPEN) {
+            var logConfig:LogConfig = {
+                action: ServiceConfigActionEnum.START,
+                flow: ServiceConfigFlowEnum.REQUEST,
+                type: ServiceConfigTypeEnum.LOG,
+                instance: '',
+                accessKey: cluster!.accessString,
+                scope: 'view',
+                view: tab.logObject.view!,
+                namespace: tab.logObject.namespace!,
+                set: tab.logObject.group!, // transitional
+                group: tab.logObject.group!,
+                pod: tab.logObject.pod!,
+                container: tab.logObject.container!,
+                timestamp: tab.logObject.addTimestamp!,
+                previous: tab.logObject.previous!,
+                maxMessages: tab.logObject.maxMessages!
+            }
+            tab.ws.send(JSON.stringify(logConfig))
+            tab.logObject.started=true        
+            setLogMessages([])                
+        }
+        else {
+            console.log('Tab web socket is not  open')
+        }
+    }
+
+    const stopLog = (tab:TabObject) => {
+        if (!tab || !tab.logObject) return
+        var endline='=============================================================================================='
+        tab.logObject.messages.push( {text:endline} as LogMessage)
+
+        if (tab.ws) {
+            var lc:LogConfig = {
+                action: ServiceConfigActionEnum.STOP,
+                flow: ServiceConfigFlowEnum.REQUEST,
+                type: ServiceConfigTypeEnum.METRICS,
+                instance: tab.logObject.serviceInstance,
+                accessKey: '',
+                view: '',
+                scope: '',
+                namespace: '',
+                group: '',
+                set: '',
+                pod: '',
+                container: '',
+                timestamp: false,
+                previous: false,
+                maxMessages: 0
+            }
+            tab.ws.send(JSON.stringify(lc))
+        }
+
+        tab.logObject.started=false
+        tab.logObject.paused=false
+        setPausedTabs(tabs.filter(t => t.logObject?.paused))
+        setLogMessages(tab.logObject.messages)
+    }
+
+    const onClickTabRemove = () => {
+        setAnchorMenuTab(null)
+        if (!selectedTab || !selectedTab.logObject) return
+
+        stopLog(selectedTab)
+        if (tabs.length===1)
             setLogMessages([])
         else
-            onChangeLogs(null,logs[0].name)
-        setLogs(logs.filter(t => t!==selectedLog))
+            onChangeTabs(null,tabs[0].name)
+        setTabs(tabs.filter(t => t!==selectedTab))
     }
 
     const onClickLogPause = () => {
-        setAnchorMenuLog(null)
-        if (!selectedLog) return
+        setAnchorMenuTab(null)
+        if (!selectedTab || !selectedTab.logObject) return
 
-        if (selectedLog.paused) {
-            selectedLog.paused=false
-            setLogMessages(selectedLog.messages)
-            setPausedLogs(logs.filter(t => t.paused))
+        if (selectedTab.logObject.paused) {
+            selectedTab.logObject.paused=false
+            setLogMessages(selectedTab.logObject.messages)
+            setPausedTabs(tabs.filter(t => t.logObject?.paused))
         }
         else {
-            selectedLog.paused=true
-            setPausedLogs( (prev) => [...prev, selectedLog!])
+            selectedTab.logObject.paused=true
+            setPausedTabs( (prev) => [...prev, selectedTab!])
         }
     }
 
-    const onChangeFilter = (event:ChangeEvent<HTMLInputElement>) => {
-        if (selectedLog) selectedLog.filter=event.target.value
+    const onChangeLogFilter = (event:ChangeEvent<HTMLInputElement>) => {
+        if (selectedTab && selectedTab.logObject) selectedTab.logObject.filter=event.target.value
         setFilter(event.target.value)
     }
 
-    const menuLogOptionSelected = (option: MenuLogOption) => {
-        setAnchorMenuLog(null);
+    const menuTabOptionSelected = (option: MenuTabOption) => {
+        setAnchorMenuTab(null)
         switch(option) {
-            case MenuLogOption.LogOrganizeInfo:
+            case MenuTabOption.TabInfo:
                 var a=`
-                    <b>Name</b>: ${selectedLog?.name}<br/>
-                    <b>View</b>: ${selectedLog?.view}<br/>
-                    <b>Namespace</b>: ${selectedLog?.namespace}<br/>
-                    <b>Group</b>: ${selectedLog?.group}<br/>
-                    <b>Pod</b>: ${selectedLog?.pod}<br/>
-                    <b>Container</b>: ${selectedLog?.container}
+                    <b>Name</b>: ${selectedTab?.name}<br/>
+                    <b>View</b>: ${selectedTab?.logObject?.view}<br/>
+                    <b>Namespace</b>: ${selectedTab?.logObject?.namespace}<br/>
+                    <b>Group</b>: ${selectedTab?.logObject?.group}<br/>
+                    <b>Pod</b>: ${selectedTab?.logObject?.pod}<br/>
+                    <b>Container</b>: ${selectedTab?.logObject?.container}
                 `
                 setMsgBox(MsgBoxOk('Log info',a,setMsgBox))
                 break
-            case MenuLogOption.LogOrganizeRename:
+            case MenuTabOption.TabRename:
                 setShowRenameLog(true)
                 break
-            case MenuLogOption.LogOrganizeMoveLeft:
-                if (selectedLog) {
-                    logs[selectedLogIndex]=logs[selectedLogIndex-1]
-                    logs[selectedLogIndex-1]=selectedLog
-                    setLogs(logs)
+            case MenuTabOption.TabMoveLeft:
+                if (selectedTab && selectedTab.logObject) {
+                    tabs[selectedTabIndex]=tabs[selectedTabIndex-1]
+                    tabs[selectedTabIndex-1]=selectedTab
+                    setTabs(tabs)
                 }
                 break
-            case MenuLogOption.LogOrganizeMoveRight:
-                if (selectedLog) {
-                    logs[selectedLogIndex]=logs[selectedLogIndex+1]
-                    logs[selectedLogIndex+1]=selectedLog
-                    setLogs(logs)
+            case MenuTabOption.TabMoveRight:
+                if (selectedTab && selectedTab.logObject) {
+                    tabs[selectedTabIndex]=tabs[selectedTabIndex+1]
+                    tabs[selectedTabIndex+1]=selectedTab
+                    setTabs(tabs)
                 }
                 break
-            case MenuLogOption.LogOrganizeMoveFirst:
-                if (selectedLog) {
-                    logs.splice(selectedLogIndex, 1)
-                    logs.splice(0, 0, selectedLog)
-                    setLogs(logs)
+            case MenuTabOption.TabMoveFirst:
+                if (selectedTab && selectedTab.logObject) {
+                    tabs.splice(selectedTabIndex, 1)
+                    tabs.splice(0, 0, selectedTab)
+                    setTabs(tabs)
                 }
                 break
-            case MenuLogOption.LogOrganizeMoveLast:
-                if (selectedLog) {
-                    logs.splice(selectedLogIndex, 1)
-                    logs.push(selectedLog)
-                    setLogs(logs)
+            case MenuTabOption.TabMoveLast:
+                if (selectedTab && selectedTab.logObject) {
+                    tabs.splice(selectedTabIndex, 1)
+                    tabs.push(selectedTab)
+                    setTabs(tabs)
                 }
                 break
-            case MenuLogOption.LogOptionsBackground:
-                if (selectedLog) selectedLog.showBackgroundNotification=!selectedLog.showBackgroundNotification
+            case MenuTabOption.LogBackground:
+                if (selectedTab && selectedTab.logObject) selectedTab.logObject.showBackgroundNotification=!selectedTab.logObject.showBackgroundNotification
                 break
-            case MenuLogOption.LogOptionsTimestamp:
-                if (selectedLog) selectedLog.addTimestamp=!selectedLog.addTimestamp
+            case MenuTabOption.LogTimestamp:
+                if (selectedTab && selectedTab.logObject) selectedTab.logObject.addTimestamp=!selectedTab.logObject.addTimestamp
                 break
-            case MenuLogOption.LogAlarmCreate:
+            case MenuTabOption.AlarmCreate:
                 setShowAlarmConfig(true)
                 break
-            case MenuLogOption.LogManageAlarms:
+            case MenuTabOption.ManageAlarms:
                 setShowManageAlarms(true)
                 break
-            case MenuLogOption.LogOrganizeDefault:
-                if (selectedLog) selectedLog.defaultLog=true
+            case MenuTabOption.TabSetDefault:
+                if (selectedTab && selectedTab.logObject) selectedTab.defaultTab=true
                 break
-            case MenuLogOption.LogActionsStart:
-                onClickLogStart()
+            case MenuTabOption.LogStart:
+                onClickStartLog()
                 break
-            case MenuLogOption.LogActionsPause:
+            case MenuTabOption.LogPause:
                 onClickLogPause()
                 break
-            case MenuLogOption.LogActionsStop:
-                onClickLogStop()
+            case MenuTabOption.LogStop:
+                onClickStopTab()
                 break
-            case MenuLogOption.LogActionsRemove:
-                onClickLogRemove()
+            case MenuTabOption.TabRemove:
+                onClickTabRemove()
                 break
-            case MenuLogOption.LogManageRestart:
-                switch(selectedLog?.view) {
+            case MenuTabOption.TabManageRestart:
+                switch(selectedTab && selectedTab.logObject?.view) {
                     case 'group':
                     case 'set':
                         // restart a deployment
-                        fetch (`${backendUrl}/managecluster/restartdeployment/${selectedLog.namespace}/${selectedLog.group}`, addPostAuthorization(accessString))
+                        fetch (`${backendUrl}/managecluster/restartdeployment/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.group}`, addPostAuthorization(accessString))
                         break
                     case 'pod':
                         // restart a pod
-                        fetch (`${backendUrl}/managecluster/restartpod/${selectedLog.namespace}/${selectedLog.pod}`, addPostAuthorization(accessString))
+                        fetch (`${backendUrl}/managecluster/restartpod/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.pod}`, addPostAuthorization(accessString))
                         break
                 }
                 break
-            case MenuLogOption.LogMetricsStart:
+            case MenuTabOption.MetricsStart:
                 onClickMetricsStart()
                 break
-            case MenuLogOption.LogMetricsStop:
+            case MenuTabOption.MetricsStop:
                 onClickMetricsStop()
+                break
+            case MenuTabOption.MetricsRemove:
+                onClickMetricsRemove()
                 break
         }
     }
 
     const saveBoard = (boardName:string) => {
-        var newLogs:LogObject[]=[]
-        for (var log of logs) {
-            var newLog = new LogObject()
-            newLog.addTimestamp=log.addTimestamp
-            newLog.alarms=log.alarms
-            newLog.cluster=log.cluster
-            newLog.filter=log.filter
-            newLog.view=log.view
-            newLog.namespace=log.namespace
-            newLog.group=log.group
-            newLog.pod=log.pod
-            newLog.container=log.container
-            newLog.defaultLog=log.defaultLog
-            newLog.paused=log.paused
-            newLog.showBackgroundNotification=log.showBackgroundNotification
-            newLog.started=log.started
-            newLog.name=log.name
-            newLogs.push(newLog)
+        var newTabs:TabObject[]=[]
+        for (var tab of tabs) {
+            var newTab = new TabObject()
+            newTab.name=tab.name
+            newTab.defaultTab=tab.defaultTab
+            if (tab.logObject) {
+                newTab.logObject=new LogObject()
+                newTab.logObject.addTimestamp=tab.logObject.addTimestamp
+                newTab.logObject.alarms=tab.logObject.alarms
+                newTab.logObject.cluster=tab.logObject.cluster
+                newTab.logObject.filter=tab.logObject.filter
+                newTab.logObject.view=tab.logObject.view
+                newTab.logObject.namespace=tab.logObject.namespace
+                newTab.logObject.group=tab.logObject.group
+                newTab.logObject.pod=tab.logObject.pod
+                newTab.logObject.container=tab.logObject.container
+                newTab.logObject.paused=tab.logObject.paused
+                newTab.logObject.showBackgroundNotification=tab.logObject.showBackgroundNotification
+                newTab.logObject.started=tab.logObject.started
+            }
+            if (tab.metricsObject) {
+                newTab.metricsObject=new MetricsObject()
+                newTab.metricsObject.name=tab.metricsObject.name
+                newTab.metricsObject.cluster=tab.metricsObject.cluster
+                newTab.metricsObject.view=tab.metricsObject.view
+                newTab.metricsObject.namespace=tab.metricsObject.namespace
+                newTab.metricsObject.group=tab.metricsObject.group
+                newTab.metricsObject.pod=tab.metricsObject.pod
+                newTab.metricsObject.container=tab.metricsObject.container
+                newTab.metricsObject.cluster=tab.metricsObject.cluster
+                newTab.metricsObject.alarms=tab.metricsObject.alarms
+                newTab.metricsObject.started=tab.metricsObject.started
+            }
+            newTabs.push(newTab)
         }
-        var payload=JSON.stringify(newLogs)
+        var payload=JSON.stringify(newTabs)
         fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addPostAuthorization(accessString, payload))
         if (currentBoardName!==boardName) setCurrentBoardName(boardName)
     }
@@ -678,84 +743,81 @@ const App: React.FC = () => {
             pickList('Load board...','Please, select the board you want to load:',allBoards,loadBoardSelected)
     }
 
-    const clearLogs = () => {
-        for (var t of logs) {
-            stopLog(t)
+    const clearTabs = () => {
+        for (var tab of tabs) {
+            stopTab(tab)
         }
-        setLogs([])
+        setTabs([])
         setLogMessages([])
     }
 
-    const menuBoardOptionSelected = async (option:MenuDrawerOption) => {
+    const menuDrawerOptionSelected = async (option:MenuDrawerOption) => {
         setMenuDrawerOpen(false)
         switch(option) {
-        case MenuDrawerOption.NewView:
-            clearLogs()
-            setCurrentBoardName('untitled')
-            break
-        case MenuDrawerOption.SaveView:
-            if (currentBoardName!=='' && currentBoardName!=='untitled')
-                saveBoard(currentBoardName)
-            else
+            case MenuDrawerOption.NewView:
+                clearTabs()
+                setCurrentBoardName('untitled')
+                break
+            case MenuDrawerOption.SaveView:
+                if (currentBoardName!=='' && currentBoardName!=='untitled')
+                    saveBoard(currentBoardName)
+                else
+                    setShowSaveBoard(true)
+                break
+            case MenuDrawerOption.SaveViewAs:
                 setShowSaveBoard(true)
-            break
-        case MenuDrawerOption.SaveViewAs:
-            setShowSaveBoard(true)
-            break
-        case MenuDrawerOption.OpenView:
-            loadBoard()
-            break
-        case MenuDrawerOption.DeleteView:
-            var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
-            if (allBoards.length===0)
-                showNoBoards();
-            else
-                pickList('Board delete...','Please, select the board you want to delete:',allBoards,deleteBoardSelected);
-            break
-        case MenuDrawerOption.ManageCluster:
-            setShowManageClusters(true)
-            break
-        case MenuDrawerOption.ApiSecurity:
-            setShowApiSecurity(true)
-            break
-        case MenuDrawerOption.UserSecurity:
-            setShowUserSecurity(true)
-            break
-        case MenuDrawerOption.ExportBoards:
-            var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
-            if (allBoards.length===0) {
-                showNoBoards()
-            }
-            else {
-                var content:any={}
-                for (var boardName of allBoards) {
-                    var readBoard = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
-                    content[boardName]=JSON.parse(readBoard)
+                break
+            case MenuDrawerOption.OpenView:
+                loadBoard()
+                break
+            case MenuDrawerOption.DeleteView:
+                var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
+                if (allBoards.length===0)
+                    showNoBoards()
+                else
+                    pickList('Board delete...','Please, select the board you want to delete:',allBoards,deleteBoardSelected)
+                break
+            case MenuDrawerOption.ManageCluster:
+                setShowManageClusters(true)
+                break
+            case MenuDrawerOption.ApiSecurity:
+                setShowApiSecurity(true)
+                break
+            case MenuDrawerOption.UserSecurity:
+                setShowUserSecurity(true)
+                break
+            case MenuDrawerOption.ExportBoards:
+                var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
+                if (allBoards.length===0) {
+                    showNoBoards()
                 }
-                handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`)
-            }
-            break;
-        case MenuDrawerOption.ImportBoards:
-            // nothing to do, the menuitem launches the handleUpload
-            break;
-        case MenuDrawerOption.Settings:
-            selectedLog=new LogObject()
-            selectedLog.maxMessages=10001
-            selectedLog.previous=true
-            setShowSettingsConfig(true)
-            break
-        case MenuDrawerOption.UpdateKwirth:
-            setMsgBox(MsgBoxYesNo('Update Kwirth',`This action will restart the Kwirth instance and users won't be able to work during 7 to 10 seconds. In addition, all volatile API keys will be deleted. Do you want to continue?`,setMsgBox, (button) => {
-                if (button===MsgBoxButtons.Yes) {
-                    fetch (`${backendUrl}/managekwirth/restart`, addGetAuthorization(accessString));
+                else {
+                    var content:any={}
+                    for (var boardName of allBoards) {
+                        var readBoard = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
+                        content[boardName]=JSON.parse(readBoard)
+                    }
+                    handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`)
                 }
-            }))
-            break
-        case MenuDrawerOption.Exit:
-            setLogged(false)
-            break
+                break
+            case MenuDrawerOption.ImportBoards:
+                // nothing to do, the menuitem launches the handleUpload
+                break
+            case MenuDrawerOption.Settings:
+                setShowSettingsConfig(true)
+                break
+            case MenuDrawerOption.UpdateKwirth:
+                setMsgBox(MsgBoxYesNo('Update Kwirth',`This action will restart the Kwirth instance and users won't be able to work during 7 to 10 seconds. In addition, all volatile API keys will be deleted. Do you want to continue?`,setMsgBox, (button) => {
+                    if (button===MsgBoxButtons.Yes) {
+                        fetch (`${backendUrl}/managekwirth/restart`, addGetAuthorization(accessString))
+                    }
+                }))
+                break
+            case MenuDrawerOption.Exit:
+                setLogged(false)
+                break
         }
-    };
+    }
 
     const deleteBoardSelected = (boardName:string) => {
         setMsgBox(MsgBoxYesNo('Delete board',`Are you ure you want to delete board ${boardName}`,setMsgBox, (button) => {
@@ -763,10 +825,10 @@ const App: React.FC = () => {
                 fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addDeleteAuthorization(accessString))
                 setCurrentBoardName('')
             }
-        }));
+        }))
     }
 
-    const handleDownload = (content:string,filename:string,  mimeType:string='text/plain') => {
+    const handleDownload = (content:string, filename:string,  mimeType:string='text/plain') => {
         const blob = new Blob([content], { type: mimeType })
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
@@ -780,7 +842,7 @@ const App: React.FC = () => {
     }
 
     const handleUpload = (event:any) => {
-        const file = event.target.files[0];
+        const file = event.target.files[0]
         if (file) {
             const reader = new FileReader()
             reader.onload = (e:any) => {
@@ -790,7 +852,7 @@ const App: React.FC = () => {
                     fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addPostAuthorization(accessString, payload))
                 }
             }
-            reader.readAsText(file);
+            reader.readAsText(file)
         }
     }
 
@@ -803,7 +865,7 @@ const App: React.FC = () => {
             al.message=alarm.message
             al.type=alarm.type
             al.beep=alarm.beep
-            selectedLog?.alarms.push(al)
+            selectedTab?.logObject?.alarms.push(al)
         }
     }
 
@@ -812,30 +874,46 @@ const App: React.FC = () => {
         if (newSettings) writeSettings(newSettings)
     }
 
-    const renameLogClosed = (newname:string|null) => {
+    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum) => {
+        setShowMetricsSelector(false)
+        setAnchorMenuTab(null)
+
+        var tab=tabs.find(t => t.name===selectedTabRef.current)
+        if (tab && tab.metricsObject) {
+            tab.metricsObject.mode=mode
+            tab.metricsObject.metrics=metrics
+            startMetrics(tab)
+        }
+        else {
+            setMsgBox(MsgBoxOk('Log object', 'No log selected',setMsgBox))
+        }
+
+    }
+
+    const renameTabClosed = (newname:string|null) => {
         setShowRenameLog(false)
         if (newname!=null) {
-            selectedLog!.name=newname
-            setLogs(logs)
-            setSelectedLogName(newname)
+            selectedTab!.name=newname
+            setTabs(tabs)
+            setSelectedTabName(newname)
         }
     }
 
     const saveBoardClosed = (boardName:string|null) => {
         setShowSaveBoard(false)
-        if (boardName!=null) saveBoard(boardName)
+        if (boardName) saveBoard(boardName)
     }
 
     const loadBoardSelected = async (boardName:string) => {
         if (boardName) {
-            clearLogs()
+            clearTabs()
             var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
-            var newLogs=JSON.parse(n) as LogObject[]
-            setLogs(newLogs)
+            var newTabs=JSON.parse(n) as TabObject[]
+            setTabs(newTabs)
             setBoardLoaded(true)
             setCurrentBoardName(boardName)
-            var defaultLog=newLogs.find(l => l.defaultLog)
-            if (defaultLog) setSelectedLogName(defaultLog.name)
+            var defaultTab=newTabs.find(l => l.defaultTab)
+            if (defaultTab) setSelectedTabName(defaultTab.name)
         }
     }
 
@@ -869,7 +947,7 @@ const App: React.FC = () => {
             setUser(user)
             setAccessString(accessKey)
             setCurrentBoardName('untitled')
-            clearLogs()
+            clearTabs()
         }
     }
 
@@ -879,7 +957,7 @@ const App: React.FC = () => {
                 <Login onClose={onCloseLogin}></Login>
             </SessionContext.Provider>
         </div>
-    </>);
+    </>)
 
     return (<>
         <SessionContext.Provider value={{ user, accessKey: accessString, logged, backendUrl }}>
@@ -894,7 +972,7 @@ const App: React.FC = () => {
 
             <Drawer sx={{ flexShrink: 0, '& .MuiDrawer-paper': {mt: '64px'} }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
                 <Stack direction={'column'}>
-                <MenuDrawer optionSelected={menuBoardOptionSelected} uploadSelected={handleUpload} user={user}/>
+                <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} user={user}/>
                 <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>
                 </Stack>
             </Drawer>
@@ -902,51 +980,46 @@ const App: React.FC = () => {
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
                 <ResourceSelector clusters={clusters} onAdd={onResourceSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
-                    <Tabs value={selectedLogName} onChange={onChangeLogs} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
-                    { logs.length>0 && logs.map(t => {
-                        if (t===selectedLog) {
-                            return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuLog(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                        }
-                        else {
-                            return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton><Box sx={{minWidth:'20px'}} /></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedLogs.includes(t)?'pink':pausedLogs.includes(t)?'#cccccc':'')}}/>
-                        }
-                        })
-                    }
+                    <Tabs value={selectedTabName} onChange={onChangeTabs} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
+                        { tabs.length>0 && tabs.map(t => {
+                            if (t===selectedTab) {
+                                return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':pausedTabs.includes(t)?'#cccccc':'')}}/>
+                            }
+                            else {
+                                return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton><Box sx={{minWidth:'20px'}} /></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':pausedTabs.includes(t)?'#cccccc':'')}}/>
+                            }
+                        })}
                     </Tabs>
 
                     <Typography sx={{ flexGrow: 1 }}></Typography>
 
-                    { (logs.length>0) && <>
+                    { (tabs.length>0) && <>
                         <Stack direction="row" alignItems="bottom" sx={{ width:'200px', mr:1}}>
-                        <TextField value={filter} onChange={onChangeFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
-
-                        {/* <TextField value={search} onChange={onChangeSearch} InputProps={{ endAdornment: <IconButton onClick={()=>setSearch('')}><Clear fontSize='small'/></IconButton> }} sx={{ml:1}} label="Search" variant="standard" />
-                        <Typography sx={{ ml:1 }}></Typography>
-                        <IconButton onClick={onClickSearchUp} disabled={search==='' || searchFirstPos===searchPos}><ArrowUpward/> </IconButton>
-                        <IconButton onClick={onClickSearchDown} disabled={search===''  || searchLastPos===searchPos}><ArrowDownward/> </IconButton> */}
-
+                            <TextField value={filter} onChange={onChangeLogFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
                         </Stack>
                     </>}
-
                 </Stack>
-                { anchorMenuLog && <MenuLog onClose={() => setAnchorMenuLog(null)} optionSelected={menuLogOptionSelected} anchorMenuLog={anchorMenuLog} logs={logs} selectedLog={selectedLog} selectedLogIndex={selectedLogIndex} />}
-                {/* <LogContent log={selectedLog} filter={filter} search={search} searchPos={searchPos} searchLineRef={searchLineRef} lastLineRef={lastLineRef}/> */}
-                <LogContent log={selectedLog} filter={filter} search={search} lastLineRef={lastLineRef} metrics={receivedMetrics}/>
+
+                { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
+
+                <LogContent log={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metrics={receivedMetrics}/>
             </Box>
 
             { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> }
             { showBlockingAlarm && <BlockingAlarm onClose={() => setShowBlockingAlarm(false)} alarm={blockingAlarm} /> }
-            { showRenameLog && <RenameLog onClose={renameLogClosed} logs={logs} oldname={selectedLog?.name}/> }
+            { showRenameTab && <RenameTab onClose={renameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }
             { showSaveBoard && <SaveBoard onClose={saveBoardClosed} name={currentBoardName} /> }
             { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
-            { showManageAlarms && <ManageAlarms onClose={() => setShowManageAlarms(false)} log={selectedLog}/> }
+            {/* { showManageAlarms && <ManageAlarms onClose={() => setShowManageAlarms(false)} log={selectedLog}/> } */}
             { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
+            { showMetricsSelector && <MetricsSelector  onMetricsSelected={onMetricsSelected} settings={settings} /> }
+            { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, setMsgBox)}
             { pickListConfig!==null && <PickList config={pickListConfig}/> }
             { msgBox }
         </SessionContext.Provider>
-    </>);
-};
+    </>)
+}
 
-export default App;
+export default App

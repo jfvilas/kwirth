@@ -12,7 +12,7 @@ When you first deploy Kwirth there will exist an admin account. The credentials 
   - User: admin
   - Password: password
 
-The first time you access Kwrith you must use the admin credentials, and Kwirth will force you to change the password. You cannot continue the login process without changing the password.
+The first time you access Kwirth you must use the admin credentials, and Kwirth will force you to change the password. You cannot continue the login process without changing the password.
 
 The admin is the only user who can perform security related activities, like creating other users or managing API keys for enabling access to Kwirth from otrher Kwirth fontal apps.
 
