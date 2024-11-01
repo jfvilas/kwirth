@@ -73,11 +73,12 @@ export class Metrics {
     */
     public getMetrics = async (nodeIp:string) => {
         try {
-            var resp = await fetch (`https://${nodeIp}:10250/metrics/cadvisor`,{ headers: { Authorization: 'Bearer '+this.token} })
+            var resp = await fetch (`https://${nodeIp}:10250/metrics/cadvisor`,{ headers: { Authorization: 'Bearer ' + this.token} })
             var text=await resp.text()
             return text
         }
         catch (error:any) {
+            console.log(`Error accessing cAdvisor at node ${nodeIp}`)
             console.log(error)
         }
         return ''

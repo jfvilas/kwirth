@@ -7,7 +7,8 @@ interface IProps {
     onClose:(newSettings:Settings|undefined) => {}
     settings:Settings
 }
-
+    // +++ revisar los settings del modo de stream en metrics
+    // +++ revisat los servicemessages, deben inclir el subtipo de mensaje: tipo-> log, metrics, subtipo(log) -> text, info, error  subtipo(metrics) -> metrics, info, error....
 const SettingsConfig: React.FC<any> = (props:IProps) => {
     const [value, setValue] = React.useState('log')
     const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages)
@@ -47,34 +48,38 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
     }
 
     return (<>
-        <Dialog open={true}>
+        <Dialog open={true} >
             <DialogTitle>Settings</DialogTitle>
-            <DialogContent>
-                <Tabs value={value} onChange={(_: React.SyntheticEvent, newValue: string) => { setValue(newValue)}}>
+            <DialogContent sx={{height:'30vh'}}>
+                <Tabs value={value} onChange={(_: React.SyntheticEvent, newValue: string) => { setValue(newValue)}} sx={{mb:'16px'}}>
                     <Tab key='log' label='Log' value='log' />
                     <Tab key='metrics' label='Metrics' value='metrics' />
                 </Tabs>
 
-                <Stack visibility={value==='log'?'visible':'hidden'} spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                    <TextField value={logMaxMessages} onChange={onChangeLogMaxMessages} variant='standard'label='Max messages' SelectProps={{native: true}} type='number'></TextField>
-                    <Stack direction='row' alignItems={'baseline'}>
-                        <Switch checked={logPrevious} onChange={onChangeLogPrevious}/><Typography>Get messages of previous deployment</Typography>
+                <div hidden={value!=='log'}>
+                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
+                        <TextField value={logMaxMessages} onChange={onChangeLogMaxMessages} variant='standard'label='Max messages' SelectProps={{native: true}} type='number'></TextField>
+                        <Stack direction='row' alignItems={'baseline'}>
+                            <Switch checked={logPrevious} onChange={onChangeLogPrevious}/><Typography>Get messages of previous deployment</Typography>
+                        </Stack>
+                        <Stack direction='row' alignItems={'baseline'}>
+                            <Switch checked={logTimestamp} onChange={onChangeLogTimestamp}/><Typography>Add timestamp to messages</Typography>
+                        </Stack>
                     </Stack>
-                    <Stack direction='row' alignItems={'baseline'}>
-                        <Switch checked={logTimestamp} onChange={onChangeLogTimestamp}/><Typography>Add timestamp to messages</Typography>
-                    </Stack>
-                </Stack>
+                </div>
                 
-                <Stack visibility={value==='metrics'?'visible':'hidden'} spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                    <FormControl fullWidth>
-                        <InputLabel id="modelabel">Age</InputLabel>
-                        <Select value={metricsMode} onChange={onChangeMetricsMode} labelId="modelabel" label="Mode">
-                            <MenuItem value={'SNAPSHOT'}>Snapshot</MenuItem>
-                            <MenuItem value={'STREAM'}>Stream</MenuItem>
-                        </Select>
+                <div hidden={value!=='metrics'}>
+                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
+                        <FormControl fullWidth variant='standard'>
+                            <InputLabel id='modelabel'>Mode</InputLabel>
+                            <Select value={metricsMode} onChange={onChangeMetricsMode} labelId='modelabel'>
+                                <MenuItem value={'snapshot'}>Snapshot</MenuItem>
+                                <MenuItem value={'stream'}>Stream</MenuItem>
+                            </Select>
                         </FormControl>
-                    <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField>
-                </Stack>
+                        <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField>
+                    </Stack>
+                </div>
 
             </DialogContent>
             <DialogActions>

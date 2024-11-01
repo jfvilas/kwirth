@@ -1,7 +1,7 @@
 import { ApiKeyApi } from '../api/ApiKeyApi'
 import { accessKeyDeserialize, accessKeySerialize, parseResource } from '@jfvilas/kwirth-common'
 import { ApiKey } from '@jfvilas/kwirth-common'
-import { ServiceConfigTypeEnum } from '@jfvilas/kwirth-common';
+import { ServiceConfigChannelEnum } from '@jfvilas/kwirth-common';
 
 export const cleanApiKeys = (apiKeys:ApiKey[]) => {
     apiKeys=apiKeys.filter(a => a.expire>=Date.now());
@@ -43,18 +43,18 @@ const getMetricsScopeLevel = (scope:string) => {
     return levelScopes.indexOf(scope);
 }
 
-export const getServiceScopeLevel = (serviceConfigType:ServiceConfigTypeEnum, scope:string) => {
-    switch (serviceConfigType) {
-        case ServiceConfigTypeEnum.LOG:
+export const getServiceScopeLevel = (serviceConfigChannel:ServiceConfigChannelEnum, scope:string) => {
+    switch (serviceConfigChannel) {
+        case ServiceConfigChannelEnum.LOG:
             return getLogScopeLevel(scope)
-        case ServiceConfigTypeEnum.METRICS:
+        case ServiceConfigChannelEnum.METRICS:
             return getMetricsScopeLevel(scope)
         default:
             return 0
     }
 }
 
-export const validAuth = (req:any, res:any, reqScope:string, serviceConfigType: ServiceConfigTypeEnum, namespace:string, group:string, pod:string, container:string) => {
+export const validAuth = (req:any, res:any, reqScope:string, serviceConfigChannel: ServiceConfigChannelEnum, namespace:string, group:string, pod:string, container:string) => {
     var key=req.headers.authorization.replaceAll('Bearer ','').trim();
     var accessKey=accessKeyDeserialize(key);
     var resId=parseResource(accessKey.resource);
@@ -62,7 +62,7 @@ export const validAuth = (req:any, res:any, reqScope:string, serviceConfigType: 
     console.log('presented resourceId',resId);
     console.log('requested access', reqScope, namespace, group, pod, container);
     if (resId.scope==='cluster') return true;
-    if (getServiceScopeLevel(serviceConfigType, reqScope) < getServiceScopeLevel(serviceConfigType, resId.scope)) {
+    if (getServiceScopeLevel(serviceConfigChannel, reqScope) < getServiceScopeLevel(serviceConfigChannel, resId.scope)) {
         console.log('insufficient scope level');
         return false;
     }

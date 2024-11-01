@@ -4,11 +4,13 @@ import { Settings } from '../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
 interface IProps {
-    onMetricsSelected:(metrics?:string[], mode?:MetricsConfigModeEnum) => {}
+    culster:string
+    onMetricsSelected:(metrics:string[], mode:MetricsConfigModeEnum, cluster:string) => {}
     settings:Settings
 }
 
 const MetricsSelector: React.FC<any> = (props:IProps) => {
+    console.log(props.settings.metricsMode)
     const [metricsMode, setMetricsMode] = useState(props.settings.metricsMode.toString())
     const [metricsMetrics, setMetricsMetrics] = useState(props.settings.metricsMetrics.join(','))
 
@@ -21,17 +23,17 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
     }
 
     const closeOk = () =>{
-        props.onMetricsSelected(metricsMetrics.split(','), MetricsConfigModeEnum[metricsMode as keyof typeof MetricsConfigModeEnum])
+        props.onMetricsSelected(metricsMetrics.split(','), MetricsConfigModeEnum[metricsMode as keyof typeof MetricsConfigModeEnum], props.culster)
     }
 
     return (<>
         <Dialog open={true}>
             <DialogTitle>Settings</DialogTitle>
             <DialogContent>
-                <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
+                <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh', mt:'16px' }}>
                     <FormControl fullWidth>
-                        <InputLabel id="modelabel">Age</InputLabel>
-                        <Select value={metricsMode} onChange={onChangeMetricsMode} labelId="modelabel" label="Mode">
+                        <InputLabel id="modelabel">Mode</InputLabel>
+                        <Select value={metricsMode} onChange={onChangeMetricsMode} labelId="modelabel" label="Mode" variant='standard'>
                             <MenuItem value={'SNAPSHOT'}>Snapshot</MenuItem>
                             <MenuItem value={'STREAM'}>Stream</MenuItem>
                         </Select>
@@ -42,7 +44,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
             </DialogContent>
             <DialogActions>
                 <Button onClick={closeOk}>OK</Button>
-                <Button onClick={() => props.onMetricsSelected(undefined)}>CANCEL</Button>
+                <Button onClick={() => props.onMetricsSelected([], MetricsConfigModeEnum.SNAPSHOT,'')}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

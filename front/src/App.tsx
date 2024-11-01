@@ -25,18 +25,17 @@ import PickList from './components/PickList'
 import Login from './components/Login'
 import ManageClusters from './components/ManageClusters'
 import ManageUserSecurity from './components/ManageUserSecurity'
-import ManageAlarms from './components/ManageAlarms'
 import ResourceSelector from './components/ResourceSelector'
 import LogContent from './components/LogContent'
 import SettingsConfig from './components/SettingsConfig'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
 import { VERSION } from './version'
-import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from './tools/MsgBox'
+import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/MsgBox'
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigTypeEnum, versionGreatOrEqualThan } from '@jfvilas/kwirth-common'
+import { KwirthData, LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan } from '@jfvilas/kwirth-common'
 import { MetricsObject } from './model/MetricsObject'
 import { TabObject } from './model/TabObject'
 import MetricsSelector from './components/MetricsSelector'
@@ -148,7 +147,7 @@ const App: React.FC = () => {
         srcCluster.source=true
         var response = await fetch(`${backendUrl}/config/version`, addGetAuthorization(accessString))
         srcCluster.kwirthData = await response.json() as KwirthData
-        if (versionGreatOrEqualThan(srcCluster.kwirthData.version,srcCluster.kwirthData.lastVersion)) {
+        if (versionGreatThan(srcCluster.kwirthData.version,srcCluster.kwirthData.lastVersion)) {
             setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
         }
 
@@ -188,14 +187,13 @@ const App: React.FC = () => {
     const onResourceSelectorAdd = (selection:any) => {
         var cluster=clusters!.find(c => c.name===selection.cluster)
         if (!cluster) {
-            console.log('nocluster')
-            setMsgBox(MsgBoxOk('Kwirth',`Cluster established at tab configuration ${selection.cluster} does not exist.`, setMsgBox))
+            setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.cluster} does not exist.`, setMsgBox))
             return
         }            
         if (!cluster.metricList) getMetricsNames(cluster)
 
         var tabName=selection.logName
-        var serviceConfigType=selection.serviceConfigType as ServiceConfigTypeEnum
+        var serviceConfigChannel=selection.serviceConfigChannel as ServiceConfigChannelEnum
 
         // create unduplicated (unique) name
         var index=-1
@@ -214,10 +212,10 @@ const App: React.FC = () => {
         newTab.ws.onmessage = (event) => wsOnTabMessage(event)
         newTab.ws.onclose = (event) => console.log(`WS tab disconnected: ${newTab.ws!.url}`)
 
-        switch(serviceConfigType) {
-            case ServiceConfigTypeEnum.LOG:
+        switch(serviceConfigChannel) {
+            case ServiceConfigChannelEnum.LOG:
                 var newLog = new LogObject()
-                newLog.cluster=selection.clusterName
+                newLog.cluster=selection.cluster
                 newLog.view=selection.view
                 newLog.namespace=selection.namespace
                 newLog.group=selection.group
@@ -227,9 +225,9 @@ const App: React.FC = () => {
                 setLogMessages([])
                 break
 
-            case ServiceConfigTypeEnum.METRICS:
+            case ServiceConfigChannelEnum.METRICS:
                 var newMetrics = new MetricsObject()
-                newMetrics.cluster=selection.clusterName
+                newMetrics.cluster=selection.cluster
                 newMetrics.view=selection.view
                 newMetrics.namespace=selection.namespace
                 newMetrics.group=selection.group
@@ -260,74 +258,10 @@ const App: React.FC = () => {
         }
     }
 
-    const processSignalMessage = (event:any) => {
-        // +++ decide how to show signal messages
-        console.log('SIGNAL MESSAGE')
-        console.log(event)
-    }
-
-    const processLogMessage = (wsEvent:any) => {
-        // find the log who this web socket belongs to, and add the new message
-        //var tab=tabs.find(tab => tab.logObject && tab.logObject.ws!==null && tab.logObject.ws===event.target)
-        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
-        if (!tab || !tab.logObject) return
-
-        var msg = JSON.parse(wsEvent.data) as LogMessage
-        tab.logObject.messages.push(msg)
-        while (tab.logObject.messages.length>tab.logObject.maxMessages) tab.logObject.messages.splice(0,1)
-
-        // if current log is displayed (focused), add message to the screen
-        if (selectedTabRef.current === tab.name) {
-            if (!tab.logObject.paused) {
-                setLogMessages([])  //+++ this forces LogContent to re-render +++ change to any other thing
-                if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
-            }
-        }
-        else {
-            // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-            if (tab.logObject.showBackgroundNotification && !tab.logObject.paused) {
-                tab.logObject.pending=true
-                setHighlightedTabs((prev)=> [...prev, tab!])
-                setTabs(tabs)
-            }
-        }
-
-        for (var alarm of tab.logObject.alarms) {
-            if (msg.text.includes(alarm.expression)) {
-                if (alarm.beep) Beep.beepError()
-                
-                if (alarm.type===AlarmType.blocking) {
-                    setBlockingAlarm(alarm)
-                    setShowBlockingAlarm(true)
-                }
-                else {
-                    const action = (snackbarId: SnackbarKey | undefined) => (<>
-                        <Button onClick={() => { 
-                            closeSnackbar(snackbarId)
-                            onChangeTabs(null,tab!.name)
-                        }}>
-                            View
-                        </Button>
-                        <Button onClick={() => { closeSnackbar(snackbarId) }}>
-                            Dismiss
-                        </Button>
-                    </>)
-                    var opts:OptionsObject = {
-                        anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
-                        variant:alarm.severity,
-                        autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
-                        action: action
-                    }
-                    enqueueSnackbar(alarm.message, opts)
-                }
-            }
-        }
-    }
-
     const wsOnTabMessage = (wsEvent:any) => {
-        var event:any={}
+        var serviceMessage:ServiceMessage
         try {
-            event=JSON.parse(wsEvent.data)
+            serviceMessage = JSON.parse(wsEvent.data) as ServiceMessage
         }
         catch (err) {
             console.log(err)
@@ -335,10 +269,11 @@ const App: React.FC = () => {
             return
         }
 
-        switch(event.type) {
+        switch(serviceMessage.channel) {
             case 'info':
             case 'warning':
             case 'error':
+                // these are general signal messages (not related to a channel)
                 processSignalMessage(wsEvent)
                 break
             case 'log':
@@ -348,49 +283,130 @@ const App: React.FC = () => {
                 processMetricsMessage(wsEvent)
                 break
             // case 'oper':
-            //     processMetricsMessage(wsEvent)
+            //     processOperMessage(wsEvent)
             //     break
             // case 'audit':
-            //     processMetricsMessage(wsEvent)
+            //     processAuditMessage(wsEvent)
             //     break
             default:
-                console.log('invalid event type: ',event.type)
+                console.log('Invalid channel: ',serviceMessage.channel)
                 break
+        }
+    }
+
+    const processSignalMessage = (event:any) => {
+        // +++ decide how to show signal messages
+        console.log('SIGNAL MESSAGE')
+        console.log(JSON.parse(event.data))
+    }
+
+    const processLogMessage = (wsEvent:any) => {
+        // find the tab which this web socket belongs to, and add the new message
+        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
+        if (!tab || !tab.logObject) return
+
+        var msg = JSON.parse(wsEvent.data) as LogMessage
+        if (msg.type==='data') {
+            if (msg.text) {
+                tab.logObject.messages.push(msg)
+                while (tab.logObject.messages.length>tab.logObject.maxMessages) tab.logObject.messages.splice(0,1)
+
+                // if current log is displayed (focused), add message to the screen
+                if (selectedTabRef.current === tab.name) {
+                    if (!tab.logObject.paused) {
+                        setLogMessages([])  //+++ this forces LogContent to re-render +++ change to any other thing
+                        if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
+                    }
+                }
+                else {
+                    // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
+                    if (tab.logObject.showBackgroundNotification && !tab.logObject.paused) {
+                        tab.logObject.pending=true
+                        setHighlightedTabs((prev)=> [...prev, tab!])
+                        setTabs(tabs)
+                    }
+                }
+
+                for (var alarm of tab.logObject.alarms) {
+                    if (msg.text.includes(alarm.expression)) {
+                        if (alarm.beep) Beep.beepError()
+                        
+                        if (alarm.type===AlarmType.blocking) {
+                            setBlockingAlarm(alarm)
+                            setShowBlockingAlarm(true)
+                        }
+                        else {
+                            const action = (snackbarId: SnackbarKey | undefined) => (<>
+                                <Button onClick={() => { 
+                                    closeSnackbar(snackbarId)
+                                    onChangeTabs(null,tab!.name)
+                                }}>
+                                    View
+                                </Button>
+                                <Button onClick={() => { closeSnackbar(snackbarId) }}>
+                                    Dismiss
+                                </Button>
+                            </>)
+                            var opts:OptionsObject = {
+                                anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
+                                variant:alarm.severity,
+                                autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
+                                action
+                            }
+                            enqueueSnackbar(alarm.message, opts)
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            // +++ decide what to do with non-text messges (for examples action 'start' responses or in-channel signal messages)
+            console.log(`Received message on channel ${msg.channel}: ${JSON.stringify(msg)}`)
         }
     }
 
     const processMetricsMessage = (wsEvent:any) => {
         var msg = JSON.parse(wsEvent.data) as MetricsMessage
-        // +++ pending change comm model: names are set on open, only vlaues are received on stream (a number array with the same order)
-        var pos = receivedMetrics.findIndex( m => m.namespace===msg.namespace && m.podName===msg.podName && m.metrics.join(',')===msg.metrics.join(','))
-        if (pos>=0)
-            receivedMetrics[pos]=msg
-        else
-            receivedMetrics.push (msg)
-        setReceivedMetrics(Array.from(receivedMetrics))
+        if (msg.type==='data') {
+            var pos = receivedMetrics.findIndex( m => m.namespace===msg.namespace && m.podName===msg.podName && m.metrics.join(',')===msg.metrics.join(','))
+            if (pos>=0)
+                receivedMetrics[pos]=msg
+            else
+                receivedMetrics.push (msg)
+            setReceivedMetrics(Array.from(receivedMetrics))
+        }
+        else {
+            console.log(`Received message on channel ${msg.channel}: ${JSON.stringify(msg)}`)
+        }
     }
     
     const getMetricsNames = async (cluster:Cluster) => {
-        cluster.metricList=new Map()
-        var response = await fetch (`${backendUrl}/metrics`, addGetAuthorization(accessString))
-        var lines=await response.text()
-        // # HELP cadvisor_version_info A metric with a constant '1' value labeled by kernel version, OS version, docker version, cadvisor version & cadvisor revision.
-        // # TYPE cadvisor_version_info gauge
-        for (var l of lines.split('\n')) {
-            var [_,lineType,name,metricType] = l.split(' ')
-            if (!cluster.metricList.has(name) && name) cluster.metricList.set(name, {type: '', help: ''})
-            switch (lineType){
-                case 'HELP':
-                    var i=l.indexOf(name)
-                    var text=l.substring(i+name.length)
-                    cluster.metricList.get(name)!.help=text
-                    break
-                case 'TYPE':
-                    cluster.metricList.get(name)!.type = metricType
-                    break
+        try {
+            cluster.metricList=new Map()
+            var response = await fetch (`${backendUrl}/metrics`, addGetAuthorization(accessString))
+            var lines=await response.text()
+            // # HELP cadvisor_version_info A metric with a constant '1' value labeled by kernel version, OS version, docker version, cadvisor version & cadvisor revision.
+            // # TYPE cadvisor_version_info gauge
+            for (var l of lines.split('\n')) {
+                var [_,lineType,name,metricType] = l.split(' ')
+                if (!cluster.metricList.has(name) && name) cluster.metricList.set(name, {type: '', help: ''})
+                switch (lineType){
+                    case 'HELP':
+                        var i=l.indexOf(name)
+                        var text=l.substring(i+name.length)
+                        cluster.metricList.get(name)!.help=text
+                        break
+                    case 'TYPE':
+                        cluster.metricList.get(name)!.type = metricType
+                        break
+                }
             }
+            console.log(cluster.metricList)
         }
-        console.log(cluster.metricList)
+        catch (err) {
+            console.log('Error obtaining metrics list')
+            console.log(err)
+        }
     }
 
     const onClickMetricsStart = () => {
@@ -409,7 +425,7 @@ const App: React.FC = () => {
             var mc:MetricsConfig = {
                 action: ServiceConfigActionEnum.START,
                 flow: ServiceConfigFlowEnum.REQUEST,
-                type: ServiceConfigTypeEnum.METRICS,
+                channel: ServiceConfigChannelEnum.METRICS,
                 instance: '',
                 interval: 5,
                 accessKey: cluster!.accessString,
@@ -446,7 +462,7 @@ const App: React.FC = () => {
         var mc:MetricsConfig = {
             action: ServiceConfigActionEnum.STOP,
             flow: ServiceConfigFlowEnum.REQUEST,
-            type: ServiceConfigTypeEnum.METRICS,
+            channel: ServiceConfigChannelEnum.METRICS,
             instance: tab.metricsObject.serviceInstance,
             mode: MetricsConfigModeEnum.SNAPSHOT,
             metrics: [],
@@ -497,8 +513,7 @@ const App: React.FC = () => {
         tab.logObject.messages=[]
         var cluster=clusters!.find(c => c.name===tab.logObject!.cluster)
         if (!cluster) {
-            console.log('nocluster')
-            setMsgBox(MsgBoxOk('Kwirth',`Cluster established at log configuration ${tab.logObject.cluster} does not exist.`, setMsgBox))
+            setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at log configuration ${tab.logObject.cluster} does not exist.`, setMsgBox))
             return
         }
 
@@ -506,7 +521,7 @@ const App: React.FC = () => {
             var logConfig:LogConfig = {
                 action: ServiceConfigActionEnum.START,
                 flow: ServiceConfigFlowEnum.REQUEST,
-                type: ServiceConfigTypeEnum.LOG,
+                channel: ServiceConfigChannelEnum.LOG,
                 instance: '',
                 accessKey: cluster!.accessString,
                 scope: 'view',
@@ -538,7 +553,7 @@ const App: React.FC = () => {
             var lc:LogConfig = {
                 action: ServiceConfigActionEnum.STOP,
                 flow: ServiceConfigFlowEnum.REQUEST,
-                type: ServiceConfigTypeEnum.METRICS,
+                channel: ServiceConfigChannelEnum.METRICS,
                 instance: tab.logObject.serviceInstance,
                 accessKey: '',
                 view: '',
@@ -605,7 +620,7 @@ const App: React.FC = () => {
                     <b>Pod</b>: ${selectedTab?.logObject?.pod}<br/>
                     <b>Container</b>: ${selectedTab?.logObject?.container}
                 `
-                setMsgBox(MsgBoxOk('Log info',a,setMsgBox))
+                setMsgBox(MsgBoxOk('Tab info',a,setMsgBox))
                 break
             case MenuTabOption.TabRename:
                 setShowRenameLog(true)
@@ -874,12 +889,14 @@ const App: React.FC = () => {
         if (newSettings) writeSettings(newSettings)
     }
 
-    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum) => {
+    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum, cluster:string) => {
         setShowMetricsSelector(false)
         setAnchorMenuTab(null)
 
         var tab=tabs.find(t => t.name===selectedTabRef.current)
-        if (tab && tab.metricsObject) {
+        if (tab) {
+            tab.metricsObject= new MetricsObject()
+            tab.metricsObject.cluster=cluster
             tab.metricsObject.mode=mode
             tab.metricsObject.metrics=metrics
             startMetrics(tab)
@@ -1015,7 +1032,7 @@ const App: React.FC = () => {
             {/* { showManageAlarms && <ManageAlarms onClose={() => setShowManageAlarms(false)} log={selectedLog}/> } */}
             { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
             { showMetricsSelector && <MetricsSelector  onMetricsSelected={onMetricsSelected} settings={settings} /> }
-            { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, setMsgBox)}
+            { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { pickListConfig!==null && <PickList config={pickListConfig}/> }
             { msgBox }
         </SessionContext.Provider>

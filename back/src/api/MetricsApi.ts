@@ -17,17 +17,18 @@ export class MetricsApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    console.log('/metrics')
-                    console.log(ClusterData.nodes)
+                    console.log('Obtaining available metrics list from cAdvisor:')
+                    console.log('Nodes:', ClusterData.nodes)
                     var all=await metrics.getMetrics(Array.from(ClusterData.nodes.values())[0])
-                    console.log(all)
+                    console.log('',all)
                     var lines=all.split('\n')
                     lines=lines.filter(l => l.startsWith('#'))
                     console.log(lines)
                     res.status(200).send(lines.join('\n'))
                 }
                 catch (err) {
-                    res.status(400).send('')
+                    res.status(400).send()
+                    console.log('Error obtaining available metrics list')
                     console.log(err)
                 }
             })        

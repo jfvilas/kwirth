@@ -3,7 +3,7 @@ import { AppsV1Api } from '@kubernetes/client-node';
 import { CoreV1Api } from '@kubernetes/client-node';
 import { validAuth, validKey } from '../tools/AuthorizationManagement';
 import { restartPod, restartGroup } from '../tools/KubernetesOperations';
-import { ServiceConfigTypeEnum } from '@jfvilas/kwirth-common';
+import { ServiceConfigChannelEnum } from '@jfvilas/kwirth-common';
 
 export class ManageClusterApi {
     public route = express.Router();
@@ -42,8 +42,8 @@ export class ManageClusterApi {
                 next();
             })
             .post( async (req:Request, res:Response) => {
-                //++ we must segregate restarting service from logging service
-                if (!validAuth(req,res, 'restart', ServiceConfigTypeEnum.LOG, req.params.namespace,req.params.deployment,'','')) return;
+                //++ we must segregate restarting service from logging service, and use correct channel
+                if (!validAuth(req,res, 'restart', ServiceConfigChannelEnum.LOG, req.params.namespace,req.params.deployment,'','')) return;
                 try {
                     restartGroup(this.coreApi, this.appsApi, req.params.namespace, req.params.deployment);
                     res.status(200).json();
@@ -60,7 +60,7 @@ export class ManageClusterApi {
                 next();
             })
             .post( async (req:Request, res:Response) => {
-                if (!validAuth(req, res, 'restart', ServiceConfigTypeEnum.LOG, req.params.namespace,'',req.params.podName,'')) return;
+                if (!validAuth(req, res, 'restart', ServiceConfigChannelEnum.LOG, req.params.namespace,'',req.params.podName,'')) return;
                 try {
                     console.log(`Restart pod ${req.params.podName}`);
                     console.log(req.headers);

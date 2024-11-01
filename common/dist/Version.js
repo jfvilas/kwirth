@@ -15,7 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.versionGreatOrEqualThan = void 0;
+exports.versionGreatThan = exports.versionGreatOrEqualThan = void 0;
 /**
  *
  * @param version1 version to check against a specifi level
@@ -37,3 +37,18 @@ const versionGreatOrEqualThan = (version1, version2) => {
     return true;
 };
 exports.versionGreatOrEqualThan = versionGreatOrEqualThan;
+const versionGreatThan = (version1, version2) => {
+    const v1 = version1.split('.').map(Number);
+    const v2 = version2.split('.').map(Number);
+    for (let i = 0; i < Math.max(v1.length, v2.length); i++) {
+        const num1 = v1[i] || 0;
+        const num2 = v2[i] || 0;
+        if (num1 > num2)
+            return true;
+        else if (num1 < num2)
+            return false;
+    }
+    // versions are equal
+    return false;
+};
+exports.versionGreatThan = versionGreatThan;

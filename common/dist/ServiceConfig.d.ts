@@ -1,4 +1,5 @@
-export declare enum ServiceConfigTypeEnum {
+export declare enum ServiceConfigChannelEnum {
+    UNDEFINED = "undefined",
     LOG = "log",
     METRICS = "metrics"
 }
@@ -11,9 +12,9 @@ export declare enum ServiceConfigFlowEnum {
     RESPONSE = "response"
 }
 export interface ServiceConfig {
+    channel: ServiceConfigChannelEnum;
     action: ServiceConfigActionEnum;
     flow: ServiceConfigFlowEnum;
-    type: ServiceConfigTypeEnum;
     instance: string;
     accessKey: string;
     view: string;

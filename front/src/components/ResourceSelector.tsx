@@ -9,7 +9,7 @@ import IconDaemonSet from'../icons/svg/ds.svg'
 import IconReplicaSet from'../icons/svg/rs.svg'
 import IconStatefulSet from'../icons/svg/ss.svg'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
-import { ServiceConfigTypeEnum } from '@jfvilas/kwirth-common'
+import { ServiceConfigChannelEnum } from '@jfvilas/kwirth-common'
 const KIconDaemonSet = () => <img src={IconDaemonSet} alt='ds' height={'16px'}/>
 const KIconReplicaSet = () => <img src={IconReplicaSet} alt='rs' height={'16px'}/>
 const KIconStatefulSet = () => <img src={IconStatefulSet} alt='ss' height={'16px'}/>
@@ -127,10 +127,10 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
         setContainer(event.target.value)    
     }
 
-    const onAdd = (service:ServiceConfigTypeEnum) => {
+    const onAdd = () => {
         var selection:any={}
-        selection.serviceConfigType = service
-        selection.clusterName=selectedCluster?.name
+        selection.serviceConfigChannel = ServiceConfigChannelEnum.UNDEFINED
+        selection.cluster=selectedCluster?.name
         selection.view=view
         selection.namespace=namespace
         var g:GroupData=allGroups.find(g => g.name===group)!
@@ -220,8 +220,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 })}
                 </Select>
             </FormControl>
-            <Button onClick={() => onAdd(ServiceConfigTypeEnum.LOG)} sx={{ width:'4%'}} disabled={!addable()}>ADD LOG</Button>
-            <Button onClick={() => onAdd(ServiceConfigTypeEnum.METRICS)} sx={{ width:'4%'}} disabled={!addable()}>ADD METRICS</Button>
+            <Button onClick={onAdd} sx={{ width:'4%'}} disabled={!addable()}>ADD</Button>
         </Stack>
         { msgBox }
     </>)
