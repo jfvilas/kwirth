@@ -38,6 +38,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     const [pods, setPods] = useState<string[]>([])
     const [container, setContainer] = useState('')
     const [containers, setContainers] = useState<string[]>([])
+    const [channel, setChannel] = useState('')
     const [msgBox, setMsgBox] =useState(<></>)
 
     const getNamespaces = async (cluster:Cluster) => {
@@ -124,12 +125,16 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     }
 
     const onChangeContainer = (event: SelectChangeEvent) => {
-        setContainer(event.target.value)    
+        setContainer(event.target.value)
+    }
+
+    const onChangeChannel = (event: SelectChangeEvent) => {
+        setChannel(event.target.value)
     }
 
     const onAdd = () => {
         var selection:any={}
-        selection.serviceConfigChannel = ServiceConfigChannelEnum.UNDEFINED
+        selection.channel = channel
         selection.cluster=selectedCluster?.name
         selection.view=view
         selection.namespace=namespace
@@ -151,6 +156,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
 
     const addable = () => {
         if (selectedCluster===undefined) return false
+        if (channel==='') return false
         if (view==='') return false
         if (namespace==='') return false
         if (view==='namespace') return true
@@ -159,13 +165,13 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
         if (pod==='') return false
         if (view==='pod') return true
         if (container==='') return false
-        return true;
+        return true
     }
 
     return (<>
         <Stack direction='row' spacing={1} sx={{...props.sx}} alignItems='baseline'>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }}>
                 <InputLabel id='cluster'>Cluster</InputLabel>
                 <Select labelId='cluster' value={selectedCluster?.name} onChange={onChangeCluster}>
                 { props.clusters?.map( (value) => {
@@ -174,7 +180,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={selectedCluster.name===''}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={selectedCluster.name===''}>
                 <InputLabel id='view'>View</InputLabel>
                 <Select labelId='view' value={view} onChange={onChangeView} >
                 { ['namespace','group','pod','container'].map( (value:string) => {
@@ -183,7 +189,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={view===''}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={view===''}>
                 <InputLabel id='namespace'>Namespace</InputLabel>
                 <Select labelId='namespace' onChange={onChangeNamespace} value={namespace}>
                 { allNamespaces && allNamespaces.map( (namespace:string) => {
@@ -192,7 +198,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={namespace==='' || view==='namespace'}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={namespace==='' || view==='namespace'}>
                 <InputLabel id='group'>Group</InputLabel>
                 <Select labelId='group' onChange={onChangeGroup} value={group}>
                 { allGroups && allGroups.map( (value:GroupData) => 
@@ -203,7 +209,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={group==='' || view==='namespace' || view==='group'}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={group==='' || view==='namespace' || view==='group'}>
                 <InputLabel id='pod'>Pod</InputLabel>
                 <Select labelId='pod' value={pod} onChange={onChangePod}>
                 { pods.map( (podName:string) =>
@@ -212,7 +218,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 150, width:'16%' }} disabled={pod==='' || view==='namespace' || view==='group' || view==='pod'}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={pod==='' || view==='namespace' || view==='group' || view==='pod'}>
                 <InputLabel id='container'>Container</InputLabel>
                 <Select labelId='container' value={container} onChange={onChangeContainer}>
                 { containers.map( (value:string) => {
@@ -220,6 +226,15 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 })}
                 </Select>
             </FormControl>
+
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }}>
+                <InputLabel id='channel'>Channel</InputLabel>
+                <Select labelId='channel' value={channel} onChange={onChangeChannel}>
+                    <MenuItem key={'LOG'} value={ServiceConfigChannelEnum.LOG}>Log</MenuItem>
+                    <MenuItem key={'METRICS'} value={ServiceConfigChannelEnum.METRICS}>Metrics</MenuItem>
+                </Select>
+            </FormControl>
+
             <Button onClick={onAdd} sx={{ width:'4%'}} disabled={!addable()}>ADD</Button>
         </Stack>
         { msgBox }

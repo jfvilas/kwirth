@@ -1,10 +1,10 @@
 import { Alarm } from "./Alarm";
-import { LogMessage } from "@jfvilas/kwirth-common";
+import { LogMessage, ServiceConfigViewEnum } from "@jfvilas/kwirth-common";
 
 export class LogObject {
     //public name?: string
     public cluster: any
-    public view?: string
+    public view?: ServiceConfigViewEnum
     public namespace?: string
     public group?: string
     public pod?: string

@@ -1,8 +1,8 @@
-import { AccessKey } from './AccessKey';
+import { AccessKey } from './AccessKey'
 
 export interface ApiKey {
-    accessKey:AccessKey;
-    description:string;
-    expire:number;
+    accessKey: AccessKey
+    description: string
+    expire: number
 }
 

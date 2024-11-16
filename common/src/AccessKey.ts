@@ -1,4 +1,4 @@
-import Guid from 'guid';
+import Guid from 'guid'
 
 /*
     Access key format is:
@@ -11,34 +11,34 @@ import Guid from 'guid';
         resource: is a stringified ResourceIdentifier
 */
 class AccessKey {
-    public id:string='';
-    public type:string='volatile';
-    public resource:string='';
+    public id:string=''
+    public type:string='volatile'
+    public resource:string=''
 }
 
 function accessKeyCreate(type:string, resource:string) : AccessKey {
-    var accessKey=new AccessKey();
-    accessKey.id=Guid.create().toString();
-    accessKey.type=type;
-    accessKey.resource=resource;
-    return accessKey;
+    var accessKey=new AccessKey()
+    accessKey.id=Guid.create().toString()
+    accessKey.type=type
+    accessKey.resource=resource
+    return accessKey
 }
 
 function accessKeyBuild(id:string, type:string, resource:string) : AccessKey {
-    var accessKey=new AccessKey();
-    accessKey.id=id;
-    accessKey.type=type;
-    accessKey.resource=resource;
-    return accessKey;
+    var accessKey=new AccessKey()
+    accessKey.id=id
+    accessKey.type=type
+    accessKey.resource=resource
+    return accessKey
 }
 
 function accessKeySerialize (accessKey:AccessKey) : string {
-    return `${accessKey.id}|${accessKey.type}|${accessKey.resource}`;
+    return `${accessKey.id}|${accessKey.type}|${accessKey.resource}`
 }
 
 function accessKeyDeserialize (key:string) : AccessKey {
-    var parts=key.split('|');
-    return accessKeyBuild(parts[0], parts[1], parts[2]);
+    var parts=key.split('|')
+    return accessKeyBuild(parts[0], parts[1], parts[2])
 }      
 
 function parseResource (key:string) : ResourceIdentifier {
@@ -53,10 +53,12 @@ function parseResource (key:string) : ResourceIdentifier {
 }
 
 function buildResource (scope:string, namespace:string, groupType:string, groupName:string, pod:string, container:string) : string {
-    return `${scope}:${namespace}:${groupType}+${groupName}:${pod}:${container}`;
+    return `${scope}:${namespace}:${groupType}+${groupName}:${pod}:${container}`
 }
 
 /*
+    +++ review all this info, it is not current
+    
     ResourceIdentifier is composed by:
 
         scope can a comma-separated list of: cluster, api, view|filter, restart
@@ -119,4 +121,4 @@ interface ResourceIdentifier {
     container:string
 }
 
-export { accessKeyBuild, accessKeyCreate, accessKeyDeserialize, accessKeySerialize, AccessKey, parseResource, ResourceIdentifier, buildResource };
+export { accessKeyBuild, accessKeyCreate, accessKeyDeserialize, accessKeySerialize, AccessKey, parseResource, ResourceIdentifier, buildResource }

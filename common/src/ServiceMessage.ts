@@ -1,7 +1,9 @@
+import { ServiceConfigChannelEnum } from './ServiceConfig'
+
 export interface ServiceMessage {
-    channel:string
-    instance:string
-    type:string
-    namespace?:string
-    podName?:string
+    channel: ServiceConfigChannelEnum
+    instance: string
+    type: string    // +++ need enum here
+    namespace?: string
+    pod?: string
 }

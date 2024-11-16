@@ -72,9 +72,12 @@ export class Metrics {
 
     */
     public getMetrics = async (nodeIp:string) => {
+        // console.log('nodeIp', nodeIp)
+        // console.log('token', this.token)
         try {
             var resp = await fetch (`https://${nodeIp}:10250/metrics/cadvisor`,{ headers: { Authorization: 'Bearer ' + this.token} })
-            var text=await resp.text()
+            // console.log(resp)
+            var text = await resp.text()
             return text
         }
         catch (error:any) {
@@ -84,49 +87,74 @@ export class Metrics {
         return ''
     }
 
-    public extractMetrics = (sampledMetrics:string,metricName:string, podName:string, containerName:string) => {
+    public extractMetrics = (sampledMetrics:string, requestedMetricName:string, podName:string, containerName:string) => {
         const regex = /(?:\s*([^=^{]*)=\"([^"]*)",*)/gm;
         var samples:any[]= []
+        var timestamp=0
 
         var lines=sampledMetrics.split('\n')
-        lines.forEach(line => {
+        for (var line of lines) {
             var i = line.indexOf('{')
-            var readMetricName=line.substring(0,i)
-            if (readMetricName===metricName) {
+            var sampledMetricName=line.substring(0,i)
+
+            //we will only process requested metric
+            if (sampledMetricName===requestedMetricName) {
+                // now we obtain labels (we obtain groups in a while-loop)
+                // and we create a labels object containing all labels and its values
+                // for this line: container_fs_writes_total{container="customers",device="/dev/sda",id="/kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod268dcd16_68d8_497e_a85c_3b6b5031518b.slice/cri-containerd-39eaedb2106a4794c6094a4a142971f948e02b5fa104422f76889a48eeeb9f1a.scope",image="cracreulennopro.azurecr.io/eulen-customers-dev:latest",name="39eaedb2106a4794c6094a4a142971f948e02b5fa104422f76889a48eeeb9f1a",namespace="dev",pod="eulen-customers-5cc8cb444f-psrwp"} 2929 1728588770767
+                // we obtain:
+                // {
+                //    container:"costumers",
+                //    device:"/dev/sda",
+                //    id:...
+                // }
                 let m
                 var labels:any={}
                 while ((m = regex.exec(line)) !== null) {
                     if (m.index === regex.lastIndex) regex.lastIndex++
                     labels[m[1]]=m[2]
                 }
-                if (labels.container===containerName || labels.pod.startsWith(podName)) {
+
+                // +++ pending get metrics for different aggregations (namespace, pod regex, etc...)
+                if (labels.pod.startsWith(podName)) {
+                    // console.log('found metric', sampledMetricName)
+                    // console.log('labels', labels)
+                    // console.log('found pod',labels.pod, podName)
                     var i=line.indexOf('}')
-                    var valuets=line.substring(i+1).trim()
+                    var valueAndTs=line.substring(i+1).trim()
                     var sample=labels
-                    sample.metric=metricName
-                    sample.value=+valuets.split(' ')[0].trim()
-                    sample.timestamp=+valuets.split(' ')[1].trim()
+                    sample.metric=requestedMetricName
+                    sample.value = +valueAndTs.split(' ')[0].trim()
+                    timestamp = +valueAndTs.split(' ')[1].trim()
                     samples.push(sample)
+                    if (containerName!=='' && labels.container===containerName ) break
                 }
+
             }
-        })
-        // +++ reduce by sum, reduce by avg
+        }
+        console.log('sum:',requestedMetricName)
+        console.log('samples', samples)
+        // we now reduce the values. it's needed if, for example, we want pod values, so we must aggregate container values
+        // it is also neded to make higher level aggregations, like namespace
         var sum={ value:0 }
         if (samples.length>0) {
+            console.log('metric', requestedMetricName, 'samples', samples.length)
             console.log(samples)
             sum=samples.reduce( (prev, current) => { return { value: prev.value + current.value }}, {value:0})
         }
-        return sum.value
+        var result = { value: sum.value, timestamp }
+        console.log(result)
+        return result
     }
 
-    public async testExtractAllMetrics(nodeIp:string, podName:string, containerName:string) {
-        var x  = await this.getMetrics(nodeIp)
-        console.log('container_fs_writes_total= ',this.extractMetrics(x,'container_fs_writes_total', podName, containerName))
-        console.log('container_fs_reads_total= ',this.extractMetrics(x,'container_fs_reads_total', podName, containerName))
-        console.log('container_cpu_usage_seconds_total= ',this.extractMetrics(x,'container_cpu_usage_seconds_total', podName, containerName))
-        console.log('container_memory_usage_bytes= ',this.extractMetrics(x,'container_memory_usage_bytes', podName, containerName))
-        console.log('container_network_receive_bytes_total= ',this.extractMetrics(x,'container_network_receive_bytes_total', podName, containerName))
-        console.log('container_network_transmit_bytes_total= ',this.extractMetrics(x,'container_network_transmit_bytes_total', podName, containerName))
-    }
+    // public async testExtractAllMetrics(nodeIp:string, podName:string, containerName:string) {
+    //     var x  = await this.getMetrics(nodeIp)
+    //     console.log('container_fs_writes_total= ',this.extractMetrics(x,'container_fs_writes_total', podName, containerName))
+    //     console.log('container_fs_reads_total= ',this.extractMetrics(x,'container_fs_reads_total', podName, containerName))
+    //     console.log('container_cpu_usage_seconds_total= ',this.extractMetrics(x,'container_cpu_usage_seconds_total', podName, containerName))
+    //     console.log('container_memory_usage_bytes= ',this.extractMetrics(x,'container_memory_usage_bytes', podName, containerName))
+    //     console.log('container_network_receive_bytes_total= ',this.extractMetrics(x,'container_network_receive_bytes_total', podName, containerName))
+    //     console.log('container_network_transmit_bytes_total= ',this.extractMetrics(x,'container_network_transmit_bytes_total', podName, containerName))
+    // }
 
 }

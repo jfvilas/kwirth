@@ -26,7 +26,7 @@ import Login from './components/Login'
 import ManageClusters from './components/ManageClusters'
 import ManageUserSecurity from './components/ManageUserSecurity'
 import ResourceSelector from './components/ResourceSelector'
-import LogContent from './components/LogContent'
+import LogContent from './components/TabContent'
 import SettingsConfig from './components/SettingsConfig'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
@@ -35,7 +35,7 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan } from '@jfvilas/kwirth-common'
+import { KwirthData, LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan, ServiceConfigScopeEnum, ServiceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { MetricsObject } from './model/MetricsObject'
 import { TabObject } from './model/TabObject'
 import MetricsSelector from './components/MetricsSelector'
@@ -70,7 +70,8 @@ const App: React.FC = () => {
     // selectedLogRef.current=selectedLogName
     // var selectedLog = logs.find(t => t.name===selectedLogName)
     // var selectedLogIndex = logs.findIndex(t => t.name===selectedLogName)
-    const [receivedMetrics, setReceivedMetrics] = useState<MetricsMessage[]>([])
+    //const [receivedMetrics, setReceivedMetrics] = useState<MetricsMessage[]>([])
+    const [receivedMetricValues, setReceivedMetricValues] = useState<number[]>([])
 
     // message list management
     const [logMessages, setLogMessages] = useState<LogMessage[]>([])  //+++ i think this is not being used right now
@@ -161,6 +162,10 @@ const App: React.FC = () => {
 
         clusterList.push(srcCluster)
         setClusters(clusterList)
+
+        for (var cluster of clusterList){
+            if (!cluster.metricList) getMetricsNames(cluster)
+        }
     }
 
     const readSettings = async () => {
@@ -189,30 +194,24 @@ const App: React.FC = () => {
         if (!cluster) {
             setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.cluster} does not exist.`, setMsgBox))
             return
-        }            
-        if (!cluster.metricList) getMetricsNames(cluster)
+        }
 
         var tabName=selection.logName
-        var serviceConfigChannel=selection.serviceConfigChannel as ServiceConfigChannelEnum
+        var channel=selection.channel as ServiceConfigChannelEnum
 
         // create unduplicated (unique) name
         var index=-1
         while (tabs.find (t => t.name===tabName+index)) index-=1
         var newTab = new TabObject()
         newTab.name = tabName+index
-        tabs.push(newTab)
 
         newTab.ws = new WebSocket(cluster.url)
-        newTab.ws.onopen = () => {
-            console.log(`WS connected: ${newTab.ws!.url}`)
-        }
-        newTab.ws.onerror = () => {
-            console.log(`Error detected on WS: ${newTab.ws!.url}`)
-        }
+        newTab.ws.onopen = () => console.log(`WS connected: ${newTab.ws!.url}`)
+        newTab.ws.onerror = () => console.log(`Error detected on WS: ${newTab.ws!.url}`)
         newTab.ws.onmessage = (event) => wsOnTabMessage(event)
         newTab.ws.onclose = (event) => console.log(`WS tab disconnected: ${newTab.ws!.url}`)
 
-        switch(serviceConfigChannel) {
+        switch(channel) {
             case ServiceConfigChannelEnum.LOG:
                 var newLog = new LogObject()
                 newLog.cluster=selection.cluster
@@ -232,14 +231,17 @@ const App: React.FC = () => {
                 newMetrics.namespace=selection.namespace
                 newMetrics.group=selection.group
                 newMetrics.pod=selection.pod
-                newMetrics.container=selection.container        
+                newMetrics.container=selection.container
                 newTab.metricsObject=newMetrics
                 break
+            default:
+                console.log(`Error, invalid channel: `, channel)
         }
 
+        tabs.push(newTab)
+        setTabs(tabs)
         setFilter('')
         setSearch('')
-        setTabs(tabs)
         setSelectedTabName(newTab.name)
     }
 
@@ -270,12 +272,12 @@ const App: React.FC = () => {
         }
 
         switch(serviceMessage.channel) {
-            case 'info':
-            case 'warning':
-            case 'error':
-                // these are general signal messages (not related to a channel)
-                processSignalMessage(wsEvent)
-                break
+            // case 'info':
+            // case 'warning':
+            // case 'error':
+            //     // these are general signal messages (not related to a channel)
+            //     processGeneralSignalMessage(wsEvent)
+            //     break
             case 'log':
                 processLogMessage(wsEvent)
                 break
@@ -289,15 +291,9 @@ const App: React.FC = () => {
             //     processAuditMessage(wsEvent)
             //     break
             default:
-                console.log('Invalid channel: ',serviceMessage.channel)
+                console.log('Invalid channel in message: ', serviceMessage)
                 break
         }
-    }
-
-    const processSignalMessage = (event:any) => {
-        // +++ decide how to show signal messages
-        console.log('SIGNAL MESSAGE')
-        console.log(JSON.parse(event.data))
     }
 
     const processLogMessage = (wsEvent:any) => {
@@ -306,8 +302,8 @@ const App: React.FC = () => {
         if (!tab || !tab.logObject) return
 
         var msg = JSON.parse(wsEvent.data) as LogMessage
-        if (msg.type==='data') {
-            if (msg.text) {
+        switch (msg.type) {
+            case 'data':
                 tab.logObject.messages.push(msg)
                 while (tab.logObject.messages.length>tab.logObject.maxMessages) tab.logObject.messages.splice(0,1)
 
@@ -357,26 +353,35 @@ const App: React.FC = () => {
                         }
                     }
                 }
-            }
-        }
-        else {
-            // +++ decide what to do with non-text messges (for examples action 'start' responses or in-channel signal messages)
-            console.log(`Received message on channel ${msg.channel}: ${JSON.stringify(msg)}`)
+                break
+            case 'signal':
+                tab.logObject.messages.push(msg)
+                break
+            default:
+                console.log(`Invalid message type`, msg)
+                break
         }
     }
 
     const processMetricsMessage = (wsEvent:any) => {
+        console.log('pmm')
         var msg = JSON.parse(wsEvent.data) as MetricsMessage
-        if (msg.type==='data') {
-            var pos = receivedMetrics.findIndex( m => m.namespace===msg.namespace && m.podName===msg.podName && m.metrics.join(',')===msg.metrics.join(','))
-            if (pos>=0)
-                receivedMetrics[pos]=msg
-            else
-                receivedMetrics.push (msg)
-            setReceivedMetrics(Array.from(receivedMetrics))
-        }
-        else {
-            console.log(`Received message on channel ${msg.channel}: ${JSON.stringify(msg)}`)
+        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
+        if (!tab || !tab.metricsObject) return
+
+        switch (msg.type) {
+            case 'data':
+                console.log(msg.value)
+                tab.metricsObject.values=msg.value
+                setReceivedMetricValues(msg.value)
+                break
+            case 'signal':
+                // +++ decide what to do with non-text messges (for examples action 'start' responses or in-channel signal messages)
+                console.log(`Received message on channel ${msg.channel}: ${JSON.stringify(msg)}`)
+                break
+            default:
+                console.log(`Invalid message type ${msg.type}`)
+                break
         }
     }
     
@@ -401,7 +406,7 @@ const App: React.FC = () => {
                         break
                 }
             }
-            console.log(cluster.metricList)
+            console.log(`Metrics for cluster ${cluster.name} have been received`)
         }
         catch (err) {
             console.log('Error obtaining metrics list')
@@ -429,7 +434,7 @@ const App: React.FC = () => {
                 instance: '',
                 interval: 5,
                 accessKey: cluster!.accessString,
-                scope: 'stream',
+                scope: ServiceConfigScopeEnum.STREAM,
                 view: tab.metricsObject.view!,
                 namespace: tab.metricsObject.namespace!,
                 set: tab.metricsObject.group!,
@@ -467,8 +472,8 @@ const App: React.FC = () => {
             mode: MetricsConfigModeEnum.SNAPSHOT,
             metrics: [],
             accessKey: '',
-            view: '',
-            scope: '',
+            view: ServiceConfigViewEnum.NONE,
+            scope: ServiceConfigScopeEnum.NONE,
             namespace: '',
             group: '',
             set: '',
@@ -524,7 +529,7 @@ const App: React.FC = () => {
                 channel: ServiceConfigChannelEnum.LOG,
                 instance: '',
                 accessKey: cluster!.accessString,
-                scope: 'view',
+                scope: ServiceConfigScopeEnum.VIEW,
                 view: tab.logObject.view!,
                 namespace: tab.logObject.namespace!,
                 set: tab.logObject.group!, // transitional
@@ -556,8 +561,8 @@ const App: React.FC = () => {
                 channel: ServiceConfigChannelEnum.METRICS,
                 instance: tab.logObject.serviceInstance,
                 accessKey: '',
-                view: '',
-                scope: '',
+                view: ServiceConfigViewEnum.NONE,
+                scope: ServiceConfigScopeEnum.NONE,
                 namespace: '',
                 group: '',
                 set: '',
@@ -682,12 +687,11 @@ const App: React.FC = () => {
                 break
             case MenuTabOption.TabManageRestart:
                 switch(selectedTab && selectedTab.logObject?.view) {
-                    case 'group':
-                    case 'set':
+                    case ServiceConfigViewEnum.GROUP:
                         // restart a deployment
                         fetch (`${backendUrl}/managecluster/restartdeployment/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.group}`, addPostAuthorization(accessString))
                         break
-                    case 'pod':
+                    case ServiceConfigViewEnum.POD:
                         // restart a pod
                         fetch (`${backendUrl}/managecluster/restartpod/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.pod}`, addPostAuthorization(accessString))
                         break
@@ -889,22 +893,15 @@ const App: React.FC = () => {
         if (newSettings) writeSettings(newSettings)
     }
 
-    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum, cluster:string) => {
+    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum) => {
         setShowMetricsSelector(false)
         setAnchorMenuTab(null)
 
         var tab=tabs.find(t => t.name===selectedTabRef.current)
-        if (tab) {
-            tab.metricsObject= new MetricsObject()
-            tab.metricsObject.cluster=cluster
-            tab.metricsObject.mode=mode
-            tab.metricsObject.metrics=metrics
-            startMetrics(tab)
-        }
-        else {
-            setMsgBox(MsgBoxOk('Log object', 'No log selected',setMsgBox))
-        }
-
+        if (!tab || !tab.metricsObject) return
+        tab.metricsObject.mode=mode
+        tab.metricsObject.metrics=metrics
+        startMetrics(tab)
     }
 
     const renameTabClosed = (newname:string|null) => {
@@ -995,7 +992,7 @@ const App: React.FC = () => {
             </Drawer>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
-                <ResourceSelector clusters={clusters} onAdd={onResourceSelectorAdd} sx={{ mt:1, ml:3, mr:3 }}/>
+                <ResourceSelector clusters={clusters} onAdd={onResourceSelectorAdd} sx={{ mt:1, ml:1 }}/>
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
                     <Tabs value={selectedTabName} onChange={onChangeTabs} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
                         { tabs.length>0 && tabs.map(t => {
@@ -1012,14 +1009,14 @@ const App: React.FC = () => {
 
                     { (tabs.length>0) && <>
                         <Stack direction="row" alignItems="bottom" sx={{ width:'200px', mr:1}}>
-                            <TextField value={filter} onChange={onChangeLogFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard"/>
+                            <TextField value={filter} onChange={onChangeLogFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')} disabled={!selectedTab?.logObject}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard" disabled={!selectedTab?.logObject}/>
                         </Stack>
                     </>}
                 </Stack>
 
                 { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
 
-                <LogContent log={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metrics={receivedMetrics}/>
+                <LogContent log={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject} values={receivedMetricValues}/>
             </Box>
 
             { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> }

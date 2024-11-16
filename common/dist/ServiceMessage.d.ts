@@ -1,7 +1,8 @@
+import { ServiceConfigChannelEnum } from './ServiceConfig';
 export interface ServiceMessage {
-    channel: string;
+    channel: ServiceConfigChannelEnum;
     instance: string;
     type: string;
     namespace?: string;
-    podName?: string;
+    pod?: string;
 }

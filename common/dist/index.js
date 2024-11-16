@@ -33,6 +33,7 @@ __exportStar(require("./StreamMessage"), exports);
 __exportStar(require("./ServiceMessage"), exports);
 __exportStar(require("./LogMessage"), exports);
 __exportStar(require("./MetricsMessage"), exports);
+__exportStar(require("./SignalMessage"), exports);
 __exportStar(require("./ApiKey"), exports);
 __exportStar(require("./AccessKey"), exports);
 __exportStar(require("./KwirthData"), exports);

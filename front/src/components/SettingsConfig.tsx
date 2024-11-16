@@ -7,8 +7,6 @@ interface IProps {
     onClose:(newSettings:Settings|undefined) => {}
     settings:Settings
 }
-    // +++ revisar los settings del modo de stream en metrics
-    // +++ revisat los servicemessages, deben inclir el subtipo de mensaje: tipo-> log, metrics, subtipo(log) -> text, info, error  subtipo(metrics) -> metrics, info, error....
 const SettingsConfig: React.FC<any> = (props:IProps) => {
     const [value, setValue] = React.useState('log')
     const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages)
