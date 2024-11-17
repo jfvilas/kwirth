@@ -4,12 +4,13 @@ import { Settings } from '../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
 interface IProps {
-    onMetricsSelected:(metrics:string[], mode:MetricsConfigModeEnum) => {}
+    onMetricsSelected:(metrics:string[], mode:MetricsConfigModeEnum, interval:number) => {}
     settings:Settings
 }
 
 const MetricsSelector: React.FC<any> = (props:IProps) => {
     const [metricsMode, setMetricsMode] = useState(props.settings.metricsMode.toString())
+    const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
     const [metricsMetrics, setMetricsMetrics] = useState(props.settings.metricsMetrics.join(','))
 
     const onChangeMetricsMode = (event: SelectChangeEvent) => {
@@ -20,13 +21,17 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
         setMetricsMetrics(event.target.value)
     }
 
+    const onChangeMetricsInterval = (event:ChangeEvent<HTMLInputElement>) => {
+        setMetricsInterval(+event.target.value)
+    }
+
     const closeOk = () =>{
-        props.onMetricsSelected(metricsMetrics.split(','), metricsMode as MetricsConfigModeEnum)
+        props.onMetricsSelected(metricsMetrics.split(','), metricsMode as MetricsConfigModeEnum, metricsInterval)
     }
 
     return (<>
         <Dialog open={true}>
-            <DialogTitle>Settings</DialogTitle>
+            <DialogTitle>Configure metrics</DialogTitle>
             <DialogContent>
                 <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh', mt:'16px' }}>
                     <FormControl fullWidth>
@@ -37,12 +42,13 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
                         </Select>
                         </FormControl>
                     <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard' label='Metrics' SelectProps={{native: true}}></TextField>
-                </Stack>
+                    <TextField value={metricsInterval} onChange={onChangeMetricsInterval} variant='standard'label='Interval' type='number' ></TextField>
+                    </Stack>
 
             </DialogContent>
             <DialogActions>
                 <Button onClick={closeOk}>OK</Button>
-                <Button onClick={() => props.onMetricsSelected([], MetricsConfigModeEnum.SNAPSHOT)}>CANCEL</Button>
+                <Button onClick={() => props.onMetricsSelected([], MetricsConfigModeEnum.SNAPSHOT, 0)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

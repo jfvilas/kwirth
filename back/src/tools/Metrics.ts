@@ -116,7 +116,7 @@ export class Metrics {
                 }
 
                 // +++ pending get metrics for different aggregations (namespace, pod regex, etc...)
-                if (labels.pod.startsWith(podName)) {
+                if (labels.pod.startsWith(podName) && labels.container!=='') {
                     // console.log('found metric', sampledMetricName)
                     // console.log('labels', labels)
                     // console.log('found pod',labels.pod, podName)

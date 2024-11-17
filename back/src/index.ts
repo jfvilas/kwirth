@@ -100,11 +100,12 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
     console.log('smd')
     var metricsMessage:MetricsMessage = {
         channel: ServiceConfigChannelEnum.METRICS,
-        type:'data',
+        type: 'data',
         instance: metricsConfig.instance,
         value: [],
         namespace: metricsConfig.namespace,
-        pod: metricsConfig.pod
+        pod: metricsConfig.pod,
+        timestamp: Date.now()
     }
     try {
         // +++ we must get values from all nodes and do some magics with numbers
@@ -157,14 +158,14 @@ const sendChannelSignal = (webSocket: WebSocket, level: SignalMessageLevelEnum, 
     }
 }
 
-const sendServiceConfigAccept = (ws:WebSocket, action:ServiceConfigActionEnum, flow: ServiceConfigFlowEnum, channel: ServiceConfigChannelEnum, serviceConfig:ServiceConfig) => {
+const sendServiceConfigMessage = (ws:WebSocket, action:ServiceConfigActionEnum, flow: ServiceConfigFlowEnum, channel: ServiceConfigChannelEnum, serviceConfig:ServiceConfig, text:string) => {
     var resp:any = {
         action,
         flow,
         channel,
         instance: serviceConfig.instance,
         type: 'signal',
-        text: 'Service Config accepted'  // text is required for managing 'service accepts' the same as other signal messages
+        text
     }
     ws.send(JSON.stringify(resp))
 }
@@ -229,7 +230,7 @@ const startPodMetrics = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
                 break
             case MetricsConfigModeEnum.STREAM:
                 console.log(metricsConfig)
-                var interval=(metricsConfig.interval?metricsConfig.interval:10)*1000    //+++ pending get this from settings
+                var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000    //+++ pending get this from settings
                 console.log(interval)
                 var timeout = setInterval(() => sendMetricsData(webSocket,metricsConfig), interval)
                 //clearInterval(timeout)
@@ -328,18 +329,18 @@ const processStartLogConfig = async (logConfig: LogConfig, webSocket: WebSocket,
                     case 'cluster':
                         watchPods(`/api/v1/pods`, {}, webSocket, logConfig)
                         logConfig.instance = uuidv4()
-                        sendServiceConfigAccept(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig)
+                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
                         break
                     case 'namespace':
                         watchPods(`/api/v1/namespaces/${logConfig.namespace}/pods`, {}, webSocket, logConfig)
                         logConfig.instance = uuidv4()
-                        sendServiceConfigAccept(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig)
+                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
                         break
                     case 'group':
                         var labelSelector = (await getPodsFromGroup(coreApi, appsApi, logConfig.namespace, logConfig.group)).labelSelector
                         watchPods(`/api/v1/namespaces/${logConfig.namespace}/pods`, { labelSelector }, webSocket, logConfig)
                         logConfig.instance = uuidv4()
-                        sendServiceConfigAccept(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig)
+                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
                         break
                     case 'pod':
                     case 'container':
@@ -369,7 +370,7 @@ const processStartLogConfig = async (logConfig: LogConfig, webSocket: WebSocket,
                                 console.log(`Label selector: ${labelSelector}`)
                                 watchPods(`/api/v1/namespaces/${podLogConfig.namespace}/pods`, { labelSelector }, webSocket, podLogConfig)
                                 logConfig.instance = uuidv4()
-                                sendServiceConfigAccept(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig)
+                                sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
                             }
                             else {
                                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels`, logConfig)
@@ -410,18 +411,18 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
                     case 'cluster':
                         watchPods(`/api/v1/pods`, {}, webSocket, metricsConfig)
                         metricsConfig.instance = uuidv4()
-                        sendServiceConfigAccept(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig)
+                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service config accepted')
                         break
                     case 'namespace':
                         watchPods(`/api/v1/namespaces/${metricsConfig.namespace}/pods`, {}, webSocket, metricsConfig)
                         metricsConfig.instance = uuidv4()
-                        sendServiceConfigAccept(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig)
+                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service config accepted')
                         break
                     case 'group':
                         var labelSelector = (await getPodsFromGroup(coreApi, appsApi, metricsConfig.namespace, metricsConfig.group)).labelSelector
                         watchPods(`/api/v1/namespaces/${metricsConfig.namespace}/pods`, { labelSelector }, webSocket, metricsConfig)
                         metricsConfig.instance = uuidv4()
-                        sendServiceConfigAccept(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig)
+                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service config accepted')
                         break
                     case 'pod':
                     case 'container':
@@ -433,7 +434,6 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
                                 channel: ServiceConfigChannelEnum.METRICS,
                                 instance: uuidv4(),
                                 accessKey: '',
-                                interval: 10,  //+++ pending get this from settings
                                 scope: metricsConfig.scope,
                                 namespace: validPod.metadata?.namespace!,
                                 group: '',
@@ -443,6 +443,7 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
                                 view: metricsConfig.view,
                                 //mode: MetricsConfigModeEnum[metricsConfig.scope.toString() as keyof typeof MetricsConfigModeEnum],
                                 mode: metricsConfig.mode,
+                                interval: metricsConfig.interval,
                                 metrics: metricsConfig.metrics
                             }
 
@@ -452,7 +453,7 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
                                 console.log(`Label selector: ${labelSelector}`)
                                 watchPods(`/api/v1/namespaces/${podMetricsConfig.namespace}/pods`, { labelSelector }, webSocket, podMetricsConfig)
                                 metricsConfig.instance = uuidv4()
-                                sendServiceConfigAccept(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig)
+                                sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service config accepted')
                             }
                             else {
                                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels`, metricsConfig)
@@ -474,12 +475,18 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
     }
 }
 
-const processStopLogConfig = async (logConfig: Log, webSocket: WebSocket) => {
-    // +++ pending impl. remove interval from intervals array
-}
+// const processStopLogConfig = async (logConfig: LogConfig, webSocket: WebSocket) => {
+//     // +++ pending impl. remove interval from intervals array
+//     sendServiceConfigAccept(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig)
+// }
 
-const processStopMetricsConfig = async (metricsConfig: MetricsConfig, webSocket: WebSocket) => {
+// const processStopMetricsConfig = async (metricsConfig: MetricsConfig, webSocket: WebSocket) => {
+//     // +++ pending impl. remove interval from intervals array
+// }
+
+const processStopServiceConfig = async (serviceConfig: ServiceConfig, webSocket: WebSocket) => {
     // +++ pending impl. remove interval from intervals array
+    sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, serviceConfig, 'Service stopped')
 }
 
 // clients send requests to start receiving log
@@ -539,17 +546,14 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         case ServiceConfigActionEnum.STOP:
             switch (serviceConfig.channel) {
                 case ServiceConfigChannelEnum.LOG:
-                    //processStopLogConfig(serviceConfig as LogConfig, webSocket)
-                    break
                 case ServiceConfigChannelEnum.METRICS:
-                    processStopMetricsConfig(serviceConfig as MetricsConfig, webSocket)
+                    processStopServiceConfig(serviceConfig, webSocket)
                     break
                 default:
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid ServiceConfig type: ${serviceConfig.channel}`, serviceConfig)
                     break
             }
             break
-
         default:
             console.log (`Invalid action in service config ${serviceConfig.action}`, serviceConfig.action)
             break

@@ -6,6 +6,7 @@ class Settings {
     public logTimestamp:boolean = false
 
     public metricsMode:MetricsConfigModeEnum = MetricsConfigModeEnum.STREAM
+    public metricsInterval:number = 60
     public metricsMetrics:string[] = [
         'container_fs_writes_total',
         'container_fs_reads_total',

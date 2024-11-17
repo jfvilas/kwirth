@@ -26,7 +26,7 @@ import Login from './components/Login'
 import ManageClusters from './components/ManageClusters'
 import ManageUserSecurity from './components/ManageUserSecurity'
 import ResourceSelector from './components/ResourceSelector'
-import LogContent from './components/TabContent'
+import TabContent from './components/TabContent'
 import SettingsConfig from './components/SettingsConfig'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
@@ -310,6 +310,7 @@ const App: React.FC = () => {
                 // if current log is displayed (focused), add message to the screen
                 if (selectedTabRef.current === tab.name) {
                     if (!tab.logObject.paused) {
+                        console.log('refresh')
                         setLogMessages([])  //+++ this forces LogContent to re-render +++ change to any other thing
                         if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
                     }
@@ -373,6 +374,7 @@ const App: React.FC = () => {
             case 'data':
                 console.log(msg.value)
                 tab.metricsObject.values=msg.value
+                tab.metricsObject.timestamp=msg.timestamp
                 setReceivedMetricValues(msg.value)
                 break
             case 'signal':
@@ -432,7 +434,7 @@ const App: React.FC = () => {
                 flow: ServiceConfigFlowEnum.REQUEST,
                 channel: ServiceConfigChannelEnum.METRICS,
                 instance: '',
-                interval: 5,
+                interval: tab.metricsObject.interval,
                 accessKey: cluster!.accessString,
                 scope: ServiceConfigScopeEnum.STREAM,
                 view: tab.metricsObject.view!,
@@ -452,7 +454,7 @@ const App: React.FC = () => {
         }
     }
 
-    const onClickMetricsStop = () => {    
+    const onClickMetricsStop = () => {
         setAnchorMenuTab(null)
         if (selectedTab && selectedTab.logObject) stopMetrics(selectedTab)
     }
@@ -464,15 +466,16 @@ const App: React.FC = () => {
 
     const stopMetrics = (tab:TabObject) => {
         if (!tab.metricsObject) return
+        var cluster=clusters!.find(c => c.name===tab.metricsObject!.cluster)
         var mc:MetricsConfig = {
             action: ServiceConfigActionEnum.STOP,
             flow: ServiceConfigFlowEnum.REQUEST,
             channel: ServiceConfigChannelEnum.METRICS,
             instance: tab.metricsObject.serviceInstance,
-            mode: MetricsConfigModeEnum.SNAPSHOT,
+            mode: tab.metricsObject.mode,
             metrics: [],
-            accessKey: '',
-            view: ServiceConfigViewEnum.NONE,
+            accessKey: cluster!.accessString,
+            view: tab.metricsObject.view!,
             scope: ServiceConfigScopeEnum.NONE,
             namespace: '',
             group: '',
@@ -541,11 +544,11 @@ const App: React.FC = () => {
                 maxMessages: tab.logObject.maxMessages!
             }
             tab.ws.send(JSON.stringify(logConfig))
-            tab.logObject.started=true        
-            setLogMessages([])                
+            tab.logObject.started=true
+            setLogMessages([])
         }
         else {
-            console.log('Tab web socket is not  open')
+            console.log('Tab websocket is not  open')
         }
     }
 
@@ -555,12 +558,13 @@ const App: React.FC = () => {
         tab.logObject.messages.push( {text:endline} as LogMessage)
 
         if (tab.ws) {
+            var cluster=clusters!.find(c => c.name===tab.logObject!.cluster)
             var lc:LogConfig = {
                 action: ServiceConfigActionEnum.STOP,
                 flow: ServiceConfigFlowEnum.REQUEST,
-                channel: ServiceConfigChannelEnum.METRICS,
+                channel: ServiceConfigChannelEnum.LOG,
                 instance: tab.logObject.serviceInstance,
-                accessKey: '',
+                accessKey: cluster!.accessString,
                 view: ServiceConfigViewEnum.NONE,
                 scope: ServiceConfigScopeEnum.NONE,
                 namespace: '',
@@ -586,6 +590,7 @@ const App: React.FC = () => {
         if (!selectedTab || !selectedTab.logObject) return
 
         stopLog(selectedTab)
+        stopMetrics(selectedTab)
         if (tabs.length===1)
             setLogMessages([])
         else
@@ -631,32 +636,35 @@ const App: React.FC = () => {
                 setShowRenameLog(true)
                 break
             case MenuTabOption.TabMoveLeft:
-                if (selectedTab && selectedTab.logObject) {
+                if (selectedTab) {
                     tabs[selectedTabIndex]=tabs[selectedTabIndex-1]
                     tabs[selectedTabIndex-1]=selectedTab
                     setTabs(tabs)
                 }
                 break
             case MenuTabOption.TabMoveRight:
-                if (selectedTab && selectedTab.logObject) {
+                if (selectedTab) {
                     tabs[selectedTabIndex]=tabs[selectedTabIndex+1]
                     tabs[selectedTabIndex+1]=selectedTab
                     setTabs(tabs)
                 }
                 break
             case MenuTabOption.TabMoveFirst:
-                if (selectedTab && selectedTab.logObject) {
+                if (selectedTab) {
                     tabs.splice(selectedTabIndex, 1)
                     tabs.splice(0, 0, selectedTab)
                     setTabs(tabs)
                 }
                 break
             case MenuTabOption.TabMoveLast:
-                if (selectedTab && selectedTab.logObject) {
+                if (selectedTab) {
                     tabs.splice(selectedTabIndex, 1)
                     tabs.push(selectedTab)
                     setTabs(tabs)
                 }
+                break
+            case MenuTabOption.TabRemove:
+                onClickTabRemove()
                 break
             case MenuTabOption.LogBackground:
                 if (selectedTab && selectedTab.logObject) selectedTab.logObject.showBackgroundNotification=!selectedTab.logObject.showBackgroundNotification
@@ -702,9 +710,6 @@ const App: React.FC = () => {
                 break
             case MenuTabOption.MetricsStop:
                 onClickMetricsStop()
-                break
-            case MenuTabOption.MetricsRemove:
-                onClickMetricsRemove()
                 break
         }
     }
@@ -890,16 +895,18 @@ const App: React.FC = () => {
 
     const settingsClosed = (newSettings:Settings) => {
         setShowSettingsConfig(false)
+        console.log(newSettings)
         if (newSettings) writeSettings(newSettings)
     }
 
-    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum) => {
+    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum, interval:number) => {
         setShowMetricsSelector(false)
         setAnchorMenuTab(null)
 
         var tab=tabs.find(t => t.name===selectedTabRef.current)
         if (!tab || !tab.metricsObject) return
         tab.metricsObject.mode=mode
+        tab.metricsObject.interval=interval
         tab.metricsObject.metrics=metrics
         startMetrics(tab)
     }
@@ -1016,7 +1023,8 @@ const App: React.FC = () => {
 
                 { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
 
-                <LogContent log={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject} values={receivedMetricValues}/>
+                {/* <TabContent log={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject} values={receivedMetricValues}/> */}
+                <TabContent logObject={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject}/>
             </Box>
 
             { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> }

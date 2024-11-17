@@ -14,6 +14,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
     const [logTimestamp, setLogTimestamp] = useState(props.settings.logTimestamp)
     const [metricsMode, setMetricsMode] = useState(props.settings.metricsMode.toString())
     const [metricsMetrics, setMetricsMetrics] = useState(props.settings.metricsMetrics.join(','))
+    const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
 
     const onChangeLogMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
         setLogMaxMessages(+event.target.value)
@@ -35,13 +36,18 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         setMetricsMetrics(event.target.value)
     }
 
+    const onChangeMetricsInterval = (event:ChangeEvent<HTMLInputElement>) => {
+        setMetricsInterval(+event.target.value)
+    }
+
     const closeOk = () =>{
         var newSettings=new Settings()
         newSettings.logMaxMessages=logMaxMessages
         newSettings.logPrevious=Boolean(logPrevious)
         newSettings.logTimestamp=Boolean(logTimestamp)
-        newSettings.metricsMode = MetricsConfigModeEnum[metricsMode as keyof typeof MetricsConfigModeEnum]
+        newSettings.metricsMode = metricsMode as MetricsConfigModeEnum
         newSettings.metricsMetrics = metricsMetrics.split(',')
+        newSettings.metricsInterval = metricsInterval
         props.onClose(newSettings)
     }
 
@@ -76,6 +82,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
                             </Select>
                         </FormControl>
                         <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField>
+                        <TextField value={metricsInterval} onChange={onChangeMetricsInterval} variant='standard'label='Interval' type='number' ></TextField>
                     </Stack>
                 </div>
 
