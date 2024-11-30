@@ -57,6 +57,8 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         newSettings.logTimestamp=Boolean(logTimestamp)
         newSettings.metricsMode = metricsMode as MetricsConfigModeEnum
         newSettings.metricsMetrics = metricsMetrics.split(',')
+        newSettings.metricsWidth = metricsWidth
+        newSettings.metricsDepth = metricsDepth
         newSettings.metricsInterval = metricsInterval
         props.onClose(newSettings)
     }

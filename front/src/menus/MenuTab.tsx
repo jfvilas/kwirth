@@ -85,11 +85,11 @@ const MenuTab: React.FC<any> = (props:IProps) => {
             <MenuItem key='ma' onClick={() => props.optionSelected(MenuTabOption.ManageAlarms)} sx={{ml:3}} disabled={true}>Manage alarms...</MenuItem>
             <Divider/>
         
-            <MenuItem key='subtab' onClick={submenuTabClick} sx={{ml:3}}>Organize<Typography sx={{flexGrow:1}}></Typography>{subMenuTabOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
+            <MenuItem key='subtab' onClick={submenuTabClick} sx={{ml:3}}>Tab<Typography sx={{flexGrow:1}}></Typography>{subMenuTabOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={subMenuTabOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
-                <MenuItem key='tabil' onClick={() => props.optionSelected(MenuTabOption.TabInfo)} disabled={props.selectedTabIndex<0}><Info/>&nbsp;Tab information</MenuItem>
-                <MenuItem key='tabrl' onClick={() => props.optionSelected(MenuTabOption.TabRename)} disabled={props.selectedTabIndex<0}><DriveFileRenameOutline/>&nbsp;Rename tab</MenuItem>
-                <MenuItem key='tabdl' onClick={() => props.optionSelected(MenuTabOption.TabSetDefault)} disabled={props.selectedTabIndex<0} sx={{ml: props.selectedTab?.defaultTab?0:3}}> {props.selectedTab?.defaultTab && <Check/>} Set default tab for board</MenuItem>
+                <MenuItem key='tabi' onClick={() => props.optionSelected(MenuTabOption.TabInfo)} disabled={props.selectedTabIndex<0}><Info/>&nbsp;Information</MenuItem>
+                <MenuItem key='tabr' onClick={() => props.optionSelected(MenuTabOption.TabRename)} disabled={props.selectedTabIndex<0}><DriveFileRenameOutline/>&nbsp;Rename</MenuItem>
+                <MenuItem key='tabd' onClick={() => props.optionSelected(MenuTabOption.TabSetDefault)} disabled={props.selectedTabIndex<0} sx={{ml: props.selectedTab?.defaultTab?0:3}}> {props.selectedTab?.defaultTab && <Check/>} Set default tab for board</MenuItem>
                 <MenuItem key='tabml' onClick={() => props.optionSelected(MenuTabOption.TabMoveLeft)} disabled={props.selectedTabIndex===0}><KeyboardArrowLeft/>Move to left</MenuItem>
                 <MenuItem key='tabmr' onClick={() => props.optionSelected(MenuTabOption.TabMoveRight)} disabled={props.selectedTabIndex===props.tabs.length-1}><KeyboardArrowRight/>Move to right</MenuItem>
                 <MenuItem key='tabms' onClick={() => props.optionSelected(MenuTabOption.TabMoveFirst)} disabled={props.selectedTabIndex===0}><KeyboardDoubleArrowLeft/>&nbsp;Move to start</MenuItem>

@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ubuntu4
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ubuntu4
+  template:
+    metadata:
+      name: ubuntu4
+      labels:
+        app: ubuntu4
+    spec:
+      containers:
+        - name: ubuntu4
+          image: ubuntu
+          command: ["/bin/sh"]
+          args: ["-c", "while true; do date; find /;sleep 15; done"]
+          resources:
+            limits:
+              cpu: '1'
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
