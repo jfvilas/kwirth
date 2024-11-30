@@ -116,24 +116,42 @@ export class Metrics {
                 }
 
                 // +++ pending get metrics for different aggregations (namespace, pod regex, etc...)
-                if (labels.pod.startsWith(podName) && labels.container!=='') {
+                if (labels.pod && labels.pod.startsWith(podName) && labels.container && labels.container!=='') {
                     // console.log('found metric', sampledMetricName)
                     // console.log('labels', labels)
                     // console.log('found pod',labels.pod, podName)
                     var i=line.indexOf('}')
-                    var valueAndTs=line.substring(i+1).trim()
-                    var sample=labels
-                    sample.metric=requestedMetricName
-                    sample.value = +valueAndTs.split(' ')[0].trim()
-                    timestamp = +valueAndTs.split(' ')[1].trim()
-                    samples.push(sample)
-                    if (containerName!=='' && labels.container===containerName ) break
+                    if (i>=0) {
+                        var valueAndTs=line.substring(i+1)
+                        if (valueAndTs) {
+                            valueAndTs=valueAndTs.trim()
+                            var sample=labels
+                            sample.metric=requestedMetricName
+                            if (valueAndTs.includes(' ')) {
+                                sample.value = +valueAndTs.split(' ')[0].trim()
+                                timestamp = +valueAndTs.split(' ')[1].trim()
+                                samples.push(sample)
+                                if (containerName!=='' && labels.container===containerName ) break
+                            }
+                            else {
+                                // the metrics is absolute, fixed, has no timestamp
+                                sample.value = +(valueAndTs.trim())
+                                //console.log('Invalid value/ts format: ', line)
+                            }
+                        }
+                        else {
+                            console.log('No value/ts: ', line)
+                        }
+                    }
+                    else {
+                        console.log('Invalid metric format: ', line)
+                    }
                 }
 
             }
         }
         console.log('sum:',requestedMetricName)
-        console.log('samples', samples)
+        console.log('samples:', samples)
         // we now reduce the values. it's needed if, for example, we want pod values, so we must aggregate container values
         // it is also neded to make higher level aggregations, like namespace
         var sum={ value:0 }

@@ -9,7 +9,7 @@ export class Cluster {
     public accessString:string=''
     public source:boolean|undefined=false
     public inCluster:boolean=false
-    public metricList:Map<string,MetricDescription> = new Map()
+    public metricsList:Map<string,MetricDescription> = new Map()
     public kwirthData?: KwirthData
     
     constructor () {

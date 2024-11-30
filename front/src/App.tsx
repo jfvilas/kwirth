@@ -163,7 +163,7 @@ const App: React.FC = () => {
         setClusters(clusterList)
 
         for (var cluster of clusterList){
-            if (!cluster.metricList) getMetricsNames(cluster)
+            if (!cluster.metricsList) getMetricsNames(cluster)
         }
     }
 
@@ -390,25 +390,30 @@ const App: React.FC = () => {
     
     const getMetricsNames = async (cluster:Cluster) => {
         try {
-            cluster.metricList=new Map()
+            cluster.metricsList=new Map()
             var response = await fetch (`${backendUrl}/metrics`, addGetAuthorization(accessString))
             var lines=await response.text()
             // # HELP cadvisor_version_info A metric with a constant '1' value labeled by kernel version, OS version, docker version, cadvisor version & cadvisor revision.
             // # TYPE cadvisor_version_info gauge
             for (var l of lines.split('\n')) {
                 var [_,lineType,name,metricType] = l.split(' ')
-                if (!cluster.metricList.has(name) && name) cluster.metricList.set(name, {type: '', help: ''})
+                if (!cluster.metricsList.has(name) && name) cluster.metricsList.set(name, {type: '', help: ''})
                 switch (lineType){
                     case 'HELP':
                         var i=l.indexOf(name)
                         var text=l.substring(i+name.length)
-                        cluster.metricList.get(name)!.help=text
+                        cluster.metricsList.get(name)!.help=text
                         break
                     case 'TYPE':
-                        cluster.metricList.get(name)!.type = metricType
+                        cluster.metricsList.get(name)!.type = metricType
                         break
                 }
             }
+            if (cluster.metricsList.size===0) {
+                cluster.metricsList.set('testmetrics-1', {type:'number', help:'1st Sample metrics'})
+                cluster.metricsList.set('testmetrics-2', {type:'number', help:'2nd Sample metrics'})
+            }
+            console.log('cluster.metricList',cluster.metricsList)
             console.log(`Metrics for cluster ${cluster.name} have been received`)
         }
         catch (err) {
@@ -910,6 +915,7 @@ const App: React.FC = () => {
     const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum, depth:number, width:number, interval:number) => {
         setShowMetricsSelector(false)
         setAnchorMenuTab(null)
+        if (metrics.length===0) return
 
         var tab=tabs.find(t => t.name===selectedTabRef.current)
         if (!tab || !tab.metricsObject) return
@@ -1046,7 +1052,7 @@ const App: React.FC = () => {
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
             {/* { showManageAlarms && <ManageAlarms onClose={() => setShowManageAlarms(false)} log={selectedLog}/> } */}
             { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
-            { showMetricsSelector && <MetricsSelector  onMetricsSelected={onMetricsSelected} settings={settings} /> }
+            { showMetricsSelector && <MetricsSelector  onMetricsSelected={onMetricsSelected} settings={settings} metricsList={Array.from(clusters!.find(c => c.name===selectedTab!.metricsObject!.cluster)?.metricsList.keys()!)} /> }
             { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { pickListConfig!==null && <PickList config={pickListConfig}/> }
             { msgBox }

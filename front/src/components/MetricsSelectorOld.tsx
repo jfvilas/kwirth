@@ -1,24 +1,26 @@
 import React, { useState, ChangeEvent } from 'react'
-import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, IconButton, InputLabel, List, ListItem, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select, SelectChangeEvent, Stack, TextField} from '@mui/material'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack, TextField} from '@mui/material'
 import { Settings } from '../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
 interface IProps {
     onMetricsSelected:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number) => {}
     settings:Settings
-    metricsList:string[]
 }
 
 const MetricsSelector: React.FC<any> = (props:IProps) => {
     const [metricsMode, setMetricsMode] = useState(props.settings.metricsMode.toString())
+    const [metricsMetrics, setMetricsMetrics] = useState(props.settings.metricsMetrics.join(','))
     const [metricsDepth, setMetricsDepth] = useState(props.settings.metricsDepth)
     const [metricsWidth, setMetricsWidth] = useState(props.settings.metricsWidth)
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
-    const [metricsChecked, setMetricsChecked] = React.useState<string[]>([])
 
-    console.log('props',props.metricsList)
     const onChangeMetricsMode = (event: SelectChangeEvent) => {
         setMetricsMode(event.target.value)
+    }
+
+    const onChangeMetricsMetrics = (event:ChangeEvent<HTMLInputElement>) => {
+        setMetricsMetrics(event.target.value)
     }
 
     const onChangeMetricsDepth = (event: SelectChangeEvent) => {
@@ -35,24 +37,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
 
     const closeOk = () =>{
         console.log(metricsWidth)
-        props.onMetricsSelected(metricsChecked, metricsMode as MetricsConfigModeEnum, metricsDepth, metricsWidth, metricsInterval)
-    }
-
-    const metricAddOrRemove = (value:string) => {
-        const currentIndex = metricsChecked.indexOf(value)
-        const newChecked = [...metricsChecked]
-        if (currentIndex < 0) 
-            newChecked.push(value)
-        else
-            newChecked.splice(currentIndex, 1)
-        setMetricsChecked(newChecked);
-    }
-
-    const metricsDelete = (value:string) => {
-        const currentIndex = metricsChecked.indexOf(value)
-        const newChecked = [...metricsChecked]
-        if (currentIndex >= 0) newChecked.splice(currentIndex, 1)
-        setMetricsChecked(newChecked);
+        props.onMetricsSelected(metricsMetrics.split(','), metricsMode as MetricsConfigModeEnum, metricsDepth, metricsWidth, metricsInterval)
     }
 
     return (<>
@@ -67,24 +52,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
                             <MenuItem value={MetricsConfigModeEnum.STREAM}>Stream</MenuItem>
                         </Select>
                     </FormControl>
-
-                    <List sx={{ width: '100%', height:'100px', overflowX: 'auto' }}>
-                        {props.metricsList.map((value) => {
-                            const labelId = `checkbox-list-label-${value}`;
-                            return (
-                                <ListItem key={value} disablePadding >
-                                    <ListItemButton role={undefined} onClick={() => metricAddOrRemove(value)} dense>
-                                        <ListItemText id={labelId} primary={value} sx={{color:metricsChecked.includes(value)?'black':'gray'}} />
-                                    </ListItemButton>
-                                </ListItem>
-                            )
-                        })}
-                    </List>
-                    <Stack direction="row" spacing={1}>
-                        { metricsChecked.map((value) => <Chip label={value} onDelete={() => metricsDelete(value)} size="small"/> ) }
-                    </Stack>
-
-
+                    <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard' label='Metrics' SelectProps={{native: true}}></TextField>
                     <FormControl fullWidth variant="standard">
                         <InputLabel id="labeldepth">Depth</InputLabel>
                         <Select value={metricsDepth.toString()} onChange={onChangeMetricsDepth} labelId="labeldepth" variant='standard'>

@@ -117,7 +117,6 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
         for (var nodeMetrics of Array.from(ClusterData.nodes.values())) {
             sampledMetrics.push(await metrics.getMetrics(nodeMetrics))
         }
-        //console.log('sampledMetrics', sampledMetrics)
 
         // +++ maybe adding up values is not the only operation (what about min, max, avg...?)
         metricsMessage.value=[]
