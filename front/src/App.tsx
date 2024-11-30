@@ -74,7 +74,7 @@ const App: React.FC = () => {
     const [receivedMetricValues, setReceivedMetricValues] = useState<number[]>([])
 
     // message list management
-    const [logMessages, setLogMessages] = useState<LogMessage[]>([])  //+++ i think this is not being used right now
+    const [logMessages, setLogMessages] = useState<LogMessage[]>([])  //+++ i think this is being used just for forcing render
     const lastLineRef = useRef(null)
 
     // search & filter
@@ -116,7 +116,6 @@ const App: React.FC = () => {
         //+++ add a settings section for a log object (like settings, but specific)
         //+++ work on alarms and create and alarm manager
         //+++ when a board is loaded all messages are received: alarms should not be in effect until everything is received
-        //+++ implement role checking on backend
         //+++ with ephemeral logs, the content of 'messages' should contain some info on alarms triggered, or even a dashboard (ephemeral logs do not contains log lines)
         //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
         //+++ decide wether to have collapsibility on the resource selector and the toolbar (to maximize log space)
@@ -310,7 +309,6 @@ const App: React.FC = () => {
                 // if current log is displayed (focused), add message to the screen
                 if (selectedTabRef.current === tab.name) {
                     if (!tab.logObject.paused) {
-                        console.log('refresh')
                         setLogMessages([])  //+++ this forces LogContent to re-render +++ change to any other thing
                         if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
                     }
@@ -356,6 +354,7 @@ const App: React.FC = () => {
                 }
                 break
             case 'signal':
+                tab.logObject.serviceInstance = msg.instance
                 tab.logObject.messages.push(msg)
                 break
             default:
@@ -365,20 +364,22 @@ const App: React.FC = () => {
     }
 
     const processMetricsMessage = (wsEvent:any) => {
-        console.log('pmm')
         var msg = JSON.parse(wsEvent.data) as MetricsMessage
         var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
         if (!tab || !tab.metricsObject) return
 
         switch (msg.type) {
             case 'data':
-                console.log(msg.value)
-                tab.metricsObject.values=msg.value
-                tab.metricsObject.timestamp=msg.timestamp
-                setReceivedMetricValues(msg.value)
+                tab.metricsObject.values.push(msg.value)
+                tab.metricsObject.timestamps.push(msg.timestamp)
+                if (tab.metricsObject.values.length>tab.metricsObject.depth) {
+                    tab.metricsObject.values.shift()
+                    tab.metricsObject.timestamps.shift()
+                }
+                if (!tab.metricsObject.paused) setReceivedMetricValues(msg.value)
                 break
             case 'signal':
-                // +++ decide what to do with non-text messges (for examples action 'start' responses or in-channel signal messages)
+                tab.metricsObject.serviceInstance = msg.instance
                 console.log(`Received message on channel ${msg.channel}: ${JSON.stringify(msg)}`)
                 break
             default:
@@ -429,6 +430,7 @@ const App: React.FC = () => {
         }
  
         if (tab.ws?.OPEN) {
+            tab.metricsObject.values=[]
             var mc:MetricsConfig = {
                 action: ServiceConfigActionEnum.START,
                 flow: ServiceConfigFlowEnum.REQUEST,
@@ -456,12 +458,7 @@ const App: React.FC = () => {
 
     const onClickMetricsStop = () => {
         setAnchorMenuTab(null)
-        if (selectedTab && selectedTab.logObject) stopMetrics(selectedTab)
-    }
-
-    const onClickMetricsRemove = () => {    
-        setAnchorMenuTab(null)
-        if (selectedTab && selectedTab.metricsObject) selectedTab.metricsObject=undefined
+        if (selectedTab && selectedTab.metricsObject) stopMetrics(selectedTab)
     }
 
     const stopMetrics = (tab:TabObject) => {
@@ -489,7 +486,16 @@ const App: React.FC = () => {
 
     const onClickMetricsPause = () => {
         setAnchorMenuTab(null)
-        if (!selectedTab) return
+        if (!selectedTab || !selectedTab.metricsObject) return
+
+        if (selectedTab.metricsObject.paused) {
+            selectedTab.metricsObject.paused=false
+            setPausedTabs(tabs.filter(t => t.metricsObject?.paused))
+        }
+        else {
+            selectedTab.metricsObject.paused=true
+            setPausedTabs( (prev) => [...prev, selectedTab!])
+        }
     }
 
     const startTab = (tab:TabObject) => {
@@ -505,6 +511,19 @@ const App: React.FC = () => {
     const stopTab = (tab:TabObject) => {
         if (tab.logObject) stopLog(tab)
         if (tab.metricsObject) stopMetrics(tab)
+    }
+
+    const onClickTabRemove = () => {
+        setAnchorMenuTab(null)
+        if (!selectedTab) return
+
+        if (selectedTab.logObject) stopLog(selectedTab)
+        if (selectedTab.metricsObject) stopMetrics(selectedTab)
+        if (tabs.length===1)
+            setLogMessages([])
+        else
+            onChangeTabs(null,tabs[0].name)
+        setTabs(tabs.filter(t => t!==selectedTab))
     }
 
     const onClickStartLog = () => {
@@ -583,19 +602,6 @@ const App: React.FC = () => {
         tab.logObject.paused=false
         setPausedTabs(tabs.filter(t => t.logObject?.paused))
         setLogMessages(tab.logObject.messages)
-    }
-
-    const onClickTabRemove = () => {
-        setAnchorMenuTab(null)
-        if (!selectedTab || !selectedTab.logObject) return
-
-        stopLog(selectedTab)
-        stopMetrics(selectedTab)
-        if (tabs.length===1)
-            setLogMessages([])
-        else
-            onChangeTabs(null,tabs[0].name)
-        setTabs(tabs.filter(t => t!==selectedTab))
     }
 
     const onClickLogPause = () => {
@@ -707,6 +713,9 @@ const App: React.FC = () => {
                 break
             case MenuTabOption.MetricsStart:
                 onClickMetricsStart()
+                break
+            case MenuTabOption.MetricsPause:
+                onClickMetricsPause()
                 break
             case MenuTabOption.MetricsStop:
                 onClickMetricsStop()
@@ -895,19 +904,20 @@ const App: React.FC = () => {
 
     const settingsClosed = (newSettings:Settings) => {
         setShowSettingsConfig(false)
-        console.log(newSettings)
         if (newSettings) writeSettings(newSettings)
     }
 
-    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum, interval:number) => {
+    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum, depth:number, width:number, interval:number) => {
         setShowMetricsSelector(false)
         setAnchorMenuTab(null)
 
         var tab=tabs.find(t => t.name===selectedTabRef.current)
         if (!tab || !tab.metricsObject) return
-        tab.metricsObject.mode=mode
-        tab.metricsObject.interval=interval
         tab.metricsObject.metrics=metrics
+        tab.metricsObject.mode=mode
+        tab.metricsObject.depth=depth
+        tab.metricsObject.width=width
+        tab.metricsObject.interval=interval
         startMetrics(tab)
     }
 

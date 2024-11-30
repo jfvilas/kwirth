@@ -21,6 +21,7 @@ enum MenuTabOption {
     LogPause,
     LogStop,
     MetricsStart,
+    MetricsPause,
     MetricsStop,
     TabManageRestart
 }
@@ -96,7 +97,7 @@ const MenuTab: React.FC<any> = (props:IProps) => {
                 <MenuItem key='tabrm' onClick={() => props.optionSelected(MenuTabOption.TabRemove)}><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
             </Collapse>
             
-            <MenuItem key='sublog' onClick={submenuLogClick} sx={{ml:3}}>Log<Typography sx={{flexGrow:1}}></Typography>{subMenuLogOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
+            <MenuItem key='sublog' onClick={submenuLogClick} sx={{ml:3}} disabled={!Boolean (props.selectedTab?.logObject)}>Log<Typography sx={{flexGrow:1}}></Typography>{subMenuLogOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={subMenuLogOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
                 <MenuItem key='logbg' onClick={() => props.optionSelected(MenuTabOption.LogBackground)} sx={{ml: props.selectedTab?.logObject?.showBackgroundNotification?0:3}}>{ props.selectedTab?.logObject?.showBackgroundNotification &&  <Check/>} Show background notifications</MenuItem>
                 <MenuItem key='logts' onClick={() => props.optionSelected(MenuTabOption.LogTimestamp)} disabled={props.selectedTab?.logObject?.started} sx={{ml: props.selectedTab?.logObject?.addTimestamp?0:3}}>{ props.selectedTab?.logObject?.addTimestamp &&  <Check/>} Add timestamp to messages</MenuItem>
@@ -105,10 +106,11 @@ const MenuTab: React.FC<any> = (props:IProps) => {
                 <MenuItem key='logstop' onClick={() => props.optionSelected(MenuTabOption.LogStop)} disabled={!props.selectedTab?.logObject?.started}><Stop/>&nbsp;Stop</MenuItem>
             </Collapse>
 
-            <MenuItem key='submetrics' onClick={submenuMetricsClick} sx={{ml:3}}>Metrics<Typography sx={{flexGrow:1}}></Typography>{subMenuLogOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
+            <MenuItem key='submetrics' onClick={submenuMetricsClick} sx={{ml:3}} disabled={!Boolean(props.selectedTab?.metricsObject)}>Metrics<Typography sx={{flexGrow:1}}></Typography>{subMenuLogOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={submenuMetricsOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
-                <MenuItem key='metricsstart' onClick={() => props.optionSelected(MenuTabOption.MetricsStart)} disabled={props.selectedTab?.metricsObject?.started}><PlayCircle/>&nbsp;Start</MenuItem>
-                <MenuItem key='metricsstop' onClick={() => props.optionSelected(MenuTabOption.MetricsStop)} disabled={!props.selectedTab?.metricsObject?.started}><Stop/>&nbsp;Stop</MenuItem>
+            <MenuItem key='metricsstart' onClick={() => props.optionSelected(MenuTabOption.MetricsStart)} disabled={props.selectedTab?.metricsObject?.started}><PlayCircle/>&nbsp;Start</MenuItem>
+            <MenuItem key='metricspause' onClick={() => props.optionSelected(MenuTabOption.MetricsPause)} disabled={!props.selectedTab?.metricsObject?.started}>{props.selectedTab?.metricsObject?.paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>            
+            <MenuItem key='metricsstop' onClick={() => props.optionSelected(MenuTabOption.MetricsStop)} disabled={!props.selectedTab?.metricsObject?.started}><Stop/>&nbsp;Stop</MenuItem>
             </Collapse>
 
             <MenuItem key='submanage' onClick={submenuManageClick} sx={{ml:3}}>Manage<Typography sx={{flexGrow:1}}></Typography>{subMenuManageOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>

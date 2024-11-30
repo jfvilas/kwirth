@@ -3,7 +3,6 @@ import { LogObject } from '../model/LogObject'
 import { LogMessage, MetricsMessage, SignalMessage, SignalMessageLevelEnum, StreamMessage } from '@jfvilas/kwirth-common'
 import { MetricsObject } from '../model/MetricsObject'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { useRef, useState } from 'react'
 
 interface IProps {
   filter:string
@@ -13,10 +12,8 @@ interface IProps {
 }
   
 const TabContent: React.FC<any> = (props:IProps) => {
-    const chartDataRef = useRef<any[]>([])
         
     const formatMessage = (message:LogMessage|null, index:number, color:number=0, ) => {
-        console.log('msg')
         if (!message) return null
 
         if (message.type==='data') {
@@ -63,66 +60,46 @@ const TabContent: React.FC<any> = (props:IProps) => {
     }
 
     const formatMetrics = () => {
+        //+++ actually, is rendered according to user events, but should not if no new data is received
         if (!props.metricsObject || !props.metricsObject.metrics || !props.metricsObject.values || props.metricsObject.values.length===0) return <></>
-        if (false) {
-            // text metrics
-            return (<div><b>{`${props.metricsObject.namespace}/${props.metricsObject.pod}`}</b><br/><pre>
-                { props.metricsObject.metrics.map ( (metricName, i) => {
-                    return `${metricName}: ${props.metricsObject.values[i]}\n`
-                })}
-            </pre></div>)    
-        }
-        else {
-            // // chart metrics
-            // if (props.metricsObject.values && props.metricsObject.values.length>0) {
-            //     // format date
-            //     var x=new Date (props.metricsObject.timestamp)
-            //     var label = `${x.getHours().toString().padStart(2,'0')}:${x.getMinutes().toString().padStart(2,'0')}:${x.getSeconds().toString().padStart(2,'0')}`
+        if (props.metricsObject.values) {
 
-            //     // get delta
-            //     var delta=0
-            //     if (chartDataRef.current[chartDataRef.current.length-1]) delta = props.metricsObject.values[0]-chartDataRef.current[chartDataRef.current.length-1].value
-            //     chartDataRef.current = [...chartDataRef.current, {time:label, value: props.metricsObject.values[0]} ]
-            //     if (chartDataRef.current.length > 10) chartDataRef.current.shift()
-            // }
+            var charts = props.metricsObject.metrics.map ((mname,index) => {
+                var serie=[]
+                for (var i=0;i<props.metricsObject.values.length;i++) {
+                    var x=new Date (props.metricsObject.timestamps[i])
+                    var label = `${x.getHours().toString().padStart(2,'0')}:${x.getMinutes().toString().padStart(2,'0')}:${x.getSeconds().toString().padStart(2,'0')}`
+                    //serie.push({ time:label, value:props.metricsObject.values[i][index]+Math.random()*100})
+                    serie.push({ time:label, value:props.metricsObject.values[i][index]})
+                }
+                return (
+                    <ResponsiveContainer width="100%" height={300} key={index}>
+                        <LineChart data={serie}>
+                            <CartesianGrid strokeDasharray="3 3"/>
+                            <XAxis dataKey="time" fontSize={8} />
+                            <YAxis />
+                            <Tooltip />
+                            <Line name={mname} type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} />
+                            <Legend/>
+                        </LineChart>
+                    </ResponsiveContainer>
+                )
+            })
 
-            // return (
-            //     <ResponsiveContainer width="100%" height={300}>
-            //         <LineChart data={chartDataRef.current}>
-            //             <CartesianGrid strokeDasharray="3 3" />
-            //             <XAxis dataKey="time" fontSize={8} />
-            //             <YAxis />
-            //             <Tooltip />
-            //             <Line type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} />
-            //         </LineChart>
-            //     </ResponsiveContainer>
-            // )
-
-            var x=new Date (props.metricsObject.timestamp)
-            var label = `${x.getHours().toString().padStart(2,'0')}:${x.getMinutes().toString().padStart(2,'0')}:${x.getSeconds().toString().padStart(2,'0')}`
-            if (props.metricsObject.values && props.metricsObject.values.length===props.metricsObject.metrics.length) {
-                chartDataRef.current = [...chartDataRef.current, {time:label, values: props.metricsObject.values} ]
-                return props.metricsObject.metrics.map ((mname,index) => {
-                    if (chartDataRef.current.length > 20) chartDataRef.current.shift()
-                    var series=chartDataRef.current.map( s => {
-                        return { name:mname, time:s.time, value:s.values[index] }
-                    })
-                    console.log(mname, series)
-                    return (
-                        <ResponsiveContainer width="95%" height={300} key={index}>
-                            <LineChart data={series}>
-                                <CartesianGrid strokeDasharray="3 3"/>
-                                <XAxis dataKey="time" fontSize={8} />
-                                <YAxis />
-                                <Tooltip />
-                                <Line name={mname} type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} />
-                                <Legend/>
-                            </LineChart>
-                        </ResponsiveContainer>
-                    )
-                    return <></>
-                })
+            let filas = []
+            for (let i = 0; i < charts.length; i += props.metricsObject.width) {
+                filas.push(charts.slice(i, i + props.metricsObject.width))
             }
+
+            return (
+                <>
+                    {filas.map((fila, index) => (
+                    <div key={index} style={{ display: 'flex', justifyContent: 'space-around' }}>
+                        {fila}
+                    </div>
+                    ))}
+                </>
+                )
         }
     }
 

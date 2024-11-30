@@ -14,6 +14,8 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
     const [logTimestamp, setLogTimestamp] = useState(props.settings.logTimestamp)
     const [metricsMode, setMetricsMode] = useState(props.settings.metricsMode.toString())
     const [metricsMetrics, setMetricsMetrics] = useState(props.settings.metricsMetrics.join(','))
+    const [metricsDepth, setMetricsDepth] = useState(props.settings.metricsDepth)
+    const [metricsWidth, setMetricsWidth] = useState(props.settings.metricsWidth)
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
 
     const onChangeLogMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
@@ -34,6 +36,14 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
 
     const onChangeMetricsMetrics = (event:ChangeEvent<HTMLInputElement>) => {
         setMetricsMetrics(event.target.value)
+    }
+
+    const onChangeMetricsDepth = (event: SelectChangeEvent) => {
+        setMetricsDepth(+event.target.value)
+    }
+
+    const onChangeMetricsWidth = (event: SelectChangeEvent) => {
+        setMetricsWidth(+event.target.value)
     }
 
     const onChangeMetricsInterval = (event:ChangeEvent<HTMLInputElement>) => {
@@ -82,6 +92,27 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
                             </Select>
                         </FormControl>
                         <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField>
+                        <FormControl fullWidth  variant='standard'>
+                            <InputLabel id="labeldepth">Depth</InputLabel>
+                            <Select value={metricsDepth.toString()} onChange={onChangeMetricsDepth} labelId="labeldepth" variant='standard'>
+                            <MenuItem value={10}>10</MenuItem>
+                            <MenuItem value={20}>20</MenuItem>
+                            <MenuItem value={50}>50</MenuItem>
+                            <MenuItem value={100}>100</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <FormControl fullWidth  variant='standard'>
+                            <InputLabel id="labelwidth">Width</InputLabel>
+                            <Select value={metricsWidth.toString()} onChange={onChangeMetricsWidth} labelId="labelwidth" variant='standard'>
+                            <MenuItem value={1}>1</MenuItem>
+                            <MenuItem value={2}>2</MenuItem>
+                            <MenuItem value={3}>3</MenuItem>
+                            <MenuItem value={4}>4</MenuItem>
+                            <MenuItem value={5}>5</MenuItem>
+                            <MenuItem value={6}>6</MenuItem>
+                            </Select>
+                        </FormControl>
+
                         <TextField value={metricsInterval} onChange={onChangeMetricsInterval} variant='standard'label='Interval' type='number' ></TextField>
                     </Stack>
                 </div>

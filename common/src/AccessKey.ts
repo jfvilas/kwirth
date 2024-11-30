@@ -57,7 +57,7 @@ function buildResource (scope:string, namespace:string, groupType:string, groupN
 }
 
 /*
-    +++ review all this info, it is not current
+    +++ review all this info, it is not fresh
     
     ResourceIdentifier is composed by:
 

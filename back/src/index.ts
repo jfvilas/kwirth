@@ -27,14 +27,18 @@ import { Metrics } from './tools/Metrics'
 import { MetricsApi } from './api/MetricsApi'
 import { v4 as uuidv4 } from 'uuid'
 import { clearInterval } from 'timers'
-const stream = require('stream')
+
+//const stream = require('stream')
+import * as stream from 'stream'
+import { PassThrough } from 'stream'; 
 const http = require('http')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const requestIp = require ('request-ip')
 const PORT = 3883
 const buffer:Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages
-const websocketIntervals:Map<WebSocket, NodeJS.Timeout[]>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketIntervals:Map<WebSocket, {instance:string, timeout: NodeJS.Timeout} []>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketLogStreams:Map<WebSocket, PassThrough>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 
 // Kubernetes API access
 const kc = new KubeConfig()
@@ -97,7 +101,6 @@ const sendLogData = (webSocket:WebSocket, namespace:string, pod:string, source:s
 }
 
 const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
-    console.log('smd')
     var metricsMessage:MetricsMessage = {
         channel: ServiceConfigChannelEnum.METRICS,
         type: 'data',
@@ -187,7 +190,7 @@ const startPodService = (podNamespace:string, podName:string, containerName:stri
 // get pods logs
 const startPodLog = async (namespace:string, podName:string, containerName:string, webSocket:WebSocket, logConfig:LogConfig) => {
     try {
-        const logStream = new stream.PassThrough()
+        const logStream:PassThrough = new stream.PassThrough()
         logStream.on('data', (chunk:any) => {
             var text:string=chunk.toString('utf8')
             if (buffer.get(webSocket)!==undefined) {
@@ -212,6 +215,12 @@ const startPodLog = async (namespace:string, podName:string, containerName:strin
             previous:Boolean(logConfig.previous),
             tailLines:logConfig.maxMessages
         }
+
+        if (!websocketLogStreams.has(webSocket))
+            websocketLogStreams.set(webSocket, logStream)
+        else
+            console.log('WebSocket LogStream already exists')
+
         await k8sLog.log(namespace, podName, containerName, logStream,  streamConfig)
     }
     catch (err) {
@@ -229,14 +238,11 @@ const startPodMetrics = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
                 // +++ pending implementation. implement when metric streaming is complete
                 break
             case MetricsConfigModeEnum.STREAM:
-                console.log(metricsConfig)
-                var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000    //+++ pending get this from settings
-                console.log(interval)
+                var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000
                 var timeout = setInterval(() => sendMetricsData(webSocket,metricsConfig), interval)
-                //clearInterval(timeout)
                 if (!websocketIntervals.has(webSocket)) websocketIntervals.set(webSocket, [])
-                var metricsIntervals=websocketIntervals.get(webSocket)
-                metricsIntervals?.push(timeout)
+                var timeouts=websocketIntervals.get(webSocket)
+                timeouts?.push({instance:metricsConfig.instance, timeout})
                 break
             default:
                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid mode: ${metricsConfig.mode}`, metricsConfig.mode)
@@ -248,6 +254,7 @@ const startPodMetrics = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
     }
 }
 
+// watches for pod changes (add, delete...) inside the group pointed by the requestor
 const watchPods = (apiPath:string, filter:any, webSocket:WebSocket, serviceConfig:ServiceConfig) => {
     const watch = new Watch(kc)
 
@@ -441,7 +448,6 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
                                 pod: validPod.metadata?.name!,
                                 container: metricsConfig.view === 'container' ? metricsConfig.container : '',
                                 view: metricsConfig.view,
-                                //mode: MetricsConfigModeEnum[metricsConfig.scope.toString() as keyof typeof MetricsConfigModeEnum],
                                 mode: metricsConfig.mode,
                                 interval: metricsConfig.interval,
                                 metrics: metricsConfig.metrics
@@ -475,18 +481,50 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
     }
 }
 
-// const processStopLogConfig = async (logConfig: LogConfig, webSocket: WebSocket) => {
-//     // +++ pending impl. remove interval from intervals array
-//     sendServiceConfigAccept(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig)
-// }
-
-// const processStopMetricsConfig = async (metricsConfig: MetricsConfig, webSocket: WebSocket) => {
-//     // +++ pending impl. remove interval from intervals array
-// }
+const removeMetricsInterval = (webSocket:WebSocket, instance:string) => {
+    if (websocketIntervals.has(webSocket)) {
+        var timeouts = websocketIntervals.get(webSocket)
+        if (timeouts) {
+            console.log(instance)
+            var timeoutIndex = timeouts.findIndex(t => t.instance === instance)
+            if (timeoutIndex>=0) {
+                clearInterval(timeouts[timeoutIndex].timeout)
+                timeouts.splice(timeoutIndex,1)
+            }
+            else{
+                console.log('Timeout not found, cannot delete')
+            }
+        }
+        else {
+            console.log('There are no Timeouts on websocket')
+        }
+    }
+    else {
+        console.log('WebSocket not found on intervals')
+    }
+}
 
 const processStopServiceConfig = async (serviceConfig: ServiceConfig, webSocket: WebSocket) => {
-    // +++ pending impl. remove interval from intervals array
-    sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, serviceConfig, 'Service stopped')
+    switch (serviceConfig.channel) {
+        case ServiceConfigChannelEnum.LOG:
+            console.log('serviceConfig', serviceConfig)
+            var stream=websocketLogStreams.get(webSocket)
+            if (stream) {
+                stream.destroy()
+            }
+            else {
+                console.log('LogStream not found')
+            }
+            sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, serviceConfig, 'Log service stopped')
+            break;
+        case ServiceConfigChannelEnum.METRICS:
+            removeMetricsInterval(webSocket,serviceConfig.instance)
+            sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics service stopped')
+            break
+        default:
+            console.log('Invalid channel on service stop')
+            break
+    }
 }
 
 // clients send requests to start receiving log
@@ -526,9 +564,6 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
     var requestedPods=serviceConfig.pod.split(',').filter(podName => podName!=='')
     var validPodNames=requestedPods.filter(podName => allowedPods.includes(podName))
 
-    // // transitional
-    // if (!serviceConfig.channel) serviceConfig.channel=ServiceConfigChannelEnum.LOG
-
     switch (serviceConfig.action) {
         case ServiceConfigActionEnum.START:
             switch (serviceConfig.channel) {
@@ -546,6 +581,8 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         case ServiceConfigActionEnum.STOP:
             switch (serviceConfig.channel) {
                 case ServiceConfigChannelEnum.LOG:
+                    processStopServiceConfig(serviceConfig, webSocket)
+                    break
                 case ServiceConfigChannelEnum.METRICS:
                     processStopServiceConfig(serviceConfig, webSocket)
                     break
@@ -578,9 +615,12 @@ wss.on('connection', (ws:WebSocket, req) => {
     console.log('Client disconnected')
     if (websocketIntervals.has(ws)) {
         console.log('intervalo eliminado')
-        var timeout = websocketIntervals.get(ws)
-        clearInterval(timeout![0])  // +++ we have plans to add several timeouts to each web socket, so entry to map can be ws, but Map value must be an array (with id!!!)
-        websocketIntervals.delete(ws)
+        var timeouts=websocketIntervals.get(ws)
+        if (timeouts) {
+            for (var i=0;i<timeouts.length;i++) {
+                removeMetricsInterval(ws,timeouts[i].instance)
+            }
+        }
     }
   })
 })
