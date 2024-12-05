@@ -118,16 +118,20 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
             sampledMetrics.push(await metrics.getMetrics(nodeMetrics))
         }
 
+        // add kwirth metrics
+        //console.log(sampledMetrics)
+
         // +++ maybe adding up values is not the only operation (what about min, max, avg...?)
         metricsMessage.value=[]
         for (var metricName of metricsConfig.metrics) {
+            console.log('calculating ', metricName)
             var total=0
             for (var sampledNodeMetrics of sampledMetrics) {
-                total+=metrics.extractMetrics(sampledNodeMetrics, metricName, metricsConfig.pod, metricsConfig.container).value
+                total+=(await metrics.extractMetrics(sampledNodeMetrics, metricName, metricsConfig.namespace, metricsConfig.pod, metricsConfig.container)).value
             }
             metricsMessage.value.push(total)
         }
-        //console.log('metricsMessage', metricsMessage)
+
         try {
             webSocket.send(JSON.stringify(metricsMessage))
         }
@@ -712,7 +716,7 @@ getMyKubernetesData()
             var sat = new ServiceAccountToken(coreApi, kwirthData.namespace)
             var token= await sat.getToken('kwirth-sa',kwirthData.namespace)
             console.log(token)
-            metrics = new Metrics(customApi,token!)
+            metrics = new Metrics(coreApi, customApi, token!)
         }
         catch (err){
             console.log(err)

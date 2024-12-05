@@ -395,6 +395,7 @@ const App: React.FC = () => {
             var lines=await response.text()
             // # HELP cadvisor_version_info A metric with a constant '1' value labeled by kernel version, OS version, docker version, cadvisor version & cadvisor revision.
             // # TYPE cadvisor_version_info gauge
+            console.log(lines)
             for (var l of lines.split('\n')) {
                 var [_,lineType,name,metricType] = l.split(' ')
                 if (!cluster.metricsList.has(name) && name) cluster.metricsList.set(name, {type: '', help: ''})
@@ -402,10 +403,10 @@ const App: React.FC = () => {
                     case 'HELP':
                         var i=l.indexOf(name)
                         var text=l.substring(i+name.length)
-                        cluster.metricsList.get(name)!.help=text
+                        cluster.metricsList.get(name)!.help=text.trim()
                         break
                     case 'TYPE':
-                        cluster.metricsList.get(name)!.type = metricType
+                        cluster.metricsList.get(name)!.type = metricType.trim()
                         break
                 }
             }

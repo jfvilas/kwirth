@@ -185,7 +185,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
                         description==='' ||
                         expire===0 ||
                         selectedKey?.accessKey.type==='volatile' ||
-                        accessKeySerialize(selectedKey?.accessKey!)===accessString
+                        (selectedKey?.accessKey && accessKeySerialize(selectedKey?.accessKey)===accessString)
                         }>SAVE</Button>
                     <Button onClick={onClickCopy} disabled={selectedKey===undefined}>COPY</Button>
                     <Button onClick={onClickDelete} disabled={

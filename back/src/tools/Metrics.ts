@@ -1,48 +1,50 @@
-import { CustomObjectsApi } from "@kubernetes/client-node"
+import { CoreV1Api, CustomObjectsApi } from "@kubernetes/client-node"
 
 
 export class Metrics {
+    private coreApi:CoreV1Api
     private customApi:CustomObjectsApi
     private token:string
 
-    constructor (customApi: CustomObjectsApi, token:string) {
+    constructor (coreApi:CoreV1Api, customApi: CustomObjectsApi, token:string) {
+        this.coreApi=coreApi
         this.customApi=customApi
         this.token=token
     }
 
-    private getNodeMetrics = async () => {
-        try {
-            const response = await this.customApi.listClusterCustomObject(
-                'metrics.k8s.io', // Group
-                'v1beta1',        // Version
-                'nodes'
-            );
-            console.log(JSON.stringify(response.body, null, 2))
-        }
-        catch (err) {
-            console.error('Error fetching node metrics:', err)
-        }
-    }
+    // private getNodeMetrics = async () => {
+    //     try {
+    //         const response = await this.customApi.listClusterCustomObject(
+    //             'metrics.k8s.io', // Group
+    //             'v1beta1',        // Version
+    //             'nodes'
+    //         );
+    //         console.log(JSON.stringify(response.body, null, 2))
+    //     }
+    //     catch (err) {
+    //         console.error('Error fetching node metrics:', err)
+    //     }
+    // }
 
     // Función para obtener métricas de los pods
-    private getOnePodMetrics = async (podName:string, labelSelector:string) => {
-        try {
-            const response = await this.customApi.listClusterCustomObject(
-                'metrics.k8s.io', // Group
-                'v1beta1',         // Version
-                'pods',             
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                labelSelector // 'app=kwirth'
-            );
-            console.log(JSON.stringify(response.body, null, 2))
-        }
-        catch (err) {
-            console.error('Error fetching pod metrics:', err)
-        }
-    }
+    // private getOnePodMetrics = async (podName:string, labelSelector:string) => {
+    //     try {
+    //         const response = await this.customApi.listClusterCustomObject(
+    //             'metrics.k8s.io', // Group
+    //             'v1beta1',         // Version
+    //             'pods',             
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             labelSelector // 'app=kwirth'
+    //         );
+    //         console.log(JSON.stringify(response.body, null, 2))
+    //     }
+    //     catch (err) {
+    //         console.error('Error fetching pod metrics:', err)
+    //     }
+    // }
 
     /*
         /stats/summary
@@ -87,10 +89,64 @@ export class Metrics {
         return ''
     }
 
-    public extractMetrics = (sampledMetrics:string, requestedMetricName:string, podName:string, containerName:string) => {
+    getPodStartTime = async (podName: string, namespace: string) => {
+        var epoch:number=0
+        try {
+            const podResponse = await this.coreApi.readNamespacedPod(podName, namespace);
+            const startTime = podResponse.body.status?.startTime;
+            if (startTime) epoch = startTime?.getTime()
+        }
+        catch (error) {
+            console.error('Error obteniendo la información del pod:', error);
+        }
+    }
+
+    getContainerStartTime = async (namespace: string, podName: string, containerName:string) => {
+        var epoch: number=0
+        try {
+            const podResponse = await this.coreApi.readNamespacedPod(podName, namespace)
+            const containers = podResponse.body.status?.containerStatuses
+            if (containers) {
+                containers.forEach(container => {
+                    console.log(container)
+                    if (container.name===containerName) {
+                        const startTime = container.state?.running?.startedAt
+                        if (startTime) epoch = startTime?.getTime()
+                    }
+                })
+            }
+        }
+        catch (error) {
+            console.error('Erro obtaining pod information:', error);
+        }
+        return epoch
+    }
+    
+
+    public extractMetrics = async (sampledMetrics:string, requestedMetricName:string, namespace:string, podName:string, containerName:string) => {
         const regex = /(?:\s*([^=^{]*)=\"([^"]*)",*)/gm;
         var samples:any[]= []
         var timestamp=0
+        var result={ value: 0, timestamp: 0 }
+
+        if (requestedMetricName.startsWith('kwirth_')) {
+            switch(requestedMetricName) {
+                case 'kwirth_running_time':
+                    var rt:any=await this.extractMetrics(sampledMetrics, 'container_start_time_seconds', namespace, podName, containerName)
+                    if (rt.value===0) {
+                        if (containerName!=='') 
+                            rt.value = await this.getContainerStartTime(namespace,podName,containerName)
+                        else
+                            rt.value = await this.getPodStartTime(namespace,podName)
+                    }
+                    result = { value: Date.now()-rt.value, timestamp: Date.now() }
+                    return result
+                case 'kwirth_cpu_precentage':
+                    break
+                default:
+                    return result
+            }
+        }
 
         var lines=sampledMetrics.split('\n')
         for (var line of lines) {
@@ -117,9 +173,6 @@ export class Metrics {
 
                 // +++ pending get metrics for different aggregations (namespace, pod regex, etc...)
                 if (labels.pod && labels.pod.startsWith(podName) && labels.container && labels.container!=='') {
-                    // console.log('found metric', sampledMetricName)
-                    // console.log('labels', labels)
-                    // console.log('found pod',labels.pod, podName)
                     var i=line.indexOf('}')
                     if (i>=0) {
                         var valueAndTs=line.substring(i+1)
@@ -136,7 +189,6 @@ export class Metrics {
                             else {
                                 // the metrics is absolute, fixed, has no timestamp
                                 sample.value = +(valueAndTs.trim())
-                                //console.log('Invalid value/ts format: ', line)
                             }
                         }
                         else {
@@ -157,11 +209,11 @@ export class Metrics {
         var sum={ value:0 }
         if (samples.length>0) {
             console.log('metric', requestedMetricName, 'samples', samples.length)
-            console.log(samples)
+            console.log('samples',samples)
             sum=samples.reduce( (prev, current) => { return { value: prev.value + current.value }}, {value:0})
         }
-        var result = { value: sum.value, timestamp }
-        console.log(result)
+        result = { value: sum.value, timestamp }
+        console.log('result',result)
         return result
     }
 
