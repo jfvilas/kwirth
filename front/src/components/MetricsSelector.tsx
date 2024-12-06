@@ -110,7 +110,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
 
             </DialogContent>
             <DialogActions>
-                <Button onClick={closeOk}>OK</Button>
+                <Button onClick={closeOk} disabled={metricsChecked.length===0}>OK</Button>
                 <Button onClick={() => props.onMetricsSelected([], MetricsConfigModeEnum.SNAPSHOT, 0, 0, 0)}>CANCEL</Button>
             </DialogActions>
         </Dialog>

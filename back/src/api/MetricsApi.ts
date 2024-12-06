@@ -17,7 +17,6 @@ export class MetricsApi {
     # TYPE kwirth_running_time gauge
     # EVAL kwirth_current_time_seconds - container_start_time_seconds
 
-
     */
 
     constructor (metrics:Metrics) {
@@ -30,9 +29,10 @@ export class MetricsApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    console.log('Obtaining available metrics list from cAdvisor:')
+                    console.log('Obtaining available metrics list from cAdvisor (node 0):')
                     console.log('Nodes:', ClusterData.nodes)
-                    var all=await metrics.getMetrics(Array.from(ClusterData.nodes.values())[0])
+                    var nodeIp=Array.from(ClusterData.nodes.values())[0].status?.addresses!.find(a => a.type==='InternalIP')?.address
+                    var all=await metrics.getMetrics(nodeIp!)
                     console.log('',all)
                     var lines=all.split('\n')
                     lines=lines.filter(l => l.startsWith('#'))
@@ -40,7 +40,9 @@ export class MetricsApi {
                     lines.push('# TYPE kwirth_running_time gauge')
                     lines.push('# HELP kwirth_cpu_precentage Percentage of cpu used')
                     lines.push('# TYPE kwirth_cpu_precentage gauge')
-                                    console.log(lines)
+                    lines.push('# HELP kwirth_cpu_number number of CPU reported at node')
+                    lines.push('# TYPE kwirth_cpu_number gauge')
+                    console.log(lines)
                     res.status(200).send(lines.join('\n'))
                 }
                 catch (err) {

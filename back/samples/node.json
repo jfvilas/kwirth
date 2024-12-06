@@ -1,0 +1,154 @@
+//V1Node
+{
+    apiVersion: undefined,
+    kind: undefined,
+    metadata: V1ObjectMeta {
+      annotations: {
+        'csi.volume.kubernetes.io/nodeid': '{"disk.csi.azure.com":"aks-nodepool01-22025833-vmss0000e0","file.csi.azure.com":"aks-nodepool01-22025833-vmss0000e0"}',
+        'node.alpha.kubernetes.io/ttl': '0',
+        'volumes.kubernetes.io/controller-managed-attach-detach': 'true'
+      },
+      creationTimestamp: 2024-11-03T00:26:47.000Z,
+      deletionGracePeriodSeconds: undefined,
+      deletionTimestamp: undefined,
+      finalizers: undefined,
+      generateName: undefined,
+      generation: undefined,
+      labels: {
+        agentpool: 'nodepool01',
+        'beta.kubernetes.io/arch': 'amd64',
+        'beta.kubernetes.io/instance-type': 'Standard_D4s_v3',
+        'beta.kubernetes.io/os': 'linux',
+        'failure-domain.beta.kubernetes.io/region': 'westeurope',
+        'failure-domain.beta.kubernetes.io/zone': '0',
+        'kubernetes.azure.com/agentpool': 'nodepool01',
+        'kubernetes.azure.com/cluster': 'rg-eulen-aks-nopro-westeurope-001',
+        'kubernetes.azure.com/consolidated-additional-properties': 'de1ca386-9978-11ef-9f2b-de822d0a7ef8',
+        'kubernetes.azure.com/kubelet-identity-client-id': 'c0e59a6f-997b-4fc6-bd60-d435e897a304',
+        'kubernetes.azure.com/mode': 'system',
+        'kubernetes.azure.com/network-policy': 'none',
+        'kubernetes.azure.com/node-image-version': 'AKSUbuntu-2204gen2containerd-202410.15.0',
+        'kubernetes.azure.com/nodepool-type': 'VirtualMachineScaleSets',
+        'kubernetes.azure.com/os-sku': 'Ubuntu',
+        'kubernetes.azure.com/role': 'agent',
+        'kubernetes.azure.com/storageprofile': 'managed',
+        'kubernetes.azure.com/storagetier': 'Premium_LRS',
+        'kubernetes.io/arch': 'amd64',
+        'kubernetes.io/hostname': 'aks-nodepool01-22025833-vmss0000e0',
+        'kubernetes.io/os': 'linux',
+        'kubernetes.io/role': 'agent',
+        'node-role.kubernetes.io/agent': '',
+        'node.kubernetes.io/instance-type': 'Standard_D4s_v3',
+        storageprofile: 'managed',
+        storagetier: 'Premium_LRS',
+        'topology.disk.csi.azure.com/zone': '',
+        'topology.kubernetes.io/region': 'westeurope',
+        'topology.kubernetes.io/zone': '0'
+      },
+      managedFields: [
+        [V1ManagedFieldsEntry],
+        [V1ManagedFieldsEntry],
+        [V1ManagedFieldsEntry],
+        [V1ManagedFieldsEntry],
+        [V1ManagedFieldsEntry],
+        [V1ManagedFieldsEntry],
+        [V1ManagedFieldsEntry]
+      ],
+      name: 'aks-nodepool01-22025833-vmss0000e0',
+      namespace: undefined,
+      ownerReferences: undefined,
+      resourceVersion: '62199071',
+      selfLink: undefined,
+      uid: '43aec7c9-ce9d-4e15-a823-f0013464c56a'
+    },
+    spec: V1NodeSpec {
+      configSource: undefined,
+      externalID: undefined,
+      podCIDR: undefined,
+      podCIDRs: undefined,
+      providerID: 'azure:///subscriptions/e49227bb-cceb-4114-98ff-34522d10ef3d/resourceGroups/rg-eulen-aks-nopro-westeurope-001/providers/Microsoft.Compute/virtualMachineScaleSets/aks-nodepool01-22025833-vmss/virtualMachines/504',
+      taints: undefined,
+      unschedulable: undefined
+    },
+    status: V1NodeStatus {
+      addresses: [ [V1NodeAddress], [V1NodeAddress] ],
+      allocatable: {
+        cpu: '3860m',
+        'ephemeral-storage': '119703055367',
+        'hugepages-1Gi': '0',
+        'hugepages-2Mi': '0',
+        memory: '12880644Ki',
+        pods: '62'
+      },
+      capacity: {
+        cpu: '4',
+        'ephemeral-storage': '129886128Ki',
+        'hugepages-1Gi': '0',
+        'hugepages-2Mi': '0',
+        memory: '16374532Ki',
+        pods: '62'
+      },
+      conditions: [
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition],
+        [V1NodeCondition]
+      ],
+      config: undefined,
+      daemonEndpoints: V1NodeDaemonEndpoints { kubeletEndpoint: [V1DaemonEndpoint] },
+      images: [
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage], [V1ContainerImage],
+        [V1ContainerImage], [V1ContainerImage]
+      ],
+      nodeInfo: V1NodeSystemInfo {
+        architecture: 'amd64',
+        bootID: 'b7abfe02-aab2-4f45-9444-08bf7fec3ecc',
+        containerRuntimeVersion: 'containerd://1.7.22-1',
+        kernelVersion: '5.15.0-1073-azure',
+        kubeProxyVersion: 'v1.28.14',
+        kubeletVersion: 'v1.28.14',
+        machineID: '8f8642558e504469abbfdeb02f0ef9c3',
+        operatingSystem: 'linux',
+        osImage: 'Ubuntu 22.04.5 LTS',
+        systemUUID: 'a5dcdeb4-5dad-4116-9f14-b50e6c60486a'
+      },
+      phase: undefined,
+      volumesAttached: [
+        [V1AttachedVolume],
+        [V1AttachedVolume],
+        [V1AttachedVolume],
+        [V1AttachedVolume]
+      ],
+      volumesInUse: [
+        'kubernetes.io/csi/disk.csi.azure.com^/subscriptions/e49227bb-cceb-4114-98ff-34522d10ef3d/resourceGroups/rg-eulen-aks-nopro-westeurope-001/providers/Microsoft.Compute/disks/pvc-259e131b-0b16-4335-8456-29eda0110abc',
+        'kubernetes.io/csi/disk.csi.azure.com^/subscriptions/e49227bb-cceb-4114-98ff-34522d10ef3d/resourceGroups/rg-eulen-aks-nopro-westeurope-001/providers/Microsoft.Compute/disks/pvc-2f5ad987-9dea-4810-887a-f4cdbce3e1ed',
+        'kubernetes.io/csi/disk.csi.azure.com^/subscriptions/e49227bb-cceb-4114-98ff-34522d10ef3d/resourceGroups/rg-eulen-aks-nopro-westeurope-001/providers/Microsoft.Compute/disks/pvc-9b47eabc-6007-4886-996b-c6d8be595fb1',
+        'kubernetes.io/csi/disk.csi.azure.com^/subscriptions/e49227bb-cceb-4114-98ff-34522d10ef3d/resourceGroups/rg-eulen-aks-nopro-westeurope-001/providers/Microsoft.Compute/disks/pvc-a316a8eb-a96e-4268-a7c4-73d920ca7279'
+      ]
+    }
+  }

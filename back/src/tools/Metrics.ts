@@ -1,4 +1,6 @@
-import { CoreV1Api, CustomObjectsApi } from "@kubernetes/client-node"
+import { CoreV1Api, CustomObjectsApi, V1Node } from "@kubernetes/client-node"
+import { ClusterData } from "./ClusterData"
+import { MetricsConfig } from "@jfvilas/kwirth-common"
 
 
 export class Metrics {
@@ -89,10 +91,10 @@ export class Metrics {
         return ''
     }
 
-    getPodStartTime = async (podName: string, namespace: string) => {
+    getPodStartTime = async (namespace:string, pod:string) => {
         var epoch:number=0
         try {
-            const podResponse = await this.coreApi.readNamespacedPod(podName, namespace);
+            const podResponse = await this.coreApi.readNamespacedPod(pod, namespace);
             const startTime = podResponse.body.status?.startTime;
             if (startTime) epoch = startTime?.getTime()
         }
@@ -101,16 +103,16 @@ export class Metrics {
         }
     }
 
-    getContainerStartTime = async (namespace: string, podName: string, containerName:string) => {
+    getContainerStartTime = async (namespace:string, pod:string, container:string) => {
         var epoch: number=0
         try {
-            const podResponse = await this.coreApi.readNamespacedPod(podName, namespace)
+            const podResponse = await this.coreApi.readNamespacedPod(pod, namespace)
             const containers = podResponse.body.status?.containerStatuses
             if (containers) {
-                containers.forEach(container => {
-                    console.log(container)
-                    if (container.name===containerName) {
-                        const startTime = container.state?.running?.startedAt
+                containers.forEach(cont => {
+                    console.log(cont)
+                    if (cont.name===container) {
+                        const startTime = cont.state?.running?.startedAt
                         if (startTime) epoch = startTime?.getTime()
                     }
                 })
@@ -123,7 +125,7 @@ export class Metrics {
     }
     
 
-    public extractMetrics = async (sampledMetrics:string, requestedMetricName:string, namespace:string, podName:string, containerName:string) => {
+    public extractMetrics = async (requestedMetricName:string, node:V1Node, sampledMetrics:string, prevValues:number[], namespace:string, pod:string, container:string) => {
         const regex = /(?:\s*([^=^{]*)=\"([^"]*)",*)/gm;
         var samples:any[]= []
         var timestamp=0
@@ -132,17 +134,25 @@ export class Metrics {
         if (requestedMetricName.startsWith('kwirth_')) {
             switch(requestedMetricName) {
                 case 'kwirth_running_time':
-                    var rt:any=await this.extractMetrics(sampledMetrics, 'container_start_time_seconds', namespace, podName, containerName)
+                    var rt:any=await this.extractMetrics('container_start_time_seconds', node, sampledMetrics, prevValues, namespace, pod, container)
                     if (rt.value===0) {
-                        if (containerName!=='') 
-                            rt.value = await this.getContainerStartTime(namespace,podName,containerName)
+                        if (container!=='') 
+                            rt.value = await this.getContainerStartTime(namespace, pod, container)
                         else
-                            rt.value = await this.getPodStartTime(namespace,podName)
+                            rt.value = await this.getPodStartTime( namespace, pod)
                     }
                     result = { value: Date.now()-rt.value, timestamp: Date.now() }
                     return result
                 case 'kwirth_cpu_precentage':
-                    break
+                    var totCpu=0
+                    if (node.status?.capacity) totCpu+= +node.status?.capacity.cpu
+                    result = { value: totCpu, timestamp: Date.now() }
+                    return result
+                case 'kwirth_cpu_number':
+                    var numCpu=0
+                    if (node.status?.capacity) numCpu = +node.status?.capacity.cpu
+                    result = { value: numCpu, timestamp: Date.now() }
+                    return result
                 default:
                     return result
             }
@@ -172,7 +182,7 @@ export class Metrics {
                 }
 
                 // +++ pending get metrics for different aggregations (namespace, pod regex, etc...)
-                if (labels.pod && labels.pod.startsWith(podName) && labels.container && labels.container!=='') {
+                if (labels.pod && labels.pod.startsWith(pod) && labels.container && labels.container!=='') {
                     var i=line.indexOf('}')
                     if (i>=0) {
                         var valueAndTs=line.substring(i+1)
@@ -184,7 +194,7 @@ export class Metrics {
                                 sample.value = +valueAndTs.split(' ')[0].trim()
                                 timestamp = +valueAndTs.split(' ')[1].trim()
                                 samples.push(sample)
-                                if (containerName!=='' && labels.container===containerName ) break
+                                if (container!=='' && labels.container===container) break
                             }
                             else {
                                 // the metrics is absolute, fixed, has no timestamp

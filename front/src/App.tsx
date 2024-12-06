@@ -82,7 +82,7 @@ const App: React.FC = () => {
     const [search, setSearch] = useState<string>('')
 
     // general
-    const [settings, setSettings] = useState<Settings>()
+    const [settings, setSettings] = useState<Settings>(new Settings())
     const settingsRef = useRef(settings)
     settingsRef.current=settings
 
