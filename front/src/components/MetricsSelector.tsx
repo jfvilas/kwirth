@@ -1,12 +1,13 @@
 import React, { useState, ChangeEvent } from 'react'
-import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, IconButton, InputLabel, List, ListItem, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select, SelectChangeEvent, Stack, TextField} from '@mui/material'
+import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, IconButton, InputLabel, List, ListItem, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select, SelectChangeEvent, Stack, TextField, Tooltip} from '@mui/material'
 import { Settings } from '../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
+import { MetricDescription } from '../model/MetricDescription'
 
 interface IProps {
     onMetricsSelected:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number) => {}
     settings:Settings
-    metricsList:string[]
+    metricsList:Map<string,MetricDescription>
 }
 
 const MetricsSelector: React.FC<any> = (props:IProps) => {
@@ -16,7 +17,6 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
     const [metricsChecked, setMetricsChecked] = React.useState<string[]>([])
 
-    console.log('props',props.metricsList)
     const onChangeMetricsMode = (event: SelectChangeEvent) => {
         setMetricsMode(event.target.value)
     }
@@ -69,12 +69,14 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
                     </FormControl>
 
                     <List sx={{ width: '100%', height:'100px', overflowX: 'auto' }}>
-                        {props.metricsList.map((value) => {
+                        {Array.from(props.metricsList.keys()).map((value) => {
                             const labelId = `checkbox-list-label-${value}`;
                             return (
                                 <ListItem key={value} disablePadding >
-                                    <ListItemButton role={undefined} onClick={() => metricAddOrRemove(value)} dense>
+                                    <ListItemButton onClick={() => metricAddOrRemove(value)} dense>
+                                        <Tooltip title={props.metricsList.get(value)?.help} placement="bottom-start">
                                         <ListItemText id={labelId} primary={value} sx={{color:metricsChecked.includes(value)?'black':'gray'}} />
+                                        </Tooltip>
                                     </ListItemButton>
                                 </ListItem>
                             )

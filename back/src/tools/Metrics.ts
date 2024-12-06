@@ -1,17 +1,17 @@
 import { CoreV1Api, CustomObjectsApi, V1Node } from "@kubernetes/client-node"
-import { ClusterData } from "./ClusterData"
-import { MetricsConfig } from "@jfvilas/kwirth-common"
+// import { ClusterData } from "./ClusterData"
+// import { MetricsConfig } from "@jfvilas/kwirth-common"
 
 
 export class Metrics {
     private coreApi:CoreV1Api
-    private customApi:CustomObjectsApi
     private token:string
+    private metricsList:Map<string,{help:string, type:string, eval:string}>
 
-    constructor (coreApi:CoreV1Api, customApi: CustomObjectsApi, token:string) {
+    constructor (coreApi:CoreV1Api, token:string) {
         this.coreApi=coreApi
-        this.customApi=customApi
         this.token=token
+        this.metricsList=new Map()
     }
 
     // private getNodeMetrics = async () => {
@@ -75,6 +75,48 @@ export class Metrics {
         container_fs_writes_total{container="eulen-customers",device="/dev/sda",id="/kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod268dcd16_68d8_497e_a85c_3b6b5031518b.slice/cri-containerd-39eaedb2106a4794c6094a4a142971f948e02b5fa104422f76889a48eeeb9f1a.scope",image="cracreulennopro.azurecr.io/eulen-customers-dev:latest",name="39eaedb2106a4794c6094a4a142971f948e02b5fa104422f76889a48eeeb9f1a",namespace="dev",pod="eulen-customers-5cc8cb444f-psrwp"} 2929 1728588770767
 
     */
+
+    public getMetricsList() {
+        var objects= Array.from(this.metricsList.keys()).map ( k => { return { metric:k, ...this.metricsList.get(k)} })
+        return objects
+    }
+
+    public async loadMetrics(nodeIp:string) {
+        console.log('Loading metrics from', nodeIp)
+        var allMetrics=await this.getMetrics(nodeIp)
+        console.log('Metrics loaded\n', allMetrics)
+        var lines=allMetrics.split('\n')
+        lines=lines.filter(l => l.startsWith('#'))
+        lines.push('# HELP kwirth_running_time Number of seconds the container has been running')
+        lines.push('# TYPE kwirth_running_time counter')
+        lines.push('# HELP kwirth_cpu_precentage Percentage of cpu used')
+        lines.push('# TYPE kwirth_cpu_precentage gauge')
+        lines.push('# HELP kwirth_cpu_number number of CPU reported at node')
+        lines.push('# TYPE kwirth_cpu_number gauge')
+        lines.push('# HELP kwirth_cpu_total_random_seconds total random cpu seconds')
+        lines.push('# TYPE kwirth_cpu_total_random_seconds counter')
+        for (var line of lines) {
+            var regType=line.substring(0,6).trim()
+            line=line.substring(6).trim()
+            var i=line.indexOf(' ')
+            var mname=line.substring(0,i).trim()
+            if (!this.metricsList.has(mname)) this.metricsList.set(mname,{help: '', type: '', eval: ''})
+
+            switch(regType) {
+                case '# HELP':
+                    this.metricsList.get(mname)!.help=line.substring(i).trim()
+                    break
+                case '# TYPE':
+                    this.metricsList.get(mname)!.type=line.substring(i).trim()
+                    break
+                case '# EVAL':
+                    this.metricsList.get(mname)!.eval=line.substring(i).trim()
+                    break
+            }
+        }
+        console.log(this.metricsList)
+    }
+
     public getMetrics = async (nodeIp:string) => {
         // console.log('nodeIp', nodeIp)
         // console.log('token', this.token)
@@ -125,7 +167,7 @@ export class Metrics {
     }
     
 
-    public extractMetrics = async (requestedMetricName:string, node:V1Node, sampledMetrics:string, prevValues:number[], namespace:string, pod:string, container:string) => {
+    public extractContainerMetrics = async (requestedMetricName:string, node:V1Node, sampledMetrics:string, prevValues:number[], podNamespace:string, podName:string, containerName:string) => {
         const regex = /(?:\s*([^=^{]*)=\"([^"]*)",*)/gm;
         var samples:any[]= []
         var timestamp=0
@@ -134,12 +176,12 @@ export class Metrics {
         if (requestedMetricName.startsWith('kwirth_')) {
             switch(requestedMetricName) {
                 case 'kwirth_running_time':
-                    var rt:any=await this.extractMetrics('container_start_time_seconds', node, sampledMetrics, prevValues, namespace, pod, container)
+                    var rt:any=await this.extractContainerMetrics('container_start_time_seconds', node, sampledMetrics, prevValues, podNamespace, podName, containerName)
                     if (rt.value===0) {
-                        if (container!=='') 
-                            rt.value = await this.getContainerStartTime(namespace, pod, container)
+                        if (containerName!=='') 
+                            rt.value = await this.getContainerStartTime(podNamespace, podName, containerName)
                         else
-                            rt.value = await this.getPodStartTime( namespace, pod)
+                            rt.value = await this.getPodStartTime( podNamespace, podName)
                     }
                     result = { value: Date.now()-rt.value, timestamp: Date.now() }
                     return result
@@ -147,6 +189,10 @@ export class Metrics {
                     var totCpu=0
                     if (node.status?.capacity) totCpu+= +node.status?.capacity.cpu
                     result = { value: totCpu, timestamp: Date.now() }
+                    return result
+                case 'kwirth_cpu_total_random_seconds':
+                    var rndValue = Math.random()
+                    result = { value: rndValue, timestamp: Date.now() }
                     return result
                 case 'kwirth_cpu_number':
                     var numCpu=0
@@ -182,7 +228,7 @@ export class Metrics {
                 }
 
                 // +++ pending get metrics for different aggregations (namespace, pod regex, etc...)
-                if (labels.pod && labels.pod.startsWith(pod) && labels.container && labels.container!=='') {
+                if (labels.pod && labels.pod.startsWith(podName) && labels.container && labels.container!=='') {
                     var i=line.indexOf('}')
                     if (i>=0) {
                         var valueAndTs=line.substring(i+1)
@@ -194,7 +240,7 @@ export class Metrics {
                                 sample.value = +valueAndTs.split(' ')[0].trim()
                                 timestamp = +valueAndTs.split(' ')[1].trim()
                                 samples.push(sample)
-                                if (container!=='' && labels.container===container) break
+                                if (containerName!=='' && labels.container===containerName) break
                             }
                             else {
                                 // the metrics is absolute, fixed, has no timestamp

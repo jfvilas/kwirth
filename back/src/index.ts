@@ -23,7 +23,6 @@ import express, { Request, Response} from 'express'
 import { MetricsConfig } from '@jfvilas/kwirth-common'
 import { ClusterData } from './tools/ClusterData'
 import { ServiceAccountToken } from './tools/ServiceAccountToken'
-import { Metrics } from './tools/Metrics'
 import { MetricsApi } from './api/MetricsApi'
 import { v4 as uuidv4 } from 'uuid'
 import { clearInterval } from 'timers'
@@ -36,7 +35,7 @@ const bodyParser = require('body-parser')
 const requestIp = require ('request-ip')
 const PORT = 3883
 const buffer:Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages
-const websocketIntervals:Map<WebSocket, {instance:string, timeout: NodeJS.Timeout} []>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketIntervals:Map<WebSocket, {instance:string, timeout: NodeJS.Timeout, content: {podNamespace:string, podName:string, containerName:string}[]} []>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 const websocketMetricsValues:Map<WebSocket, {instance:string, value: number[]} []>= new Map()  // list of previous values
 const websocketLogStreams:Map<WebSocket, PassThrough>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 
@@ -50,7 +49,6 @@ const k8sLog = new Log(kc)
 
 var secrets:Secrets
 var configMaps:ConfigMaps
-var metrics:Metrics
 const rootPath = process.env.KWIRTH_ROOTPATH || ''
 
 // get the namespace where Kwirth is running on
@@ -112,44 +110,54 @@ const getPodNode = async (namespace:string, pod:string) => {
     return undefined
 }
 
-const getPodMetricValue = async (metricName:string, prevValues:number[], namespace:string, pod:string, container:string) => {
+const getContainerMetricValue = async (metricName:string, prevValues:number[], podNamespace:string, podName:string, containerName:string) => {
     var total=0
-    var nodeName=await getPodNode(namespace, pod)
+    var nodeName=await getPodNode(podNamespace, podName)
     if (nodeName) {
         var node=ClusterData.nodes.get(nodeName)
         if (node) {
             var nodeIp=node.status?.addresses!.find(a => a.type==='InternalIP')?.address
             if (nodeIp) {
-                var sampledNodeMetrics = await metrics.getMetrics(nodeIp)
-                total = (await metrics.extractMetrics(metricName, node, sampledNodeMetrics, prevValues, namespace, pod, container)).value
+                var sampledNodeMetrics = await ClusterData.metrics.getMetrics(nodeIp)
+                total = (await ClusterData.metrics.extractContainerMetrics(metricName, node, sampledNodeMetrics, prevValues, podNamespace, podName, containerName)).value
+            }
+            else {
+                console.log('no nodeIp found for calculating pod metric value', podNamespace, podName, containerName)    
             }
         }
+        else {
+            console.log('no node found for calculating pod metric value', podNamespace, podName, containerName)
+        }
+    }
+    else {
+        console.log('no nodeName found for calculating pod metric value', podNamespace, podName, containerName)    
     }
     return total
 }
 
-const getGroupPods = async (metricsConfig:MetricsConfig) => {
-    var list:V1Pod[]=[]
-    var [grtype, grname] = metricsConfig.group.split('+')
-    switch(grtype) {
-        case 'replica':
-            var rs = await appsApi.readNamespacedReplicaSet(grname, metricsConfig.namespace)
-            if (rs.body.spec) {
-                const podSelector = rs.body.spec.selector.matchLabels
-                if (podSelector) {
-                    var labelSelector = Object.entries(podSelector).map(([key, value]) => `${key}=${value}`).join(',')
-                    const pods = await coreApi.listNamespacedPod(metricsConfig.namespace, undefined, undefined, undefined, undefined, labelSelector)
-                    pods.body.items.map((pod) => list.push(pod))
-                }
-            }
-            break
-        case 'daemon':
-            break
-        case 'stateful':
-            break
-    }
-    return list
-}
+// const getGroupPods = async (metricsConfig:MetricsConfig) => {
+//     var list:V1Pod[]=[]
+//     var [grtype, grname] = metricsConfig.group.split('+')
+//     switch(grtype) {
+//         case 'replica':
+//             var rs = await appsApi.readNamespacedReplicaSet(grname, metricsConfig.namespace)
+//             if (rs.body.spec) {
+//                 const podSelector = rs.body.spec.selector.matchLabels
+//                 if (podSelector) {
+//                     var labelSelector = Object.entries(podSelector).map(([key, value]) => `${key}=${value}`).join(',')
+//                     const pods = await coreApi.listNamespacedPod(metricsConfig.namespace, undefined, undefined, undefined, undefined, labelSelector)
+//                     pods.body.items.map((pod) => list.push(pod))
+//                 }
+//             }
+//             break
+//         case 'daemon':
+//             break
+//         case 'stateful':
+//             break
+//     }
+//     return list
+// }
+
 const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
     var metricsMessage:MetricsMessage = {
         channel: ServiceConfigChannelEnum.METRICS,
@@ -161,6 +169,18 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
         timestamp: Date.now()
     }
     try {
+        // get instance
+        var timeouts = websocketIntervals.get(webSocket)
+        if (!timeouts) {
+            console.log('No timeouts found for smd')
+            return
+        }
+        var instance = timeouts.find (i => i.instance === metricsConfig.instance)
+        if (!instance) {
+            console.log('No timeouts found for smd instnace ', metricsConfig.instance)
+            return
+        }
+        console.log('content to process', instance.content)
         // +++ we must get values from all nodes and do some magics with numbers
         // +++ maybe we need to take into account pod status (only running pods, for example)
 
@@ -171,32 +191,49 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
             prevValues=prev.value
         }
 
-        // +++ maybe adding up values is not the only operation (what about min, max, avg...?)
         metricsMessage.value=[]
         for (var metricName of metricsConfig.metrics) {
-            console.log('calculating ', metricName, metricsConfig.view)
+            console.log('calculating', metricName, 'for', metricsConfig.view)            
             var total=0
             switch(metricsConfig.view) {
-                case ServiceConfigViewEnum.NAMESPACE:
-                    break
                 case ServiceConfigViewEnum.GROUP:
-                    console.log('metricsConfig',metricsConfig)
-                    var podList:V1Pod[] = await getGroupPods(metricsConfig)
-                    var total=0
-                    for (var pod of podList) {
-                        console.log('pod.metadata?.name', pod)
-                        total+= await getPodMetricValue(metricName, prevValues, pod.metadata?.namespace!, pod.metadata?.name!, '')
+                    for (var object of instance.content) {
+                        // +++  decide here what operation to perform (add, avg, max...)
+                        total+= await getContainerMetricValue(metricName, prevValues, object.podNamespace, object.podName, object.containerName)
+                        console.log(object.podNamespace, object.podName, object.containerName, metricName, total)
                     }
-                    console.log('metricsConfig==============================================================================================================')
+                    console.log('total value', metricName, instance.instance)
                     break
-                case ServiceConfigViewEnum.POD:
-                    total = await getPodMetricValue(metricName, prevValues, metricsConfig.namespace, metricsConfig.pod, metricsConfig.container)
-                    break
-                case ServiceConfigViewEnum.CONTAINER:
+                default:
+                    console.log('invalid view for smd')
                     break
             }
-            metricsMessage.value.push(total)
         }
+        
+        // for (var metricName of metricsConfig.metrics) {
+        //     console.log('calculating ', metricName, metricsConfig.view)
+        //     var total=0
+        //     switch(metricsConfig.view) {
+        //         case ServiceConfigViewEnum.NAMESPACE:
+        //             break
+        //         case ServiceConfigViewEnum.GROUP:
+        //             console.log('metricsConfig',metricsConfig)
+        //             var podList:V1Pod[] = await getGroupPods(metricsConfig)
+        //             var total=0
+        //             for (var pod of podList) {
+        //                 console.log('pod.metadata?.name', pod)
+        //                 total+= await getPodMetricValue(metricName, prevValues, pod.metadata?.namespace!, pod.metadata?.name!, '')
+        //             }
+        //             console.log('metricsConfig==============================================================================================================')
+        //             break
+        //         case ServiceConfigViewEnum.POD:
+        //             total = await getPodMetricValue(metricName, prevValues, metricsConfig.namespace, metricsConfig.pod, metricsConfig.container)
+        //             break
+        //         case ServiceConfigViewEnum.CONTAINER:
+        //             break
+        //     }
+        //     metricsMessage.value.push(total)
+        // }
 
         try {
             webSocket.send(JSON.stringify(metricsMessage))
@@ -275,7 +312,7 @@ const startPodLog = async (webSocket:WebSocket, podNamespace:string, podName:str
                 buffer.set(webSocket,next)
                 text=text.substring(0,i)
             }
-            // don't we need to implement container spscifically?
+            // +++ don't we need to implement container specifically?
             sendLogData(webSocket, podNamespace, podName, text, logConfig)
         })
 
@@ -316,13 +353,16 @@ const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName
             //     break
             case MetricsConfigModeEnum.STREAM:
                 if (websocketIntervals.has(webSocket)) {
+                    var timeouts=websocketIntervals.get(webSocket)
+                    var instance = timeouts?.find((to) => to.instance === metricsConfig.instance)
+                    instance?.content.push ({podNamespace, podName, containerName})
                 }
                 else {
                     websocketIntervals.set(webSocket, [])
                     var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000
                     var timeout = setInterval(() => sendMetricsData(webSocket,metricsConfig), interval)
                     var timeouts=websocketIntervals.get(webSocket)
-                    timeouts?.push({instance:metricsConfig.instance, timeout})
+                    timeouts?.push({instance:metricsConfig.instance, timeout, content:[{podNamespace, podName, containerName}]})
                 }
                 break
             default:
@@ -754,7 +794,7 @@ const launch = async (kwirthData: KwirthData) => {
   app.use(`${rootPath}/managekwirth`, mk.route)
   var mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi)
   app.use(`${rootPath}/managecluster`, mc.route)
-  var ma:MetricsApi = new MetricsApi(metrics)
+  var ma:MetricsApi = new MetricsApi(ClusterData.metrics)
   app.use(`${rootPath}/metrics`, ma.route)
 
   // obtain remote ip
@@ -785,11 +825,15 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 getMyKubernetesData()
     .then ( async (kwirthData) => {
         try {
-            await new ClusterData(coreApi).init()
             var sat = new ServiceAccountToken(coreApi, kwirthData.namespace)
-            var token= await sat.getToken('kwirth-sa',kwirthData.namespace)
-            console.log(token)
-            metrics = new Metrics(coreApi, customApi, token!)
+            var saToken= await sat.getToken('kwirth-sa',kwirthData.namespace)
+            if (saToken) {
+                console.log(saToken)
+                await new ClusterData(coreApi,saToken).init()
+            }
+            else {
+                console.log('Could not get sa token, metrics will not be available')
+            }
         }
         catch (err){
             console.log(err)

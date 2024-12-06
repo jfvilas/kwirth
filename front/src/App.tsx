@@ -39,6 +39,7 @@ import { KwirthData, LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum
 import { MetricsObject } from './model/MetricsObject'
 import { TabObject } from './model/TabObject'
 import MetricsSelector from './components/MetricsSelector'
+import { MetricDescription } from './model/MetricDescription'
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883'
@@ -82,7 +83,7 @@ const App: React.FC = () => {
     const [search, setSearch] = useState<string>('')
 
     // general
-    const [settings, setSettings] = useState<Settings>(new Settings())
+    const [settings, setSettings] = useState<Settings>()
     const settingsRef = useRef(settings)
     settingsRef.current=settings
 
@@ -392,30 +393,10 @@ const App: React.FC = () => {
         try {
             cluster.metricsList=new Map()
             var response = await fetch (`${backendUrl}/metrics`, addGetAuthorization(accessString))
-            var lines=await response.text()
-            // # HELP cadvisor_version_info A metric with a constant '1' value labeled by kernel version, OS version, docker version, cadvisor version & cadvisor revision.
-            // # TYPE cadvisor_version_info gauge
-            console.log(lines)
-            for (var l of lines.split('\n')) {
-                var [_,lineType,name,metricType] = l.split(' ')
-                if (!cluster.metricsList.has(name) && name) cluster.metricsList.set(name, {type: '', help: ''})
-                switch (lineType){
-                    case 'HELP':
-                        var i=l.indexOf(name)
-                        var text=l.substring(i+name.length)
-                        cluster.metricsList.get(name)!.help=text.trim()
-                        break
-                    case 'TYPE':
-                        cluster.metricsList.get(name)!.type = metricType.trim()
-                        break
-                }
-            }
-            if (cluster.metricsList.size===0) {
-                cluster.metricsList.set('testmetrics-1', {type:'number', help:'1st Sample metrics'})
-                cluster.metricsList.set('testmetrics-2', {type:'number', help:'2nd Sample metrics'})
-            }
-            console.log('cluster.metricList',cluster.metricsList)
+            var json=await response.json() as MetricDescription[]
+            json.map( jsonMetric => cluster.metricsList.set(jsonMetric.metric, jsonMetric))
             console.log(`Metrics for cluster ${cluster.name} have been received`)
+            console.log(cluster.metricsList)
         }
         catch (err) {
             console.log('Error obtaining metrics list')
@@ -719,6 +700,12 @@ const App: React.FC = () => {
                 break
             case MenuTabOption.MetricsStart:
                 onClickMetricsStart()
+                break
+            case MenuTabOption.MetricsAdd:
+                // +++ we have 2 options here:
+                // Add new metrics to current metricsobject metrics'
+                // create an array of metrics objects
+                //onClickMetricsStart()
                 break
             case MenuTabOption.MetricsPause:
                 onClickMetricsPause()
@@ -1053,7 +1040,7 @@ const App: React.FC = () => {
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
             {/* { showManageAlarms && <ManageAlarms onClose={() => setShowManageAlarms(false)} log={selectedLog}/> } */}
             { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
-            { showMetricsSelector && <MetricsSelector  onMetricsSelected={onMetricsSelected} settings={settings} metricsList={Array.from(clusters!.find(c => c.name===selectedTab!.metricsObject!.cluster)?.metricsList.keys()!)} /> }
+            { showMetricsSelector && <MetricsSelector  onMetricsSelected={onMetricsSelected} settings={settings} metricsList={clusters!.find(c => c.name===selectedTab!.metricsObject!.cluster)?.metricsList!} /> }
             { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { pickListConfig!==null && <PickList config={pickListConfig}/> }
             { msgBox }
