@@ -35,7 +35,7 @@ const bodyParser = require('body-parser')
 const requestIp = require ('request-ip')
 const PORT = 3883
 const buffer:Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages
-const websocketIntervals:Map<WebSocket, {instance:string, timeout: NodeJS.Timeout, working:boolean, prevValues: number[], content: {podNamespace:string, podName:string, containerName:string}[]} []>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketIntervals:Map<WebSocket, {id:string, timeout: NodeJS.Timeout, working:boolean, prevValues: number[], content: {podNamespace:string, podName:string, containerName:string}[]} []>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 const websocketLogStreams:Map<WebSocket, PassThrough>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 
 // Kubernetes API access
@@ -136,6 +136,19 @@ const getContainerMetricValue = async (metricName:string, prevValues:number[], p
     return total
 }
 
+const getTotal = (metricName:string, values:number[]) => {
+    var metric = ClusterData.metrics.getMetric(metricName)
+    console.log(`Get total for ${metricName} ${metric!.type}`)
+    switch(metric?.type) {
+        case 'gauge':
+        case 'counter':
+            return values.reduce((ac,value) => ac+value, 0)
+        default:
+            console.log('Unsupported metric type:', metric?.type)
+            return 0
+    }
+}
+
 const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
     var metricsMessage:MetricsMessage = {
         channel: ServiceConfigChannelEnum.METRICS,
@@ -148,14 +161,14 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
     }
     try {
         // get instance
-        var timeouts = websocketIntervals.get(webSocket)
-        if (!timeouts) {
-            console.log('No timeouts found for smd')
+        var instances = websocketIntervals.get(webSocket)
+        if (!instances) {
+            console.log('No instances found for smd')
             return
         }
-        var instance = timeouts.find (i => i.instance === metricsConfig.instance)
+        var instance = instances.find (i => i.id === metricsConfig.instance)
         if (!instance) {
-            console.log('No timeouts found for smd instnace ', metricsConfig.instance)
+            console.log('No instance found for smd instnace ', metricsConfig.instance)
             return
         }
         if (instance.working) {
@@ -163,25 +176,27 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
             return
         }
         instance.working=true
-        console.log('content to process', instance.content)
-        // +++ we must get values from all nodes and do some magics with numbers
-        // +++ maybe we need to take into account pod status (only running pods, for example)
+        console.log('Content to process', instance.content)
 
         metricsMessage.value=[]
         for (var metricName of metricsConfig.metrics) {
-            console.log('calculating', metricName, 'for', metricsConfig.view)            
+            console.log('Calculating', metricName, 'for', metricsConfig.view)
+            var indiviudalValue:number[]=[]
             var total=0
             switch(metricsConfig.view) {
+                case ServiceConfigViewEnum.NAMESPACE:
                 case ServiceConfigViewEnum.GROUP:
+                case ServiceConfigViewEnum.POD:
                     for (var object of instance.content) {
-                        // +++  decide here what operation to perform (add, avg, max...)
-                        total += await getContainerMetricValue(metricName, instance.prevValues, object.podNamespace, object.podName, object.containerName)
-                        console.log('total+', object.podNamespace, object.podName, object.containerName, metricName, total)
+                        var result = await getContainerMetricValue(metricName, instance.prevValues, object.podNamespace, object.podName, object.containerName)
+                        indiviudalValue.push(result)
+                        console.log('Result', object.podNamespace, object.podName, object.containerName, metricName, result)
                     }
-                    console.log('total value', metricName, instance.instance, total)
+                    total=getTotal(metricName,indiviudalValue)
+                    console.log('Total value', metricName, instance.id, total)
                     break
                 default:
-                    console.log('invalid view for smd')
+                    console.log('Invalid view for smd')
                     break
             }
             metricsMessage.value.push(total)
@@ -192,12 +207,12 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
             instance.prevValues = metricsMessage.value
         }
         catch (err) {
-            console.log('socket error, we should forget interval')
+            console.log('Socket error, we should forget interval')
         }
         instance.working=false
     }
     catch (err) {
-        console.log('err reading metrics', err)
+        console.log('Error reading metrics', err)
         sendChannelSignal(webSocket, SignalMessageLevelEnum.WARNING, 'Cannot read metrics', metricsConfig)
     }
 }
@@ -251,11 +266,12 @@ const updatePodService = (eventType:string, podNamespace:string, podName:string,
     console.log('updatePodService: ', serviceConfig.channel)
     switch(serviceConfig.channel) {
         case ServiceConfigChannelEnum.LOG:
+            // nothing to do here
             break
         case ServiceConfigChannelEnum.METRICS:
             var metricsConfig = serviceConfig as MetricsConfig
-            var timeouts = websocketIntervals.get(webSocket)
-            var instance = timeouts?.find((to) => to.instance === metricsConfig.instance)
+            var instances = websocketIntervals.get(webSocket)
+            var instance = instances?.find((instance) => instance.id === metricsConfig.instance)
             if (instance) {
                 instance.content = instance.content.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
             }
@@ -314,19 +330,20 @@ const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName
         switch (metricsConfig.mode) {
             case MetricsConfigModeEnum.SNAPSHOT:
                 // +++ pending implementation. implement when metric streaming is complete
+                // snapshot is just obtaeing metrics and sending response, no further actionas will be taken
                 break
             case MetricsConfigModeEnum.STREAM:
                 if (websocketIntervals.has(webSocket)) {
-                    var timeouts=websocketIntervals.get(webSocket)
-                    var instance = timeouts?.find((to) => to.instance === metricsConfig.instance)
+                    var instances = websocketIntervals.get(webSocket)
+                    var instance = instances?.find((instance) => instance.id === metricsConfig.instance)
                     instance?.content.push ({podNamespace, podName, containerName})
                 }
                 else {
                     websocketIntervals.set(webSocket, [])
                     var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000
                     var timeout = setInterval(() => sendMetricsData(webSocket,metricsConfig), interval)
-                    var timeouts=websocketIntervals.get(webSocket)
-                    timeouts?.push({instance:metricsConfig.instance, working:false, timeout, prevValues:[],  content:[{podNamespace, podName, containerName}]})
+                    var instances=websocketIntervals.get(webSocket)
+                    instances?.push({id:metricsConfig.instance, working:false, timeout, prevValues:[],  content:[{podNamespace, podName, containerName}]})
                 }
                 break
             default:
@@ -570,19 +587,19 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
 
 const removeMetricsInterval = (webSocket:WebSocket, instance:string) => {
     if (websocketIntervals.has(webSocket)) {
-        var timeouts = websocketIntervals.get(webSocket)
-        if (timeouts) {
-            var timeoutIndex = timeouts.findIndex(t => t.instance === instance)
-            if (timeoutIndex>=0) {
-                clearInterval(timeouts[timeoutIndex].timeout)
-                timeouts.splice(timeoutIndex,1)
+        var instances = websocketIntervals.get(webSocket)
+        if (instances) {
+            var instanceIndex = instances.findIndex(t => t.id === instance)
+            if (instanceIndex>=0) {
+                clearInterval(instances[instanceIndex].timeout)
+                instances.splice(instanceIndex,1)
             }
             else{
-                console.log('Timeout not found, cannot delete')
+                console.log('Instance not found, cannot delete')
             }
         }
         else {
-            console.log('There are no Timeouts on websocket')
+            console.log('There are no Instances on websocket')
         }
     }
     else {
@@ -699,11 +716,11 @@ wss.on('connection', (ws:WebSocket, req) => {
   ws.on('close', () => {
     console.log('Client disconnected')
     if (websocketIntervals.has(ws)) {
-        console.log('intervalo eliminado')
-        var timeouts=websocketIntervals.get(ws)
-        if (timeouts) {
-            for (var i=0;i<timeouts.length;i++) {
-                removeMetricsInterval(ws,timeouts[i].instance)
+        var instances=websocketIntervals.get(ws)
+        if (instances) {
+            for (var i=0;i<instances.length;i++) {
+                removeMetricsInterval(ws,instances[i].id)
+                console.log('Interval has been removed')
             }
         }
     }

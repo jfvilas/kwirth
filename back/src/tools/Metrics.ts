@@ -46,6 +46,11 @@ export class Metrics {
         return objects
     }
 
+    public getMetric(metricName:string) {
+        var metric = this.metricsList.get(metricName)
+        return metric
+    }
+
     public async loadMetrics(nodeIp:string) {
         console.log('Loading metrics from', nodeIp)
         var allMetrics=await this.getNodeMetrics(nodeIp)
