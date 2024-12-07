@@ -1,6 +1,6 @@
 import React, { useContext } from 'react'
 import { Collapse, Divider, Menu, MenuItem, MenuList, Typography } from '@mui/material'
-import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, RestartAlt, Info } from '@mui/icons-material'
+import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, RestartAlt, Info, Add } from '@mui/icons-material'
 import { SessionContext, SessionContextType } from '../model/SessionContext'
 import { TabObject } from '../model/TabObject'
 
@@ -110,7 +110,7 @@ const MenuTab: React.FC<any> = (props:IProps) => {
             <MenuItem key='submetrics' onClick={submenuMetricsClick} sx={{ml:3}} disabled={!Boolean(props.selectedTab?.metricsObject)}>Metrics<Typography sx={{flexGrow:1}}></Typography>{subMenuLogOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={submenuMetricsOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
             <MenuItem key='metricsstart' onClick={() => props.optionSelected(MenuTabOption.MetricsStart)} disabled={props.selectedTab?.metricsObject?.started}><PlayCircle/>&nbsp;Start</MenuItem>
-            <MenuItem key='metricsadd' onClick={() => props.optionSelected(MenuTabOption.MetricsAdd)} disabled={props.selectedTab?.metricsObject?.started}><PlayCircle/>&nbsp;Add</MenuItem>
+            <MenuItem key='metricsadd' onClick={() => props.optionSelected(MenuTabOption.MetricsAdd)} disabled={true}><Add/>&nbsp;Add</MenuItem>
             <MenuItem key='metricspause' onClick={() => props.optionSelected(MenuTabOption.MetricsPause)} disabled={!props.selectedTab?.metricsObject?.started}>{props.selectedTab?.metricsObject?.paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>            
             <MenuItem key='metricsstop' onClick={() => props.optionSelected(MenuTabOption.MetricsStop)} disabled={!props.selectedTab?.metricsObject?.started}><Stop/>&nbsp;Stop</MenuItem>
             </Collapse>

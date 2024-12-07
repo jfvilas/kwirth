@@ -1,7 +1,4 @@
 import { CoreV1Api, CustomObjectsApi, V1Node } from "@kubernetes/client-node"
-// import { ClusterData } from "./ClusterData"
-// import { MetricsConfig } from "@jfvilas/kwirth-common"
-
 
 export class Metrics {
     private coreApi:CoreV1Api
@@ -14,41 +11,9 @@ export class Metrics {
         this.metricsList=new Map()
     }
 
-    // private getNodeMetrics = async () => {
-    //     try {
-    //         const response = await this.customApi.listClusterCustomObject(
-    //             'metrics.k8s.io', // Group
-    //             'v1beta1',        // Version
-    //             'nodes'
-    //         );
-    //         console.log(JSON.stringify(response.body, null, 2))
-    //     }
-    //     catch (err) {
-    //         console.error('Error fetching node metrics:', err)
-    //     }
-    // }
-
-    // Función para obtener métricas de los pods
-    // private getOnePodMetrics = async (podName:string, labelSelector:string) => {
-    //     try {
-    //         const response = await this.customApi.listClusterCustomObject(
-    //             'metrics.k8s.io', // Group
-    //             'v1beta1',         // Version
-    //             'pods',             
-    //             undefined,
-    //             undefined,
-    //             undefined,
-    //             undefined,
-    //             labelSelector // 'app=kwirth'
-    //         );
-    //         console.log(JSON.stringify(response.body, null, 2))
-    //     }
-    //     catch (err) {
-    //         console.error('Error fetching pod metrics:', err)
-    //     }
-    // }
-
     /*
+        URL's from cAdvisor
+        
         /stats/summary
         /metrics
         /metrics/cadvisor
@@ -77,13 +42,13 @@ export class Metrics {
     */
 
     public getMetricsList() {
-        var objects= Array.from(this.metricsList.keys()).map ( k => { return { metric:k, ...this.metricsList.get(k)} })
+        var objects = Array.from(this.metricsList.keys()).map ( metricName => { return { metric:metricName, ...this.metricsList.get(metricName)} })
         return objects
     }
 
     public async loadMetrics(nodeIp:string) {
         console.log('Loading metrics from', nodeIp)
-        var allMetrics=await this.getMetrics(nodeIp)
+        var allMetrics=await this.getNodeMetrics(nodeIp)
         console.log('Metrics loaded\n', allMetrics)
         var lines=allMetrics.split('\n')
         lines=lines.filter(l => l.startsWith('#'))
@@ -117,18 +82,14 @@ export class Metrics {
         console.log(this.metricsList)
     }
 
-    public getMetrics = async (nodeIp:string) => {
-        // console.log('nodeIp', nodeIp)
-        // console.log('token', this.token)
+    public getNodeMetrics = async (nodeIp:string) => {
         try {
             var resp = await fetch (`https://${nodeIp}:10250/metrics/cadvisor`,{ headers: { Authorization: 'Bearer ' + this.token} })
-            // console.log(resp)
             var text = await resp.text()
             return text
         }
         catch (error:any) {
-            console.log(`Error accessing cAdvisor at node ${nodeIp}`)
-            console.log(error)
+            console.log(`Error obtaining node metrics from cAdvisor at node ${nodeIp}`)
         }
         return ''
     }
@@ -190,14 +151,14 @@ export class Metrics {
                     if (node.status?.capacity) totCpu+= +node.status?.capacity.cpu
                     result = { value: totCpu, timestamp: Date.now() }
                     return result
-                case 'kwirth_cpu_total_random_seconds':
-                    var rndValue = Math.random()
-                    result = { value: rndValue, timestamp: Date.now() }
-                    return result
                 case 'kwirth_cpu_number':
                     var numCpu=0
                     if (node.status?.capacity) numCpu = +node.status?.capacity.cpu
                     result = { value: numCpu, timestamp: Date.now() }
+                    return result
+                case 'kwirth_cpu_total_random_seconds':
+                    var rndValue = Math.random()
+                    result = { value: rndValue, timestamp: Date.now() }
                     return result
                 default:
                     return result
@@ -272,15 +233,5 @@ export class Metrics {
         console.log('result',result)
         return result
     }
-
-    // public async testExtractAllMetrics(nodeIp:string, podName:string, containerName:string) {
-    //     var x  = await this.getMetrics(nodeIp)
-    //     console.log('container_fs_writes_total= ',this.extractMetrics(x,'container_fs_writes_total', podName, containerName))
-    //     console.log('container_fs_reads_total= ',this.extractMetrics(x,'container_fs_reads_total', podName, containerName))
-    //     console.log('container_cpu_usage_seconds_total= ',this.extractMetrics(x,'container_cpu_usage_seconds_total', podName, containerName))
-    //     console.log('container_memory_usage_bytes= ',this.extractMetrics(x,'container_memory_usage_bytes', podName, containerName))
-    //     console.log('container_network_receive_bytes_total= ',this.extractMetrics(x,'container_network_receive_bytes_total', podName, containerName))
-    //     console.log('container_network_transmit_bytes_total= ',this.extractMetrics(x,'container_network_transmit_bytes_total', podName, containerName))
-    // }
 
 }
