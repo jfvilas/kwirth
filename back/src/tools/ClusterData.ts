@@ -9,6 +9,8 @@ export interface NodeData {
     timestamp:number
 }
 export class ClusterData {
+    public static clusterMetricsInterval = 60
+    public static clusterMetricsTimeout : NodeJS.Timeout
     public static nodes : Map<string,NodeData> = new Map()
     public static metrics : Metrics
     coreApi:CoreV1Api
@@ -43,9 +45,14 @@ export class ClusterData {
 
         console.log('********* read metric values')
         ClusterData.metrics.readClusterMetrics()
-        setInterval( () => {
-            ClusterData.metrics.readClusterMetrics()
-        }, 120000)
+        ClusterData.startInterval(ClusterData.clusterMetricsInterval)
     }
 
+    static startInterval = (seconds:number) => {
+        ClusterData.clusterMetricsInterval = seconds
+        ClusterData.clusterMetricsTimeout = setInterval( () => {
+            ClusterData.metrics.readClusterMetrics()
+        }, ClusterData.clusterMetricsInterval * 1000)
+        console.log('ClusterMetricsInterval changed to',seconds)
+    }
 }

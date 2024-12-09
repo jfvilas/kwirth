@@ -721,8 +721,8 @@ wss.on('connection', (ws:WebSocket, req) => {
         var instances=websocketIntervals.get(ws)
         if (instances) {
             for (var i=0;i<instances.length;i++) {
+                console.log(`Interval for instance ${instances[i].id} has been removed`)
                 removeMetricsInterval(ws,instances[i].id)
-                console.log('Interval has been removed')
             }
         }
     }

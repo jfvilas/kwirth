@@ -187,6 +187,9 @@ const App: React.FC = () => {
         setSettings(newSettings)
         var payload=JSON.stringify(newSettings)
         fetch (`${backendUrl}/store/${user?.id}/settings/general`, addPostAuthorization(accessString, payload))
+
+        payload=JSON.stringify({clusterMetricsInterval:newSettings.clusterMetricsInterval})
+        fetch (`${backendUrl}/metrics/config`, addPostAuthorization(accessString, payload))
     }
 
     const onResourceSelectorAdd = (selection:any) => {
