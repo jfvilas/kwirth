@@ -1,8 +1,15 @@
 import { CoreV1Api, V1Node } from "@kubernetes/client-node";
 import { Metrics } from "./Metrics";
 
+export interface NodeData {
+    name:string
+    ip:string
+    kubernetesNode: V1Node
+    metricValues:Map<string,number>
+    timestamp:number
+}
 export class ClusterData {
-    public static nodes : Map<string,V1Node> = new Map()
+    public static nodes : Map<string,NodeData> = new Map()
     public static metrics : Metrics
     coreApi:CoreV1Api
     saToken:string
@@ -16,14 +23,29 @@ export class ClusterData {
         // load nodes
         var resp = await this.coreApi.listNode()
         for (var node of resp.body.items) {
-            ClusterData.nodes.set(node.metadata?.name!,node)
-            console.log('Found node', node.metadata?.name)
+            var nodeData:NodeData = {
+                name:node.metadata?.name!,
+                ip:node.status?.addresses!.find(a => a.type==='InternalIP')?.address!,
+                kubernetesNode: node,
+                metricValues: new Map(),
+                timestamp: 0
+            }
+            ClusterData.nodes.set(nodeData.name, nodeData)
+            console.log('Found node', nodeData.name)
         }
         console.log('Node config loaded')
 
-        // load metrics
+        // load metrics avaliable
+        console.log('********* load metrics')
         ClusterData.metrics = new Metrics(this.coreApi, this.saToken!)
-        var nodeIp=Array.from(ClusterData.nodes.values())[0].status?.addresses!.find(a => a.type==='InternalIP')?.address
-        ClusterData.metrics.loadMetrics(nodeIp!)
+        ClusterData.metrics.loadMetrics(Array.from(ClusterData.nodes.values()))
+
+
+        console.log('********* read metric values')
+        ClusterData.metrics.readClusterMetrics()
+        setInterval( () => {
+            ClusterData.metrics.readClusterMetrics()
+        }, 120000)
     }
+
 }

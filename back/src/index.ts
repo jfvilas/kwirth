@@ -109,47 +109,49 @@ const getPodNode = async (namespace:string, pod:string) => {
     return undefined
 }
 
-const getContainerMetricValue = async (metricName:string, prevValues:number[], podNamespace:string, podName:string, containerName:string) => {
-    console.log('>>>>>>gcm', podNamespace, podName, containerName)
+const getContainerMetricValue = async (metricName:string, podNamespace:string, podName:string, containerName:string) => {
     var total=0
     var nodeName=await getPodNode(podNamespace, podName)
     if (nodeName) {
         var node=ClusterData.nodes.get(nodeName)
         if (node) {
-            var nodeIp=node.status?.addresses!.find(a => a.type==='InternalIP')?.address
-            if (nodeIp) {
-                var sampledNodeMetrics = await ClusterData.metrics.getNodeMetrics(nodeIp)
-                total = (await ClusterData.metrics.extractContainerMetrics(metricName, node, sampledNodeMetrics, prevValues, podNamespace, podName, containerName)).value
-            }
-            else {
-                console.log('no nodeIp found for calculating pod metric value', podNamespace, podName, containerName)    
-            }
+            var metric = await ClusterData.metrics.extractContainerMetrics(metricName, node, podNamespace, podName, containerName)
+            total = metric.value
         }
         else {
-            console.log('no node found for calculating pod metric value', podNamespace, podName, containerName)
+            console.log('No node found for calculating pod metric value', podNamespace, podName, containerName)
         }
     }
     else {
-        console.log('no nodeName found for calculating pod metric value', podNamespace, podName, containerName)    
+        console.log('No nodeName found for calculating pod metric value', podNamespace, podName, containerName)    
     }
-    console.log('<<<<<<gcm', total)
     return total
 }
 
 const getTotal = (metricName:string, values:number[]) => {
+    var result:number
     var metric = ClusterData.metrics.getMetric(metricName)
-    console.log(`Get total for ${metricName} ${metric!.type}`)
+    //console.log(`Get total for ${metricName} (${metric!.type})`)
     switch(metric?.type) {
         case 'gauge':
         case 'counter':
-            return values.reduce((ac,value) => ac+value, 0)
+            result = values.reduce((ac,value) => ac+value, 0)
+            break
         default:
-            console.log('Unsupported metric type:', metric?.type)
-            return 0
+            console.log(`Unsupported metric type: "${metric?.type}"`)
+            result = 0
+            break
     }
+    // +++ now process eval
+    if (metric?.eval && metric.eval!=='') {
+
+    }
+    
+    return result
 }
 
 const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
+    console.log('smd')
     var metricsMessage:MetricsMessage = {
         channel: ServiceConfigChannelEnum.METRICS,
         type: 'data',
@@ -181,19 +183,19 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
         metricsMessage.value=[]
         for (var metricName of metricsConfig.metrics) {
             console.log('Calculating', metricName, 'for', metricsConfig.view)
-            var indiviudalValue:number[]=[]
+            var individualValue:number[]=[]
             var total=0
             switch(metricsConfig.view) {
                 case ServiceConfigViewEnum.NAMESPACE:
                 case ServiceConfigViewEnum.GROUP:
                 case ServiceConfigViewEnum.POD:
                     for (var object of instance.content) {
-                        var result = await getContainerMetricValue(metricName, instance.prevValues, object.podNamespace, object.podName, object.containerName)
-                        indiviudalValue.push(result)
+                        var result = await getContainerMetricValue(metricName, object.podNamespace, object.podName, object.containerName)
+                        individualValue.push(result)
                         console.log('Result', object.podNamespace, object.podName, object.containerName, metricName, result)
                     }
-                    total=getTotal(metricName,indiviudalValue)
-                    console.log('Total value', metricName, instance.id, total)
+                    total=getTotal(metricName,individualValue)
+                    console.log(`Total value (${individualValue.length} values)`, metricName, instance.id, total)
                     break
                 default:
                     console.log('Invalid view for smd')
@@ -273,7 +275,7 @@ const updatePodService = (eventType:string, podNamespace:string, podName:string,
             var instances = websocketIntervals.get(webSocket)
             var instance = instances?.find((instance) => instance.id === metricsConfig.instance)
             if (instance) {
-                instance.content = instance.content.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
+                if (eventType==='DELETED') instance.content = instance.content.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
             }
             break
         default:

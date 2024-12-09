@@ -7,18 +7,6 @@ export class MetricsApi {
     public route = express.Router()
     metrics:Metrics
 
-    /*
-
-    # HELP kwirth_cpu_precentage Percentage of cpu used
-    # TYPE kwirth_cpu_precentage
-    # EVAL container_cpu_usage_seconds_total / machine_cpu_sockets * (kwirth_current_time_seconds - container_start_time_seconds)
-
-    # HELP kwirth_running_time Nuber of seconds the container has been running
-    # TYPE kwirth_running_time counter
-    # EVAL kwirth_current_time_seconds - container_start_time_seconds
-
-    */
-
     constructor (metrics:Metrics) {
         this.metrics=metrics
 

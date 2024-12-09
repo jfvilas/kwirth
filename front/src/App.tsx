@@ -146,7 +146,7 @@ const App: React.FC = () => {
         srcCluster.url=backendUrl
         srcCluster.accessString=accessString
         srcCluster.source=true
-        var response = await fetch(`${backendUrl}/config/version`, addGetAuthorization(accessString))
+        response = await fetch(`${backendUrl}/config/version`, addGetAuthorization(accessString))
         srcCluster.kwirthData = await response.json() as KwirthData
         if (versionGreatThan(srcCluster.kwirthData.version,srcCluster.kwirthData.lastVersion)) {
             setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
@@ -154,7 +154,7 @@ const App: React.FC = () => {
 
         // get previously configured clusters
         var clusterList:Cluster[]=[]
-        var response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString))
+        response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString))
         if (response.status===200) {
             clusterList=JSON.parse (await response.json())
             clusterList=clusterList.filter (c => c.name!==srcCluster.name)
@@ -683,9 +683,6 @@ const App: React.FC = () => {
             case MenuTabOption.LogStop:
                 onClickStopTab()
                 break
-            case MenuTabOption.TabRemove:
-                onClickTabRemove()
-                break
             case MenuTabOption.TabManageRestart:
                 switch(selectedTab && selectedTab.logObject?.view) {
                     case ServiceConfigViewEnum.GROUP:
@@ -813,13 +810,13 @@ const App: React.FC = () => {
                 setShowUserSecurity(true)
                 break
             case MenuDrawerOption.ExportBoards:
-                var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
-                if (allBoards.length===0) {
+                var boardsToExport:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
+                if (boardsToExport.length===0) {
                     showNoBoards()
                 }
                 else {
                     var content:any={}
-                    for (var boardName of allBoards) {
+                    for (var boardName of boardsToExport) {
                         var readBoard = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
                         content[boardName]=JSON.parse(readBoard)
                     }

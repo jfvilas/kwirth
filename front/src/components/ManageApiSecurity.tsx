@@ -1,113 +1,114 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, List, ListItem, ListItemButton, MenuItem, Select, Stack, TextField, Typography} from '@mui/material';
-import { ApiKey } from '@jfvilas/kwirth-common';
-import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
-import { SessionContext, SessionContextType } from '../model/SessionContext';
-import { AccessKey, accessKeySerialize, buildResource, parseResource } from '@jfvilas/kwirth-common';
-import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addPutAuthorization } from '../tools/AuthorizationManagement';
-const copy = require('clipboard-copy');
+import React, { useState, useEffect, useContext } from 'react'
+import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, List, ListItem, ListItemButton, MenuItem, Select, Stack, TextField, Typography} from '@mui/material'
+import { ApiKey } from '@jfvilas/kwirth-common'
+import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox'
+import { SessionContext, SessionContextType } from '../model/SessionContext'
+import { AccessKey, accessKeySerialize, buildResource, parseResource } from '@jfvilas/kwirth-common'
+import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addPutAuthorization } from '../tools/AuthorizationManagement'
+const copy = require('clipboard-copy')
 
 interface IProps {
-    onClose:() => {};
+    onClose:() => {}
 }
 
 const ManageApiSecurity: React.FC<any> = (props:IProps) => {
     const {accessKey: accessString, backendUrl} = useContext(SessionContext) as SessionContextType;
-    const [msgBox, setMsgBox] = useState(<></>);
-    const [keys, setKeys] = useState<ApiKey[]|null>();
-    const [selectedKey, setSelectedKey] = useState<ApiKey>();
-    const [description, setDescrition] = useState<string>('');
-    const [expire, setExpire] = useState<number>(0);
-    const [keyType, setKeyType] = useState('volatile');
-    const [scope, setScope] = useState('cluster');
-    const [namespace, setNamespace] = useState('');
-    const [groupType, setGroupType] = useState('');
-    const [groupName, setGroupName] = useState('');
-    const [pod, setPod] = useState('');
-    const [container, setContainer] = useState('');
-    const [showPermanent, setShowPermanent] = useState<boolean>(true);
-    const [showVolatile, setShowVolatile] = useState<boolean>(false);
+    const [msgBox, setMsgBox] = useState(<></>)
+    const [keys, setKeys] = useState<ApiKey[]|null>()
+    const [selectedKey, setSelectedKey] = useState<ApiKey>()
+    const [description, setDescrition] = useState<string>('')
+    const [expire, setExpire] = useState<number>(0)
+    const [keyType, setKeyType] = useState('volatile')
+    const [scope, setScope] = useState('cluster')
+    const [namespace, setNamespace] = useState('')
+    const [groupType, setGroupType] = useState('')
+    const [groupName, setGroupName] = useState('')
+    const [pod, setPod] = useState('')
+    const [container, setContainer] = useState('')
+    const [showPermanent, setShowPermanent] = useState<boolean>(true)
+    const [showVolatile, setShowVolatile] = useState<boolean>(false)
 
     const getKeys = async () => {
-        var response = await fetch(`${backendUrl}/key`, addGetAuthorization(accessString));
-        var data = await response.json();
-        setKeys(data);
+        var response = await fetch(`${backendUrl}/key`, addGetAuthorization(accessString))
+        var data = await response.json()
+        setKeys(data)
     }
 
     useEffect( () => {
-        getKeys();
+        getKeys()
     },[]);
 
     const onKeySelected = (kselected:AccessKey|null) => {
-        var key=keys?.find(k => k.accessKey===kselected);
-        setSelectedKey(key);
-        setDescrition(key?.description!);
-        setExpire(key?.expire!);
-        var res=parseResource(key?.accessKey.resource!);
-        setScope(res.scope);
-        setKeyType(key?.accessKey.type!);
-        setNamespace(res.namespace);
-        if (res.set===''){
-            setGroupType('');
-            setGroupName('');
+        var key=keys?.find(k => k.accessKey===kselected)
+        setSelectedKey(key)
+        setDescrition(key?.description!)
+        setExpire(key?.expire!)
+        var res=parseResource(key?.accessKey.resource!)
+        setScope(res.scope)
+        setKeyType(key?.accessKey.type!)
+        setNamespace(res.namespace)
+        if (res.set==='') {
+            setGroupType('')
+            setGroupName('')
         }
         else {
-            var [groupType, groupName]=res.set.split('+');
-            setGroupType(groupType);
-            setGroupName(groupName);
+            var [groupType, groupName]=res.set.split('+')
+            setGroupType(groupType)
+            setGroupName(groupName)
         }
-        setPod(res.pod);
-        setContainer(res.container);
+        setPod(res.pod)
+        setContainer(res.container)
     }
 
     const onClickCopy = () => {
-        if (selectedKey) copy(accessKeySerialize(selectedKey?.accessKey));
+        if (selectedKey) copy(accessKeySerialize(selectedKey?.accessKey))
     }
 
     const onClickSave= async () => {
-        var res=buildResource(scope, namespace, groupType, groupName, pod, container);
+        var res=buildResource(scope, namespace, groupType, groupName, pod, container)
+        var payload
         if (selectedKey!==undefined) {
-            selectedKey.accessKey.type=keyType;
-            selectedKey.accessKey.resource=res;
-            var key={ accessKey:selectedKey?.accessKey, description, expire };
-            var payload=JSON.stringify(key);
-            await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, addPutAuthorization(accessString, payload));
+            selectedKey.accessKey.type=keyType
+            selectedKey.accessKey.resource=res
+            var key={ accessKey:selectedKey?.accessKey, description, expire }
+            payload=JSON.stringify(key)
+            await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, addPutAuthorization(accessString, payload))
         }
         else {
-            var newkey={ description, expire, type:keyType, resource:res};
-            var payload=JSON.stringify(newkey);
-            await fetch(`${backendUrl}/key`, addPostAuthorization(accessString, payload));
+            var newkey={ description, expire, type:keyType, resource:res}
+            payload=JSON.stringify(newkey)
+            await fetch(`${backendUrl}/key`, addPostAuthorization(accessString, payload))
         }
-        setDescrition('');
-        setExpire(0);
-        await getKeys();
+        setDescrition('')
+        setExpire(0)
+        await getKeys()
     }
 
     const onClickNew= () => {
-        setSelectedKey(undefined);
-        setDescrition('');
-        var a = Date.now();
-        a+=1000*60*60*24*30; // 30 days
-        setExpire(a);
-        setKeyType('permanent');
-        setScope('');
-        setNamespace('');
-        setGroupType('');
-        setGroupName('');
-        setPod('');
-        setContainer('');
+        setSelectedKey(undefined)
+        setDescrition('')
+        var a = Date.now()
+        a+=1000*60*60*24*30 // 30 days
+        setExpire(a)
+        setKeyType('permanent')
+        setScope('')
+        setNamespace('')
+        setGroupType('')
+        setGroupName('')
+        setPod('')
+        setContainer('')
     }
 
     const onClickDelete= () => {
-        setMsgBox(MsgBoxYesNo('Delete API Key',`Are you sure you want to delete API Key ${selectedKey?.accessKey.id}?`, setMsgBox, (a:MsgBoxButtons)=> a===MsgBoxButtons.Yes? onConfirmDelete() : {}));
+        setMsgBox(MsgBoxYesNo('Delete API Key',`Are you sure you want to delete API Key ${selectedKey?.accessKey.id}?`, setMsgBox, (a:MsgBoxButtons)=> a===MsgBoxButtons.Yes? onConfirmDelete() : {}))
     }
 
     const onConfirmDelete= async () => {
         if (selectedKey!==undefined) {
-            await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, addDeleteAuthorization(accessString));
-            setDescrition('');
-            setExpire(0);
-            getKeys();
+            await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, addDeleteAuthorization(accessString))
+            setDescrition('')
+            setExpire(0)
+            getKeys()
         }
     }
 
@@ -199,7 +200,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
             </DialogActions>
         </Dialog>
         {msgBox}
-    </>);
-};
+    </>)
+}
 
-export default ManageApiSecurity;
+export default ManageApiSecurity

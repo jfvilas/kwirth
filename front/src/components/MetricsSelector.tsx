@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent } from 'react'
-import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, IconButton, InputLabel, List, ListItem, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select, SelectChangeEvent, Stack, TextField, Tooltip, Typography} from '@mui/material'
+import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, SelectChangeEvent, Stack, TextField, Tooltip, Typography} from '@mui/material'
 import { Settings } from '../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 import { MetricDescription } from '../model/MetricDescription'
@@ -95,7 +95,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
 
                     <List sx={{ width: '100%', height:'40%', overflowY: 'auto' }}>
                         {Array.from(props.metricsList.keys()).map((value) => {
-                            if (value.includes(filter)) {
+                            if (value.includes(filter) && value.startsWith('container_')) {
                                 const labelId = `checkbox-list-label-${value}`
                                 return (
                                     <ListItem key={value} disablePadding >
@@ -106,6 +106,9 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
                                         </ListItemButton>
                                     </ListItem>
                                 )
+                            }
+                            else {
+                                return <></>
                             }
                         })}
                     </List>

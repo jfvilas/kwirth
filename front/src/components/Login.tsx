@@ -20,12 +20,13 @@ const Login: React.FC<any> = (props:IProps) => {
     const [newPassword2, setNewPassword2] = useState('');
 
     const login = async (user:string, password:string, newPassword:string='') => {
+        var payload
         if (newPassword!=='') {
-            var payload=JSON.stringify({user:user, password:password, newpassword:newPassword});
+            payload=JSON.stringify({user:user, password:password, newpassword:newPassword});
             return await fetch(backendUrl+'/login/password', addPostAuthorization('',payload));
         }
         else {
-            var payload=JSON.stringify({user:user, password:password});
+            payload=JSON.stringify({user:user, password:password});
             return await fetch(backendUrl+'/login', addPostAuthorization('',payload));
         }
     }
@@ -37,9 +38,10 @@ const Login: React.FC<any> = (props:IProps) => {
     }
 
     const onClickOk = async () => {
+        var result
         if(changingPassword) {
             if (newPassword1===newPassword2) {
-                var result = await login(user,password,newPassword1);
+                result = await login(user,password,newPassword1);
                 if (result.status===200) {
                     setUser('');
                     setPassword('');
@@ -54,7 +56,7 @@ const Login: React.FC<any> = (props:IProps) => {
             }
         }
         else {
-            var result = await login(user,password);
+            result = await login(user,password);
             switch (result.status) {
                 case 200:
                     setUser('');

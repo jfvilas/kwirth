@@ -1,6 +1,6 @@
 import { Box } from '@mui/material'
 import { LogObject } from '../model/LogObject'
-import { LogMessage, MetricsMessage, SignalMessage, SignalMessageLevelEnum, StreamMessage } from '@jfvilas/kwirth-common'
+import { LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { MetricsObject } from '../model/MetricsObject'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
@@ -24,9 +24,9 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 txt=txt.replaceAll('\n','\n'+f).trimEnd()
             }
             else if (props.logObject.view==='namespace') {
-                var fill=message.pod!.length+1
-                var f=' '.repeat(fill)
-                txt=txt.replaceAll('\n','\n'+f).trimEnd()
+                var preLength=message.pod!.length+1
+                var preBlanks=' '.repeat(preLength)
+                txt=txt.replaceAll('\n','\n'+preBlanks).trimEnd()
             }
 
             if (props.logObject.view==='cluster') {
