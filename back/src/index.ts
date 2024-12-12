@@ -13,7 +13,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import WebSocket from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { LogConfig, LogMessage, MetricsConfigModeEnum, ServiceConfigActionEnum, ServiceConfigFlowEnum, versionGreatThan, accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier, KwirthData, ServiceConfigChannelEnum, ServiceConfig, SignalMessage, SignalMessageLevelEnum, ServiceConfigViewEnum } from '@jfvilas/kwirth-common'
+import { LogConfig, LogMessage, MetricsConfigModeEnum, ServiceConfigActionEnum, ServiceConfigFlowEnum, versionGreatThan, accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier, KwirthData, ServiceConfigChannelEnum, ServiceConfig, SignalMessage, SignalMessageLevelEnum, ServiceConfigViewEnum, ServiceMessageTypeEnum } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { getServiceScopeLevel } from './tools/AuthorizationManagement'
 import { getPodsFromGroup } from './tools/KubernetesOperations'
@@ -29,13 +29,15 @@ import { clearInterval } from 'timers'
 
 import * as stream from 'stream'
 import { PassThrough } from 'stream'; 
+import { AssetData } from './tools/Metrics'
+import { assert } from 'console'
 const http = require('http')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const requestIp = require ('request-ip')
 const PORT = 3883
 const buffer:Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages
-const websocketIntervals:Map<WebSocket, {id:string, timeout: NodeJS.Timeout, working:boolean, prevValues: number[], content: {podNamespace:string, podName:string, containerName:string}[]} []>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketIntervals:Map<WebSocket, {id:string, timeout: NodeJS.Timeout, working:boolean, prevValues: number[], content: AssetData[]} []>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 const websocketLogStreams:Map<WebSocket, PassThrough>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 
 // Kubernetes API access
@@ -79,13 +81,13 @@ const getMyKubernetesData = async ():Promise<KwirthData> => {
 }
 
 // split a block of stdout into several lines and send them over the websocket
-const sendLogData = (webSocket:WebSocket, namespace:string, pod:string, source:string, logConfig:LogConfig) => {
+const sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, source:string, logConfig:LogConfig) => {
     const logLines = source.split('\n')
     var msg:LogMessage = {
-        namespace,
+        namespace: podNamespace,
         instance: logConfig.instance,
-        type: 'data',
-        pod,
+        type: ServiceMessageTypeEnum.DATA,
+        pod: podName,
         channel: ServiceConfigChannelEnum.LOG,
         text: '',
     }
@@ -97,33 +99,15 @@ const sendLogData = (webSocket:WebSocket, namespace:string, pod:string, source:s
     }
 }
 
-const getPodNode = async (namespace:string, pod:string) => {
-    try {
-        const podResponse = await coreApi.readNamespacedPod(pod, namespace)
-        const nodeName = podResponse.body.spec?.nodeName
-        return nodeName
-    }
-    catch (error) {
-        console.error('Error obteniendo la información del pod:', error);
-    }
-    return undefined
-}
-
-const getContainerMetricValue = async (metricName:string, podNamespace:string, podName:string, containerName:string) => {
+const getContainerMetricValue = async (metricName:string, view:ServiceConfigViewEnum, podNode:string, asset:AssetData) => {
     var total=0
-    var nodeName=await getPodNode(podNamespace, podName)
-    if (nodeName) {
-        var node=ClusterData.nodes.get(nodeName)
-        if (node) {
-            var metric = await ClusterData.metrics.extractContainerMetrics(metricName, node, podNamespace, podName, containerName)
-            total = metric.value
-        }
-        else {
-            console.log('No node found for calculating pod metric value', podNamespace, podName, containerName)
-        }
+    var node=ClusterData.nodes.get(podNode)
+    if (node) {
+        var metric = await ClusterData.metrics.extractContainerMetrics(metricName, view, node, asset)
+        total = metric.value
     }
     else {
-        console.log('No nodeName found for calculating pod metric value', podNamespace, podName, containerName)    
+        console.log('No node found for calculating pod metric value', asset)
     }
     return total
 }
@@ -154,7 +138,7 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
     console.log('smd')
     var metricsMessage:MetricsMessage = {
         channel: ServiceConfigChannelEnum.METRICS,
-        type: 'data',
+        type: ServiceMessageTypeEnum.DATA,
         instance: metricsConfig.instance,
         value: [],
         namespace: metricsConfig.namespace,
@@ -178,24 +162,25 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
             return
         }
         instance.working=true
-        console.log('Content to process', instance.content)
+        console.log('Content to process', instance.content.map (o => o.podNode+'/'+o.podNamespace+'/'+o.podName+'/'+o.containerName+'\n'))
 
         metricsMessage.value=[]
         for (var metricName of metricsConfig.metrics) {
             console.log('Calculating', metricName, 'for', metricsConfig.view)
-            var individualValue:number[]=[]
+            var uniqueValues:number[]=[]
             var total=0
             switch(metricsConfig.view) {
                 case ServiceConfigViewEnum.NAMESPACE:
                 case ServiceConfigViewEnum.GROUP:
                 case ServiceConfigViewEnum.POD:
-                    for (var object of instance.content) {
-                        var result = await getContainerMetricValue(metricName, object.podNamespace, object.podName, object.containerName)
-                        individualValue.push(result)
-                        console.log('Result', object.podNamespace, object.podName, object.containerName, metricName, result)
+                case ServiceConfigViewEnum.CONTAINER:
+                    for (var asset of instance.content) {
+                        var result = await getContainerMetricValue(metricName, metricsConfig.view, asset.podNode, asset)
+                        uniqueValues.push(result)
+                        //console.log('Result', object.podNamespace, object.podName, object.containerName, metricName, result)
                     }
-                    total=getTotal(metricName,individualValue)
-                    console.log(`Total value (${individualValue.length} values)`, metricName, instance.id, total)
+                    total=getTotal(metricName,uniqueValues)
+                    console.log(`Total value (${uniqueValues.length} values for instnace ${instance.id}`, metricName, total)
                     break
                 default:
                     console.log('Invalid view for smd')
@@ -227,7 +212,7 @@ const sendChannelSignal = (webSocket: WebSocket, level: SignalMessageLevelEnum, 
                 level,
                 channel: serviceConfig.channel,
                 instance: serviceConfig.instance,
-                type: 'signal',
+                type: ServiceMessageTypeEnum.SIGNAL,
                 text
             }
             webSocket.send(JSON.stringify(sgnMsg))
@@ -264,7 +249,7 @@ const startPodService = (podNamespace:string, podName:string, containerName:stri
     }
 }
 
-const updatePodService = (eventType:string, podNamespace:string, podName:string, containerName:string, webSocket:WebSocket, serviceConfig:ServiceConfig) => {
+const updatePodService = async (eventType:string, podNamespace:string, podName:string, containerName:string, webSocket:WebSocket, serviceConfig:ServiceConfig) => {
     console.log('updatePodService: ', serviceConfig.channel)
     switch(serviceConfig.channel) {
         case ServiceConfigChannelEnum.LOG:
@@ -276,6 +261,10 @@ const updatePodService = (eventType:string, podNamespace:string, podName:string,
             var instance = instances?.find((instance) => instance.id === metricsConfig.instance)
             if (instance) {
                 if (eventType==='DELETED') instance.content = instance.content.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
+                if (eventType==='MODIFIED') {
+                    var thisPod = instance.content.find(p => p.podNamespace===podNamespace && p.podName===podName && p.containerName===containerName)
+                    if (thisPod) thisPod.startTime = await getPodStartTime(podNamespace,podName)
+                }
             }
             break
         default:
@@ -301,7 +290,6 @@ const startPodLog = async (webSocket:WebSocket, podNamespace:string, podName:str
                 buffer.set(webSocket,next)
                 text=text.substring(0,i)
             }
-            // +++ do we need to implement container specifically?
             sendLogData(webSocket, podNamespace, podName, text, logConfig)
         })
 
@@ -326,6 +314,19 @@ const startPodLog = async (webSocket:WebSocket, podNamespace:string, podName:str
     }
 }
 
+const getPodStartTime = async (namespace:string, pod:string) => {
+    var epoch:number=0
+    try {
+        const podResponse = await coreApi.readNamespacedPod(pod, namespace);
+        const startTime = podResponse.body.status?.startTime;
+        if (startTime!==undefined) epoch = startTime?.getTime()
+    }
+    catch (error) {
+        console.error('Error obtaining pod information:', error);
+    }
+    return epoch
+}
+
 // start pods metrics
 const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, metricsConfig:MetricsConfig) => {
     try {
@@ -335,17 +336,26 @@ const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName
                 // snapshot is just obtaeing metrics and sending response, no further actionas will be taken
                 break
             case MetricsConfigModeEnum.STREAM:
-                if (websocketIntervals.has(webSocket)) {
-                    var instances = websocketIntervals.get(webSocket)
-                    var instance = instances?.find((instance) => instance.id === metricsConfig.instance)
-                    instance?.content.push ({podNamespace, podName, containerName})
+                const podResponse = await coreApi.readNamespacedPod(podName, podNamespace)
+                const podNode = podResponse.body.spec?.nodeName
+                if (podNode) {
+                    var startTime= await getPodStartTime(podNamespace, podName)
+                    if (websocketIntervals.has(webSocket)) {
+                        var instances = websocketIntervals.get(webSocket)
+                        var instance = instances?.find((instance) => instance.id === metricsConfig.instance)
+                        instance?.content.push ({podNode, podNamespace, podName, containerName, startTime})
+                    }
+                    else {
+                        websocketIntervals.set(webSocket, [])
+                        var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000
+                        sendMetricsData(webSocket,metricsConfig)
+                        var timeout = setInterval(() => sendMetricsData(webSocket,metricsConfig), interval)
+                        var instances=websocketIntervals.get(webSocket)
+                        instances?.push({id:metricsConfig.instance, working:false, timeout, prevValues:[],  content:[{podNode, podNamespace, podName, containerName,startTime}]})
+                    }
                 }
                 else {
-                    websocketIntervals.set(webSocket, [])
-                    var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000
-                    var timeout = setInterval(() => sendMetricsData(webSocket,metricsConfig), interval)
-                    var instances=websocketIntervals.get(webSocket)
-                    instances?.push({id:metricsConfig.instance, working:false, timeout, prevValues:[],  content:[{podNamespace, podName, containerName}]})
+                    console.log(`Cannot determine node for ${podNamespace}/${podName}}, will not be added`)
                 }
                 break
             default:

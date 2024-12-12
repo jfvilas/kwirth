@@ -95,7 +95,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
 
                     <List sx={{ width: '100%', height:'40%', overflowY: 'auto' }}>
                         {Array.from(props.metricsList.keys()).map((value) => {
-                            if (value.includes(filter) && value.startsWith('container_')) {
+                            if (value.includes(filter) && (value.startsWith('container_') || value.startsWith('kwirth_'))) {
                                 const labelId = `checkbox-list-label-${value}`
                                 return (
                                     <ListItem key={value} disablePadding >

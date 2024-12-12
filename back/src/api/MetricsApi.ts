@@ -26,15 +26,30 @@ export class MetricsApi {
                     console.log(err)
                 }
             })
-        this.route.route('/debug/node/:nodename')
+        this.route.route('/debug/:action/:nodename')
             .all( async (req,res, next) => {
                 if (!validKey(req,res)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    var json = ClusterData.nodes.get(req.params.nodename)?.metricValues
-                    res.status(200).json(json)
+                    if (req.params.action==='node') {
+                        var json:any = {}
+                        for(var k of ClusterData.nodes.get(req.params.nodename)?.metricValues.keys()!) {
+                            var v=ClusterData.nodes.get(req.params.nodename)?.metricValues.get(k)
+                            json[k]=v
+                        }
+                        for(var k of ClusterData.nodes.get(req.params.nodename)?.machineMetrics.keys()!) {
+                            var v=ClusterData.nodes.get(req.params.nodename)?.machineMetrics.get(k)
+                            json[k]=v
+                        }
+                        res.status(200).json(json)
+                    }
+                    if (req.params.action==='text') {
+                        var node=ClusterData.nodes.get(req.params.nodename)
+                        var text = await ClusterData.metrics.readCAdvisorMetrics(node!)
+                        res.status(200).send(text)
+                    }
                 }
                 catch (err) {
                     res.status(400).send()

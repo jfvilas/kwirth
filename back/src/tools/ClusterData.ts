@@ -6,6 +6,7 @@ export interface NodeData {
     ip:string
     kubernetesNode: V1Node
     metricValues:Map<string,number>
+    machineMetrics:Map<string,number>
     timestamp:number
 }
 export class ClusterData {
@@ -26,10 +27,11 @@ export class ClusterData {
         var resp = await this.coreApi.listNode()
         for (var node of resp.body.items) {
             var nodeData:NodeData = {
-                name:node.metadata?.name!,
-                ip:node.status?.addresses!.find(a => a.type==='InternalIP')?.address!,
+                name: node.metadata?.name!,
+                ip: node.status?.addresses!.find(a => a.type === 'InternalIP')?.address!,
                 kubernetesNode: node,
                 metricValues: new Map(),
+                machineMetrics: new Map(),
                 timestamp: 0
             }
             ClusterData.nodes.set(nodeData.name, nodeData)
