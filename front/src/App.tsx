@@ -427,6 +427,7 @@ const App: React.FC = () => {
                 channel: ServiceConfigChannelEnum.METRICS,
                 instance: '',
                 interval: tab.metricsObject.interval,
+                aggregate: tab.metricsObject.aggregate,
                 accessKey: cluster!.accessString,
                 scope: ServiceConfigScopeEnum.STREAM,
                 view: tab.metricsObject.view!,
@@ -900,7 +901,7 @@ const App: React.FC = () => {
         if (newSettings) writeSettings(newSettings)
     }
 
-    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum, depth:number, width:number, interval:number) => {
+    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum, depth:number, width:number, interval:number, aggregate:boolean) => {
         setShowMetricsSelector(false)
         setAnchorMenuTab(null)
         if (metrics.length===0) return
@@ -912,6 +913,7 @@ const App: React.FC = () => {
         tab.metricsObject.depth=depth
         tab.metricsObject.width=width
         tab.metricsObject.interval=interval
+        tab.metricsObject.aggregate=aggregate
         startMetrics(tab)
     }
 

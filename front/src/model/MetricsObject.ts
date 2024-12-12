@@ -5,6 +5,7 @@ export class MetricsObject {
     public name?: string
     public mode: MetricsConfigModeEnum = MetricsConfigModeEnum.SNAPSHOT
     public interval: number = 60
+    public aggregate: boolean = false
     public depth: number = 10
     public width : number = 3
     public metrics: string[] = []
@@ -17,7 +18,6 @@ export class MetricsObject {
     public pod?: string
     public container?: string
     public serviceInstance: string = ''
-//    public ws:WebSocket|null = null
     public started:boolean=false
     public paused:boolean=false
     public pending:boolean=false

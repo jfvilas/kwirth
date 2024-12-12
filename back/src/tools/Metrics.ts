@@ -73,8 +73,11 @@ export class Metrics {
             line=line.substring(6).trim()
             var i=line.indexOf(' ')
             var mname=line.substring(0,i).trim()
-            // these two counters are global, they have no "{}", so we ignore them +++ maybe we can just search for "{"
-            if ('machine_scrape_error container_scrape_error'.includes(mname)) continue
+
+            if ('machine_scrape_error container_scrape_error'.includes(mname)) {
+                // +++ implement a general messaging system for the user, for sending kwirth-scope signaling
+                continue
+            }
 
             if (!map.has(mname)) map.set(mname,{help: '', type: '', eval: ''})
 

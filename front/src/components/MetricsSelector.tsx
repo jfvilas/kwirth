@@ -1,11 +1,11 @@
 import React, { useState, ChangeEvent } from 'react'
-import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, SelectChangeEvent, Stack, TextField, Tooltip, Typography} from '@mui/material'
+import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Radio, RadioGroup, Select, SelectChangeEvent, Stack, TextField, Tooltip, Typography} from '@mui/material'
 import { Settings } from '../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 import { MetricDescription } from '../model/MetricDescription'
 
 interface IProps {
-    onMetricsSelected:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number) => {}
+    onMetricsSelected:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number, aggregate:boolean) => {}
     settings:Settings
     metricsList:Map<string,MetricDescription>
 }
@@ -16,6 +16,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
     const [metricsWidth, setMetricsWidth] = useState(props.settings.metricsWidth)
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
     const [metricsChecked, setMetricsChecked] = React.useState<string[]>([])
+    const [metricsAggregate, setMetricsAggregate] = React.useState<boolean>(props.settings.metricsAggregate)
     const [filter, setFilter] = useState('')
 
     const onChangeMetricsMode = (event: SelectChangeEvent) => {
@@ -34,8 +35,12 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
         setMetricsInterval(+event.target.value)
     }
 
+    const onChangeMetricsAggregate = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setMetricsAggregate(Boolean((event.target as HTMLInputElement).value))
+     }
+
     const closeOk = () =>{
-        props.onMetricsSelected(metricsChecked, metricsMode as MetricsConfigModeEnum, metricsDepth, metricsWidth, metricsInterval)
+        props.onMetricsSelected(metricsChecked, metricsMode as MetricsConfigModeEnum, metricsDepth, metricsWidth, metricsInterval, metricsAggregate)
     }
 
     const metricAddOrRemove = (value:string) => {
@@ -91,7 +96,13 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
                         <TextField value={metricsInterval} onChange={onChangeMetricsInterval} sx={{width:'25%'}} variant='standard' label='Interval' type='number'></TextField>
                     </Stack>
 
-                    <TextField value={filter} onChange={(event) => setFilter(event.target.value)} variant='standard' label='Filter'></TextField>
+                    <Stack direction={'row'}>
+                        <TextField value={filter} onChange={(event) => setFilter(event.target.value)} sx={{width:'50%'}}variant='standard' label='Filter'></TextField>
+                        <RadioGroup defaultValue="true" value={metricsAggregate.toString()} onChange={onChangeMetricsAggregate} name="radio-buttons-group" row >
+                            <FormControlLabel control={<Radio/>} value="true" label="Aggregate objects"></FormControlLabel>
+                            <FormControlLabel control={<Radio/>} value="false" label="Individual objects"></FormControlLabel>
+                        </RadioGroup>
+                    </Stack>
 
                     <List sx={{ width: '100%', height:'40%', overflowY: 'auto' }}>
                         {Array.from(props.metricsList.keys()).map((value) => {
@@ -121,7 +132,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
             </DialogContent>
             <DialogActions>
                 <Button onClick={closeOk} disabled={metricsChecked.length===0}>OK</Button>
-                <Button onClick={() => props.onMetricsSelected([], MetricsConfigModeEnum.SNAPSHOT, 0, 0, 0)}>CANCEL</Button>
+                <Button onClick={() => props.onMetricsSelected([], MetricsConfigModeEnum.SNAPSHOT, 0, 0, 0, false)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent } from 'react'
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, MenuItem, Radio, RadioGroup, Select, SelectChangeEvent, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
 import { Settings } from '../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
@@ -17,6 +17,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
     const [metricsDepth, setMetricsDepth] = useState(props.settings.metricsDepth)
     const [metricsWidth, setMetricsWidth] = useState(props.settings.metricsWidth)
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
+    const [metricsAggregate, setMetricsAggregate] = useState(props.settings.metricsAggregate)
     const [clusterMetricsInterval, setClusterMetricsInterval] = useState(props.settings.clusterMetricsInterval)
 
     const onChangeLogMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
@@ -51,6 +52,10 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         setMetricsInterval(+event.target.value)
     }
 
+    const onChangeMetricsAggregate = (event:ChangeEvent<HTMLInputElement>) => {
+        setMetricsAggregate(event.target.value==='true')
+    }
+
     const onChangeClusterMetricsInterval = (event:ChangeEvent<HTMLInputElement>) => {
         setClusterMetricsInterval(+event.target.value)
     }
@@ -65,6 +70,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         newSettings.metricsWidth = metricsWidth
         newSettings.metricsDepth = metricsDepth
         newSettings.metricsInterval = metricsInterval
+        newSettings.metricsAggregate = metricsAggregate
         newSettings.clusterMetricsInterval = clusterMetricsInterval
         props.onClose(newSettings)
     }
@@ -100,6 +106,10 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
                                 <MenuItem value={'stream'}>Stream</MenuItem>
                             </Select>
                         </FormControl>
+                        <RadioGroup defaultValue="true" value={metricsAggregate?.toString()} onChange={onChangeMetricsAggregate} row>
+                            <FormControlLabel control={<Radio/>} value="true" label="Aggregate objects"></FormControlLabel>
+                            <FormControlLabel control={<Radio/>} value="false" label="Individual objects"></FormControlLabel>
+                        </RadioGroup>
                         <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField>
                         <Stack spacing={1} direction={'row'}>
                             <FormControl variant='standard' sx={{width:'33%'}}>

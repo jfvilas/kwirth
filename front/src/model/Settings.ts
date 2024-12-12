@@ -17,6 +17,8 @@ class Settings {
         'container_network_receive_bytes_total',
         'container_network_transmit_bytes_total'
     ]
+    public metricsAggregate:boolean=true
+
     public clusterMetricsInterval:number = 120
 }
 
