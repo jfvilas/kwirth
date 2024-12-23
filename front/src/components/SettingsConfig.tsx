@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent } from 'react'
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, MenuItem, Radio, RadioGroup, Select, SelectChangeEvent, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
+import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, MenuItem, Radio, RadioGroup, Select, SelectChangeEvent, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
 import { Settings } from '../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
@@ -52,8 +52,8 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         setMetricsInterval(+event.target.value)
     }
 
-    const onChangeMetricsAggregate = (event:ChangeEvent<HTMLInputElement>) => {
-        setMetricsAggregate(event.target.value==='true')
+    const onChangeMetricsAggregate = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setMetricsAggregate(event.target.checked)
     }
 
     const onChangeClusterMetricsInterval = (event:ChangeEvent<HTMLInputElement>) => {
@@ -106,15 +106,12 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
                                 <MenuItem value={'stream'}>Stream</MenuItem>
                             </Select>
                         </FormControl>
-                        <RadioGroup defaultValue="true" value={metricsAggregate?.toString()} onChange={onChangeMetricsAggregate} row>
-                            <FormControlLabel control={<Radio/>} value="true" label="Aggregate objects"></FormControlLabel>
-                            <FormControlLabel control={<Radio/>} value="false" label="Individual objects"></FormControlLabel>
-                        </RadioGroup>
+                        <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={onChangeMetricsAggregate}/>} label='Aggregate resource metrics' />
                         <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField>
                         <Stack spacing={1} direction={'row'}>
                             <FormControl variant='standard' sx={{width:'33%'}}>
-                                <InputLabel id="labeldepth">Depth</InputLabel>
-                                <Select value={metricsDepth.toString()} onChange={onChangeMetricsDepth} labelId="labeldepth" variant='standard'>
+                                <InputLabel id='labeldepth'>Depth</InputLabel>
+                                <Select value={metricsDepth.toString()} onChange={onChangeMetricsDepth} labelId='labeldepth' variant='standard'>
                                 <MenuItem value={10}>10</MenuItem>
                                 <MenuItem value={20}>20</MenuItem>
                                 <MenuItem value={50}>50</MenuItem>
@@ -122,8 +119,8 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
                                 </Select>
                             </FormControl>
                             <FormControl variant='standard' sx={{width:'33%'}}>
-                                <InputLabel id="labelwidth">Width</InputLabel>
-                                <Select value={metricsWidth.toString()} onChange={onChangeMetricsWidth} labelId="labelwidth" variant='standard'>
+                                <InputLabel id='labelwidth'>Width</InputLabel>
+                                <Select value={metricsWidth.toString()} onChange={onChangeMetricsWidth} labelId='labelwidth' variant='standard'>
                                 <MenuItem value={1}>1</MenuItem>
                                 <MenuItem value={2}>2</MenuItem>
                                 <MenuItem value={3}>3</MenuItem>

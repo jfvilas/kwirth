@@ -22,72 +22,90 @@ const Login: React.FC<any> = (props:IProps) => {
     const login = async (user:string, password:string, newPassword:string='') => {
         var payload
         if (newPassword!=='') {
-            payload=JSON.stringify({user:user, password:password, newpassword:newPassword});
-            return await fetch(backendUrl+'/login/password', addPostAuthorization('',payload));
+            payload=JSON.stringify({user:user, password:password, newpassword:newPassword})
+            try {
+                var result = await fetch(backendUrl+'/login/password', addPostAuthorization('',payload))
+                return result
+            }
+            catch {
+                return undefined
+            }
         }
         else {
-            payload=JSON.stringify({user:user, password:password});
-            return await fetch(backendUrl+'/login', addPostAuthorization('',payload));
+            payload=JSON.stringify({user:user, password:password})
+            try {
+                var result = await fetch(backendUrl+'/login', addPostAuthorization('',payload))
+                return result
+            }
+            catch {
+                return undefined
+            }
         }
     }
 
     const loginOk = (jsonResult:any) => {
-        var receivedUser:User=jsonResult as User;
-        var accessKey=accessKeyBuild(jsonResult.accessKey.id, jsonResult.accessKey.type, jsonResult.accessKey.resource);
-        props.onClose(true, receivedUser, accessKeySerialize(accessKey));
+        var receivedUser:User=jsonResult as User
+        var accessKey=accessKeyBuild(jsonResult.accessKey.id, jsonResult.accessKey.type, jsonResult.accessKey.resource)
+        props.onClose(true, receivedUser, accessKeySerialize(accessKey))
     }
 
     const onClickOk = async () => {
         var result
         if(changingPassword) {
             if (newPassword1===newPassword2) {
-                result = await login(user,password,newPassword1);
-                if (result.status===200) {
-                    setUser('');
-                    setPassword('');
-                    loginOk(await result.json());
+                result = await login(user,password,newPassword1)
+                if (result && result.status===200) {
+                    setUser('')
+                    setPassword('')
+                    loginOk(await result.json())
                 }
                 else {
-                    setMsgBox(MsgBoxOkWarning('Login',`Password could not be changesd.`, setMsgBox));
-                    setUser('');
-                    setPassword('');
-                    setChangingPassword(false);
+                    setMsgBox(MsgBoxOkWarning('Login',`Password could not be changesd.`, setMsgBox))
+                    setUser('')
+                    setPassword('')
+                    setChangingPassword(false)
                 }
             }
         }
         else {
-            result = await login(user,password);
-            switch (result.status) {
-                case 200:
-                    setUser('');
-                    setPassword('');
-                    loginOk(await result.json());
-                    break;
-                case 201:
-                    setNewPassword1('');
-                    setNewPassword2('');
-                    setChangingPassword(true);
-                    break;
-                case 401:
-                setMsgBox(MsgBoxOkError('Login',`You have entered invalid credentials.`, setMsgBox));
-                break;
+            result = await login(user,password)
+            if (result) {
+                switch (result.status) {
+                    case 200:
+                        setUser('')
+                        setPassword('')
+                        loginOk(await result.json())
+                        break
+                    case 201:
+                        setNewPassword1('')
+                        setNewPassword2('')
+                        setChangingPassword(true)
+                        break
+                    case 401:
+                        setMsgBox(MsgBoxOkError('Login',`You have entered invalid credentials.`, setMsgBox))
+                        break
+                }
+            }
+            else {
+                setMsgBox(MsgBoxOkError('Login',`Error validatng credentials, cannot access Kwirth backend.`, setMsgBox))
             }
         }
     }
 
     const onClickCancel = () => {
         if (changingPassword){
-            setChangingPassword(false);
-            setUser('');
-            setPassword('');
+            setChangingPassword(false)
+            setUser('')
+            setPassword('')
         }
         else {
-            props.onClose(false,null,'');
+            props.onClose(false,null,'')
         }
     }
 
     const onClickChangePassword = async () => {
-        if ((await login(user,password)).status===200) {
+        var result=await login(user,password)
+        if (result && result.status===200) {
             setChangingPassword(true);
         }
     }

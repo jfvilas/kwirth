@@ -41,7 +41,7 @@ export class ClusterData {
 
         // load metrics avaliable
         console.log('********* load metrics')
-        ClusterData.metrics = new Metrics(this.coreApi, this.saToken!)
+        ClusterData.metrics = new Metrics(this.saToken!)
         ClusterData.metrics.loadMetrics(Array.from(ClusterData.nodes.values()))
 
 

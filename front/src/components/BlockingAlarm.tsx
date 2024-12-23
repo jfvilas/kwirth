@@ -17,11 +17,11 @@ const BlockingAlarm: React.FC<any> = (props:IProps) => {
             <DialogContent>
                 <DialogContentText>
                     <Stack direction='row' alignItems={'center'}>
-                        { props.alarm.severity===AlarmSeverity.error && <Error fontSize='large' color='error'/>}
-                        { props.alarm.severity===AlarmSeverity.warning && <Error fontSize='large' color='warning'/>}
-                        { props.alarm.severity===AlarmSeverity.success && <Error fontSize='large' color='info'/>}
-                        { props.alarm.severity===AlarmSeverity.info && <Error fontSize='large' color='info'/>}
-                        { props.alarm.severity===AlarmSeverity.default && <Error fontSize='large' color='primary'/>}
+                        { props.alarm.severity===AlarmSeverity.ERROR && <Error fontSize='large' color='error'/>}
+                        { props.alarm.severity===AlarmSeverity.WARNING && <Error fontSize='large' color='warning'/>}
+                        { props.alarm.severity===AlarmSeverity.SUCCESS && <Error fontSize='large' color='info'/>}
+                        { props.alarm.severity===AlarmSeverity.INFO && <Error fontSize='large' color='info'/>}
+                        { props.alarm.severity===AlarmSeverity.DEFAULT && <Error fontSize='large' color='primary'/>}
                         <Typography sx={{ml:1}}>{props.alarm.message}</Typography>
                     </Stack>
                 </DialogContentText>

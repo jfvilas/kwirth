@@ -60,7 +60,6 @@ const TabContent: React.FC<any> = (props:IProps) => {
     }
 
     const formatMetrics = () => {
-        //+++ actually, is rendered according to user events, but should not if no new data is received
         if (!props.metricsObject || !props.metricsObject.metrics || !props.metricsObject.values || props.metricsObject.values.length===0) return <></>
         if (props.metricsObject.values) {
 
@@ -69,7 +68,6 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 for (var i=0;i<props.metricsObject.values.length;i++) {
                     var x=new Date (props.metricsObject.timestamps[i])
                     var label = `${x.getHours().toString().padStart(2,'0')}:${x.getMinutes().toString().padStart(2,'0')}:${x.getSeconds().toString().padStart(2,'0')}`
-                    //serie.push({ time:label, value:props.metricsObject.values[i][index]+Math.random()*100})
                     serie.push({ time:label, value:props.metricsObject.values[i][index]})
                 }
                 return (
@@ -91,15 +89,13 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 filas.push(charts.slice(i, i + props.metricsObject.width))
             }
 
-            return (
-                <>
+            return (<>
                     {filas.map((fila, index) => (
                     <div key={index} style={{ display: 'flex', justifyContent: 'space-around' }}>
                         {fila}
                     </div>
                     ))}
-                </>
-                )
+                </>)
         }
     }
 

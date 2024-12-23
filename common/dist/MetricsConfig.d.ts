@@ -7,5 +7,5 @@ export interface MetricsConfig extends ServiceConfig {
     mode: MetricsConfigModeEnum;
     metrics: string[];
     interval?: number;
-    aggregate?: boolean;
+    aggregate: boolean;
 }

@@ -330,7 +330,7 @@ const App: React.FC = () => {
                     if (msg.text.includes(alarm.expression)) {
                         if (alarm.beep) Beep.beepError()
                         
-                        if (alarm.type===AlarmType.blocking) {
+                        if (alarm.type===AlarmType.BLOCKING) {
                             setBlockingAlarm(alarm)
                             setShowBlockingAlarm(true)
                         }
@@ -349,7 +349,7 @@ const App: React.FC = () => {
                             var opts:OptionsObject = {
                                 anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
                                 variant:alarm.severity,
-                                autoHideDuration:(alarm.type===AlarmType.timed? 3000:null),
+                                autoHideDuration:(alarm.type===AlarmType.TIMED? 3000:null),
                                 action
                             }
                             enqueueSnackbar(alarm.message, opts)
@@ -374,13 +374,13 @@ const App: React.FC = () => {
 
         switch (msg.type) {
             case 'data':
-                tab.metricsObject.values.push(msg.value)
+                //+++tab.metricsObject.values.push(msg.value)
                 tab.metricsObject.timestamps.push(msg.timestamp)
                 if (tab.metricsObject.values.length>tab.metricsObject.depth) {
                     tab.metricsObject.values.shift()
                     tab.metricsObject.timestamps.shift()
                 }
-                if (!tab.metricsObject.paused) setReceivedMetricValues(msg.value)
+                //+++if (!tab.metricsObject.paused) setReceivedMetricValues(msg.value)
                 break
             case 'signal':
                 tab.metricsObject.serviceInstance = msg.instance
@@ -462,6 +462,7 @@ const App: React.FC = () => {
             instance: tab.metricsObject.serviceInstance,
             mode: tab.metricsObject.mode,
             metrics: [],
+            aggregate: false,
             accessKey: cluster!.accessString,
             view: tab.metricsObject.view!,
             scope: ServiceConfigScopeEnum.NONE,
@@ -508,6 +509,7 @@ const App: React.FC = () => {
         setAnchorMenuTab(null)
         if (!selectedTab) return
 
+        selectedTab.ws?.close()
         if (selectedTab.logObject) stopLog(selectedTab)
         if (selectedTab.metricsObject) stopMetrics(selectedTab)
         if (tabs.length===1)

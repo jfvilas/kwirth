@@ -4,20 +4,19 @@ import { ServiceConfigViewEnum } from "@jfvilas/kwirth-common"
 
 export interface AssetData {
     podNode:string, 
-    podNamespace:string, 
+    podNamespace:string,
+    podGroup:string,
     podName:string, 
     containerName:string, 
     startTime:number
 }
 
 export class Metrics {
-    private coreApi:CoreV1Api
     private token:string
     private metricsList:Map<string,{help:string, type:string, eval:string}>
     private loadingClusterMetrics: boolean=false
 
-    constructor (coreApi:CoreV1Api, token:string) {
-        this.coreApi=coreApi
+    constructor (token:string) {
         this.token=token
         this.metricsList=new Map()
     }
@@ -65,7 +64,7 @@ export class Metrics {
     async loadNodeMetrics(node:NodeData):Promise <Map<string,{help:string, type:string, eval:string}>> {
         var map:Map<string,{help:string, type:string, eval:string}> = new Map()
 
-        console.log('Loading metrics from', node.ip)
+        //+++ uncomment console.log('Loading metrics from', node.ip)
         var allMetrics=await this.readCAdvisorMetrics(node)
         var lines=allMetrics.split('\n').filter(l => l.startsWith('#'))
         for (var line of lines) {
@@ -115,10 +114,10 @@ export class Metrics {
             text = await resp.text()
         }
         catch (error:any) {
-            console.log(`Error obtaining node metrics from cAdvisor at node ${node.ip}`)
+            //+++ uncomment console.log(`Error obtaining node metrics from cAdvisor at node ${node.ip}`)
             text=''
         }
-        text+='# HELP kwirth_container_memory_precentage Percentage of memory used by asset\n'
+        text+='# HELP kwirth_container_memory_precentage Percentage of memory used by object\n'
         text+='# TYPE kwirth_container_memory_precentage gauge\n'
         text+='kwirth_container_memory_precentage{container="xxx",pod="reports-5b9ddf4fd4-tl25h",scope="container"} 239 1733656438512\n'
         text+='# HELP kwirth_container_cpu_precentage Percentage of cpu used\n'
@@ -222,35 +221,48 @@ export class Metrics {
         this.loadingClusterMetrics = false
     }
 
-    // getContainerStartTime = async (namespace:string, pod:string, container:string) => {
-    //     var epoch: number=0
-    //     try {
-    //         const podResponse = await this.coreApi.readNamespacedPod(pod, namespace)
-    //         const containers = podResponse.body.status?.containerStatuses
-    //         if (containers!==undefined) {
-    //             containers.forEach(cont => {
-    //                 if (cont.name===container) {
-    //                     const startTime = cont.state?.running?.startedAt
-    //                     if (startTime!==undefined) epoch = startTime?.getTime()
-    //                 }
-    //             })
-    //         }
-    //     }
-    //     catch (error) {
-    //         console.error('Error obtaining pod information:', error);
-    //     }
-    //     return epoch
-    // }
-
-    // +++ when configuring servicemetrics in the front, the user should be able to choose between sum (aggregate all objects) or individual (EACH OBJECT IS DISPLAYED WITH ITS OWN METRICS)
-    public extractContainerKwirthMetrics = async (requestedMetricName:string, node:NodeData, view:ServiceConfigViewEnum, asset:AssetData) => {
+    public getContainerMetricValue = (metricName:string, view:ServiceConfigViewEnum, asset:AssetData) => {
+        var total=0
+        var node=ClusterData.nodes.get(asset.podNode)
+        if (node) {
+            var metric = ClusterData.metrics.extractContainerMetrics(metricName, view, node, asset)
+            total = metric.value
+        }
+        else {
+            console.log('No node found for calculating pod metric value', asset)
+        }
+        return total
+    }
+    
+    public getTotal = (metricName:string, values:number[]) => {
+        var result:number
+        var metric = ClusterData.metrics.getMetric(metricName)
+        switch(metric?.type) {
+            case 'gauge':
+            case 'counter':
+                result = values.reduce((ac,value) => ac+value, 0)
+                break
+            default:
+                console.log(`Unsupported metric type: "${metric?.type}"`)
+                result = 0
+                break
+        }
+        // +++ now process eval
+        if (metric?.eval && metric.eval!=='') {
+    
+        }
+        
+        return result
+    }
+    
+    public extractContainerKwirthMetrics = (requestedMetricName:string, node:NodeData, view:ServiceConfigViewEnum, asset:AssetData) => {
         var result={ value: 0, timestamp: 0 }
 
         switch(requestedMetricName) {
             case 'kwirth_container_cpu_precentage':
                 var vcpus = node.machineMetrics.get('machine_cpu_cores')
                 var seconds = Date.now() - asset.startTime
-                var podSeconds = (await this.extractContainerMetrics('container_cpu_usage_seconds_total', view, node, asset)).value
+                var podSeconds = (this.extractContainerMetrics('container_cpu_usage_seconds_total', view, node, asset)).value
                 if (vcpus && podSeconds) {
                     result = { value: (podSeconds/(vcpus*seconds))*100, timestamp: Date.now() }
                 }
@@ -260,7 +272,7 @@ export class Metrics {
                 return result
             case 'kwirth_container_memory_precentage':
                 var memory = node.machineMetrics.get('machine_memory_bytes')
-                var containerMemory = (await this.extractContainerMetrics('container_memory_usage_bytes', view, node, asset)).value
+                var containerMemory = (this.extractContainerMetrics('container_memory_usage_bytes', view, node, asset)).value
                 if (memory && containerMemory) {
                     result = { value: (containerMemory/memory*100), timestamp: Date.now() }
                 }
@@ -289,8 +301,6 @@ export class Metrics {
         }
         else {
             console.log(`Metric '${metricName}' not found on node ${node.name}. Showing same metric on all nodes`)
-            // for (var onenode of ClusterData.nodes.values())
-            //     console.log(onenode.name, '=>', onenode.metricValues.get(metricName))
             return  { value: 0, timestamp: ClusterData.nodes.get(node.name)?.timestamp }
         }
     }

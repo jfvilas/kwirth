@@ -1,7 +1,7 @@
 import React, { useState, ChangeEvent } from 'react'
-import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Radio, RadioGroup, Select, SelectChangeEvent, Stack, TextField, Tooltip, Typography} from '@mui/material'
-import { Settings } from '../model/Settings'
+import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, SelectChangeEvent, Stack, TextField, Tooltip, Typography} from '@mui/material'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
+import { Settings } from '../model/Settings'
 import { MetricDescription } from '../model/MetricDescription'
 
 interface IProps {
@@ -16,7 +16,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
     const [metricsWidth, setMetricsWidth] = useState(props.settings.metricsWidth)
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
     const [metricsChecked, setMetricsChecked] = React.useState<string[]>([])
-    const [metricsAggregate, setMetricsAggregate] = React.useState<boolean>(props.settings.metricsAggregate)
+    const [metricsAggregate, setMetricsAggregate] = React.useState(true)
     const [filter, setFilter] = useState('')
 
     const onChangeMetricsMode = (event: SelectChangeEvent) => {
@@ -36,7 +36,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
     }
 
     const onChangeMetricsAggregate = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setMetricsAggregate(Boolean((event.target as HTMLInputElement).value))
+        setMetricsAggregate(event.target.checked)
      }
 
     const closeOk = () =>{
@@ -96,12 +96,9 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
                         <TextField value={metricsInterval} onChange={onChangeMetricsInterval} sx={{width:'25%'}} variant='standard' label='Interval' type='number'></TextField>
                     </Stack>
 
-                    <Stack direction={'row'}>
+                    <Stack direction={'row'} spacing={1}>
                         <TextField value={filter} onChange={(event) => setFilter(event.target.value)} sx={{width:'50%'}}variant='standard' label='Filter'></TextField>
-                        <RadioGroup defaultValue="true" value={metricsAggregate.toString()} onChange={onChangeMetricsAggregate} name="radio-buttons-group" row >
-                            <FormControlLabel control={<Radio/>} value="true" label="Aggregate objects"></FormControlLabel>
-                            <FormControlLabel control={<Radio/>} value="false" label="Individual objects"></FormControlLabel>
-                        </RadioGroup>
+                        <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={onChangeMetricsAggregate}/>} label='Aggregate resource metrics' />
                     </Stack>
 
                     <List sx={{ width: '100%', height:'40%', overflowY: 'auto' }}>

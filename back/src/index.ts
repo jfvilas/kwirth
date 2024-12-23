@@ -13,7 +13,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import WebSocket from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { LogConfig, LogMessage, MetricsConfigModeEnum, ServiceConfigActionEnum, ServiceConfigFlowEnum, versionGreatThan, accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier, KwirthData, ServiceConfigChannelEnum, ServiceConfig, SignalMessage, SignalMessageLevelEnum, ServiceConfigViewEnum, ServiceMessageTypeEnum } from '@jfvilas/kwirth-common'
+import { LogConfig, LogMessage, MetricsConfigModeEnum, ServiceConfigActionEnum, ServiceConfigFlowEnum, versionGreatThan, accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier, KwirthData, ServiceConfigChannelEnum, ServiceConfig, SignalMessage, SignalMessageLevelEnum, ServiceConfigViewEnum, ServiceMessageTypeEnum, AssetMetrics } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { getServiceScopeLevel } from './tools/AuthorizationManagement'
 import { getPodsFromGroup } from './tools/KubernetesOperations'
@@ -37,7 +37,7 @@ const bodyParser = require('body-parser')
 const requestIp = require ('request-ip')
 const PORT = 3883
 const buffer:Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages
-const websocketIntervals:Map<WebSocket, {id:string, timeout: NodeJS.Timeout, working:boolean, prevValues: number[], content: AssetData[]} []>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketIntervals:Map<WebSocket, {id:string, timeout: NodeJS.Timeout, working:boolean, prevValues: number[], assets: AssetData[]} []>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 const websocketLogStreams:Map<WebSocket, PassThrough>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 
 // Kubernetes API access
@@ -45,7 +45,7 @@ const kubeConfig = new KubeConfig()
 kubeConfig.loadFromDefault()
 const coreApi = kubeConfig.makeApiClient(CoreV1Api)
 const appsApi = kubeConfig.makeApiClient(AppsV1Api)
-const customApi = kubeConfig.makeApiClient(CustomObjectsApi)
+//const customApi = kubeConfig.makeApiClient(CustomObjectsApi)
 const k8sLog = new Log(kubeConfig)
 
 var secrets:Secrets
@@ -99,48 +99,27 @@ const sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, s
     }
 }
 
-const getContainerMetricValue = async (metricName:string, view:ServiceConfigViewEnum, podNode:string, asset:AssetData) => {
-    var total=0
-    var node=ClusterData.nodes.get(podNode)
-    if (node) {
-        var metric = await ClusterData.metrics.extractContainerMetrics(metricName, view, node, asset)
-        total = metric.value
+const getAssetMetrics = (assetName:string, metricsConfig:MetricsConfig, assets:AssetData[]) : AssetMetrics => {
+    var assetMetrics:AssetMetrics={ name: assetName, values: [] }
+    for (var metricName of metricsConfig.metrics) {
+        var uniqueValues:number[]=[]
+        for (var asset of assets) {
+            var result = ClusterData.metrics.getContainerMetricValue(metricName, metricsConfig.view, asset)
+            uniqueValues.push(result)
+        }
+        var total = ClusterData.metrics.getTotal(metricName,uniqueValues)
+        assetMetrics.values.push ( {name:metricName, value:total})
     }
-    else {
-        console.log('No node found for calculating pod metric value', asset)
-    }
-    return total
+    return assetMetrics
 }
 
-const getTotal = (metricName:string, values:number[]) => {
-    var result:number
-    var metric = ClusterData.metrics.getMetric(metricName)
-    //console.log(`Get total for ${metricName} (${metric!.type})`)
-    switch(metric?.type) {
-        case 'gauge':
-        case 'counter':
-            result = values.reduce((ac,value) => ac+value, 0)
-            break
-        default:
-            console.log(`Unsupported metric type: "${metric?.type}"`)
-            result = 0
-            break
-    }
-    // +++ now process eval
-    if (metric?.eval && metric.eval!=='') {
-
-    }
-    
-    return result
-}
-
-const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
+const sendMetricsData = (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
     console.log('smd')
     var metricsMessage:MetricsMessage = {
         channel: ServiceConfigChannelEnum.METRICS,
         type: ServiceMessageTypeEnum.DATA,
         instance: metricsConfig.instance,
-        value: [],
+        assets: [],
         namespace: metricsConfig.namespace,
         pod: metricsConfig.pod,
         timestamp: Date.now()
@@ -154,7 +133,7 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
         }
         var instance = instances.find (i => i.id === metricsConfig.instance)
         if (!instance) {
-            console.log('No instance found for smd instnace ', metricsConfig.instance)
+            console.log('No instance found for smd instance', metricsConfig.instance)
             return
         }
         if (instance.working) {
@@ -162,36 +141,64 @@ const sendMetricsData = async (webSocket:WebSocket, metricsConfig:MetricsConfig)
             return
         }
         instance.working=true
-        console.log('Content to process', instance.content.map (o => o.podNode+'/'+o.podNamespace+'/'+o.podName+'/'+o.containerName+'\n'))
+        console.log('instance', instance)
 
-        metricsMessage.value=[]
-        for (var metricName of metricsConfig.metrics) {
-            console.log('Calculating', metricName, 'for', metricsConfig.view)
-            var uniqueValues:number[]=[]
-            var total=0
-            switch(metricsConfig.view) {
-                case ServiceConfigViewEnum.NAMESPACE:
-                case ServiceConfigViewEnum.GROUP:
-                case ServiceConfigViewEnum.POD:
-                case ServiceConfigViewEnum.CONTAINER:
-                    for (var asset of instance.content) {
-                        var result = await getContainerMetricValue(metricName, metricsConfig.view, asset.podNode, asset)
-                        uniqueValues.push(result)
-                        //console.log('Result', object.podNamespace, object.podName, object.containerName, metricName, result)
+        switch(metricsConfig.view) {
+            case ServiceConfigViewEnum.NAMESPACE:
+                if (metricsConfig.aggregate) {
+                    var assetMetrics = getAssetMetrics(metricsConfig.namespace, metricsConfig, instance.assets)
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
+                    for (var containerName of groupNames) {
+                        var assets=instance.assets.filter(a => a.podGroup===containerName)
+                        var assetMetrics = getAssetMetrics(containerName, metricsConfig, assets)
+                        metricsMessage.assets.push(assetMetrics)
                     }
-                    total=getTotal(metricName,uniqueValues)
-                    console.log(`Total value (${uniqueValues.length} values for instnace ${instance.id}`, metricName, total)
-                    break
-                default:
-                    console.log('Invalid view for smd')
-                    break
-            }
-            metricsMessage.value.push(total)
+                }
+                break
+            case ServiceConfigViewEnum.GROUP:
+                if (metricsConfig.aggregate) {
+                    var assetMetrics = getAssetMetrics(metricsConfig.group, metricsConfig, instance.assets)
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const podNames = [...new Set(instance.assets.map(item => item.podName))]
+                    for (var containerName of podNames) {
+                        var assets=instance.assets.filter(a => a.podName===containerName)
+                        var assetMetrics = getAssetMetrics(containerName, metricsConfig, assets)
+                        metricsMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            case ServiceConfigViewEnum.POD:
+                if (metricsConfig.aggregate) {
+                    var assetMetrics = getAssetMetrics(metricsConfig.pod, metricsConfig, instance.assets)
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const containerNames = [...new Set(instance.assets.map(item => item.containerName))]
+                    for (var containerName of containerNames) {
+                        var assets=instance.assets.filter(a => a.containerName===containerName)
+                        var assetMetrics = getAssetMetrics(containerName, metricsConfig, assets)
+                        metricsMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            case ServiceConfigViewEnum.CONTAINER:
+                for (var asset of instance.assets) {
+                    var assetMetrics = getAssetMetrics(asset.containerName, metricsConfig, [asset])
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                break
+            default:
+                console.log(`Invalid view:`, metricsConfig.view)
         }
-        
+
         try {
             webSocket.send(JSON.stringify(metricsMessage))
-            instance.prevValues = metricsMessage.value
+            //+++instance.prevValues = metricsMessage.value
         }
         catch (err) {
             console.log('Socket error, we should forget interval')
@@ -236,9 +243,14 @@ const sendServiceConfigMessage = (ws:WebSocket, action:ServiceConfigActionEnum, 
 }
 
 const startPodService = (podNamespace:string, podName:string, containerName:string, webSocket:WebSocket, serviceConfig:ServiceConfig) => {
-    console.log('startPodService: ', serviceConfig.channel)
+    console.log(`startPodService ${serviceConfig.channel}: ${podNamespace}/${podName}/${containerName} (view: ${serviceConfig.view})`)
+    if ((serviceConfig.view === ServiceConfigViewEnum.POD || serviceConfig.view === ServiceConfigViewEnum.CONTAINER) && serviceConfig.pod!==podName) {
+        console.log('Pod excluded: ', podName)
+        return
+    }
     switch(serviceConfig.channel) {
         case ServiceConfigChannelEnum.LOG:
+            // +++ maybe it would be useful to bild an 'assets' array like we do in metrics
             startPodLog(webSocket, podNamespace, podName, containerName, serviceConfig as LogConfig)
             break
         case ServiceConfigChannelEnum.METRICS:
@@ -250,7 +262,6 @@ const startPodService = (podNamespace:string, podName:string, containerName:stri
 }
 
 const updatePodService = async (eventType:string, podNamespace:string, podName:string, containerName:string, webSocket:WebSocket, serviceConfig:ServiceConfig) => {
-    console.log('updatePodService: ', serviceConfig.channel)
     switch(serviceConfig.channel) {
         case ServiceConfigChannelEnum.LOG:
             // nothing to do here
@@ -260,9 +271,9 @@ const updatePodService = async (eventType:string, podNamespace:string, podName:s
             var instances = websocketIntervals.get(webSocket)
             var instance = instances?.find((instance) => instance.id === metricsConfig.instance)
             if (instance) {
-                if (eventType==='DELETED') instance.content = instance.content.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
+                if (eventType==='DELETED') instance.assets = instance.assets.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
                 if (eventType==='MODIFIED') {
-                    var thisPod = instance.content.find(p => p.podNamespace===podNamespace && p.podName===podName && p.containerName===containerName)
+                    var thisPod = instance.assets.find(p => p.podNamespace===podNamespace && p.podName===podName && p.containerName===containerName)
                     if (thisPod) thisPod.startTime = await getPodStartTime(podNamespace,podName)
                 }
             }
@@ -337,21 +348,25 @@ const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName
                 break
             case MetricsConfigModeEnum.STREAM:
                 const podResponse = await coreApi.readNamespacedPod(podName, podNamespace)
+                const owner = podResponse.body.metadata?.ownerReferences![0]!
+                var gtype='replica'
+                if (owner.kind==='DaemonSet') gtype='daemon'
+                if (owner.kind==='StatefulSet') gtype='stateful'
+                const podGroup = gtype+'+'+owner.name
                 const podNode = podResponse.body.spec?.nodeName
                 if (podNode) {
                     var startTime= await getPodStartTime(podNamespace, podName)
                     if (websocketIntervals.has(webSocket)) {
                         var instances = websocketIntervals.get(webSocket)
                         var instance = instances?.find((instance) => instance.id === metricsConfig.instance)
-                        instance?.content.push ({podNode, podNamespace, podName, containerName, startTime})
+                        instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName, startTime})
                     }
                     else {
                         websocketIntervals.set(webSocket, [])
                         var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000
-                        sendMetricsData(webSocket,metricsConfig)
                         var timeout = setInterval(() => sendMetricsData(webSocket,metricsConfig), interval)
                         var instances=websocketIntervals.get(webSocket)
-                        instances?.push({id:metricsConfig.instance, working:false, timeout, prevValues:[],  content:[{podNode, podNamespace, podName, containerName,startTime}]})
+                        instances?.push({id:metricsConfig.instance, working:false, timeout, prevValues:[],  assets:[{podNode, podNamespace, podGroup, podName, containerName,startTime}]})
                     }
                 }
                 else {
@@ -370,26 +385,39 @@ const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName
 }
 
 // watches for pod changes (add, delete...) inside the group pointed by the requestor
-const watchPods = (apiPath:string, filter:any, webSocket:WebSocket, serviceConfig:ServiceConfig) => {
+const watchPods = (apiPath:string, filter:any, webSocket:WebSocket, serviceConfig:any) => {
     const watch = new Watch(kubeConfig)
 
     watch.watch(apiPath, filter, (eventType:string, obj:any) => {
-        const podName = obj.metadata.name
-        const podNamespace = obj.metadata.namespace
+        const podName:string = obj.metadata.name
+        const podNamespace:string = obj.metadata.namespace
         if (eventType === 'ADDED') {
             sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Pod ${eventType}: ${podNamespace}/${podName}`, serviceConfig)
 
             for (var container of obj.spec.containers) {
-                console.log(`Pod ${eventType}: ${podNamespace}/${podName}/${container.name}`)
-                if (serviceConfig.view === ServiceConfigViewEnum.CONTAINER) {
-                    if (container.name === serviceConfig.container) 
+                switch (serviceConfig.view) {
+                    case ServiceConfigViewEnum.NAMESPACE:
                         startPodService(podNamespace, podName, container.name, webSocket, serviceConfig)
-                    else {
-                        sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Requested container not valid: ${container.name}`, serviceConfig)
-                    }
-                }
-                else {
-                    startPodService(podNamespace, podName, container.name, webSocket, serviceConfig)
+                        break
+                    case ServiceConfigViewEnum.GROUP:
+                        var [groupType, groupName] = serviceConfig.group.split('+')
+                        if (podName.startsWith(groupName)) {
+                            startPodService(podNamespace, podName, container.name, webSocket, serviceConfig)
+                        }
+                        break
+                    case ServiceConfigViewEnum.POD:
+                        if (podName === serviceConfig.pod) {
+                            startPodService(podNamespace, podName, container.name, webSocket, serviceConfig)
+                        }
+                        break
+                    case ServiceConfigViewEnum.CONTAINER:
+                        if (container.name === serviceConfig.container) {
+                            startPodService(podNamespace, podName, container.name, webSocket, serviceConfig)
+                        }
+                        break
+                    default:
+                        console.log('Invalid serviceConfig view')
+                        break
                 }
             }
         }
@@ -567,7 +595,8 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
                                 view: metricsConfig.view,
                                 mode: metricsConfig.mode,
                                 interval: metricsConfig.interval,
-                                metrics: metricsConfig.metrics
+                                metrics: metricsConfig.metrics,
+                                aggregate: metricsConfig.aggregate
                             }
 
                             var metadataLabels = validPod.metadata?.labels
@@ -645,12 +674,11 @@ const processStopServiceConfig = async (serviceConfig: ServiceConfig, webSocket:
 const processClientMessage = async (message:string, webSocket:WebSocket) => {
     const serviceConfig = JSON.parse(message) as ServiceConfig
 
-    console.log('serviceConfig:',serviceConfig)
     if (serviceConfig.flow !== ServiceConfigFlowEnum.REQUEST) {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Invalid flow received', serviceConfig)
         return
     }
-    if (!serviceConfig.group) serviceConfig.group=serviceConfig.set
+    if (!serviceConfig.group) serviceConfig.group=serviceConfig.set  // transitional
     if (!serviceConfig.accessKey) {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'No key received', serviceConfig)
         return
