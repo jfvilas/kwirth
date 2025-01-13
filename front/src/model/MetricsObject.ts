@@ -1,4 +1,4 @@
-import { MetricsConfigModeEnum, ServiceConfigViewEnum } from "@jfvilas/kwirth-common";
+import { AssetMetrics, MetricsConfigModeEnum, MetricsMessage, ServiceConfigViewEnum } from "@jfvilas/kwirth-common";
 import { Alarm } from "./Alarm";
 
 export class MetricsObject {
@@ -9,7 +9,7 @@ export class MetricsObject {
     public depth: number = 10
     public width : number = 3
     public metrics: string[] = []
-    public values: number[][] = []
+    public assetMetricsValues: MetricsMessage[] = []
     public timestamps: number[] = []
     public cluster: any
     public view?: ServiceConfigViewEnum

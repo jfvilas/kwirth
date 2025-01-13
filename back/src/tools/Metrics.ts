@@ -64,7 +64,6 @@ export class Metrics {
     async loadNodeMetrics(node:NodeData):Promise <Map<string,{help:string, type:string, eval:string}>> {
         var map:Map<string,{help:string, type:string, eval:string}> = new Map()
 
-        //+++ uncomment console.log('Loading metrics from', node.ip)
         var allMetrics=await this.readCAdvisorMetrics(node)
         var lines=allMetrics.split('\n').filter(l => l.startsWith('#'))
         for (var line of lines) {
@@ -114,7 +113,6 @@ export class Metrics {
             text = await resp.text()
         }
         catch (error:any) {
-            //+++ uncomment console.log(`Error obtaining node metrics from cAdvisor at node ${node.ip}`)
             text=''
         }
         text+='# HELP kwirth_container_memory_precentage Percentage of memory used by object\n'

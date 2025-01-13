@@ -1,8 +1,9 @@
-import { Box } from '@mui/material'
+import { Box, Divider, Typography } from '@mui/material'
 import { LogObject } from '../model/LogObject'
 import { LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { MetricsObject } from '../model/MetricsObject'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { AssessmentTwoTone } from '@mui/icons-material'
 
 interface IProps {
   filter:string
@@ -59,16 +60,17 @@ const TabContent: React.FC<any> = (props:IProps) => {
         }
     }
 
-    const formatMetrics = () => {
-        if (!props.metricsObject || !props.metricsObject.metrics || !props.metricsObject.values || props.metricsObject.values.length===0) return <></>
-        if (props.metricsObject.values) {
+    /*
+    const formatMetricsOld = () => {
+        if (!props.metricsObject || !props.metricsObject.metrics || !props.metricsObject.assetMetrics || props.metricsObject.assetMetrics.length===0) return <></>
+        if (props.metricsObject.assetMetrics) {
 
             var charts = props.metricsObject.metrics.map ((mname,index) => {
                 var serie=[]
-                for (var i=0;i<props.metricsObject.values.length;i++) {
+                for (var i=0;i<props.metricsObject.assetMetrics.length;i++) {
                     var x=new Date (props.metricsObject.timestamps[i])
                     var label = `${x.getHours().toString().padStart(2,'0')}:${x.getMinutes().toString().padStart(2,'0')}:${x.getSeconds().toString().padStart(2,'0')}`
-                    serie.push({ time:label, value:props.metricsObject.values[i][index]})
+                    serie.push({ time:label, value:props.metricsObject.assetMetrics[i][index]})
                 }
                 return (
                     <ResponsiveContainer width="100%" height={300} key={index}>
@@ -98,12 +100,69 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 </>)
         }
     }
+    */
+
+    const formatMetrics = () => {
+        if (!props.metricsObject || !props.metricsObject.metrics || !props.metricsObject.assetMetricsValues || props.metricsObject.assetMetricsValues.length===0) return <></>
+        if (props.metricsObject.assetMetricsValues) {
+            var data:Map<string, Map<string, { timestamp:string, value:number}[]>> = new Map()
+            for (var assetMetricsValues of props.metricsObject.assetMetricsValues) {                
+                var ts = new Date(assetMetricsValues.timestamp)
+                var timestamp = ts.getHours()+':'+ts.getMinutes()+':'+ts.getSeconds()
+                for (var i=0;i<assetMetricsValues.assets.length;i++) {
+                    var assetName=assetMetricsValues.assets[i].assetName
+                    for (var metrics of assetMetricsValues.assets[i].values) {
+                        if (!data.has(assetName)) data.set(assetName, new Map())
+                        if (!data.get(assetName)?.has(metrics.metricName)) data.get(assetName)?.set(metrics.metricName,[])
+                        data.get(assetName)?.get(metrics.metricName)?.push({timestamp, value:metrics.metricValue})
+                    }
+                }   
+            }
+
+            //console.log(data)
+            var allResults = Array.from(data.keys()!).map( asset =>  {
+                //console.log(asset)
+                return Array.from(data.get(asset)?.keys()!).map ( metric => {
+                    var serie:any=data.get(asset)?.get(metric)!
+                    //console.log(asset,'-',metric)
+                    return (
+                        <ResponsiveContainer width="100%" height={300} key={asset+metric}>
+                        <LineChart data={serie}>
+                            <CartesianGrid strokeDasharray="3 3"/>
+                            <XAxis dataKey="timestamp" fontSize={8} />
+                            <YAxis />
+                            <Tooltip />
+                            <Line name={asset+' / '+metric} type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} />
+                            <Legend/>
+                        </LineChart>
+                    </ResponsiveContainer>                        
+                    )
+
+                })
+            })
+
+            let rows = []
+            for (var resultAsset of allResults) {
+                for (let i = 0; i < resultAsset.length; i += props.metricsObject.width) {
+                    rows.push(resultAsset.slice(i, i + props.metricsObject.width))
+                }
+            }
+
+            return (<>
+                {rows.map((row, index) => (
+                    <div key={index} style={{ display: 'flex', justifyContent: 'space-around' }}>
+                        {row}
+                    </div>
+                ))}
+            </>)
+        }
+    }
 
     return (
         <>
         <Box sx={{ flex:1, overflowY: 'auto', ml:1 }}>
             {/* show metrics */}
-            { props.metricsObject && props.metricsObject.values && formatMetrics() }
+            { props.metricsObject && props.metricsObject.assetMetricsValues && formatMetrics() }
 
             {/* show log lines */}
             <pre>

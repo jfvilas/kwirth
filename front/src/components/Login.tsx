@@ -19,23 +19,21 @@ const Login: React.FC<any> = (props:IProps) => {
     const [newPassword1, setNewPassword1] = useState('');
     const [newPassword2, setNewPassword2] = useState('');
 
-    const login = async (user:string, password:string, newPassword:string='') => {
+    const login = async (user:string, password:string, newpassword:string='') => {
         var payload
-        if (newPassword!=='') {
-            payload=JSON.stringify({user:user, password:password, newpassword:newPassword})
+        if (newpassword!=='') {
+            payload=JSON.stringify({user, password, newpassword})
             try {
-                var result = await fetch(backendUrl+'/login/password', addPostAuthorization('',payload))
-                return result
+                return await fetch(backendUrl+'/login/password', addPostAuthorization('',payload))
             }
             catch {
                 return undefined
             }
         }
         else {
-            payload=JSON.stringify({user:user, password:password})
+            payload=JSON.stringify({user, password})
             try {
-                var result = await fetch(backendUrl+'/login', addPostAuthorization('',payload))
-                return result
+                return await fetch(backendUrl+'/login', addPostAuthorization('',payload))
             }
             catch {
                 return undefined
@@ -68,7 +66,7 @@ const Login: React.FC<any> = (props:IProps) => {
             }
         }
         else {
-            result = await login(user,password)
+            result = await login(user.trim(),password)
             if (result) {
                 switch (result.status) {
                     case 200:

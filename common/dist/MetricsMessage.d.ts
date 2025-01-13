@@ -1,9 +1,9 @@
 import { ServiceMessage } from "./ServiceMessage";
 export interface AssetMetrics {
-    name: string;
+    assetName: string;
     values: {
-        name: string;
-        value: number;
+        metricName: string;
+        metricValue: number;
     }[];
 }
 export interface MetricsMessage extends ServiceMessage {

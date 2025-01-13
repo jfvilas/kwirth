@@ -100,15 +100,15 @@ const sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, s
 }
 
 const getAssetMetrics = (assetName:string, metricsConfig:MetricsConfig, assets:AssetData[]) : AssetMetrics => {
-    var assetMetrics:AssetMetrics={ name: assetName, values: [] }
+    var assetMetrics:AssetMetrics={ assetName: assetName, values: [] }
     for (var metricName of metricsConfig.metrics) {
         var uniqueValues:number[]=[]
         for (var asset of assets) {
             var result = ClusterData.metrics.getContainerMetricValue(metricName, metricsConfig.view, asset)
             uniqueValues.push(result)
         }
-        var total = ClusterData.metrics.getTotal(metricName,uniqueValues)
-        assetMetrics.values.push ( {name:metricName, value:total})
+        var metricValue = ClusterData.metrics.getTotal(metricName,uniqueValues)
+        assetMetrics.values.push ( {metricName, metricValue})
     }
     return assetMetrics
 }
@@ -250,7 +250,7 @@ const startPodService = (podNamespace:string, podName:string, containerName:stri
     }
     switch(serviceConfig.channel) {
         case ServiceConfigChannelEnum.LOG:
-            // +++ maybe it would be useful to bild an 'assets' array like we do in metrics
+            // +++ maybe it would be useful to build an 'assets' array like we do in metrics
             startPodLog(webSocket, podNamespace, podName, containerName, serviceConfig as LogConfig)
             break
         case ServiceConfigChannelEnum.METRICS:

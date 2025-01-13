@@ -72,7 +72,8 @@ const App: React.FC = () => {
     // var selectedLog = logs.find(t => t.name===selectedLogName)
     // var selectedLogIndex = logs.findIndex(t => t.name===selectedLogName)
     //const [receivedMetrics, setReceivedMetrics] = useState<MetricsMessage[]>([])
-    const [receivedMetricValues, setReceivedMetricValues] = useState<number[]>([])
+    //const [receivedMetricValues, setReceivedMetricValues] = useState<number[]>([])
+    const [refreshMetrics, setRefreshMetrics] = useState(0)
 
     // message list management
     const [logMessages, setLogMessages] = useState<LogMessage[]>([])  //+++ i think this is being used just for forcing render
@@ -241,11 +242,14 @@ const App: React.FC = () => {
                 console.log(`Error, invalid channel: `, channel)
         }
 
-        tabs.push(newTab)
-        setTabs(tabs)
         setFilter('')
         setSearch('')
-        setSelectedTabName(newTab.name)
+        setTabs(oldtabs => {
+            const newtabs = [ ...oldtabs, newTab ]
+            setSelectedTabName(newTab.name)
+            return newtabs
+        })
+
     }
 
     const onChangeTabs = (event:any,tabName?:string)=> {
@@ -374,13 +378,14 @@ const App: React.FC = () => {
 
         switch (msg.type) {
             case 'data':
-                //+++tab.metricsObject.values.push(msg.value)
-                tab.metricsObject.timestamps.push(msg.timestamp)
-                if (tab.metricsObject.values.length>tab.metricsObject.depth) {
-                    tab.metricsObject.values.shift()
-                    tab.metricsObject.timestamps.shift()
+                tab.metricsObject.assetMetricsValues.push(msg)
+                // tab.metricsObject.timestamps.push(msg.timestamp)
+                if (tab.metricsObject.assetMetricsValues.length>tab.metricsObject.depth) {
+                    tab.metricsObject.assetMetricsValues.shift()
+                    // tab.metricsObject.timestamps.shift()
                 }
                 //+++if (!tab.metricsObject.paused) setReceivedMetricValues(msg.value)
+                if (!tab.metricsObject.paused) setRefreshMetrics(Math.random())
                 break
             case 'signal':
                 tab.metricsObject.serviceInstance = msg.instance
@@ -420,7 +425,7 @@ const App: React.FC = () => {
         }
  
         if (tab.ws?.OPEN) {
-            tab.metricsObject.values=[]
+            tab.metricsObject.assetMetricsValues=[]
             var mc:MetricsConfig = {
                 action: ServiceConfigActionEnum.START,
                 flow: ServiceConfigFlowEnum.REQUEST,
@@ -1032,7 +1037,7 @@ const App: React.FC = () => {
                 { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
 
                 {/* <TabContent log={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject} values={receivedMetricValues}/> */}
-                <TabContent logObject={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject}/>
+                <TabContent logObject={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject} refreshMetrics={refreshMetrics}/>
             </Box>
 
             { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> }
