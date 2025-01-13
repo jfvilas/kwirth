@@ -242,14 +242,13 @@ const App: React.FC = () => {
                 console.log(`Error, invalid channel: `, channel)
         }
 
+        //+++ the render react process does not work well with updating tabs and selecting a new tabname (the problem arises when data is recieved at the web socket,
+        // it requires that the tab must exist)
         setFilter('')
         setSearch('')
-        setTabs(oldtabs => {
-            const newtabs = [ ...oldtabs, newTab ]
-            setSelectedTabName(newTab.name)
-            return newtabs
-        })
-
+        tabs.push(newTab)
+        setTabs(tabs)
+        setSelectedTabName(newTab.name)
     }
 
     const onChangeTabs = (event:any,tabName?:string)=> {
@@ -417,7 +416,10 @@ const App: React.FC = () => {
     }
 
     const startMetrics = (tab:TabObject) => {
-        if (!tab || !tab.metricsObject) return
+        if (!tab || !tab.metricsObject) {
+            console.log('No active tab found')
+            return
+        }
         var cluster=clusters!.find(c => c.name===tab.metricsObject!.cluster)
         if (!cluster) {
             setMsgBox(MsgBoxOk('Kwirth',`Cluster set at metrics configuration (${tab.metricsObject.cluster}) does not exist.`, setMsgBox))
