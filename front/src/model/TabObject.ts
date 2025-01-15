@@ -3,8 +3,8 @@ import { MetricsObject } from "./MetricsObject"
 
 export class TabObject {
     public name?: string
-    public ws:WebSocket|null = null
-    public defaultTab:boolean = false
+    public ws: WebSocket|null = null
+    public defaultTab: boolean = false
     public logObject?: LogObject
     public metricsObject?: MetricsObject
     //public operObject?: OperObject

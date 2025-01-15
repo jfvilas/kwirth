@@ -18,8 +18,8 @@ export class MetricsObject {
     public pod?: string
     public container?: string
     public serviceInstance: string = ''
-    public started:boolean=false
-    public paused:boolean=false
-    public pending:boolean=false
-    public alarms:Alarm[]=[]
+    public started: boolean=false
+    public paused: boolean=false
+    public pending: boolean=false
+    public alarms: Alarm[]=[]
 }

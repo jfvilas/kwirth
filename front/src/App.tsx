@@ -134,9 +134,9 @@ const App: React.FC = () => {
             setBoardLoaded(false)
             if (tabs.length>0) {               
                 for(let tab of tabs) {
-                    var baseClusterName=tab.logObject?.clusterName
+                    let baseClusterName=tab.logObject?.clusterName
                     if (!baseClusterName) baseClusterName=tab.metricsObject?.clusterName
-                    var cluster=clusters!.find(c => c.name===baseClusterName)
+                    let cluster=clusters!.find(c => c.name===baseClusterName)
 
                     if (cluster) {
                         tab.ws = new WebSocket(cluster.url)
@@ -294,12 +294,6 @@ const App: React.FC = () => {
         }
 
         switch(serviceMessage.channel) {
-            // case 'info':
-            // case 'warning':
-            // case 'error':
-            //     // these are general signal messages (not related to a channel)
-            //     processGeneralSignalMessage(wsEvent)
-            //     break
             case 'log':
                 processLogMessage(wsEvent)
                 break
@@ -397,9 +391,8 @@ const App: React.FC = () => {
                 // tab.metricsObject.timestamps.push(msg.timestamp)
                 if (tab.metricsObject.assetMetricsValues.length>tab.metricsObject.depth) {
                     tab.metricsObject.assetMetricsValues.shift()
-                    // tab.metricsObject.timestamps.shift()
                 }
-                //+++if (!tab.metricsObject.paused) setReceivedMetricValues(msg.value)
+                // +++ this forces component refresh
                 if (!tab.metricsObject.paused) setRefreshMetrics(Math.random())
                 break
             case 'signal':
@@ -442,7 +435,7 @@ const App: React.FC = () => {
             return
         }
  
-        if (tab.ws?.OPEN) {
+        if (tab.ws && tab.ws.readyState===tab.ws.OPEN) {
             tab.metricsObject.assetMetricsValues=[]
             var mc:MetricsConfig = {
                 action: ServiceConfigActionEnum.START,
@@ -462,13 +455,8 @@ const App: React.FC = () => {
                 mode: tab.metricsObject.mode,
                 metrics: tab.metricsObject.metrics
             }
-            if (tab.ws.readyState===tab.ws.OPEN) {
-                tab.ws.send(JSON.stringify(mc))
-                tab.metricsObject.started=true
-            }
-            else {
-                console.log('ws not ready')
-            }
+            tab.ws.send(JSON.stringify(mc))
+            tab.metricsObject.started=true
         }
         else {
             console.log('Tab web socket is not started')
@@ -578,13 +566,12 @@ const App: React.FC = () => {
                 previous: tab.logObject.previous!,
                 maxMessages: tab.logObject.maxMessages!
             }
-
             tab.ws.send(JSON.stringify(logConfig))
             tab.logObject.started=true
             setLogMessages([])
         }
         else {
-            //console.log('ws not ready')
+            console.log('ws not ready')
         }
     }
 
@@ -777,7 +764,6 @@ const App: React.FC = () => {
                 newTab.metricsObject.alarms=tab.metricsObject.alarms
                 newTab.metricsObject.started=tab.metricsObject.started
                 newTab.metricsObject.aggregate=tab.metricsObject.aggregate
-                //newTab.metricsObject.assetMetricsValues=tab.metricsObject.assetMetricsValues
                 newTab.metricsObject.depth=tab.metricsObject.depth
                 newTab.metricsObject.interval=tab.metricsObject.interval
                 newTab.metricsObject.metrics=tab.metricsObject.metrics

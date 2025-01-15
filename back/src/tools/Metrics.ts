@@ -245,9 +245,8 @@ export class Metrics {
                 result = 0
                 break
         }
-        // +++ now process eval
         if (metric?.eval && metric.eval!=='') {
-    
+            // +++ now process eval (pending impl)
         }
         
         return result
