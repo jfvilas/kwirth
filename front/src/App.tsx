@@ -25,7 +25,7 @@ import PickList from './components/PickList'
 import Login from './components/Login'
 import ManageClusters from './components/ManageClusters'
 import ManageUserSecurity from './components/ManageUserSecurity'
-import ResourceSelector from './components/ResourceSelector'
+import { ResourceSelector, IResourceSelected } from './components/ResourceSelector'
 import TabContent from './components/TabContent'
 import SettingsConfig from './components/SettingsConfig'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
@@ -132,9 +132,25 @@ const App: React.FC = () => {
     useEffect ( () => {
         if (logged) {
             setBoardLoaded(false)
-            if (tabs.length>0) {
-                for (var t of tabs)
-                    startTab(t)
+            if (tabs.length>0) {               
+                for(let tab of tabs) {
+                    var baseClusterName=tab.logObject?.clusterName
+                    if (!baseClusterName) baseClusterName=tab.metricsObject?.clusterName
+                    var cluster=clusters!.find(c => c.name===baseClusterName)
+
+                    if (cluster) {
+                        tab.ws = new WebSocket(cluster.url)
+                        tab.ws!.onerror = () => console.log(`Error detected on WS: ${tab.ws!.url}`)
+                        tab.ws!.onmessage = (event) => wsOnTabMessage(event)
+                        tab.ws!.onclose = (event) => console.log(`WS tab disconnected: ${tab.ws!.url}`)
+
+                        tab.ws.onopen = () => {
+                            console.log(`WS connected: ${tab.name} to ${tab.ws!.url}`)
+                            if (tab.logObject) startLog(tab)
+                            if (tab.metricsObject) startMetrics(tab)
+                        }
+                    }
+                }
                 onChangeTabs(null, tabs[0].name)
             }
         }
@@ -193,14 +209,14 @@ const App: React.FC = () => {
         fetch (`${backendUrl}/metrics/config`, addPostAuthorization(accessString, payload))
     }
 
-    const onResourceSelectorAdd = (selection:any) => {
-        var cluster=clusters!.find(c => c.name===selection.cluster)
+    const onResourceSelectorAdd = (selection:IResourceSelected) => {
+        var cluster=clusters!.find(c => c.name===selection.clusterName)
         if (!cluster) {
-            setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.cluster} does not exist.`, setMsgBox))
+            setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.clusterName} does not exist.`, setMsgBox))
             return
         }
 
-        var tabName=selection.logName
+        var tabName=selection.suggestedName
         var channel=selection.channel as ServiceConfigChannelEnum
 
         // create unduplicated (unique) name
@@ -218,8 +234,8 @@ const App: React.FC = () => {
         switch(channel) {
             case ServiceConfigChannelEnum.LOG:
                 var newLog = new LogObject()
-                newLog.cluster=selection.cluster
-                newLog.view=selection.view
+                newLog.clusterName=selection.clusterName
+                newLog.view = selection.view as ServiceConfigViewEnum
                 newLog.namespace=selection.namespace
                 newLog.group=selection.group
                 newLog.pod=selection.pod
@@ -230,8 +246,8 @@ const App: React.FC = () => {
 
             case ServiceConfigChannelEnum.METRICS:
                 var newMetrics = new MetricsObject()
-                newMetrics.cluster=selection.cluster
-                newMetrics.view=selection.view
+                newMetrics.clusterName=selection.clusterName
+                newMetrics.view = selection.view as ServiceConfigViewEnum
                 newMetrics.namespace=selection.namespace
                 newMetrics.group=selection.group
                 newMetrics.pod=selection.pod
@@ -261,7 +277,7 @@ const App: React.FC = () => {
                 setFilter(newTab.logObject.filter)
                 setLogMessages(newTab.logObject.messages)
             }
-            setTabs(tabs)
+            //setTabs(tabs)
             setSelectedTabName(tabName)
         }
     }
@@ -420,9 +436,9 @@ const App: React.FC = () => {
             console.log('No active tab found')
             return
         }
-        var cluster=clusters!.find(c => c.name===tab.metricsObject!.cluster)
+        var cluster=clusters!.find(c => c.name===tab.metricsObject!.clusterName)
         if (!cluster) {
-            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at metrics configuration (${tab.metricsObject.cluster}) does not exist.`, setMsgBox))
+            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at metrics configuration (${tab.metricsObject.clusterName}) does not exist.`, setMsgBox))
             return
         }
  
@@ -446,8 +462,13 @@ const App: React.FC = () => {
                 mode: tab.metricsObject.mode,
                 metrics: tab.metricsObject.metrics
             }
-            tab.ws.send(JSON.stringify(mc))
-            tab.metricsObject.started=true
+            if (tab.ws.readyState===tab.ws.OPEN) {
+                tab.ws.send(JSON.stringify(mc))
+                tab.metricsObject.started=true
+            }
+            else {
+                console.log('ws not ready')
+            }
         }
         else {
             console.log('Tab web socket is not started')
@@ -461,7 +482,7 @@ const App: React.FC = () => {
 
     const stopMetrics = (tab:TabObject) => {
         if (!tab.metricsObject) return
-        var cluster=clusters!.find(c => c.name===tab.metricsObject!.cluster)
+        var cluster=clusters!.find(c => c.name===tab.metricsObject!.clusterName)
         var mc:MetricsConfig = {
             action: ServiceConfigActionEnum.STOP,
             flow: ServiceConfigFlowEnum.REQUEST,
@@ -495,11 +516,6 @@ const App: React.FC = () => {
             selectedTab.metricsObject.paused=true
             setPausedTabs( (prev) => [...prev, selectedTab!])
         }
-    }
-
-    const startTab = (tab:TabObject) => {
-        if (tab.logObject) startLog(tab)
-        if (tab.metricsObject) startMetrics(tab)
     }
 
     const onClickStopTab = () => {    
@@ -538,13 +554,13 @@ const App: React.FC = () => {
         tab.logObject.previous=settings!.logPrevious
         tab.logObject.addTimestamp=settings!.logTimestamp
         tab.logObject.messages=[]
-        var cluster=clusters!.find(c => c.name===tab.logObject!.cluster)
+        var cluster=clusters!.find(c => c.name===tab.logObject!.clusterName)
         if (!cluster) {
-            setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at log configuration ${tab.logObject.cluster} does not exist.`, setMsgBox))
+            setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at log configuration ${tab.logObject.clusterName} does not exist.`, setMsgBox))
             return
         }
 
-        if (tab.ws?.OPEN) {
+        if (tab.ws && tab.ws.OPEN===tab.ws.readyState) {
             var logConfig:LogConfig = {
                 action: ServiceConfigActionEnum.START,
                 flow: ServiceConfigFlowEnum.REQUEST,
@@ -562,12 +578,13 @@ const App: React.FC = () => {
                 previous: tab.logObject.previous!,
                 maxMessages: tab.logObject.maxMessages!
             }
+
             tab.ws.send(JSON.stringify(logConfig))
             tab.logObject.started=true
             setLogMessages([])
         }
         else {
-            console.log('Tab websocket is not  open')
+            //console.log('ws not ready')
         }
     }
 
@@ -577,7 +594,7 @@ const App: React.FC = () => {
         tab.logObject.messages.push( {text:endline} as LogMessage)
 
         if (tab.ws) {
-            var cluster=clusters!.find(c => c.name===tab.logObject!.cluster)
+            var cluster=clusters!.find(c => c.name===tab.logObject!.clusterName)
             var lc:LogConfig = {
                 action: ServiceConfigActionEnum.STOP,
                 flow: ServiceConfigFlowEnum.REQUEST,
@@ -736,7 +753,7 @@ const App: React.FC = () => {
                 newTab.logObject=new LogObject()
                 newTab.logObject.addTimestamp=tab.logObject.addTimestamp
                 newTab.logObject.alarms=tab.logObject.alarms
-                newTab.logObject.cluster=tab.logObject.cluster
+                newTab.logObject.clusterName=tab.logObject.clusterName
                 newTab.logObject.filter=tab.logObject.filter
                 newTab.logObject.view=tab.logObject.view
                 newTab.logObject.namespace=tab.logObject.namespace
@@ -750,15 +767,25 @@ const App: React.FC = () => {
             if (tab.metricsObject) {
                 newTab.metricsObject=new MetricsObject()
                 newTab.metricsObject.name=tab.metricsObject.name
-                newTab.metricsObject.cluster=tab.metricsObject.cluster
+                newTab.metricsObject.clusterName=tab.metricsObject.clusterName
                 newTab.metricsObject.view=tab.metricsObject.view
                 newTab.metricsObject.namespace=tab.metricsObject.namespace
                 newTab.metricsObject.group=tab.metricsObject.group
                 newTab.metricsObject.pod=tab.metricsObject.pod
                 newTab.metricsObject.container=tab.metricsObject.container
-                newTab.metricsObject.cluster=tab.metricsObject.cluster
+                newTab.metricsObject.clusterName=tab.metricsObject.clusterName
                 newTab.metricsObject.alarms=tab.metricsObject.alarms
                 newTab.metricsObject.started=tab.metricsObject.started
+                newTab.metricsObject.aggregate=tab.metricsObject.aggregate
+                //newTab.metricsObject.assetMetricsValues=tab.metricsObject.assetMetricsValues
+                newTab.metricsObject.depth=tab.metricsObject.depth
+                newTab.metricsObject.interval=tab.metricsObject.interval
+                newTab.metricsObject.metrics=tab.metricsObject.metrics
+                newTab.metricsObject.mode=tab.metricsObject.mode
+                newTab.metricsObject.paused=tab.metricsObject.paused
+                newTab.metricsObject.started=tab.metricsObject.started
+                newTab.metricsObject.view=tab.metricsObject.view
+                newTab.metricsObject.width=tab.metricsObject.width
             }
             newTabs.push(newTab)
         }
@@ -776,7 +803,7 @@ const App: React.FC = () => {
         if (allBoards.length===0)
             showNoBoards()
         else
-            pickList('Load board...','Please, select the board you want to load:',allBoards,loadBoardSelected)
+            pickList('Load board...','Please, select the board you want to load:', allBoards, loadBoardSelected)
     }
 
     const clearTabs = () => {
@@ -790,23 +817,23 @@ const App: React.FC = () => {
     const menuDrawerOptionSelected = async (option:MenuDrawerOption) => {
         setMenuDrawerOpen(false)
         switch(option) {
-            case MenuDrawerOption.NewView:
+            case MenuDrawerOption.NewBoard:
                 clearTabs()
                 setCurrentBoardName('untitled')
                 break
-            case MenuDrawerOption.SaveView:
+            case MenuDrawerOption.SaveBoard:
                 if (currentBoardName!=='' && currentBoardName!=='untitled')
                     saveBoard(currentBoardName)
                 else
                     setShowSaveBoard(true)
                 break
-            case MenuDrawerOption.SaveViewAs:
+            case MenuDrawerOption.SaveBoardAs:
                 setShowSaveBoard(true)
                 break
-            case MenuDrawerOption.OpenView:
+            case MenuDrawerOption.OpenBoard:
                 loadBoard()
                 break
-            case MenuDrawerOption.DeleteView:
+            case MenuDrawerOption.DeleteBoard:
                 var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
                 if (allBoards.length===0)
                     showNoBoards()
@@ -930,7 +957,7 @@ const App: React.FC = () => {
         setShowRenameLog(false)
         if (newname!=null) {
             selectedTab!.name=newname
-            setTabs(tabs)
+            //setTabs(tabs)
             setSelectedTabName(newname)
         }
     }
@@ -946,10 +973,8 @@ const App: React.FC = () => {
             var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
             var newTabs=JSON.parse(n) as TabObject[]
             setTabs(newTabs)
-            setBoardLoaded(true)
             setCurrentBoardName(boardName)
-            var defaultTab=newTabs.find(l => l.defaultTab)
-            if (defaultTab) setSelectedTabName(defaultTab.name)
+            setBoardLoaded(true)
         }
     }
 
@@ -1051,7 +1076,7 @@ const App: React.FC = () => {
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
             {/* { showManageAlarms && <ManageAlarms onClose={() => setShowManageAlarms(false)} log={selectedLog}/> } */}
             { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
-            { showMetricsSelector && <MetricsSelector  onMetricsSelected={onMetricsSelected} settings={settings} metricsList={clusters!.find(c => c.name===selectedTab!.metricsObject!.cluster)?.metricsList!} /> }
+            { showMetricsSelector && <MetricsSelector  onMetricsSelected={onMetricsSelected} settings={settings} metricsList={clusters!.find(c => c.name===selectedTab!.metricsObject!.clusterName)?.metricsList!} /> }
             { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { pickListConfig!==null && <PickList config={pickListConfig}/> }
             { msgBox }

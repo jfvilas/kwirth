@@ -14,8 +14,19 @@ const KIconDaemonSet = () => <img src={IconDaemonSet} alt='ds' height={'16px'}/>
 const KIconReplicaSet = () => <img src={IconReplicaSet} alt='rs' height={'16px'}/>
 const KIconStatefulSet = () => <img src={IconStatefulSet} alt='ss' height={'16px'}/>
 
+interface IResourceSelected {
+    channel:string
+    clusterName:string
+    view:string
+    namespace:string
+    group:string
+    pod:string
+    container:string
+    suggestedName:string
+}
+
 interface IProps {
-    onAdd:(resource:any) => {}
+    onAdd:(resource:IResourceSelected) => {}
     clusters:Cluster[]
     sx:SxProps
 }
@@ -133,24 +144,26 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     }
 
     const onAdd = () => {
-        var selection:any={}
-        selection.channel = channel
-        selection.cluster=selectedCluster?.name
-        selection.view=view
-        selection.namespace=namespace
         var g:GroupData=allGroups.find(g => g.name===group)!
-        selection.group=g? (g.type+'+'+g.name) : ''
-        selection.pod=pod
-        selection.container=container
+        var selection:IResourceSelected={
+            channel,
+            clusterName: selectedCluster?.name,
+            view,
+            namespace,
+            group: g? (g.type+'+'+g.name) : '',
+            pod,
+            container,
+            suggestedName: ''
+        }
 
         if (view==='namespace')
-            selection.logName=namespace
+            selection.suggestedName=namespace
         else if (view==='group')
-            selection.logName=namespace+'-'+g.name
+            selection.suggestedName=namespace+'-'+g.name
         else if (view==='pod')
-            selection.logName=namespace+'-'+pod
+            selection.suggestedName=namespace+'-'+pod
         else if (view==='container')
-            selection.logName=namespace+'-'+pod+'-'+container
+            selection.suggestedName=namespace+'-'+pod+'-'+container
         props.onAdd(selection)
     }
 
@@ -241,4 +254,5 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     </>)
 }
 
-export default ResourceSelector
+export { ResourceSelector }
+export type { IResourceSelected }

@@ -13,7 +13,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
     const [logPrevious, setLogPrevious] = useState(props.settings.logPrevious)
     const [logTimestamp, setLogTimestamp] = useState(props.settings.logTimestamp)
     const [metricsMode, setMetricsMode] = useState(props.settings.metricsMode.toString())
-    const [metricsMetrics, setMetricsMetrics] = useState(props.settings.metricsMetrics.join(','))
+    //const [metricsMetrics, setMetricsMetrics] = useState(props.settings.metricsMetrics.join(','))
     const [metricsDepth, setMetricsDepth] = useState(props.settings.metricsDepth)
     const [metricsWidth, setMetricsWidth] = useState(props.settings.metricsWidth)
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
@@ -36,9 +36,9 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         setMetricsMode(event.target.value)
     }
 
-    const onChangeMetricsMetrics = (event:ChangeEvent<HTMLInputElement>) => {
-        setMetricsMetrics(event.target.value)
-    }
+    // const onChangeMetricsMetrics = (event:ChangeEvent<HTMLInputElement>) => {
+    //     setMetricsMetrics(event.target.value)
+    // }
 
     const onChangeMetricsDepth = (event: SelectChangeEvent) => {
         setMetricsDepth(+event.target.value)
@@ -66,7 +66,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         newSettings.logPrevious=Boolean(logPrevious)
         newSettings.logTimestamp=Boolean(logTimestamp)
         newSettings.metricsMode = metricsMode as MetricsConfigModeEnum
-        newSettings.metricsMetrics = metricsMetrics.split(',')
+        //newSettings.metricsMetrics = metricsMetrics.split(',')
         newSettings.metricsWidth = metricsWidth
         newSettings.metricsDepth = metricsDepth
         newSettings.metricsInterval = metricsInterval
@@ -89,7 +89,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
                     <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
                         <TextField value={logMaxMessages} onChange={onChangeLogMaxMessages} variant='standard'label='Max messages' SelectProps={{native: true}} type='number'></TextField>
                         <Stack direction='row' alignItems={'baseline'}>
-                            <Switch checked={logPrevious} onChange={onChangeLogPrevious}/><Typography>Get messages of previous deployment</Typography>
+                            <Switch checked={logPrevious} onChange={onChangeLogPrevious}/><Typography>Get messages of previous container</Typography>
                         </Stack>
                         <Stack direction='row' alignItems={'baseline'}>
                             <Switch checked={logTimestamp} onChange={onChangeLogTimestamp}/><Typography>Add timestamp to messages</Typography>
@@ -107,7 +107,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
                             </Select>
                         </FormControl>
                         <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={onChangeMetricsAggregate}/>} label='Aggregate resource metrics' />
-                        <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField>
+                        {/* <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField> */}
                         <Stack spacing={1} direction={'row'}>
                             <FormControl variant='standard' sx={{width:'33%'}}>
                                 <InputLabel id='labeldepth'>Depth</InputLabel>
@@ -137,7 +137,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
 
                 <div hidden={value!=='kwirth'}>
                     <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                        <TextField value={clusterMetricsInterval} onChange={onChangeClusterMetricsInterval} variant='standard' label='Cluster metrics interval' SelectProps={{native: true}} type='number'></TextField>
+                        <TextField value={clusterMetricsInterval} onChange={onChangeClusterMetricsInterval} variant='standard' label='Cluster metrics read interval' SelectProps={{native: true}} type='number'></TextField>
                     </Stack>
                 </div>
                 

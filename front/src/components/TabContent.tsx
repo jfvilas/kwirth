@@ -1,9 +1,8 @@
-import { Box, Divider, Typography } from '@mui/material'
+import { Box } from '@mui/material'
 import { LogObject } from '../model/LogObject'
 import { LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { MetricsObject } from '../model/MetricsObject'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { AssessmentTwoTone } from '@mui/icons-material'
 
 interface IProps {
   filter:string
@@ -60,48 +59,6 @@ const TabContent: React.FC<any> = (props:IProps) => {
         }
     }
 
-    /*
-    const formatMetricsOld = () => {
-        if (!props.metricsObject || !props.metricsObject.metrics || !props.metricsObject.assetMetrics || props.metricsObject.assetMetrics.length===0) return <></>
-        if (props.metricsObject.assetMetrics) {
-
-            var charts = props.metricsObject.metrics.map ((mname,index) => {
-                var serie=[]
-                for (var i=0;i<props.metricsObject.assetMetrics.length;i++) {
-                    var x=new Date (props.metricsObject.timestamps[i])
-                    var label = `${x.getHours().toString().padStart(2,'0')}:${x.getMinutes().toString().padStart(2,'0')}:${x.getSeconds().toString().padStart(2,'0')}`
-                    serie.push({ time:label, value:props.metricsObject.assetMetrics[i][index]})
-                }
-                return (
-                    <ResponsiveContainer width="100%" height={300} key={index}>
-                        <LineChart data={serie}>
-                            <CartesianGrid strokeDasharray="3 3"/>
-                            <XAxis dataKey="time" fontSize={8} />
-                            <YAxis />
-                            <Tooltip />
-                            <Line name={mname} type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} />
-                            <Legend/>
-                        </LineChart>
-                    </ResponsiveContainer>
-                )
-            })
-
-            let filas = []
-            for (let i = 0; i < charts.length; i += props.metricsObject.width) {
-                filas.push(charts.slice(i, i + props.metricsObject.width))
-            }
-
-            return (<>
-                    {filas.map((fila, index) => (
-                    <div key={index} style={{ display: 'flex', justifyContent: 'space-around' }}>
-                        {fila}
-                    </div>
-                    ))}
-                </>)
-        }
-    }
-    */
-
     const formatMetrics = () => {
         if (!props.metricsObject || !props.metricsObject.metrics || !props.metricsObject.assetMetricsValues || props.metricsObject.assetMetricsValues.length===0) return <></>
         if (props.metricsObject.assetMetricsValues) {
@@ -119,12 +76,9 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 }   
             }
 
-            //console.log(data)
             var allResults = Array.from(data.keys()!).map( asset =>  {
-                //console.log(asset)
                 return Array.from(data.get(asset)?.keys()!).map ( metric => {
                     var serie:any=data.get(asset)?.get(metric)!
-                    //console.log(asset,'-',metric)
                     return (
                         <ResponsiveContainer width="100%" height={300} key={asset+metric}>
                         <LineChart data={serie}>
