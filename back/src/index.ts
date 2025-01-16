@@ -322,12 +322,15 @@ const startPodLog = async (webSocket:WebSocket, podNamespace:string, podName:str
 const getPodStartTime = async (namespace:string, pod:string) => {
     var epoch:number=0
     try {
-        const podResponse = await coreApi.readNamespacedPod(pod, namespace);
-        const startTime = podResponse.body.status?.startTime;
+        const podResponse = await coreApi.readNamespacedPod(pod, namespace)
+        const startTime = podResponse.body.status?.startTime
         if (startTime!==undefined) epoch = startTime?.getTime()
     }
-    catch (error) {
-        console.error('Error obtaining pod information:', error);
+    catch (err:any) {
+        console.log('Error obtaining pod information')
+        console.log(`  Code: ${err.body?.code}`)
+        console.log(`  Reason: ${err.body?.reason}`)
+        console.log(`  Message: ${err.body?.message}`)
     }
     return epoch
 }
