@@ -397,7 +397,6 @@ const App: React.FC = () => {
                 break
             case 'signal':
                 tab.metricsObject.serviceInstance = msg.instance
-                console.log(`Received message on channel ${msg.channel}: ${JSON.stringify(msg)}`)
                 break
             default:
                 console.log(`Invalid message type ${msg.type}`)
@@ -412,7 +411,6 @@ const App: React.FC = () => {
             var json=await response.json() as MetricDescription[]
             json.map( jsonMetric => cluster.metricsList.set(jsonMetric.metric, jsonMetric))
             console.log(`Metrics for cluster ${cluster.name} have been received`)
-            console.log(cluster.metricsList)
         }
         catch (err) {
             console.log('Error obtaining metrics list')
@@ -506,9 +504,9 @@ const App: React.FC = () => {
         }
     }
 
-    const onClickStopTab = () => {    
+    const onClickLogStop = () => {    
         setAnchorMenuTab(null)
-        if (selectedTab) stopTab(selectedTab)
+        if (selectedTab && selectedTab.logObject) stopLog(selectedTab)
     }
 
     const stopTab = (tab:TabObject) => {
@@ -520,13 +518,9 @@ const App: React.FC = () => {
         setAnchorMenuTab(null)
         if (!selectedTab) return
 
-        selectedTab.ws?.close()
         if (selectedTab.logObject) stopLog(selectedTab)
         if (selectedTab.metricsObject) stopMetrics(selectedTab)
-        if (tabs.length===1)
-            setLogMessages([])
-        else
-            onChangeTabs(null,tabs[0].name)
+        selectedTab.ws?.close()
         setTabs(tabs.filter(t => t!==selectedTab))
     }
 
@@ -698,7 +692,7 @@ const App: React.FC = () => {
                 onClickLogPause()
                 break
             case MenuTabOption.LogStop:
-                onClickStopTab()
+                onClickLogStop()
                 break
             case MenuTabOption.TabManageRestart:
                 switch(selectedTab && selectedTab.logObject?.view) {
@@ -797,7 +791,6 @@ const App: React.FC = () => {
             stopTab(tab)
         }
         setTabs([])
-        setLogMessages([])
     }
 
     const menuDrawerOptionSelected = async (option:MenuDrawerOption) => {

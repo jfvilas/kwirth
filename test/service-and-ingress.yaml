@@ -18,10 +18,12 @@ kind: Ingress
 metadata:
   name: ingress-kwirth
   namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/affinity: cookie
 spec:
   ingressClassName: nginx
-  nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-  nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  #nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
   # if you want to publish Kwirth securely you would need to add something like this:
   # tls:
   # - hosts:

@@ -23,6 +23,7 @@ export class ManageClusterApi {
             .get( async (req:Request, res:Response) => {
                 try {
                     // filter results: jq .[].spec.containers[].image aa.json
+                    // object indicates whta kind of object to search for: pod, deployment
                     var object:string=req.query.type? (req.query.type as string) : 'pod' // transitional
                     var namespace:string=req.query.namespace as string
                     var labelSelector = undefined 
@@ -30,6 +31,7 @@ export class ManageClusterApi {
                     var value:string=req.query.entity as string  // transitional
                     if (!value) value=req.query.value as string
                     if (label && value) labelSelector=`${label}=${value}`
+                    // data specfy what data to retinr: id => just pod id (name+namespace), all => all pod data
                     var data:string=req.query.data? (req.query.data as string) : 'id'  // transitional
                     switch(object) {
                         case 'pod':

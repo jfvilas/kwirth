@@ -40,12 +40,8 @@ export class ClusterData {
         console.log('Node config loaded')
 
         // load metrics avaliable
-        console.log('********* load metrics')
         ClusterData.metrics = new Metrics(this.saToken!)
         ClusterData.metrics.loadMetrics(Array.from(ClusterData.nodes.values()))
-
-
-        console.log('********* read metric values')
         ClusterData.metrics.readClusterMetrics()
         ClusterData.startInterval(ClusterData.clusterMetricsInterval)
     }

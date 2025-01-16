@@ -45,11 +45,11 @@ const kubeConfig = new KubeConfig()
 kubeConfig.loadFromDefault()
 const coreApi = kubeConfig.makeApiClient(CoreV1Api)
 const appsApi = kubeConfig.makeApiClient(AppsV1Api)
-//const customApi = kubeConfig.makeApiClient(CustomObjectsApi)
 const k8sLog = new Log(kubeConfig)
 
-var secrets:Secrets
-var configMaps:ConfigMaps
+var saToken: ServiceAccountToken
+var secrets: Secrets
+var configMaps: ConfigMaps
 const rootPath = process.env.KWIRTH_ROOTPATH || ''
 
 // get the namespace where Kwirth is running on
@@ -114,7 +114,6 @@ const getAssetMetrics = (assetName:string, metricsConfig:MetricsConfig, assets:A
 }
 
 const sendMetricsData = (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
-    console.log('smd')
     var metricsMessage:MetricsMessage = {
         channel: ServiceConfigChannelEnum.METRICS,
         type: ServiceMessageTypeEnum.DATA,
@@ -128,12 +127,12 @@ const sendMetricsData = (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
         // get instance
         var instances = websocketIntervals.get(webSocket)
         if (!instances) {
-            console.log('No instances found for smd')
+            console.log('No instances found for sendMetricsData')
             return
         }
         var instance = instances.find (i => i.id === metricsConfig.instance)
         if (!instance) {
-            console.log('No instance found for smd instance', metricsConfig.instance)
+            console.log('No instance found for sendMetricsData instance', metricsConfig.instance)
             return
         }
         if (instance.working) {
@@ -141,7 +140,6 @@ const sendMetricsData = (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
             return
         }
         instance.working=true
-        console.log('instance', instance)
 
         switch(metricsConfig.view) {
             case ServiceConfigViewEnum.NAMESPACE:
@@ -312,11 +310,7 @@ const startPodLog = async (webSocket:WebSocket, podNamespace:string, podName:str
             tailLines:logConfig.maxMessages
         }
 
-        if (!websocketLogStreams.has(webSocket))
-            websocketLogStreams.set(webSocket, logStream)
-        else
-            console.log('WebSocket LogStream already exists')
-
+        if (!websocketLogStreams.has(webSocket)) websocketLogStreams.set(webSocket, logStream)
         await k8sLog.log(podNamespace, podName, containerName, logStream,  streamConfig)
     }
     catch (err) {
@@ -432,7 +426,7 @@ const watchPods = (apiPath:string, filter:any, webSocket:WebSocket, serviceConfi
         }
     },
     (err) => {
-        console.log('Generic error starting watch', err)
+        console.log('Generic error starting watchPods', err)
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, JSON.stringify(err), serviceConfig)
     })
 }
@@ -794,51 +788,55 @@ const getLastKwirthVersion = async (kwirthData:KwirthData) => {
 }
 
 const launch = async (kwirthData: KwirthData) => {
-  secrets = new Secrets(coreApi, kwirthData.namespace)
-  configMaps = new ConfigMaps(coreApi, kwirthData.namespace)
+    secrets = new Secrets(coreApi, kwirthData.namespace)
+    configMaps = new ConfigMaps(coreApi, kwirthData.namespace)
 
-  await getLastKwirthVersion(kwirthData)
-  // serve front
-  console.log(`SPA is available at: ${rootPath}/front`)
-  app.get(`/`, (req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
+    await getLastKwirthVersion(kwirthData)
+    // serve front
+    console.log(`SPA is available at: ${rootPath}/front`)
+    app.get(`/`, (req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
 
-  app.get(`${rootPath}`, (req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
-  app.use(`${rootPath}/front`, express.static('./dist/front'))
+    app.get(`${rootPath}`, (req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
+    app.use(`${rootPath}/front`, express.static('./dist/front'))
 
-  // serve config API
-  var va:ConfigApi = new ConfigApi(coreApi, appsApi, kwirthData)
-  app.use(`${rootPath}/config`, va.route)
-  var ka:ApiKeyApi = new ApiKeyApi(configMaps)
-  app.use(`${rootPath}/key`, ka.route)
-  var sa:StoreApi = new StoreApi(configMaps)
-  app.use(`${rootPath}/store`, sa.route)
-  var ua:UserApi = new UserApi(secrets)
-  app.use(`${rootPath}/user`, ua.route)
-  var la:LoginApi = new LoginApi(secrets, configMaps)
-  app.use(`${rootPath}/login`, la.route)
-  var mk:ManageKwirthApi = new ManageKwirthApi(coreApi, appsApi, kwirthData)
-  app.use(`${rootPath}/managekwirth`, mk.route)
-  var mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi)
-  app.use(`${rootPath}/managecluster`, mc.route)
-  var ma:MetricsApi = new MetricsApi(ClusterData.metrics)
-  app.use(`${rootPath}/metrics`, ma.route)
+    // serve config API
+    var va:ConfigApi = new ConfigApi(coreApi, appsApi, kwirthData)
+    app.use(`${rootPath}/config`, va.route)
+    var ka:ApiKeyApi = new ApiKeyApi(configMaps)
+    app.use(`${rootPath}/key`, ka.route)
+    var sa:StoreApi = new StoreApi(configMaps)
+    app.use(`${rootPath}/store`, sa.route)
+    var ua:UserApi = new UserApi(secrets)
+    app.use(`${rootPath}/user`, ua.route)
+    var la:LoginApi = new LoginApi(secrets, configMaps)
+    app.use(`${rootPath}/login`, la.route)
+    var mk:ManageKwirthApi = new ManageKwirthApi(coreApi, appsApi, kwirthData)
+    app.use(`${rootPath}/managekwirth`, mk.route)
+    var mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi)
+    app.use(`${rootPath}/managecluster`, mc.route)
+    var ma:MetricsApi = new MetricsApi(ClusterData.metrics)
+    app.use(`${rootPath}/metrics`, ma.route)
 
-  // obtain remote ip
-  app.use(requestIp.mw())
-  
-  // listen
-  server.listen(PORT, () => {
-    console.log(`Server is listening on port ${PORT}`)
-    console.log(`Context being used: ${kubeConfig.currentContext}`)
-    if (kwirthData.inCluster) {
-        console.log(`Kwirth is running INSIDE cluster`)
-    }
-    else {
-        console.log(`Cluster name (according to kubeconfig context): ${kubeConfig.getCluster(kubeConfig.currentContext)?.name}`)
-        console.log(`Kwirth is NOT running on a cluster`)
-    }
-    console.log(`KWI1500I Control is being given to Kwirth`)
-  })
+    // obtain remote ip
+    app.use(requestIp.mw())
+    
+    // listen
+    server.listen(PORT, () => {
+        console.log(`Server is listening on port ${PORT}`)
+        console.log(`Context being used: ${kubeConfig.currentContext}`)
+        if (kwirthData.inCluster) {
+            console.log(`Kwirth is running INSIDE cluster`)
+        }
+        else {
+            console.log(`Cluster name (according to kubeconfig context): ${kubeConfig.getCluster(kubeConfig.currentContext)?.name}`)
+            console.log(`Kwirth is NOT running on a cluster`)
+        }
+        console.log(`KWI1500I Control is being given to Kwirth`)
+    })
+    process.on('exit', () => {
+        console.log('exiting')
+        saToken.deleteToken('kwirth-sa',kwirthData.namespace)
+    })
 }
 
 ////////////////////////////////////////////////////////////// START /////////////////////////////////////////////////////////
@@ -851,21 +849,39 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 getMyKubernetesData()
     .then ( async (kwirthData) => {
         try {
-            var sat = new ServiceAccountToken(coreApi, kwirthData.namespace)
-            var saToken= await sat.getToken('kwirth-sa',kwirthData.namespace)
-            if (saToken) {
-                console.log(saToken)
-                await new ClusterData(coreApi,saToken).init()
-            }
-            else {
-                console.log('Could not get sa token, metrics will not be available')
-            }
+            saToken = new ServiceAccountToken(coreApi, kwirthData.namespace)
+            // serv accnt tokens are not created immediately, so we need to wait some time (5 segs)
+            saToken.createToken('kwirth-sa',kwirthData.namespace).then ( () => {
+                setTimeout ( () => {
+                    saToken.extractToken('kwirth-sa',kwirthData.namespace).then ( (token) => {
+                        if (token)  {
+                            console.log('SA token obtained succesfully')
+                            new ClusterData(coreApi,token).init()                            
+                        }
+                        else {
+                            console.log('SA token is invalid')
+                        }
+                    })
+                    .catch ( (err) => {
+                        console.log('Could not get SA token, metrics will not be available')
+                    })
+                }, 5000)
+            })
+            // var token= await saToken.getToken('kwirth-sa',kwirthData.namespace)
+            // if (token) {
+            //     console.log('Service Account token obtained succesfully')
+            //     await new ClusterData(coreApi,token).init()
+            // }
+            // else {
+            //     console.log('Could not get sa token, metrics will not be available')
+            // }
+             
         }
         catch (err){
             console.log(err)
         }
-        console.log('Detected own namespace: '+kwirthData.namespace)
-        console.log('Detected own deployment: '+kwirthData.deployment)
+        console.log(`Detected own namespace: ${kwirthData.namespace}`)
+        console.log(`Detected own deployment: ${kwirthData.deployment}`)
         launch(kwirthData)
     })
     .catch ( (err) => {
