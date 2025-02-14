@@ -30,7 +30,7 @@ import { clearInterval } from 'timers'
 import * as stream from 'stream'
 import { PassThrough } from 'stream'; 
 import { AssetData } from './tools/Metrics'
-import { assert } from 'console'
+
 const http = require('http')
 const cors = require('cors')
 const bodyParser = require('body-parser')
