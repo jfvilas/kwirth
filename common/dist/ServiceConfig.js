@@ -11,6 +11,9 @@ var ServiceConfigActionEnum;
 (function (ServiceConfigActionEnum) {
     ServiceConfigActionEnum["START"] = "start";
     ServiceConfigActionEnum["STOP"] = "stop";
+    ServiceConfigActionEnum["PAUSE"] = "pause";
+    ServiceConfigActionEnum["CONTINUE"] = "continue";
+    ServiceConfigActionEnum["MODIFY"] = "modify";
 })(ServiceConfigActionEnum || (exports.ServiceConfigActionEnum = ServiceConfigActionEnum = {}));
 var ServiceConfigFlowEnum;
 (function (ServiceConfigFlowEnum) {

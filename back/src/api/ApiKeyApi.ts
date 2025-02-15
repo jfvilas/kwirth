@@ -1,8 +1,9 @@
 import express, { Request, Response} from 'express'
 import { ConfigMaps } from '../tools/ConfigMaps'
-import { ApiKey } from '@jfvilas/kwirth-common'
+import { accessKeyBuild, ApiKey } from '@jfvilas/kwirth-common'
 import { cleanApiKeys, validKey } from '../tools/AuthorizationManagement'
 import { AccessKey, accessKeyCreate, accessKeySerialize } from '@jfvilas/kwirth-common'
+import * as crypto from 'crypto'
 
 export class ApiKeyApi {
     configMaps:ConfigMaps;
@@ -36,6 +37,7 @@ export class ApiKeyApi {
                         VALUES
                         permanent
                         volatile
+                        bearer
                     */
                     /*
                         RESOURCE
@@ -64,7 +66,7 @@ export class ApiKeyApi {
                     var type=req.body.type.toLowerCase()  // volatile or permanent
                     var resource=req.body.resource.toLowerCase()  // optional (mandatory if type is 'resource')
                     var description=req.body.description
-                    var expire=req.body.expire
+                    var expire=req.body.expire  // typically an epoch in seconds
                     var accessKey:AccessKey=accessKeyCreate(type, resource)
                     var keyObject:ApiKey={ accessKey, description, expire }
 
@@ -75,8 +77,18 @@ export class ApiKeyApi {
                         await configMaps.write('kwirth.keys',storedKeys)
                         ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type==='volatile'), ...storedKeys]
                     }
-                    else {
+                    else if (type==='volatile') {
                         ApiKeyApi.apiKeys.push(keyObject)
+                    }
+                    else {
+                        // bearer
+                        let masterKey = 'Kwirth4Ever'
+                        let input = masterKey + '|' + resource + '|' + expire
+                        console.log('input',input)
+                        var hash = crypto.createHash('md5').update(input).digest('hex')
+                        type = 'bearer:' + expire 
+                        keyObject.accessKey = accessKeyBuild(hash, type, resource)
+                        console.log('keyObject', keyObject)
                     }
 
                     res.status(200).json(keyObject)

@@ -15,7 +15,7 @@ import WebSocket from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
 import { LogConfig, LogMessage, MetricsConfigModeEnum, ServiceConfigActionEnum, ServiceConfigFlowEnum, versionGreatThan, accessKeyDeserialize, accessKeySerialize, parseResource, ResourceIdentifier, KwirthData, ServiceConfigChannelEnum, ServiceConfig, SignalMessage, SignalMessageLevelEnum, ServiceConfigViewEnum, ServiceMessageTypeEnum, AssetMetrics } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
-import { getServiceScopeLevel } from './tools/AuthorizationManagement'
+import { getServiceScopeLevel, validBearerKey } from './tools/AuthorizationManagement'
 import { getPodsFromGroup } from './tools/KubernetesOperations'
 import { MetricsMessage } from '@jfvilas/kwirth-common'
 
@@ -37,7 +37,8 @@ const bodyParser = require('body-parser')
 const requestIp = require ('request-ip')
 const PORT = 3883
 const buffer:Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages
-const websocketIntervals:Map<WebSocket, {id:string, timeout: NodeJS.Timeout, working:boolean, prevValues: number[], assets: AssetData[]} []>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+//const websocketIntervals:Map<WebSocket, {id:string, timeout: NodeJS.Timeout, working:boolean, prevValues: number[], assets: AssetData[]} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketIntervals:Map<WebSocket, {id:string, timeout: NodeJS.Timeout, working:boolean, paused:boolean, prevValues: number[], assets: AssetData[], metricsConfig:MetricsConfig} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 const websocketLogStreams:Map<WebSocket, PassThrough>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 
 // Kubernetes API access
@@ -111,6 +112,102 @@ const getAssetMetrics = (assetName:string, metricsConfig:MetricsConfig, assets:A
         assetMetrics.values.push ( {metricName, metricValue})
     }
     return assetMetrics
+}
+
+const sendMetricsDataOld = (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
+    var metricsMessage:MetricsMessage = {
+        channel: ServiceConfigChannelEnum.METRICS,
+        type: ServiceMessageTypeEnum.DATA,
+        instance: metricsConfig.instance,
+        assets: [],
+        namespace: metricsConfig.namespace,
+        pod: metricsConfig.pod,
+        timestamp: Date.now()
+    }
+    try {
+        // get instance
+        var instances = websocketIntervals.get(webSocket)
+        if (!instances) {
+            console.log('No instances found for sendMetricsData')
+            return
+        }
+        var instance = instances.find (i => i.id === metricsConfig.instance)
+        if (!instance) {
+            console.log('No instance found for sendMetricsData instance', metricsConfig.instance)
+            return
+        }
+        if (instance.working) {
+            console.log('Previous instance is still running')
+            return
+        }
+        instance.working=true
+
+        switch(metricsConfig.view) {
+            case ServiceConfigViewEnum.NAMESPACE:
+                if (metricsConfig.aggregate) {
+                    var assetMetrics = getAssetMetrics(metricsConfig.namespace, metricsConfig, instance.assets)
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
+                    for (var containerName of groupNames) {
+                        var assets=instance.assets.filter(a => a.podGroup===containerName)
+                        var assetMetrics = getAssetMetrics(containerName, metricsConfig, assets)
+                        metricsMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            case ServiceConfigViewEnum.GROUP:
+                if (metricsConfig.aggregate) {
+                    var assetMetrics = getAssetMetrics(metricsConfig.group, metricsConfig, instance.assets)
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const podNames = [...new Set(instance.assets.map(item => item.podName))]
+                    for (var containerName of podNames) {
+                        var assets=instance.assets.filter(a => a.podName===containerName)
+                        var assetMetrics = getAssetMetrics(containerName, metricsConfig, assets)
+                        metricsMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            case ServiceConfigViewEnum.POD:
+                if (metricsConfig.aggregate) {
+                    var assetMetrics = getAssetMetrics(metricsConfig.pod, metricsConfig, instance.assets)
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const containerNames = [...new Set(instance.assets.map(item => item.containerName))]
+                    for (var containerName of containerNames) {
+                        var assets=instance.assets.filter(a => a.containerName===containerName)
+                        var assetMetrics = getAssetMetrics(containerName, metricsConfig, assets)
+                        metricsMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            case ServiceConfigViewEnum.CONTAINER:
+                for (var asset of instance.assets) {
+                    var assetMetrics = getAssetMetrics(asset.containerName, metricsConfig, [asset])
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                break
+            default:
+                console.log(`Invalid view:`, metricsConfig.view)
+        }
+
+        try {
+            webSocket.send(JSON.stringify(metricsMessage))
+            //+++instance.prevValues = metricsMessage.value
+        }
+        catch (err) {
+            console.log('Socket error, we should forget interval')
+        }
+        instance.working=false
+    }
+    catch (err) {
+        console.log('Error reading metrics', err)
+        sendChannelSignal(webSocket, SignalMessageLevelEnum.WARNING, 'Cannot read metrics', metricsConfig)
+    }
 }
 
 const sendMetricsData = (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
@@ -206,6 +303,109 @@ const sendMetricsData = (webSocket:WebSocket, metricsConfig:MetricsConfig) => {
     catch (err) {
         console.log('Error reading metrics', err)
         sendChannelSignal(webSocket, SignalMessageLevelEnum.WARNING, 'Cannot read metrics', metricsConfig)
+    }
+}
+
+const sendMetricsDataInstance = (webSocket:WebSocket, instanceId:string) => {
+    // get instance
+    var instances = websocketIntervals.get(webSocket)
+    if (!instances) {
+        console.log('No instances found for sendMetricsData')
+        return
+    }
+    var instance = instances.find (i => i.id === instanceId)
+    if (!instance) {
+        console.log(`No instance found for sendMetricsData instance ${instanceId}`)
+        return
+    }
+    if (instance.working) {
+        console.log(`Previous instance of ${instanceId} is still running`)
+        return
+    }
+    if (instance.paused) {
+        console.log(`Instance ${instanceId} is paused, no SMD performed`)
+        return
+    }
+
+    instance.working=true
+    let metricsConfig = instance.metricsConfig
+
+    try {
+        var metricsMessage:MetricsMessage = {
+            channel: ServiceConfigChannelEnum.METRICS,
+            type: ServiceMessageTypeEnum.DATA,
+            instance: metricsConfig.instance,
+            assets: [],
+            namespace: metricsConfig.namespace,
+            pod: metricsConfig.pod,
+            timestamp: Date.now()
+        }
+
+        switch(metricsConfig.view) {
+            case ServiceConfigViewEnum.NAMESPACE:
+                if (metricsConfig.aggregate) {
+                    var assetMetrics = getAssetMetrics(metricsConfig.namespace, metricsConfig, instance.assets)
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
+                    for (var containerName of groupNames) {
+                        var assets=instance.assets.filter(a => a.podGroup===containerName)
+                        var assetMetrics = getAssetMetrics(containerName, metricsConfig, assets)
+                        metricsMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            case ServiceConfigViewEnum.GROUP:
+                if (metricsConfig.aggregate) {
+                    var assetMetrics = getAssetMetrics(metricsConfig.group, metricsConfig, instance.assets)
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const podNames = [...new Set(instance.assets.map(item => item.podName))]
+                    for (var containerName of podNames) {
+                        var assets=instance.assets.filter(a => a.podName===containerName)
+                        var assetMetrics = getAssetMetrics(containerName, metricsConfig, assets)
+                        metricsMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            case ServiceConfigViewEnum.POD:
+                if (metricsConfig.aggregate) {
+                    var assetMetrics = getAssetMetrics(metricsConfig.pod, metricsConfig, instance.assets)
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const containerNames = [...new Set(instance.assets.map(item => item.containerName))]
+                    for (var containerName of containerNames) {
+                        var assets=instance.assets.filter(a => a.containerName===containerName)
+                        var assetMetrics = getAssetMetrics(containerName, metricsConfig, assets)
+                        metricsMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            case ServiceConfigViewEnum.CONTAINER:
+                for (var asset of instance.assets) {
+                    var assetMetrics = getAssetMetrics(asset.containerName, metricsConfig, [asset])
+                    metricsMessage.assets.push(assetMetrics)
+                }
+                break
+            default:
+                console.log(`Invalid view:`, metricsConfig.view)
+        }
+
+        try {
+            webSocket.send(JSON.stringify(metricsMessage))
+            //+++instance.prevValues = metricsMessage.value
+        }
+        catch (err) {
+            console.log('Socket error, we should forget interval')
+        }
+        instance.working=false
+    }
+    catch (err) {
+        console.log('Error reading metrics', err)
+        sendChannelSignal(webSocket, SignalMessageLevelEnum.WARNING, `Cannot read metrics for instance ${instanceId}`,metricsConfig)
     }
 }
 
@@ -361,9 +561,9 @@ const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName
                     else {
                         websocketIntervals.set(webSocket, [])
                         var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000
-                        var timeout = setInterval(() => sendMetricsData(webSocket,metricsConfig), interval)
+                        var timeout = setInterval(() => sendMetricsDataInstance(webSocket,metricsConfig.instance), interval)
                         var instances=websocketIntervals.get(webSocket)
-                        instances?.push({id:metricsConfig.instance, working:false, timeout, prevValues:[],  assets:[{podNode, podNamespace, podGroup, podName, containerName,startTime}]})
+                        instances?.push({id:metricsConfig.instance, working:false, paused:false, timeout, prevValues:[],  assets:[{podNode, podNamespace, podGroup, podName, containerName,startTime}], metricsConfig})
                     }
                 }
                 else {
@@ -667,6 +867,53 @@ const processStopServiceConfig = async (serviceConfig: ServiceConfig, webSocket:
     }
 }
 
+// +++ test modify instance (only metrics interval or aggregate can be modified)
+const processModifyServiceConfig = async (serviceConfig: ServiceConfig, webSocket: WebSocket) => {
+    switch (serviceConfig.channel) {
+        case ServiceConfigChannelEnum.LOG:
+            break
+        case ServiceConfigChannelEnum.METRICS:
+            let metricsConfig = serviceConfig as MetricsConfig
+            let runningInstances = websocketIntervals.get(webSocket)
+            let instance = runningInstances?.find(i => i.id===metricsConfig.instance)
+            if (instance) {
+                instance.metricsConfig.metrics = metricsConfig.metrics
+                instance.metricsConfig.interval = metricsConfig.interval
+                instance.metricsConfig.aggregate = metricsConfig.aggregate
+                sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.MODIFY, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics modified')
+            }
+            else {
+                sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${metricsConfig.instance} not found`,serviceConfig)
+            }
+            break
+    }
+}
+
+const processPauseContinueServiceConfig = async (serviceConfig: ServiceConfig, webSocket: WebSocket, action:ServiceConfigActionEnum) => {
+    switch (serviceConfig.channel) {
+        case ServiceConfigChannelEnum.LOG:
+            break
+        case ServiceConfigChannelEnum.METRICS:
+            let metricsConfig = serviceConfig as MetricsConfig
+            let runningInstances = websocketIntervals.get(webSocket)
+            let instance = runningInstances?.find(i => i.id===metricsConfig.instance)
+            if (instance) {
+                if (action === ServiceConfigActionEnum.PAUSE) {
+                    instance.paused = true
+                    sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.PAUSE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics paused')
+                }
+                if (action === ServiceConfigActionEnum.CONTINUE) {
+                    instance.paused = false
+                    sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.CONTINUE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics continued')
+                }
+            }
+            else {
+                sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${metricsConfig.instance} not found`,serviceConfig)
+            }
+            break
+    }
+}
+
 // clients send requests to start receiving log
 const processClientMessage = async (message:string, webSocket:WebSocket) => {
     const serviceConfig = JSON.parse(message) as ServiceConfig
@@ -680,9 +927,22 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'No key received', serviceConfig)
         return
     }
-    if (!ApiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===serviceConfig.accessKey)) {
-        sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid API key: ${serviceConfig.accessKey}`, serviceConfig)
-        return
+    var accessKey = accessKeyDeserialize(serviceConfig.accessKey)
+    if (accessKey.type.startsWith('bearer:')) {
+        if (!validBearerKey(accessKey)) {
+            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid bearer access key: ${serviceConfig.accessKey}`, serviceConfig)
+            return
+        }       
+    }
+    else {
+        if (!ApiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===serviceConfig.accessKey)) {
+            console.log('invalid api key*********************')
+            console.log('received', serviceConfig.accessKey)
+            console.log('have keys', ApiKeyApi.apiKeys.map(a => accessKeySerialize(a.accessKey)).join(',   '))
+            
+            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid API key: ${serviceConfig.accessKey}`, serviceConfig)
+            return
+        }
     }
     var accepted=checkPermissionLevel(serviceConfig)
     if (accepted) {
@@ -724,6 +984,44 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
                     break
                 case ServiceConfigChannelEnum.METRICS:
                     processStopServiceConfig(serviceConfig, webSocket)
+                    break
+                default:
+                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid ServiceConfig type: ${serviceConfig.channel}`, serviceConfig)
+                    break
+            }
+            break
+        case ServiceConfigActionEnum.STOP:
+            switch (serviceConfig.channel) {
+                case ServiceConfigChannelEnum.LOG:
+                    processStopServiceConfig(serviceConfig, webSocket)
+                    break
+                case ServiceConfigChannelEnum.METRICS:
+                    processStopServiceConfig(serviceConfig, webSocket)
+                    break
+                default:
+                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid ServiceConfig type: ${serviceConfig.channel}`, serviceConfig)
+                    break
+            }
+            break
+        case ServiceConfigActionEnum.MODIFY:
+            switch (serviceConfig.channel) {
+                case ServiceConfigChannelEnum.LOG:
+                    break
+                case ServiceConfigChannelEnum.METRICS:
+                    processModifyServiceConfig(serviceConfig, webSocket)
+                    break
+                default:
+                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid ServiceConfig type: ${serviceConfig.channel}`, serviceConfig)
+                    break
+            }
+            break
+        case ServiceConfigActionEnum.PAUSE:
+        case ServiceConfigActionEnum.CONTINUE:
+            switch (serviceConfig.channel) {
+                case ServiceConfigChannelEnum.LOG:
+                    break
+                case ServiceConfigChannelEnum.METRICS:
+                    processPauseContinueServiceConfig(serviceConfig, webSocket, serviceConfig.action)
                     break
                 default:
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid ServiceConfig type: ${serviceConfig.channel}`, serviceConfig)

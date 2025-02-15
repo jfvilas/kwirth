@@ -5,7 +5,10 @@ export declare enum ServiceConfigChannelEnum {
 }
 export declare enum ServiceConfigActionEnum {
     START = "start",
-    STOP = "stop"
+    STOP = "stop",
+    PAUSE = "pause",
+    CONTINUE = "continue",
+    MODIFY = "modify"
 }
 export declare enum ServiceConfigFlowEnum {
     REQUEST = "request",
