@@ -1,44 +1,49 @@
 export enum ServiceConfigChannelEnum {
-    LOG='log',
-    METRICS='metrics',
-    AUDIT='audit'
+    LOG = 'log',
+    METRICS = 'metrics',
+    AUDIT = 'audit',
+    ALARM = 'alarm'
 }
 
 export enum ServiceConfigActionEnum {
-    START='start',
-    STOP='stop',
-    PAUSE='pause',
-    CONTINUE='continue',
-    MODIFY='modify'
+    START = 'start',
+    STOP = 'stop',
+    PAUSE = 'pause',
+    CONTINUE = 'continue',
+    MODIFY = 'modify'
 }
 
 export enum ServiceConfigFlowEnum {
-    REQUEST='request',
-    RESPONSE='response'
+    REQUEST = 'request',
+    RESPONSE = 'response'
 }
 
 export enum ServiceConfigViewEnum {
-    NONE='none',
-    CLUSTER='cluster',
-    NAMESPACE='namespace',
-    GROUP='group',
-    POD='pod',
-    CONTAINER='container'
+    NONE = 'none',
+    CLUSTER = 'cluster',
+    NAMESPACE = 'namespace',
+    GROUP = 'group',
+    POD = 'pod',
+    CONTAINER = 'container'
 }
 
 export enum ServiceConfigScopeEnum {
     NONE='none',
 
     // LOG
-    FILTER='filter',
-    VIEW='view',
-    RESTART='restart',
-    API='api',
-    CLUSTER='cluster',
+    FILTER = 'filter',
+    VIEW = 'view',
+    RESTART = 'restart',
+    API = 'api',
+    CLUSTER = 'cluster',
 
     // METRICS
-    SNAPSHOT='snapshot',
-    STREAM='stream'
+    SNAPSHOT = 'snapshot',
+    STREAM = 'stream',
+
+    // ALARM
+    CREATE = 'create',
+    SUBSCRIBE = 'subscribe',
 }
 
 export interface ServiceConfig {

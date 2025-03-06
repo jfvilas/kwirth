@@ -17,7 +17,7 @@ import { PickListConfig } from './model/PickListConfig'
 
 // components
 import BlockingAlarm from './components/BlockingAlarm'
-import AlarmConfig from './components/AlarmConfig'
+//import AlarmConfig from './components/AlarmConfig'
 import RenameTab from './components/RenameTab'
 import SaveBoard from './components/SaveBoard'
 import ManageApiSecurity from './components/ManageApiSecurity'
@@ -35,11 +35,12 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan, ServiceConfigScopeEnum, ServiceConfigViewEnum } from '@jfvilas/kwirth-common'
+import { KwirthData, LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan, ServiceConfigScopeEnum, ServiceConfigViewEnum, AlarmMessage, AlarmConfig } from '@jfvilas/kwirth-common'
 import { MetricsObject } from './model/MetricsObject'
 import { TabObject } from './model/TabObject'
 import MetricsSelector from './components/MetricsSelector'
 import { MetricDescription } from './model/MetricDescription'
+import { AlarmObject } from './model/AlarmObject'
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883'
@@ -66,14 +67,7 @@ const App: React.FC = () => {
     var selectedTab = tabs.find(t => t.name===selectedTabName)
     var selectedTabIndex = tabs.findIndex(t => t.name===selectedTabName)
 
-    // const [selectedLogName, setSelectedLogName] = useState<string>()
-    // const selectedLogRef = useRef(selectedLogName)
-    // selectedLogRef.current=selectedLogName
-    // var selectedLog = logs.find(t => t.name===selectedLogName)
-    // var selectedLogIndex = logs.findIndex(t => t.name===selectedLogName)
-    //const [receivedMetrics, setReceivedMetrics] = useState<MetricsMessage[]>([])
-    //const [receivedMetricValues, setReceivedMetricValues] = useState<number[]>([])
-    const [refreshMetrics, setRefreshMetrics] = useState(0)
+    const [refreshTabContent, setRefreshTabContent] = useState(0)
 
     // message list management
     const [logMessages, setLogMessages] = useState<LogMessage[]>([])  //+++ i think this is being used just for forcing render
@@ -115,13 +109,15 @@ const App: React.FC = () => {
     const [showPickList, setShowPickList]=useState<boolean>(false)
     
     useEffect ( () => {
-        //+++ add a settings section for a log object (like settings, but specific)
+        //+++ add keepalive dialog /client-server flow), and add keepalive mechanism (in front)
         //+++ work on alarms and create and alarm manager
+
+        //+++ add a settings section for a log object (like settings, but specific)
         //+++ when a board is loaded all messages are received: alarms should not be in effect until everything is received
         //+++ with ephemeral logs, the content of 'messages' should contain some info on alarms triggered, or even a dashboard (ephemeral logs do not contains log lines)
         //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
         //+++ decide wether to have collapsibility on the resource selector and the toolbar (to maximize log space)
-        //+++ add options to asterisk lines containing a specific text (like 'password', 'pw', etc...)
+        //+++ add options to asterisk log lines containing a specific text (like 'password', 'pw', etc...)
 
         if (logged) {
             if (!clustersRef.current) getClusters()
@@ -220,10 +216,10 @@ const App: React.FC = () => {
         var channel=selection.channel as ServiceConfigChannelEnum
 
         // create unduplicated (unique) name
-        var index=-1
-        while (tabs.find (t => t.name===tabName+index)) index-=1
+        let index =- 1
+        while (tabs.find (t => t.name===tabName+index)) index -= 1
         var newTab = new TabObject()
-        newTab.name = tabName+index
+        newTab.name = tabName+index.toString()
 
         newTab.ws = new WebSocket(cluster.url)
         newTab.ws.onopen = () => console.log(`WS connected: ${newTab.ws!.url}`)
@@ -254,6 +250,18 @@ const App: React.FC = () => {
                 newMetrics.container=selection.container
                 newTab.metricsObject=newMetrics
                 break
+
+            case ServiceConfigChannelEnum.ALARM:
+                var newAlarm = new AlarmObject()
+                newAlarm.clusterName = selection.clusterName
+                newAlarm.view = selection.view as ServiceConfigViewEnum
+                newAlarm.namespace = selection.namespace
+                newAlarm.group = selection.group
+                newAlarm.pod = selection.pod
+                newAlarm.container = selection.container
+                newTab.alarmObject = newAlarm
+                break
+
             default:
                 console.log(`Error, invalid channel: `, channel)
         }
@@ -277,7 +285,6 @@ const App: React.FC = () => {
                 setFilter(newTab.logObject.filter)
                 setLogMessages(newTab.logObject.messages)
             }
-            //setTabs(tabs)
             setSelectedTabName(tabName)
         }
     }
@@ -299,6 +306,9 @@ const App: React.FC = () => {
                 break
             case 'metrics':
                 processMetricsMessage(wsEvent)
+                break
+            case ServiceConfigChannelEnum.ALARM:
+                processAlarmMessage(wsEvent)
                 break
             // case 'oper':
             //     processOperMessage(wsEvent)
@@ -388,12 +398,10 @@ const App: React.FC = () => {
         switch (msg.type) {
             case 'data':
                 tab.metricsObject.assetMetricsValues.push(msg)
-                // tab.metricsObject.timestamps.push(msg.timestamp)
                 if (tab.metricsObject.assetMetricsValues.length>tab.metricsObject.depth) {
                     tab.metricsObject.assetMetricsValues.shift()
                 }
-                // +++ this forces component refresh
-                if (!tab.metricsObject.paused) setRefreshMetrics(Math.random())
+                if (!tab.metricsObject.paused) setRefreshTabContent(Math.random())
                 break
             case 'signal':
                 tab.metricsObject.serviceInstance = msg.instance
@@ -420,6 +428,15 @@ const App: React.FC = () => {
 
     const onClickMetricsStart = () => {
         setShowMetricsSelector(true)
+    }
+
+    const onClickAlarmStart = () => {
+        var tab=tabs.find(t => t.name===selectedTabRef.current)
+        if (!tab || !tab.alarmObject) return
+        tab.alarmObject.regexInfo.push('About')
+        tab.alarmObject.regexWarning.push('to read')
+        tab.alarmObject.regexError.push('metric')
+        startAlarm(tab)
     }
 
     const startMetrics = (tab:TabObject) => {
@@ -461,9 +478,51 @@ const App: React.FC = () => {
         }
     }
 
+    const startAlarm = (tab:TabObject) => {
+        if (!tab || !tab.alarmObject) {
+            console.log('No active tab found')
+            return
+        }
+        var cluster=clusters!.find(c => c.name===tab.alarmObject!.clusterName)
+        if (!cluster) {
+            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at alarm configuration (${tab.alarmObject.clusterName}) does not exist.`, setMsgBox))
+            return
+        }
+ 
+        if (tab.ws && tab.ws.readyState===tab.ws.OPEN) {
+            var ac:AlarmConfig = {
+                action: ServiceConfigActionEnum.START,
+                flow: ServiceConfigFlowEnum.REQUEST,
+                channel: ServiceConfigChannelEnum.ALARM,
+                instance: '',
+                accessKey: cluster!.accessString,
+                scope: ServiceConfigScopeEnum.SUBSCRIBE,
+                view: tab.alarmObject.view!,
+                namespace: tab.alarmObject.namespace!,
+                set: tab.alarmObject.group!,
+                group: tab.alarmObject.group!,
+                pod: tab.alarmObject.pod!,
+                container: tab.alarmObject.container!,
+                regexInfo: tab.alarmObject.regexInfo,
+                regexWarning: tab.alarmObject.regexWarning,
+                regexError: tab.alarmObject.regexError
+            }
+            tab.ws.send(JSON.stringify(ac))
+            tab.alarmObject.started=true
+        }
+        else {
+            console.log('Tab web socket is not started')
+        }
+    }
+
     const onClickMetricsStop = () => {
         setAnchorMenuTab(null)
         if (selectedTab && selectedTab.metricsObject) stopMetrics(selectedTab)
+    }
+
+    const onClickAlarmStop = () => {
+        setAnchorMenuTab(null)
+        if (selectedTab && selectedTab.metricsObject) stopAlarm(selectedTab)
     }
 
     const stopMetrics = (tab:TabObject) => {
@@ -490,6 +549,30 @@ const App: React.FC = () => {
         tab.metricsObject.started=false
     }
 
+    const stopAlarm = (tab:TabObject) => {
+        if (!tab.alarmObject) return
+        var cluster=clusters!.find(c => c.name===tab.metricsObject!.clusterName)
+        var ac:AlarmConfig = {
+            action: ServiceConfigActionEnum.STOP,
+            flow: ServiceConfigFlowEnum.REQUEST,
+            channel: ServiceConfigChannelEnum.ALARM,
+            instance: tab.alarmObject.serviceInstance,
+            accessKey: cluster!.accessString,
+            view: tab.alarmObject.view!,
+            scope: ServiceConfigScopeEnum.NONE,
+            namespace: '',
+            group: '',
+            set: '',
+            pod: '',
+            container: '',
+            regexInfo: [],
+            regexWarning: [],
+            regexError: []
+        }
+        if (tab.ws) tab.ws.send(JSON.stringify(ac))
+        tab.alarmObject.started=false
+    }
+
     const onClickMetricsPause = () => {
         setAnchorMenuTab(null)
         if (!selectedTab || !selectedTab.metricsObject) return
@@ -504,11 +587,54 @@ const App: React.FC = () => {
         }
     }
 
+    const onClickAlarmPause = () => {
+        setAnchorMenuTab(null)
+        // if (!selectedTab || !selectedTab.metricsObject) return
+
+        // if (selectedTab.metricsObject.paused) {
+        //     selectedTab.metricsObject.paused=false
+        //     setPausedTabs(tabs.filter(t => t.metricsObject?.paused))
+        // }
+        // else {
+        //     selectedTab.metricsObject.paused=true
+        //     setPausedTabs( (prev) => [...prev, selectedTab!])
+        // }
+    }
+
     const onClickLogStop = () => {    
         setAnchorMenuTab(null)
         if (selectedTab && selectedTab.logObject) stopLog(selectedTab)
     }
 
+
+    const processAlarmMessage = (wsEvent:any) => {
+        var msg = JSON.parse(wsEvent.data) as AlarmMessage
+        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
+        if (!tab || !tab.alarmObject) return
+
+        switch (msg.type) {
+            case 'data':
+                tab.alarmObject.firedAlarms.push ({
+                    timestamp: new Date(msg.timestamp!).getTime(),
+                    severity: msg.severity,
+                    text: msg.text
+                })
+                // tab.metricsObject.assetMetricsValues.push(msg)
+                // if (tab.metricsObject.assetMetricsValues.length>tab.metricsObject.depth) {
+                //     tab.metricsObject.assetMetricsValues.shift()
+                // }
+                if (!tab.alarmObject.paused) setRefreshTabContent(Math.random())
+                break
+            case 'signal':
+                console.log('SIGNAL:', msg)
+                //tab.metricsObject.serviceInstance = msg.instance
+                break
+            default:
+                console.log(`Invalid message type ${msg.type}`)
+                break
+        }
+    }
+    
     const stopTab = (tab:TabObject) => {
         if (tab.logObject) stopLog(tab)
         if (tab.metricsObject) stopMetrics(tab)
@@ -720,6 +846,15 @@ const App: React.FC = () => {
                 break
             case MenuTabOption.MetricsStop:
                 onClickMetricsStop()
+                break
+            case MenuTabOption.AlarmStart:
+                onClickAlarmStart()
+                break
+            case MenuTabOption.AlarmPause:
+                onClickAlarmPause()
+                break
+            case MenuTabOption.AlarmStop:
+                onClickAlarmStop()
                 break
         }
     }
@@ -1043,10 +1178,10 @@ const App: React.FC = () => {
                 { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
 
                 {/* <TabContent log={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject} values={receivedMetricValues}/> */}
-                <TabContent logObject={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject} refreshMetrics={refreshMetrics}/>
+                <TabContent logObject={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject} alarmObject={selectedTab?.alarmObject} refreshTabContent={refreshTabContent}/>
             </Box>
 
-            { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> }
+            {/* { showAlarmConfig && <AlarmConfig onClose={alarmConfigClosed} expression={filter}/> } */}
             { showBlockingAlarm && <BlockingAlarm onClose={() => setShowBlockingAlarm(false)} alarm={blockingAlarm} /> }
             { showRenameTab && <RenameTab onClose={renameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }
             { showSaveBoard && <SaveBoard onClose={saveBoardClosed} name={currentBoardName} /> }

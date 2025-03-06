@@ -1,19 +1,21 @@
 import { Box } from '@mui/material'
 import { LogObject } from '../model/LogObject'
-import { LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { AlarmSeverityEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { MetricsObject } from '../model/MetricsObject'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { AlarmObject } from '../model/AlarmObject'
 
 interface IProps {
-  filter:string
+  filter: string
   lastLineRef: React.MutableRefObject<null>
-  logObject:LogObject
-  metricsObject:MetricsObject
+  logObject: LogObject
+  metricsObject: MetricsObject
+  alarmObject: AlarmObject
 }
   
 const TabContent: React.FC<any> = (props:IProps) => {
         
-    const formatMessage = (message:LogMessage|null, index:number, color:number=0, ) => {
+    const formatLog = (message:LogMessage|null, index:number, color:number=0, ) => {
         if (!message) return null
 
         if (message.type==='data') {
@@ -57,6 +59,19 @@ const TabContent: React.FC<any> = (props:IProps) => {
         else  {
             return <span>{message.text}</span>
         }
+    }
+
+    const formatAlarm = () => {
+        return (<pre>
+            {
+                props.alarmObject.firedAlarms.map(f => {
+                    var color = 'black'
+                    if (f.severity === AlarmSeverityEnum.WARNING) color='orange'
+                    if (f.severity === AlarmSeverityEnum.ERROR) color='red'
+                    return <><span style={{color}}> {new Date(f.timestamp).toISOString() + ' ' + f.severity + '  ' + f.text} </span><br/></>
+                })
+            }
+        </pre>)
     }
 
     const formatMetrics = () => {
@@ -118,14 +133,17 @@ const TabContent: React.FC<any> = (props:IProps) => {
             {/* show metrics */}
             { props.metricsObject && props.metricsObject.assetMetricsValues && formatMetrics() }
 
+            {/* show alarms */}
+            { props.alarmObject && props.alarmObject.firedAlarms && formatAlarm() }
+
             {/* show log lines */}
             <pre>
                 {props.logObject && props.logObject.messages.map(m => {
                     return m.text.includes(props.filter)? m : null}).map((message, index) => {
                         if (index===props.logObject.messages.length-1)
-                            return <><div key={index} ref={props.lastLineRef} >{formatMessage(message, index, 0)}</div><div key={-1} >&nbsp;</div></>
+                            return <><div key={index} ref={props.lastLineRef} >{formatLog(message, index, 0)}</div><div key={-1} >&nbsp;</div></>
                         else 
-                            return <div key={index}>{formatMessage(message, index, 0)}</div>
+                            return <div key={index}>{formatLog(message, index, 0)}</div>
                 })}
             </pre>
         </Box>

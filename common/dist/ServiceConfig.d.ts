@@ -1,7 +1,8 @@
 export declare enum ServiceConfigChannelEnum {
     LOG = "log",
     METRICS = "metrics",
-    AUDIT = "audit"
+    AUDIT = "audit",
+    ALARM = "alarm"
 }
 export declare enum ServiceConfigActionEnum {
     START = "start",
@@ -30,7 +31,9 @@ export declare enum ServiceConfigScopeEnum {
     API = "api",
     CLUSTER = "cluster",
     SNAPSHOT = "snapshot",
-    STREAM = "stream"
+    STREAM = "stream",
+    CREATE = "create",
+    SUBSCRIBE = "subscribe"
 }
 export interface ServiceConfig {
     channel: ServiceConfigChannelEnum;

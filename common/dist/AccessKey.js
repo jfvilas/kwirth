@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildResource = exports.parseResource = exports.AccessKey = exports.accessKeySerialize = exports.accessKeyDeserialize = exports.accessKeyCreate = exports.accessKeyBuild = void 0;
+exports.buildResource = exports.parseResources = exports.parseResource = exports.AccessKey = exports.accessKeySerialize = exports.accessKeyDeserialize = exports.accessKeyCreate = exports.accessKeyBuild = void 0;
 const guid_1 = __importDefault(require("guid"));
 /*
     Access key format is:
@@ -59,6 +59,15 @@ function parseResource(key) {
     };
 }
 exports.parseResource = parseResource;
+function parseResources(key) {
+    var ress = key.split(',');
+    var result = [];
+    for (var res of ress) {
+        result.push(parseResource(res));
+    }
+    return result;
+}
+exports.parseResources = parseResources;
 function buildResource(scope, namespace, groupType, groupName, pod, container) {
     return `${scope}:${namespace}:${groupType}+${groupName}:${pod}:${container}`;
 }

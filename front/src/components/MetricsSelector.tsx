@@ -68,7 +68,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
                     <Stack direction={'row'} spacing={1} >
                         <FormControl sx={{width:'25%'}}>
                             <InputLabel id="modelabel">Mode</InputLabel>
-                            <Select value={metricsMode} onChange={onChangeMetricsMode} labelId="modelabel" variant='standard'>
+                            <Select value={metricsMode} onChange={onChangeMetricsMode} labelId="modelabel" variant='standard' disabled>
                                 <MenuItem value={MetricsConfigModeEnum.SNAPSHOT}>Snapshot</MenuItem>
                                 <MenuItem value={MetricsConfigModeEnum.STREAM}>Stream</MenuItem>
                             </Select>

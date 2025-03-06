@@ -245,6 +245,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 <Select labelId='channel' value={channel} onChange={onChangeChannel}>
                     <MenuItem key={'LOG'} value={ServiceConfigChannelEnum.LOG}>Log</MenuItem>
                     <MenuItem key={'METRICS'} value={ServiceConfigChannelEnum.METRICS}>Metrics</MenuItem>
+                    <MenuItem key={'ALARM'} value={ServiceConfigChannelEnum.ALARM}>Alarm</MenuItem>
                 </Select>
             </FormControl>
 

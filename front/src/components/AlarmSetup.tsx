@@ -1,37 +1,37 @@
-import React, { useState, ChangeEvent } from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Switch, TextField, Typography } from '@mui/material';
-import { Alarm, AlarmSeverity, AlarmType } from '../model/Alarm';
+import React, { useState, ChangeEvent } from 'react'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Switch, TextField, Typography } from '@mui/material'
+import { Alarm, AlarmSeverity, AlarmType } from '../model/Alarm'
 
 interface IProps {
-    onClose:(arg:Alarm|undefined) => {};
+    onClose:(arg:Alarm|undefined) => {}
     expression:string;
 }
 
-const AlarmConfig: React.FC<any> = (props:IProps) => {
-    const [expression, setExpression] = useState(props.expression);
-    const [severity, setSeverity] = useState('default');
-    const [type, setType] = useState('timed');
-    const [message, setMessage] = useState('Alarm received matching '+props.expression);
-    const [beep, setBeep] = useState(false);
+const AlarmSetup: React.FC<any> = (props:IProps) => {
+    const [expression, setExpression] = useState(props.expression)
+    const [severity, setSeverity] = useState('default')
+    const [type, setType] = useState('timed')
+    const [message, setMessage] = useState('Alarm received matching '+props.expression)
+    const [beep, setBeep] = useState(false)
 
     const onChangeExpr = (event:ChangeEvent<HTMLInputElement>) => {
-        setExpression(event.target.value);
+        setExpression(event.target.value)
     }
 
     const onChangeSeverity = (event:ChangeEvent<HTMLInputElement>) => {
-        setSeverity(event.target.value);
+        setSeverity(event.target.value)
     }
 
     const onChangeMessage = (event:ChangeEvent<HTMLInputElement>) => {
-        setMessage(event.target.value);
+        setMessage(event.target.value)
     }
 
     const onChangeType = (event:ChangeEvent<HTMLInputElement>) => {
-        setType(event.target.value);
+        setType(event.target.value)
     }
 
     const onChangeBeep = (event:ChangeEvent<HTMLInputElement>) => {
-        setBeep(event.target.checked);
+        setBeep(event.target.checked)
     }
 
     return (<>
@@ -66,4 +66,4 @@ const AlarmConfig: React.FC<any> = (props:IProps) => {
     </>);
 };
 
-export default AlarmConfig;
+export default AlarmSetup

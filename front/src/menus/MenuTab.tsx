@@ -24,6 +24,9 @@ enum MenuTabOption {
     MetricsAdd,
     MetricsPause,
     MetricsStop,
+    AlarmStart,
+    AlarmPause,
+    AlarmStop,
     TabManageRestart
 }
 
@@ -40,7 +43,8 @@ const MenuTab: React.FC<any> = (props:IProps) => {
     const {user} = useContext(SessionContext) as SessionContextType;
     const [subMenuTabOpen, setSubmenuTabOpen] = React.useState(false)
     const [subMenuLogOpen, setSubmenuLogOpen] = React.useState(false)
-    const [submenuMetricsOpen, setSubmenuMetricsOpen] = React.useState(false)
+    const [subMenuMetricsOpen, setSubmenuMetricsOpen] = React.useState(false)
+    const [subMenuAlarmOpen, setSubmenuAlarmOpen] = React.useState(false)
     const [subMenuManageOpen, setSubmenuManageOpen] = React.useState(false)
 
     const submenuTabClick = () => {
@@ -56,24 +60,37 @@ const MenuTab: React.FC<any> = (props:IProps) => {
         if (!subMenuLogOpen) {
             setSubmenuTabOpen(false)
             setSubmenuMetricsOpen(false)
+            setSubmenuAlarmOpen(false)
             setSubmenuManageOpen(false)
         }
         setSubmenuLogOpen(!subMenuLogOpen)
     }
 
     const submenuMetricsClick = () => {
-        if (!submenuMetricsOpen) {
+        if (!subMenuMetricsOpen) {
             setSubmenuTabOpen(false)
             setSubmenuLogOpen(false)
+            setSubmenuAlarmOpen(false)
             setSubmenuManageOpen(false)
         }
-        setSubmenuMetricsOpen(!submenuMetricsOpen)
+        setSubmenuMetricsOpen(!subMenuMetricsOpen)
+    }
+
+    const submenuAlarmClick = () => {
+        if (!subMenuAlarmOpen) {
+            setSubmenuTabOpen(false)
+            setSubmenuLogOpen(false)
+            setSubmenuMetricsOpen(false)
+            setSubmenuManageOpen(false)
+        }
+        setSubmenuAlarmOpen(!subMenuAlarmOpen)
     }
 
     const submenuManageClick = () => {
         if (!subMenuManageOpen) {
             setSubmenuTabOpen(false)
             setSubmenuLogOpen(false)
+            setSubmenuAlarmOpen(false)
             setSubmenuMetricsOpen(false)
         }
         setSubmenuManageOpen(!subMenuManageOpen)
@@ -108,12 +125,20 @@ const MenuTab: React.FC<any> = (props:IProps) => {
             </Collapse>
 
             <MenuItem key='submetrics' onClick={submenuMetricsClick} sx={{ml:3}} disabled={!Boolean(props.selectedTab?.metricsObject)}>Metrics<Typography sx={{flexGrow:1}}></Typography>{subMenuLogOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
-            <Collapse in={submenuMetricsOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
-            <MenuItem key='metricsstart' onClick={() => props.optionSelected(MenuTabOption.MetricsStart)} disabled={props.selectedTab?.metricsObject?.started}><PlayCircle/>&nbsp;Start</MenuItem>
-            <MenuItem key='metricsadd' onClick={() => props.optionSelected(MenuTabOption.MetricsAdd)} disabled={true}><Add/>&nbsp;Add</MenuItem>
-            <MenuItem key='metricspause' onClick={() => props.optionSelected(MenuTabOption.MetricsPause)} disabled={!props.selectedTab?.metricsObject?.started}>{props.selectedTab?.metricsObject?.paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>            
-            <MenuItem key='metricsstop' onClick={() => props.optionSelected(MenuTabOption.MetricsStop)} disabled={!props.selectedTab?.metricsObject?.started}><Stop/>&nbsp;Stop</MenuItem>
+            <Collapse in={subMenuMetricsOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
+                <MenuItem key='metricsstart' onClick={() => props.optionSelected(MenuTabOption.MetricsStart)} disabled={props.selectedTab?.metricsObject?.started}><PlayCircle/>&nbsp;Start</MenuItem>
+                <MenuItem key='metricsadd' onClick={() => props.optionSelected(MenuTabOption.MetricsAdd)} disabled={true}><Add/>&nbsp;Add</MenuItem>
+                <MenuItem key='metricspause' onClick={() => props.optionSelected(MenuTabOption.MetricsPause)} disabled={!props.selectedTab?.metricsObject?.started}>{props.selectedTab?.metricsObject?.paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>            
+                <MenuItem key='metricsstop' onClick={() => props.optionSelected(MenuTabOption.MetricsStop)} disabled={!props.selectedTab?.metricsObject?.started}><Stop/>&nbsp;Stop</MenuItem>
             </Collapse>
+
+            <MenuItem key='subalarm' onClick={submenuAlarmClick} sx={{ml:3}} disabled={!Boolean(props.selectedTab?.alarmObject)}>Alarm<Typography sx={{flexGrow:1}}></Typography>{subMenuAlarmOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
+            <Collapse in={subMenuAlarmOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
+                <MenuItem key='alarmstart' onClick={() => props.optionSelected(MenuTabOption.AlarmStart)} disabled={props.selectedTab?.alarmObject?.started}><PlayCircle/>&nbsp;Start</MenuItem>
+                <MenuItem key='alarmpause' onClick={() => props.optionSelected(MenuTabOption.AlarmPause)} disabled={!props.selectedTab?.alarmObject?.started}>{props.selectedTab?.alarmObject?.paused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
+                <MenuItem key='alarmstop' onClick={() => props.optionSelected(MenuTabOption.AlarmStop)} disabled={!props.selectedTab?.alarmObject?.started}><Stop/>&nbsp;Stop</MenuItem>
+            </Collapse>
+
 
             <MenuItem key='submanage' onClick={submenuManageClick} sx={{ml:3}}>Manage<Typography sx={{flexGrow:1}}></Typography>{subMenuManageOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={subMenuManageOpen} timeout="auto" unmountOnExit sx={{ml:5}}>

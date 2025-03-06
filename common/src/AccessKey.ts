@@ -42,7 +42,7 @@ function accessKeyDeserialize (key:string) : AccessKey {
 }      
 
 function parseResource (key:string) : ResourceIdentifier {
-    var parts=key.split(':');
+    var parts=key.split(':')
     return {
         scope:parts[0],
         namespace:parts[1],
@@ -50,6 +50,15 @@ function parseResource (key:string) : ResourceIdentifier {
         pod:parts[3],
         container:parts[4]
     }
+}
+
+function parseResources (key:string) : ResourceIdentifier[] {
+    var ress=key.split(',')
+    var result:ResourceIdentifier[]=[]
+    for (var res of ress) {
+        result.push(parseResource(res))
+    }
+    return result
 }
 
 function buildResource (scope:string, namespace:string, groupType:string, groupName:string, pod:string, container:string) : string {
@@ -121,4 +130,4 @@ interface ResourceIdentifier {
     container:string
 }
 
-export { accessKeyBuild, accessKeyCreate, accessKeyDeserialize, accessKeySerialize, AccessKey, parseResource, ResourceIdentifier, buildResource }
+export { accessKeyBuild, accessKeyCreate, accessKeyDeserialize, accessKeySerialize, AccessKey, parseResource, parseResources, ResourceIdentifier, buildResource }

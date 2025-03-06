@@ -1,3 +1,5 @@
+// DEPRECATED
+
 export interface StreamMessage {
     namespace?: string,
     podName?: string,

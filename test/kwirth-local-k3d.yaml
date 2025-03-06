@@ -44,7 +44,7 @@ metadata:
   labels:
     backstage.io/kubernetes-id: comp002
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: kwirth

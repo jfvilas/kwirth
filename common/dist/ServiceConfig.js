@@ -6,6 +6,7 @@ var ServiceConfigChannelEnum;
     ServiceConfigChannelEnum["LOG"] = "log";
     ServiceConfigChannelEnum["METRICS"] = "metrics";
     ServiceConfigChannelEnum["AUDIT"] = "audit";
+    ServiceConfigChannelEnum["ALARM"] = "alarm";
 })(ServiceConfigChannelEnum || (exports.ServiceConfigChannelEnum = ServiceConfigChannelEnum = {}));
 var ServiceConfigActionEnum;
 (function (ServiceConfigActionEnum) {
@@ -41,4 +42,7 @@ var ServiceConfigScopeEnum;
     // METRICS
     ServiceConfigScopeEnum["SNAPSHOT"] = "snapshot";
     ServiceConfigScopeEnum["STREAM"] = "stream";
+    // ALARM
+    ServiceConfigScopeEnum["CREATE"] = "create";
+    ServiceConfigScopeEnum["SUBSCRIBE"] = "subscribe";
 })(ServiceConfigScopeEnum || (exports.ServiceConfigScopeEnum = ServiceConfigScopeEnum = {}));

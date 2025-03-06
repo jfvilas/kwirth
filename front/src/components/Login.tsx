@@ -85,7 +85,7 @@ const Login: React.FC<any> = (props:IProps) => {
                 }
             }
             else {
-                setMsgBox(MsgBoxOkError('Login',`Error validatng credentials, cannot access Kwirth backend.`, setMsgBox))
+                setMsgBox(MsgBoxOkError('Login',`Error validating credentials, cannot access Kwirth backend.`, setMsgBox))
             }
         }
     }

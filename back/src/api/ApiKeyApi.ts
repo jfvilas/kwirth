@@ -16,7 +16,7 @@ export class ApiKeyApi {
         configMaps.read('kwirth.keys',[]).then( result => {
             if (result) result=cleanApiKeys(result)
             ApiKeyApi.apiKeys=result
-        });
+        })
 
         this.route.route('/')
             .all( async (req,res, next) => {
@@ -27,7 +27,7 @@ export class ApiKeyApi {
                 var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[]
                 for (var apikey of ApiKeyApi.apiKeys)
                     if (!storedKeys.some(s => accessKeySerialize(s.accessKey)===accessKeySerialize(apikey.accessKey))) storedKeys.push(apikey)
-                res.status(200).json(storedKeys);
+                res.status(200).json(storedKeys)
             })
             .post( async (req:Request, res:Response) => {
                 try {
@@ -62,12 +62,13 @@ export class ApiKeyApi {
                         filter:::pod2:  // search for all instances of 'pod2' (any namespace)
                         filter::replica+rs1::  // all pods of replicaset 'rs1' in any namespace
                         filter:default:replica+rs1::cont1  // 'container1' on replicaset 'rs1' on namespace 'default'
+                        filter:pro:replica+rs1:pod1,pod2:  // scope 'filter', pods 'pod1' and 'pod2' on replicaset 'rs1' on namespace 'pro'
                     */
-                    var type=req.body.type.toLowerCase()  // volatile or permanent
-                    var resource=req.body.resource.toLowerCase()  // optional (mandatory if type is 'resource')
+                    var type=req.body.type.toLowerCase()  // volatile / permanent / bearer
+                    var resources=req.body.resource.toLowerCase() 
                     var description=req.body.description
-                    var expire=req.body.expire  // typically an epoch in seconds
-                    var accessKey:AccessKey=accessKeyCreate(type, resource)
+                    var expire=req.body.expire  // an epoch
+                    var accessKey:AccessKey=accessKeyCreate(type, resources)
                     var keyObject:ApiKey={ accessKey, description, expire }
 
                     if (type==='permanent') {
@@ -83,12 +84,10 @@ export class ApiKeyApi {
                     else {
                         // bearer
                         let masterKey = 'Kwirth4Ever'
-                        let input = masterKey + '|' + resource + '|' + expire
-                        console.log('input',input)
+                        let input = masterKey + '|' + resources + '|' + expire
                         var hash = crypto.createHash('md5').update(input).digest('hex')
                         type = 'bearer:' + expire 
-                        keyObject.accessKey = accessKeyBuild(hash, type, resource)
-                        console.log('keyObject', keyObject)
+                        keyObject.accessKey = accessKeyBuild(hash, type, resources)
                     }
 
                     res.status(200).json(keyObject)
@@ -96,8 +95,8 @@ export class ApiKeyApi {
                 catch (err) {
                     res.status(500).json({})
                     console.log(err)
-                    }
-                });
+                }
+            })
 
         this.route.route('/:key')
             .all( async (req,res, next) => {

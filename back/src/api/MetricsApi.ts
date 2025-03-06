@@ -67,8 +67,8 @@ export class MetricsApi {
                 try {
                     var data = req.body as any
                     if (data.clusterMetricsInterval) {
-                        clearTimeout(ClusterData.clusterMetricsTimeout)
-                        ClusterData.startInterval(+data.clusterMetricsInterval)
+                        clearTimeout(ClusterData.clusterMetricsTimeout) //+++ ove this to startInterval
+                        ClusterData.startInterval(+data.clusterMetricsInterval)  // +++ rename this
                     }
                     res.status(200).json()
                 }

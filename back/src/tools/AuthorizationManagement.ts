@@ -10,14 +10,10 @@ export const cleanApiKeys = (apiKeys:ApiKey[]) => {
 }
 
 export const validBearerKey = (accessKey:AccessKey) : boolean => {
-    console.log('validate bearer key:')
-    console.log(accessKey)
     let masterKey = 'Kwirth4Ever'
     let expire = accessKey.type.split(':')[1]
     let input = masterKey + '|' + accessKey.resource + '|' + expire
     var hash = crypto.createHash('md5').update(input).digest('hex')
-    console.log('hash',hash)
-    console.log('id', accessKey.id)
     return hash === accessKey.id
 }
 
@@ -33,9 +29,11 @@ export const validKey = (req:any,res:any) => {
                 computedExpire = +receivedAccessKey.type.split(':')[1]
         }
         else {
+            //+++ if not found we must try to read secret and refresh apiKeys array
             var key=ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
-            if (!key)
+            if (!key) {
                 console.log('Inexistent key: '+receivedAccessString)
+            }
             else
                 computedExpire = key.expire
         }
@@ -81,29 +79,27 @@ export const validAuth = (req:any, res:any, reqScope:string, serviceConfigChanne
     var accessKey=accessKeyDeserialize(key)
     var resId=parseResource(accessKey.resource)
 
-    console.log('presented resourceId',resId)
-    console.log('requested access', reqScope, namespace, group, pod, container)
     if (resId.scope==='cluster') return true
     if (getServiceScopeLevel(serviceConfigChannel, reqScope) < getServiceScopeLevel(serviceConfigChannel, resId.scope)) {
-        console.log('insufficient scope level')
+        console.log('Insufficient scope level')
         return false
     }
     if ((namespace !== '') && (namespace !== resId.namespace)) {
-        console.log('insufficient namespace capabilities')
+        console.log('Insufficient namespace capabilities')
         return false
     }
     if ((group !== '') && (group !== resId.set)) {
-        console.log('insufficient group capabilities')
+        console.log('Insufficient group capabilities')
         return false
     }
     if ((pod !== '') && (pod !== resId.pod)) {
-        console.log('insufficient pod capabilities')
+        console.log('Insufficient pod capabilities')
         return false
     }
     if ((container !== '') && (container !== resId.container)) {
-        console.log('insufficient container capabilities')
+        console.log('Insufficient container capabilities')
         return false
     }
-    console.log('authorized')
+    console.log('Authorized!')
     return true
 }
