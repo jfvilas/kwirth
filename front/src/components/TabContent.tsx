@@ -68,7 +68,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
                     var color = 'black'
                     if (f.severity === AlarmSeverityEnum.WARNING) color='orange'
                     if (f.severity === AlarmSeverityEnum.ERROR) color='red'
-                    return <><span style={{color}}> {new Date(f.timestamp).toISOString() + ' ' + f.severity + '  ' + f.text} </span><br/></>
+                    return <><span style={{color}}> {new Date(f.timestamp).toISOString() + ' ' + f.text} </span><br/></>
                 })
             }
         </pre>)

@@ -1,66 +1,94 @@
 import React, { useState, ChangeEvent } from 'react'
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Switch, TextField, Typography } from '@mui/material'
-import { Alarm, AlarmSeverity, AlarmType } from '../model/Alarm'
+import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField } from '@mui/material'
 
 interface IProps {
-    onClose:(arg:Alarm|undefined) => {}
-    expression:string;
+    onClose:(regexInfo:string[], regexWarning:string[], regexError:string[]) => {}
+    regexInfo: string[]
+    regexWarning: string[]
+    regexError: string[]
 }
 
 const AlarmSetup: React.FC<any> = (props:IProps) => {
-    const [expression, setExpression] = useState(props.expression)
-    const [severity, setSeverity] = useState('default')
-    const [type, setType] = useState('timed')
-    const [message, setMessage] = useState('Alarm received matching '+props.expression)
-    const [beep, setBeep] = useState(false)
+    const [info, setInfo] = useState('')
+    const [warning, setWarning] = useState('')
+    const [error, setError] = useState('')
+    const [regexInfo, setRegexInfo] = useState(props.regexInfo)
+    const [regexWarning, setRegexWarning] = useState(props.regexWarning)
+    const [regexError, setRegexError] = useState(props.regexError)
 
-    const onChangeExpr = (event:ChangeEvent<HTMLInputElement>) => {
-        setExpression(event.target.value)
+    const onChangeRegexInfo = (event:ChangeEvent<HTMLInputElement>) => {
+        setInfo(event.target.value)
+    }
+    const addInfo = () => {
+        setRegexInfo([...regexInfo,info])
+        setInfo('')
+    }
+    const deleteChipInfo = (e:string) => {
+        setRegexInfo(regexInfo.filter(ri => ri!==e))
     }
 
-    const onChangeSeverity = (event:ChangeEvent<HTMLInputElement>) => {
-        setSeverity(event.target.value)
+    const onChangeRegexWarning = (event:ChangeEvent<HTMLInputElement>) => {
+        setWarning(event.target.value)
+    }
+    const addWarning = () => {
+        setRegexWarning([...regexWarning,warning])
+        setWarning('')
+    }
+    const deleteChipWarning = (e:string) => {
+        setRegexWarning(regexWarning.filter(ri => ri!==e))
     }
 
-    const onChangeMessage = (event:ChangeEvent<HTMLInputElement>) => {
-        setMessage(event.target.value)
+    const onChangeRegexError = (event:ChangeEvent<HTMLInputElement>) => {
+        setError(event.target.value)
     }
-
-    const onChangeType = (event:ChangeEvent<HTMLInputElement>) => {
-        setType(event.target.value)
+    const addError = () => {
+        setRegexError([...regexError,error])
+        setError('')
     }
-
-    const onChangeBeep = (event:ChangeEvent<HTMLInputElement>) => {
-        setBeep(event.target.checked)
+    const deleteChipError = (e:string) => {
+        setRegexError(regexError.filter(ri => ri!==e))
     }
 
     return (<>
         <Dialog open={true} >
             <DialogTitle>Create alarm</DialogTitle>
             <DialogContent>
-                <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                <TextField value={expression} onChange={onChangeExpr} variant='standard'label='Expression'></TextField>
-                <TextField select value={severity} onChange={onChangeSeverity} variant='standard' label='Severity' SelectProps={{native: true}}>
-                    {['default','info','success','warning','error'].map((option) => (
-                        <option key={option} value={option}>
-                            {option}
-                        </option>))}
-                </TextField>
-                <TextField select value={type} onChange={onChangeType} variant='standard' label='Type' SelectProps={{native: true}}>
-                    {['timed','permanent','blocking'].map((option) => (
-                        <option key={option} value={option}>
-                            {option}
-                        </option>))}
-                </TextField>
-                <TextField value={message} onChange={onChangeMessage} variant='standard'label='Message'></TextField>
-                <Stack direction='row' alignItems={'baseline'}>
-                    <Switch checked={beep} onChange={onChangeBeep}/><Typography>Beep on alarm</Typography>
+                <Stack direction={'row'} spacing={3}>
+                    <Stack direction={'column'}>
+                        Info
+                        <Stack direction={'row'}>
+                            <TextField value={info} onChange={onChangeRegexInfo} variant='standard'></TextField>
+                            <Button onClick={addInfo}>Add</Button>
+                        </Stack>
+                        {
+                            regexInfo.map (ri => { return <Chip label={ri} variant='outlined' onDelete={() => deleteChipInfo(ri)}/>})
+                        }
+                    </Stack>
+                    <Stack direction={'column'}>
+                        Warning
+                        <Stack direction={'row'}>
+                            <TextField value={warning} onChange={onChangeRegexWarning} variant='standard'></TextField>
+                            <Button onClick={addWarning}>Add</Button>
+                        </Stack>
+                        {
+                            regexWarning.map (ri => { return <Chip label={ri} variant='outlined' onDelete={() => deleteChipWarning(ri)}/>})
+                        }
+                    </Stack>
+                    <Stack direction={'column'}>
+                        Error
+                        <Stack direction={'row'}>
+                            <TextField value={error} onChange={onChangeRegexError} variant='standard'></TextField>
+                            <Button onClick={addError}>Add</Button>
+                        </Stack>
+                        {
+                            regexError.map (ri => { return <Chip label={ri} variant='outlined' onDelete={() => deleteChipError(ri)}/>})
+                        }
+                    </Stack>
                 </Stack>
-                </Stack>
-                </DialogContent>
+            </DialogContent>
             <DialogActions>
-                <Button onClick={() => props.onClose({id:'', expression, severity:AlarmSeverity[severity as keyof typeof AlarmSeverity], type:AlarmType[type as keyof typeof AlarmType], message, beep})}>OK</Button>
-                <Button onClick={() => props.onClose(undefined)}>CANCEL</Button>
+                <Button onClick={() => props.onClose(regexInfo,regexWarning,regexError)}>OK</Button>
+                <Button onClick={() => props.onClose([],[],[])}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>);

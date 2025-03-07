@@ -37,9 +37,9 @@ const bodyParser = require('body-parser')
 const requestIp = require ('request-ip')
 const PORT = 3883
 const buffer:Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages
-const websocketIntervals:Map<WebSocket, {id:string, timeout: NodeJS.Timeout, working:boolean, paused:boolean, assets: AssetData[], metricsConfig:MetricsConfig} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketIntervals:Map<WebSocket, {instanceId:string, timeout: NodeJS.Timeout, working:boolean, paused:boolean, assets: AssetData[], metricsConfig:MetricsConfig} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 const websocketLogStreams:Map<WebSocket, PassThrough>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
-const websocketRegexes:Map<WebSocket, {id:string, regExps:Map<AlarmSeverityEnum, RegExp[]>} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketAlarms:Map<WebSocket, {instanceId:string, logStream:PassThrough, regExps:Map<AlarmSeverityEnum, RegExp[]>} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 
 // Kubernetes API access
 const kubeConfig = new KubeConfig()
@@ -118,17 +118,20 @@ const sendAlarm = (webSocket:WebSocket, podNamespace:string, podName:string, ala
 
 const processAlarmSeverity = (webSocket:WebSocket, podNamespace:string, podName:string, alarmSeverity:AlarmSeverityEnum, regexes:RegExp[], line:string, instaceId:string) => {
     for (var regex of regexes) {
-        if (regex.test(line)) sendAlarm(webSocket, podNamespace, podName, alarmSeverity, line, instaceId)
+        var i = line.indexOf(' ')
+        if (regex.test(line.substring(i))) {
+            sendAlarm(webSocket, podNamespace, podName, alarmSeverity, line, instaceId)
+        }
     }
 }
 
 const sendAlarmData = (webSocket:WebSocket, podNamespace:string, podName:string, source:string, instanceId:string) => {
-    var instances = websocketRegexes.get(webSocket)
+    var instances = websocketAlarms.get(webSocket)
     if (!instances) {
         console.log('No instances found for sendAlarmData')
         return
     }
-    var instance = instances.find (i => i.id === instanceId)
+    var instance = instances.find (i => i.instanceId === instanceId)
     if (!instance) {
         console.log(`No instance found for sendAlarmData instance ${instanceId}`)
         return
@@ -164,7 +167,7 @@ const sendMetricsDataInstance = (webSocket:WebSocket, instanceId:string) => {
         console.log('No instances found for sendMetricsData')
         return
     }
-    var instance = instances.find (i => i.id === instanceId)
+    var instance = instances.find (i => i.instanceId === instanceId)
     if (!instance) {
         console.log(`No instance found for sendMetricsData instance ${instanceId}`)
         return
@@ -319,10 +322,13 @@ const updatePodService = async (eventType:string, podNamespace:string, podName:s
         case ServiceConfigChannelEnum.LOG:
             // nothing to do here
             break
+        case ServiceConfigChannelEnum.ALARM:
+            // nothing to do here
+            break
         case ServiceConfigChannelEnum.METRICS:
             var metricsConfig = serviceConfig as MetricsConfig
             var instances = websocketIntervals.get(webSocket)
-            var instance = instances?.find((instance) => instance.id === metricsConfig.instance)
+            var instance = instances?.find((instance) => instance.instanceId === metricsConfig.instance)
             if (instance) {
                 if (eventType==='DELETED') instance.assets = instance.assets.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
                 if (eventType==='MODIFIED') {
@@ -394,11 +400,10 @@ const startPodAlarm = async (webSocket:WebSocket, podNamespace:string, podName:s
             regExps.push(new RegExp (regStr))
         regexes.set(AlarmSeverityEnum.ERROR,regExps)
 
-        if (!websocketRegexes.get(webSocket)) websocketRegexes.set(webSocket, [])
-        websocketRegexes.get(webSocket)?.push ({ id: alarmConfig.instance, regExps: regexes })
-
-        console.log(websocketRegexes.get(webSocket))
+        if (!websocketAlarms.get(webSocket)) websocketAlarms.set(webSocket, [])
         const logStream:PassThrough = new stream.PassThrough()
+        websocketAlarms.get(webSocket)?.push ({ instanceId: alarmConfig.instance, logStream:logStream, regExps: regexes })
+
         logStream.on('data', (chunk:any) => {
             var text:string=chunk.toString('utf8')
             if (buffer.get(webSocket)!==undefined) {
@@ -449,7 +454,7 @@ const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName
                     console.log(`Start pod metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
                     if (websocketIntervals.has(webSocket)) {
                         var instances = websocketIntervals.get(webSocket)
-                        var instance = instances?.find((instance) => instance.id === metricsConfig.instance)
+                        var instance = instances?.find((instance) => instance.instanceId === metricsConfig.instance)
                         if (metricsConfig.view === ServiceConfigViewEnum.CONTAINER) {
                             instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
                         }
@@ -464,7 +469,7 @@ const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName
                         var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000
                         var timeout = setInterval(() => sendMetricsDataInstance(webSocket,metricsConfig.instance), interval)
                         var instances=websocketIntervals.get(webSocket)
-                        instances?.push({id:metricsConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], metricsConfig})
+                        instances?.push({instanceId:metricsConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], metricsConfig})
                     }
                 }
                 else {
@@ -820,7 +825,7 @@ const removeMetricsInterval = (webSocket:WebSocket, instance:string) => {
     if (websocketIntervals.has(webSocket)) {
         var instances = websocketIntervals.get(webSocket)
         if (instances) {
-            var instanceIndex = instances.findIndex(t => t.id === instance)
+            var instanceIndex = instances.findIndex(t => t.instanceId === instance)
             if (instanceIndex>=0) {
                 clearInterval(instances[instanceIndex].timeout)
                 instances.splice(instanceIndex,1)
@@ -838,6 +843,39 @@ const removeMetricsInterval = (webSocket:WebSocket, instance:string) => {
     }
 }
 
+const removeAlarm = (webSocket:WebSocket, instanceId:string) => {
+    if (websocketAlarms.has(webSocket)) {
+        var instances = websocketAlarms.get(webSocket)
+        if (instances) {
+            console.log(instances)
+            var instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
+            console.log(instanceIndex)
+            if (instanceIndex>=0) {
+                var instance = instances[instanceIndex]
+                if (instance.logStream) {
+                    //+++ not working
+                    console.log('unsubscribe')
+                    instance.logStream.removeAllListeners('data')
+                    instance.logStream.end()
+                    instance.logStream.destroy()
+                }
+                else
+                    console.log(`Alarm logStream not found of instance id ${instanceId}`)
+                instances.splice(instanceIndex,1)
+            }
+            else{
+                console.log(`Instance ${instanceId} not found, cannot delete alarm`)
+            }
+        }
+        else {
+            console.log('There are no alarm Instances on websocket')
+        }
+    }
+    else {
+        console.log('WebSocket not found on alarms')
+    }
+}
+
 const processStopServiceConfig = async (serviceConfig: ServiceConfig, webSocket: WebSocket) => {
     switch (serviceConfig.channel) {
         case ServiceConfigChannelEnum.LOG:
@@ -849,7 +887,11 @@ const processStopServiceConfig = async (serviceConfig: ServiceConfig, webSocket:
                 console.log('LogStream not found')
             }
             sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, serviceConfig, 'Log service stopped')
-            break;
+            break
+        case ServiceConfigChannelEnum.ALARM:
+            removeAlarm(webSocket,serviceConfig.instance)
+            sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm service stopped')
+            break
         case ServiceConfigChannelEnum.METRICS:
             removeMetricsInterval(webSocket,serviceConfig.instance)
             sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics service stopped')
@@ -868,7 +910,7 @@ const processModifyServiceConfig = async (serviceConfig: ServiceConfig, webSocke
         case ServiceConfigChannelEnum.METRICS:
             let metricsConfig = serviceConfig as MetricsConfig
             let runningInstances = websocketIntervals.get(webSocket)
-            let instance = runningInstances?.find(i => i.id===metricsConfig.instance)
+            let instance = runningInstances?.find(i => i.instanceId===metricsConfig.instance)
             if (instance) {
                 // only modifiable propertis of the metrics config
                 instance.metricsConfig.metrics = metricsConfig.metrics
@@ -890,7 +932,7 @@ const processPauseContinueServiceConfig = async (serviceConfig: ServiceConfig, w
         case ServiceConfigChannelEnum.METRICS:
             let metricsConfig = serviceConfig as MetricsConfig
             let runningInstances = websocketIntervals.get(webSocket)
-            let instance = runningInstances?.find(i => i.id===metricsConfig.instance)
+            let instance = runningInstances?.find(i => i.instanceId===metricsConfig.instance)
             if (instance) {
                 if (action === ServiceConfigActionEnum.PAUSE) {
                     instance.paused = true
@@ -915,6 +957,16 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
     if (serviceConfig.flow !== ServiceConfigFlowEnum.REQUEST) {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Invalid flow received', serviceConfig)
         return
+    }
+    if (serviceConfig.action === ServiceConfigActionEnum.PING) {
+        var signalMessage:SignalMessage = {
+            level: SignalMessageLevelEnum.INFO,
+            channel: ServiceConfigChannelEnum.NONE,
+            instance: '',
+            type: ServiceMessageTypeEnum.SIGNAL,
+            text: 'OK'
+        }
+        webSocket.send(JSON.stringify(signalMessage))
     }
     if (!serviceConfig.group) serviceConfig.group=serviceConfig.set  // transitional
     if (!serviceConfig.accessKey) {
@@ -970,9 +1022,8 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         case ServiceConfigActionEnum.STOP:
             switch (serviceConfig.channel) {
                 case ServiceConfigChannelEnum.LOG:
-                    processStopServiceConfig(serviceConfig, webSocket)
-                    break
                 case ServiceConfigChannelEnum.METRICS:
+                case ServiceConfigChannelEnum.ALARM:
                     processStopServiceConfig(serviceConfig, webSocket)
                     break
                 default:
@@ -1031,8 +1082,8 @@ wss.on('connection', (ws:WebSocket, req) => {
         var instances=websocketIntervals.get(ws)
         if (instances) {
             for (var i=0;i<instances.length;i++) {
-                console.log(`Interval for instance ${instances[i].id} has been removed`)
-                removeMetricsInterval(ws,instances[i].id)
+                console.log(`Interval for instance ${instances[i].instanceId} has been removed`)
+                removeMetricsInterval(ws,instances[i].instanceId)
             }
         }
     }

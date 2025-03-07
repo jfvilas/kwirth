@@ -1,4 +1,5 @@
 export declare enum ServiceConfigChannelEnum {
+    NONE = "none",
     LOG = "log",
     METRICS = "metrics",
     AUDIT = "audit",
@@ -9,7 +10,8 @@ export declare enum ServiceConfigActionEnum {
     STOP = "stop",
     PAUSE = "pause",
     CONTINUE = "continue",
-    MODIFY = "modify"
+    MODIFY = "modify",
+    PING = "ping"
 }
 export declare enum ServiceConfigFlowEnum {
     REQUEST = "request",

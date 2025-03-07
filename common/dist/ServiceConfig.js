@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ServiceConfigScopeEnum = exports.ServiceConfigViewEnum = exports.ServiceConfigFlowEnum = exports.ServiceConfigActionEnum = exports.ServiceConfigChannelEnum = void 0;
 var ServiceConfigChannelEnum;
 (function (ServiceConfigChannelEnum) {
+    ServiceConfigChannelEnum["NONE"] = "none";
     ServiceConfigChannelEnum["LOG"] = "log";
     ServiceConfigChannelEnum["METRICS"] = "metrics";
     ServiceConfigChannelEnum["AUDIT"] = "audit";
@@ -15,6 +16,7 @@ var ServiceConfigActionEnum;
     ServiceConfigActionEnum["PAUSE"] = "pause";
     ServiceConfigActionEnum["CONTINUE"] = "continue";
     ServiceConfigActionEnum["MODIFY"] = "modify";
+    ServiceConfigActionEnum["PING"] = "ping";
 })(ServiceConfigActionEnum || (exports.ServiceConfigActionEnum = ServiceConfigActionEnum = {}));
 var ServiceConfigFlowEnum;
 (function (ServiceConfigFlowEnum) {
