@@ -12,7 +12,7 @@ export interface NodeData {
 }
 
 export class ClusterData {
-    public static clusterMetricsInterval = 15
+    public static clusterMetricsInterval = 60
     public static clusterMetricsTimeout : NodeJS.Timeout
     public static nodes : Map<string,NodeData> = new Map()
     public static metrics : Metrics

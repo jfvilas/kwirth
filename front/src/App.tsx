@@ -38,10 +38,10 @@ import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } fro
 import { KwirthData, LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan, ServiceConfigScopeEnum, ServiceConfigViewEnum, AlarmMessage, AlarmConfig, AlarmSeverityEnum, ServiceConfig } from '@jfvilas/kwirth-common'
 import { MetricsObject } from './model/MetricsObject'
 import { TabObject } from './model/TabObject'
-import MetricsSelector from './components/MetricsSelector'
+import { MetricsSelector } from './components/MetricsSelector'
 import { MetricDescription } from './model/MetricDescription'
 import { AlarmObject } from './model/AlarmObject'
-import AlarmSetup from './components/AlarmSetup'
+import { AlarmSetup } from './components/AlarmSetup'
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883'
@@ -100,6 +100,7 @@ const App: React.FC = () => {
     const [showSaveBoard, setShowSaveBoard]=useState<boolean>(false)
     const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false)
     const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false)
+    const [showTest, setShowTest]=useState<boolean>(false)
     const [showManageAlarms, setShowManageAlarms]=useState<boolean>(false)
     const [showSettingsConfig, setShowSettingsConfig]=useState<boolean>(false)
     const [initialMessage, setInitialMessage]=useState<string>('')
@@ -145,6 +146,7 @@ const App: React.FC = () => {
                         tab.ws.onopen = () => {
                             console.log(`WS connected: ${tab.name} to ${tab.ws!.url}`)
                             if (tab.logObject) startLog(tab)
+                            if (tab.alarmObject) startAlarm(tab)
                             if (tab.metricsObject) startMetrics(tab)
                         }
                     }
@@ -228,7 +230,6 @@ const App: React.FC = () => {
             console.log(`WS connected: ${newTab.ws!.url}`)
             
             newTab.keepalive = setInterval(() => {
-                console.log('ping')
                 var mc:ServiceConfig = {
                     flow: ServiceConfigFlowEnum.REQUEST,
                     action: ServiceConfigActionEnum.PING,
@@ -254,10 +255,14 @@ const App: React.FC = () => {
                 var newLog = new LogObject()
                 newLog.clusterName=selection.clusterName
                 newLog.view = selection.view as ServiceConfigViewEnum
-                newLog.namespace=selection.namespace
-                newLog.group=selection.group
-                newLog.pod=selection.pod
-                newLog.container=selection.container        
+                //newLog.namespace=selection.namespace
+                newLog.namespace=selection.namespaces.join(',')
+                //newLog.group=selection.group
+                newLog.group=selection.groups.join(',')
+                //newLog.pod=selection.pod
+                newLog.pod=selection.pods.join(',')
+                //newLog.container=selection.container
+                newLog.container=selection.containers.join(',')
                 newTab.logObject=newLog
                 setLogMessages([])
                 break
@@ -266,10 +271,14 @@ const App: React.FC = () => {
                 var newMetrics = new MetricsObject()
                 newMetrics.clusterName=selection.clusterName
                 newMetrics.view = selection.view as ServiceConfigViewEnum
-                newMetrics.namespace=selection.namespace
-                newMetrics.group=selection.group
-                newMetrics.pod=selection.pod
-                newMetrics.container=selection.container
+                //newMetrics.namespace=selection.namespace
+                newMetrics.namespace=selection.namespaces.join(',')
+                //newMetrics.group=selection.group
+                newMetrics.group=selection.groups.join(',')
+                //newMetrics.pod=selection.pod
+                newMetrics.pod=selection.pods.join(',')
+                //newMetrics.container=selection.container
+                newMetrics.container=selection.containers.join(',')
                 newTab.metricsObject=newMetrics
                 break
 
@@ -277,10 +286,14 @@ const App: React.FC = () => {
                 var newAlarm = new AlarmObject()
                 newAlarm.clusterName = selection.clusterName
                 newAlarm.view = selection.view as ServiceConfigViewEnum
-                newAlarm.namespace = selection.namespace
-                newAlarm.group = selection.group
-                newAlarm.pod = selection.pod
-                newAlarm.container = selection.container
+                //newAlarm.namespace = selection.namespace
+                newAlarm.namespace=selection.namespaces.join(',')
+                //newAlarm.group = selection.group
+                newAlarm.group = selection.groups.join(',')
+                //newAlarm.pod = selection.pod
+                newAlarm.pod = selection.pods.join(',')
+                //newAlarm.container = selection.container
+                newAlarm.container = selection.containers.join(',')
                 newTab.alarmObject = newAlarm
                 break
 
@@ -344,6 +357,20 @@ const App: React.FC = () => {
             default:
                 console.log('Received invalid channel in message: ', serviceMessage)
                 break
+        }
+    }
+
+    const getMetricsNames = async (cluster:Cluster) => {
+        try {
+            cluster.metricsList=new Map()
+            var response = await fetch (`${backendUrl}/metrics`, addGetAuthorization(accessString))
+            var json=await response.json() as MetricDescription[]
+            json.map( jsonMetric => cluster.metricsList.set(jsonMetric.metric, jsonMetric))
+            console.log(`Metrics for cluster ${cluster.name} have been received`)
+        }
+        catch (err) {
+            console.log('Error obtaining metrics list')
+            console.log(err)
         }
     }
 
@@ -415,6 +442,38 @@ const App: React.FC = () => {
         }
     }
 
+    const processAlarmMessage = (wsEvent:any) => {
+        var msg = JSON.parse(wsEvent.data) as AlarmMessage
+        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
+        if (!tab || !tab.alarmObject) return
+
+        switch (msg.type) {
+            case 'data':
+                tab.alarmObject.firedAlarms.push ({
+                    timestamp: new Date(msg.timestamp!).getTime(),
+                    severity: msg.severity,
+                    text: msg.text,
+                    namespace: msg.namespace,
+                    group: '',
+                    pod: msg.pod,
+                    container: msg.container
+                })
+                // tab.metricsObject.assetMetricsValues.push(msg)
+                // if (tab.metricsObject.assetMetricsValues.length>tab.metricsObject.depth) {
+                //     tab.metricsObject.assetMetricsValues.shift()
+                // }
+                if (!tab.alarmObject.paused) setRefreshTabContent(Math.random())
+                break
+            case 'signal':
+                console.log('SIGNAL:', msg)
+                tab.alarmObject.serviceInstance = msg.instance
+                break
+            default:
+                console.log(`Invalid message type ${msg.type}`)
+                break
+        }
+    }
+    
     const processMetricsMessage = (wsEvent:any) => {
         var msg = JSON.parse(wsEvent.data) as MetricsMessage
         var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
@@ -437,249 +496,18 @@ const App: React.FC = () => {
         }
     }
     
-    const getMetricsNames = async (cluster:Cluster) => {
-        try {
-            cluster.metricsList=new Map()
-            var response = await fetch (`${backendUrl}/metrics`, addGetAuthorization(accessString))
-            var json=await response.json() as MetricDescription[]
-            json.map( jsonMetric => cluster.metricsList.set(jsonMetric.metric, jsonMetric))
-            console.log(`Metrics for cluster ${cluster.name} have been received`)
-        }
-        catch (err) {
-            console.log('Error obtaining metrics list')
-            console.log(err)
-        }
-    }
-
-    const onClickMetricsStart = () => {
-        setShowMetricsSelector(true)
+    const onClickLogStart = () => {
+        setAnchorMenuTab(null)
+        var tab=tabs.find(t => t.name===selectedTabRef.current)
+        if (tab && tab.logObject) startLog(tab)
     }
 
     const onClickAlarmStart = () => {
         setShowAlarmSetup(true)
     }
 
-    const startMetrics = (tab:TabObject) => {
-        if (!tab || !tab.metricsObject) {
-            console.log('No active tab found')
-            return
-        }
-        var cluster=clusters!.find(c => c.name===tab.metricsObject!.clusterName)
-        if (!cluster) {
-            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at metrics configuration (${tab.metricsObject.clusterName}) does not exist.`, setMsgBox))
-            return
-        }
- 
-        if (tab.ws && tab.ws.readyState===tab.ws.OPEN) {
-            tab.metricsObject.assetMetricsValues=[]
-            var mc:MetricsConfig = {
-                action: ServiceConfigActionEnum.START,
-                flow: ServiceConfigFlowEnum.REQUEST,
-                channel: ServiceConfigChannelEnum.METRICS,
-                instance: '',
-                interval: tab.metricsObject.interval,
-                aggregate: tab.metricsObject.aggregate,
-                accessKey: cluster!.accessString,
-                scope: ServiceConfigScopeEnum.STREAM,
-                view: tab.metricsObject.view!,
-                namespace: tab.metricsObject.namespace!,
-                set: tab.metricsObject.group!,
-                group: tab.metricsObject.group!,
-                pod: tab.metricsObject.pod!,
-                container: tab.metricsObject.container!,
-                mode: tab.metricsObject.mode,
-                metrics: tab.metricsObject.metrics
-            }
-            tab.ws.send(JSON.stringify(mc))
-            tab.metricsObject.started=true
-        }
-        else {
-            console.log('Tab web socket is not started')
-        }
-    }
-
-    const startAlarm = (tab:TabObject) => {
-        if (!tab || !tab.alarmObject) {
-            console.log('No active tab found')
-            return
-        }
-        var cluster=clusters!.find(c => c.name===tab.alarmObject!.clusterName)
-        if (!cluster) {
-            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at alarm configuration (${tab.alarmObject.clusterName}) does not exist.`, setMsgBox))
-            return
-        }
-
-        if (tab.ws && tab.ws.readyState===tab.ws.OPEN) {
-            var ac:AlarmConfig = {
-                action: ServiceConfigActionEnum.START,
-                flow: ServiceConfigFlowEnum.REQUEST,
-                channel: ServiceConfigChannelEnum.ALARM,
-                instance: '',
-                accessKey: cluster!.accessString,
-                scope: ServiceConfigScopeEnum.SUBSCRIBE,
-                view: tab.alarmObject.view!,
-                namespace: tab.alarmObject.namespace!,
-                set: tab.alarmObject.group!,
-                group: tab.alarmObject.group!,
-                pod: tab.alarmObject.pod!,
-                container: tab.alarmObject.container!,
-                regexInfo: tab.alarmObject.regexInfo,
-                regexWarning: tab.alarmObject.regexWarning,
-                regexError: tab.alarmObject.regexError
-            }
-            tab.ws.send(JSON.stringify(ac))
-            tab.alarmObject.started=true
-        }
-        else {
-            console.log('Tab web socket is not started')
-        }
-    }
-
-    const onClickMetricsStop = () => {
-        setAnchorMenuTab(null)
-        if (selectedTab && selectedTab.metricsObject) stopMetrics(selectedTab)
-    }
-
-    const onClickAlarmStop = () => {
-        setAnchorMenuTab(null)
-        if (selectedTab && selectedTab.alarmObject) stopAlarm(selectedTab)
-    }
-
-    const stopMetrics = (tab:TabObject) => {
-        if (!tab.metricsObject) return
-        var cluster=clusters!.find(c => c.name===tab.metricsObject!.clusterName)
-        var mc:MetricsConfig = {
-            action: ServiceConfigActionEnum.STOP,
-            flow: ServiceConfigFlowEnum.REQUEST,
-            channel: ServiceConfigChannelEnum.METRICS,
-            instance: tab.metricsObject.serviceInstance,
-            mode: tab.metricsObject.mode,
-            metrics: [],
-            aggregate: false,
-            accessKey: cluster!.accessString,
-            view: tab.metricsObject.view!,
-            scope: ServiceConfigScopeEnum.NONE,
-            namespace: '',
-            group: '',
-            set: '',
-            pod: '',
-            container: ''
-        }
-        if (tab.ws) tab.ws.send(JSON.stringify(mc))
-        tab.metricsObject.started=false
-    }
-
-    const stopAlarm = (tab:TabObject) => {
-        if (!tab.alarmObject) return
-        var cluster=clusters!.find(c => c.name===tab.alarmObject!.clusterName)
-        var ac:AlarmConfig = {
-            action: ServiceConfigActionEnum.STOP,
-            flow: ServiceConfigFlowEnum.REQUEST,
-            channel: ServiceConfigChannelEnum.ALARM,
-            instance: tab.alarmObject.serviceInstance,
-            accessKey: cluster!.accessString,
-            view: tab.alarmObject.view!,
-            scope: ServiceConfigScopeEnum.NONE,
-            namespace: '',
-            group: '',
-            set: '',
-            pod: '',
-            container: '',
-            regexInfo: [],
-            regexWarning: [],
-            regexError: []
-        }
-        if (tab.ws) tab.ws.send(JSON.stringify(ac))
-            tab.alarmObject.firedAlarms.push({
-                timestamp: Date.now(),
-                severity: AlarmSeverityEnum.INFO,
-                text: '========================================================================='
-            })
-        tab.alarmObject.started=false
-    }
-
-    const onClickMetricsPause = () => {
-        setAnchorMenuTab(null)
-        if (!selectedTab || !selectedTab.metricsObject) return
-
-        if (selectedTab.metricsObject.paused) {
-            selectedTab.metricsObject.paused=false
-            setPausedTabs(tabs.filter(t => t.metricsObject?.paused))
-        }
-        else {
-            selectedTab.metricsObject.paused=true
-            setPausedTabs( (prev) => [...prev, selectedTab!])
-        }
-    }
-
-    const onClickAlarmPause = () => {
-        setAnchorMenuTab(null)
-        if (!selectedTab || !selectedTab.alarmObject) return
-
-        if (selectedTab.alarmObject.paused) {
-            selectedTab.alarmObject.paused=false
-            setPausedTabs(tabs.filter(t => t.alarmObject?.paused))
-        }
-        else {
-            selectedTab.alarmObject.paused=true
-            setPausedTabs( (prev) => [...prev, selectedTab!])
-        }
-    }
-
-    const onClickLogStop = () => {    
-        setAnchorMenuTab(null)
-        if (selectedTab && selectedTab.logObject) stopLog(selectedTab)
-    }
-
-
-    const processAlarmMessage = (wsEvent:any) => {
-        var msg = JSON.parse(wsEvent.data) as AlarmMessage
-        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
-        if (!tab || !tab.alarmObject) return
-
-        switch (msg.type) {
-            case 'data':
-                tab.alarmObject.firedAlarms.push ({
-                    timestamp: new Date(msg.timestamp!).getTime(),
-                    severity: msg.severity,
-                    text: msg.text
-                })
-                // tab.metricsObject.assetMetricsValues.push(msg)
-                // if (tab.metricsObject.assetMetricsValues.length>tab.metricsObject.depth) {
-                //     tab.metricsObject.assetMetricsValues.shift()
-                // }
-                if (!tab.alarmObject.paused) setRefreshTabContent(Math.random())
-                break
-            case 'signal':
-                console.log('SIGNAL:', msg)
-                tab.alarmObject.serviceInstance = msg.instance
-                break
-            default:
-                console.log(`Invalid message type ${msg.type}`)
-                break
-        }
-    }
-    
-    const stopTab = (tab:TabObject) => {
-        if (tab.logObject) stopLog(tab)
-        if (tab.metricsObject) stopMetrics(tab)
-    }
-
-    const onClickTabRemove = () => {
-        setAnchorMenuTab(null)
-        if (!selectedTab) return
-
-        if (selectedTab.logObject) stopLog(selectedTab)
-        if (selectedTab.metricsObject) stopMetrics(selectedTab)
-        selectedTab.ws?.close()
-        clearInterval(selectedTab.keepalive)
-        setTabs(tabs.filter(t => t!==selectedTab))
-    }
-
-    const onClickStartLog = () => {
-        setAnchorMenuTab(null)
-        var tab=tabs.find(t => t.name===selectedTabRef.current)
-        if (tab && tab.logObject) startLog(tab)
+    const onClickMetricsStart = () => {
+        setShowMetricsSelector(true)
     }
 
     const startLog = (tab:TabObject) => {
@@ -721,6 +549,97 @@ const App: React.FC = () => {
         }
     }
 
+    const startAlarm = (tab:TabObject) => {
+        if (!tab || !tab.alarmObject) {
+            console.log('No active tab found')
+            return
+        }
+        var cluster=clusters!.find(c => c.name===tab.alarmObject!.clusterName)
+        if (!cluster) {
+            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at alarm configuration (${tab.alarmObject.clusterName}) does not exist.`, setMsgBox))
+            return
+        }
+
+        if (tab.ws && tab.ws.readyState===tab.ws.OPEN) {
+            var ac:AlarmConfig = {
+                action: ServiceConfigActionEnum.START,
+                flow: ServiceConfigFlowEnum.REQUEST,
+                channel: ServiceConfigChannelEnum.ALARM,
+                instance: '',
+                accessKey: cluster!.accessString,
+                scope: ServiceConfigScopeEnum.SUBSCRIBE,
+                view: tab.alarmObject.view!,
+                namespace: tab.alarmObject.namespace!,
+                set: tab.alarmObject.group!,
+                group: tab.alarmObject.group!,
+                pod: tab.alarmObject.pod!,
+                container: tab.alarmObject.container!,
+                regexInfo: tab.alarmObject.regexInfo,
+                regexWarning: tab.alarmObject.regexWarning,
+                regexError: tab.alarmObject.regexError
+            }
+            tab.ws.send(JSON.stringify(ac))
+            tab.alarmObject.started=true
+        }
+        else {
+            console.log('Tab web socket is not started')
+        }
+    }
+
+    const startMetrics = (tab:TabObject) => {
+        if (!tab || !tab.metricsObject) {
+            console.log('No active tab found')
+            return
+        }
+        var cluster=clusters!.find(c => c.name===tab.metricsObject!.clusterName)
+        if (!cluster) {
+            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at metrics configuration (${tab.metricsObject.clusterName}) does not exist.`, setMsgBox))
+            return
+        }
+ 
+        if (tab.ws && tab.ws.readyState===tab.ws.OPEN) {
+            tab.metricsObject.assetMetricsValues=[]
+            var mc:MetricsConfig = {
+                action: ServiceConfigActionEnum.START,
+                flow: ServiceConfigFlowEnum.REQUEST,
+                channel: ServiceConfigChannelEnum.METRICS,
+                instance: '',
+                interval: tab.metricsObject.interval,
+                aggregate: tab.metricsObject.aggregate,
+                accessKey: cluster!.accessString,
+                scope: ServiceConfigScopeEnum.STREAM,
+                view: tab.metricsObject.view!,
+                namespace: tab.metricsObject.namespace!,
+                set: tab.metricsObject.group!,
+                group: tab.metricsObject.group!,
+                pod: tab.metricsObject.pod!,
+                container: tab.metricsObject.container!,
+                mode: tab.metricsObject.mode,
+                metrics: tab.metricsObject.metrics
+            }
+            tab.ws.send(JSON.stringify(mc))
+            tab.metricsObject.started=true
+        }
+        else {
+            console.log('Tab web socket is not started')
+        }
+    }
+
+    const onClickLogStop = () => {    
+        setAnchorMenuTab(null)
+        if (selectedTab && selectedTab.logObject) stopLog(selectedTab)
+    }
+
+    const onClickAlarmStop = () => {
+        setAnchorMenuTab(null)
+        if (selectedTab && selectedTab.alarmObject) stopAlarm(selectedTab)
+    }
+
+    const onClickMetricsStop = () => {
+        setAnchorMenuTab(null)
+        if (selectedTab && selectedTab.metricsObject) stopMetrics(selectedTab)
+    }
+
     const stopLog = (tab:TabObject) => {
         if (!tab || !tab.logObject) return
         var endline='=============================================================================================='
@@ -754,6 +673,60 @@ const App: React.FC = () => {
         setLogMessages(tab.logObject.messages)
     }
 
+    const stopAlarm = (tab:TabObject) => {
+        if (!tab.alarmObject) return
+        var cluster=clusters!.find(c => c.name===tab.alarmObject!.clusterName)
+        var ac:AlarmConfig = {
+            action: ServiceConfigActionEnum.STOP,
+            flow: ServiceConfigFlowEnum.REQUEST,
+            channel: ServiceConfigChannelEnum.ALARM,
+            instance: tab.alarmObject.serviceInstance,
+            accessKey: cluster!.accessString,
+            view: tab.alarmObject.view!,
+            scope: ServiceConfigScopeEnum.NONE,
+            namespace: '',
+            group: '',
+            set: '',
+            pod: '',
+            container: '',
+            regexInfo: [],
+            regexWarning: [],
+            regexError: []
+        }
+        if (tab.ws) tab.ws.send(JSON.stringify(ac))
+            tab.alarmObject.firedAlarms.push({
+                timestamp: Date.now(),
+                severity: AlarmSeverityEnum.INFO,
+                container: '',
+                text: '========================================================================='
+            })
+        tab.alarmObject.started=false
+    }
+
+    const stopMetrics = (tab:TabObject) => {
+        if (!tab.metricsObject) return
+        var cluster=clusters!.find(c => c.name===tab.metricsObject!.clusterName)
+        var mc:MetricsConfig = {
+            action: ServiceConfigActionEnum.STOP,
+            flow: ServiceConfigFlowEnum.REQUEST,
+            channel: ServiceConfigChannelEnum.METRICS,
+            instance: tab.metricsObject.serviceInstance,
+            mode: tab.metricsObject.mode,
+            metrics: [],
+            aggregate: false,
+            accessKey: cluster!.accessString,
+            view: tab.metricsObject.view!,
+            scope: ServiceConfigScopeEnum.NONE,
+            namespace: '',
+            group: '',
+            set: '',
+            pod: '',
+            container: ''
+        }
+        if (tab.ws) tab.ws.send(JSON.stringify(mc))
+        tab.metricsObject.started=false
+    }
+
     const onClickLogPause = () => {
         setAnchorMenuTab(null)
         if (!selectedTab || !selectedTab.logObject) return
@@ -767,6 +740,73 @@ const App: React.FC = () => {
             selectedTab.logObject.paused=true
             setPausedTabs( (prev) => [...prev, selectedTab!])
         }
+    }
+
+    const onClickAlarmPause = () => {
+        setAnchorMenuTab(null)
+        if (!selectedTab || !selectedTab.alarmObject) return
+
+        var cluster = clusters!.find(c => c.name === selectedTab!.alarmObject!.clusterName)
+        var ac:AlarmConfig = {
+            action: ServiceConfigActionEnum.PAUSE,
+            flow: ServiceConfigFlowEnum.REQUEST,
+            channel: ServiceConfigChannelEnum.ALARM,
+            instance: '',
+            accessKey: cluster!.accessString,
+            scope: ServiceConfigScopeEnum.SUBSCRIBE,
+            view: selectedTab.alarmObject.view!,
+            namespace: selectedTab.alarmObject.namespace!,
+            set: selectedTab.alarmObject.group!,
+            group: selectedTab.alarmObject.group!,
+            pod: selectedTab.alarmObject.pod!,
+            container: selectedTab.alarmObject.container!,
+            regexInfo: selectedTab.alarmObject.regexInfo,
+            regexWarning: selectedTab.alarmObject.regexWarning,
+            regexError: selectedTab.alarmObject.regexError
+        }
+
+        if (selectedTab.alarmObject.paused) {
+            selectedTab.alarmObject.paused=false
+            setPausedTabs(tabs.filter(t => t.alarmObject?.paused))
+            ac.action = ServiceConfigActionEnum.CONTINUE
+        }
+        else {
+            selectedTab.alarmObject.paused=true
+            setPausedTabs( (prev) => [...prev, selectedTab!])
+            ac.action = ServiceConfigActionEnum.PAUSE
+        }
+        selectedTab.ws!.send(JSON.stringify(ac))
+    }
+
+    const onClickMetricsPause = () => {
+        setAnchorMenuTab(null)
+        if (!selectedTab || !selectedTab.metricsObject) return
+
+        if (selectedTab.metricsObject.paused) {
+            selectedTab.metricsObject.paused=false
+            setPausedTabs(tabs.filter(t => t.metricsObject?.paused))
+        }
+        else {
+            selectedTab.metricsObject.paused=true
+            setPausedTabs( (prev) => [...prev, selectedTab!])
+        }
+    }
+
+    const stopTab = (tab:TabObject) => {
+        if (tab.logObject) stopLog(tab)
+        if (tab.alarmObject) stopAlarm(tab)
+        if (tab.metricsObject) stopMetrics(tab)
+    }
+
+    const onClickTabRemove = () => {
+        setAnchorMenuTab(null)
+        if (!selectedTab) return
+
+        if (selectedTab.logObject) stopLog(selectedTab)
+        if (selectedTab.metricsObject) stopMetrics(selectedTab)
+        selectedTab.ws?.close()
+        clearInterval(selectedTab.keepalive)
+        setTabs(tabs.filter(t => t!==selectedTab))
     }
 
     const onChangeLogFilter = (event:ChangeEvent<HTMLInputElement>) => {
@@ -838,7 +878,7 @@ const App: React.FC = () => {
                 if (selectedTab && selectedTab.logObject) selectedTab.defaultTab=true
                 break
             case MenuTabOption.LogStart:
-                onClickStartLog()
+                onClickLogStart()
                 break
             case MenuTabOption.LogPause:
                 onClickLogPause()
@@ -1080,6 +1120,10 @@ const App: React.FC = () => {
         startMetrics(tab)
     }
 
+    const onTestPrime = (regexInfo:string[], regexWarning:string[], regexError:string[]) => {
+        setShowTest(false)
+    }
+    
     const onAlarmSetup = (regexInfo:string[], regexWarning:string[], regexError:string[]) => {
         setShowAlarmSetup(false)
         setAnchorMenuTab(null)
@@ -1165,17 +1209,17 @@ const App: React.FC = () => {
         <SessionContext.Provider value={{ user, accessKey: accessString, logged, backendUrl }}>
             <AppBar position="sticky" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
                 <Toolbar>
-                <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
-                <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth</Typography>
-                <Typography variant="h6" component="div" sx={{mr:2}}>{currentBoardName}</Typography>
-                <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user?.scope}]</div>} sx={{ mr:2 }}><Person/></Tooltip>
+                    <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
+                    <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth</Typography>
+                    <Typography variant="h6" component="div" sx={{mr:2}}>{currentBoardName}</Typography>
+                    <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user?.scope}]</div>} sx={{ mr:2 }}><Person/></Tooltip>
                 </Toolbar>
             </AppBar>
 
             <Drawer sx={{ flexShrink: 0, '& .MuiDrawer-paper': {mt: '64px'} }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
                 <Stack direction={'column'}>
-                <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} user={user}/>
-                <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>
+                    <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} user={user}/>
+                    <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>
                 </Stack>
             </Drawer>
 

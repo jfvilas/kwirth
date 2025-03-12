@@ -37,9 +37,9 @@ const bodyParser = require('body-parser')
 const requestIp = require ('request-ip')
 const PORT = 3883
 const buffer:Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages
-const websocketIntervals:Map<WebSocket, {instanceId:string, timeout: NodeJS.Timeout, working:boolean, paused:boolean, assets: AssetData[], metricsConfig:MetricsConfig} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
-const websocketLogStreams:Map<WebSocket, PassThrough>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
-const websocketAlarms:Map<WebSocket, {instanceId:string, logStream:PassThrough, regExps:Map<AlarmSeverityEnum, RegExp[]>} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketLog:Map<WebSocket, PassThrough>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketAlarms:Map<WebSocket, {instanceId:string, logStream:PassThrough, working:boolean, paused:boolean, regExps:Map<AlarmSeverityEnum, RegExp[]>} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
+const websocketMetrics:Map<WebSocket, {instanceId:string, timeout: NodeJS.Timeout, working:boolean, paused:boolean, assets: AssetData[], metricsConfig:MetricsConfig} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 
 // Kubernetes API access
 const kubeConfig = new KubeConfig()
@@ -100,7 +100,7 @@ const sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, s
     }
 }
 
-const sendAlarm = (webSocket:WebSocket, podNamespace:string, podName:string, alarmSeverity:AlarmSeverityEnum, line:string, instanceId: string) => {
+const sendAlarm = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alarmSeverity:AlarmSeverityEnum, line:string, instanceId: string) => {
     // line includes timestam at front (beacuse of log stream configuration at startup)
     var i = line.indexOf(' ')
     var msg:AlarmMessage = {
@@ -108,6 +108,7 @@ const sendAlarm = (webSocket:WebSocket, podNamespace:string, podName:string, ala
         instance: instanceId,
         type: ServiceMessageTypeEnum.DATA,
         pod: podName,
+        container: containerName,
         channel: ServiceConfigChannelEnum.ALARM,
         text: line.substring(i+1),
         timestamp: new Date(line.substring(0,i)),
@@ -116,16 +117,16 @@ const sendAlarm = (webSocket:WebSocket, podNamespace:string, podName:string, ala
     webSocket.send(JSON.stringify(msg))   
 }
 
-const processAlarmSeverity = (webSocket:WebSocket, podNamespace:string, podName:string, alarmSeverity:AlarmSeverityEnum, regexes:RegExp[], line:string, instaceId:string) => {
+const processAlarmSeverity = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alarmSeverity:AlarmSeverityEnum, regexes:RegExp[], line:string, instaceId:string) => {
     for (var regex of regexes) {
         var i = line.indexOf(' ')
         if (regex.test(line.substring(i))) {
-            sendAlarm(webSocket, podNamespace, podName, alarmSeverity, line, instaceId)
+            sendAlarm(webSocket, podNamespace, podName, containerName, alarmSeverity, line, instaceId)
         }
     }
 }
 
-const sendAlarmData = (webSocket:WebSocket, podNamespace:string, podName:string, source:string, instanceId:string) => {
+const sendAlarmData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, source:string, instanceId:string) => {
     var instances = websocketAlarms.get(webSocket)
     if (!instances) {
         console.log('No instances found for sendAlarmData')
@@ -136,12 +137,15 @@ const sendAlarmData = (webSocket:WebSocket, podNamespace:string, podName:string,
         console.log(`No instance found for sendAlarmData instance ${instanceId}`)
         return
     }
+
+    if (instance.paused) return
+
     const logLines = source.split('\n')
     for (var line of logLines) {
         if (line.trim() !== '') {
-            processAlarmSeverity(webSocket, podNamespace, podName, AlarmSeverityEnum.INFO, instance.regExps.get(AlarmSeverityEnum.INFO)!, line, instanceId)
-            processAlarmSeverity(webSocket, podNamespace, podName, AlarmSeverityEnum.WARNING, instance.regExps.get(AlarmSeverityEnum.WARNING)!, line, instanceId)
-            processAlarmSeverity(webSocket, podNamespace, podName, AlarmSeverityEnum.ERROR, instance.regExps.get(AlarmSeverityEnum.ERROR)!, line, instanceId)
+            processAlarmSeverity(webSocket, podNamespace, podName, containerName, AlarmSeverityEnum.INFO, instance.regExps.get(AlarmSeverityEnum.INFO)!, line, instanceId)
+            processAlarmSeverity(webSocket, podNamespace, podName, containerName, AlarmSeverityEnum.WARNING, instance.regExps.get(AlarmSeverityEnum.WARNING)!, line, instanceId)
+            processAlarmSeverity(webSocket, podNamespace, podName, containerName, AlarmSeverityEnum.ERROR, instance.regExps.get(AlarmSeverityEnum.ERROR)!, line, instanceId)
         }
     }
 }
@@ -162,7 +166,7 @@ const getAssetMetrics = (assetName:string, metricsConfig:MetricsConfig, assets:A
 
 const sendMetricsDataInstance = (webSocket:WebSocket, instanceId:string) => {
     // get instance
-    var instances = websocketIntervals.get(webSocket)
+    var instances = websocketMetrics.get(webSocket)
     if (!instances) {
         console.log('No instances found for sendMetricsData')
         return
@@ -282,7 +286,7 @@ const sendChannelSignal = (webSocket: WebSocket, level: SignalMessageLevelEnum, 
     }
 }
 
-const sendServiceConfigMessage = (ws:WebSocket, action:ServiceConfigActionEnum, flow: ServiceConfigFlowEnum, channel: ServiceConfigChannelEnum, serviceConfig:ServiceConfig, text:string) => {
+const sendServiceConfigSignalMessage = (ws:WebSocket, action:ServiceConfigActionEnum, flow: ServiceConfigFlowEnum, channel: ServiceConfigChannelEnum, serviceConfig:ServiceConfig, text:string) => {
     var resp:any = {
         action,
         flow,
@@ -295,7 +299,7 @@ const sendServiceConfigMessage = (ws:WebSocket, action:ServiceConfigActionEnum, 
 }
 
 const startPodService = (podNamespace:string, podName:string, containerName:string, webSocket:WebSocket, serviceConfig:ServiceConfig) => {
-    console.log(`startPodService ${serviceConfig.channel}: ${podNamespace}/${podName}/${containerName} (view: ${serviceConfig.view})`)
+    console.log(`startPodService '${serviceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${serviceConfig.view})`)
     if ((serviceConfig.view === ServiceConfigViewEnum.POD || serviceConfig.view === ServiceConfigViewEnum.CONTAINER) && !serviceConfig.pod.split(',').includes(podName)) {
         console.log('Pod EXCLUDED: ', podName)
         return
@@ -327,13 +331,14 @@ const updatePodService = async (eventType:string, podNamespace:string, podName:s
             break
         case ServiceConfigChannelEnum.METRICS:
             var metricsConfig = serviceConfig as MetricsConfig
-            var instances = websocketIntervals.get(webSocket)
+            var instances = websocketMetrics.get(webSocket)
             var instance = instances?.find((instance) => instance.instanceId === metricsConfig.instance)
             if (instance) {
-                if (eventType==='DELETED') instance.assets = instance.assets.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
+                if (eventType==='DELETED') {
+                    instance.assets = instance.assets.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
+                }
                 if (eventType==='MODIFIED') {
                     var thisPod = instance.assets.find(p => p.podNamespace===podNamespace && p.podName===podName && p.containerName===containerName)
-                    //if (thisPod) thisPod.startTime = await getPodStartTime(podNamespace,podName)
                 }
             }
             break
@@ -371,7 +376,7 @@ const startPodLog = async (webSocket:WebSocket, podNamespace:string, podName:str
             tailLines:logConfig.maxMessages
         }
 
-        if (!websocketLogStreams.has(webSocket)) websocketLogStreams.set(webSocket, logStream)
+        if (!websocketLog.has(webSocket)) websocketLog.set(webSocket, logStream)
         await k8sLog.log(podNamespace, podName, containerName, logStream,  streamConfig)
     }
     catch (err) {
@@ -400,10 +405,7 @@ const startPodAlarm = async (webSocket:WebSocket, podNamespace:string, podName:s
             regExps.push(new RegExp (regStr))
         regexes.set(AlarmSeverityEnum.ERROR,regExps)
 
-        if (!websocketAlarms.get(webSocket)) websocketAlarms.set(webSocket, [])
         const logStream:PassThrough = new stream.PassThrough()
-        websocketAlarms.get(webSocket)?.push ({ instanceId: alarmConfig.instance, logStream:logStream, regExps: regexes })
-
         logStream.on('data', (chunk:any) => {
             var text:string=chunk.toString('utf8')
             if (buffer.get(webSocket)!==undefined) {
@@ -418,17 +420,19 @@ const startPodAlarm = async (webSocket:WebSocket, podNamespace:string, podName:s
                 buffer.set(webSocket,next)
                 text=text.substring(0,i)
             }
-            sendAlarmData(webSocket, podNamespace, podName, text, alarmConfig.instance)
+            sendAlarmData(webSocket, podNamespace, podName, containerName, text, alarmConfig.instance)
         })
 
-        var streamConfig = {
+        if (!websocketAlarms.get(webSocket)) websocketAlarms.set(webSocket, [])
+        websocketAlarms.get(webSocket)?.push ({ instanceId: alarmConfig.instance, working:true, paused:false, logStream:logStream, regExps: regexes })   
+
+        var kubernetesStreamConfig = {
             follow: true, 
             pretty: false, 
             timestamps: true
         }
-
-        if (!websocketLogStreams.has(webSocket)) websocketLogStreams.set(webSocket, logStream)
-        await k8sLog.log(podNamespace, podName, containerName, logStream,  streamConfig)
+        console.log('start streaming', podNamespace, podName, containerName)
+        await k8sLog.log(podNamespace, podName, containerName, logStream,  kubernetesStreamConfig)
     }
     catch (err) {
         console.log('Generic error starting pod log', err)
@@ -452,8 +456,8 @@ const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName
                 const podNode = podResponse.body.spec?.nodeName
                 if (podNode) {
                     console.log(`Start pod metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
-                    if (websocketIntervals.has(webSocket)) {
-                        var instances = websocketIntervals.get(webSocket)
+                    if (websocketMetrics.has(webSocket)) {
+                        var instances = websocketMetrics.get(webSocket)
                         var instance = instances?.find((instance) => instance.instanceId === metricsConfig.instance)
                         if (metricsConfig.view === ServiceConfigViewEnum.CONTAINER) {
                             instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
@@ -465,10 +469,10 @@ const startPodMetrics = async (webSocket:WebSocket, podNamespace:string, podName
                         }
                     }
                     else {
-                        websocketIntervals.set(webSocket, [])
+                        websocketMetrics.set(webSocket, [])
                         var interval=(metricsConfig.interval?metricsConfig.interval:60)*1000
                         var timeout = setInterval(() => sendMetricsDataInstance(webSocket,metricsConfig.instance), interval)
-                        var instances=websocketIntervals.get(webSocket)
+                        var instances=websocketMetrics.get(webSocket)
                         instances?.push({instanceId:metricsConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], metricsConfig})
                     }
                 }
@@ -495,8 +499,6 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, servi
         const podName:string = obj.metadata.name
         const podNamespace:string = obj.metadata.namespace
         if (eventType === 'ADDED') {
-            console.log(`Pod DETECTED: ${podNamespace}/${podName}`)
-
             for (var container of obj.spec.containers) {
                 switch (serviceConfig.view) {
                     case ServiceConfigViewEnum.NAMESPACE:
@@ -504,7 +506,7 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, servi
                         break
                     case ServiceConfigViewEnum.GROUP:
                         var [_groupType, groupName] = serviceConfig.group.split('+')
-                        if (podName.startsWith(groupName)) {  // we rely on kubernetes naming conventions here
+                        if (podName.startsWith(groupName)) {  // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
                             startPodService(podNamespace, podName, container.name, webSocket, serviceConfig)
                         }
                         break
@@ -516,9 +518,13 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, servi
                         }
                         break
                     case ServiceConfigViewEnum.CONTAINER:
-                        if (container.name === serviceConfig.container) {
+                        var sccontainers = serviceConfig.container.split(',').map (c => c.split('+')[1]) // containr has the form: podname+containername (with a plus sign as separating char)
+                        if (sccontainers.includes(container.name)) {
                             console.log(`Pod ADDED: ${podNamespace}/${podName}/${container.name}`)
                             startPodService(podNamespace, podName, container.name, webSocket, serviceConfig)
+                        }
+                        else {
+                            console.log(`Excluded container ${container.name}`)
                         }
                         break
                     default:
@@ -528,7 +534,10 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, servi
             }
         }
         else if (eventType === 'DELETED' || eventType === 'MODIFIED') {
-            console.log(`Pod ${eventType}`)
+            // +++ we will use this info for the AUDIT channel
+            // console.log(`Pod ${eventType}`)
+            // console.log(obj.status.conditions)
+            // console.log(obj.status.containerStatuses)
             updatePodService(eventType, podNamespace, podName, '', webSocket, serviceConfig)
             sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Pod ${eventType}: ${podNamespace}/${podName}`, serviceConfig)
         }
@@ -549,25 +558,15 @@ const getRequestedValidatedScopedPods = async (serviceConfig:ServiceConfig, acce
     var allPods=await coreApi.listPodForAllNamespaces() //+++ can be optimized if config.namespace is specified
     var selectedPods:V1Pod[]=[]
 
-    // console.log('serviceConfig',serviceConfig)
-    // console.log('accessKeyResources',accessKeyResources)
-    // console.log('validNamespaces',validNamespaces)
-    // console.log('validPodNames',validPodNames)
-    // console.log('*****************************')
-    // console.log('servconfig namespace',serviceConfig.namespace)
     for (var pod of allPods.body.items) {
         var podName = pod.metadata?.name!
         var podNamespace = pod.metadata?.namespace!
-        //console.log(podNamespace, podName)
 
         let existClusterScope = accessKeyResources.find(resource => resource.scope==='cluster') !== null
         if (!existClusterScope) {
             if (serviceConfig.namespace!=='' && serviceConfig.namespace.split(',').includes(podNamespace)) {
-                // console.log('includes pns')
-                // console.log('validNamespaces',validNamespaces)
                 if (! validNamespaces.includes(podNamespace)) continue
             }
-            //console.log('ns ok, continue')
 
             //+++ other filters (not just 'pod') pending implementation (that is, obtain a list of pods checking groups, for example)
             // if (metricsConfig.pod!=='' && metricsConfig.pod.split(',').includes(podName)) {
@@ -577,11 +576,9 @@ const getRequestedValidatedScopedPods = async (serviceConfig:ServiceConfig, acce
             if (serviceConfig.pod!=='' && serviceConfig.pod.split(',').includes(podName)) {
                 if (! validPodNames.includes(podName)) continue
             }
-            //console.log('pn ok, continue')
 
             let podResource = accessKeyResources.find(resource => resource.pod===podName)
             if (!podResource) continue
-            //console.log('INKEY, continue')
 
             var haveLevel = getServiceScopeLevel(serviceConfig.channel, podResource!.scope)
             var requiredLevel = getServiceScopeLevel(serviceConfig.channel, podResource!.scope)
@@ -590,7 +587,6 @@ const getRequestedValidatedScopedPods = async (serviceConfig:ServiceConfig, acce
                 continue
             }
         }
-        //console.log(`${podNamespace}/${podName} is valid`)
         selectedPods.push(pod)
     }
     return selectedPods
@@ -606,21 +602,27 @@ const processStartLogConfig = async (logConfig: LogConfig, webSocket: WebSocket,
             }
             else {
                 switch (logConfig.view) {
-                    case 'cluster':
-                        watchPods(`/api/v1/pods`, {}, webSocket, logConfig)
-                        logConfig.instance = uuidv4()
-                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
-                        break
                     case 'namespace':
-                        watchPods(`/api/v1/namespaces/${logConfig.namespace}/pods`, {}, webSocket, logConfig)
+                        // watchPods(`/api/v1/namespaces/${logConfig.namespace}/pods`, {}, webSocket, logConfig)
+                        // logConfig.instance = uuidv4()
+                        // sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
                         logConfig.instance = uuidv4()
-                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
+                        for (var ns of validNamespaces) {
+                            watchPods(`/api/v1/namespaces/${ns}/pods`, {}, webSocket, logConfig)
+                        }
+                        sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
                         break
                     case 'group':
-                        var labelSelector = (await getPodsFromGroup(coreApi, appsApi, logConfig.namespace, logConfig.group)).labelSelector
-                        watchPods(`/api/v1/namespaces/${logConfig.namespace}/pods`, { labelSelector }, webSocket, logConfig)
+                        // var labelSelector = (await getPodsFromGroup(coreApi, appsApi, logConfig.namespace, logConfig.group)).labelSelector
+                        // watchPods(`/api/v1/namespaces/${logConfig.namespace}/pods`, { labelSelector }, webSocket, logConfig)
+                        // logConfig.instance = uuidv4()
+                        // sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
                         logConfig.instance = uuidv4()
-                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
+                        for (var ns of validNamespaces) {
+                            var pods = (await getPodsFromGroup(coreApi, appsApi, ns, logConfig.group))
+                            if (pods.pods.length >= 0) watchPods(`/api/v1/namespaces/${ns}/pods`, { labelSelector: pods.labelSelector }, webSocket, logConfig)
+                        }
+                        sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
                         break
                     case 'pod':
                     case 'container':
@@ -649,7 +651,7 @@ const processStartLogConfig = async (logConfig: LogConfig, webSocket: WebSocket,
                                 var labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
                                 watchPods(`/api/v1/namespaces/${podLogConfig.namespace}/pods`, { labelSelector }, webSocket, podLogConfig)
                                 logConfig.instance = uuidv4()
-                                sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
+                                sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, logConfig, 'Service Config accepted')
                             }
                             else {
                                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels`, logConfig)
@@ -671,34 +673,44 @@ const processStartLogConfig = async (logConfig: LogConfig, webSocket: WebSocket,
     }
 }
 
+/*
 const processStartAlarmConfig = async (alarmConfig: AlarmConfig, webSocket: WebSocket, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validPodNames: string[]) => {
     switch (alarmConfig.scope) {
         case ServiceConfigScopeEnum.SUBSCRIBE:
             var requestedValidatedPods = await getRequestedValidatedScopedPods(alarmConfig, accessKeyResources, validNamespaces, validPodNames)
             if (requestedValidatedPods.length===0) {
-                sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: there are no filters that match requested log config`, alarmConfig)
+                sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: there are no filters that match requested config`, alarmConfig)
+                return
             }
-            else {
-                switch (alarmConfig.view) {
-                    case 'cluster':
-                        watchPods(`/api/v1/pods`, {}, webSocket, alarmConfig)
-                        alarmConfig.instance = uuidv4()
-                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, alarmConfig, 'Service Config accepted')
-                        break
-                    case 'namespace':
-                        watchPods(`/api/v1/namespaces/${alarmConfig.namespace}/pods`, {}, webSocket, alarmConfig)
-                        alarmConfig.instance = uuidv4()
-                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, alarmConfig, 'Service Config accepted')
-                        break
-                    case 'group':
-                        var labelSelector = (await getPodsFromGroup(coreApi, appsApi, alarmConfig.namespace, alarmConfig.group)).labelSelector
-                        watchPods(`/api/v1/namespaces/${alarmConfig.namespace}/pods`, { labelSelector }, webSocket, alarmConfig)
-                        alarmConfig.instance = uuidv4()
-                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, alarmConfig, 'Service Config accepted')
-                        break
-                    case 'pod':
-                    case 'container':
-                        var validPod=requestedValidatedPods.find(p => p.metadata?.name === alarmConfig.pod)
+            switch (alarmConfig.view) {
+                case 'namespace':
+                    alarmConfig.instance = uuidv4()
+                    for (var ns of validNamespaces) {
+                        watchPods(`/api/v1/namespaces/${ns}/pods`, {}, webSocket, alarmConfig)
+                    }
+                    sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, alarmConfig, 'Service Config accepted')
+                    break
+                case 'group':
+                    console.log(alarmConfig)
+                    alarmConfig.instance = uuidv4()
+                    for (var ns of validNamespaces) {
+                        for (var group of alarmConfig.group.split(',')) {
+                            var groupPods = (await getPodsFromGroup(coreApi, appsApi, ns, group))
+                            console.log('checking ', ns, group)
+                            if (groupPods.pods.length >= 0) {
+                                alarmConfig.group = group
+                                watchPods(`/api/v1/namespaces/${ns}/pods`, { labelSelector: groupPods.labelSelector }, webSocket, alarmConfig)
+                            }
+                            else
+                                console.log('No pods on namespace ns')
+                        }
+                    }
+                    sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, alarmConfig, 'Service Config accepted')
+                    break
+                case 'pod':
+                case 'container':
+                    for (var pod of alarmConfig.pod.split(',')) {
+                        var validPod=requestedValidatedPods.find(p => p.metadata?.name === pod)
                         if (validPod) {
                             var podAlarmConfig: AlarmConfig={
                                 action: ServiceConfigActionEnum.START,
@@ -720,23 +732,24 @@ const processStartAlarmConfig = async (alarmConfig: AlarmConfig, webSocket: WebS
 
                             var metadataLabels = validPod.metadata?.labels
                             if (metadataLabels) {
+                                console.log('to watch pods...')
                                 var labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
+                                console.log(labelSelector)
                                 watchPods(`/api/v1/namespaces/${podAlarmConfig.namespace}/pods`, { labelSelector }, webSocket, podAlarmConfig)
-                                alarmConfig.instance = uuidv4()
-                                sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, alarmConfig, 'Service Config accepted')
+                                sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, alarmConfig, 'Service Config accepted')
                             }
                             else {
                                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels`, alarmConfig)
                             }
                         }
                         else {
-                            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${alarmConfig.pod}'`, alarmConfig)
+                            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${pod}'`, alarmConfig)
                         }
-                        break
-                    default:
-                        sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: invalid view '${alarmConfig.view}'`, alarmConfig)
-                        break
-                }
+                    }
+                    break
+                default:
+                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: invalid view '${alarmConfig.view}'`, alarmConfig)
+                    break
             }
             break
         default:
@@ -744,7 +757,9 @@ const processStartAlarmConfig = async (alarmConfig: AlarmConfig, webSocket: WebS
             return
     }
 }
+*/
 
+/*
 const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket: WebSocket, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validPodNames: string[]) => {
     switch (metricsConfig.scope) {
         case 'snapshot':
@@ -755,22 +770,19 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
                 return
             }
             switch (metricsConfig.view) {
-                case 'cluster':
-                    watchPods(`/api/v1/pods`, {}, webSocket, metricsConfig)
-                    metricsConfig.instance = uuidv4()
-                    sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service config accepted')
-                    break
                 case 'namespace':
                     watchPods(`/api/v1/namespaces/${metricsConfig.namespace}/pods`, {}, webSocket, metricsConfig)
                     metricsConfig.instance = uuidv4()
-                    sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service config accepted')
+                    sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service config accepted')
                     break
                 case 'group':
-                    var labelSelector = (await getPodsFromGroup(coreApi, appsApi, metricsConfig.namespace, metricsConfig.group)).labelSelector
-                    watchPods(`/api/v1/namespaces/${metricsConfig.namespace}/pods`, { labelSelector }, webSocket, metricsConfig)
                     metricsConfig.instance = uuidv4()
-                    sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service config accepted')
-                    break
+                    for (var ns of validNamespaces) {
+                        var pods = (await getPodsFromGroup(coreApi, appsApi, ns, metricsConfig.group))
+                        if (pods.pods.length >= 0) watchPods(`/api/v1/namespaces/${ns}/pods`, { labelSelector: pods.labelSelector }, webSocket, metricsConfig)
+                    }
+                    sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service Config accepted')
+                break
                 case 'pod':
                 case 'container':
                     let validPods=metricsConfig.pod.split(',').map( podName => requestedValidatedPods.find(p => p.metadata?.name === podName)?.metadata?.name).join(',')
@@ -795,15 +807,12 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
                             aggregate: metricsConfig.aggregate
                         }
 
-                        // +++ review this, the podlist can contain pods with different labeling (belonging to diferente group) or to different namespace
-                        // labelSelector is something like: { labelSelector: 'aa=2,b=pepe,c=45' }
-                        // watchPods(`/api/v1/namespaces/${podMetricsConfig.namespace}/pods`, { labelSelector }, webSocket, podMetricsConfig)
                         if (metricsConfig.namespace!=='')
                             watchPods(`/api/v1/namespaces/${podMetricsConfig.namespace}/pods`, {}, webSocket, podMetricsConfig)
                         else
                             watchPods(`/api/v1/pods`, {}, webSocket, podMetricsConfig)
                         metricsConfig.instance = uuidv4()
-                        sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service config accepted')
+                        sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, metricsConfig, 'Service config accepted')
                     }
                     else {
                         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${metricsConfig.pod}'`, metricsConfig)
@@ -820,10 +829,142 @@ const processStartMetricsConfig = async (metricsConfig: MetricsConfig, webSocket
             return
     }
 }
+*/
 
-const removeMetricsInterval = (webSocket:WebSocket, instance:string) => {
-    if (websocketIntervals.has(webSocket)) {
-        var instances = websocketIntervals.get(webSocket)
+const processStartAnyChannel = async (serviceConfig: ServiceConfig, webSocket: WebSocket, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validPodNames: string[]) => {
+    switch (serviceConfig.scope) {
+        case ServiceConfigScopeEnum.SUBSCRIBE:
+            var requestedValidatedPods = await getRequestedValidatedScopedPods(serviceConfig, accessKeyResources, validNamespaces, validPodNames)
+            if (requestedValidatedPods.length===0) {
+                sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: there are no filters that match requested log config`, serviceConfig)
+                return
+            }
+            switch (serviceConfig.view) {
+                case 'namespace':
+                    serviceConfig.instance = uuidv4()
+                    for (var ns of validNamespaces) {
+                        watchPods(`/api/v1/namespaces/${ns}/pods`, {}, webSocket, serviceConfig)
+                    }
+                    sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
+                    break
+                case 'group':
+                    serviceConfig.instance = uuidv4()
+                    for (let ns of validNamespaces) {
+                        for (let group of serviceConfig.group.split(',')) {
+                            let groupPods = (await getPodsFromGroup(coreApi, appsApi, ns, group))
+                            console.log('checking ', ns, group)
+                            if (groupPods.pods.length > 0) {
+                                console.log('START ', groupPods.labelSelector)
+                                let specificServiceConfig = JSON.parse(JSON.stringify(serviceConfig))
+                                specificServiceConfig.group = group
+                                watchPods(`/api/v1/namespaces/${ns}/pods`, { labelSelector: groupPods.labelSelector }, webSocket, specificServiceConfig)
+                            }
+                            else
+                                console.log('No pods on namespace ns')
+                        }
+                    }
+                    sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
+                    break
+                case 'pod':
+                case 'container':
+                    for (var pod of serviceConfig.pod.split(',')) {
+                        var validPod=requestedValidatedPods.find(p => p.metadata?.name === pod)
+                        if (validPod) {
+
+                            var metadataLabels = validPod.metadata?.labels
+                            if (metadataLabels) {
+                                console.log('to watch pods...')
+                                var labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
+                                console.log(labelSelector)
+                                watchPods(`/api/v1/pods`, { labelSelector }, webSocket, serviceConfig)
+                                sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
+                            }
+                            else {
+                                sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels`, serviceConfig)
+                            }
+                        }
+                        else {
+                            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${pod}'`, serviceConfig)
+                        }
+                    }
+                    break
+                default:
+                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: invalid view '${serviceConfig.view}'`, serviceConfig)
+                    break
+            }
+            break
+        default:
+            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: invalid scope '${serviceConfig.scope}'`, serviceConfig)
+            return
+    }
+}
+
+const processStartServiceConfig = async(serviceConfig: ServiceConfig, webSocket: WebSocket, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validPodNames: string[]) => {
+    switch (serviceConfig.channel) {
+        case ServiceConfigChannelEnum.LOG:
+            processStartLogConfig(serviceConfig as LogConfig, webSocket, accessKeyResources, validNamespaces, validPodNames)
+            break
+        case ServiceConfigChannelEnum.ALARM:
+            throw 'asdasdas'
+            //processStartAlarmConfig(serviceConfig as AlarmConfig, webSocket, accessKeyResources, validNamespaces, validPodNames)
+            break
+        case ServiceConfigChannelEnum.METRICS:
+            throw 'asdasdas'
+            //processStartMetricsConfig(serviceConfig as MetricsConfig, webSocket, accessKeyResources, validNamespaces, validPodNames)
+            break
+        default:
+            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid ServiceConfig channel: ${serviceConfig.channel}`, serviceConfig)
+            break
+    }
+}
+
+const removeLog = (webSocket:WebSocket) => {
+    if (websocketLog.has(webSocket)) {
+        var passThrough = websocketLog.get(webSocket)
+        if (passThrough) {
+            passThrough.removeAllListeners()
+        }
+        else {
+            console.log('There are passthorugh on websocket')
+        }
+    }
+    else {
+        console.log('WebSocket not found on alarms')
+    }
+}
+
+const removeAlarm = (webSocket:WebSocket, instanceId:string) => {
+    if (websocketAlarms.has(webSocket)) {
+        var instances = websocketAlarms.get(webSocket)
+        if (instances) {
+            var instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
+            while (instanceIndex>=0) {
+                if (instanceIndex>=0) {
+                    var instance = instances[instanceIndex]
+                    if (instance.logStream)
+                        instance.logStream.removeAllListeners()
+                    else
+                        console.log(`Alarm logStream not found of instance id ${instanceId}`)
+                    instances.splice(instanceIndex,1)
+                }
+                else{
+                    console.log(`Instance ${instanceId} not found, cannot delete alarm`)
+                }
+                instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
+            }
+        }
+        else {
+            console.log('There are no alarm Instances on websocket')
+        }
+    }
+    else {
+        console.log('WebSocket not found on alarms')
+    }
+}
+
+const removeMetrics = (webSocket:WebSocket, instance:string) => {
+    if (websocketMetrics.has(webSocket)) {
+        var instances = websocketMetrics.get(webSocket)
         if (instances) {
             var instanceIndex = instances.findIndex(t => t.instanceId === instance)
             if (instanceIndex>=0) {
@@ -843,58 +984,30 @@ const removeMetricsInterval = (webSocket:WebSocket, instance:string) => {
     }
 }
 
-const removeAlarm = (webSocket:WebSocket, instanceId:string) => {
-    if (websocketAlarms.has(webSocket)) {
-        var instances = websocketAlarms.get(webSocket)
-        if (instances) {
-            console.log(instances)
-            var instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
-            console.log(instanceIndex)
-            if (instanceIndex>=0) {
-                var instance = instances[instanceIndex]
-                if (instance.logStream) {
-                    //+++ not working
-                    console.log('unsubscribe')
-                    instance.logStream.removeAllListeners('data')
-                    instance.logStream.end()
-                    instance.logStream.destroy()
-                }
-                else
-                    console.log(`Alarm logStream not found of instance id ${instanceId}`)
-                instances.splice(instanceIndex,1)
-            }
-            else{
-                console.log(`Instance ${instanceId} not found, cannot delete alarm`)
-            }
-        }
-        else {
-            console.log('There are no alarm Instances on websocket')
-        }
-    }
-    else {
-        console.log('WebSocket not found on alarms')
-    }
-}
-
 const processStopServiceConfig = async (serviceConfig: ServiceConfig, webSocket: WebSocket) => {
     switch (serviceConfig.channel) {
         case ServiceConfigChannelEnum.LOG:
-            var stream=websocketLogStreams.get(webSocket)
+            var stream=websocketLog.get(webSocket)
             if (stream) {
-                stream.destroy()
+                stream.removeAllListeners()
             }
             else {
                 console.log('LogStream not found')
             }
-            sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, serviceConfig, 'Log service stopped')
+            sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, serviceConfig, 'Log service stopped')
             break
         case ServiceConfigChannelEnum.ALARM:
-            removeAlarm(webSocket,serviceConfig.instance)
-            sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm service stopped')
+            if (websocketAlarms.get(webSocket)?.find(i => i.instanceId === serviceConfig.instance)) {
+                removeAlarm(webSocket,serviceConfig.instance)
+                sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm service stopped')
+            }
+            else {
+                sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey doesn't allow ot there are no instances`, serviceConfig)
+            }
             break
         case ServiceConfigChannelEnum.METRICS:
-            removeMetricsInterval(webSocket,serviceConfig.instance)
-            sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics service stopped')
+            removeMetrics(webSocket,serviceConfig.instance)
+            sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics service stopped')
             break
         default:
             console.log('Invalid channel on service stop')
@@ -906,21 +1019,26 @@ const processStopServiceConfig = async (serviceConfig: ServiceConfig, webSocket:
 const processModifyServiceConfig = async (serviceConfig: ServiceConfig, webSocket: WebSocket) => {
     switch (serviceConfig.channel) {
         case ServiceConfigChannelEnum.LOG:
+        case ServiceConfigChannelEnum.ALARM:
+            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Modify process no implemented for channel ${serviceConfig.channel}`,serviceConfig)
             break
         case ServiceConfigChannelEnum.METRICS:
             let metricsConfig = serviceConfig as MetricsConfig
-            let runningInstances = websocketIntervals.get(webSocket)
+            let runningInstances = websocketMetrics.get(webSocket)
             let instance = runningInstances?.find(i => i.instanceId===metricsConfig.instance)
             if (instance) {
                 // only modifiable propertis of the metrics config
                 instance.metricsConfig.metrics = metricsConfig.metrics
                 instance.metricsConfig.interval = metricsConfig.interval
                 instance.metricsConfig.aggregate = metricsConfig.aggregate
-                sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.MODIFY, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics modified')
+                sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.MODIFY, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics modified')
             }
             else {
                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${metricsConfig.instance} not found`,serviceConfig)
             }
+            break
+        default:
+            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Unsupported channel: ${serviceConfig.channel}`,serviceConfig)
             break
     }
 }
@@ -929,18 +1047,36 @@ const processPauseContinueServiceConfig = async (serviceConfig: ServiceConfig, w
     switch (serviceConfig.channel) {
         case ServiceConfigChannelEnum.LOG:
             break
+        case ServiceConfigChannelEnum.ALARM:
+            let alarmConfig = serviceConfig as AlarmConfig
+            let alarmInstances = websocketAlarms.get(webSocket)
+            let alarmInstance = alarmInstances?.find(i => i.instanceId === alarmConfig.instance)
+            if (alarmInstance) {
+                if (action === ServiceConfigActionEnum.PAUSE) {
+                    alarmInstance.paused = true
+                    sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.PAUSE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm paused')
+                }
+                if (action === ServiceConfigActionEnum.CONTINUE) {
+                    alarmInstance.paused = false
+                    sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.CONTINUE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm continued')
+                }
+            }
+            else {
+                sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${alarmConfig.instance} not found`,serviceConfig)
+            }
+            break
         case ServiceConfigChannelEnum.METRICS:
             let metricsConfig = serviceConfig as MetricsConfig
-            let runningInstances = websocketIntervals.get(webSocket)
+            let runningInstances = websocketMetrics.get(webSocket)
             let instance = runningInstances?.find(i => i.instanceId===metricsConfig.instance)
             if (instance) {
                 if (action === ServiceConfigActionEnum.PAUSE) {
                     instance.paused = true
-                    sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.PAUSE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics paused')
+                    sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.PAUSE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics paused')
                 }
                 if (action === ServiceConfigActionEnum.CONTINUE) {
                     instance.paused = false
-                    sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.CONTINUE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics continued')
+                    sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.CONTINUE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics continued')
                 }
             }
             else {
@@ -967,6 +1103,7 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
             text: 'OK'
         }
         webSocket.send(JSON.stringify(signalMessage))
+        return
     }
     if (!serviceConfig.group) serviceConfig.group=serviceConfig.set  // transitional
     if (!serviceConfig.accessKey) {
@@ -991,28 +1128,49 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
     var accessKeyResources=parseResources(accessKeyDeserialize(serviceConfig.accessKey).resource)
 
     var requestedNamespaces=serviceConfig.namespace.split(',').filter(ns => ns!=='')
-    var allowedNamespaces=accessKeyResources.filter(r => r.namespace!='').map(r => r.namespace)
+    var allowedNamespaces:string[] = []
+    if (accessKeyResources.find(akr => akr.scope==='cluster')) {
+        let res = await coreApi.listNamespace()
+        allowedNamespaces = res.body.items.map(n => n.metadata?.name as string)
+    }
+    else {
+        allowedNamespaces=accessKeyResources.filter(r => r.namespace!='').map(r => r.namespace)
+    }
     allowedNamespaces = [...new Set(allowedNamespaces)]
     var validNamespaces=requestedNamespaces.filter(ns => allowedNamespaces.includes(ns))
     validNamespaces = [...new Set(validNamespaces)]
 
-    var requestedPods=serviceConfig.pod.split(',').filter(podName => podName!=='')
-    var allowedPodNames=accessKeyResources.filter(r => r.pod!='').map(r => r.pod)
-    allowedPodNames = [...new Set(allowedPodNames)]
-    var validPodNames=requestedPods.filter(podName => allowedPodNames.includes(podName))
-    validPodNames = [...new Set(validPodNames)]
+    var requestedPodNames=serviceConfig.pod.split(',').filter(podName => podName!=='')
+    var allowedPodNames:string[] = []
+    var validPodNames:string[] = []
+    if (accessKeyResources.find(akr => akr.scope==='cluster')) {
+        for (var ns of validNamespaces) {
+            let res = await coreApi.listNamespacedPod(ns)
+            allowedPodNames.push (...res.body.items.map(p => p.metadata?.name as string))
+        }
+        validPodNames = [...new Set(allowedPodNames)]    
+    }
+    else {
+        allowedPodNames = accessKeyResources.filter(r => r.pod!='').map(r => r.pod)
+        validPodNames = requestedPodNames.filter(podName => allowedPodNames.includes(podName))
+        validPodNames = [...new Set(validPodNames)]
+    }
+
+    console.log('validNamespaces')
+    console.log(validNamespaces)
+    console.log('validPodNames')
+    console.log(validPodNames)
 
     switch (serviceConfig.action) {
         case ServiceConfigActionEnum.START:
             switch (serviceConfig.channel) {
-                case ServiceConfigChannelEnum.LOG:
-                    processStartLogConfig(serviceConfig as LogConfig, webSocket, accessKeyResources, validNamespaces, validPodNames)
-                    break
-                case ServiceConfigChannelEnum.METRICS:
-                    processStartMetricsConfig(serviceConfig as MetricsConfig, webSocket, accessKeyResources, validNamespaces, validPodNames)
-                    break
                 case ServiceConfigChannelEnum.ALARM:
-                    processStartAlarmConfig(serviceConfig as AlarmConfig, webSocket, accessKeyResources, validNamespaces, validPodNames)
+                case ServiceConfigChannelEnum.METRICS:
+                    processStartAnyChannel(serviceConfig as MetricsConfig, webSocket, accessKeyResources, validNamespaces, validPodNames)
+                    break
+                case ServiceConfigChannelEnum.LOG:
+                    //processStartServiceConfig(serviceConfig as MetricsConfig, webSocket, accessKeyResources, validNamespaces, validPodNames)
+                    processStartLogConfig(serviceConfig as LogConfig, webSocket, accessKeyResources, validNamespaces, validPodNames)
                     break
                 default:
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid ServiceConfig channel: ${serviceConfig.channel}`, serviceConfig)
@@ -1022,19 +1180,19 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         case ServiceConfigActionEnum.STOP:
             switch (serviceConfig.channel) {
                 case ServiceConfigChannelEnum.LOG:
-                case ServiceConfigChannelEnum.METRICS:
                 case ServiceConfigChannelEnum.ALARM:
+                case ServiceConfigChannelEnum.METRICS:
                     processStopServiceConfig(serviceConfig, webSocket)
                     break
                 default:
-                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid ServiceConfig type: ${serviceConfig.channel}`, serviceConfig)
+                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid ServiceConfig channel: ${serviceConfig.channel}`, serviceConfig)
                     break
             }
             break
         case ServiceConfigActionEnum.MODIFY:
             switch (serviceConfig.channel) {
                 case ServiceConfigChannelEnum.LOG:
-                    break
+                case ServiceConfigChannelEnum.ALARM:
                 case ServiceConfigChannelEnum.METRICS:
                     processModifyServiceConfig(serviceConfig, webSocket)
                     break
@@ -1047,7 +1205,7 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         case ServiceConfigActionEnum.CONTINUE:
             switch (serviceConfig.channel) {
                 case ServiceConfigChannelEnum.LOG:
-                    break
+                case ServiceConfigChannelEnum.ALARM:
                 case ServiceConfigChannelEnum.METRICS:
                     processPauseContinueServiceConfig(serviceConfig, webSocket, serviceConfig.action)
                     break
@@ -1078,14 +1236,33 @@ wss.on('connection', (ws:WebSocket, req) => {
 
   ws.on('close', () => {
     console.log('Client disconnected')
-    if (websocketIntervals.has(ws)) {
-        var instances=websocketIntervals.get(ws)
+    if (websocketMetrics.has(ws)) {
+        let instances=websocketMetrics.get(ws)
         if (instances) {
             for (var i=0;i<instances.length;i++) {
                 console.log(`Interval for instance ${instances[i].instanceId} has been removed`)
-                removeMetricsInterval(ws,instances[i].instanceId)
+                removeMetrics(ws,instances[i].instanceId)
             }
         }
+        websocketMetrics.delete(ws)
+    }
+    if (websocketAlarms.has(ws)) {
+        let instances=websocketAlarms.get(ws)
+        if (instances) {
+            for (var i=0;i<instances.length;i++) {
+                console.log(`Alarm for instance ${instances[i].instanceId} has been removed`)
+                removeAlarm(ws,instances[i].instanceId)
+            }
+        }
+        websocketAlarms.delete(ws)
+    }
+    if (websocketLog.has(ws)) {
+        let passThorugh = websocketLog.get(ws)
+        if (passThorugh) {
+            console.log(`PassThrough for websocket has been removed`)
+            removeLog(ws)
+        }
+        websocketLog.delete(ws)
     }
   })
 })

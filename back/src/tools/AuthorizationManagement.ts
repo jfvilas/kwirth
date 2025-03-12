@@ -1,5 +1,5 @@
 import { ApiKeyApi } from '../api/ApiKeyApi'
-import { AccessKey, accessKeyDeserialize, accessKeySerialize, parseResource } from '@jfvilas/kwirth-common'
+import { AccessKey, accessKeyDeserialize, accessKeySerialize, parseResource, ServiceConfigScopeEnum } from '@jfvilas/kwirth-common'
 import { ApiKey } from '@jfvilas/kwirth-common'
 import { ServiceConfigChannelEnum } from '@jfvilas/kwirth-common';
 import * as crypto from 'crypto'
@@ -54,12 +54,17 @@ export const validKey = (req:any,res:any) => {
 }
 
 const getLogScopeLevel = (scope:string) => {
-    const levelScopes = ['','filter','view','restart','api','cluster']
+    const levelScopes = ['', ServiceConfigScopeEnum.FILTER, ServiceConfigScopeEnum.VIEW, ServiceConfigScopeEnum.RESTART, ServiceConfigScopeEnum.API, ServiceConfigScopeEnum.CLUSTER]
+    return levelScopes.indexOf(scope)
+}
+
+const getAlarmScopeLevel = (scope:string) => {
+    const levelScopes = ['', ServiceConfigScopeEnum.SUBSCRIBE, ServiceConfigScopeEnum.CREATE, ServiceConfigScopeEnum.CLUSTER ]
     return levelScopes.indexOf(scope)
 }
 
 const getMetricsScopeLevel = (scope:string) => {
-    const levelScopes = ['','snapshot','stream','cluster']
+    const levelScopes = ['', ServiceConfigScopeEnum.SNAPSHOT, ServiceConfigScopeEnum.STREAM, ServiceConfigScopeEnum.CLUSTER ]
     return levelScopes.indexOf(scope)
 }
 
@@ -67,6 +72,8 @@ export const getServiceScopeLevel = (serviceConfigChannel:ServiceConfigChannelEn
     switch (serviceConfigChannel) {
         case ServiceConfigChannelEnum.LOG:
             return getLogScopeLevel(scope)
+        case ServiceConfigChannelEnum.ALARM:
+            return getAlarmScopeLevel(scope)
         case ServiceConfigChannelEnum.METRICS:
             return getMetricsScopeLevel(scope)
         default:

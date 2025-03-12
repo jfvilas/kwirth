@@ -135,4 +135,4 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
     </>)
 }
 
-export default MetricsSelector
+export { MetricsSelector }

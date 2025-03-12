@@ -8,8 +8,8 @@ export enum ServiceMessageTypeEnum {
 export interface ServiceMessage {
     channel: ServiceConfigChannelEnum
     instance: string
-    // type: string
     type: ServiceMessageTypeEnum
     namespace?: string
     pod?: string
+    container?: string
 }

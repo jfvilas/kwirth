@@ -68,7 +68,12 @@ const TabContent: React.FC<any> = (props:IProps) => {
                     var color = 'black'
                     if (f.severity === AlarmSeverityEnum.WARNING) color='orange'
                     if (f.severity === AlarmSeverityEnum.ERROR) color='red'
-                    return <><span style={{color}}> {new Date(f.timestamp).toISOString() + ' ' + f.text} </span><br/></>
+                    let prefix = ''
+                    if (props.alarmObject.view==='namespace') 
+                        prefix = f.namespace+'/'
+                    else 
+                        prefix += f.namespace+'/'+ f.pod +'/'
+                    return <>{prefix+f.container+' '}<span style={{color}}> {new Date(f.timestamp).toISOString() + ' ' + f.text} </span><br/></>
                 })
             }
         </pre>)

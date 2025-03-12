@@ -4,6 +4,10 @@ export interface FiredAlarm {
     timestamp: number
     severity: AlarmSeverityEnum
     text:string
+    namespace?:string
+    group?:string
+    pod?:string
+    container?:string
 }
 
 export class AlarmObject {

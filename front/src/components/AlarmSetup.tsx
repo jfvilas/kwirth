@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent } from 'react'
-import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField } from '@mui/material'
+import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField } from '@mui/material'
 
 interface IProps {
     onClose:(regexInfo:string[], regexWarning:string[], regexError:string[]) => {}
@@ -20,8 +20,10 @@ const AlarmSetup: React.FC<any> = (props:IProps) => {
         setInfo(event.target.value)
     }
     const addInfo = () => {
-        setRegexInfo([...regexInfo,info])
-        setInfo('')
+        if (info!=='') {
+            setRegexInfo([...regexInfo,info])
+            setInfo('')
+        }
     }
     const deleteChipInfo = (e:string) => {
         setRegexInfo(regexInfo.filter(ri => ri!==e))
@@ -31,8 +33,10 @@ const AlarmSetup: React.FC<any> = (props:IProps) => {
         setWarning(event.target.value)
     }
     const addWarning = () => {
-        setRegexWarning([...regexWarning,warning])
-        setWarning('')
+        if (warning!=='') {
+            setRegexWarning([...regexWarning,warning])
+            setWarning('')
+        }
     }
     const deleteChipWarning = (e:string) => {
         setRegexWarning(regexWarning.filter(ri => ri!==e))
@@ -42,8 +46,10 @@ const AlarmSetup: React.FC<any> = (props:IProps) => {
         setError(event.target.value)
     }
     const addError = () => {
-        setRegexError([...regexError,error])
-        setError('')
+        if (error!=='') {
+            setRegexError([...regexError,error])
+            setError('')
+        }
     }
     const deleteChipError = (e:string) => {
         setRegexError(regexError.filter(ri => ri!==e))
@@ -55,43 +61,46 @@ const AlarmSetup: React.FC<any> = (props:IProps) => {
             <DialogContent>
                 <Stack direction={'row'} spacing={3}>
                     <Stack direction={'column'}>
-                        Info
                         <Stack direction={'row'}>
-                            <TextField value={info} onChange={onChangeRegexInfo} variant='standard'></TextField>
-                            <Button onClick={addInfo}>Add</Button>
+                            <TextField value={info} onChange={onChangeRegexInfo} label='Info' variant='standard'></TextField>
+                            <Button onClick={addInfo} size='small'>Add</Button>
                         </Stack>
-                        {
-                            regexInfo.map (ri => { return <Chip label={ri} variant='outlined' onDelete={() => deleteChipInfo(ri)}/>})
-                        }
+                        <Grid>
+                            {
+                                regexInfo.map (ri => { return <Grid item><Chip label={ri} variant='outlined' onDelete={() => deleteChipInfo(ri)}/></Grid>})
+                            }
+                        </Grid>
                     </Stack>
                     <Stack direction={'column'}>
-                        Warning
                         <Stack direction={'row'}>
-                            <TextField value={warning} onChange={onChangeRegexWarning} variant='standard'></TextField>
-                            <Button onClick={addWarning}>Add</Button>
+                            <TextField value={warning} onChange={onChangeRegexWarning} label='Warning' variant='standard'></TextField>
+                            <Button onClick={addWarning} size='small'>Add</Button>
                         </Stack>
-                        {
-                            regexWarning.map (ri => { return <Chip label={ri} variant='outlined' onDelete={() => deleteChipWarning(ri)}/>})
-                        }
+                        <Grid>
+                            {
+                                regexWarning.map (ri => { return <Grid item><Chip label={ri} variant='outlined' onDelete={() => deleteChipWarning(ri)}/></Grid>})
+                            }
+                        </Grid>
                     </Stack>
                     <Stack direction={'column'}>
-                        Error
                         <Stack direction={'row'}>
-                            <TextField value={error} onChange={onChangeRegexError} variant='standard'></TextField>
-                            <Button onClick={addError}>Add</Button>
+                            <TextField value={error} onChange={onChangeRegexError} variant='standard' label='Error'></TextField>
+                            <Button onClick={addError} size='small'>Add</Button>
                         </Stack>
-                        {
-                            regexError.map (ri => { return <Chip label={ri} variant='outlined' onDelete={() => deleteChipError(ri)}/>})
-                        }
+                        <Grid>
+                            {
+                                regexError.map (ri => { return <Grid item><Chip label={ri} variant='outlined' onDelete={() => deleteChipError(ri)}/></Grid>})
+                            }
+                        </Grid>
                     </Stack>
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button onClick={() => props.onClose(regexInfo,regexWarning,regexError)}>OK</Button>
+                <Button onClick={() => props.onClose(regexInfo,regexWarning,regexError)} disabled={regexInfo.length===0 && regexWarning.length===0 && regexError.length===0}>OK</Button>
                 <Button onClick={() => props.onClose([],[],[])}>CANCEL</Button>
             </DialogActions>
         </Dialog>
-    </>);
-};
+    </>)
+}
 
-export default AlarmSetup
+export { AlarmSetup }
