@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ServiceConfigScopeEnum = exports.ServiceConfigViewEnum = exports.ServiceConfigFlowEnum = exports.ServiceConfigActionEnum = exports.ServiceConfigChannelEnum = void 0;
+exports.ServiceConfigScopeEnum = exports.ServiceConfigViewEnum = exports.ServiceConfigFlowEnum = exports.ServiceConfigObjectEnum = exports.ServiceConfigActionEnum = exports.ServiceConfigChannelEnum = void 0;
 var ServiceConfigChannelEnum;
 (function (ServiceConfigChannelEnum) {
     ServiceConfigChannelEnum["NONE"] = "none";
@@ -18,6 +18,11 @@ var ServiceConfigActionEnum;
     ServiceConfigActionEnum["MODIFY"] = "modify";
     ServiceConfigActionEnum["PING"] = "ping";
 })(ServiceConfigActionEnum || (exports.ServiceConfigActionEnum = ServiceConfigActionEnum = {}));
+var ServiceConfigObjectEnum;
+(function (ServiceConfigObjectEnum) {
+    ServiceConfigObjectEnum["PODS"] = "pods";
+    ServiceConfigObjectEnum["EVENTS"] = "events";
+})(ServiceConfigObjectEnum || (exports.ServiceConfigObjectEnum = ServiceConfigObjectEnum = {}));
 var ServiceConfigFlowEnum;
 (function (ServiceConfigFlowEnum) {
     ServiceConfigFlowEnum["REQUEST"] = "request";

@@ -1,10 +1,9 @@
-import { ServiceConfigChannelEnum } from './ServiceConfig';
 export declare enum ServiceMessageTypeEnum {
     DATA = "data",
     SIGNAL = "signal"
 }
 export interface ServiceMessage {
-    channel: ServiceConfigChannelEnum;
+    channel: string;
     instance: string;
     type: ServiceMessageTypeEnum;
     namespace?: string;

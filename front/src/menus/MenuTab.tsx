@@ -27,6 +27,9 @@ enum MenuTabOption {
     AlarmStart,
     AlarmPause,
     AlarmStop,
+    ChannelStart,
+    ChannelPause,
+    ChannelStop,
     TabManageRestart
 }
 
@@ -139,6 +142,9 @@ const MenuTab: React.FC<any> = (props:IProps) => {
                 <MenuItem key='alarmstop' onClick={() => props.optionSelected(MenuTabOption.AlarmStop)} disabled={!props.selectedTab?.alarmObject?.started}><Stop/>&nbsp;Stop</MenuItem>
             </Collapse>
 
+            <MenuItem key='channelstart' onClick={() => props.optionSelected(MenuTabOption.ChannelStart)} disabled={props.selectedTab?.channelStarted}><PlayCircle/>&nbsp;Start</MenuItem>
+            <MenuItem key='channelpause' onClick={() => props.optionSelected(MenuTabOption.ChannelPause)} disabled={!props.selectedTab?.channelStarted}>{props.selectedTab?.channelPaused?<><PlayArrow/>Resume</>:<><Pause/>Pause</>}</MenuItem>
+            <MenuItem key='channelstop' onClick={() => props.optionSelected(MenuTabOption.ChannelStop)} disabled={!props.selectedTab?.channelStarted}><Stop/>&nbsp;Stop</MenuItem>
 
             <MenuItem key='submanage' onClick={submenuManageClick} sx={{ml:3}}>Manage<Typography sx={{flexGrow:1}}></Typography>{subMenuManageOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={subMenuManageOpen} timeout="auto" unmountOnExit sx={{ml:5}}>

@@ -5,8 +5,9 @@ import { Settings } from '../model/Settings'
 import { MetricDescription } from '../model/MetricDescription'
 
 interface IProps {
-    onMetricsSelected:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number, aggregate:boolean) => {}
+    onMetricsSelected:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number, aggregate:boolean, objectMerge:boolean, chart:string) => {}
     settings:Settings
+    channelObject: any
     metricsList:Map<string,MetricDescription>
 }
 
@@ -17,6 +18,8 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
     const [metricsChecked, setMetricsChecked] = React.useState<string[]>([])
     const [metricsAggregate, setMetricsAggregate] = React.useState(true)
+    const [objectMerge, setObjectMerge] = React.useState(false)
+    const [chartType, setChartType] = useState('line')
     const [filter, setFilter] = useState('')
 
     const onChangeMetricsMode = (event: SelectChangeEvent) => {
@@ -39,8 +42,16 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
         setMetricsAggregate(event.target.checked)
      }
 
+     const onChangeObjectMerge = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setObjectMerge(event.target.checked)
+     }
+
+     const onChangeChartType = (event: SelectChangeEvent) => {
+        setChartType(event.target.value)
+    }
+
     const closeOk = () =>{
-        props.onMetricsSelected(metricsChecked, metricsMode as MetricsConfigModeEnum, metricsDepth, metricsWidth, metricsInterval, metricsAggregate)
+        props.onMetricsSelected(metricsChecked, metricsMode as MetricsConfigModeEnum, metricsDepth, metricsWidth, metricsInterval, metricsAggregate, objectMerge, chartType)
     }
 
     const metricAddOrRemove = (value:string) => {
@@ -60,9 +71,25 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
         setMetricsChecked(newChecked);
     }
 
+    var mergeable=false
+    switch (props.channelObject.view) {
+        case 'namespace':
+            mergeable = props.channelObject.namespace.split(',').length > 1
+            break
+        case 'group':
+            mergeable = props.channelObject.group.split(',').length > 1
+            break
+        case 'pod':
+            mergeable = props.channelObject.pod.split(',').length > 1
+            break
+        case 'container':
+            mergeable = props.channelObject.container.split(',').length > 1
+            break
+
+    }
     return (<>
         <Dialog open={true} maxWidth={false} sx={{'& .MuiDialog-paper': { width: '60vw', maxWidth: '60vw', height:'40vw', maxHeight:'40vw' } }}>
-            <DialogTitle>Configure metrics</DialogTitle>
+            <DialogTitle>Configure metrics for {props.channelObject.view}</DialogTitle>
             <DialogContent >
                 <Stack spacing={2} sx={{ flexShrink: 0, display: 'flex', flexDirection: 'column', mt:'16px' }}>
                     <Stack direction={'row'} spacing={1} >
@@ -97,8 +124,21 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
                     </Stack>
 
                     <Stack direction={'row'} spacing={1}>
-                        <TextField value={filter} onChange={(event) => setFilter(event.target.value)} sx={{width:'50%'}}variant='standard' label='Filter'></TextField>
-                        <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={onChangeMetricsAggregate}/>} label='Aggregate resource metrics' />
+                        <TextField value={filter} onChange={(event) => setFilter(event.target.value)} sx={{width:'100%'}} variant='standard' label='Filter'></TextField>
+                        <Stack direction={'column'} spacing={1}>
+                            <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={onChangeMetricsAggregate}/>} label='Aggregate' />
+                            <FormControlLabel control={<Checkbox checked={objectMerge} onChange={onChangeObjectMerge}/>} disabled={!mergeable} label='Merge' />
+                            <FormControl variant="standard">
+                                <InputLabel id="charttype">Chart</InputLabel>
+                                <Select value={chartType.toString()} onChange={onChangeChartType} labelId="chattype" variant='standard'>
+                                    <MenuItem value={'line'}>Line</MenuItem>
+                                    <MenuItem value={'area'}>Area</MenuItem>
+                                    <MenuItem value={'bar'}>Bar</MenuItem>
+                                    <MenuItem value={'pie'}>Pie</MenuItem>
+                                </Select>
+                            </FormControl>
+
+                        </Stack>
                     </Stack>
 
                     <List sx={{ width: '100%', height:'40%', overflowY: 'auto' }}>
@@ -121,7 +161,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
                         })}
                     </List>
                     <Stack direction="row" spacing={1} sx={{width:'100%', flexWrap: 'wrap', maxWidth:'100%', height:'25%', overflowY:'auto'}} >
-                        { metricsChecked.map((value) => <Chip label={value} onDelete={() => metricsDelete(value)} size="small"/> ) }
+                        { metricsChecked.map((value,index) => <Chip key={index} label={value} onDelete={() => metricsDelete(value)} size="small"/> ) }
                     </Stack>
 
                 </Stack>
@@ -129,7 +169,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
             </DialogContent>
             <DialogActions>
                 <Button onClick={closeOk} disabled={metricsChecked.length===0}>OK</Button>
-                <Button onClick={() => props.onMetricsSelected([], MetricsConfigModeEnum.SNAPSHOT, 0, 0, 0, false)}>CANCEL</Button>
+                <Button onClick={() => props.onMetricsSelected([], MetricsConfigModeEnum.SNAPSHOT, 0, 0, 0, false, false,'')}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

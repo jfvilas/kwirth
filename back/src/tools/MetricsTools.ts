@@ -1,5 +1,5 @@
 //import { CoreV1Api, CustomObjectsApi, V1Node } from "@kubernetes/client-node"
-import { ClusterData, NodeData } from "./ClusterData"
+import { ClusterInfo, NodeInfo } from "../model//ClusterInfo"
 import { ServiceConfigViewEnum } from "@jfvilas/kwirth-common"
 
 export interface AssetData {
@@ -83,7 +83,7 @@ export class Metrics {
     }
 
     // creates a map containing all existing metrics existing in a cluster node (and their properties)
-    async loadNodeMetrics(node:NodeData):Promise <Map<string,MetricDefinition>> {
+    async loadNodeMetrics(node:NodeInfo):Promise <Map<string,MetricDefinition>> {
         var map:Map<string,MetricDefinition> = new Map()
 
         var allMetrics = await this.readCAdvisorMetrics(node)
@@ -124,7 +124,7 @@ export class Metrics {
     }
 
     // creates a map containing all the metrics existing in the cluser (and their properties)
-    public async loadMetrics(nodes:NodeData[]) {
+    public async loadMetrics(nodes:NodeInfo[]) {
         var resultMap = await this.loadNodeMetrics(nodes[0])
 
         for (var node of nodes.slice(1)) {
@@ -137,7 +137,7 @@ export class Metrics {
     }
 
     // read metric raw values at a specific cluster node (invokes kubelet's cAdvisor)
-    public readCAdvisorMetrics = async (node:NodeData) => {
+    public readCAdvisorMetrics = async (node:NodeInfo) => {
         var text=''
         try {
             var resp = await fetch (`https://${node.ip}:10250/metrics/cadvisor`, { headers: { Authorization: 'Bearer ' + this.token} })
@@ -154,15 +154,18 @@ export class Metrics {
         text+='# HELP kwirth_cluster_cpu_precentage Percentage of cpu used from the whole cluster\n'
         text+='# TYPE kwirth_cluster_cpu_precentage gauge\n'
         text+='kwirth_cluster_cpu_precentage{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
-        text+='# HELP kwirth_cluster_random_values Random values\n'
-        text+='# TYPE kwirth_cluster_random_values gauge\n'
-        text+='kwirth_cluster_random_values{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
+        text+='# HELP kwirth_cluster_random_counter Accumulated random values\n'
+        text+='# TYPE kwirth_cluster_random_counter counter\n'
+        text+='kwirth_cluster_random_counter{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
+        text+='# HELP kwirth_cluster_random_gauge Averaged random values\n'
+        text+='# TYPE kwirth_cluster_random_gauge gauge\n'
+        text+='kwirth_cluster_random_gauge{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
 
         return text
     }
 
     // reads node metrics and loads 'metricValues' with parsed and formated data
-    public async readNodeMetrics(node:NodeData) {
+    public async readNodeMetrics(node:NodeInfo) {
         var rawSampledNodeMetrics = await this.readCAdvisorMetrics(node)
         const regex = /(?:\s*([^=^{]*)=\"([^"]*)",*)/gm;
         var lines=rawSampledNodeMetrics.split('\n')
@@ -257,25 +260,25 @@ export class Metrics {
         node.timestamp = Date.now()
     }
 
-    public readClusterMetrics = async () => {
-        // +++ we should check cluster config (number of nodes) from time to time, it impacts calculation of kwirth_cluster_... metrics
+    public readClusterMetrics = async (clusterInfo: ClusterInfo) => {
+        // +++ we should check cluster config (number of nodes) from time to time, because  it impacts calculation of "kwirth_cluster_..." metrics
         if (this.loadingClusterMetrics) {
             console.log('Still loading cluster metrics')
             return
         }
         this.loadingClusterMetrics = true
         console.log(`About to read cluster metrics ${new Date().toTimeString()}`)
-        for (var node of ClusterData.nodes.values()) {
+        for (var node of clusterInfo.nodes.values()) {
             this.readNodeMetrics(node)
         }
         this.loadingClusterMetrics = false
     }
 
-    public getContainerMetricValue = (metricName:string, view:ServiceConfigViewEnum, asset:AssetData) => {
+    public getContainerMetricValue = (clusterInfo: ClusterInfo, metricName:string, view:ServiceConfigViewEnum, asset:AssetData) => {
         var total=0
-        var node=ClusterData.nodes.get(asset.podNode)
+        var node=clusterInfo.nodes.get(asset.podNode)
         if (node) {
-            var metric = ClusterData.metrics.extractContainerMetrics(ClusterData.nodes.get(node.name)?.metricValues!, metricName, view, node, asset)
+            var metric = clusterInfo.metrics.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.metricValues!, metricName, view, node, asset)
             total = metric.value
         }
         else {
@@ -284,13 +287,15 @@ export class Metrics {
         return total
     }
     
-    public getTotal = (metricName:string, values:number[]) => {
+    public getTotal = (clusterInfo: ClusterInfo, metricName:string, values:number[]) => {
         var result:number
-        var metric = ClusterData.metrics.getMetric(metricName)
+        var metric = clusterInfo.metrics.getMetric(metricName)
         switch(metric?.type) {
             case 'gauge':
+                result = values.reduce((acc,value) => acc+value, 0) / values.length
+                break
             case 'counter':
-                result = values.reduce((ac,value) => ac+value, 0)
+                result = values.reduce((acc,value) => acc+value, 0)
                 break
             default:
                 console.log(`Unsupported metric type: "${metric?.type}"`)
@@ -299,28 +304,23 @@ export class Metrics {
         }
         if (metric?.eval && metric.eval!=='') {
             // +++ now process eval (pending impl)
-        }
-        
+        }        
         return result
     }
     
-    public extractContainerKwirthMetrics = (requestedMetricName:string, node:NodeData, view:ServiceConfigViewEnum, asset:AssetData) => {
+    public extractContainerKwirthMetrics = (clusterInfo: ClusterInfo, requestedMetricName:string, node:NodeInfo, view:ServiceConfigViewEnum, asset:AssetData) => {
         var result = { value: 0, timestamp: 0 }
 
         switch(requestedMetricName) {
             case 'kwirth_cluster_cpu_precentage':
                 var vcpus = node.machineMetrics.get('machine_cpu_cores')
                 vcpus=0
-                for (var n of ClusterData.nodes.values()) {
+                for (var n of clusterInfo.nodes.values()) {
                     vcpus += n.machineMetrics.get('machine_cpu_cores')!
                 }
-                let seconds = ClusterData.clusterMetricsInterval
-                var podSeconds = (this.extractContainerMetrics(ClusterData.nodes.get(node.name)?.metricValues!, 'container_cpu_usage_seconds_total', view, node, asset)).value
-                var podSecondsPrev = (this.extractContainerMetrics(ClusterData.nodes.get(node.name)?.prevValues!, 'container_cpu_usage_seconds_total', view, node, asset)).value
-                console.log('cpus',vcpus)
-                console.log('seconds',seconds)
-                console.log('podSeconds',podSeconds)
-                console.log('podSecondsPrev',podSecondsPrev)
+                let seconds = clusterInfo.metricsInterval
+                var podSeconds = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.metricValues!, 'container_cpu_usage_seconds_total', view, node, asset)).value
+                var podSecondsPrev = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.prevValues!, 'container_cpu_usage_seconds_total', view, node, asset)).value
                 if (vcpus && podSeconds && podSecondsPrev) {
                     result = { value: ((podSeconds-podSecondsPrev)/(vcpus*seconds))*100, timestamp: node.timestamp }
                 }
@@ -330,7 +330,7 @@ export class Metrics {
                 return result
             case 'kwirth_cluster_memory_precentage':
                 var memory = node.machineMetrics.get('machine_memory_bytes')
-                var containerMemory = (this.extractContainerMetrics(ClusterData.nodes.get(node.name)?.metricValues!, 'container_memory_usage_bytes', view, node, asset)).value
+                var containerMemory = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.metricValues!, 'container_memory_usage_bytes', view, node, asset)).value
                 if (memory && containerMemory) {
                     result = { value: (containerMemory/memory*100), timestamp: node.timestamp }
                 }
@@ -338,7 +338,8 @@ export class Metrics {
                     result = { value: 0, timestamp: node.timestamp }
                 }
                 return result
-            case 'kwirth_cluster_random_values':
+            case 'kwirth_cluster_random_gauge':
+            case 'kwirth_cluster_random_counter':
                 var rndValue = Math.random()
                 result = { value: rndValue, timestamp: node.timestamp }
                 return result
@@ -347,22 +348,26 @@ export class Metrics {
         }
     }
 
-    public extractContainerMetrics = (metricsSet:Map<string,number>, requestedMetricName:string, view:ServiceConfigViewEnum, node:NodeData, asset:AssetData) => {
-        if (requestedMetricName.startsWith('kwirth_')) return this.extractContainerKwirthMetrics(requestedMetricName, node, view, asset)
+    public extractContainerMetrics = (clusterInfo:ClusterInfo, metricsSet:Map<string,number>, requestedMetricName:string, view:ServiceConfigViewEnum, node:NodeInfo, asset:AssetData) => {
+        if (requestedMetricName.startsWith('kwirth_')) return this.extractContainerKwirthMetrics(clusterInfo, requestedMetricName, node, view, asset)
 
         if (view === ServiceConfigViewEnum.CONTAINER) {
             var metricName = asset.podNamespace + '/' + asset.podName + '/' + asset.containerName + '/' + requestedMetricName
+            console.log('extract container data for', metricName)
             var value = metricsSet.get(metricName)
             if (value !== undefined) {
-                return  { value, timestamp: ClusterData.nodes.get(node.name)?.timestamp }
+                return  { value, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
             }
             else {
                 console.log(`Metric '${metricName}' not found on node ${node.name}.`)
-                return  { value: 0, timestamp: ClusterData.nodes.get(node.name)?.timestamp }
+                return  { value: 0, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
             }    
         }
         else {
-            // we extract all metrics in the metricsValue that have an imppact in calculating requested metrics (for instance, several container metrics for calculating pod metric)
+            console.log('extract pod data for', requestedMetricName)
+            // we extract all metrics in the metricsValue that have an impact in calculating requested metrics (for instance, several container metrics for calculating pod metric)
+            console.log('metricsSet')
+            console.log(metricsSet)
             var subset = Array.from(metricsSet.keys()).filter (k => k.startsWith(asset.podNamespace + '/' + asset.podName+'/') && k.endsWith('/'+requestedMetricName))
             var metricDef = this.metricsList.get(requestedMetricName)
             switch(metricDef?.type) {
@@ -371,7 +376,7 @@ export class Metrics {
                     for (var submetric of subset) {
                         accum += metricsSet.get(submetric)!
                     }
-                    return  { value: accum, timestamp: ClusterData.nodes.get(node.name)?.timestamp }
+                    return  { value: accum, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
                 case 'gauge':
                     var average = 0
                     if (subset.length>0) {
@@ -380,12 +385,11 @@ export class Metrics {
                         }
                         average /= subset.length
                     }
-                    return  { value: average, timestamp: ClusterData.nodes.get(node.name)?.timestamp }
+                    return  { value: average, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
                 default:
                     console.log('Invalid metric type: ',metricDef?.type)
-                    return  { value: 0, timestamp: ClusterData.nodes.get(node.name)?.timestamp }
+                    return  { value: 0, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
             }
         }
     }
-
 }

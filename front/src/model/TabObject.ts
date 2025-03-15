@@ -10,6 +10,8 @@ export class TabObject {
     public logObject?: LogObject
     public metricsObject?: MetricsObject
     public alarmObject?: AlarmObject
-    //public operObject?: OperObject
-    //public auditObject?: AuditObject
+    public channelObject?:any = null  // +++
+    public channel:string = ''
+    public channelStarted:boolean = false
+    public channelPaused:boolean = false
 }

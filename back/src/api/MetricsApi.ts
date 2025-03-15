@@ -1,14 +1,13 @@
 import express, { Request, Response} from 'express';
-import { Metrics } from '../tools/Metrics';
-import { ClusterData } from '../tools/ClusterData';
+import { ClusterInfo } from '../model/ClusterInfo';
 import { validKey } from '../tools/AuthorizationManagement';
 
 export class MetricsApi {
     public route = express.Router()
-    metrics:Metrics
+    clusterInfo:ClusterInfo
 
-    constructor (metrics:Metrics) {
-        this.metrics=metrics
+    constructor (clusterInfo:ClusterInfo) {
+        this.clusterInfo = clusterInfo
 
         this.route.route('/')
             .all( async (req,res, next) => {
@@ -17,7 +16,7 @@ export class MetricsApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    var json = ClusterData.metrics.getMetricsList()
+                    var json = this.clusterInfo.metrics.getMetricsList()
                     res.status(200).json(json)
                 }
                 catch (err) {
@@ -35,19 +34,19 @@ export class MetricsApi {
                 try {
                     if (req.params.action==='node') {
                         var json:any = {}
-                        for(var k of ClusterData.nodes.get(req.params.nodename)?.metricValues.keys()!) {
-                            var v=ClusterData.nodes.get(req.params.nodename)?.metricValues.get(k)
+                        for(var k of this.clusterInfo.nodes.get(req.params.nodename)?.metricValues.keys()!) {
+                            var v = this.clusterInfo.nodes.get(req.params.nodename)?.metricValues.get(k)
                             json[k]=v
                         }
-                        for(var k of ClusterData.nodes.get(req.params.nodename)?.machineMetrics.keys()!) {
-                            var v=ClusterData.nodes.get(req.params.nodename)?.machineMetrics.get(k)
+                        for(var k of this.clusterInfo.nodes.get(req.params.nodename)?.machineMetrics.keys()!) {
+                            var v = this.clusterInfo.nodes.get(req.params.nodename)?.machineMetrics.get(k)
                             json[k]=v
                         }
                         res.status(200).json(json)
                     }
                     if (req.params.action==='text') {
-                        var node=ClusterData.nodes.get(req.params.nodename)
-                        var text = await ClusterData.metrics.readCAdvisorMetrics(node!)
+                        var node = this.clusterInfo.nodes.get(req.params.nodename)
+                        var text = await this.clusterInfo.metrics.readCAdvisorMetrics(node!)
                         res.status(200).send(text)
                     }
                 }
@@ -58,25 +57,28 @@ export class MetricsApi {
                 }
             })
 
-        this.route.route('/config')
-            .all( async (req,res, next) => {
-                if (!validKey(req,res)) return
-                next()
-            })
-            .post( async (req:Request, res:Response) => {
-                try {
-                    var data = req.body as any
-                    if (data.clusterMetricsInterval) {
-                        clearTimeout(ClusterData.clusterMetricsTimeout) //+++ ove this to startInterval
-                        ClusterData.startInterval(+data.clusterMetricsInterval)  // +++ rename this
-                    }
-                    res.status(200).json()
-                }
-                catch (err) {
-                    res.status(400).send()
-                    console.log('Error updating metrics settings')
-                    console.log(err)
-                }
-            })        
+
+        // +++ pending reimplementatioon
+        // this.route.route('/config')
+        //     .all( async (req,res, next) => {
+        //         if (!validKey(req,res)) return
+        //         next()
+        //     })
+        //     .post( async (req:Request, res:Response) => {
+        //         try {
+        //             var data = req.body as any
+        //             if (data.clusterMetricsInterval) {
+        //                 // +++
+        //                 // clearTimeout(ClusterData.clusterMetricsTimeout) 
+        //                 // ClusterData.startInterval(+data.clusterMetricsInterval) 
+        //             }
+        //             res.status(200).json()
+        //         }
+        //         catch (err) {
+        //             res.status(400).send()
+        //             console.log('Error updating metrics settings')
+        //             console.log(err)
+        //         }
+        //     })        
     }
 }

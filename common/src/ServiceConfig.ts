@@ -15,6 +15,11 @@ export enum ServiceConfigActionEnum {
     PING = 'ping'
 }
 
+export enum ServiceConfigObjectEnum {
+    PODS = 'pods',
+    EVENTS = 'events'
+}
+
 export enum ServiceConfigFlowEnum {
     REQUEST = 'request',
     RESPONSE = 'response'
@@ -49,16 +54,17 @@ export enum ServiceConfigScopeEnum {
 }
 
 export interface ServiceConfig {
-    channel: ServiceConfigChannelEnum
+    channel: string
+    object: ServiceConfigObjectEnum
     action: ServiceConfigActionEnum
     flow: ServiceConfigFlowEnum
     instance: string
     accessKey: string
-    scope: ServiceConfigScopeEnum
+    scope: string
     view: ServiceConfigViewEnum
     namespace: string
     group: string
-    set: string  // transitional
     pod: string
     container: string
+    data?: any
 }

@@ -3,6 +3,7 @@ import { AccessKey, accessKeyDeserialize, accessKeySerialize, parseResource, Ser
 import { ApiKey } from '@jfvilas/kwirth-common'
 import { ServiceConfigChannelEnum } from '@jfvilas/kwirth-common';
 import * as crypto from 'crypto'
+import { IChannel } from '../model/IChannel';
 
 export const cleanApiKeys = (apiKeys:ApiKey[]) => {
     apiKeys=apiKeys.filter(a => a.expire>=Date.now());
@@ -53,41 +54,46 @@ export const validKey = (req:any,res:any) => {
     }
 }
 
-const getLogScopeLevel = (scope:string) => {
-    const levelScopes = ['', ServiceConfigScopeEnum.FILTER, ServiceConfigScopeEnum.VIEW, ServiceConfigScopeEnum.RESTART, ServiceConfigScopeEnum.API, ServiceConfigScopeEnum.CLUSTER]
-    return levelScopes.indexOf(scope)
-}
+// const getLogScopeLevel = (scope:string) => {
+//     const levelScopes = ['', ServiceConfigScopeEnum.FILTER, ServiceConfigScopeEnum.VIEW, ServiceConfigScopeEnum.RESTART, ServiceConfigScopeEnum.API, ServiceConfigScopeEnum.CLUSTER]
+//     return levelScopes.indexOf(scope)
+// }
 
-const getAlarmScopeLevel = (scope:string) => {
-    const levelScopes = ['', ServiceConfigScopeEnum.SUBSCRIBE, ServiceConfigScopeEnum.CREATE, ServiceConfigScopeEnum.CLUSTER ]
-    return levelScopes.indexOf(scope)
-}
+// const getAlarmScopeLevel = (scope:string) => {
+//     const levelScopes = ['', ServiceConfigScopeEnum.SUBSCRIBE, ServiceConfigScopeEnum.CREATE, ServiceConfigScopeEnum.CLUSTER ]
+//     return levelScopes.indexOf(scope)
+// }
 
-const getMetricsScopeLevel = (scope:string) => {
-    const levelScopes = ['', ServiceConfigScopeEnum.SNAPSHOT, ServiceConfigScopeEnum.STREAM, ServiceConfigScopeEnum.CLUSTER ]
-    return levelScopes.indexOf(scope)
-}
+// const getMetricsScopeLevel = (scope:string) => {
+//     const levelScopes = ['', ServiceConfigScopeEnum.SNAPSHOT, ServiceConfigScopeEnum.STREAM, ServiceConfigScopeEnum.CLUSTER ]
+//     return levelScopes.indexOf(scope)
+// }
 
-export const getServiceScopeLevel = (serviceConfigChannel:ServiceConfigChannelEnum, scope:string) => {
+export const getServiceScopeLevel = (channels:Map<string, IChannel>, serviceConfigChannel:string, scope:string) : number => {
     switch (serviceConfigChannel) {
-        case ServiceConfigChannelEnum.LOG:
-            return getLogScopeLevel(scope)
-        case ServiceConfigChannelEnum.ALARM:
-            return getAlarmScopeLevel(scope)
-        case ServiceConfigChannelEnum.METRICS:
-            return getMetricsScopeLevel(scope)
+        // case ServiceConfigChannelEnum.LOG:
+        //     return getLogScopeLevel(scope)
+        // case ServiceConfigChannelEnum.ALARM:
+        //     return getAlarmScopeLevel(scope)
+        // case ServiceConfigChannelEnum.METRICS:
+        //     return getMetricsScopeLevel(scope)
         default:
-            return 0
+            if (channels.has(serviceConfigChannel)) {
+                return channels.get(serviceConfigChannel)!.getServiceScopeLevel(serviceConfigChannel)
+            }
+            else {
+                return 0
+            }
     }
 }
 
-export const validAuth = (req:any, res:any, reqScope:string, serviceConfigChannel: ServiceConfigChannelEnum, namespace:string, group:string, pod:string, container:string) => {
+export const validAuth = (req:any, res:any, channels:Map<string, IChannel>, reqScope:string, serviceConfigChannel: ServiceConfigChannelEnum, namespace:string, group:string, pod:string, container:string) => {
     var key=req.headers.authorization.replaceAll('Bearer ','').trim()
     var accessKey=accessKeyDeserialize(key)
     var resId=parseResource(accessKey.resource)
 
     if (resId.scope==='cluster') return true
-    if (getServiceScopeLevel(serviceConfigChannel, reqScope) < getServiceScopeLevel(serviceConfigChannel, resId.scope)) {
+    if (getServiceScopeLevel(channels, serviceConfigChannel, reqScope) < getServiceScopeLevel(channels, serviceConfigChannel, resId.scope)) {
         console.log('Insufficient scope level')
         return false
     }
