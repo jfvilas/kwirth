@@ -1,10 +1,10 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material'
-import { TabObject } from '../model/TabObject'
+import { ITabObject } from '../model/TabObject'
 
 interface IProps {
     onClose:(a:string|null) => {}
-    tabs:TabObject[]
+    tabs:ITabObject[]
     oldname:string
 }
 

@@ -2,6 +2,7 @@ import { AssetMetrics, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, Ser
 import { IChannel } from '../model/IChannel'
 import { ClusterInfo } from '../model/ClusterInfo'
 import { AssetData } from '../tools/MetricsTools'
+import WebSocket from 'ws'
 
 class MetricsChannel implements IChannel {
     clusterInfo: ClusterInfo
@@ -14,11 +15,10 @@ class MetricsChannel implements IChannel {
     }
 
     getAssetMetrics = (serviceConfig:ServiceConfig, assets:AssetData[]) : AssetMetrics => {
-        console.log('gam assets')
-        console.log(assets)
         var assetMetrics:AssetMetrics = { assetName: this.getAssetMetricName(serviceConfig, assets), values: [] }
         for (var metricName of serviceConfig.data.metrics) {
             var uniqueValues:number[]=[]
+            console.log ('gam assets', assets)
             for (var asset of assets) {
                 var result = this.clusterInfo.metrics.getContainerMetricValue(this.clusterInfo, metricName, serviceConfig.view, asset)
                 uniqueValues.push(result)
@@ -32,7 +32,7 @@ class MetricsChannel implements IChannel {
     getAssetMetricName = (serviceConfig:ServiceConfig, assets:AssetData[]) : string => {
         switch (serviceConfig.view) {
             case 'namespace':
-                return [...new Set (assets.map (a => a.podNamespace+a.podName))].join(',')
+                return [...new Set (assets.map (a => a.podNamespace))].join(',')
             case 'group':
                 return [...new Set (assets.map (a => a.podGroup))].join(',')
             case 'pod':
@@ -82,16 +82,17 @@ class MetricsChannel implements IChannel {
             switch(serviceConfig.view) {
                 case ServiceConfigViewEnum.NAMESPACE:
                     if (serviceConfig.data.aggregate) {
-                        var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets)
+                        let assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets)
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
-                        const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
-                        for (var containerName of groupNames) {
-                            var assets=instance.assets.filter(a => a.podGroup===containerName)
-                            var assetMetrics = this.getAssetMetrics(serviceConfig, assets)
+                        const namespaces = [...new Set(instance.assets.map(item => item.podNamespace))]
+                        for (let namespace of namespaces) {
+                            let assets = instance.assets.filter(a => a.podNamespace === namespace)
+                            let assetMetrics = this.getAssetMetrics(serviceConfig, assets)
                             metricsMessage.assets.push(assetMetrics)
                         }
+
                     }
                     break
                 case ServiceConfigViewEnum.GROUP:
@@ -100,22 +101,30 @@ class MetricsChannel implements IChannel {
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
-                        const podNames = [...new Set(instance.assets.map(item => item.podName))]
-                        for (var containerName of podNames) {
-                            var assets=instance.assets.filter(a => a.podName===containerName)
-                            var assetMetrics = this.getAssetMetrics(serviceConfig, assets)
+                        // const podNames = [...new Set(instance.assets.map(item => item.podName))]
+                        // for (var containerName of podNames) {
+                        //     var assets=instance.assets.filter(a => a.podName===containerName)
+                        //     var assetMetrics = this.getAssetMetrics(serviceConfig, assets)
+                        //     metricsMessage.assets.push(assetMetrics)
+                        // }
+                        const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
+                        for (let groupName of groupNames) {
+                            let assets=instance.assets.filter(a => a.podGroup === groupName)
+                            let assetMetrics = this.getAssetMetrics(serviceConfig, assets)
                             metricsMessage.assets.push(assetMetrics)
                         }
                     }
                     break
                 case ServiceConfigViewEnum.POD:
+                    console.log('assets', instance.assets)
                     if (serviceConfig.data.aggregate) {
                         var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets)
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
-                        var differentPodNames = [ ...new Set (instance.assets.map(asset=> asset.podName))]
-                        for (var podName of differentPodNames) {
+                        //var differentPodNames = [ ...new Set (instance.assets.map(asset=> asset.podName))]
+                        const podNames = [...new Set(instance.assets.map(item => item.podName))]
+                        for (var podName of podNames) {
                             var assets = instance.assets.filter(a => a.podName === podName)
                             var assetMetrics = this.getAssetMetrics(serviceConfig, assets)
                             metricsMessage.assets.push(assetMetrics)

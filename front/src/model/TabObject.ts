@@ -1,17 +1,30 @@
-import { AlarmObject } from "./AlarmObject"
+import { ServiceConfigViewEnum } from "@jfvilas/kwirth-common"
+import { AlertObject } from "./AlertObject"
 import { LogObject } from "./LogObject"
 import { MetricsObject } from "./MetricsObject"
 
-export class TabObject {
-    public name?: string
-    public ws: WebSocket|null = null
-    public keepalive: number = 60
-    public defaultTab: boolean = false
-    public logObject?: LogObject
-    public metricsObject?: MetricsObject
-    public alarmObject?: AlarmObject
-    public channelObject?:any = null  // +++
-    public channel:string = ''
-    public channelStarted:boolean = false
-    public channelPaused:boolean = false
+interface IChannelObject {
+    clusterName: string
+    view: ServiceConfigViewEnum
+    namespace: string
+    group: string
+    pod: string
+    container: string
+    instance: string
+    data: LogObject | MetricsObject | AlertObject | undefined
 }
+
+interface ITabObject {
+    name?: string
+    ws: WebSocket|null
+    keepalive: number
+    defaultTab: boolean
+    channelId: string
+    channelObject: IChannelObject
+    channelStarted: boolean
+    channelPaused: boolean
+    channelPending: boolean
+}
+
+export type { ITabObject }
+export type { IChannelObject }

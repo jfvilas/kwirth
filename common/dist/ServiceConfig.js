@@ -8,6 +8,7 @@ var ServiceConfigChannelEnum;
     ServiceConfigChannelEnum["METRICS"] = "metrics";
     ServiceConfigChannelEnum["AUDIT"] = "audit";
     ServiceConfigChannelEnum["ALARM"] = "alarm";
+    ServiceConfigChannelEnum["ALERT"] = "alert";
 })(ServiceConfigChannelEnum || (exports.ServiceConfigChannelEnum = ServiceConfigChannelEnum = {}));
 var ServiceConfigActionEnum;
 (function (ServiceConfigActionEnum) {

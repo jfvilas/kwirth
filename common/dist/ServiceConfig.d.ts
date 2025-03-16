@@ -3,7 +3,8 @@ export declare enum ServiceConfigChannelEnum {
     LOG = "log",
     METRICS = "metrics",
     AUDIT = "audit",
-    ALARM = "alarm"
+    ALARM = "alarm",
+    ALERT = "alert"
 }
 export declare enum ServiceConfigActionEnum {
     START = "start",

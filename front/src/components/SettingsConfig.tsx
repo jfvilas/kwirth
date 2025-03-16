@@ -12,8 +12,9 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
     const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages)
     const [logPrevious, setLogPrevious] = useState(props.settings.logPrevious)
     const [logTimestamp, setLogTimestamp] = useState(props.settings.logTimestamp)
+    const [logFollow, setLogFollow] = useState(props.settings.logFollow)
+    const [alertMaxAlerts, setAlertMaxAlerts] = useState(props.settings.alertMaxAlerts)
     const [metricsMode, setMetricsMode] = useState(props.settings.metricsMode.toString())
-    //const [metricsMetrics, setMetricsMetrics] = useState(props.settings.metricsMetrics.join(','))
     const [metricsDepth, setMetricsDepth] = useState(props.settings.metricsDepth)
     const [metricsWidth, setMetricsWidth] = useState(props.settings.metricsWidth)
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
@@ -32,13 +33,17 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         setLogTimestamp(event.target.checked)
     }
 
+    const onChangeLogFollow = (event:ChangeEvent<HTMLInputElement>) => {
+        setLogFollow(event.target.checked)
+    }
+
+    const onChangeAlertMaxAlerts = (event:ChangeEvent<HTMLInputElement>) => {
+        setAlertMaxAlerts(+event.target.value)
+    }
+
     const onChangeMetricsMode = (event: SelectChangeEvent) => {
         setMetricsMode(event.target.value)
     }
-
-    // const onChangeMetricsMetrics = (event:ChangeEvent<HTMLInputElement>) => {
-    //     setMetricsMetrics(event.target.value)
-    // }
 
     const onChangeMetricsDepth = (event: SelectChangeEvent) => {
         setMetricsDepth(+event.target.value)
@@ -66,7 +71,6 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         newSettings.logPrevious=Boolean(logPrevious)
         newSettings.logTimestamp=Boolean(logTimestamp)
         newSettings.metricsMode = metricsMode as MetricsConfigModeEnum
-        //newSettings.metricsMetrics = metricsMetrics.split(',')
         newSettings.metricsWidth = metricsWidth
         newSettings.metricsDepth = metricsDepth
         newSettings.metricsInterval = metricsInterval
@@ -81,6 +85,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
             <DialogContent sx={{height:'30vh'}}>
                 <Tabs value={value} onChange={(_: React.SyntheticEvent, newValue: string) => { setValue(newValue)}} sx={{mb:'16px'}}>
                     <Tab key='log' label='Log' value='log' />
+                    <Tab key='alert' label='Alert' value='alert' />
                     <Tab key='metrics' label='Metrics' value='metrics' />
                     <Tab key='kwirth' label='Kwirth' value='kwirth' />
                 </Tabs>
@@ -94,9 +99,18 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
                         <Stack direction='row' alignItems={'baseline'}>
                             <Switch checked={logTimestamp} onChange={onChangeLogTimestamp}/><Typography>Add timestamp to messages</Typography>
                         </Stack>
+                        <Stack direction='row' alignItems={'baseline'}>
+                            <Switch checked={logFollow} onChange={onChangeLogFollow}/><Typography>Follow new messages</Typography>
+                        </Stack>
                     </Stack>
                 </div>
                 
+                <div hidden={value!=='alert'}>
+                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
+                        <TextField value={alertMaxAlerts} onChange={onChangeAlertMaxAlerts} variant='standard'label='Max alerts' SelectProps={{native: true}} type='number'></TextField>
+                    </Stack>
+                </div>
+
                 <div hidden={value!=='metrics'}>
                     <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
                         <FormControl fullWidth variant='standard'>
@@ -151,4 +165,4 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
     </>)
 }
 
-export default SettingsConfig
+export { SettingsConfig }

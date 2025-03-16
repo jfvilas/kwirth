@@ -1,6 +1,7 @@
 import { ServiceConfig, ServiceConfigActionEnum, ServiceConfigChannelEnum, ServiceConfigFlowEnum, ServiceMessage, ServiceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common';
 import { IChannel } from '../model/IChannel'
 import * as stream from 'stream'
+import WebSocket from 'ws'
 import { PassThrough } from 'stream'; 
 import { ClusterInfo } from '../model/ClusterInfo';
 
@@ -155,40 +156,11 @@ class AlertChannel implements IChannel {
 
     }
 
-    // removeAlert = (webSocket:WebSocket, instanceId:string) => {
-    //     if (this.websocketAlerts.has(webSocket)) {
-    //         var instances = this.websocketAlerts.get(webSocket)
-    //         if (instances) {
-    //             var instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
-    //             while (instanceIndex>=0) {
-    //                 if (instanceIndex>=0) {
-    //                     var instance = instances[instanceIndex]
-    //                     if (instance.logStream)
-    //                         instance.logStream.removeAllListeners()
-    //                     else
-    //                         console.log(`Alarm logStream not found of instance id ${instanceId}`)
-    //                     instances.splice(instanceIndex,1)
-    //                 }
-    //                 else{
-    //                     console.log(`Instance ${instanceId} not found, cannot delete alarm`)
-    //                 }
-    //                 instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
-    //             }
-    //         }
-    //         else {
-    //             console.log('There are no alarm Instances on websocket')
-    //         }
-    //     }
-    //     else {
-    //         console.log('WebSocket not found on alarms')
-    //     }
-    // }
-
     stopChannel(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
         if (this.websocketAlerts.get(webSocket)?.find(i => i.instanceId === serviceConfig.instance)) {
             //this.removeAlert(webSocket,serviceConfig.instance)
             this.removeInstance(webSocket, serviceConfig.instance)
-            this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alert service stopped')
+            this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALERT, serviceConfig, 'Alert service stopped')
         }
         else {
             this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey doesn't allow ot there are no instances`, serviceConfig)
@@ -204,16 +176,16 @@ class AlertChannel implements IChannel {
     }
 
     pauseContinueChannel(webSocket: WebSocket, serviceConfig: ServiceConfig, action: ServiceConfigActionEnum): void {
-        let alarmInstances = this.websocketAlerts.get(webSocket)
-        let alarmInstance = alarmInstances?.find(i => i.instanceId === serviceConfig.instance)
-        if (alarmInstance) {
+        let alertInstances = this.websocketAlerts.get(webSocket)
+        let alertInstance = alertInstances?.find(i => i.instanceId === serviceConfig.instance)
+        if (alertInstance) {
             if (action === ServiceConfigActionEnum.PAUSE) {
-                alarmInstance.paused = true
-                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.PAUSE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm paused')
+                alertInstance.paused = true
+                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.PAUSE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALERT, serviceConfig, 'Alert paused')
             }
             if (action === ServiceConfigActionEnum.CONTINUE) {
-                alarmInstance.paused = false
-                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.CONTINUE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm continued')
+                alertInstance.paused = false
+                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.CONTINUE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALERT, serviceConfig, 'Alert continued')
             }
         }
         else {
@@ -229,7 +201,7 @@ class AlertChannel implements IChannel {
             this.websocketAlerts.delete(webSocket)
         }
         else {
-            console.log('WebSocket not found on alarms')
+            console.log('WebSocket not found on alerts')
         }
 
     }
@@ -253,21 +225,21 @@ class AlertChannel implements IChannel {
                         if (instance.logStream)
                             instance.logStream.removeAllListeners()
                         else
-                            console.log(`Alarm logStream not found of instance id ${instanceId}`)
+                            console.log(`Alert logStream not found of instance id ${instanceId}`)
                         instances.splice(instanceIndex,1)
                     }
                     else{
-                        console.log(`Instance ${instanceId} not found, cannot delete alarm`)
+                        console.log(`Instance ${instanceId} not found, cannot delete alert`)
                     }
                     instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
                 }
             }
             else {
-                console.log('There are no alarm Instances on websocket')
+                console.log('There are no alerts Instances on websocket')
             }
         }
         else {
-            console.log('WebSocket not found on alarms')
+            console.log(`WebSocket for instance ${instanceId} not found on alerts`)
         }
     }
 }

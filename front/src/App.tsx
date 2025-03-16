@@ -1,22 +1,17 @@
-import { useState, useRef, ChangeEvent, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 // material & icons
-import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, TextField, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Clear, Menu, Person } from '@mui/icons-material'
+import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
+import { Settings as SettingsIcon, Menu, Person } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
-//import { Alarm, AlarmType } from './model/Alarm'
-import { LogObject } from './model/LogObject'
 import { Cluster } from './model/Cluster'
 
 // tools
-// import { OptionsObject, SnackbarKey, closeSnackbar, enqueueSnackbar } from 'notistack'
-// import { Beep } from './tools/Beep'
 import { PickListConfig } from './model/PickListConfig'
 
 // components
-//import BlockingAlarm from './components/BlockingAlarm'
 import RenameTab from './components/RenameTab'
 import SaveBoard from './components/SaveBoard'
 import ManageApiSecurity from './components/ManageApiSecurity'
@@ -25,8 +20,8 @@ import Login from './components/Login'
 import ManageClusters from './components/ManageClusters'
 import ManageUserSecurity from './components/ManageUserSecurity'
 import { ResourceSelector, IResourceSelected } from './components/ResourceSelector'
-import TabContent from './components/TabContent'
-import SettingsConfig from './components/SettingsConfig'
+import { TabContent } from './components/TabContent'
+import { SettingsConfig } from './components/SettingsConfig'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
 import { VERSION } from './version'
@@ -34,17 +29,45 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, LogConfig, LogMessage, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan, ServiceConfigScopeEnum, ServiceConfigViewEnum, AlarmMessage, AlarmConfig, AlarmSeverityEnum, ServiceConfig, ServiceConfigObjectEnum } from '@jfvilas/kwirth-common'
-import { MetricsObject } from './model/MetricsObject'
-import { TabObject } from './model/TabObject'
-import { MetricsSelector } from './components/MetricsSelector'
+import { KwirthData, MetricsConfigModeEnum, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan, ServiceConfigScopeEnum, ServiceConfigViewEnum, AlarmSeverityEnum, ServiceConfig, ServiceConfigObjectEnum, ServiceMessageTypeEnum } from '@jfvilas/kwirth-common'
+import { ITabObject } from './model/TabObject'
 import { MetricDescription } from './model/MetricDescription'
-import { AlarmObject } from './model/AlarmObject'
-import { AlarmSetup } from './components/AlarmSetup'
+
+import { LogObject } from './model/LogObject'
 import { AlertObject } from './model/AlertObject'
-import { AlertSetup } from './components/AlertSetup'
+import { MetricsObject } from './model/MetricsObject'
+
+import { SetupLog } from './components/SetupLog'
+import { SetupAlert } from './components/SetupAlert'
+import { SetupMetrics } from './components/SetupMetrics'
+
 
 const App: React.FC = () => {
+
+    interface ILogMessage extends ServiceMessage {
+        timestamp?: Date
+        text: string
+    }
+
+    interface IAlertMessage extends ServiceMessage {
+        timestamp?: Date
+        severity: AlarmSeverityEnum
+        text: string
+    }
+
+    interface AssetMetrics {
+        assetName: string
+        values: {
+            metricName: string
+            metricValue: number
+        }[]
+    }
+
+    interface IMetricsMessage extends ServiceMessage {
+        assets: AssetMetrics[]
+        timestamp: number
+    }
+    
     var backendUrl='http://localhost:3883'
     const rootPath = window.__PUBLIC_PATH__ || ''
     if ( process.env.NODE_ENV==='production') backendUrl=window.location.protocol+'//'+window.location.host
@@ -59,9 +82,9 @@ const App: React.FC = () => {
     const clustersRef = useRef(clusters)
     clustersRef.current=clusters
 
-    const [tabs, setTabs] = useState<TabObject[]>([])
-    const [highlightedTabs, setHighlightedTabs] = useState<TabObject[]>([])
-    const [pausedTabs, setPausedTabs] = useState<TabObject[]>([])
+    const [tabs, setTabs] = useState<ITabObject[]>([])
+    const [highlightedTabs, setHighlightedTabs] = useState<ITabObject[]>([])
+    const [pausedTabs, setPausedTabs] = useState<ITabObject[]>([])
 
     const [selectedTabName, setSelectedTabName] = useState<string>()
     const selectedTabRef = useRef(selectedTabName)
@@ -72,12 +95,8 @@ const App: React.FC = () => {
     const [refreshTabContent, setRefreshTabContent] = useState(0)
 
     // message list management
-    const [logMessages, setLogMessages] = useState<LogMessage[]>([])  //+++ i think this is being used just for forcing render
+    const [logMessages, setLogMessages] = useState<ILogMessage[]>([])  //+++ i think this is being used just for forcing render
     const lastLineRef = useRef(null)
-
-    // search & filter
-    //const [filter, setFilter] = useState<string>('')
-    //const [search, setSearch] = useState<string>('')
 
     // general
     const [settings, setSettings] = useState<Settings>()
@@ -98,24 +117,18 @@ const App: React.FC = () => {
     pickListConfigRef.current=pickListConfig
 
     // components
-    //const [showAlarmConfig, setShowAlarmConfig]=useState<boolean>(false)
-    //const [showAlertConfig, setShowAlertConfig]=useState<boolean>(false)
-    //const [showBlockingAlarm, setShowBlockingAlarm]=useState<boolean>(false)
     const [showRenameTab, setShowRenameLog]=useState<boolean>(false)
     const [showManageClusters, setShowManageClusters]=useState<boolean>(false)
     const [showSaveBoard, setShowSaveBoard]=useState<boolean>(false)
     const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false)
     const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false)
-    //const [showTest, setShowTest]=useState<boolean>(false)
-    //const [showManageAlarms, setShowManageAlarms]=useState<boolean>(false)
     const [showSettingsConfig, setShowSettingsConfig]=useState<boolean>(false)
     const [initialMessage, setInitialMessage]=useState<string>('')
-//    const [blockingAlarm, setBlockingAlarm] = useState<Alarm>()
     const [boardLoaded, setBoardLoaded] = useState<boolean>(false)
     const [currentBoardName, setCurrentBoardName] = useState('')
-    const [showMetricsSetup, setShowMetricsSetup]=useState<boolean>(false)
-    const [showAlarmSetup, setShowAlarmSetup]=useState<boolean>(false)
-    const [showAlertSetup, setShowAlertSetup]=useState<boolean>(false)
+    const [showSetupLog, setShowSetupLog]=useState<boolean>(false)
+    const [showSetupAlert, setShowSetupAlert]=useState<boolean>(false)
+    const [showSetupMetrics, setShowSetupMetrics]=useState<boolean>(false)
     const [showPickList, setShowPickList]=useState<boolean>(false)
     
     useEffect ( () => {
@@ -139,9 +152,8 @@ const App: React.FC = () => {
             setBoardLoaded(false)
             if (tabs.length>0) {               
                 for(let tab of tabs) {
-                    let baseClusterName=tab.logObject?.clusterName
-                    if (!baseClusterName) baseClusterName=tab.metricsObject?.clusterName
-                    let cluster=clusters!.find(c => c.name===baseClusterName)
+                    let baseClusterName=tab.channelObject?.clusterName
+                    let cluster=clusters!.find(c => c.name === baseClusterName)
 
                     if (cluster) {
                         tab.ws = new WebSocket(cluster.url)
@@ -151,9 +163,6 @@ const App: React.FC = () => {
 
                         tab.ws.onopen = () => {
                             console.log(`WS connected: ${tab.name} to ${tab.ws!.url}`)
-                            // if (tab.logObject) startLog(tab)
-                            // if (tab.alarmObject) startAlarm(tab)
-                            // if (tab.metricsObject) startMetrics(tab)
                             if (tab.channelObject) startChannel(tab)
                         }
                     }
@@ -222,9 +231,6 @@ const App: React.FC = () => {
         setSettings(newSettings)
         var payload=JSON.stringify(newSettings)
         fetch (`${backendUrl}/store/${user?.id}/settings/general`, addPostAuthorization(accessString, payload))
-
-        // payload=JSON.stringify({clusterMetricsInterval:newSettings.clusterMetricsInterval})
-        // fetch (`${backendUrl}/metrics/config`, addPostAuthorization(accessString, payload))
     }
 
     const onResourceSelectorAdd = (selection:IResourceSelected) => {
@@ -239,11 +245,27 @@ const App: React.FC = () => {
         let index =- 1
         while (tabs.find (t => t.name===tabName+index)) index -= 1
 
-        var newTab = new TabObject()
-        newTab.name = tabName+index.toString()
-        newTab.channel = selection.channel
-
-        newTab.ws = new WebSocket(cluster.url)
+        var newTab:ITabObject = {
+            name: tabName+index.toString(),
+            ws: null,
+            keepalive: 0,
+            defaultTab: false,
+            channelId: selection.channel,
+            channelObject: {
+                clusterName: selection.clusterName,
+                data: undefined,
+                instance: '',
+                view: selection.view as ServiceConfigViewEnum,
+                namespace: selection.namespaces.join(','),
+                group: selection.groups.join(','),
+                pod: selection.pods.join(','),
+                container: selection.containers.join(',')
+            },
+            channelStarted: false,
+            channelPaused: false,
+            channelPending: false
+        }
+        newTab.ws =new WebSocket(cluster.url)
         newTab.ws.onopen = () => {
             console.log(`WS connected: ${newTab.ws!.url}`)
             
@@ -263,101 +285,48 @@ const App: React.FC = () => {
                     container: ''
                 }
                 if (newTab.ws) newTab.ws.send(JSON.stringify(serviceConfig))
-            }, 60000,'')  // +++ add option to configure keepalive
+            }, 60000,'')    // +++ add option to configure keepalive
+                            // +++ add mechanism to reconnect (connect to same instance even if websocket breaks)
         }
         newTab.ws.onerror = () => console.log(`Error detected on WS: ${newTab.ws!.url}`)
         newTab.ws.onmessage = (event) => wsOnTabMessage(event)
-        newTab.ws.onclose = (event) => console.log(`WS tab disconnected: ${newTab.ws!.url}`)
+        newTab.ws.onclose = (_event) => console.log(`WS tab disconnected: ${newTab.ws!.url}`)
         switch(selection.channel) {
-            // case ServiceConfigChannelEnum.LOG:
-            //     var newLog = new LogObject()
-            //     newLog.clusterName=selection.clusterName
-            //     newLog.view = selection.view as ServiceConfigViewEnum
-            //     newLog.namespace=selection.namespaces.join(',')
-            //     newLog.group=selection.groups.join(',')
-            //     newLog.pod=selection.pods.join(',')
-            //     newLog.container=selection.containers.join(',')
-            //     newTab.logObject=newLog
-            //     setLogMessages([])
-            //     break
             case ServiceConfigChannelEnum.LOG:
-                var newLog = new LogObject()
-                newLog.clusterName=selection.clusterName
-                newLog.view = selection.view as ServiceConfigViewEnum
-                newLog.namespace=selection.namespaces.join(',')
-                newLog.group=selection.groups.join(',')
-                newLog.pod=selection.pods.join(',')
-                newLog.container=selection.containers.join(',')
-                newTab.channelObject=newLog
+                let logObject = new LogObject()
+                newTab.channelObject.data = logObject
                 setLogMessages([])
                 break
 
-            // case ServiceConfigChannelEnum.METRICS:
-            //     var newMetrics = new MetricsObject()
-            //     newMetrics.clusterName=selection.clusterName
-            //     newMetrics.view = selection.view as ServiceConfigViewEnum
-            //     newMetrics.namespace=selection.namespaces.join(',')
-            //     newMetrics.group=selection.groups.join(',')
-            //     newMetrics.pod=selection.pods.join(',')
-            //     newMetrics.container=selection.containers.join(',')
-            //     newTab.metricsObject=newMetrics
-            //     break
-
             case ServiceConfigChannelEnum.METRICS:
-                var newMetrics = new MetricsObject()
-                newMetrics.clusterName = selection.clusterName
-                newMetrics.view = selection.view as ServiceConfigViewEnum
-                newMetrics.namespace = selection.namespaces.join(',')
-                newMetrics.group = selection.groups.join(',')
-                newMetrics.pod = selection.pods.join(',')
-                newMetrics.container = selection.containers.join(',')
-                newTab.channelObject = newMetrics
+                let metricsObject = new MetricsObject()
+                newTab.channelObject.data = metricsObject
                 break
 
-            // case ServiceConfigChannelEnum.ALARM:
-            //     var newAlarm = new AlarmObject()
-            //     newAlarm.clusterName = selection.clusterName
-            //     newAlarm.view = selection.view as ServiceConfigViewEnum
-            //     newAlarm.namespace=selection.namespaces.join(',')
-            //     newAlarm.group = selection.groups.join(',')
-            //     newAlarm.pod = selection.pods.join(',')
-            //     newAlarm.container = selection.containers.join(',')
-            //     newTab.alarmObject = newAlarm
-            //     break
-
-            case 'alert':
-                var newAlert = new AlertObject()
-                newAlert.clusterName = selection.clusterName
-                newAlert.view = selection.view as ServiceConfigViewEnum
-                newAlert.namespace=selection.namespaces.join(',')
-                newAlert.group = selection.groups.join(',')
-                newAlert.pod = selection.pods.join(',')
-                newAlert.container = selection.containers.join(',')
-                newTab.channelObject = newAlert
+            case ServiceConfigChannelEnum.ALERT:
+                let alertObject = new AlertObject()
+                alertObject.regexInfo = []
+                alertObject.regexWarning = []
+                alertObject.regexError = []
+                newTab.channelObject.data = alertObject
                 break
 
             default:
                 console.log(`Error, invalid channel: `, selection.channel)
         }
-
-        //+++ the render react process does not work well with updating tabs and selecting a new tabname (the problem arises when data is recieved at the web socket,
-        // it requires that the tab must exist)
-        // setFilter('')
-        // setSearch('')
         tabs.push(newTab)
         setTabs(tabs)
         setSelectedTabName(newTab.name)
     }
 
-    const onChangeTabs = (event:any,tabName?:string)=> {
+    const onChangeTabs = (_event:any,tabName?:string)=> {
         var newTab = tabs.find(tab => tab.name === tabName)
         if (newTab) {
-            if (newTab.logObject) {
-                newTab.logObject.pending=false
-                setHighlightedTabs (highlightedTabs.filter(t => t.logObject && t.logObject.pending))
-                setPausedTabs (pausedTabs.filter(t => t.logObject && t.logObject.paused))
-//                setFilter(newTab.logObject.filter)
-                setLogMessages(newTab.logObject.messages)
+            if (newTab.channelObject) {
+                newTab.channelPending = false
+                setHighlightedTabs (highlightedTabs.filter(t => t.channelObject && t.channelPending))
+                setPausedTabs (pausedTabs.filter(t => t.channelObject && t.channelPaused))
+                setLogMessages((newTab.channelObject.data as LogObject).messages)
             }
             setSelectedTabName(tabName)
         }
@@ -378,22 +347,13 @@ const App: React.FC = () => {
             case ServiceConfigChannelEnum.NONE:
                 // we receive keepalive responses through this channel
                 break
-            // case ServiceConfigChannelEnum.LOG:
-            //     processLogMessage(wsEvent)
-            //     break
-            // case ServiceConfigChannelEnum.METRICS:
-            //     processMetricsMessage(wsEvent)
-            //     break
-            // case ServiceConfigChannelEnum.ALARM:
-            //     processAlarmMessage(wsEvent)
-            //     break
-            case 'log':
+            case ServiceConfigChannelEnum.LOG:
                 processLogMessage(wsEvent)
                 break
-            case 'alert':
+            case ServiceConfigChannelEnum.ALERT:
                 processAlertMessage(wsEvent)
                 break
-            case 'metrics':
+            case ServiceConfigChannelEnum.METRICS:
                 processMetricsMessage(wsEvent)
                 break
             default:
@@ -416,108 +376,37 @@ const App: React.FC = () => {
         }
     }
 
-    // const processLogMessage = (wsEvent:any) => {
-    //     // find the tab which this web socket belongs to, and add the new message
-    //     var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
-    //     if (!tab || !tab.logObject) return
-
-    //     var msg = JSON.parse(wsEvent.data) as LogMessage
-    //     switch (msg.type) {
-    //         case 'data':
-    //             tab.logObject.messages.push(msg)
-    //             while (tab.logObject.messages.length>tab.logObject.maxMessages) tab.logObject.messages.splice(0,1)
-
-    //             // if current log is displayed (focused), add message to the screen
-    //             if (selectedTabRef.current === tab.name) {
-    //                 if (!tab.logObject.paused) {
-    //                     setLogMessages([])  //+++ this forces LogContent to re-render +++ change to any other thing
-    //                     if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
-    //                 }
-    //             }
-    //             else {
-    //                 // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-    //                 if (tab.logObject.showBackgroundNotification && !tab.logObject.paused) {
-    //                     tab.logObject.pending=true
-    //                     setHighlightedTabs((prev)=> [...prev, tab!])
-    //                     setTabs(tabs)
-    //                 }
-    //             }
-
-    //             // for (var alarm of tab.logObject.alarms) {
-    //             //     if (msg.text.includes(alarm.expression)) {
-    //             //         if (alarm.beep) Beep.beepError()
-                        
-    //             //         if (alarm.type===AlarmType.BLOCKING) {
-    //             //             setBlockingAlarm(alarm)
-    //             //             setShowBlockingAlarm(true)
-    //             //         }
-    //             //         else {
-    //             //             const action = (snackbarId: SnackbarKey | undefined) => (<>
-    //             //                 <Button onClick={() => { 
-    //             //                     closeSnackbar(snackbarId)
-    //             //                     onChangeTabs(null,tab!.name)
-    //             //                 }}>
-    //             //                     View
-    //             //                 </Button>
-    //             //                 <Button onClick={() => { closeSnackbar(snackbarId) }}>
-    //             //                     Dismiss
-    //             //                 </Button>
-    //             //             </>)
-    //             //             var opts:OptionsObject = {
-    //             //                 anchorOrigin:{ horizontal: 'center', vertical: 'bottom' },
-    //             //                 variant:alarm.severity,
-    //             //                 autoHideDuration:(alarm.type===AlarmType.TIMED? 3000:null),
-    //             //                 action
-    //             //             }
-    //             //             enqueueSnackbar(alarm.message, opts)
-    //             //         }
-    //             //     }
-    //             // }
-    //             break
-    //         case 'signal':
-    //             tab.logObject.serviceInstance = msg.instance
-    //             tab.logObject.messages.push(msg)
-    //             break
-    //         default:
-    //             console.log(`Invalid message type`, msg)
-    //             break
-    //     }
-    // }
-
     const processLogMessage = (wsEvent:any) => {
         // find the tab which this web socket belongs to, and add the new message
         var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
         if (!tab || !tab.channelObject) return
 
-        var msg = JSON.parse(wsEvent.data) as LogMessage
+        let msg = JSON.parse(wsEvent.data) as ILogMessage
+        let dataLog = tab.channelObject.data as LogObject
         switch (msg.type) {
-            case 'data':
-                tab.channelObject.messages.push(msg)
-                while (tab.channelObject.messages.length>tab.channelObject.maxMessages) tab.channelObject.messages.splice(0,1)
+            case ServiceMessageTypeEnum.DATA:
+                dataLog.messages.push(msg)
+                if (dataLog.messages.length > dataLog.maxMessages) dataLog.messages.splice(0, dataLog.messages.length - dataLog.maxMessages)
 
                 // if current log is displayed (focused), add message to the screen
                 if (selectedTabRef.current === tab.name) {
-                    // if (!tab.channelObject.paused) {
-                    //     setLogMessages([])  //+++ this forces LogContent to re-render +++ change to any other thing
-                    //     if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
-                    // }
                     if (!tab.channelPaused) {
                         setLogMessages([])  //+++ this forces LogContent to re-render +++ change to any other thing
-                        if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
+                        if (dataLog.follow && lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
                     }
                 }
                 else {
                     // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-                    if (tab.channelObject.showBackgroundNotification && !tab.channelObject.paused) {
-                        tab.channelObject.pending=true
+                    if (dataLog.backgroundNotification && !tab.channelPaused) {
+                        tab.channelPending = true
                         setHighlightedTabs((prev)=> [...prev, tab!])
                         setTabs(tabs)
                     }
                 }
                 break
-            case 'signal':
-                tab.channelObject.serviceInstance = msg.instance
-                tab.channelObject.messages.push(msg)
+            case ServiceMessageTypeEnum.SIGNAL:
+                tab.channelObject.instance = msg.instance
+                dataLog.messages.push(msg)
                 setLogMessages([])
                 break
             default:
@@ -526,92 +415,15 @@ const App: React.FC = () => {
         }
     }
 
-    // const processAlarmMessage = (wsEvent:any) => {
-    //     var msg = JSON.parse(wsEvent.data) as AlarmMessage
-    //     var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
-    //     if (!tab || !tab.alarmObject) return
-
-    //     switch (msg.type) {
-    //         case 'data':
-    //             tab.alarmObject.firedAlarms.push ({
-    //                 timestamp: new Date(msg.timestamp!).getTime(),
-    //                 severity: msg.severity,
-    //                 text: msg.text,
-    //                 namespace: msg.namespace,
-    //                 group: '',
-    //                 pod: msg.pod,
-    //                 container: msg.container
-    //             })
-    //             if (!tab.alarmObject.paused) setRefreshTabContent(Math.random())
-    //             break
-    //         case 'signal':
-    //             console.log('SIGNAL:', msg)
-    //             tab.alarmObject.serviceInstance = msg.instance
-    //             break
-    //         default:
-    //             console.log(`Invalid message type ${msg.type}`)
-    //             break
-    //     }
-    // }
-    
-    // const processMetricsMessage = (wsEvent:any) => {
-    //     var msg = JSON.parse(wsEvent.data) as MetricsMessage
-    //     var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
-    //     if (!tab || !tab.metricsObject) return
-
-    //     switch (msg.type) {
-    //         case 'data':
-    //             tab.metricsObject.assetMetricsValues.push(msg)
-    //             if (tab.metricsObject.assetMetricsValues.length>tab.metricsObject.depth) {
-    //                 tab.metricsObject.assetMetricsValues.shift()
-    //             }
-    //             if (!tab.metricsObject.paused) setRefreshTabContent(Math.random())
-    //             break
-    //         case 'signal':
-    //             tab.metricsObject.serviceInstance = msg.instance
-    //             break
-    //         default:
-    //             console.log(`Invalid message type ${msg.type}`)
-    //             break
-    //     }
-    // }
-    
-    const processMetricsMessage = (wsEvent:any) => {
-        var msg = JSON.parse(wsEvent.data) as MetricsMessage
-        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
-        if (!tab || !tab.channelObject) return
-
-        switch (msg.type) {
-            case 'data':
-                tab.channelObject.assetMetricsValues.push(msg)
-                if (tab.channelObject.assetMetricsValues.length > tab.channelObject.depth) {
-                    tab.channelObject.assetMetricsValues.shift()
-                }
-                if (!tab.channelObject.paused) setRefreshTabContent(Math.random())
-                break
-            case 'signal':
-                tab.channelObject.serviceInstance = msg.instance
-                break
-            default:
-                console.log(`Invalid message type ${msg.type}`)
-                break
-        }
-    }
-    
-    interface AlertMessage extends ServiceMessage {
-        timestamp?: Date;
-        severity: AlarmSeverityEnum;
-        text: string;
-    }
-
     const processAlertMessage = (wsEvent:any) => {
-        var msg = JSON.parse(wsEvent.data) as AlertMessage
+        var msg = JSON.parse(wsEvent.data) as IAlertMessage
         var tab=tabs.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
 
+        let dataAlert = tab.channelObject.data as AlertObject
         switch (msg.type) {
-            case 'data':
-                tab.channelObject.firedAlerts.push ({
+            case ServiceMessageTypeEnum.DATA:
+                dataAlert.firedAlerts.push ({
                     timestamp: new Date(msg.timestamp!).getTime(),
                     severity: msg.severity,
                     text: msg.text,
@@ -620,10 +432,11 @@ const App: React.FC = () => {
                     pod: msg.pod,
                     container: msg.container
                 })
+                if (dataAlert.firedAlerts.length > dataAlert.maxAlerts) dataAlert.firedAlerts.splice(0, dataAlert.firedAlerts.length - dataAlert.maxAlerts)
                 if (!tab.channelPaused) setRefreshTabContent(Math.random())
                 break
-            case 'signal':
-                tab.channelObject.serviceInstance = msg.instance
+            case ServiceMessageTypeEnum.SIGNAL:
+                tab.channelObject.instance = msg.instance
                 break
             default:
                 console.log(`Invalid message type ${msg.type}`)
@@ -631,197 +444,44 @@ const App: React.FC = () => {
         }
     }
     
-    // const onClickLogStart = () => {
-    //     setAnchorMenuTab(null)
-    //     var tab=tabs.find(t => t.name===selectedTabRef.current)
-    //     if (tab && tab.logObject) startLog(tab)
-    // }
+    const processMetricsMessage = (wsEvent:any) => {
+        var msg = JSON.parse(wsEvent.data) as IMetricsMessage
+        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
+        if (!tab || !tab.channelObject) return
 
-    const onClickAlarmStart = () => {
-        setShowAlarmSetup(true)
+        let dataMetrics = tab.channelObject.data as MetricsObject
+        switch (msg.type) {
+            case ServiceMessageTypeEnum.DATA:
+                dataMetrics.assetMetricsValues.push(msg)
+                if (dataMetrics.assetMetricsValues.length > dataMetrics.depth) {
+                    dataMetrics.assetMetricsValues.shift()
+                }
+                if (!tab.channelPaused) setRefreshTabContent(Math.random())
+                break
+            case ServiceMessageTypeEnum.SIGNAL:
+                tab.channelObject.instance = msg.instance
+                break
+            default:
+                console.log(`Invalid message type ${msg.type}`)
+                break
+        }
     }
-
-    const onClickMetricsStart = () => {
-        setShowMetricsSetup(true)
-    }
-
+    
     const onClickChannelStart = () => {
-        switch (selectedTab?.channel) {
-            case 'log':
-                setAnchorMenuTab(null)
-                var tab = tabs.find(t => t.name === selectedTabRef.current)
-                // if (tab && tab.channelObject) startLog(tab)
-                if (tab && tab.channelObject) startChannel(tab)
+        switch (selectedTab?.channelId) {
+            case ServiceConfigChannelEnum.LOG:
+                setShowSetupLog(true)
                 break
-            case 'alert':
-                setShowAlertSetup(true)
+            case ServiceConfigChannelEnum.ALERT:
+                setShowSetupAlert(true)
                 break
-            case 'metrics':
-                setShowMetricsSetup(true)
+            case ServiceConfigChannelEnum.METRICS:
+                setShowSetupMetrics(true)
                 break
         }
     }
 
-    // const startLog = (tab:TabObject) => {
-    //     if (!tab || !tab.channelObject) return
-    //     tab.channelObject.maxMessages=settings!.logMaxMessages
-    //     tab.channelObject.previous=settings!.logPrevious
-    //     tab.channelObject.addTimestamp=settings!.logTimestamp
-    //     tab.channelObject.messages=[]
-    //     var cluster=clusters!.find(c => c.name===tab.logObject!.clusterName)
-    //     if (!cluster) {
-    //         setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at log configuration ${tab.channelObject.clusterName} does not exist.`, setMsgBox))
-    //         return
-    //     }
-
-    //     if (tab.ws && tab.ws.OPEN===tab.ws.readyState) {
-    //         var logConfig: ServiceConfig = {
-    //             channel: ServiceConfigChannelEnum.LOG,
-    //             object: ServiceConfigObjectEnum.PODS,
-    //             action: ServiceConfigActionEnum.START,
-    //             flow: ServiceConfigFlowEnum.REQUEST,
-    //             instance: '',
-    //             accessKey: cluster!.accessString,
-    //             scope: ServiceConfigScopeEnum.VIEW,
-    //             view: tab.channelObject.view!,
-    //             namespace: tab.channelObject.namespace!,
-    //             group: tab.channelObject.group!,
-    //             pod: tab.channelObject.pod!,
-    //             container: tab.channelObject.container!,
-    //             data : {
-    //                 timestamp: tab.channelObject.addTimestamp!,
-    //                 previous: tab.channelObject.previous!,
-    //                 maxMessages: tab.channelObject.maxMessages!
-    //             }
-    //         }
-    //         tab.ws.send(JSON.stringify(logConfig))
-    //         tab.channelStarted = true
-    //         setLogMessages([])
-    //     }
-    //     else {
-    //         console.log('ws not ready')
-    //     }
-    // }
-
-    // const startAlarm = (tab:TabObject) => {
-    //     if (!tab || !tab.alarmObject) {
-    //         console.log('No active tab found')
-    //         return
-    //     }
-    //     var cluster=clusters!.find(c => c.name===tab.alarmObject!.clusterName)
-    //     if (!cluster) {
-    //         setMsgBox(MsgBoxOk('Kwirth',`Cluster set at alarm configuration (${tab.alarmObject.clusterName}) does not exist.`, setMsgBox))
-    //         return
-    //     }
-
-    //     if (tab.ws && tab.ws.readyState===tab.ws.OPEN) {
-    //         var ac:AlarmConfig = {
-    //             channel: ServiceConfigChannelEnum.ALARM,
-    //             object: ServiceConfigObjectEnum.PODS,
-    //             action: ServiceConfigActionEnum.START,
-    //             flow: ServiceConfigFlowEnum.REQUEST,
-    //             instance: '',
-    //             accessKey: cluster!.accessString,
-    //             scope: ServiceConfigScopeEnum.SUBSCRIBE,
-    //             view: tab.alarmObject.view!,
-    //             namespace: tab.alarmObject.namespace!,
-    //             group: tab.alarmObject.group!,
-    //             pod: tab.alarmObject.pod!,
-    //             container: tab.alarmObject.container!,
-    //             regexInfo: tab.alarmObject.regexInfo,
-    //             regexWarning: tab.alarmObject.regexWarning,
-    //             regexError: tab.alarmObject.regexError
-    //         }
-    //         tab.ws.send(JSON.stringify(ac))
-    //         tab.alarmObject.started=true
-    //     }
-    //     else {
-    //         console.log('Tab web socket is not started')
-    //     }
-    // }
-
-    // const startMetrics = (tab:TabObject) => {
-    //     if (!tab || !tab.metricsObject) {
-    //         console.log('No active tab found')
-    //         return
-    //     }
-    //     var cluster=clusters!.find(c => c.name===tab.metricsObject!.clusterName)
-    //     if (!cluster) {
-    //         setMsgBox(MsgBoxOk('Kwirth',`Cluster set at metrics configuration (${tab.metricsObject.clusterName}) does not exist.`, setMsgBox))
-    //         return
-    //     }
- 
-    //     if (tab.ws && tab.ws.readyState===tab.ws.OPEN) {
-    //         tab.metricsObject.assetMetricsValues=[]
-    //         var mc:MetricsConfig = {
-    //             channel: ServiceConfigChannelEnum.METRICS,
-    //             object: ServiceConfigObjectEnum.PODS,
-    //             action: ServiceConfigActionEnum.START,
-    //             flow: ServiceConfigFlowEnum.REQUEST,
-    //             instance: '',
-    //             interval: tab.metricsObject.interval,
-    //             aggregate: tab.metricsObject.aggregate,
-    //             accessKey: cluster!.accessString,
-    //             scope: ServiceConfigScopeEnum.STREAM,
-    //             view: tab.metricsObject.view!,
-    //             namespace: tab.metricsObject.namespace!,
-    //             group: tab.metricsObject.group!,
-    //             pod: tab.metricsObject.pod!,
-    //             container: tab.metricsObject.container!,
-    //             mode: tab.metricsObject.mode,
-    //             metrics: tab.metricsObject.metrics
-    //         }
-    //         tab.ws.send(JSON.stringify(mc))
-    //         tab.metricsObject.started=true
-    //     }
-    //     else {
-    //         console.log('Tab web socket is not started')
-    //     }
-    // }
-
-    // const startMetrics = (tab:TabObject) => {
-    //     if (!tab || !tab.channelObject) {
-    //         console.log('No active tab found')
-    //         return
-    //     }
-    //     var cluster = clusters!.find(c => c.name===tab.channelObject.clusterName)
-    //     if (!cluster) {
-    //         setMsgBox(MsgBoxOk('Kwirth',`Cluster set at metrics configuration (${tab.channelObject.clusterName}) does not exist.`, setMsgBox))
-    //         return
-    //     }
- 
-    //     if (tab.ws && tab.ws.readyState===tab.ws.OPEN) {
-    //         tab.channelObject.assetMetricsValues=[]
-    //         var mc:ServiceConfig = {
-    //             channel: ServiceConfigChannelEnum.METRICS,
-    //             object: ServiceConfigObjectEnum.PODS,
-    //             action: ServiceConfigActionEnum.START,
-    //             flow: ServiceConfigFlowEnum.REQUEST,
-    //             instance: '',
-    //             data: {
-    //                 mode: tab.channelObject.data.mode,
-    //                 aggregate: tab.channelObject.data.aggregate,
-    //                 interval: tab.channelObject.data.interval,
-    //                 metrics: tab.channelObject.data.metrics
-    //             },
-    //             accessKey: cluster!.accessString,
-    //             scope: ServiceConfigScopeEnum.STREAM,
-    //             view: tab.channelObject.view!,
-    //             namespace: tab.channelObject.namespace!,
-    //             group: tab.channelObject.group!,
-    //             pod: tab.channelObject.pod!,
-    //             container: tab.channelObject.container!,
-    //         }
-    //         tab.ws.send(JSON.stringify(mc))
-    //         tab.channelStarted = true
-    //         tab.channelPaused = false
-    //     }
-    //     else {
-    //         console.log('Tab web socket is not started')
-    //     }
-    // }
-
-    const startChannel = (tab:TabObject) => {
+    const startChannel = (tab:ITabObject) => {
         if (!tab || !tab.channelObject) {
             console.log('No active tab found')
             return
@@ -833,8 +493,8 @@ const App: React.FC = () => {
         }
 
         if (tab.ws && tab.ws.readyState === tab.ws.OPEN) {
-            var sc: ServiceConfig = {
-                channel: tab.channel,
+            var serviceConfig: ServiceConfig = {
+                channel: tab.channelId,
                 object: ServiceConfigObjectEnum.PODS,
                 action: ServiceConfigActionEnum.START,
                 flow: ServiceConfigFlowEnum.REQUEST,
@@ -847,42 +507,41 @@ const App: React.FC = () => {
                 pod: tab.channelObject.pod!,
                 container: tab.channelObject.container!,
             }
-            switch (tab.channel) {
-                case 'log':
-                    // tab.channelObject.maxMessages=settings!.logMaxMessages
-                    // tab.channelObject.previous=settings!.logPrevious
-                    // tab.channelObject.addTimestamp=settings!.logTimestamp
-                    // tab.channelObject.messages=[]
+            switch (tab.channelId) {
+                case ServiceConfigChannelEnum.LOG: 
+                    let dataLog = tab.channelObject.data as LogObject
                     if (!cluster) {
                         setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at log configuration ${tab.channelObject.clusterName} does not exist.`, setMsgBox))
                         return
                     }
-                    sc.data = {
-                        timestamp: tab.channelObject.addTimestamp!,
-                        previous: tab.channelObject.previous!,
-                        maxMessages: tab.channelObject.maxMessages!
+                    serviceConfig.data = {
+                        timestamp: dataLog.timestamp,
+                        previous: dataLog.previous,
+                        maxMessages: dataLog.maxMessages
                     }
                     setLogMessages([])
                     break
-                case 'alert':
-                    tab.channelObject.firedAlerts=[]
-                    sc.data = {
-                        regexInfo: tab.channelObject.regexInfo,
-                        regexWarning: tab.channelObject.regexWarning,
-                        regexError: tab.channelObject.regexError
+                case ServiceConfigChannelEnum.ALERT:
+                    let dataAlert = tab.channelObject.data as AlertObject
+                    dataAlert.firedAlerts=[]
+                    serviceConfig.data = {
+                        regexInfo: dataAlert.regexInfo,
+                        regexWarning: dataAlert.regexWarning,
+                        regexError: dataAlert.regexError
                     }
                     break
-                case 'metrics':
-                    tab.channelObject.assetMetricsValues=[]
-                    sc.data = {
-                        mode: tab.channelObject.data.mode,
-                        aggregate: tab.channelObject.data.aggregate,
-                        interval: tab.channelObject.data.interval,
-                        metrics: tab.channelObject.data.metrics
+                case ServiceConfigChannelEnum.METRICS:
+                    var dataMetrics = tab.channelObject.data as MetricsObject
+                    dataMetrics.assetMetricsValues=[]
+                    serviceConfig.data = {
+                        mode: dataMetrics.mode,
+                        aggregate: dataMetrics.aggregate,
+                        interval: dataMetrics.interval,
+                        metrics: dataMetrics.metrics,
                     }
                     break
             }
-            tab.ws.send(JSON.stringify(sc))
+            tab.ws.send(JSON.stringify(serviceConfig))
             tab.channelStarted = true
             tab.channelPaused = false
 
@@ -892,152 +551,22 @@ const App: React.FC = () => {
         }
     }
 
-    const onClickLogStop = () => {    
-        setAnchorMenuTab(null)
-        if (selectedTab && selectedTab.logObject) stopLog(selectedTab)
-    }
-
-    // const onClickAlarmStop = () => {
-    //     setAnchorMenuTab(null)
-    //     if (selectedTab && selectedTab.alarmObject) stopAlarm(selectedTab)
-    // }
-
-    const onClickMetricsStop = () => {
-        setAnchorMenuTab(null)
-        if (selectedTab && selectedTab.metricsObject) stopMetrics(selectedTab)
-    }
-
     const onClickChannelStop = () => {
         setAnchorMenuTab(null)
         if (selectedTab && selectedTab.channelObject) stopChannel(selectedTab)
     }
 
-    // const stopLog = (tab:TabObject) => {
-    //     if (!tab || !tab.logObject) return
-    //     var endline='=============================================================================================='
-    //     tab.logObject.messages.push( {text:endline} as LogMessage)
 
-    //     if (tab.ws) {
-    //         var cluster=clusters!.find(c => c.name===tab.logObject!.clusterName)
-    //         var lc:LogConfig = {
-    //             channel: ServiceConfigChannelEnum.LOG,
-    //             object: ServiceConfigObjectEnum.PODS,
-    //             action: ServiceConfigActionEnum.STOP,
-    //             flow: ServiceConfigFlowEnum.REQUEST,
-    //             instance: tab.logObject.serviceInstance,
-    //             accessKey: cluster!.accessString,
-    //             view: ServiceConfigViewEnum.NONE,
-    //             scope: ServiceConfigScopeEnum.NONE,
-    //             namespace: '',
-    //             group: '',
-    //             pod: '',
-    //             container: '',
-    //             timestamp: false,
-    //             previous: false,
-    //             maxMessages: 0
-    //         }
-    //         tab.ws.send(JSON.stringify(lc))
-    //     }
-
-    //     tab.logObject.started=false
-    //     tab.logObject.paused=false
-    //     setPausedTabs(tabs.filter(t => t.logObject?.paused))
-    //     setLogMessages(tab.logObject.messages)
-    // }
-
-    const stopLog = (tab:TabObject) => {
-        if (!tab || !tab.channelObject) return
-        var endline='=============================================================================================='
-        tab.channelObject.messages.push( {text:endline} as LogMessage)
-
-        if (tab.ws) {
-            var cluster=clusters!.find(c => c.name===tab.logObject!.clusterName)
-            var sc:ServiceConfig = {
-                channel: ServiceConfigChannelEnum.LOG,
-                object: ServiceConfigObjectEnum.PODS,
-                action: ServiceConfigActionEnum.STOP,
-                flow: ServiceConfigFlowEnum.REQUEST,
-                instance: tab.channelObject.serviceInstance,
-                accessKey: cluster!.accessString,
-                view: ServiceConfigViewEnum.NONE,
-                scope: ServiceConfigScopeEnum.NONE,
-                namespace: '',
-                group: '',
-                pod: '',
-                container: ''
-            }
-            tab.ws.send(JSON.stringify(sc))
-        }
-        tab.channelStarted = false
-        tab.channelPaused = false
-        setPausedTabs(tabs.filter(t => t.logObject?.paused))
-        setLogMessages(tab.channelObject.messages)
-    }
-
-    // const stopAlarm = (tab:TabObject) => {
-    //     if (!tab.alarmObject) return
-    //     var cluster=clusters!.find(c => c.name===tab.alarmObject!.clusterName)
-    //     var ac:AlarmConfig = {
-    //         channel: ServiceConfigChannelEnum.ALARM,
-    //         object: ServiceConfigObjectEnum.PODS,
-    //         action: ServiceConfigActionEnum.STOP,
-    //         flow: ServiceConfigFlowEnum.REQUEST,
-    //         instance: tab.alarmObject.serviceInstance,
-    //         accessKey: cluster!.accessString,
-    //         view: tab.alarmObject.view!,
-    //         scope: ServiceConfigScopeEnum.NONE,
-    //         namespace: '',
-    //         group: '',
-    //         pod: '',
-    //         container: '',
-    //         regexInfo: [],
-    //         regexWarning: [],
-    //         regexError: []
-    //     }
-    //     if (tab.ws) tab.ws.send(JSON.stringify(ac))
-    //     tab.alarmObject.firedAlarms.push({
-    //         timestamp: Date.now(),
-    //         severity: AlarmSeverityEnum.INFO,
-    //         container: '',
-    //         text: '========================================================================='
-    //     })        
-    //     tab.alarmObject.started=false
-    // }
-
-    const stopMetrics = (tab:TabObject) => {
-        if (!tab.metricsObject) return
-        var cluster=clusters!.find(c => c.name===tab.metricsObject!.clusterName)
-        var mc:MetricsConfig = {
-            channel: ServiceConfigChannelEnum.METRICS,
-            object: ServiceConfigObjectEnum.PODS,
-            action: ServiceConfigActionEnum.STOP,
-            flow: ServiceConfigFlowEnum.REQUEST,
-            instance: tab.metricsObject.serviceInstance,
-            mode: tab.metricsObject.mode,
-            metrics: [],
-            aggregate: false,
-            accessKey: cluster!.accessString,
-            view: tab.metricsObject.view!,
-            scope: ServiceConfigScopeEnum.NONE,
-            namespace: '',
-            group: '',
-            pod: '',
-            container: ''
-        }
-        if (tab.ws) tab.ws.send(JSON.stringify(mc))
-        tab.metricsObject.started=false
-    }
-
-    const stopChannel = (tab:TabObject) => {
+    const stopChannel = (tab:ITabObject) => {
         if (!tab.channelObject) return
-        var cluster=clusters!.find(c => c.name===tab.channelObject!.clusterName)
+        var cluster = clusters!.find(c => c.name===tab.channelObject!.clusterName)
 
-        var serviceConfig:ServiceConfig = {
-            channel: tab.channel,
+        var serviceConfig: ServiceConfig = {
+            channel: tab.channelId,
             object: ServiceConfigObjectEnum.PODS,
             action: ServiceConfigActionEnum.STOP,
             flow: ServiceConfigFlowEnum.REQUEST,
-            instance: tab.channelObject.serviceInstance,
+            instance: tab.channelObject.instance,
             accessKey: cluster!.accessString,
             view: tab.channelObject.view!,
             scope: ServiceConfigScopeEnum.NONE,
@@ -1046,9 +575,20 @@ const App: React.FC = () => {
             pod: '',
             container: ''
         }
-        switch (tab.channel) {
-            case 'alert':
-                tab.channelObject.firedAlerts.push({
+        switch (tab.channelId) {
+            case ServiceConfigChannelEnum.LOG:
+                var dataLog = tab.channelObject.data as LogObject
+                dataLog.messages.push({
+                    text: '=========================================================================',
+                    channel: 'log',
+                    type: ServiceMessageTypeEnum.DATA,
+                    instance: ''
+                }) 
+                setRefreshTabContent(Math.random())
+                break
+            case ServiceConfigChannelEnum.ALERT:
+                var dataAlert = tab.channelObject.data as AlertObject
+                dataAlert.firedAlerts.push({
                     timestamp: Date.now(),
                     severity: AlarmSeverityEnum.INFO,
                     namespace:'',
@@ -1057,93 +597,12 @@ const App: React.FC = () => {
                 })
                 setRefreshTabContent(Math.random())
                 break
-            case 'metrics':
+            case ServiceConfigChannelEnum.METRICS:
                 break
         }
         if (tab.ws) tab.ws.send(JSON.stringify(serviceConfig))
         tab.channelStarted = false
         tab.channelPaused = false
-    }
-
-    // const onClickLogPause = () => {
-    //     setAnchorMenuTab(null)
-    //     if (!selectedTab || !selectedTab.logObject) return
-
-    //     if (selectedTab.logObject.paused) {
-    //         selectedTab.logObject.paused=false
-    //         setLogMessages(selectedTab.logObject.messages)
-    //         setPausedTabs(tabs.filter(t => t.logObject?.paused))
-    //     }
-    //     else {
-    //         selectedTab.logObject.paused=true
-    //         setPausedTabs( (prev) => [...prev, selectedTab!])
-    //     }
-    // }
-
-    const onClickLogPause = () => {
-        setAnchorMenuTab(null)
-        if (!selectedTab || !selectedTab.channelObject) return
-
-        //+++ need to send pause to backend???
-        if (selectedTab.channelPaused) {
-            selectedTab.channelPaused = false
-            setLogMessages(selectedTab.channelObject.messages)
-            setPausedTabs(tabs.filter(t => t.channelPaused))
-        }
-        else {
-            selectedTab.channelPaused = true
-            setPausedTabs( (prev) => [...prev, selectedTab!])
-        }
-    }
-
-    const onClickAlarmPause = () => {
-        setAnchorMenuTab(null)
-        if (!selectedTab || !selectedTab.alarmObject) return
-
-        var cluster = clusters!.find(c => c.name === selectedTab!.alarmObject!.clusterName)
-        var ac:AlarmConfig = {
-            channel: ServiceConfigChannelEnum.ALARM,
-            object: ServiceConfigObjectEnum.PODS,
-            action: ServiceConfigActionEnum.PAUSE,
-            flow: ServiceConfigFlowEnum.REQUEST,
-            instance: '',
-            accessKey: cluster!.accessString,
-            scope: ServiceConfigScopeEnum.SUBSCRIBE,
-            view: selectedTab.alarmObject.view!,
-            namespace: selectedTab.alarmObject.namespace!,
-            group: selectedTab.alarmObject.group!,
-            pod: selectedTab.alarmObject.pod!,
-            container: selectedTab.alarmObject.container!,
-            regexInfo: selectedTab.alarmObject.regexInfo,
-            regexWarning: selectedTab.alarmObject.regexWarning,
-            regexError: selectedTab.alarmObject.regexError
-        }
-
-        if (selectedTab.alarmObject.paused) {
-            selectedTab.alarmObject.paused=false
-            setPausedTabs(tabs.filter(t => t.alarmObject?.paused))
-            ac.action = ServiceConfigActionEnum.CONTINUE
-        }
-        else {
-            selectedTab.alarmObject.paused=true
-            setPausedTabs( (prev) => [...prev, selectedTab!])
-            ac.action = ServiceConfigActionEnum.PAUSE
-        }
-        selectedTab.ws!.send(JSON.stringify(ac))
-    }
-
-    const onClickMetricsPause = () => {
-        setAnchorMenuTab(null)
-        if (!selectedTab || !selectedTab.metricsObject) return
-
-        if (selectedTab.metricsObject.paused) {
-            selectedTab.metricsObject.paused=false
-            setPausedTabs(tabs.filter(t => t.metricsObject?.paused))
-        }
-        else {
-            selectedTab.metricsObject.paused=true
-            setPausedTabs( (prev) => [...prev, selectedTab!])
-        }
     }
 
     const onClickChannelPause = () => {
@@ -1153,7 +612,7 @@ const App: React.FC = () => {
         var cluster = clusters!.find(c => c.name === selectedTab!.channelObject!.clusterName)
 
         var serviceConfig:ServiceConfig = {
-            channel: selectedTab.channel,
+            channel: selectedTab.channelId,
             object: ServiceConfigObjectEnum.PODS,
             action: ServiceConfigActionEnum.PAUSE,
             flow: ServiceConfigFlowEnum.REQUEST,
@@ -1169,7 +628,7 @@ const App: React.FC = () => {
 
         if (selectedTab.channelPaused) {
             selectedTab.channelPaused = false
-            setPausedTabs(tabs.filter(t => t.alarmObject?.paused))
+            setPausedTabs(tabs.filter(t => t.channelPaused))
             serviceConfig.action = ServiceConfigActionEnum.CONTINUE
         }
         else {
@@ -1180,10 +639,7 @@ const App: React.FC = () => {
         selectedTab.ws.send(JSON.stringify(serviceConfig))
     }
 
-    const stopTab = (tab:TabObject) => {
-        if (tab.logObject) stopLog(tab)
-        //if (tab.alarmObject) stopAlarm(tab)
-        if (tab.metricsObject) stopMetrics(tab)
+    const stopTab = (tab:ITabObject) => {
         if (tab.channelObject) stopChannel(tab)
     }
 
@@ -1191,31 +647,27 @@ const App: React.FC = () => {
         setAnchorMenuTab(null)
         if (!selectedTab) return
 
-        if (selectedTab.logObject) stopLog(selectedTab)
-        if (selectedTab.metricsObject) stopMetrics(selectedTab)
+        if (selectedTab.channelObject) stopChannel(selectedTab)
         selectedTab.ws?.close()
         clearInterval(selectedTab.keepalive)
         setTabs(tabs.filter(t => t!==selectedTab))
-    }
-
-    const onChangeLogFilter = (event:ChangeEvent<HTMLInputElement>) => {
-        if (selectedTab && selectedTab.logObject) selectedTab.logObject.filter=event.target.value
-//        setFilter(event.target.value)
     }
 
     const menuTabOptionSelected = (option: MenuTabOption) => {
         setAnchorMenuTab(null)
         switch(option) {
             case MenuTabOption.TabInfo:
-                var a=`
-                    <b>Name</b>: ${selectedTab?.name}<br/>
-                    <b>View</b>: ${selectedTab?.logObject?.view}<br/>
-                    <b>Namespace</b>: ${selectedTab?.logObject?.namespace}<br/>
-                    <b>Group</b>: ${selectedTab?.logObject?.group}<br/>
-                    <b>Pod</b>: ${selectedTab?.logObject?.pod}<br/>
-                    <b>Container</b>: ${selectedTab?.logObject?.container}
-                `
-                setMsgBox(MsgBoxOk('Tab info',a,setMsgBox))
+                if (selectedTab) {
+                    var a=`
+                        <b>Name</b>: ${selectedTab.name}<br/>
+                        <b>View</b>: ${selectedTab.channelObject.view}<br/>
+                        <b>Namespace</b>: ${selectedTab.channelObject.namespace}<br/>
+                        <b>Group</b>: ${selectedTab.channelObject.group}<br/>
+                        <b>Pod</b>: ${selectedTab.channelObject.pod}<br/>
+                        <b>Container</b>: ${selectedTab.channelObject.container}
+                    `
+                    setMsgBox(MsgBoxOk('Tab info',a,setMsgBox))
+                }
                 break
             case MenuTabOption.TabRename:
                 setShowRenameLog(true)
@@ -1251,66 +703,36 @@ const App: React.FC = () => {
             case MenuTabOption.TabRemove:
                 onClickTabRemove()
                 break
-            case MenuTabOption.LogBackground:
-                if (selectedTab && selectedTab.logObject) selectedTab.logObject.showBackgroundNotification=!selectedTab.logObject.showBackgroundNotification
-                break
-            case MenuTabOption.LogTimestamp:
-                if (selectedTab && selectedTab.logObject) selectedTab.logObject.addTimestamp=!selectedTab.logObject.addTimestamp
-                break
-            // case MenuTabOption.AlarmCreate:
-            //     setShowAlarmConfig(true)
+            // case MenuTabOption.LogBackground:
+            //     if (selectedTab && selectedTab.logObject) selectedTab.logObject.showBackgroundNotification=!selectedTab.logObject.showBackgroundNotification
             //     break
-            // case MenuTabOption.ManageAlarms:
-            //     setShowManageAlarms(true)
+            // case MenuTabOption.LogTimestamp:
+            //     if (selectedTab && selectedTab.logObject) selectedTab.logObject.addTimestamp=!selectedTab.logObject.addTimestamp
             //     break
             case MenuTabOption.TabSetDefault:
-                if (selectedTab && selectedTab.logObject) selectedTab.defaultTab=true
+                if (selectedTab && selectedTab.channelObject) selectedTab.defaultTab=true
                 break
-            // case MenuTabOption.LogStart:
-            //     onClickLogStart()
-            //     break
-            // case MenuTabOption.LogPause:
-            //     onClickLogPause()
-            //     break
-            // case MenuTabOption.LogStop:
-            //     onClickLogStop()
-            //     break
             case MenuTabOption.TabManageRestart:
-                switch(selectedTab && selectedTab.logObject?.view) {
-                    case ServiceConfigViewEnum.GROUP:
-                        // restart a deployment
-                        fetch (`${backendUrl}/managecluster/restartdeployment/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.group}`, addPostAuthorization(accessString))
-                        break
-                    case ServiceConfigViewEnum.POD:
-                        // restart a pod
-                        fetch (`${backendUrl}/managecluster/restartpod/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.pod}`, addPostAuthorization(accessString))
-                        break
-                }
+                // switch(selectedTab && selectedTab.logObject?.view) {
+                //     case ServiceConfigViewEnum.GROUP:
+                //         // restart a deployment
+                //         fetch (`${backendUrl}/managecluster/restartdeployment/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.group}`, addPostAuthorization(accessString))
+                //         break
+                //     case ServiceConfigViewEnum.POD:
+                //         // restart a pod
+                //         fetch (`${backendUrl}/managecluster/restartpod/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.pod}`, addPostAuthorization(accessString))
+                //         break
+                // }
                 break
-            case MenuTabOption.MetricsStart:
-                onClickMetricsStart()
-                break
+            // case MenuTabOption.MetricsStart:
+            //     onClickMetricsStart()
+            //     break
             case MenuTabOption.MetricsAdd:
                 // +++ we have 2 options here:
                 // Add new metrics to current metricsobject metrics'
                 // create an array of metrics objects
                 //onClickMetricsStart()
                 break
-            case MenuTabOption.MetricsPause:
-                onClickMetricsPause()
-                break
-            case MenuTabOption.MetricsStop:
-                onClickMetricsStop()
-                break
-            // case MenuTabOption.AlarmStart:
-            //     onClickAlarmStart()
-            //     break
-            // case MenuTabOption.AlarmPause:
-            //     onClickAlarmPause()
-            //     break
-            // case MenuTabOption.AlarmStop:
-            //     onClickAlarmStop()
-            //     break
             case MenuTabOption.ChannelStart:
                 onClickChannelStart()
                 break
@@ -1324,53 +746,69 @@ const App: React.FC = () => {
     }
 
     const saveBoard = (boardName:string) => {
-        var newTabs:TabObject[]=[]
-        for (var tab of tabs) {
-            var newTab = new TabObject()
-            newTab.name=tab.name
-            newTab.defaultTab=tab.defaultTab
-            if (tab.logObject) {
-                newTab.logObject=new LogObject()
-                newTab.logObject.addTimestamp=tab.logObject.addTimestamp
-                newTab.logObject.alarms=tab.logObject.alarms
-                newTab.logObject.clusterName=tab.logObject.clusterName
-                newTab.logObject.filter=tab.logObject.filter
-                newTab.logObject.view=tab.logObject.view
-                newTab.logObject.namespace=tab.logObject.namespace
-                newTab.logObject.group=tab.logObject.group
-                newTab.logObject.pod=tab.logObject.pod
-                newTab.logObject.container=tab.logObject.container
-                newTab.logObject.paused=tab.logObject.paused
-                newTab.logObject.showBackgroundNotification=tab.logObject.showBackgroundNotification
-                newTab.logObject.started=tab.logObject.started
-            }
-            if (tab.metricsObject) {
-                newTab.metricsObject=new MetricsObject()
-                newTab.metricsObject.name=tab.metricsObject.name
-                newTab.metricsObject.clusterName=tab.metricsObject.clusterName
-                newTab.metricsObject.view=tab.metricsObject.view
-                newTab.metricsObject.namespace=tab.metricsObject.namespace
-                newTab.metricsObject.group=tab.metricsObject.group
-                newTab.metricsObject.pod=tab.metricsObject.pod
-                newTab.metricsObject.container=tab.metricsObject.container
-                newTab.metricsObject.clusterName=tab.metricsObject.clusterName
-                newTab.metricsObject.alarms=tab.metricsObject.alarms
-                newTab.metricsObject.started=tab.metricsObject.started
-                newTab.metricsObject.aggregate=tab.metricsObject.aggregate
-                newTab.metricsObject.depth=tab.metricsObject.depth
-                newTab.metricsObject.interval=tab.metricsObject.interval
-                newTab.metricsObject.metrics=tab.metricsObject.metrics
-                newTab.metricsObject.mode=tab.metricsObject.mode
-                newTab.metricsObject.paused=tab.metricsObject.paused
-                newTab.metricsObject.started=tab.metricsObject.started
-                newTab.metricsObject.view=tab.metricsObject.view
-                newTab.metricsObject.width=tab.metricsObject.width
-            }
-            newTabs.push(newTab)
+        // var newTabs:TabObject[]=[]
+        // for (var tab of tabs) {
+        //     var newTab = new TabObject()
+        //     newTab.name=tab.name
+        //     newTab.defaultTab=tab.defaultTab
+        //     if (tab.logObject) {
+        //         newTab.logObject=new LogObject()
+        //         newTab.logObject.addTimestamp=tab.logObject.addTimestamp
+        //         newTab.logObject.alarms=tab.logObject.alarms
+        //         newTab.logObject.clusterName=tab.logObject.clusterName
+        //         newTab.logObject.filter=tab.logObject.filter
+        //         newTab.logObject.view=tab.logObject.view
+        //         newTab.logObject.namespace=tab.logObject.namespace
+        //         newTab.logObject.group=tab.logObject.group
+        //         newTab.logObject.pod=tab.logObject.pod
+        //         newTab.logObject.container=tab.logObject.container
+        //         newTab.logObject.paused=tab.logObject.paused
+        //         newTab.logObject.showBackgroundNotification=tab.logObject.showBackgroundNotification
+        //         newTab.logObject.started=tab.logObject.started
+        //     }
+        //     if (tab.metricsObject) {
+        //         newTab.metricsObject=new MetricsObject()
+        //         newTab.metricsObject.name=tab.metricsObject.name
+        //         newTab.metricsObject.clusterName=tab.metricsObject.clusterName
+        //         newTab.metricsObject.view=tab.metricsObject.view
+        //         newTab.metricsObject.namespace=tab.metricsObject.namespace
+        //         newTab.metricsObject.group=tab.metricsObject.group
+        //         newTab.metricsObject.pod=tab.metricsObject.pod
+        //         newTab.metricsObject.container=tab.metricsObject.container
+        //         newTab.metricsObject.clusterName=tab.metricsObject.clusterName
+        //         newTab.metricsObject.alarms=tab.metricsObject.alarms
+        //         newTab.metricsObject.started=tab.metricsObject.started
+        //         newTab.metricsObject.aggregate=tab.metricsObject.aggregate
+        //         newTab.metricsObject.depth=tab.metricsObject.depth
+        //         newTab.metricsObject.interval=tab.metricsObject.interval
+        //         newTab.metricsObject.metrics=tab.metricsObject.metrics
+        //         newTab.metricsObject.mode=tab.metricsObject.mode
+        //         newTab.metricsObject.paused=tab.metricsObject.paused
+        //         newTab.metricsObject.started=tab.metricsObject.started
+        //         newTab.metricsObject.view=tab.metricsObject.view
+        //         newTab.metricsObject.width=tab.metricsObject.width
+        //     }
+        //     newTabs.push(newTab)
+        // }
+        // var payload=JSON.stringify(newTabs)
+        // fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addPostAuthorization(accessString, payload))
+        // if (currentBoardName!==boardName) setCurrentBoardName(boardName)
+    }
+
+    const saveBoardClosed = (boardName:string|null) => {
+        setShowSaveBoard(false)
+        if (boardName) saveBoard(boardName)
+    }
+
+    const loadBoardSelected = async (boardName:string) => {
+        if (boardName) {
+            clearTabs()
+            var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
+            var newTabs=JSON.parse(n) as ITabObject[]
+            setTabs(newTabs)
+            setCurrentBoardName(boardName)
+            setBoardLoaded(true)
         }
-        var payload=JSON.stringify(newTabs)
-        fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addPostAuthorization(accessString, payload))
-        if (currentBoardName!==boardName) setCurrentBoardName(boardName)
     }
 
     const showNoBoards = () => {
@@ -1383,6 +821,15 @@ const App: React.FC = () => {
             showNoBoards()
         else
             pickList('Load board...','Please, select the board you want to load:', allBoards, loadBoardSelected)
+    }
+
+    const deleteBoardSelected = (boardName:string) => {
+        setMsgBox(MsgBoxYesNo('Delete board',`Are you ure you want to delete board ${boardName}`,setMsgBox, (button) => {
+            if (button===MsgBoxButtons.Yes) {
+                fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addDeleteAuthorization(accessString))
+                setCurrentBoardName('')
+            }
+        }))
     }
 
     const clearTabs = () => {
@@ -1460,15 +907,6 @@ const App: React.FC = () => {
         }
     }
 
-    const deleteBoardSelected = (boardName:string) => {
-        setMsgBox(MsgBoxYesNo('Delete board',`Are you ure you want to delete board ${boardName}`,setMsgBox, (button) => {
-            if (button===MsgBoxButtons.Yes) {
-                fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addDeleteAuthorization(accessString))
-                setCurrentBoardName('')
-            }
-        }))
-    }
-
     const handleDownload = (content:string, filename:string,  mimeType:string='text/plain') => {
         const blob = new Blob([content], { type: mimeType })
         const url = URL.createObjectURL(blob)
@@ -1502,52 +940,59 @@ const App: React.FC = () => {
         if (newSettings) writeSettings(newSettings)
     }
 
-    const onMetricsSelected = (metrics:string[], mode:MetricsConfigModeEnum, depth:number, width:number, interval:number, aggregate:boolean, merge:boolean, type:string) => {
-        setShowMetricsSetup(false)
+    const onSetupMetricsClosed = (metrics:string[], mode:MetricsConfigModeEnum, depth:number, width:number, interval:number, aggregate:boolean, merge:boolean, stack:boolean, type:string) => {
+        setShowSetupMetrics(false)
         setAnchorMenuTab(null)
         if (metrics.length===0) return
 
         var tab=tabs.find(t => t.name===selectedTabRef.current)
         if (!tab || !tab.channelObject) return
 
-        tab.channelObject.data = {}
-        tab.channelObject.data.metrics = metrics
-        tab.channelObject.data.mode = mode
-        tab.channelObject.data.depth = depth
-        tab.channelObject.data.width = width
-        tab.channelObject.data.interval = interval
-        tab.channelObject.data.aggregate = aggregate
-        tab.channelObject.data.merge = merge
-        tab.channelObject.data.type = type
-        //startMetrics(tab)
+        var dataMetrics = tab.channelObject.data as MetricsObject
+
+        dataMetrics.metrics = metrics
+        dataMetrics.mode = mode
+        dataMetrics.depth = depth
+        dataMetrics.width = width
+        dataMetrics.interval = interval
+        dataMetrics.aggregate = aggregate
+        dataMetrics.merge = merge
+        dataMetrics.stack = stack
+        dataMetrics.type = type
         startChannel(tab)
     }
 
-    // const onAlarmSetupClose = (regexInfo:string[], regexWarning:string[], regexError:string[]) => {
-    //     setShowAlarmSetup(false)
-    //     setAnchorMenuTab(null)
-    //     if (regexInfo.length===0 && regexWarning.length===0 && regexError.length===0) return
+    const onSetupLogClosed = (maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean) => {
+        setShowSetupLog(false)       
+        setAnchorMenuTab(null)
+        if (maxMessages === 0) return
 
-    //     var tab=tabs.find(t => t.name === selectedTabRef.current)
-    //     if (!tab || !tab.alarmObject) return
-    //     tab.alarmObject.regexInfo = regexInfo
-    //     tab.alarmObject.regexWarning = regexWarning
-    //     tab.alarmObject.regexError = regexError
-    //     tab.alarmObject.firedAlarms = []
-    //     startAlarm(tab)
-    // }
+        var tab = tabs.find(t => t.name === selectedTabRef.current)
+        if (!tab || !tab.channelObject) return
 
-    const onAlertSetupClose = (regexInfo:string[], regexWarning:string[], regexError:string[]) => {
-        setShowAlertSetup(false)
+        var dataLog = tab.channelObject.data as LogObject
+        dataLog.maxMessages = maxMessages
+        dataLog.previous = previous
+        dataLog.timestamp = timestamp
+        dataLog.follow = follow
+        dataLog.messages = []
+        startChannel(tab)
+    }
+
+    const onAlertSetupClosed = (regexInfo:string[], regexWarning:string[], regexError:string[], maxAlerts:number) => {
+        setShowSetupAlert(false)
         setAnchorMenuTab(null)
         if (regexInfo.length===0 && regexWarning.length===0 && regexError.length===0) return
 
         var tab=tabs.find(t => t.name === selectedTabRef.current)
         if (!tab || !tab.channelObject) return
-        tab.channelObject.regexInfo = regexInfo
-        tab.channelObject.regexWarning = regexWarning
-        tab.channelObject.regexError = regexError
-        tab.channelObject.firedAlarms = []
+
+        var dataAlert = tab.channelObject.data as AlertObject
+        dataAlert.regexInfo = regexInfo
+        dataAlert.regexWarning = regexWarning
+        dataAlert.regexError = regexError
+        dataAlert.maxAlerts = maxAlerts
+        dataAlert.firedAlerts = []
         startChannel(tab)
     }
 
@@ -1556,22 +1001,6 @@ const App: React.FC = () => {
         if (newname!=null) {
             selectedTab!.name=newname
             setSelectedTabName(newname)
-        }
-    }
-
-    const saveBoardClosed = (boardName:string|null) => {
-        setShowSaveBoard(false)
-        if (boardName) saveBoard(boardName)
-    }
-
-    const loadBoardSelected = async (boardName:string) => {
-        if (boardName) {
-            clearTabs()
-            var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
-            var newTabs=JSON.parse(n) as TabObject[]
-            setTabs(newTabs)
-            setCurrentBoardName(boardName)
-            setBoardLoaded(true)
         }
     }
 
@@ -1599,7 +1028,7 @@ const App: React.FC = () => {
         setClusters(cc)
     }
 
-    const onCloseLogin = (result:boolean, user:User, accessKey:string) => {
+    const onLoginClosed = (result:boolean, user:User, accessKey:string) => {
         if (result) {
             setLogged(true)
             setUser(user)
@@ -1612,7 +1041,7 @@ const App: React.FC = () => {
     if (!logged) return (<>
         <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
             <SessionContext.Provider value={{ user, accessKey: accessString, logged, backendUrl }}>
-                <Login onClose={onCloseLogin}></Login>
+                <Login onClose={onLoginClosed}></Login>
             </SessionContext.Provider>
         </div>
     </>)
@@ -1650,36 +1079,26 @@ const App: React.FC = () => {
                     </Tabs>
 
                     <Typography sx={{ flexGrow: 1 }}></Typography>
-
-                    {/* { (tabs.length>0) && <>
-                        <Stack direction="row" alignItems="bottom" sx={{ width:'200px', mr:1}}>
-                            <TextField value={filter} onChange={onChangeLogFilter} InputProps={{ endAdornment: <IconButton onClick={()=>setFilter('')} disabled={!selectedTab?.logObject}><Clear fontSize='small'/></IconButton> }} label="Filter" variant="standard" disabled={!selectedTab?.logObject}/>
-                        </Stack>
-                    </>} */}
                 </Stack>
 
                 { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
-
-                {/* <TabContent log={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject} values={receivedMetricValues}/> */}
-                {/* <TabContent logObject={selectedTab?.logObject} filter={filter} search={search} lastLineRef={lastLineRef} metricsObject={selectedTab?.metricsObject} alarmObject={selectedTab?.alarmObject} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent}/> */}
-                {/* <TabContent filter={filter} search={search} lastLineRef={lastLineRef} channel={selectedTab?.channel} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent}/> */}
-                <TabContent lastLineRef={lastLineRef} channel={selectedTab?.channel} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent} objectMerge={selectedTab?.channelObject.objectMerge}/>
+                <TabContent lastLineRef={lastLineRef} channel={selectedTab?.channelId} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent}/>
             </Box>
 
-            {/* { showBlockingAlarm && <BlockingAlarm onClose={() => setShowBlockingAlarm(false)} alarm={blockingAlarm} /> } */}
             { showRenameTab && <RenameTab onClose={renameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }
             { showSaveBoard && <SaveBoard onClose={saveBoardClosed} name={currentBoardName} /> }
             { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
-            { showMetricsSetup && <MetricsSelector  onMetricsSelected={onMetricsSelected} settings={settings} channelObject={selectedTab?.channelObject} metricsList={clusters!.find(c => c.name===selectedTab!.channelObject!.clusterName)?.metricsList!} /> }            
-            { showAlertSetup && <AlertSetup onClose={onAlertSetupClose} regexInfo={selectedTab!.channelObject!.regexInfo} regexWarning={selectedTab!.channelObject!.regexWarning} regexError={selectedTab!.channelObject!.regexError}  /> }
+
+            { showSetupLog && <SetupLog onClose={onSetupLogClosed} settings={settings} channelObject={selectedTab?.channelObject} /> }
+            { showSetupAlert && <SetupAlert onClose={onAlertSetupClosed} settings={settings} channelObject={selectedTab?.channelObject} /> }
+            { showSetupMetrics && <SetupMetrics onClose={onSetupMetricsClosed} settings={settings} channelObject={selectedTab?.channelObject} metricsList={clusters!.find(c => c.name===selectedTab!.channelObject!.clusterName)?.metricsList!} /> }
+
             { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
             { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { pickListConfig!==null && <PickList config={pickListConfig}/> }
             { msgBox }
-            {/* { showMetricsSetup && <MetricsSelector  onMetricsSelected={onMetricsSelected} settings={settings} metricsList={clusters!.find(c => c.name===selectedTab!.metricsObject!.clusterName)?.metricsList!} /> } */}
-            {/* { showAlarmSetup && <AlarmSetup onClose={onAlarmSetupClose} regexInfo={selectedTab!.alarmObject!.regexInfo} regexWarning={selectedTab!.alarmObject!.regexWarning} regexError={selectedTab!.alarmObject!.regexError}  /> } */}
         </SessionContext.Provider>
     </>)
 }

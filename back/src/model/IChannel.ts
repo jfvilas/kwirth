@@ -1,4 +1,5 @@
-import { ServiceConfig, ServiceConfigActionEnum } from "@jfvilas/kwirth-common";
+import { ServiceConfig, ServiceConfigActionEnum } from '@jfvilas/kwirth-common'
+import WebSocket from 'ws'
 
 interface IChannel {
     startChannel (webSocket:WebSocket, serviceConfig:ServiceConfig, podNamespace:string, podName:string, containerName:string) : void

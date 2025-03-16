@@ -1,6 +1,6 @@
 {
   "name": "@jfvilas/kwirth-common",
-  "version": "0.3.45",
+  "version": "0.3.46",
   "description": "Common interfaces for integrating applications with Kwirth",
   "scripts": {
     "build": "del .\\dist\\* /s /q && tsc"

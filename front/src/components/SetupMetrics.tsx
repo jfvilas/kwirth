@@ -1,24 +1,25 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, SelectChangeEvent, Stack, TextField, Tooltip, Typography} from '@mui/material'
-import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
+import { MetricsConfigModeEnum, ServiceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { Settings } from '../model/Settings'
 import { MetricDescription } from '../model/MetricDescription'
 
 interface IProps {
-    onMetricsSelected:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number, aggregate:boolean, objectMerge:boolean, chart:string) => {}
+    onClose:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number, aggregate:boolean, merge:boolean, stack:boolean, chart:string) => {}
     settings:Settings
     channelObject: any
     metricsList:Map<string,MetricDescription>
 }
 
-const MetricsSelector: React.FC<any> = (props:IProps) => {
+const SetupMetrics: React.FC<any> = (props:IProps) => {
     const [metricsMode, setMetricsMode] = useState(props.settings.metricsMode.toString())
     const [metricsDepth, setMetricsDepth] = useState(props.settings.metricsDepth)
     const [metricsWidth, setMetricsWidth] = useState(props.settings.metricsWidth)
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
     const [metricsChecked, setMetricsChecked] = React.useState<string[]>([])
-    const [metricsAggregate, setMetricsAggregate] = React.useState(true)
-    const [objectMerge, setObjectMerge] = React.useState(false)
+    const [assetAggregate, setAssetAggregate] = React.useState(true)
+    const [assetMerge, setAssetMerge] = React.useState(false)
+    const [assetStack, setAssetStack] = React.useState(false)
     const [chartType, setChartType] = useState('line')
     const [filter, setFilter] = useState('')
 
@@ -39,11 +40,15 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
     }
 
     const onChangeMetricsAggregate = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setMetricsAggregate(event.target.checked)
+        setAssetAggregate(event.target.checked)
      }
 
-     const onChangeObjectMerge = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setObjectMerge(event.target.checked)
+     const onChangeAssetMerge = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setAssetMerge(event.target.checked)
+     }
+
+     const onChangeAssetStack = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setAssetStack(event.target.checked)
      }
 
      const onChangeChartType = (event: SelectChangeEvent) => {
@@ -51,7 +56,7 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
     }
 
     const closeOk = () =>{
-        props.onMetricsSelected(metricsChecked, metricsMode as MetricsConfigModeEnum, metricsDepth, metricsWidth, metricsInterval, metricsAggregate, objectMerge, chartType)
+        props.onClose(metricsChecked, metricsMode as MetricsConfigModeEnum, metricsDepth, metricsWidth, metricsInterval, assetAggregate, assetMerge, assetStack, chartType)
     }
 
     const metricAddOrRemove = (value:string) => {
@@ -71,19 +76,19 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
         setMetricsChecked(newChecked);
     }
 
-    var mergeable=false
+    var multiAssets=false
     switch (props.channelObject.view) {
-        case 'namespace':
-            mergeable = props.channelObject.namespace.split(',').length > 1
+        case ServiceConfigViewEnum.NAMESPACE:
+            multiAssets = props.channelObject.namespace.split(',').length > 1
             break
-        case 'group':
-            mergeable = props.channelObject.group.split(',').length > 1
+        case ServiceConfigViewEnum.GROUP:
+            multiAssets = props.channelObject.group.split(',').length > 1
             break
-        case 'pod':
-            mergeable = props.channelObject.pod.split(',').length > 1
+        case ServiceConfigViewEnum.POD:
+            multiAssets = props.channelObject.pod.split(',').length > 1
             break
-        case 'container':
-            mergeable = props.channelObject.container.split(',').length > 1
+        case ServiceConfigViewEnum.CONTAINER:
+            multiAssets = props.channelObject.container.split(',').length > 1
             break
 
     }
@@ -126,8 +131,9 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
                     <Stack direction={'row'} spacing={1}>
                         <TextField value={filter} onChange={(event) => setFilter(event.target.value)} sx={{width:'100%'}} variant='standard' label='Filter'></TextField>
                         <Stack direction={'column'} spacing={1}>
-                            <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={onChangeMetricsAggregate}/>} label='Aggregate' />
-                            <FormControlLabel control={<Checkbox checked={objectMerge} onChange={onChangeObjectMerge}/>} disabled={!mergeable} label='Merge' />
+                            <FormControlLabel control={<Checkbox checked={assetAggregate} onChange={onChangeMetricsAggregate}/>} disabled={!multiAssets} label='Aggregate' />
+                            <FormControlLabel control={<Checkbox checked={assetMerge} onChange={onChangeAssetMerge}/>} disabled={!multiAssets} label='Merge' />
+                            <FormControlLabel control={<Checkbox checked={assetStack} onChange={onChangeAssetStack}/>} disabled={!assetMerge} label='Stack' />
                             <FormControl variant="standard">
                                 <InputLabel id="charttype">Chart</InputLabel>
                                 <Select value={chartType.toString()} onChange={onChangeChartType} labelId="chattype" variant='standard'>
@@ -169,10 +175,10 @@ const MetricsSelector: React.FC<any> = (props:IProps) => {
             </DialogContent>
             <DialogActions>
                 <Button onClick={closeOk} disabled={metricsChecked.length===0}>OK</Button>
-                <Button onClick={() => props.onMetricsSelected([], MetricsConfigModeEnum.SNAPSHOT, 0, 0, 0, false, false,'')}>CANCEL</Button>
+                <Button onClick={() => props.onClose([], MetricsConfigModeEnum.SNAPSHOT, 0, 0, 0, false, false, false, '')}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)
 }
 
-export { MetricsSelector }
+export { SetupMetrics }

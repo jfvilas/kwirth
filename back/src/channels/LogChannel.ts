@@ -1,6 +1,7 @@
 import { LogMessage, ServiceConfig, ServiceConfigActionEnum, ServiceConfigChannelEnum, ServiceConfigFlowEnum, ServiceMessage, ServiceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common';
 import { IChannel } from '../model/IChannel'
 import * as stream from 'stream'
+import WebSocket from 'ws'
 import { PassThrough } from 'stream'; 
 import { ClusterInfo } from '../model/ClusterInfo';
 
@@ -8,7 +9,7 @@ class LogChannel implements IChannel {
     clusterInfo : ClusterInfo
     
     buffer: Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages    
-    websocketLog:Map<WebSocket, {instanceId:string, logStream:PassThrough, timestamps: boolean, previous:boolean, tailLines:number }[]>= new Map()  
+    websocketLog:Map<WebSocket, {instanceId:string, logStream:PassThrough, timestamps: boolean, previous:boolean, tailLines:number, paused:boolean }[]>= new Map()  
  
     constructor (clusterInfo:ClusterInfo) {
         this.clusterInfo = clusterInfo
@@ -37,11 +38,24 @@ class LogChannel implements IChannel {
         webSocket.send(JSON.stringify(sgnMsg))
     }
 
-    sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName: string, source:string, serviceConfig:ServiceConfig) => {
+    sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName: string, source:string, instanceId:string) => {
+        var instances = this.websocketLog.get(webSocket)
+        if (!instances) {
+            console.log('No instances found for sendLogData')
+            return
+        }
+        var instance = instances.find (i => i.instanceId === instanceId)
+        if (!instance) {
+            console.log(`No instance found for sendLogData instance ${instanceId}`)
+            return
+        }
+
+        if (instance.paused) return
+
         const logLines = source.split('\n')
         var msg:LogMessage = {
             namespace: podNamespace,
-            instance: serviceConfig.instance,
+            instance: instanceId,
             type: ServiceMessageTypeEnum.DATA,
             pod: podName,
             container: containerName,
@@ -81,7 +95,7 @@ class LogChannel implements IChannel {
                     this.buffer.set(webSocket,next)
                     text=text.substring(0,i)
                 }
-                this.sendLogData(webSocket, podNamespace, podName, containerName, text, serviceConfig)
+                this.sendLogData(webSocket, podNamespace, podName, containerName, text, serviceConfig.instance)
             })
     
             if (!this.websocketLog.get(webSocket))
@@ -91,7 +105,8 @@ class LogChannel implements IChannel {
                 instanceId: serviceConfig.instance, logStream: logStream,
                 timestamps: serviceConfig.data.timestamp,
                 previous: serviceConfig.data.previous,
-                tailLines: serviceConfig.data.tailLines
+                tailLines: serviceConfig.data.tailLines,
+                paused:false
             })   
 
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, logStream,  streamConfig)
@@ -151,6 +166,21 @@ class LogChannel implements IChannel {
     }
 
     pauseContinueChannel(webSocket: WebSocket, serviceConfig: ServiceConfig, action: ServiceConfigActionEnum): void {
+        let logInstances = this.websocketLog.get(webSocket)
+        let logInstance = logInstances?.find(i => i.instanceId === serviceConfig.instance)
+        if (logInstance) {
+            if (action === ServiceConfigActionEnum.PAUSE) {
+                logInstance.paused = true
+                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.PAUSE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm paused')
+            }
+            if (action === ServiceConfigActionEnum.CONTINUE) {
+                logInstance.paused = false
+                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.CONTINUE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm continued')
+            }
+        }
+        else {
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${serviceConfig.instance} not found`, serviceConfig)
+        }
     }
 
     removeService(webSocket: WebSocket): void {
