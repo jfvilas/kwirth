@@ -36,7 +36,7 @@ class AlertChannel implements IChannel {
             type: ServiceMessageTypeEnum.DATA,
             pod: podName,
             container: containerName,
-            channel: 'alert' as ServiceConfigChannelEnum,  //+++ repair this, channel must be string
+            channel: ServiceConfigChannelEnum.ALERT,
             text: line.substring(i+1),
             timestamp: new Date(line.substring(0,i)),
             severity: alertSeverity
@@ -100,7 +100,7 @@ class AlertChannel implements IChannel {
         webSocket.send(JSON.stringify(sgnMsg))
     }
 
-    async startChannel (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async startInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             // firstly we convert regex string into RegExp strings
             var regexes: Map<AlertSeverityEnum, RegExp[]> = new Map()
@@ -149,21 +149,20 @@ class AlertChannel implements IChannel {
             console.log('start streaming', podNamespace, podName, containerName)
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, logStream,  kubernetesStreamConfig)
         }
-        catch (err) {
+        catch (err:any) {
             console.log('Generic error starting pod log', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, JSON.stringify(err), serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, serviceConfig)
         }
 
     }
 
-    stopChannel(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
+    stopInstance(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
         if (this.websocketAlerts.get(webSocket)?.find(i => i.instanceId === serviceConfig.instance)) {
-            //this.removeAlert(webSocket,serviceConfig.instance)
             this.removeInstance(webSocket, serviceConfig.instance)
             this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALERT, serviceConfig, 'Alert service stopped')
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey doesn't allow ot there are no instances`, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, serviceConfig)
         }
     }
 
@@ -193,6 +192,14 @@ class AlertChannel implements IChannel {
         }
     }
 
+    updateInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, eventType:string, podNamespace:string, podName:string, containerName:string) : void {
+
+    }
+
+    modifyService (webSocket:WebSocket, serviceConfig: ServiceConfig) : void {
+
+    }
+
     removeService(webSocket: WebSocket): void {
         if (this.websocketAlerts.get(webSocket)) {
             for (var instance of this.websocketAlerts?.get(webSocket)!) {
@@ -203,14 +210,6 @@ class AlertChannel implements IChannel {
         else {
             console.log('WebSocket not found on alerts')
         }
-
-    }
-
-    updateInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, eventType:string, podNamespace:string, podName:string, containerName:string) : void {
-
-    }
-
-    modifyService (webSocket:WebSocket, serviceConfig: ServiceConfig) : void {
 
     }
 

@@ -55,8 +55,8 @@ const TabContent: React.FC<any> = (props:IProps) => {
         if (message.type==='data') {
             var txt=message.text
             if (props.channelObject.view==='namespace') {
-                var preLength=message.pod!.length+1
-                var preBlanks=' '.repeat(preLength)
+                var preLength = message.pod!.length+1
+                var preBlanks = ' '.repeat(preLength)
                 txt=txt.replaceAll('\n','\n'+preBlanks).trimEnd()
             }
 
@@ -173,7 +173,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
                         <YAxis />
                         <Tooltip />
                         <Legend/>
-                        { series.map ((serie,index) => <Area name={names[index]} type="monotone" {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={colours[index]} fill={`url(#color${names[index]})`} />) }
+                        { series.map ((serie,index) => <Area key={index} name={names[index]} type="monotone" {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={colours[index]} fill={`url(#color${names[index]})`} />) }
                     </AreaChart>
                 )
                 break
@@ -244,7 +244,6 @@ const TabContent: React.FC<any> = (props:IProps) => {
             var assetNames=Array.from(data.keys())
             var firstAsset=assetNames[0]
             var allMetrics:string[] = Array.from(new Set(data.get(firstAsset)!.keys()))
-            //var allMetrics:string[] = [...new Set(data.get(firstAsset)!.keys())] +++
 
             for (var metric of allMetrics) {
                 var series = assetNames.map(an => {

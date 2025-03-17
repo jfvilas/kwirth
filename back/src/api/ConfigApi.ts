@@ -1,8 +1,9 @@
 import express, { Request, Response} from 'express'
 import { CoreV1Api, AppsV1Api } from '@kubernetes/client-node'
 import { KwirthData, ServiceConfigChannelEnum } from '@jfvilas/kwirth-common'
-import { validKey } from '../tools/AuthorizationManagement'
+import { validKeyAsync } from '../tools/AuthorizationManagement'
 import { IChannel } from '../model/IChannel'
+import { ApiKeyApi } from './ApiKeyApi'
 
 export class ConfigApi {
     public route = express.Router()
@@ -10,7 +11,7 @@ export class ConfigApi {
     appsV1Api: AppsV1Api
     kwirthData: KwirthData
 
-    constructor (coreApi:CoreV1Api, appsV1Api:AppsV1Api, kwirthData:KwirthData, channels:Map<string,IChannel>) {
+    constructor (coreApi:CoreV1Api, appsV1Api:AppsV1Api, apiKeyApi: ApiKeyApi, kwirthData:KwirthData, channels:Map<string,IChannel>) {
         this.coreApi = coreApi
         this.appsV1Api = appsV1Api
         this.kwirthData = kwirthData
@@ -44,7 +45,7 @@ export class ConfigApi {
         // returns cluster information of the k8 cluster which this kwirth is connected to or running inside
         this.route.route('/cluster')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return;
+                if (!validKeyAsync(req,res, apiKeyApi)) return;
                 next();
             })
             .get( async (req:Request, res:Response) => {
@@ -61,7 +62,7 @@ export class ConfigApi {
         // get all namespaces
         this.route.route('/namespace')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return;
+                if (!validKeyAsync(req,res, apiKeyApi)) return;
                 next();
             })
             .get( async (req:Request, res:Response) => {
@@ -79,7 +80,7 @@ export class ConfigApi {
         // get all deployments in a namespace
         this.route.route(['/:namespace/sets','/:namespace/groups'])
             .all( async (req:Request, res:Response, next) => {
-                if (!validKey(req,res)) return
+                if (!validKeyAsync(req,res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -102,7 +103,7 @@ export class ConfigApi {
         // get all pods in a namespace in a group
         this.route.route('/:namespace/:group/pods')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return
+                if (!validKeyAsync(req,res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -120,7 +121,7 @@ export class ConfigApi {
         // returns an array containing all the containers running inside a pod
         this.route.route('/:namespace/:pod/containers')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return
+                if (!validKeyAsync(req,res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {

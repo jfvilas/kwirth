@@ -26,19 +26,15 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { Metrics } from './tools/MetricsTools'
 import { IChannel } from './model/IChannel'
+import { LogChannel } from './channels/LogChannel'
 import { AlertChannel } from './channels/AlertChannel'
 import { MetricsChannel } from './channels/MetricsChannel'
-import { LogChannel } from './channels/LogChannel'
 
 const http = require('http')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const requestIp = require ('request-ip')
 const PORT = 3883
-//const buffer:Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages
-//const websocketLog:Map<WebSocket, PassThrough>= new Map()  // list of intervals (and its associated metrics) that produce metrics streams
-//const websocketAlarms:Map<WebSocket, {instanceId:string, logStream:PassThrough, working:boolean, paused:boolean, regExps:Map<AlarmSeverityEnum, RegExp[]>} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
-//const websocketMetrics:Map<WebSocket, {instanceId:string, timeout: NodeJS.Timeout, working:boolean, paused:boolean, assets: AssetData[], metricsConfig:MetricsConfig} []> = new Map()  // list of intervals (and its associated metrics) that produce metrics streams
 
 const channels : Map<string, IChannel> = new Map()
 
@@ -111,11 +107,11 @@ const sendServiceConfigSignalMessage = (ws:WebSocket, action:ServiceConfigAction
 }
 
 const startPodService = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, serviceConfig:ServiceConfig) => {
-    console.log(`startPodService '${serviceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${serviceConfig.view})`)
+    console.log(`startPodService '${serviceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${serviceConfig.view}) (instance: ${serviceConfig.instance})`)
 
     sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Container ADDED: ${podNamespace}/${podName}/${containerName}`, serviceConfig)
     if(channels.has(serviceConfig.channel)) {
-        channels.get(serviceConfig.channel)?.startChannel(webSocket, serviceConfig, podNamespace, podName, containerName)
+        channels.get(serviceConfig.channel)?.startInstance(webSocket, serviceConfig, podNamespace, podName, containerName)
     }
     else {
         console.log(`Invalid channel`, serviceConfig.channel)
@@ -332,7 +328,7 @@ const processStartServiceConfig = async (serviceConfig: ServiceConfig, webSocket
 
 const processStopServiceConfig = async (webSocket: WebSocket, serviceConfig: ServiceConfig) => {
     if (channels.has(serviceConfig.channel)) {
-        channels.get(serviceConfig.channel)?.stopChannel(webSocket, serviceConfig)
+        channels.get(serviceConfig.channel)?.stopInstance(webSocket, serviceConfig)
     }
     else {
         console.log('Invalid channel on service stop')
@@ -527,21 +523,21 @@ const launch = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
     app.use(`${rootPath}/front`, express.static('./dist/front'))
 
     // serve config API
-    var va:ConfigApi = new ConfigApi(coreApi, appsApi, kwirthData, channels)
-    app.use(`${rootPath}/config`, va.route)
     var ka:ApiKeyApi = new ApiKeyApi(configMaps)
     app.use(`${rootPath}/key`, ka.route)
-    var sa:StoreApi = new StoreApi(configMaps)
+    var va:ConfigApi = new ConfigApi(coreApi, appsApi, ka, kwirthData, channels)
+    app.use(`${rootPath}/config`, va.route)
+    var sa:StoreApi = new StoreApi(configMaps, ka)
     app.use(`${rootPath}/store`, sa.route)
-    var ua:UserApi = new UserApi(secrets)
+    var ua:UserApi = new UserApi(secrets, ka)
     app.use(`${rootPath}/user`, ua.route)
     var la:LoginApi = new LoginApi(secrets, configMaps)
     app.use(`${rootPath}/login`, la.route)
-    var mk:ManageKwirthApi = new ManageKwirthApi(coreApi, appsApi, kwirthData)
+    var mk:ManageKwirthApi = new ManageKwirthApi(coreApi, appsApi, ka, kwirthData)
     app.use(`${rootPath}/managekwirth`, mk.route)
-    var mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi, channels)
+    var mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi, ka, channels)
     app.use(`${rootPath}/managecluster`, mc.route)
-    var ma:MetricsApi = new MetricsApi(clusterInfo)
+    var ma:MetricsApi = new MetricsApi(clusterInfo, ka)
     app.use(`${rootPath}/metrics`, ma.route)
 
     // obtain remote ip
@@ -555,8 +551,7 @@ const launch = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
             console.log(`Kwirth is running INSIDE cluster`)
         }
         else {
-            console.log(`Cluster name (according to kubeconfig context): ${kubeConfig.getCluster(kubeConfig.currentContext)?.name}`)
-            console.log(`Kwirth is NOT running inside a cluster`)
+            console.log(`Cluster name (according to kubeconfig context): ${kubeConfig.getCluster(kubeConfig.currentContext)?.name}. Kwirth is running OUTSIDE a cluster`)
         }
         console.log(`KWI1500I Control is being given to Kwirth`)
     })
@@ -565,8 +560,8 @@ const launch = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
         saToken.deleteToken('kwirth-sa',kwirthData.namespace)
     })
 }
+
 const initCluster = async (token:string) : Promise<ClusterInfo> => {
-    var metricsInterval:number = 60
     // load nodes
     var resp = await coreApi.listNode()
     var nodes:Map<string, NodeInfo> = new Map()
@@ -585,21 +580,18 @@ const initCluster = async (token:string) : Promise<ClusterInfo> => {
     }
     console.log('Node config loaded')
 
-    var metrics = new Metrics(token)
-    await metrics.loadMetrics(Array.from(nodes.values()))
+    // inictialize cluster
+    var clusterInfo = new ClusterInfo()
+    clusterInfo.nodes = nodes
+    clusterInfo.metrics = new Metrics(token)
+    clusterInfo.interval = 60
+    clusterInfo.token = token
+    clusterInfo.coreApi = coreApi
+    clusterInfo.appsApi = appsApi
+    clusterInfo.logApi = logApi
 
-    var clusterInfo:ClusterInfo = {
-        nodes,
-        metrics,
-        metricsInterval,
-        token,
-        coreApi,
-        appsApi, 
-        logApi
-    }
-    setInterval( () => {
-        metrics.readClusterMetrics(clusterInfo)
-    }, metricsInterval * 1000)
+    await clusterInfo.metrics.loadMetrics(Array.from(nodes.values()))
+    clusterInfo.startInterval(clusterInfo.interval)
 
     return clusterInfo
 }
@@ -611,41 +603,39 @@ console.log(`Kwirth started at ${new Date().toISOString()}`)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 // serve front application
-getMyKubernetesData()
-.then ( async (kwirthData) => {
+getMyKubernetesData().then ( async (kwirthData) => {
     try {
         saToken = new ServiceAccountToken(coreApi, kwirthData.namespace)
-        // serv accnt tokens are not created immediately, so we need to wait some time (5 segs)
-        // +++ review these async calls
         saToken.createToken('kwirth-sa',kwirthData.namespace).then ( () => {
-            setTimeout ( () => {
-                saToken.extractToken('kwirth-sa',kwirthData.namespace).then ( async (token) => {
-                    if (token)  {
-                        console.log('SA token obtained succesfully')
-                        var clusterInfo = await initCluster(token)
+            saToken.extractToken('kwirth-sa',kwirthData.namespace).then ( async (token) => {
+                if (token)  {
+                    console.log('SA token obtained succesfully')
+                    var clusterInfo = await initCluster(token)
 
-                        // load extensions
-                        var logChannel = new LogChannel(clusterInfo)
-                        var alertChannel = new AlertChannel(clusterInfo)
-                        var metricsChannel = new MetricsChannel(clusterInfo)
-                        channels.set('log', logChannel)
-                        channels.set('alert', alertChannel)
-                        channels.set('metrics', metricsChannel)
+                    // load extensions
+                    var logChannel = new LogChannel(clusterInfo)
+                    var alertChannel = new AlertChannel(clusterInfo)
+                    var metricsChannel = new MetricsChannel(clusterInfo)
+                    channels.set('log', logChannel)
+                    channels.set('alert', alertChannel)
+                    channels.set('metrics', metricsChannel)
 
-                        console.log(`Enabled channels: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
-                        console.log(`Detected own namespace: ${kwirthData.namespace}`)
+                    console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
+                    console.log(`Detected own namespace: ${kwirthData.namespace}`)
+                    if (kwirthData.deployment !== '')
                         console.log(`Detected own deployment: ${kwirthData.deployment}`)
-                        launch(kwirthData, clusterInfo)
-                    }
-                    else {
-                        console.log('SA token is invalid')
-                    }
-                })
-                .catch ( (err) => {
-                    console.log('Could not get SA token, metrics will not be available')
-                })
-            }, 1000)
-        })
+                    else
+                        console.log(`No deployment detected. Kwirth is not running inside a cluster`)
+                    launch(kwirthData, clusterInfo)
+                }
+                else {
+                    console.log('SA token is invalid, exiting...')
+                }
+            })
+            .catch ( (err) => {
+                console.log('Could not get SA token, exiting...')
+            })
+        } )                    
     }
     catch (err){
         console.log(err)

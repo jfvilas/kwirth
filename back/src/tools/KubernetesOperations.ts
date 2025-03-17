@@ -1,18 +1,5 @@
 import { AppsV1Api, CoreV1Api } from "@kubernetes/client-node";
 
-// export const restartDeployment = async (appsApi:AppsV1Api, namespace:string, deploymentName:string) => {
-//     try {
-//         console.log(`Restarting deployment ${deploymentName}`);
-//         const { body: deployment } = await appsApi.readNamespacedDeployment(deploymentName, namespace);
-//         if (!deployment!.spec!.template!.metadata!.annotations) deployment!.spec!.template!.metadata!.annotations = {};
-//         deployment!.spec!.template!.metadata!.annotations['kwirth/restartedAt'] = new Date().toISOString();
-//         appsApi.replaceNamespacedDeployment(deploymentName, namespace, deployment);
-//     }
-//     catch (err) {
-//         console.log(`Error restarting deployment ${deploymentName}:`, err);
-//     }
-// }
-
 /**
  * 
  * @param coreApi K8 core API

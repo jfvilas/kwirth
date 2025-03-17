@@ -1,27 +1,28 @@
-import express, { Request, Response} from 'express';
-import { AppsV1Api, V1DeploymentList, V1PodList } from '@kubernetes/client-node';
-import { CoreV1Api } from '@kubernetes/client-node';
-import { validAuth, validKey } from '../tools/AuthorizationManagement';
-import { restartPod, restartGroup } from '../tools/KubernetesOperations';
-import { ServiceConfigChannelEnum } from '@jfvilas/kwirth-common';
-import { IncomingMessage } from 'http';
-import { IChannel } from '../model/IChannel';
+import express, { Request, Response} from 'express'
+import { AppsV1Api, V1DeploymentList, V1PodList } from '@kubernetes/client-node'
+import { CoreV1Api } from '@kubernetes/client-node'
+import { validAuth, validKeyAsync } from '../tools/AuthorizationManagement'
+import { restartPod, restartGroup } from '../tools/KubernetesOperations'
+import { ServiceConfigChannelEnum } from '@jfvilas/kwirth-common'
+import { IncomingMessage } from 'http'
+import { IChannel } from '../model/IChannel'
+import { ApiKeyApi } from './ApiKeyApi'
 
 export class ManageClusterApi {
-    public route = express.Router();
+    public route = express.Router()
     coreApi:CoreV1Api
     appsApi:AppsV1Api
     channels:Map<string,IChannel>
 
-    constructor (coreApi:CoreV1Api, appsApi:AppsV1Api, channels:Map<string, IChannel>) {
+    constructor (coreApi:CoreV1Api, appsApi:AppsV1Api, apiKeyApi: ApiKeyApi, channels:Map<string, IChannel>) {
         this.coreApi = coreApi
         this.appsApi = appsApi
         this.channels = channels
 
         this.route.route('/find')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return;
-                next();
+                if (!validKeyAsync(req, res, apiKeyApi)) return
+                next()
             })
             .get( async (req:Request, res:Response) => {
                 try {
@@ -88,46 +89,46 @@ export class ManageClusterApi {
                         }
                 }
                 catch (err) {
-                    console.log(err)
                     res.status(500).json()
+                    console.log(err)
                 }
             })
 
         this.route.route('/restartdeployment/:namespace/:deployment')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return;
-                next();
+                if (!validKeyAsync(req, res, apiKeyApi)) return
+                next()
             })
             .post( async (req:Request, res:Response) => {
                 //++ we must segregate restarting service from logging service, and use correct channel
                 if (!validAuth(req,res, this.channels, 'restart', ServiceConfigChannelEnum.LOG, req.params.namespace,req.params.deployment,'','')) return;
                 try {
-                    restartGroup(this.coreApi, this.appsApi, req.params.namespace, req.params.deployment);
-                    res.status(200).json();
+                    restartGroup(this.coreApi, this.appsApi, req.params.namespace, req.params.deployment)
+                    res.status(200).json()
                 }
                 catch (err) {
-                    res.status(200).json([]);
-                    console.log(err);
+                    res.status(200).json([])
+                    console.log(err)
                 }
             });
 
         this.route.route('/restartpod/:namespace/:podName')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return;
-                next();
+                if (!validKeyAsync(req, res, apiKeyApi)) return
+                next()
             })
             .post( async (req:Request, res:Response) => {
-                if (!validAuth(req, res, channels, 'restart', ServiceConfigChannelEnum.LOG, req.params.namespace,'',req.params.podName,'')) return;
+                if (!validAuth(req, res, channels, 'restart', ServiceConfigChannelEnum.LOG, req.params.namespace,'',req.params.podName,'')) return
                 try {
-                    console.log(`Restart pod ${req.params.podName}`);
-                    console.log(req.headers);
-                    restartPod(coreApi, req.params.namespace, req.params.podName);
-                    res.status(200).json();
+                    console.log(`Restart pod ${req.params.podName}`)
+                    console.log(req.headers)
+                    restartPod(coreApi, req.params.namespace, req.params.podName)
+                    res.status(200).json()
                 }
                 catch (err) {
-                    res.status(200).json([]);
-                    console.log(err);
+                    res.status(200).json([])
+                    console.log(err)
                 }
-            });   
+            })
     }
 }

@@ -1,8 +1,20 @@
-import { ServiceConfigViewEnum } from "@jfvilas/kwirth-common";
+import { ServiceMessage } from "@jfvilas/kwirth-common"
+
+export interface IAlertMessage extends ServiceMessage {
+    timestamp?: Date
+    severity: AlertSeverityEnum
+    text: string
+}
+
+export enum AlertSeverityEnum {
+    INFO = 'info',
+    WARNING = 'warning',
+    ERROR = 'error'
+}
 
 export interface FiredAlert {
     timestamp: number
-    severity: any  //+++
+    severity: AlertSeverityEnum
     text:string
     namespace?:string
     group?:string

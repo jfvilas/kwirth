@@ -1,7 +1,7 @@
 import express, { Request, Response} from 'express'
 import { ConfigMaps } from '../tools/ConfigMaps'
 import { accessKeyBuild, ApiKey } from '@jfvilas/kwirth-common'
-import { cleanApiKeys, validKey } from '../tools/AuthorizationManagement'
+import { cleanApiKeys, validKeyAsync } from '../tools/AuthorizationManagement'
 import { AccessKey, accessKeyCreate, accessKeySerialize } from '@jfvilas/kwirth-common'
 import * as crypto from 'crypto'
 
@@ -20,7 +20,7 @@ export class ApiKeyApi {
 
         this.route.route('/')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return
+                if (!validKeyAsync(req,res, this)) return
                 next()
             })
             .get( async (req:Request,res:Response) => {
@@ -100,7 +100,7 @@ export class ApiKeyApi {
 
         this.route.route('/:key')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return
+                if (!validKeyAsync(req,res, this)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -150,4 +150,12 @@ export class ApiKeyApi {
                 }
             })
     }
+
+    refreshKeys = async () => {
+        var storedKeys = await this.configMaps.read('kwirth.keys', [])
+        storedKeys = cleanApiKeys(storedKeys)
+        this.configMaps.write('kwirth.keys', storedKeys )
+        ApiKeyApi.apiKeys = storedKeys
+    }
+    
 }

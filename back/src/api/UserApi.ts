@@ -1,20 +1,21 @@
-import express, { Request, Response} from 'express';
-import { Secrets } from '../tools/Secrets';
-import Semaphore from 'ts-semaphore';
-import { validKey } from '../tools/AuthorizationManagement';
+import express, { Request, Response} from 'express'
+import { Secrets } from '../tools/Secrets'
+import Semaphore from 'ts-semaphore'
+import { validKeyAsync } from '../tools/AuthorizationManagement'
+import { ApiKeyApi } from './ApiKeyApi'
 
 export class UserApi {
-    secrets:Secrets;
-    static semaphore:Semaphore = new Semaphore(1);
+    secrets:Secrets
+    static semaphore:Semaphore = new Semaphore(1)
 
-    public route = express.Router();
+    public route = express.Router()
 
-    constructor (secrets:Secrets) {
+    constructor (secrets:Secrets, apiKeyApi:ApiKeyApi) {
       this.secrets=secrets
 
       this.route.route('/')
         .all( async (req:Request,res:Response, next) => {
-            if (!validKey(req,res)) return
+            if (!validKeyAsync(req,res, apiKeyApi)) return
             next()
         })
         .get( (req:Request,res:Response) => {
@@ -24,10 +25,10 @@ export class UserApi {
                     res.status(200).json(Object.keys(users))
                 }
                 catch (err) {
-                    console.log(err)
                     res.status(500).json()
+                    console.log(err)
                 }
-            });
+            })
         })
         .post( (req:Request,res:Response) => {
             UserApi.semaphore.use ( async () => {
@@ -37,17 +38,17 @@ export class UserApi {
                     await this.secrets.write('kwirth.users',users)
                     res.status(200).json()
                 }
-                    catch (err) {
-                    console.log(err)
+                catch (err) {
                     res.status(500).json()
+                    console.log(err)
                 }
-            });
-        });
+            })
+        })
 
       this.route.route('/:user')
         .all( async (req:Request,res:Response, next) => {
-            if (!validKey(req,res)) return;
-            next();
+            if (!validKeyAsync(req,res, apiKeyApi)) return
+            next()
         })
         .get( (req:Request,res:Response) => {
             UserApi.semaphore.use ( async () => {
@@ -56,10 +57,10 @@ export class UserApi {
                     res.status(200).send(atob(users[req.params.user]))
                 }
                 catch (err) {
-                    console.log(err)
                     res.status(500).send()
+                    console.log(err)
                 }
-            });
+            })
         })
         .delete( (req:Request,res:Response) => {
             try {
@@ -87,7 +88,7 @@ export class UserApi {
                     console.log(err)
                     res.status(500).json()
                 }
-            });
-        });
+            })
+        })
     }
 }

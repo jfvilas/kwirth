@@ -1,7 +1,8 @@
 import express, { Request, Response} from 'express'
 import { ConfigMaps } from '../tools/ConfigMaps'
 import Semaphore from 'ts-semaphore'
-import { validKey } from '../tools/AuthorizationManagement'
+import { validKeyAsync } from '../tools/AuthorizationManagement'
+import { ApiKeyApi } from './ApiKeyApi'
 
 export class StoreApi {
     configMaps:ConfigMaps
@@ -9,7 +10,7 @@ export class StoreApi {
 
     public route = express.Router()
 
-    constructor (config:ConfigMaps) {
+    constructor (config:ConfigMaps, apiKeyApi: ApiKeyApi) {
         this.configMaps=config
 
         // A group is implemented by prepending 'groupname-' (the group name and a dash) to key name
@@ -17,7 +18,7 @@ export class StoreApi {
         // get groups
         this.route.route('/:user')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return
+                if (!validKeyAsync(req,res, apiKeyApi)) return
                 next()
             })
             .get(async (req:Request, res:Response) => {
@@ -33,8 +34,8 @@ export class StoreApi {
                         }
                     }
                     catch (err) {
-                        console.log(err)
                         res.status(500).json()
+                        console.log(err)
                     }
                 })
             })
@@ -42,7 +43,7 @@ export class StoreApi {
         // get objects in a group
         this.route.route('/:user/:group')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return
+                if (!validKeyAsync(req,res, apiKeyApi)) return
                 next()
             })
             .get(async (req:Request, res:Response) => {
@@ -55,15 +56,15 @@ export class StoreApi {
                             res.status(200).json(Object.keys(data).filter(k => k.startsWith(req.params.group+'-')).map(k => k.substring(k.indexOf('-')+1)))
                     }
                     catch (err) {
-                        console.log(err)
                         res.status(500).json()
+                        console.log(err)
                     }
-                    })
+                })
             })
 
         this.route.route('/:user/:group/:key')
             .all( async (req,res, next) => {
-                if (!validKey(req,res)) return
+                if (!validKeyAsync(req,res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -76,8 +77,8 @@ export class StoreApi {
                             res.status(200).json(data[req.params.group+'-'+req.params.key])
                     }      
                     catch (err) {
-                        console.log(err)
                         res.status(500).json()
+                        console.log(err)
                     }
                 })
             })
@@ -90,8 +91,8 @@ export class StoreApi {
                         res.status(200).json()
                     }      
                     catch (err) {
-                        console.log(err)
                         res.status(500).json()
+                        console.log(err)
                     }
                 })
             })

@@ -1,4 +1,17 @@
-import { MetricsConfigModeEnum, MetricsMessage } from "@jfvilas/kwirth-common";
+import { MetricsConfigModeEnum, ServiceMessage } from "@jfvilas/kwirth-common";
+
+export interface AssetMetrics {
+    assetName: string
+    values: {
+        metricName: string
+        metricValue: number
+    }[]
+}
+
+export interface IMetricsMessage extends ServiceMessage {
+    assets: AssetMetrics[]
+    timestamp: number
+}
 
 export class MetricsObject {
     public name?: string
@@ -7,7 +20,7 @@ export class MetricsObject {
     public depth: number = 10
     public width : number = 3
     public metrics: string[] = []
-    public assetMetricsValues: MetricsMessage[] = []
+    public assetMetricsValues: IMetricsMessage[] = []
     public aggregate: boolean = true
     public merge : boolean = false
     public stack : boolean = false

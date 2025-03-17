@@ -1,5 +1,5 @@
 import { Alarm } from "./Alarm";
-import { LogMessage, ServiceConfigViewEnum } from "@jfvilas/kwirth-common";
+import { LogMessage, ServiceConfigViewEnum, ServiceMessage } from "@jfvilas/kwirth-common";
 
 // export class LogObject {
 //     public clusterName: string = ''
@@ -21,6 +21,11 @@ import { LogMessage, ServiceConfigViewEnum } from "@jfvilas/kwirth-common";
 //     public showBackgroundNotification: boolean=true
 //     public alarms: Alarm[]=[]
 // }
+
+export interface ILogMessage extends ServiceMessage {
+    timestamp?: Date
+    text: string
+}
 
 export class LogObject {
     public messages: LogMessage[] = []

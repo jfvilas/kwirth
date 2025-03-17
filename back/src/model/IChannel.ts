@@ -2,8 +2,8 @@ import { ServiceConfig, ServiceConfigActionEnum } from '@jfvilas/kwirth-common'
 import WebSocket from 'ws'
 
 interface IChannel {
-    startChannel (webSocket:WebSocket, serviceConfig:ServiceConfig, podNamespace:string, podName:string, containerName:string) : void
-    stopChannel (webSocket:WebSocket, serviceConfig:ServiceConfig) : void
+    startInstance (webSocket:WebSocket, serviceConfig:ServiceConfig, podNamespace:string, podName:string, containerName:string) : void
+    stopInstance (webSocket:WebSocket, serviceConfig:ServiceConfig) : void
     removeService (webSocket:WebSocket) : void
     updateInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, eventType:string, podNamespace:string, podName:string, containerName:string) : void
     removeInstance (webSocket:WebSocket, instanceId:string) : void

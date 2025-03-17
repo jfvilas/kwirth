@@ -18,7 +18,7 @@ export const validBearerKey = (accessKey:AccessKey) : boolean => {
     return hash === accessKey.id
 }
 
-export const validKey = (req:any,res:any) => {
+export const validKeyAsync = async (req:any,res:any, apiKeyApi: ApiKeyApi) => {
     if (req.headers.authorization && req.headers.authorization) {
         var receivedAccessString=req.headers.authorization.replaceAll('Bearer ','').trim()
         var receivedAccessKey = accessKeyDeserialize(receivedAccessString)
@@ -30,13 +30,15 @@ export const validKey = (req:any,res:any) => {
                 computedExpire = +receivedAccessKey.type.split(':')[1]
         }
         else {
-            //+++ if not found we must try to read secret and refresh apiKeys array
-            var key=ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
+            var key = ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
             if (!key) {
-                console.log('Inexistent key: '+receivedAccessString)
+                await apiKeyApi.refreshKeys()
+                key = ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
+                if (!key) console.log('Inexistent key: '+receivedAccessString)
             }
-            else
+            else {
                 computedExpire = key.expire
+            }
         }
         if (computedExpire>0) {
             if (computedExpire<Date.now())
@@ -53,21 +55,6 @@ export const validKey = (req:any,res:any) => {
         return false
     }
 }
-
-// const getLogScopeLevel = (scope:string) => {
-//     const levelScopes = ['', ServiceConfigScopeEnum.FILTER, ServiceConfigScopeEnum.VIEW, ServiceConfigScopeEnum.RESTART, ServiceConfigScopeEnum.API, ServiceConfigScopeEnum.CLUSTER]
-//     return levelScopes.indexOf(scope)
-// }
-
-// const getAlarmScopeLevel = (scope:string) => {
-//     const levelScopes = ['', ServiceConfigScopeEnum.SUBSCRIBE, ServiceConfigScopeEnum.CREATE, ServiceConfigScopeEnum.CLUSTER ]
-//     return levelScopes.indexOf(scope)
-// }
-
-// const getMetricsScopeLevel = (scope:string) => {
-//     const levelScopes = ['', ServiceConfigScopeEnum.SNAPSHOT, ServiceConfigScopeEnum.STREAM, ServiceConfigScopeEnum.CLUSTER ]
-//     return levelScopes.indexOf(scope)
-// }
 
 export const getServiceScopeLevel = (channels:Map<string, IChannel>, serviceConfigChannel:string, scope:string) : number => {
     switch (serviceConfigChannel) {

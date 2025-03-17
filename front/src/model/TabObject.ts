@@ -17,7 +17,7 @@ interface IChannelObject {
 interface ITabObject {
     name?: string
     ws: WebSocket|null
-    keepalive: number
+    keepaliveRef: number
     defaultTab: boolean
     channelId: string
     channelObject: IChannelObject

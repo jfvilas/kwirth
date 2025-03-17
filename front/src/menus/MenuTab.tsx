@@ -21,7 +21,6 @@ enum MenuTabOption {
     LogPause,
     LogStop,
     MetricsStart,
-    MetricsAdd,
     MetricsPause,
     MetricsStop,
     AlarmStart,

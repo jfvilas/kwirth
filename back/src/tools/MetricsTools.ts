@@ -19,7 +19,7 @@ export interface MetricDefinition {
 export class Metrics {
     private token:string
     private metricsList:Map<string,MetricDefinition>
-    private loadingClusterMetrics: boolean=false
+    private loadingClusterMetrics: boolean = false
 
     constructor (token:string) {
         this.token=token
@@ -144,7 +144,7 @@ export class Metrics {
             text = await resp.text()
         }
         catch (error:any) {
-            console.log('Error reading cAdvisor metrics', error)
+            console.log('Error reading cAdvisor metrics', error.stack)
             text=''
         }
         // add kwirth metrics
@@ -263,13 +263,13 @@ export class Metrics {
     public readClusterMetrics = async (clusterInfo: ClusterInfo) => {
         // +++ we should check cluster config (number of nodes) from time to time, because  it impacts calculation of "kwirth_cluster_..." metrics
         if (this.loadingClusterMetrics) {
-            console.log('Still loading cluster metrics')
+            console.log(`Still loading cluster metrics ${new Date().toTimeString()}`)
             return
         }
         this.loadingClusterMetrics = true
         console.log(`About to read cluster metrics ${new Date().toTimeString()}`)
         for (var node of clusterInfo.nodes.values()) {
-            this.readNodeMetrics(node)
+            await this.readNodeMetrics(node)
         }
         this.loadingClusterMetrics = false
     }
@@ -318,7 +318,7 @@ export class Metrics {
                 for (var n of clusterInfo.nodes.values()) {
                     vcpus += n.machineMetrics.get('machine_cpu_cores')!
                 }
-                let seconds = clusterInfo.metricsInterval
+                let seconds = clusterInfo.interval
                 var podSeconds = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.metricValues!, 'container_cpu_usage_seconds_total', view, node, asset)).value
                 var podSecondsPrev = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.prevValues!, 'container_cpu_usage_seconds_total', view, node, asset)).value
                 if (vcpus && podSeconds && podSecondsPrev) {

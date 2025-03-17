@@ -11,7 +11,8 @@ enum MenuDrawerOption {
     DeleteBoard,
     ImportBoards,
     ExportBoards,
-    Settings,
+    SettingsUser,
+    SettingsCluster,
     ManageCluster,
     UserSecurity,
     UpdateKwirth,
@@ -40,7 +41,8 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
             <Divider/>
             <MenuItem key='boardexp' onClick={() => optionSelected(MenuDrawerOption.ExportBoards)}><ImportExport/>&nbsp;Export all boards (to downloadable file)</MenuItem>
             <MenuItem key='boardimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new boards from file (and merge overwriting)</MenuItem>
-            <MenuItem key='settings' onClick={() => optionSelected(MenuDrawerOption.Settings)}><Settings/>&nbsp;Settings</MenuItem>
+            <MenuItem key='settingsu' onClick={() => optionSelected(MenuDrawerOption.SettingsUser)}><Settings/>&nbsp;User settings</MenuItem>
+            <MenuItem key='settingsc' onClick={() => optionSelected(MenuDrawerOption.SettingsCluster)}><Settings/>&nbsp;Cluster Settings</MenuItem>
             <Divider/>
             { props.user.scope==='cluster' && 
                 <div>

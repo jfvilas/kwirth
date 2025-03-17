@@ -21,7 +21,8 @@ import ManageClusters from './components/ManageClusters'
 import ManageUserSecurity from './components/ManageUserSecurity'
 import { ResourceSelector, IResourceSelected } from './components/ResourceSelector'
 import { TabContent } from './components/TabContent'
-import { SettingsConfig } from './components/SettingsConfig'
+import { SettingsUser } from './components/SettingsUser'
+import { SettingsCluster } from './components/SettingsCluster'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
 import { VERSION } from './version'
@@ -33,9 +34,9 @@ import { KwirthData, MetricsConfigModeEnum, ServiceConfigActionEnum, ServiceConf
 import { ITabObject } from './model/TabObject'
 import { MetricDescription } from './model/MetricDescription'
 
-import { LogObject } from './model/LogObject'
-import { AlertObject } from './model/AlertObject'
-import { MetricsObject } from './model/MetricsObject'
+import { ILogMessage, LogObject } from './model/LogObject'
+import { AlertObject, AlertSeverityEnum, IAlertMessage } from './model/AlertObject'
+import { IMetricsMessage, MetricsObject } from './model/MetricsObject'
 
 import { SetupLog } from './components/SetupLog'
 import { SetupAlert } from './components/SetupAlert'
@@ -44,30 +45,6 @@ import { SetupMetrics } from './components/SetupMetrics'
 
 const App: React.FC = () => {
 
-    interface ILogMessage extends ServiceMessage {
-        timestamp?: Date
-        text: string
-    }
-
-    interface IAlertMessage extends ServiceMessage {
-        timestamp?: Date
-        severity: AlarmSeverityEnum
-        text: string
-    }
-
-    interface AssetMetrics {
-        assetName: string
-        values: {
-            metricName: string
-            metricValue: number
-        }[]
-    }
-
-    interface IMetricsMessage extends ServiceMessage {
-        assets: AssetMetrics[]
-        timestamp: number
-    }
-    
     var backendUrl='http://localhost:3883'
     const rootPath = window.__PUBLIC_PATH__ || ''
     if ( process.env.NODE_ENV==='production') backendUrl=window.location.protocol+'//'+window.location.host
@@ -95,7 +72,7 @@ const App: React.FC = () => {
     const [refreshTabContent, setRefreshTabContent] = useState(0)
 
     // message list management
-    const [logMessages, setLogMessages] = useState<ILogMessage[]>([])  //+++ i think this is being used just for forcing render
+    const [logMessages, setLogMessages] = useState<ILogMessage[]>([])  // this state is used to force rerender og logMessages inside TabContent (it does not store messages in fact)
     const lastLineRef = useRef(null)
 
     // general
@@ -122,7 +99,8 @@ const App: React.FC = () => {
     const [showSaveBoard, setShowSaveBoard]=useState<boolean>(false)
     const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false)
     const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false)
-    const [showSettingsConfig, setShowSettingsConfig]=useState<boolean>(false)
+    const [showSettingsUser, setShowSettingsUser]=useState<boolean>(false)
+    const [showSettingsCluster, setShowSettingsCluster]=useState<boolean>(false)
     const [initialMessage, setInitialMessage]=useState<string>('')
     const [boardLoaded, setBoardLoaded] = useState<boolean>(false)
     const [currentBoardName, setCurrentBoardName] = useState('')
@@ -132,12 +110,8 @@ const App: React.FC = () => {
     const [showPickList, setShowPickList]=useState<boolean>(false)
     
     useEffect ( () => {
-        //+++ add keepalive dialog /client-server flow), and add keepalive mechanism (in front)
-        //+++ add a settings section for a log object (like settings, but specific)
         //+++ when a board is loaded all messages are received: alarms should not be in effect until everything is received
-        //+++ with ephemeral logs, the content of 'messages' should contain some info on alarms triggered, or even a dashboard (ephemeral logs do not contains log lines)
         //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
-        //+++ decide wether to have collapsibility on the resource selector and the toolbar (to maximize log space)
         //+++ add options to asterisk log lines containing a specific text (like 'password', 'pw', etc...)
 
         if (logged) {
@@ -248,7 +222,7 @@ const App: React.FC = () => {
         var newTab:ITabObject = {
             name: tabName+index.toString(),
             ws: null,
-            keepalive: 0,
+            keepaliveRef: 60,
             defaultTab: false,
             channelId: selection.channel,
             channelObject: {
@@ -269,7 +243,7 @@ const App: React.FC = () => {
         newTab.ws.onopen = () => {
             console.log(`WS connected: ${newTab.ws!.url}`)
             
-            newTab.keepalive = setInterval(() => {
+            newTab.keepaliveRef = setInterval(() => {
                 var serviceConfig:ServiceConfig = {
                     channel: ServiceConfigChannelEnum.NONE,
                     object: ServiceConfigObjectEnum.PODS,                    
@@ -285,8 +259,8 @@ const App: React.FC = () => {
                     container: ''
                 }
                 if (newTab.ws) newTab.ws.send(JSON.stringify(serviceConfig))
-            }, 60000,'')    // +++ add option to configure keepalive
-                            // +++ add mechanism to reconnect (connect to same instance even if websocket breaks)
+            }, (settings?.keepAliveInterval || 60) * 1000,'')  
+            // +++ add mechanism to reconnect (connect to same instance over a new websocket)
         }
         newTab.ws.onerror = () => console.log(`Error detected on WS: ${newTab.ws!.url}`)
         newTab.ws.onmessage = (event) => wsOnTabMessage(event)
@@ -315,7 +289,7 @@ const App: React.FC = () => {
                 console.log(`Error, invalid channel: `, selection.channel)
         }
         tabs.push(newTab)
-        setTabs(tabs)
+        setTabs([...tabs])
         setSelectedTabName(newTab.name)
     }
 
@@ -337,8 +311,8 @@ const App: React.FC = () => {
         try {
             serviceMessage = JSON.parse(wsEvent.data) as ServiceMessage
         }
-        catch (err) {
-            console.log(err)
+        catch (err:any) {
+            console.log(err.stack)
             console.log(wsEvent.data)
             return
         }
@@ -391,7 +365,7 @@ const App: React.FC = () => {
                 // if current log is displayed (focused), add message to the screen
                 if (selectedTabRef.current === tab.name) {
                     if (!tab.channelPaused) {
-                        setLogMessages([])  //+++ this forces LogContent to re-render +++ change to any other thing
+                        setLogMessages([])
                         if (dataLog.follow && lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
                     }
                 }
@@ -580,6 +554,7 @@ const App: React.FC = () => {
                 var dataLog = tab.channelObject.data as LogObject
                 dataLog.messages.push({
                     text: '=========================================================================',
+                    pod: '',
                     channel: 'log',
                     type: ServiceMessageTypeEnum.DATA,
                     instance: ''
@@ -590,7 +565,7 @@ const App: React.FC = () => {
                 var dataAlert = tab.channelObject.data as AlertObject
                 dataAlert.firedAlerts.push({
                     timestamp: Date.now(),
-                    severity: AlarmSeverityEnum.INFO,
+                    severity: AlertSeverityEnum.INFO,
                     namespace:'',
                     container: '',
                     text: '========================================================================='
@@ -649,8 +624,9 @@ const App: React.FC = () => {
 
         if (selectedTab.channelObject) stopChannel(selectedTab)
         selectedTab.ws?.close()
-        clearInterval(selectedTab.keepalive)
+        clearInterval(selectedTab.keepaliveRef)
         setTabs(tabs.filter(t => t!==selectedTab))
+        if (tabs.length>1) setSelectedTabName(tabs.find(t => t!=selectedTab)?.name)
     }
 
     const menuTabOptionSelected = (option: MenuTabOption) => {
@@ -727,12 +703,6 @@ const App: React.FC = () => {
             // case MenuTabOption.MetricsStart:
             //     onClickMetricsStart()
             //     break
-            case MenuTabOption.MetricsAdd:
-                // +++ we have 2 options here:
-                // Add new metrics to current metricsobject metrics'
-                // create an array of metrics objects
-                //onClickMetricsStart()
-                break
             case MenuTabOption.ChannelStart:
                 onClickChannelStart()
                 break
@@ -891,8 +861,11 @@ const App: React.FC = () => {
             case MenuDrawerOption.ImportBoards:
                 // nothing to do, the menuitem launches the handleUpload
                 break
-            case MenuDrawerOption.Settings:
-                setShowSettingsConfig(true)
+            case MenuDrawerOption.SettingsUser:
+                setShowSettingsUser(true)
+                break
+            case MenuDrawerOption.SettingsCluster:
+                setShowSettingsCluster(true)
                 break
             case MenuDrawerOption.UpdateKwirth:
                 setMsgBox(MsgBoxYesNo('Update Kwirth',`This action will restart the Kwirth instance and users won't be able to work during 7 to 10 seconds. In addition, all volatile API keys will be deleted. Do you want to continue?`,setMsgBox, (button) => {
@@ -935,9 +908,17 @@ const App: React.FC = () => {
         }
     }
 
-    const settingsClosed = (newSettings:Settings) => {
-        setShowSettingsConfig(false)
+    const settingsUserClosed = (newSettings:Settings) => {
+        setShowSettingsUser(false)
         if (newSettings) writeSettings(newSettings)
+    }
+
+    const settingsClusterClosed = (interval:number) => {
+        setShowSettingsCluster(false)
+        if (interval) {
+            let payload = JSON.stringify( { interval } )
+            fetch (`${backendUrl}/metrics/config`, addPostAuthorization(accessString, payload))
+        }
     }
 
     const onSetupMetricsClosed = (metrics:string[], mode:MetricsConfigModeEnum, depth:number, width:number, interval:number, aggregate:boolean, merge:boolean, stack:boolean, type:string) => {
@@ -1067,7 +1048,7 @@ const App: React.FC = () => {
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
                 <ResourceSelector clusters={clusters} channels={channels} onAdd={onResourceSelectorAdd} sx={{ mt:1, ml:1 }}/>
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
-                    <Tabs value={selectedTabName} onChange={onChangeTabs} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
+                    <Tabs value={selectedTabName || (tabs.length>0? tabs[0].name:'')} onChange={onChangeTabs} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
                         { tabs.length>0 && tabs.map(t => {
                             if (t===selectedTab) {
                                 return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':pausedTabs.includes(t)?'#cccccc':'')}}/>
@@ -1095,7 +1076,8 @@ const App: React.FC = () => {
             { showSetupAlert && <SetupAlert onClose={onAlertSetupClosed} settings={settings} channelObject={selectedTab?.channelObject} /> }
             { showSetupMetrics && <SetupMetrics onClose={onSetupMetricsClosed} settings={settings} channelObject={selectedTab?.channelObject} metricsList={clusters!.find(c => c.name===selectedTab!.channelObject!.clusterName)?.metricsList!} /> }
 
-            { showSettingsConfig && <SettingsConfig  onClose={settingsClosed} settings={settings} /> }
+            { showSettingsUser && <SettingsUser  onClose={settingsUserClosed} settings={settings} /> }
+            { showSettingsCluster && <SettingsCluster  onClose={settingsClusterClosed} /> }
             { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { pickListConfig!==null && <PickList config={pickListConfig}/> }
             { msgBox }

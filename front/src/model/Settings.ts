@@ -14,7 +14,7 @@ class Settings {
 
     public alertMaxAlerts: number = 25
 
-    public clusterMetricsInterval: number = 120
+    public keepAliveInterval: number = 60
 }
 
 export { Settings }

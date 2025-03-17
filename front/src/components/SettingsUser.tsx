@@ -7,7 +7,8 @@ interface IProps {
     onClose:(newSettings:Settings|undefined) => {}
     settings:Settings
 }
-const SettingsConfig: React.FC<any> = (props:IProps) => {
+
+const SettingsUser: React.FC<any> = (props:IProps) => {
     const [value, setValue] = React.useState('log')
     const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages)
     const [logPrevious, setLogPrevious] = useState(props.settings.logPrevious)
@@ -19,7 +20,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
     const [metricsWidth, setMetricsWidth] = useState(props.settings.metricsWidth)
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
     const [metricsAggregate, setMetricsAggregate] = useState(props.settings.metricsAggregate)
-    const [clusterMetricsInterval, setClusterMetricsInterval] = useState(props.settings.clusterMetricsInterval)
+    const [keepAliveInterval, setKeepAliveInterval] = useState(props.settings.keepAliveInterval)
 
     const onChangeLogMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
         setLogMaxMessages(+event.target.value)
@@ -61,8 +62,8 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         setMetricsAggregate(event.target.checked)
     }
 
-    const onChangeClusterMetricsInterval = (event:ChangeEvent<HTMLInputElement>) => {
-        setClusterMetricsInterval(+event.target.value)
+    const onChangeKeepAliveInterval = (event:ChangeEvent<HTMLInputElement>) => {
+        setKeepAliveInterval(+event.target.value)
     }
 
     const closeOk = () =>{
@@ -75,7 +76,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
         newSettings.metricsDepth = metricsDepth
         newSettings.metricsInterval = metricsInterval
         newSettings.metricsAggregate = metricsAggregate
-        newSettings.clusterMetricsInterval = clusterMetricsInterval
+        newSettings.keepAliveInterval = keepAliveInterval
         props.onClose(newSettings)
     }
 
@@ -151,7 +152,7 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
 
                 <div hidden={value!=='kwirth'}>
                     <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                        <TextField value={clusterMetricsInterval} onChange={onChangeClusterMetricsInterval} variant='standard' label='Cluster metrics read interval' SelectProps={{native: true}} type='number'></TextField>
+                        <TextField value={keepAliveInterval} onChange={onChangeKeepAliveInterval} variant='standard' label='Keep-alive interval (seconds)' SelectProps={{native: true}} type='number'></TextField>
                     </Stack>
                 </div>
                 
@@ -165,4 +166,4 @@ const SettingsConfig: React.FC<any> = (props:IProps) => {
     </>)
 }
 
-export { SettingsConfig }
+export { SettingsUser }

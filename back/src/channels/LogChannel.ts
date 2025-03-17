@@ -70,7 +70,7 @@ class LogChannel implements IChannel {
         }
     }
     
-    async startChannel (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async startInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             var streamConfig = { 
                 follow: true, 
@@ -107,58 +107,28 @@ class LogChannel implements IChannel {
                 previous: serviceConfig.data.previous,
                 tailLines: serviceConfig.data.tailLines,
                 paused:false
-            })   
+            })
 
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, logStream,  streamConfig)
         }
-        catch (err) {
+        catch (err:any) {
             console.log('Generic error starting pod log', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, JSON.stringify(err), serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, serviceConfig)
         }
     }
 
-    // removeAlert = (webSocket:WebSocket, instanceId:string) => {
-    //     if (this.websocketAlerts.has(webSocket)) {
-    //         var instances = this.websocketAlerts.get(webSocket)
-    //         if (instances) {
-    //             var instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
-    //             while (instanceIndex>=0) {
-    //                 if (instanceIndex>=0) {
-    //                     var instance = instances[instanceIndex]
-    //                     if (instance.logStream)
-    //                         instance.logStream.removeAllListeners()
-    //                     else
-    //                         console.log(`Alarm logStream not found of instance id ${instanceId}`)
-    //                     instances.splice(instanceIndex,1)
-    //                 }
-    //                 else{
-    //                     console.log(`Instance ${instanceId} not found, cannot delete alarm`)
-    //                 }
-    //                 instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
-    //             }
-    //         }
-    //         else {
-    //             console.log('There are no alarm Instances on websocket')
-    //         }
-    //     }
-    //     else {
-    //         console.log('WebSocket not found on alarms')
-    //     }
-    // }
-
-    stopChannel(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
+    stopInstance(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
         if (this.websocketLog.get(webSocket)?.find(i => i.instanceId === serviceConfig.instance)) {
             this.removeInstance(webSocket, serviceConfig.instance)
             this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, serviceConfig, 'Log service stopped')
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey doesn't allow ot there are no instances`, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, serviceConfig)
         }
     }
 
     getServiceScopeLevel(scope: string): number {
-        // +++ refactor to remove restart & api
-        return ['', 'filter', 'view', 'restart', 'api', 'cluster'].indexOf(scope)
+        return ['', 'filter', 'view', 'cluster'].indexOf(scope)
     }
 
     processModifyServiceConfig(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
@@ -183,8 +153,15 @@ class LogChannel implements IChannel {
         }
     }
 
+    updateInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, eventType:string, podNamespace:string, podName:string, containerName:string) : void {
+
+    }
+
+    modifyService (webSocket:WebSocket, serviceConfig: ServiceConfig) : void {
+
+    }
+
     removeService(webSocket: WebSocket): void {
-        // +++ review alerchannel on this precedure
         if (this.websocketLog.get(webSocket)) {
             for (var instance of this.websocketLog?.get(webSocket)!) {
                 this.removeInstance (webSocket, instance.instanceId)
@@ -192,16 +169,8 @@ class LogChannel implements IChannel {
             this.websocketLog.delete(webSocket)
         }
         else {
-            console.log('WebSocket not found on alarms')
+            console.log('WebSocket not found on logs')
         }
-    }
-
-    updateInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, eventType:string, podNamespace:string, podName:string, containerName:string) : void {
-
-    }
-
-    modifyService (webSocket:WebSocket, serviceConfig: ServiceConfig) : void {
-
     }
 
     removeInstance(webSocket: WebSocket, instanceId: string): void {

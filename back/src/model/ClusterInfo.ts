@@ -11,12 +11,22 @@ export interface NodeInfo {
     timestamp: number
 }
 
-export interface ClusterInfo {
-    nodes: Map<string, NodeInfo>
-    coreApi: CoreV1Api
-    appsApi: AppsV1Api
-    logApi: Log
-    token: string
-    metrics: Metrics
-    metricsInterval: number
+export class ClusterInfo {
+    public nodes: Map<string, NodeInfo> = new Map()
+    public coreApi!: CoreV1Api
+    public appsApi!: AppsV1Api
+    public logApi!: Log
+    public token: string = ''
+    public metrics!: Metrics;
+    public interval: number = 60
+    public intervalRef: number = -1
+
+    stopInterval = () => clearTimeout(this.intervalRef)
+
+    startInterval = (seconds: number) => { 
+        this.interval = seconds
+        this.intervalRef = setInterval(() => { 
+            this.metrics.readClusterMetrics(this) 
+        }, this.interval * 1000, {})
+    }
 }

@@ -18,7 +18,6 @@ class MetricsChannel implements IChannel {
         var assetMetrics:AssetMetrics = { assetName: this.getAssetMetricName(serviceConfig, assets), values: [] }
         for (var metricName of serviceConfig.data.metrics) {
             var uniqueValues:number[]=[]
-            console.log ('gam assets', assets)
             for (var asset of assets) {
                 var result = this.clusterInfo.metrics.getContainerMetricValue(this.clusterInfo, metricName, serviceConfig.view, asset)
                 uniqueValues.push(result)
@@ -156,8 +155,8 @@ class MetricsChannel implements IChannel {
             instance.working=false
         }
         catch (err) {
-            console.log('Error reading metrics', err)
             this.sendChannelSignal(webSocket, SignalMessageLevelEnum.WARNING, `Cannot read metrics for instance ${instanceId}`, serviceConfig)
+            console.log('Error reading metrics', err)
         }
     }
     
@@ -184,7 +183,7 @@ class MetricsChannel implements IChannel {
         webSocket.send(JSON.stringify(sgnMsg))
     }
 
-    async startChannel (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async startInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             switch (serviceConfig.data.mode) {
                 case MetricsConfigModeEnum.SNAPSHOT:
@@ -200,22 +199,36 @@ class MetricsChannel implements IChannel {
                     if (podNode) {
                         console.log(`Start pod metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
                         if (this.websocketMetrics.has(webSocket)) {
+                            console.log('hasws')
                             var instances = this.websocketMetrics.get(webSocket)
                             var instance = instances?.find((instance) => instance.instanceId === serviceConfig.instance)
+                            if (!instance) {
+                                console.log('newi')
+                                // new instance for an existing websocket
+                                var interval=(serviceConfig.data.interval? serviceConfig.data.interval:60)*1000
+                                var timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,serviceConfig.instance), interval)
+                                instances?.push({instanceId:serviceConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], serviceConfig})
+                                return
+                            }
+                            
                             if (serviceConfig.data.view === ServiceConfigViewEnum.CONTAINER) {
                                 instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
                             }
                             else {
-                                if (!instance?.assets.find(a => a.podName === podName && a.containerName === containerName)) {
-                                    instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName})                            
+                                console.log('nocont')
+                                if (!instance.assets.find(a => a.podName === podName && a.containerName === containerName)) {
+                                    console.log('push')
+                                    instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})                            
                                 }
                             }
+                            console.log('instances')
+                            console.log(instances)
                         }
                         else {
                             this.websocketMetrics.set(webSocket, [])
                             var interval=(serviceConfig.data.interval? serviceConfig.data.interval:60)*1000
                             var timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,serviceConfig.instance), interval)
-                            var instances=this.websocketMetrics.get(webSocket)
+                            var instances = this.websocketMetrics.get(webSocket)
                             instances?.push({instanceId:serviceConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], serviceConfig})
                         }
                     }
@@ -228,13 +241,13 @@ class MetricsChannel implements IChannel {
                     break
             }
         }
-        catch (err) {
+        catch (err:any) {
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, serviceConfig)
             console.log('Generic error starting metrics service', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, JSON.stringify(err), serviceConfig)
         }
     }
 
-    stopChannel (webSocket: WebSocket, serviceConfig: ServiceConfig): void {
+    stopInstance (webSocket: WebSocket, serviceConfig: ServiceConfig): void {
         this.removeInstance (webSocket,serviceConfig.instance)
         this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics service stopped')
     }
