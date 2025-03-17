@@ -1,7 +1,8 @@
-import React, { useContext } from 'react'
+//import React, { useContext } from 'react'
+import React from 'react'
 import { Collapse, Divider, Menu, MenuItem, MenuList, Typography } from '@mui/material'
-import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, RestartAlt, Info, Add } from '@mui/icons-material'
-import { SessionContext, SessionContextType } from '../model/SessionContext'
+import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, Info } from '@mui/icons-material'
+//import { SessionContext, SessionContextType } from '../model/SessionContext'
 import { ITabObject } from '../model/TabObject'
 
 enum MenuTabOption {
@@ -42,61 +43,61 @@ interface IProps {
 }
 
 const MenuTab: React.FC<any> = (props:IProps) => {
-    const {user} = useContext(SessionContext) as SessionContextType;
+    // const {user} = useContext(SessionContext) as SessionContextType;
     const [subMenuTabOpen, setSubmenuTabOpen] = React.useState(false)
-    const [subMenuLogOpen, setSubmenuLogOpen] = React.useState(false)
-    const [subMenuMetricsOpen, setSubmenuMetricsOpen] = React.useState(false)
-    const [subMenuAlarmOpen, setSubmenuAlarmOpen] = React.useState(false)
-    const [subMenuManageOpen, setSubmenuManageOpen] = React.useState(false)
+    // const [subMenuLogOpen, setSubmenuLogOpen] = React.useState(false)
+    // const [subMenuMetricsOpen, setSubmenuMetricsOpen] = React.useState(false)
+    // const [subMenuAlarmOpen, setSubmenuAlarmOpen] = React.useState(false)
+    // const [subMenuManageOpen, setSubmenuManageOpen] = React.useState(false)
 
     const submenuTabClick = () => {
         if (!subMenuTabOpen) {
-            setSubmenuLogOpen(false)
-            setSubmenuMetricsOpen(false)
-            setSubmenuManageOpen(false)
+            // setSubmenuLogOpen(false)
+            // setSubmenuMetricsOpen(false)
+            // setSubmenuManageOpen(false)
         }
         setSubmenuTabOpen(!subMenuTabOpen)
     }
 
-    const submenuLogClick = () => {
-        if (!subMenuLogOpen) {
-            setSubmenuTabOpen(false)
-            setSubmenuMetricsOpen(false)
-            setSubmenuAlarmOpen(false)
-            setSubmenuManageOpen(false)
-        }
-        setSubmenuLogOpen(!subMenuLogOpen)
-    }
+    // const submenuLogClick = () => {
+    //     if (!subMenuLogOpen) {
+    //         setSubmenuTabOpen(false)
+    //         setSubmenuMetricsOpen(false)
+    //         setSubmenuAlarmOpen(false)
+    //         setSubmenuManageOpen(false)
+    //     }
+    //     setSubmenuLogOpen(!subMenuLogOpen)
+    // }
 
-    const submenuMetricsClick = () => {
-        if (!subMenuMetricsOpen) {
-            setSubmenuTabOpen(false)
-            setSubmenuLogOpen(false)
-            setSubmenuAlarmOpen(false)
-            setSubmenuManageOpen(false)
-        }
-        setSubmenuMetricsOpen(!subMenuMetricsOpen)
-    }
+    // const submenuMetricsClick = () => {
+    //     if (!subMenuMetricsOpen) {
+    //         setSubmenuTabOpen(false)
+    //         setSubmenuLogOpen(false)
+    //         setSubmenuAlarmOpen(false)
+    //         setSubmenuManageOpen(false)
+    //     }
+    //     setSubmenuMetricsOpen(!subMenuMetricsOpen)
+    // }
 
-    const submenuAlarmClick = () => {
-        if (!subMenuAlarmOpen) {
-            setSubmenuTabOpen(false)
-            setSubmenuLogOpen(false)
-            setSubmenuMetricsOpen(false)
-            setSubmenuManageOpen(false)
-        }
-        setSubmenuAlarmOpen(!subMenuAlarmOpen)
-    }
+    // const submenuAlarmClick = () => {
+    //     if (!subMenuAlarmOpen) {
+    //         setSubmenuTabOpen(false)
+    //         setSubmenuLogOpen(false)
+    //         setSubmenuMetricsOpen(false)
+    //         setSubmenuManageOpen(false)
+    //     }
+    //     setSubmenuAlarmOpen(!subMenuAlarmOpen)
+    // }
 
-    const submenuManageClick = () => {
-        if (!subMenuManageOpen) {
-            setSubmenuTabOpen(false)
-            setSubmenuLogOpen(false)
-            setSubmenuAlarmOpen(false)
-            setSubmenuMetricsOpen(false)
-        }
-        setSubmenuManageOpen(!subMenuManageOpen)
-    }
+    // const submenuManageClick = () => {
+    //     if (!subMenuManageOpen) {
+    //         setSubmenuTabOpen(false)
+    //         setSubmenuLogOpen(false)
+    //         setSubmenuAlarmOpen(false)
+    //         setSubmenuMetricsOpen(false)
+    //     }
+    //     setSubmenuManageOpen(!subMenuManageOpen)
+    // }
 
     const menuTabs=(
         <Menu id='menu-logs' anchorEl={props.anchorMenuTab} open={Boolean(props.anchorMenuTab)} onClose={props.onClose}>

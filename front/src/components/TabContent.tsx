@@ -1,7 +1,7 @@
 import { Box, Stack, Typography } from '@mui/material'
 import { LogObject } from '../model/LogObject'
 import { LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
-import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Label, Cell } from 'recharts'
+import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts'
 import { FiredAlert } from '../model/AlertObject'
 import { MetricsObject } from '../model/MetricsObject'
 import { ReactJSXElement } from '@emotion/react/types/jsx-namespace'
@@ -49,7 +49,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
         "#f1c1d2"  // rosa bebé pastel
     ]
     
-    const formatLogLine = (message:LogMessage|null, index:number, color:number=0, ) => {
+    const formatLogLine = (message:LogMessage|null, index:number) => {
         if (!message) return null
 
         if (message.type==='data') {
@@ -95,9 +95,9 @@ const TabContent: React.FC<any> = (props:IProps) => {
         return <pre>
             {messages.map((message, index) => {
                 if (index===props.channelObject.data.messages.length-1)
-                    return <><div key={index} ref={props.lastLineRef} >{formatLogLine(message, index, 0)}</div><div key={-1} >&nbsp;</div></>
+                    return <><div key={index} ref={props.lastLineRef} >{formatLogLine(message, index)}</div><div key={-1} >&nbsp;</div></>
                 else 
-                    return <div key={index}>{formatLogLine(message, index, 0)}</div>
+                    return <div key={index}>{formatLogLine(message, index)}</div>
             })}
         </pre>
     }
@@ -158,7 +158,6 @@ const TabContent: React.FC<any> = (props:IProps) => {
                         <defs>
                             {
                                 series.map( (s,index) => {
-                                    var color = '#' + (Math.round(Math.random()*128)).toString(16) + (Math.round(Math.random()*128)).toString(16) + (Math.round(Math.random()*128)).toString(16)
                                     return (
                                         <linearGradient key={index} id={`color${names[index]}`} x1='0' y1='0' x2='0' y2='1'>
                                             <stop offset='7%' stopColor={colours[index]} stopOpacity={0.8}/>
@@ -245,7 +244,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
             var firstAsset=assetNames[0]
             var allMetrics:string[] = Array.from(new Set(data.get(firstAsset)!.keys()))
 
-            for (var metric of allMetrics) {
+            for (let metric of allMetrics) {
                 var series = assetNames.map(an => {
                     return data.get(an)!.get(metric)
                 })

@@ -1,6 +1,6 @@
 import express, { Request, Response} from 'express'
 import { ClusterInfo } from '../model/ClusterInfo'
-import { validKeyAsync } from '../tools/AuthorizationManagement'
+import { validKey } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
 
 export class MetricsApi {
@@ -12,7 +12,7 @@ export class MetricsApi {
 
         this.route.route('/')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req, res, apiKeyApi)) return
+                if (!validKey(req, res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -28,7 +28,7 @@ export class MetricsApi {
             })
         this.route.route('/debug/:action/:nodename')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req, res, apiKeyApi)) return
+                if (!validKey(req, res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -60,7 +60,7 @@ export class MetricsApi {
 
         this.route.route('/config')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req, res, apiKeyApi)) return
+                if (!validKey(req, res, apiKeyApi)) return
                 next()
             })
             .post( async (req:Request, res:Response) => {

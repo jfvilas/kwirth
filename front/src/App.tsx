@@ -30,7 +30,7 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, MetricsConfigModeEnum, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan, ServiceConfigScopeEnum, ServiceConfigViewEnum, AlarmSeverityEnum, ServiceConfig, ServiceConfigObjectEnum, ServiceMessageTypeEnum } from '@jfvilas/kwirth-common'
+import { KwirthData, MetricsConfigModeEnum, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan, ServiceConfigScopeEnum, ServiceConfigViewEnum, ServiceConfig, ServiceConfigObjectEnum, ServiceMessageTypeEnum } from '@jfvilas/kwirth-common'
 import { ITabObject } from './model/TabObject'
 import { MetricDescription } from './model/MetricDescription'
 
@@ -215,9 +215,9 @@ const App: React.FC = () => {
         }
 
         var tabName = selection.suggestedName
-        // create unduplicated (unique) name
-        let index =- 1
-        while (tabs.find (t => t.name===tabName+index)) index -= 1
+        // create unduplicated (unique) name (adding a '-number' suffix)
+        let index = -1
+        while (tabs.find (t => t.name === tabName + index)) index -= 1
 
         var newTab:ITabObject = {
             name: tabName+index.toString(),
@@ -246,7 +246,7 @@ const App: React.FC = () => {
             newTab.keepaliveRef = setInterval(() => {
                 var serviceConfig:ServiceConfig = {
                     channel: ServiceConfigChannelEnum.NONE,
-                    object: ServiceConfigObjectEnum.PODS,                    
+                    objects: ServiceConfigObjectEnum.PODS,                    
                     flow: ServiceConfigFlowEnum.REQUEST,
                     action: ServiceConfigActionEnum.PING,
                     instance: '',
@@ -469,7 +469,7 @@ const App: React.FC = () => {
         if (tab.ws && tab.ws.readyState === tab.ws.OPEN) {
             var serviceConfig: ServiceConfig = {
                 channel: tab.channelId,
-                object: ServiceConfigObjectEnum.PODS,
+                objects: ServiceConfigObjectEnum.PODS,
                 action: ServiceConfigActionEnum.START,
                 flow: ServiceConfigFlowEnum.REQUEST,
                 instance: '',
@@ -537,7 +537,7 @@ const App: React.FC = () => {
 
         var serviceConfig: ServiceConfig = {
             channel: tab.channelId,
-            object: ServiceConfigObjectEnum.PODS,
+            objects: ServiceConfigObjectEnum.PODS,
             action: ServiceConfigActionEnum.STOP,
             flow: ServiceConfigFlowEnum.REQUEST,
             instance: tab.channelObject.instance,
@@ -588,7 +588,7 @@ const App: React.FC = () => {
 
         var serviceConfig:ServiceConfig = {
             channel: selectedTab.channelId,
-            object: ServiceConfigObjectEnum.PODS,
+            objects: ServiceConfigObjectEnum.PODS,
             action: ServiceConfigActionEnum.PAUSE,
             flow: ServiceConfigFlowEnum.REQUEST,
             instance: selectedTab.channelObject?.instance,
@@ -607,7 +607,7 @@ const App: React.FC = () => {
             serviceConfig.action = ServiceConfigActionEnum.CONTINUE
         }
         else {
-            selectedTab. channelPaused = true
+            selectedTab.channelPaused = true
             setPausedTabs( (prev) => [...prev, selectedTab!])
             serviceConfig.action = ServiceConfigActionEnum.PAUSE
         }
@@ -626,7 +626,7 @@ const App: React.FC = () => {
         selectedTab.ws?.close()
         clearInterval(selectedTab.keepaliveRef)
         setTabs(tabs.filter(t => t!==selectedTab))
-        if (tabs.length>1) setSelectedTabName(tabs.find(t => t!=selectedTab)?.name)
+        if (tabs.length>1) setSelectedTabName(tabs.find(t => t !== selectedTab)?.name)
     }
 
     const menuTabOptionSelected = (option: MenuTabOption) => {

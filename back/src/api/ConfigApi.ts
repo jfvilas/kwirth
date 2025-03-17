@@ -1,7 +1,7 @@
 import express, { Request, Response} from 'express'
 import { CoreV1Api, AppsV1Api } from '@kubernetes/client-node'
 import { KwirthData, ServiceConfigChannelEnum } from '@jfvilas/kwirth-common'
-import { validKeyAsync } from '../tools/AuthorizationManagement'
+import { validKey } from '../tools/AuthorizationManagement'
 import { IChannel } from '../model/IChannel'
 import { ApiKeyApi } from './ApiKeyApi'
 
@@ -45,65 +45,65 @@ export class ConfigApi {
         // returns cluster information of the k8 cluster which this kwirth is connected to or running inside
         this.route.route('/cluster')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req,res, apiKeyApi)) return;
-                next();
+                if (!validKey(req,res, apiKeyApi)) return
+                next()
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    var cluster={ name:kwirthData.clusterName, inCluster:kwirthData.inCluster };
-                    res.status(200).json(cluster);
+                    var cluster={ name:kwirthData.clusterName, inCluster:kwirthData.inCluster }
+                    res.status(200).json(cluster)
                 }
                 catch (err) {
-                    res.status(200).json([]);
-                    console.log(err);
+                    res.status(200).json([])
+                    console.log(err)
                 }
             })
         
         // get all namespaces
         this.route.route('/namespace')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req,res, apiKeyApi)) return;
-                next();
-            })
-            .get( async (req:Request, res:Response) => {
-                try {
-                    var response = await this.coreApi.listNamespace();
-                    var namespaces = response.body.items.map (n => n?.metadata?.name);
-                    res.status(200).json(namespaces);
-                }
-                catch (err) {
-                    res.status(200).json([]);
-                    console.log(err);
-                }
-            });
-
-        // get all deployments in a namespace
-        this.route.route(['/:namespace/sets','/:namespace/groups'])
-            .all( async (req:Request, res:Response, next) => {
-                if (!validKeyAsync(req,res, apiKeyApi)) return
+                if (!validKey(req,res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    var list:any[]=[];
-                    var respDeps = await this.appsV1Api.listNamespacedReplicaSet(req.params.namespace)
-                    list.push (...respDeps.body.items.map (n => { return { name:n?.metadata?.name, type:'replica' }}))
-                    var respStat = await this.appsV1Api.listNamespacedStatefulSet(req.params.namespace)
-                    list.push (...respStat.body.items.map (n => { return { name:n?.metadata?.name, type:'stateful' }}))
-                    var respDae = await this.appsV1Api.listNamespacedDaemonSet(req.params.namespace)
-                    list.push (...respDae.body.items.map (n => { return { name:n?.metadata?.name, type:'daemon' }}))
-                    res.status(200).json(list);
+                    var response = await this.coreApi.listNamespace()
+                    var namespaces = response.body.items.map (n => n?.metadata?.name)
+                    res.status(200).json(namespaces)
                 }
                 catch (err) {
                     res.status(200).json([])
                     console.log(err)
                 }
-            });
+            })
+
+        // get all deployments in a namespace
+        this.route.route(['/:namespace/sets','/:namespace/groups'])
+            .all( async (req:Request, res:Response, next) => {
+                if (!validKey(req,res, apiKeyApi)) return
+                next()
+            })
+            .get( async (req:Request, res:Response) => {
+                try {
+                    var list:any[]=[]
+                    var respReplica = await this.appsV1Api.listNamespacedReplicaSet(req.params.namespace)
+                    list.push (...respReplica.body.items.map (n => { return { name:n?.metadata?.name, type:'replica' }}))
+                    var respStateful = await this.appsV1Api.listNamespacedStatefulSet(req.params.namespace)
+                    list.push (...respStateful.body.items.map (n => { return { name:n?.metadata?.name, type:'stateful' }}))
+                    var respDaemon = await this.appsV1Api.listNamespacedDaemonSet(req.params.namespace)
+                    list.push (...respDaemon.body.items.map (n => { return { name:n?.metadata?.name, type:'daemon' }}))
+                    res.status(200).json(list)
+                }
+                catch (err) {
+                    res.status(200).json([])
+                    console.log(err)
+                }
+            })
 
         // get all pods in a namespace in a group
         this.route.route('/:namespace/:group/pods')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req,res, apiKeyApi)) return
+                if (!validKey(req,res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -121,7 +121,7 @@ export class ConfigApi {
         // returns an array containing all the containers running inside a pod
         this.route.route('/:namespace/:pod/containers')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req,res, apiKeyApi)) return
+                if (!validKey(req,res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {

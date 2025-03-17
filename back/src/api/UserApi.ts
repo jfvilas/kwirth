@@ -1,7 +1,7 @@
 import express, { Request, Response} from 'express'
 import { Secrets } from '../tools/Secrets'
 import Semaphore from 'ts-semaphore'
-import { validKeyAsync } from '../tools/AuthorizationManagement'
+import { validKey } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
 
 export class UserApi {
@@ -15,7 +15,7 @@ export class UserApi {
 
       this.route.route('/')
         .all( async (req:Request,res:Response, next) => {
-            if (!validKeyAsync(req,res, apiKeyApi)) return
+            if (!validKey(req,res, apiKeyApi)) return
             next()
         })
         .get( (req:Request,res:Response) => {
@@ -47,7 +47,7 @@ export class UserApi {
 
       this.route.route('/:user')
         .all( async (req:Request,res:Response, next) => {
-            if (!validKeyAsync(req,res, apiKeyApi)) return
+            if (!validKey(req,res, apiKeyApi)) return
             next()
         })
         .get( (req:Request,res:Response) => {

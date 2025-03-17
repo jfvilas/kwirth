@@ -13,7 +13,8 @@ export enum ServiceConfigActionEnum {
     PAUSE = 'pause',
     CONTINUE = 'continue',
     MODIFY = 'modify',
-    PING = 'ping'
+    PING = 'ping',
+    RECONNECT = 'reconnect'
 }
 
 export enum ServiceConfigObjectEnum {
@@ -56,7 +57,7 @@ export enum ServiceConfigScopeEnum {
 
 export interface ServiceConfig {
     channel: string
-    object: ServiceConfigObjectEnum
+    objects: ServiceConfigObjectEnum
     action: ServiceConfigActionEnum
     flow: ServiceConfigFlowEnum
     instance: string

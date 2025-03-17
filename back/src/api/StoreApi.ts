@@ -1,7 +1,7 @@
 import express, { Request, Response} from 'express'
 import { ConfigMaps } from '../tools/ConfigMaps'
 import Semaphore from 'ts-semaphore'
-import { validKeyAsync } from '../tools/AuthorizationManagement'
+import { validKey } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
 
 export class StoreApi {
@@ -18,7 +18,7 @@ export class StoreApi {
         // get groups
         this.route.route('/:user')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req,res, apiKeyApi)) return
+                if (!validKey(req,res, apiKeyApi)) return
                 next()
             })
             .get(async (req:Request, res:Response) => {
@@ -43,7 +43,7 @@ export class StoreApi {
         // get objects in a group
         this.route.route('/:user/:group')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req,res, apiKeyApi)) return
+                if (!validKey(req,res, apiKeyApi)) return
                 next()
             })
             .get(async (req:Request, res:Response) => {
@@ -64,7 +64,7 @@ export class StoreApi {
 
         this.route.route('/:user/:group/:key')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req,res, apiKeyApi)) return
+                if (!validKey(req,res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {

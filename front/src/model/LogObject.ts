@@ -1,5 +1,4 @@
-import { Alarm } from "./Alarm";
-import { LogMessage, ServiceConfigViewEnum, ServiceMessage } from "@jfvilas/kwirth-common";
+import { LogMessage, ServiceMessage } from "@jfvilas/kwirth-common";
 
 // export class LogObject {
 //     public clusterName: string = ''

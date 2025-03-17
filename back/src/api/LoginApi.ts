@@ -19,7 +19,7 @@ export class LoginApi {
             accessKey: accessKeyCreate('permanent', 'cluster:::::'),
             description: `Login user '${username}' at ${new Date().toISOString()} from ${ip}`,
             expire: Date.now() + 24*60*60*1000  // 24h
-        };
+        }
         var storedKeys = await this.configMaps.read('kwirth.keys', [])
         storedKeys = cleanApiKeys(storedKeys)
         storedKeys.push(apiKey)

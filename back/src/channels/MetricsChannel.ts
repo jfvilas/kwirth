@@ -100,12 +100,6 @@ class MetricsChannel implements IChannel {
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
-                        // const podNames = [...new Set(instance.assets.map(item => item.podName))]
-                        // for (var containerName of podNames) {
-                        //     var assets=instance.assets.filter(a => a.podName===containerName)
-                        //     var assetMetrics = this.getAssetMetrics(serviceConfig, assets)
-                        //     metricsMessage.assets.push(assetMetrics)
-                        // }
                         const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
                         for (let groupName of groupNames) {
                             let assets=instance.assets.filter(a => a.podGroup === groupName)

@@ -44,7 +44,7 @@ export declare enum ServiceConfigScopeEnum {
 }
 export interface ServiceConfig {
     channel: string;
-    object: ServiceConfigObjectEnum;
+    objects: ServiceConfigObjectEnum;
     action: ServiceConfigActionEnum;
     flow: ServiceConfigFlowEnum;
     instance: string;

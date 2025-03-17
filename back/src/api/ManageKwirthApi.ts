@@ -2,7 +2,7 @@ import express, { Request, Response} from 'express'
 import { AppsV1Api, CoreV1Api } from '@kubernetes/client-node'
 import { KwirthData } from '@jfvilas/kwirth-common'
 import { pauseDeployment, restartGroup } from '../tools/KubernetesOperations'
-import { validKeyAsync } from '../tools/AuthorizationManagement'
+import { validKey } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
 
 export class ManageKwirthApi {
@@ -16,7 +16,7 @@ export class ManageKwirthApi {
 
         this.route.route('/restart')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req, res, apiKeyApi)) return
+                if (!validKey(req, res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -32,7 +32,7 @@ export class ManageKwirthApi {
         
         this.route.route('/pause')
             .all( async (req,res, next) => {
-                if (!validKeyAsync(req, res, apiKeyApi)) return
+                if (!validKey(req, res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {

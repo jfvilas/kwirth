@@ -18,7 +18,7 @@ export const validBearerKey = (accessKey:AccessKey) : boolean => {
     return hash === accessKey.id
 }
 
-export const validKeyAsync = async (req:any,res:any, apiKeyApi: ApiKeyApi) => {
+export const validKey = async (req:any,res:any, apiKeyApi: ApiKeyApi) => {
     if (req.headers.authorization && req.headers.authorization) {
         var receivedAccessString=req.headers.authorization.replaceAll('Bearer ','').trim()
         var receivedAccessKey = accessKeyDeserialize(receivedAccessString)

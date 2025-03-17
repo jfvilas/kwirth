@@ -7,7 +7,6 @@ import { ClusterInfo } from '../model/ClusterInfo';
 
 class LogChannel implements IChannel {
     clusterInfo : ClusterInfo
-    
     buffer: Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages    
     websocketLog:Map<WebSocket, {instanceId:string, logStream:PassThrough, timestamps: boolean, previous:boolean, tailLines:number, paused:boolean }[]>= new Map()  
  

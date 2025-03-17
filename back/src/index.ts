@@ -168,8 +168,9 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, servi
                         }
                         break
                     case ServiceConfigViewEnum.CONTAINER:
-                        var sccontainers = Array.from (new Set (serviceConfig.container.split(',').map (c => c.split('+')[1]))) // containr has the form: podname+containername (includes a plus sign as separating char)
-                        var scpods = Array.from (new  Set (serviceConfig.container.split(',').map (c => c.split('+')[0]))) // containr has the form: podname+containername (includes a plus sign as separating char)                                                
+                        // container has the form: podname+containername (includes a plus sign as separating char)
+                        var sccontainers = Array.from (new Set (serviceConfig.container.split(',').map (c => c.split('+')[1])))
+                        var scpods = Array.from (new  Set (serviceConfig.container.split(',').map (c => c.split('+')[0])))
                         if (sccontainers.includes(containerName) && scpods.includes(podName)) {
                             if (serviceConfig.container.split(',').includes(podName+'+'+containerName)) {
                                 console.log(`Container ADDED: ${podNamespace}/${podName}/${containerName}`)
@@ -241,18 +242,19 @@ const getRequestedValidatedScopedPods = async (serviceConfig:ServiceConfig, acce
     return selectedPods
 }
 
-const processStartServiceConfig = async (serviceConfig: ServiceConfig, webSocket: WebSocket, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validPodNames: string[]) => {
+const processStartServiceConfig = async (webSocket: WebSocket, serviceConfig: ServiceConfig, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validPodNames: string[]) => {
     console.log('Starting service config for channel', serviceConfig.channel)
     var requestedValidatedPods = await getRequestedValidatedScopedPods(serviceConfig, accessKeyResources, validNamespaces, validPodNames)
     if (requestedValidatedPods.length===0) {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: there are no filters that match requested log config`, serviceConfig)
         return
     }
+    
     switch (serviceConfig.view) {
         case 'namespace':
             serviceConfig.instance = uuidv4()
             for (let ns of validNamespaces) {
-                watchPods(`/api/v1/namespaces/${ns}/pods`, {}, webSocket, serviceConfig)
+                watchPods(`/api/v1/namespaces/${ns}/${serviceConfig.objects}`, {}, webSocket, serviceConfig)
             }
             sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
             break
@@ -266,7 +268,7 @@ const processStartServiceConfig = async (serviceConfig: ServiceConfig, webSocket
                         console.log('START ', groupPods.labelSelector)
                         let specificServiceConfig = JSON.parse(JSON.stringify(serviceConfig))
                         specificServiceConfig.group = group
-                        watchPods(`/api/v1/namespaces/${ns}/pods`, { labelSelector: groupPods.labelSelector }, webSocket, specificServiceConfig)
+                        watchPods(`/api/v1/namespaces/${ns}/${serviceConfig.objects}`, { labelSelector: groupPods.labelSelector }, webSocket, specificServiceConfig)
                     }
                     else
                         console.log('No pods on namespace ns')
@@ -284,7 +286,7 @@ const processStartServiceConfig = async (serviceConfig: ServiceConfig, webSocket
                         var labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
                         let specificServiceConfig: ServiceConfig = JSON.parse(JSON.stringify(serviceConfig))
                         specificServiceConfig.pod = podName
-                        watchPods(`/api/v1/pods`, { labelSelector }, webSocket, specificServiceConfig)
+                        watchPods(`/api/v1/${serviceConfig.objects}`, { labelSelector }, webSocket, specificServiceConfig)
                         sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
                     }
                     else {
@@ -306,9 +308,9 @@ const processStartServiceConfig = async (serviceConfig: ServiceConfig, webSocket
                     if (metadataLabels) {
                         let labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
                         let specificServiceConfig: ServiceConfig = JSON.parse(JSON.stringify(serviceConfig))
-                        specificServiceConfig.pod = podName // +++ sobra?
+                        //specificServiceConfig.pod = podName // shouldn't be needed, sonce container has the form 'podname+containername'
                         specificServiceConfig.container = container
-                        watchPods(`/api/v1/pods`, { labelSelector }, webSocket, specificServiceConfig)
+                        watchPods(`/api/v1/${serviceConfig.objects}`, { labelSelector }, webSocket, specificServiceConfig)
                         sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
                     }
                     else {
@@ -407,13 +409,11 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
             let res = await coreApi.listNamespacedPod(ns)
             allowedPodNames.push (...res.body.items.map(p => p.metadata?.name as string))
         }
-        //validPodNames = Array.from(new Set(allowedPodNames))
         validPodNames = [...new Set(allowedPodNames)]
     }
     else {
         allowedPodNames = accessKeyResources.filter(r => r.pod!='').map(r => r.pod)
         validPodNames = requestedPodNames.filter(podName => allowedPodNames.includes(podName))
-        //validPodNames = Array.from(new Set(validPodNames))
         validPodNames = [...new Set(validPodNames)]
     }
 
@@ -425,7 +425,7 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
     switch (serviceConfig.action) {
         case ServiceConfigActionEnum.START:
             if (channels.has(serviceConfig.channel)) {
-                processStartServiceConfig(serviceConfig, webSocket, accessKeyResources, validNamespaces, validPodNames)
+                processStartServiceConfig(webSocket, serviceConfig, accessKeyResources, validNamespaces, validPodNames)
             }
             else {
                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid ServiceConfig channel: ${serviceConfig.channel}`, serviceConfig)

@@ -120,9 +120,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
         setPods([])
         setAllContainers([])
         setContainers([])
-        if (view!=='namespace') {
-            nss.map (ns => loadAllGroups(selectedCluster, ns))
-        }
+        if (view!=='namespace') nss.map (ns => loadAllGroups(selectedCluster, ns))
     }
 
     const onChangeGroup = (event: SelectChangeEvent<typeof groups>) => {
@@ -132,24 +130,14 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
         setPods([])
         setAllContainers([])
         setContainers([])
-        if (view!=='group') {
-            namespaces.map(ns => {
-                gs.map(g => loadAllPods(ns,g))
-            })
-        }
+        if (view!=='group') namespaces.map(ns => gs.map(g => loadAllPods(ns,g)))
     }
     const onChangePod= (event: SelectChangeEvent<typeof pods>) => {
         var pods  = event.target.value as string[]
         setPods(pods)
         setAllContainers([])
         setContainers([])
-        if (view==='container') {
-            namespaces.map(ns => {
-                pods.map (pod => {
-                    loadAllContainers(ns,pod)
-                })
-            })
-        }
+        if (view === 'container') namespaces.map(ns => pods.map (pod => loadAllContainers(ns,pod)))
     }
 
     const onChangeContainer = (event: SelectChangeEvent<typeof containers>) => {
