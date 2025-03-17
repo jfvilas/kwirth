@@ -11,6 +11,7 @@ interface IChannelObject {
     pod: string
     container: string
     instance: string
+    reconnectKey: string
     data: LogObject | MetricsObject | AlertObject | undefined
 }
 

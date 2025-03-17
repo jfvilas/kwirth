@@ -109,8 +109,6 @@ class LogChannel implements IChannel {
                 paused:false
             })
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, logStream,  streamConfig)
-            console.log('this.websocketLog.get(webSocket)')
-            console.log(this.websocketLog.get(webSocket))
         }
         catch (err:any) {
             console.log('Generic error starting pod log', err)

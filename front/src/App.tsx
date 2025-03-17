@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 // material & icons
 import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Menu, Person } from '@mui/icons-material'
+import { Settings as SettingsIcon, Menu, Person, Weekend } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
@@ -72,7 +72,6 @@ const App: React.FC = () => {
     const [refreshTabContent, setRefreshTabContent] = useState(0)
 
     // message list management
-    const [logMessages, setLogMessages] = useState<ILogMessage[]>([])  // this state is used to force rerender og logMessages inside TabContent (it does not store messages in fact)
     const lastLineRef = useRef(null)
 
     // general
@@ -132,7 +131,7 @@ const App: React.FC = () => {
                     if (cluster) {
                         tab.ws = new WebSocket(cluster.url)
                         tab.ws!.onerror = () => console.log(`Error detected on WS: ${tab.ws!.url}`)
-                        tab.ws!.onmessage = (event) => wsOnTabMessage(event)
+                        tab.ws!.onmessage = (event) => wsOnMessage(event)
                         tab.ws!.onclose = (event) => console.log(`WS tab disconnected: ${tab.ws!.url}`)
 
                         tab.ws.onopen = () => {
@@ -208,7 +207,7 @@ const App: React.FC = () => {
     }
 
     const onResourceSelectorAdd = (selection:IResourceSelected) => {
-        var cluster=clusters!.find(c => c.name===selection.clusterName)
+        var cluster = clusters!.find(c => c.name===selection.clusterName)
         if (!cluster) {
             setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.clusterName} does not exist.`, setMsgBox))
             return
@@ -229,6 +228,7 @@ const App: React.FC = () => {
                 clusterName: selection.clusterName,
                 data: undefined,
                 instance: '',
+                reconnectKey: '',
                 view: selection.view as ServiceConfigViewEnum,
                 namespace: selection.namespaces.join(','),
                 group: selection.groups.join(','),
@@ -239,7 +239,7 @@ const App: React.FC = () => {
             channelPaused: false,
             channelPending: false
         }
-        newTab.ws =new WebSocket(cluster.url)
+        newTab.ws = new WebSocket(cluster.url)
         newTab.ws.onopen = () => {
             console.log(`WS connected: ${newTab.ws!.url}`)
             
@@ -260,16 +260,12 @@ const App: React.FC = () => {
                 }
                 if (newTab.ws) newTab.ws.send(JSON.stringify(serviceConfig))
             }, (settings?.keepAliveInterval || 60) * 1000,'')  
-            // +++ add mechanism to reconnect (connect to same instance over a new websocket)
         }
-        newTab.ws.onerror = () => console.log(`Error detected on WS: ${newTab.ws!.url}`)
-        newTab.ws.onmessage = (event) => wsOnTabMessage(event)
-        newTab.ws.onclose = (_event) => console.log(`WS tab disconnected: ${newTab.ws!.url}`)
+
         switch(selection.channel) {
             case ServiceConfigChannelEnum.LOG:
                 let logObject = new LogObject()
                 newTab.channelObject.data = logObject
-                setLogMessages([])
                 break
 
             case ServiceConfigChannelEnum.METRICS:
@@ -288,25 +284,24 @@ const App: React.FC = () => {
             default:
                 console.log(`Error, invalid channel: `, selection.channel)
         }
-        tabs.push(newTab)
-        setTabs([...tabs])
+        setTabs((prev) => [...prev, newTab])
         setSelectedTabName(newTab.name)
     }
 
-    const onChangeTabs = (_event:any,tabName?:string)=> {
+    const onChangeTabs = (_event:any, tabName?:string)=> {
         var newTab = tabs.find(tab => tab.name === tabName)
         if (newTab) {
             if (newTab.channelObject) {
                 newTab.channelPending = false
                 setHighlightedTabs (highlightedTabs.filter(t => t.channelObject && t.channelPending))
                 setPausedTabs (pausedTabs.filter(t => t.channelObject && t.channelPaused))
-                setLogMessages((newTab.channelObject.data as LogObject).messages)
+                setRefreshTabContent(Math.random())
             }
             setSelectedTabName(tabName)
         }
     }
 
-    const wsOnTabMessage = (wsEvent:any) => {
+    const wsOnMessage = (wsEvent:any) => {
         var serviceMessage:ServiceMessage
         try {
             serviceMessage = JSON.parse(wsEvent.data) as ServiceMessage
@@ -352,11 +347,12 @@ const App: React.FC = () => {
 
     const processLogMessage = (wsEvent:any) => {
         // find the tab which this web socket belongs to, and add the new message
-        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
+        let tab = tabs.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
 
         let msg = JSON.parse(wsEvent.data) as ILogMessage
         let dataLog = tab.channelObject.data as LogObject
+
         switch (msg.type) {
             case ServiceMessageTypeEnum.DATA:
                 dataLog.messages.push(msg)
@@ -365,7 +361,7 @@ const App: React.FC = () => {
                 // if current log is displayed (focused), add message to the screen
                 if (selectedTabRef.current === tab.name) {
                     if (!tab.channelPaused) {
-                        setLogMessages([])
+                        setRefreshTabContent(Math.random())
                         if (dataLog.follow && lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
                     }
                 }
@@ -374,14 +370,14 @@ const App: React.FC = () => {
                     if (dataLog.backgroundNotification && !tab.channelPaused) {
                         tab.channelPending = true
                         setHighlightedTabs((prev)=> [...prev, tab!])
-                        setTabs(tabs)
                     }
                 }
                 break
             case ServiceMessageTypeEnum.SIGNAL:
                 tab.channelObject.instance = msg.instance
+                if (msg.reconnectKey) tab.channelObject.reconnectKey = msg.reconnectKey
                 dataLog.messages.push(msg)
-                setLogMessages([])
+                setRefreshTabContent(Math.random())
                 break
             default:
                 console.log(`Invalid message type`, msg)
@@ -411,6 +407,7 @@ const App: React.FC = () => {
                 break
             case ServiceMessageTypeEnum.SIGNAL:
                 tab.channelObject.instance = msg.instance
+                if (msg.reconnectKey) tab.channelObject.reconnectKey = msg.reconnectKey
                 break
             default:
                 console.log(`Invalid message type ${msg.type}`)
@@ -434,6 +431,7 @@ const App: React.FC = () => {
                 break
             case ServiceMessageTypeEnum.SIGNAL:
                 tab.channelObject.instance = msg.instance
+                if (msg.reconnectKey) tab.channelObject.reconnectKey = msg.reconnectKey
                 break
             default:
                 console.log(`Invalid message type ${msg.type}`)
@@ -455,6 +453,48 @@ const App: React.FC = () => {
         }
     }
 
+    const reconnectedInstance = (wsEvent:any, id:NodeJS.Timer) => {
+        clearInterval(id)
+        console.log('Reconnect interval cleared')
+        let tab = tabs.find(tab => tab.ws === wsEvent.target)
+        if (!tab || !tab.channelObject) return
+        console.log('Reconnected, will reconfigure')
+    }
+
+    const reconnectInstance = (wsEvent:any) => {
+        console.log(wsEvent)
+        let tab = tabs.find(tab => tab.ws === wsEvent.target)
+        console.log(tab)
+        if (!tab || !tab.channelObject || !tab.channelObject.reconnectKey) return
+        console.log(tab.channelObject)
+        var cluster = clusters!.find(c => c.name === tab!.channelObject!.clusterName)
+        if (!cluster) return
+
+        console.log(`Will reconnect using ${tab.channelObject.reconnectKey}`)
+
+        let selfId = setInterval( (key, url, tab) => {
+            console.log(`Trying to reconnect using ${key}, ${url}`)
+            let serviceConfig:ServiceConfig = {
+                channel: ServiceConfigChannelEnum.NONE,
+                objects: ServiceConfigObjectEnum.PODS,
+                flow: ServiceConfigFlowEnum.REQUEST,
+                action: ServiceConfigActionEnum.RECONNECT,
+                instance: '',
+                reconnectKey: key,
+                scope: ServiceConfigScopeEnum.NONE,
+                accessKey: '',
+                view: ServiceConfigViewEnum.NONE,
+                namespace: '',
+                group: '',
+                pod: '',
+                container: ''
+            }
+            let ws = new WebSocket(url)
+            ws.onopen = (event) => reconnectedInstance(event, selfId)
+            tab.ws = ws
+        }, 5000, tab.channelObject.reconnectKey, cluster.url, tab)
+    }
+    
     const startChannel = (tab:ITabObject) => {
         if (!tab || !tab.channelObject) {
             console.log('No active tab found')
@@ -467,6 +507,12 @@ const App: React.FC = () => {
         }
 
         if (tab.ws && tab.ws.readyState === tab.ws.OPEN) {
+            //tab.ws.onerror = () => console.log(`Error detected on WS: ${tab.ws!.url}`)
+            tab.ws.onerror = (event) => reconnectInstance(event)
+            tab.ws.onmessage = (event) => wsOnMessage(event)
+            //tab.ws.onclose = (_event) => console.log(`WS tab disconnected: ${tab.ws!.url}`)
+            tab.ws.onclose = (event) => reconnectInstance(event)
+    
             var serviceConfig: ServiceConfig = {
                 channel: tab.channelId,
                 objects: ServiceConfigObjectEnum.PODS,
@@ -493,7 +539,6 @@ const App: React.FC = () => {
                         previous: dataLog.previous,
                         maxMessages: dataLog.maxMessages
                     }
-                    setLogMessages([])
                     break
                 case ServiceConfigChannelEnum.ALERT:
                     let dataAlert = tab.channelObject.data as AlertObject
