@@ -18,6 +18,7 @@ var ServiceConfigActionEnum;
     ServiceConfigActionEnum["CONTINUE"] = "continue";
     ServiceConfigActionEnum["MODIFY"] = "modify";
     ServiceConfigActionEnum["PING"] = "ping";
+    ServiceConfigActionEnum["RECONNECT"] = "reconnect";
 })(ServiceConfigActionEnum || (exports.ServiceConfigActionEnum = ServiceConfigActionEnum = {}));
 var ServiceConfigObjectEnum;
 (function (ServiceConfigObjectEnum) {

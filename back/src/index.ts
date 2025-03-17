@@ -100,6 +100,7 @@ const sendServiceConfigSignalMessage = (ws:WebSocket, action:ServiceConfigAction
         flow,
         channel,
         instance: serviceConfig.instance,
+        ...(serviceConfig.reconnectKey && { reconnectKey: serviceConfig.reconnectKey }),
         type: 'signal',
         text
     }
@@ -250,16 +251,16 @@ const processStartServiceConfig = async (webSocket: WebSocket, serviceConfig: Se
         return
     }
     
+    serviceConfig.instance = uuidv4()
+    serviceConfig.reconnectKey = uuidv4()
     switch (serviceConfig.view) {
         case 'namespace':
-            serviceConfig.instance = uuidv4()
             for (let ns of validNamespaces) {
                 watchPods(`/api/v1/namespaces/${ns}/${serviceConfig.objects}`, {}, webSocket, serviceConfig)
             }
             sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
             break
         case 'group':
-            serviceConfig.instance = uuidv4()
             for (let ns of validNamespaces) {
                 for (let group of serviceConfig.group.split(',')) {
                     let groupPods = (await getPodsFromGroup(coreApi, appsApi, ns, group))
@@ -277,7 +278,6 @@ const processStartServiceConfig = async (webSocket: WebSocket, serviceConfig: Se
             sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
             break
         case 'pod':
-            serviceConfig.instance = uuidv4()
             for (let podName of serviceConfig.pod.split(',')) {
                 let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
                 if (validPod) {
@@ -287,7 +287,6 @@ const processStartServiceConfig = async (webSocket: WebSocket, serviceConfig: Se
                         let specificServiceConfig: ServiceConfig = JSON.parse(JSON.stringify(serviceConfig))
                         specificServiceConfig.pod = podName
                         watchPods(`/api/v1/${serviceConfig.objects}`, { labelSelector }, webSocket, specificServiceConfig)
-                        sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
                     }
                     else {
                         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels`, serviceConfig)
@@ -297,9 +296,9 @@ const processStartServiceConfig = async (webSocket: WebSocket, serviceConfig: Se
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}'`, serviceConfig)
                 }
             }
+            sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
             break
         case 'container':
-            serviceConfig.instance = uuidv4()
             for (let container of serviceConfig.container.split(',')) {
                 let [podName, containerName] = container.split('+')
                 let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
@@ -311,7 +310,6 @@ const processStartServiceConfig = async (webSocket: WebSocket, serviceConfig: Se
                         //specificServiceConfig.pod = podName // shouldn't be needed, sonce container has the form 'podname+containername'
                         specificServiceConfig.container = container
                         watchPods(`/api/v1/${serviceConfig.objects}`, { labelSelector }, webSocket, specificServiceConfig)
-                        sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
                     }
                     else {
                         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels`, serviceConfig)
@@ -321,6 +319,7 @@ const processStartServiceConfig = async (webSocket: WebSocket, serviceConfig: Se
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}'`, serviceConfig)
                 }
             }
+            sendServiceConfigSignalMessage(webSocket,ServiceConfigActionEnum.START, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Service Config accepted')
             break
         default:
             sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: invalid view '${serviceConfig.view}'`, serviceConfig)
@@ -367,6 +366,18 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         return
     }
 
+    if (serviceConfig.action === ServiceConfigActionEnum.RECONNECT) {
+        var signalMessage:SignalMessage = {
+            level: SignalMessageLevelEnum.ERROR,
+            channel: ServiceConfigChannelEnum.NONE,
+            instance: '',
+            type: ServiceMessageTypeEnum.SIGNAL,
+            text: 'Not supported yet'
+        }
+        webSocket.send(JSON.stringify(signalMessage))
+        return
+    }
+
     if (!serviceConfig.accessKey) {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'No key received', serviceConfig)
         return
@@ -395,16 +406,16 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         allowedNamespaces = res.body.items.map(n => n.metadata?.name as string)
     }
     else {
-        allowedNamespaces=accessKeyResources.filter(r => r.namespace!='').map(r => r.namespace)
+        allowedNamespaces = accessKeyResources.filter(r => r.namespace!='').map(r => r.namespace)
     }
     allowedNamespaces = [...new Set(allowedNamespaces)]
-    var validNamespaces=requestedNamespaces.filter(ns => allowedNamespaces.includes(ns))
+    var validNamespaces = requestedNamespaces.filter(ns => allowedNamespaces.includes(ns))
     validNamespaces = [...new Set(validNamespaces)]
 
-    var requestedPodNames=serviceConfig.pod.split(',').filter(podName => podName!=='')
+    var requestedPodNames = serviceConfig.pod.split(',').filter(podName => podName!=='')
     var allowedPodNames:string[] = []
     var validPodNames:string[] = []
-    if (accessKeyResources.find(akr => akr.scope==='cluster')) {
+    if (accessKeyResources.find(akr => akr.scope === 'cluster')) {
         for (var ns of validNamespaces) {
             let res = await coreApi.listNamespacedPod(ns)
             allowedPodNames.push (...res.body.items.map(p => p.metadata?.name as string))

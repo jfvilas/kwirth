@@ -6,6 +6,7 @@ export enum ServiceMessageTypeEnum {
 export interface ServiceMessage {
     channel: string
     instance: string
+    reconnectKey?: string
     type: ServiceMessageTypeEnum
     namespace?: string
     pod?: string

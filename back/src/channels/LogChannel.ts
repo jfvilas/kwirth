@@ -70,6 +70,7 @@ class LogChannel implements IChannel {
     }
     
     async startInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+        console.log(`Start instance ${serviceConfig.instance} (view: ${serviceConfig.view})`)
         try {
             var streamConfig = { 
                 follow: true, 
@@ -97,18 +98,19 @@ class LogChannel implements IChannel {
                 this.sendLogData(webSocket, podNamespace, podName, containerName, text, serviceConfig.instance)
             })
     
-            if (!this.websocketLog.get(webSocket))
-                this.websocketLog.set(webSocket, [])
+            if (!this.websocketLog.get(webSocket)) this.websocketLog.set(webSocket, [])
 
             this.websocketLog.get(webSocket)?.push ({
-                instanceId: serviceConfig.instance, logStream: logStream,
+                instanceId: serviceConfig.instance, 
+                logStream: logStream,
                 timestamps: serviceConfig.data.timestamp,
                 previous: serviceConfig.data.previous,
                 tailLines: serviceConfig.data.tailLines,
                 paused:false
             })
-
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, logStream,  streamConfig)
+            console.log('this.websocketLog.get(webSocket)')
+            console.log(this.websocketLog.get(webSocket))
         }
         catch (err:any) {
             console.log('Generic error starting pod log', err)

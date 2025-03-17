@@ -12,7 +12,8 @@ export declare enum ServiceConfigActionEnum {
     PAUSE = "pause",
     CONTINUE = "continue",
     MODIFY = "modify",
-    PING = "ping"
+    PING = "ping",
+    RECONNECT = "reconnect"
 }
 export declare enum ServiceConfigObjectEnum {
     PODS = "pods",
@@ -55,5 +56,6 @@ export interface ServiceConfig {
     group: string;
     pod: string;
     container: string;
+    reconnectKey?: string;
     data?: any;
 }

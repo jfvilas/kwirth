@@ -68,5 +68,6 @@ export interface ServiceConfig {
     group: string
     pod: string
     container: string
+    reconnectKey?: string
     data?: any
 }
