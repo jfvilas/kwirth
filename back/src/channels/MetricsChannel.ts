@@ -179,25 +179,31 @@ class MetricsChannel implements IChannel {
 
     async startInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
+            const podResponse = await this.clusterInfo.coreApi.readNamespacedPod(podName, podNamespace)
+            const owner = podResponse.body.metadata?.ownerReferences![0]!
+            const gtype = owner.kind.toLocaleLowerCase().replace('set','')  // gtype is 'replica', 'stateful' or 'daemon'
+            const podGroup = gtype+'+'+owner.name
+            const podNode = podResponse.body.spec?.nodeName
+            
             switch (serviceConfig.data.mode) {
                 case MetricsConfigModeEnum.SNAPSHOT:
-                    // +++ pending implementation. implement when metric streaming is complete
-                    // snapshot is just obtaing metrics and sending response, no further actions will be taken
+                    if (podNode) {
+                        console.log(`Send snapshot metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
+                        var instances = this.websocketMetrics.get(webSocket)
+                        var instance = instances?.find((instance) => instance.instanceId === serviceConfig.instance)
+                        if (instance)
+                            this.sendMetricsDataInstance(webSocket, serviceConfig.instance)
+                        else
+                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${serviceConfig.instance} not found`, serviceConfig) 
+                    }
                     break
                 case MetricsConfigModeEnum.STREAM:
-                    const podResponse = await this.clusterInfo.coreApi.readNamespacedPod(podName, podNamespace)
-                    const owner = podResponse.body.metadata?.ownerReferences![0]!
-                    const gtype = owner.kind.toLocaleLowerCase().replace('set','')  // gtype is 'replica', 'stateful' or 'daemon'
-                    const podGroup = gtype+'+'+owner.name
-                    const podNode = podResponse.body.spec?.nodeName
                     if (podNode) {
                         console.log(`Start pod metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
                         if (this.websocketMetrics.has(webSocket)) {
-                            console.log('hasws')
                             var instances = this.websocketMetrics.get(webSocket)
                             var instance = instances?.find((instance) => instance.instanceId === serviceConfig.instance)
                             if (!instance) {
-                                console.log('newi')
                                 // new instance for an existing websocket
                                 var interval=(serviceConfig.data.interval? serviceConfig.data.interval:60)*1000
                                 var timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,serviceConfig.instance), interval)
@@ -209,14 +215,10 @@ class MetricsChannel implements IChannel {
                                 instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
                             }
                             else {
-                                console.log('nocont')
                                 if (!instance.assets.find(a => a.podName === podName && a.containerName === containerName)) {
-                                    console.log('push')
                                     instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})                            
                                 }
                             }
-                            console.log('instances')
-                            console.log(instances)
                         }
                         else {
                             this.websocketMetrics.set(webSocket, [])
@@ -314,6 +316,27 @@ class MetricsChannel implements IChannel {
         }
     }
 
+    containsInstance(instanceId: string): boolean {
+        for (var instances of this.websocketMetrics.values()) {
+            var exists = instances.find(i => i.instanceId === instanceId)
+            if (exists) return true
+        }
+        return false
+    }
+
+    updateConnection(webSocket: WebSocket, instanceId: string): boolean {
+        for (let [key,value] of this.websocketMetrics.entries()) {
+            var exists = value.find(i => i.instanceId === instanceId)
+            if (exists) {
+                let temp = value
+                this.websocketMetrics.delete(key)
+                this.websocketMetrics.set(webSocket, value)
+                return true
+            }
+        }
+        return false
+    }
+        
     removeInstance(webSocket: WebSocket, instanceId: string): void {
         if (this.websocketMetrics.has(webSocket)) {
             var instances = this.websocketMetrics.get(webSocket)

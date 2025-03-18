@@ -243,6 +243,25 @@ const getRequestedValidatedScopedPods = async (serviceConfig:ServiceConfig, acce
     return selectedPods
 }
 
+const processReconnect = async (webSocket: WebSocket, serviceConfig: ServiceConfig) => {
+    console.log(`Trying to reconnect ${serviceConfig.instance} with key ${serviceConfig.reconnectKey}`)
+    for (var channel of channels.values()) {
+        if (channel.containsInstance(serviceConfig.instance)) {
+            // +++ this block has not been tested 
+            var updated = channel.updateConnection(webSocket, serviceConfig.instance)
+            if (updated) {
+                sendServiceConfigSignalMessage(webSocket, ServiceConfigActionEnum.RECONNECT, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Reconnect successful')
+                return
+            }
+            else {
+                sendServiceConfigSignalMessage(webSocket, ServiceConfigActionEnum.RECONNECT, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'An error has ocurred while updating connection')
+                return
+            }
+        }
+    }
+    sendServiceConfigSignalMessage(webSocket, ServiceConfigActionEnum.RECONNECT, ServiceConfigFlowEnum.RESPONSE, serviceConfig.channel, serviceConfig, 'Instance has not been found')
+}
+
 const processStartServiceConfig = async (webSocket: WebSocket, serviceConfig: ServiceConfig, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validPodNames: string[]) => {
     console.log('Starting service config for channel', serviceConfig.channel)
     var requestedValidatedPods = await getRequestedValidatedScopedPods(serviceConfig, accessKeyResources, validNamespaces, validPodNames)
@@ -367,14 +386,7 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
     }
 
     if (serviceConfig.action === ServiceConfigActionEnum.RECONNECT) {
-        var signalMessage:SignalMessage = {
-            level: SignalMessageLevelEnum.ERROR,
-            channel: ServiceConfigChannelEnum.NONE,
-            instance: '',
-            type: ServiceMessageTypeEnum.SIGNAL,
-            text: 'Not supported yet'
-        }
-        webSocket.send(JSON.stringify(signalMessage))
+        processReconnect (webSocket, serviceConfig)
         return
     }
 
@@ -568,7 +580,7 @@ const launch = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
     })
     process.on('exit', () => {
         console.log('exiting')
-        saToken.deleteToken('kwirth-sa',kwirthData.namespace)
+        saToken.deleteToken('kwirth-sa', kwirthData.namespace)
     })
 }
 

@@ -1,7 +1,7 @@
 import { Box, Stack, Typography } from '@mui/material'
 import { LogObject } from '../model/LogObject'
 import { LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
-import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts'
+import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { FiredAlert } from '../model/AlertObject'
 import { MetricsObject } from '../model/MetricsObject'
 import { ReactJSXElement } from '@emotion/react/types/jsx-namespace'
@@ -177,14 +177,33 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 )
                 break
             case 'bar':
+                const render = (data:any) => {
+                    console.log(data)
+                    series.map (s => console.log(s[data.index]))
+                    var values:any[] = series.map (s => s[data.index])
+                    console.log(values)
+                    var total:number =values.reduce((acc,value) => acc+value.value, 0)
+                    return <text x={data.x + data.width/2} y={data.y-10}>{total.toPrecision(3)}</text>
+                }
+
                 result = (
                     <BarChart data={mergedSeries}>
                         <CartesianGrid strokeDasharray="3 3"/>
                         <XAxis dataKey="timestamp" fontSize={8}/>
                         <YAxis />
-                        <Tooltip />
+                        <Tooltip/>
                         <Legend/>
-                        { series.map ((serie,index) => <Bar name={names[index]} {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={colours[index]} fill={colours[index]} />) }
+                        {
+                            series.map ((serie,index) => <>
+                                    <Bar name={names[index]} {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={colours[index]} fill={colours[index]}>
+                                    { index === series.length-1 ?
+                                        <LabelList dataKey={names[index]}
+                                        position="insideTop"
+                                        content={ render }/> : null
+                                    }
+                                    </Bar>
+                                </>)}
+
                     </BarChart>
                 )
                 break

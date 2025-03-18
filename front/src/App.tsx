@@ -459,6 +459,22 @@ const App: React.FC = () => {
         let tab = tabs.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
         console.log('Reconnected, will reconfigure')
+        let serviceConfig:ServiceConfig = {
+            channel: ServiceConfigChannelEnum.NONE,
+            objects: ServiceConfigObjectEnum.PODS,
+            flow: ServiceConfigFlowEnum.REQUEST,
+            action: ServiceConfigActionEnum.RECONNECT,
+            instance: '',
+            reconnectKey: tab.channelObject.reconnectKey,
+            scope: ServiceConfigScopeEnum.NONE,
+            accessKey: '',
+            view: ServiceConfigViewEnum.NONE,
+            namespace: '',
+            group: '',
+            pod: '',
+            container: ''
+        }
+        wsEvent.target.send(JSON.stringify(serviceConfig))
     }
 
     const reconnectInstance = (wsEvent:any) => {
@@ -474,21 +490,6 @@ const App: React.FC = () => {
 
         let selfId = setInterval( (key, url, tab) => {
             console.log(`Trying to reconnect using ${key}, ${url}`)
-            let serviceConfig:ServiceConfig = {
-                channel: ServiceConfigChannelEnum.NONE,
-                objects: ServiceConfigObjectEnum.PODS,
-                flow: ServiceConfigFlowEnum.REQUEST,
-                action: ServiceConfigActionEnum.RECONNECT,
-                instance: '',
-                reconnectKey: key,
-                scope: ServiceConfigScopeEnum.NONE,
-                accessKey: '',
-                view: ServiceConfigViewEnum.NONE,
-                namespace: '',
-                group: '',
-                pod: '',
-                container: ''
-            }
             let ws = new WebSocket(url)
             ws.onopen = (event) => reconnectedInstance(event, selfId)
             tab.ws = ws

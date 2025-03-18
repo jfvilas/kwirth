@@ -14,6 +14,27 @@ class LogChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
+    containsInstance(instanceId: string): boolean {
+        for (var instances of this.websocketLog.values()) {
+            var exists = instances.find(i => i.instanceId === instanceId)
+            if (exists) return true
+        }
+        return false
+    }
+
+    updateConnection(webSocket: WebSocket, instanceId: string): boolean {
+        for (let [key,value] of this.websocketLog.entries()) {
+            var exists = value.find(i => i.instanceId === instanceId)
+            if (exists) {
+                let temp = value
+                this.websocketLog.delete(key)
+                this.websocketLog.set(webSocket, value)
+                return true
+            }
+        }
+        return false
+    }
+
     sendServiceConfigMessage = (ws:WebSocket, action:ServiceConfigActionEnum, flow: ServiceConfigFlowEnum, channel: ServiceConfigChannelEnum, serviceConfig:ServiceConfig, text:string) => {
         var resp:any = {
             action,

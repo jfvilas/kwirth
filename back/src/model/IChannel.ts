@@ -5,6 +5,8 @@ interface IChannel {
     startInstance (webSocket:WebSocket, serviceConfig:ServiceConfig, podNamespace:string, podName:string, containerName:string) : void
     stopInstance (webSocket:WebSocket, serviceConfig:ServiceConfig) : void
     removeService (webSocket:WebSocket) : void
+    containsInstance (instanceId:string) : boolean
+    updateConnection (webSocket:WebSocket, instanceId:string) : boolean
     updateInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, eventType:string, podNamespace:string, podName:string, containerName:string) : void
     removeInstance (webSocket:WebSocket, instanceId:string) : void
     modifyService (webSocket: WebSocket, serviceConfig: ServiceConfig) : void

@@ -213,6 +213,27 @@ class AlertChannel implements IChannel {
 
     }
 
+    containsInstance(instanceId: string): boolean {
+        for (var instances of this.websocketAlerts.values()) {
+            var exists = instances.find(i => i.instanceId === instanceId)
+            if (exists) return true
+        }
+        return false
+    }
+
+    updateConnection(webSocket: WebSocket, instanceId: string): boolean {
+        for (let [key,value] of this.websocketAlerts.entries()) {
+            var exists = value.find(i => i.instanceId === instanceId)
+            if (exists) {
+                let temp = value
+                this.websocketAlerts.delete(key)
+                this.websocketAlerts.set(webSocket, value)
+                return true
+            }
+        }
+        return false
+    }
+
     removeInstance(webSocket: WebSocket, instanceId: string): void {
         if (this.websocketAlerts.has(webSocket)) {
             var instances = this.websocketAlerts.get(webSocket)
