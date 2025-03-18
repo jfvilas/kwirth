@@ -93,7 +93,7 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
 
     }
     return (<>
-        <Dialog open={true} maxWidth={false} sx={{'& .MuiDialog-paper': { width: '60vw', maxWidth: '60vw', height:'40vw', maxHeight:'40vw' } }}>
+        <Dialog open={true} maxWidth={false} sx={{'& .MuiDialog-paper': { width: '50vw', maxWidth: '60vw', height:'60vh', maxHeight:'40vw' } }}>
             <DialogTitle>Configure metrics for {props.channelObject.view}</DialogTitle>
             <DialogContent >
                 <Stack spacing={2} sx={{ flexShrink: 0, display: 'flex', flexDirection: 'column', mt:'16px' }}>
@@ -131,7 +131,7 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
                     <Stack direction={'row'} spacing={1} >
                         <Stack direction={'column'} sx={{width:'70%'}}>
                             <TextField value={filter} onChange={(event) => setFilter(event.target.value)} sx={{width:'100%'}} variant='standard' label='Filter'></TextField>
-                            <List sx={{ width: '100%', height:'100%', overflowY: 'auto' }}>
+                            <List sx={{ width: '100%', height:'70%', overflowY: 'auto' }}>
                                 {Array.from(props.metricsList.keys()).map((value) => {
                                     if (value.includes(filter) && (value.startsWith('container_') || value.startsWith('kwirth_'))) {
                                         //const labelId = `checkbox-list-label-${value}`

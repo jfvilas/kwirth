@@ -85,7 +85,7 @@ export class ConfigApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    var list:any[]=[]
+                    var list:any[] = []
                     var respReplica = await this.appsV1Api.listNamespacedReplicaSet(req.params.namespace)
                     list.push (...respReplica.body.items.map (n => { return { name:n?.metadata?.name, type:'replica' }}))
                     var respStateful = await this.appsV1Api.listNamespacedStatefulSet(req.params.namespace)

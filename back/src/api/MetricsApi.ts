@@ -35,12 +35,12 @@ export class MetricsApi {
                 try {
                     if (req.params.action==='node') {
                         var json:any = {}
-                        for(var k of this.clusterInfo.nodes.get(req.params.nodename)?.metricValues.keys()!) {
-                            var v = this.clusterInfo.nodes.get(req.params.nodename)?.metricValues.get(k)
+                        for(var k of this.clusterInfo.nodes.get(req.params.nodename)?.containerMetricValues.keys()!) {
+                            var v = this.clusterInfo.nodes.get(req.params.nodename)?.containerMetricValues.get(k)
                             json[k]=v
                         }
-                        for(var k of this.clusterInfo.nodes.get(req.params.nodename)?.machineMetrics.keys()!) {
-                            var v = this.clusterInfo.nodes.get(req.params.nodename)?.machineMetrics.get(k)
+                        for(var k of this.clusterInfo.nodes.get(req.params.nodename)?.machineMetricValues.keys()!) {
+                            var v = this.clusterInfo.nodes.get(req.params.nodename)?.machineMetricValues.get(k)
                             json[k]=v
                         }
                         res.status(200).json(json)

@@ -1,5 +1,5 @@
 //import { CoreV1Api, CustomObjectsApi, V1Node } from "@kubernetes/client-node"
-import { ClusterInfo, NodeInfo } from "../model//ClusterInfo"
+import { ClusterInfo, NodeInfo } from "../model/ClusterInfo"
 import { ServiceConfigViewEnum } from "@jfvilas/kwirth-common"
 
 export interface AssetData {
@@ -87,8 +87,6 @@ export class Metrics {
         var map:Map<string,MetricDefinition> = new Map()
 
         var allMetrics = await this.readCAdvisorMetrics(node)
-        console.log('allMetrics node', node.name)
-        console.log(allMetrics)
         var lines = allMetrics.split('\n').filter(l => l.startsWith('#'))
         for (var line of lines) {
             var recordType=line.substring(0,6).trim()
@@ -106,6 +104,12 @@ export class Metrics {
             // create specific new metrics for subtyped metrics: we create a new metric for each specific metric, and we don't add the orignal metrics
             if (mname==='container_memory_failures_total') {
                 for (var sub of ['pgfault', 'pgmajfault']) {
+                    var submetric = mname + '_' + sub
+                    this.addRecordType(map, submetric, recordType, value)
+                }
+            }
+            if (mname==='container_blkio_device_usage_total') {
+                for (var sub of ['read', 'write']) {
                     var submetric = mname + '_' + sub
                     this.addRecordType(map, submetric, recordType, value)
                 }
@@ -147,19 +151,27 @@ export class Metrics {
             console.log('Error reading cAdvisor metrics', error.stack)
             text=''
         }
-        // add kwirth metrics
-        text+='# HELP kwirth_cluster_memory_precentage Percentage of memory used by object from the whole cluster\n'
-        text+='# TYPE kwirth_cluster_memory_precentage gauge\n'
-        text+='kwirth_cluster_memory_precentage{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
-        text+='# HELP kwirth_cluster_cpu_precentage Percentage of cpu used from the whole cluster\n'
-        text+='# TYPE kwirth_cluster_cpu_precentage gauge\n'
-        text+='kwirth_cluster_cpu_precentage{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
-        text+='# HELP kwirth_cluster_random_counter Accumulated random values\n'
-        text+='# TYPE kwirth_cluster_random_counter counter\n'
-        text+='kwirth_cluster_random_counter{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
-        text+='# HELP kwirth_cluster_random_gauge Averaged random values\n'
-        text+='# TYPE kwirth_cluster_random_gauge gauge\n'
-        text+='kwirth_cluster_random_gauge{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
+        // add kwirth container metrics
+        text+='# HELP kwirth_cluster_container_memory_precentage Percentage of memory used by object from the whole cluster\n'
+        text+='# TYPE kwirth_cluster_container_memory_precentage gauge\n'
+        text+='kwirth_cluster_container_memory_precentage{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
+        text+='# HELP kwirth_cluster_container_cpu_precentage Percentage of cpu used from the whole cluster\n'
+        text+='# TYPE kwirth_cluster_container_cpu_precentage gauge\n'
+        text+='kwirth_cluster_container_cpu_precentage{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
+        text+='# HELP kwirth_cluster_container_random_counter Accumulated conatiner random values\n'
+        text+='# TYPE kwirth_cluster_container_random_counter counter\n'
+        text+='kwirth_cluster_container_random_counter{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
+        text+='# HELP kwirth_cluster_container_random_gauge Averaged container random values\n'
+        text+='# TYPE kwirth_cluster_container_random_gauge gauge\n'
+        text+='kwirth_cluster_container_random_gauge{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
+
+        // add kwirth pod metrics
+        text+='# HELP kwirth_cluster_pod_random_counter Accumulated pod random values\n'
+        text+='# TYPE kwirth_cluster_pod_random_counter counter\n'
+        text+='kwirth_cluster_pod_random_counter{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
+        text+='# HELP kwirth_cluster_pod_random_gauge Averaged pod random values\n'
+        text+='# TYPE kwirth_cluster_pod_random_gauge gauge\n'
+        text+='kwirth_cluster_pod_random_gauge{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
 
         return text
     }
@@ -169,7 +181,9 @@ export class Metrics {
         var rawSampledNodeMetrics = await this.readCAdvisorMetrics(node)
         const regex = /(?:\s*([^=^{]*)=\"([^"]*)",*)/gm;
         var lines=rawSampledNodeMetrics.split('\n')
-        var newMap:Map<string, number> = new Map()
+        var newContainerMetricValues:Map<string, number> = new Map()
+        var newPodMetricValues:Map<string, number> = new Map()
+        var newMachineMetricValues:Map<string, number> = new Map()
 
         for (var line of lines) {
             if (line==='' || line.startsWith('#')) continue
@@ -208,16 +222,19 @@ export class Metrics {
                     machine_scrape_error 0
                 */
                 var parts=line.split(' ')
-                var machineMetricvalue=parts[parts.length-1]
-                node.machineMetrics.set(sampledMetricName, +machineMetricvalue)
+                var machineMetricvalue = parts[parts.length-1]
+                //node.machineMetricValues.set(sampledMetricName, +machineMetricvalue)
+                newMachineMetricValues.set(sampledMetricName, +machineMetricvalue)
                 continue
             }
 
             if (!labels.pod) continue
+
             if (labels.container!=='' && (labels.scope==='container' || labels.scope===undefined)) {
                 // we rebuild the metric name for subtyped metrics (we create synthetic metrics and we ignore the subtype)
                 if (sampledMetricName==='container_memory_failures_total') sampledMetricName += '_' + labels.failure_type
                 if (sampledMetricName==='container_tasks_state') sampledMetricName += '_' + labels.state
+                if (sampledMetricName==='container_blkio_device_usage_total') sampledMetricName += '_' + labels.operation.toLowerCase()
 
                 i = line.indexOf('}')
                 if (i>=0) {
@@ -232,31 +249,68 @@ export class Metrics {
                         else
                             value = +valueAndTimestamp.trim()
 
-                        if (newMap.has(sampledMetricName)) {
+                        if (newContainerMetricValues.has(sampledMetricName)) {
                             console.log('Repeated metrics (will add values):')
-                            console.log('Original metric:', sampledMetricName, newMap.get(sampledMetricName))
+                            console.log('Original metric:', sampledMetricName, newContainerMetricValues.get(sampledMetricName))
                             console.log('Duplicated  metric:', sampledMetricName, value)
-                            newMap.set(sampledMetricName, newMap.get(sampledMetricName)! + value)
+                            newContainerMetricValues.set(sampledMetricName, newContainerMetricValues.get(sampledMetricName)! + value)
                         }
                         else
-                            newMap.set(sampledMetricName, value)
+                            newContainerMetricValues.set(sampledMetricName, value)
                     }
                     else {
-                        console.log('No value nor ts: ', line)
+                        console.log('No value nor ts for container metric: ', line)
                     }
                 }
                 else {
-                    if (!line.startsWith("machine_scrape_error") && !line.startsWith("container_scrape_error")) {
-                        console.log('Invalid metric format: ', line)
-                    }
+                    console.log('Invalid container metric format: ', line)
                 }
             }
             else {
-                // line is not a container metric
+                if (labels.container==='' && (labels.pod!=='' || labels.namespace!=='')) {
+                    // pod metrics
+                    i = line.indexOf('}')
+                    if (i>=0) {
+                        // this is the metric key we store in the map (NO CONTAINER NAME IN THE METRIC NAME)
+                        sampledMetricName= labels.namespace + '/' + labels.pod + '/' + sampledMetricName
+    
+                        var valueAndTimestamp=line.substring(i+1).trim()
+                        if (valueAndTimestamp!==undefined) {
+                            var value
+                            if (valueAndTimestamp.includes(' '))
+                                value = +valueAndTimestamp.split(' ')[0].trim()
+                            else
+                                value = +valueAndTimestamp.trim()
+    
+                            if (newPodMetricValues.has(sampledMetricName)) {
+                                console.log('Repeated metrics (will add values):')
+                                console.log('Original metric:', sampledMetricName, newPodMetricValues.get(sampledMetricName))
+                                console.log('Duplicated  metric:', sampledMetricName, value)
+                                newPodMetricValues.set(sampledMetricName, newPodMetricValues.get(sampledMetricName)! + value)
+                            }
+                            else
+                                newPodMetricValues.set(sampledMetricName, value)
+                        }
+                        else {
+                            console.log('No value nor ts for pode metric: ', line)
+                        }
+                    }
+                    else {
+                        console.log('Invalid pod metric format: ', line)
+                    }    
+                }
+                else {
+                    // line is not a pod metric
+                }
+                
             }
         }
-        node.prevValues = node.metricValues
-        node.metricValues = newMap
+        node.prevContainerMetricValues = node.containerMetricValues
+        node.containerMetricValues = newContainerMetricValues
+        node.prevPodMetricValues = node.podMetricValues
+        node.podMetricValues = newPodMetricValues
+        node.prevMachineMetricValues = node.machineMetricValues
+        node.machineMetricValues = newMachineMetricValues
         node.timestamp = Date.now()
     }
 
@@ -278,7 +332,7 @@ export class Metrics {
         var total=0
         var node=clusterInfo.nodes.get(asset.podNode)
         if (node) {
-            var metric = clusterInfo.metrics.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.metricValues!, metricName, view, node, asset)
+            var metric = clusterInfo.metrics.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.podMetricValues!, clusterInfo.nodes.get(node.name)?.containerMetricValues!, metricName, view, node, asset)
             total = metric.value
         }
         else {
@@ -312,15 +366,15 @@ export class Metrics {
         var result = { value: 0, timestamp: 0 }
 
         switch(requestedMetricName) {
-            case 'kwirth_cluster_cpu_precentage':
-                var vcpus = node.machineMetrics.get('machine_cpu_cores')
+            case 'kwirth_cluster_container_cpu_precentage':
+                var vcpus = node.machineMetricValues.get('machine_cpu_cores')
                 vcpus=0
                 for (var n of clusterInfo.nodes.values()) {
-                    vcpus += n.machineMetrics.get('machine_cpu_cores')!
+                    vcpus += n.machineMetricValues.get('machine_cpu_cores')!
                 }
                 let seconds = clusterInfo.interval
-                var podSeconds = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.metricValues!, 'container_cpu_usage_seconds_total', view, node, asset)).value
-                var podSecondsPrev = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.prevValues!, 'container_cpu_usage_seconds_total', view, node, asset)).value
+                var podSeconds = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.podMetricValues!, clusterInfo.nodes.get(node.name)?.containerMetricValues!, 'container_cpu_usage_seconds_total', view, node, asset)).value
+                var podSecondsPrev = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.prevPodMetricValues!, clusterInfo.nodes.get(node.name)?.prevContainerMetricValues!, 'container_cpu_usage_seconds_total', view, node, asset)).value
                 if (vcpus && podSeconds && podSecondsPrev) {
                     result = { value: ((podSeconds-podSecondsPrev)/(vcpus*seconds))*100, timestamp: node.timestamp }
                 }
@@ -328,9 +382,9 @@ export class Metrics {
                     result = { value: 0, timestamp: node.timestamp }
                 }
                 return result
-            case 'kwirth_cluster_memory_precentage':
-                var memory = node.machineMetrics.get('machine_memory_bytes')
-                var containerMemory = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.metricValues!, 'container_memory_usage_bytes', view, node, asset)).value
+            case 'kwirth_cluster_container_memory_precentage':
+                var memory = node.machineMetricValues.get('machine_memory_bytes')
+                var containerMemory = (this.extractContainerMetrics(clusterInfo, clusterInfo.nodes.get(node.name)?.podMetricValues!, clusterInfo.nodes.get(node.name)?.containerMetricValues!, 'container_memory_usage_bytes', view, node, asset)).value
                 if (memory && containerMemory) {
                     result = { value: (containerMemory/memory*100), timestamp: node.timestamp }
                 }
@@ -338,23 +392,25 @@ export class Metrics {
                     result = { value: 0, timestamp: node.timestamp }
                 }
                 return result
-            case 'kwirth_cluster_random_gauge':
-            case 'kwirth_cluster_random_counter':
-                var rndValue = Math.random()
-                result = { value: rndValue, timestamp: node.timestamp }
+            case 'kwirth_cluster_container_random_gauge':
+            case 'kwirth_cluster_container_random_counter':
+                result = { value: Math.random(), timestamp: node.timestamp }
+                return result
+            case 'kwirth_cluster_pod_random_gauge':
+            case 'kwirth_cluster_pod_random_counter':
+                result = { value: 3 * Math.random(), timestamp: node.timestamp }
                 return result
             default:
                 return result
         }
     }
 
-    public extractContainerMetrics = (clusterInfo:ClusterInfo, metricsSet:Map<string,number>, requestedMetricName:string, view:ServiceConfigViewEnum, node:NodeInfo, asset:AssetData) => {
+    public extractContainerMetrics = (clusterInfo:ClusterInfo, podMetricsSet:Map<string,number>, containerMetricsSet:Map<string,number>, requestedMetricName:string, view:ServiceConfigViewEnum, node:NodeInfo, asset:AssetData) => {
         if (requestedMetricName.startsWith('kwirth_')) return this.extractContainerKwirthMetrics(clusterInfo, requestedMetricName, node, view, asset)
 
         if (view === ServiceConfigViewEnum.CONTAINER) {
             var metricName = asset.podNamespace + '/' + asset.podName + '/' + asset.containerName + '/' + requestedMetricName
-            console.log('extract container data for', metricName)
-            var value = metricsSet.get(metricName)
+            var value = containerMetricsSet.get(metricName)
             if (value !== undefined) {
                 return  { value, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
             }
@@ -364,31 +420,41 @@ export class Metrics {
             }    
         }
         else {
-            console.log('extract pod data for', requestedMetricName)
             // we extract all metrics in the metricsValue that have an impact in calculating requested metrics (for instance, several container metrics for calculating pod metric)
-            console.log('metricsSet')
-            console.log(metricsSet)
-            var subset = Array.from(metricsSet.keys()).filter (k => k.startsWith(asset.podNamespace + '/' + asset.podName+'/') && k.endsWith('/'+requestedMetricName))
-            var metricDef = this.metricsList.get(requestedMetricName)
-            switch(metricDef?.type) {
-                case 'counter':
-                    var accum = 0
-                    for (var submetric of subset) {
-                        accum += metricsSet.get(submetric)!
-                    }
-                    return  { value: accum, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
-                case 'gauge':
-                    var average = 0
-                    if (subset.length>0) {
-                        for (var submetric of subset) {
-                            average += metricsSet.get(submetric)!
-                        }
-                        average /= subset.length
-                    }
-                    return  { value: average, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
-                default:
-                    console.log('Invalid metric type: ',metricDef?.type)
+            // we get some metric values ignoring the container (just ckecking namespace, pod and metricname)
+            var subset = Array.from(containerMetricsSet.keys()).filter (k => k.startsWith(asset.podNamespace + '/' + asset.podName+'/') && k.endsWith('/'+requestedMetricName))
+            if (subset.length===0) {
+                // if we get no metrics extracting data from container metrics, we look for podMetrics
+                var podValue = podMetricsSet.get(asset.podNamespace + '/' + asset.podName+'/'+requestedMetricName)
+                if (podValue)
+                    return  { value: podValue, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
+                else {
+                    console.log('Pod metric value not found')
                     return  { value: 0, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
+                }
+            }
+            else {
+                var metricDef = this.metricsList.get(requestedMetricName)
+                switch(metricDef?.type) {
+                    case 'counter':
+                        var accum = 0
+                        for (var submetric of subset) {
+                            accum += containerMetricsSet.get(submetric)!
+                        }
+                        return  { value: accum, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
+                    case 'gauge':
+                        var average = 0
+                        if (subset.length>0) {
+                            for (var submetric of subset) {
+                                average += containerMetricsSet.get(submetric)!
+                            }
+                            average /= subset.length
+                        }
+                        return  { value: average, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
+                    default:
+                        console.log('Invalid metric type: ',metricDef?.type)
+                        return  { value: 0, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
+                }
             }
         }
     }

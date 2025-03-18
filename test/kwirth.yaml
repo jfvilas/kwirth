@@ -46,6 +46,7 @@ spec:
   selector:
     matchLabels:
       app: kwirth
+  revisionHistoryLimit: 0
   template:
     metadata:
       name: kwirth

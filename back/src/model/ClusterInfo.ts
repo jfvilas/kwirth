@@ -5,9 +5,12 @@ export interface NodeInfo {
     name:string
     ip:string
     kubernetesNode: V1Node
-    metricValues: Map<string,number>
-    prevValues: Map<string,number>
-    machineMetrics: Map<string,number>
+    containerMetricValues: Map<string,number>
+    prevContainerMetricValues: Map<string,number>
+    podMetricValues: Map<string,number>
+    prevPodMetricValues: Map<string,number>
+    machineMetricValues: Map<string,number>
+    prevMachineMetricValues: Map<string,number>
     timestamp: number
 }
 

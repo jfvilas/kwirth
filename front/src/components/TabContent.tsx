@@ -136,9 +136,17 @@ const TabContent: React.FC<any> = (props:IProps) => {
         return resultSeries
     }
 
-    const addChart = (dataMetrics: MetricsObject, metric:string, names:string[], series:any[]) => {
+    const addChart = (dataMetrics: MetricsObject, metric:string, names:string[], series:any[], colour:string) => {
         var result: ReactJSXElement
         var mergedSeries = mergeSeries(names, series)
+
+        const renderLabel = (data:any) => {
+            series.map (s => console.log(s[data.index]))
+            var values:any[] = series.map (s => s[data.index])
+            var total:number =values.reduce((acc,value) => acc+value.value, 0)
+            return <text x={data.x + data.width/3.5} y={data.y-10}>{total.toPrecision(3)}</text>
+        }
+
         switch (dataMetrics.type) {
             case 'line':
                 result = (
@@ -148,7 +156,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
                         <YAxis />
                         <Tooltip />
                         <Legend/>
-                        { series.map ((serie,index) => <Line name={names[index]} type="monotone" dataKey={names[index]} stroke={colours[index]} activeDot={{ r: 8 }} />) }
+                        { series.map ((serie,index) => <Line name={names[index]} type="monotone" dataKey={names[index]} stroke={series.length===1?colour:colours[index]} activeDot={{ r: 8 }} />) }
                     </LineChart>
                 )
                 break
@@ -159,9 +167,9 @@ const TabContent: React.FC<any> = (props:IProps) => {
                             {
                                 series.map( (s,index) => {
                                     return (
-                                        <linearGradient key={index} id={`color${names[index]}`} x1='0' y1='0' x2='0' y2='1'>
-                                            <stop offset='7%' stopColor={colours[index]} stopOpacity={0.8}/>
-                                            <stop offset='93%' stopColor={colours[index]} stopOpacity={0}/>
+                                        <linearGradient key={index} id={`color${series.length===1?colour:colours[index]}`} x1='0' y1='0' x2='0' y2='1'>
+                                            <stop offset='7%' stopColor={series.length===1?colour:colours[index]} stopOpacity={0.8}/>
+                                            <stop offset='93%' stopColor={series.length===1?colour:colours[index]} stopOpacity={0}/>
                                         </linearGradient>
                                     )
                                 })
@@ -172,20 +180,12 @@ const TabContent: React.FC<any> = (props:IProps) => {
                         <YAxis />
                         <Tooltip />
                         <Legend/>
-                        { series.map ((serie,index) => <Area key={index} name={names[index]} type="monotone" {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={colours[index]} fill={`url(#color${names[index]})`} />) }
+                        { series.map ((serie,index) => 
+                            <Area key={index} name={names[index]} type="monotone" {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={`url(#color${series.length===1?colour:colours[index]})`}/> )}
                     </AreaChart>
                 )
                 break
             case 'bar':
-                const render = (data:any) => {
-                    console.log(data)
-                    series.map (s => console.log(s[data.index]))
-                    var values:any[] = series.map (s => s[data.index])
-                    console.log(values)
-                    var total:number =values.reduce((acc,value) => acc+value.value, 0)
-                    return <text x={data.x + data.width/2} y={data.y-10}>{total.toPrecision(3)}</text>
-                }
-
                 result = (
                     <BarChart data={mergedSeries}>
                         <CartesianGrid strokeDasharray="3 3"/>
@@ -193,17 +193,11 @@ const TabContent: React.FC<any> = (props:IProps) => {
                         <YAxis />
                         <Tooltip/>
                         <Legend/>
-                        {
-                            series.map ((serie,index) => <>
-                                    <Bar name={names[index]} {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={colours[index]} fill={colours[index]}>
-                                    { index === series.length-1 ?
-                                        <LabelList dataKey={names[index]}
-                                        position="insideTop"
-                                        content={ render }/> : null
-                                    }
-                                    </Bar>
-                                </>)}
-
+                        { series.map ((serie,index) =>
+                            <Bar name={names[index]} {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={series.length===1?colour:colours[index]}>
+                                { index === series.length-1 ? <LabelList dataKey={names[index]} position='insideTop' content={ renderLabel }/> : null }
+                            </Bar>
+                        )}
                     </BarChart>
                 )
                 break
@@ -267,7 +261,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 var series = assetNames.map(an => {
                     return data.get(an)!.get(metric)
                 })
-                allCharts.push(<>{addChart(dataMetrics, metric, assetNames, series)}</>)
+                allCharts.push(<>{addChart(dataMetrics, metric, assetNames, series, '')}</>)
             }
 
             let rows = []
@@ -283,10 +277,10 @@ const TabContent: React.FC<any> = (props:IProps) => {
             </>)
         }
         else {
-            let allCharts = Array.from(data.keys()!).map( asset =>  {
+            let allCharts = Array.from(data.keys()!).map( (asset, index)  =>  {
                 return Array.from(data.get(asset)?.keys()!).map ( metric => {
                     var serie:any=data.get(asset)?.get(metric)!
-                    return (<>{addChart(dataMetrics, metric, [asset], [serie])}</>)
+                    return (<>{addChart(dataMetrics, metric, [asset], [serie], colours[index])}</>)
                 })
             })
 

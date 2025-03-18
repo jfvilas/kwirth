@@ -29,6 +29,7 @@ import { IChannel } from './model/IChannel'
 import { LogChannel } from './channels/LogChannel'
 import { AlertChannel } from './channels/AlertChannel'
 import { MetricsChannel } from './channels/MetricsChannel'
+import cluster from 'cluster'
 
 const http = require('http')
 const cors = require('cors')
@@ -107,7 +108,7 @@ const sendServiceConfigSignalMessage = (ws:WebSocket, action:ServiceConfigAction
     ws.send(JSON.stringify(resp))
 }
 
-const startPodService = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, serviceConfig:ServiceConfig) => {
+const addObject = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, serviceConfig:ServiceConfig) => {
     console.log(`startPodService '${serviceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${serviceConfig.view}) (instance: ${serviceConfig.instance})`)
 
     sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Container ADDED: ${podNamespace}/${podName}/${containerName}`, serviceConfig)
@@ -119,7 +120,28 @@ const startPodService = (webSocket:WebSocket, podNamespace:string, podName:strin
     }
 }
 
-const updatePodService = async (eventType:string, podNamespace:string, podName:string, containerName:string, webSocket:WebSocket, serviceConfig:ServiceConfig) => {
+const modifyObject = async (eventType:string, podNamespace:string, podName:string, containerName:string, webSocket:WebSocket, serviceConfig:ServiceConfig) => {
+    switch(serviceConfig.channel) {
+        // +++ pending review
+        // case ServiceConfigChannelEnum.METRICS:
+        //     var metricsConfig = serviceConfig as MetricsConfig
+        //     var instances = websocketMetrics.get(webSocket)
+        //     var instance = instances?.find((instance) => instance.instanceId === metricsConfig.instance)
+        //     if (instance) {
+        //         if (eventType==='DELETED') {
+        //             instance.assets = instance.assets.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
+        //         }
+        //         if (eventType==='MODIFIED') {
+        //             var thisPod = instance.assets.find(p => p.podNamespace===podNamespace && p.podName===podName && p.containerName===containerName)
+        //         }
+        //     }
+        //     break
+        default:
+            console.log(`Invalid channel`, serviceConfig.channel)
+    }
+}
+
+const deleteObject = async (eventType:string, podNamespace:string, podName:string, containerName:string, webSocket:WebSocket, serviceConfig:ServiceConfig) => {
     switch(serviceConfig.channel) {
         // +++ pending review
         // case ServiceConfigChannelEnum.METRICS:
@@ -152,19 +174,19 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, servi
                 let containerName = container.name
                 switch (serviceConfig.view) {
                     case ServiceConfigViewEnum.NAMESPACE:
-                        startPodService(webSocket, podNamespace, podName, containerName, serviceConfig)
+                        addObject(webSocket, podNamespace, podName, containerName, serviceConfig)
                         break
                     case ServiceConfigViewEnum.GROUP:
                         var [_groupType, groupName] = serviceConfig.group.split('+')
                         if (podName.startsWith(groupName)) {  // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
-                            startPodService(webSocket, podNamespace, podName, containerName, serviceConfig)
+                            addObject(webSocket, podNamespace, podName, containerName, serviceConfig)
                         }
                         break
                     case ServiceConfigViewEnum.POD:
                         if ((serviceConfig.namespace==='' || (serviceConfig.namespace!=='' && serviceConfig.namespace.split(',').includes(podNamespace))) && serviceConfig.pod.split(',').includes(podName)) {
                             if (serviceConfig.pod.split(',').includes(podName)) {
                                 console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName}`)
-                                startPodService(webSocket, podNamespace, podName, containerName, serviceConfig)
+                                addObject(webSocket, podNamespace, podName, containerName, serviceConfig)
                             }
                         }
                         break
@@ -175,7 +197,7 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, servi
                         if (sccontainers.includes(containerName) && scpods.includes(podName)) {
                             if (serviceConfig.container.split(',').includes(podName+'+'+containerName)) {
                                 console.log(`Container ADDED: ${podNamespace}/${podName}/${containerName}`)
-                                startPodService(webSocket, podNamespace, podName, containerName, serviceConfig)
+                                addObject(webSocket, podNamespace, podName, containerName, serviceConfig)
                             }
                         }
                         else {
@@ -188,8 +210,12 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, servi
                 }
             }
         }
-        else if (eventType === 'DELETED' || eventType === 'MODIFIED') {
-            updatePodService(eventType, podNamespace, podName, '', webSocket, serviceConfig)
+        else if (eventType === 'MODIFIED') {
+            deleteObject(eventType, podNamespace, podName, '', webSocket, serviceConfig)
+            sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Pod ${eventType}: ${podNamespace}/${podName}`, serviceConfig)
+        }
+        else if (eventType === 'MODIFIED') {
+            modifyObject(eventType, podNamespace, podName, '', webSocket, serviceConfig)
             sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Pod ${eventType}: ${podNamespace}/${podName}`, serviceConfig)
         }
         else {
@@ -593,10 +619,13 @@ const initCluster = async (token:string) : Promise<ClusterInfo> => {
             name: node.metadata?.name!,
             ip: node.status?.addresses!.find(a => a.type === 'InternalIP')?.address!,
             kubernetesNode: node,
-            metricValues: new Map(),
-            prevValues: new Map(),
-            machineMetrics: new Map(),
-            timestamp: 0
+            containerMetricValues: new Map(),
+            prevContainerMetricValues: new Map(),
+            machineMetricValues: new Map(),
+            timestamp: 0,
+            podMetricValues: new Map(),
+            prevPodMetricValues: new Map(),
+            prevMachineMetricValues: new Map()
         }
         nodes.set(nodeData.name, nodeData)
         console.log('Found node', nodeData.name)
@@ -614,6 +643,11 @@ const initCluster = async (token:string) : Promise<ClusterInfo> => {
     clusterInfo.logApi = logApi
 
     await clusterInfo.metrics.loadMetrics(Array.from(nodes.values()))
+    var x = [...clusterInfo.nodes.values()][0]
+    await clusterInfo.metrics.readNodeMetrics(x)
+    console.log(x.containerMetricValues)
+    console.log(x.podMetricValues)
+    console.log(x.machineMetricValues)
     clusterInfo.startInterval(clusterInfo.interval)
 
     return clusterInfo
@@ -629,36 +663,70 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 getMyKubernetesData().then ( async (kwirthData) => {
     try {
         saToken = new ServiceAccountToken(coreApi, kwirthData.namespace)
+        // saToken.createToken('kwirth-sa',kwirthData.namespace).then ( () => {
+        //     saToken.extractToken('kwirth-sa',kwirthData.namespace).then ( async (token) => {
+        //         if (token)  {
+        //             console.log('SA token obtained succesfully')
+        //             var clusterInfo = await initCluster(token)
+
+        //             // load extensions
+        //             var logChannel = new LogChannel(clusterInfo)
+        //             var alertChannel = new AlertChannel(clusterInfo)
+        //             var metricsChannel = new MetricsChannel(clusterInfo)
+        //             channels.set('log', logChannel)
+        //             channels.set('alert', alertChannel)
+        //             channels.set('metrics', metricsChannel)
+
+        //             console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
+        //             console.log(`Detected own namespace: ${kwirthData.namespace}`)
+        //             if (kwirthData.deployment !== '')
+        //                 console.log(`Detected own deployment: ${kwirthData.deployment}`)
+        //             else
+        //                 console.log(`No deployment detected. Kwirth is not running inside a cluster`)
+        //             launch(kwirthData, clusterInfo)
+        //         }
+        //         else {
+        //             console.log('SA token is invalid, exiting...')
+        //         }
+        //     })
+        //     .catch ( (err) => {
+        //         console.log('Could not get SA token, exiting...')
+        //     })
+        // } )                    
+
         saToken.createToken('kwirth-sa',kwirthData.namespace).then ( () => {
-            saToken.extractToken('kwirth-sa',kwirthData.namespace).then ( async (token) => {
-                if (token)  {
-                    console.log('SA token obtained succesfully')
-                    var clusterInfo = await initCluster(token)
+            setTimeout ( () => {
+                saToken.extractToken('kwirth-sa',kwirthData.namespace).then ( async (token) => {
+                    if (token)  {
+                        console.log('SA token obtained succesfully')
+                        var clusterInfo = await initCluster(token)
+    
+                        // load extensions
+                        var logChannel = new LogChannel(clusterInfo)
+                        var alertChannel = new AlertChannel(clusterInfo)
+                        var metricsChannel = new MetricsChannel(clusterInfo)
+                        channels.set('log', logChannel)
+                        channels.set('alert', alertChannel)
+                        channels.set('metrics', metricsChannel)
+    
+                        console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
+                        console.log(`Detected own namespace: ${kwirthData.namespace}`)
+                        if (kwirthData.deployment !== '')
+                            console.log(`Detected own deployment: ${kwirthData.deployment}`)
+                        else
+                            console.log(`No deployment detected. Kwirth is not running inside a cluster`)
+                        launch(kwirthData, clusterInfo)
+                    }
+                    else {
+                        console.log('SA token is invalid, exiting...')
+                    }
+                })
+                .catch ( (err) => {
+                    console.log('Could not get SA token, exiting...')
+                })    
+            }, 5000)
+        })        
 
-                    // load extensions
-                    var logChannel = new LogChannel(clusterInfo)
-                    var alertChannel = new AlertChannel(clusterInfo)
-                    var metricsChannel = new MetricsChannel(clusterInfo)
-                    channels.set('log', logChannel)
-                    channels.set('alert', alertChannel)
-                    channels.set('metrics', metricsChannel)
-
-                    console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
-                    console.log(`Detected own namespace: ${kwirthData.namespace}`)
-                    if (kwirthData.deployment !== '')
-                        console.log(`Detected own deployment: ${kwirthData.deployment}`)
-                    else
-                        console.log(`No deployment detected. Kwirth is not running inside a cluster`)
-                    launch(kwirthData, clusterInfo)
-                }
-                else {
-                    console.log('SA token is invalid, exiting...')
-                }
-            })
-            .catch ( (err) => {
-                console.log('Could not get SA token, exiting...')
-            })
-        } )                    
     }
     catch (err){
         console.log(err)
