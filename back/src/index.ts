@@ -170,6 +170,10 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, servi
         let podName:string = obj.metadata.name
         let podNamespace:string = obj.metadata.namespace
         if (eventType === 'ADDED') {
+            if (obj.status.phase.toLowerCase()!=='running') {
+                console.log('Not running pod:', podNamespace+'/'+podName)
+                return
+            }
             for (var container of obj.spec.containers) {
                 let containerName = container.name
                 switch (serviceConfig.view) {
@@ -642,12 +646,18 @@ const initCluster = async (token:string) : Promise<ClusterInfo> => {
     clusterInfo.appsApi = appsApi
     clusterInfo.logApi = logApi
 
-    await clusterInfo.metrics.loadMetrics(Array.from(nodes.values()))
-    var x = [...clusterInfo.nodes.values()][0]
-    await clusterInfo.metrics.readNodeMetrics(x)
-    console.log(x.containerMetricValues)
-    console.log(x.podMetricValues)
-    console.log(x.machineMetricValues)
+    await clusterInfo.metrics.loadClusterMetrics(Array.from(nodes.values()))
+    // var x = [...clusterInfo.nodes.values()][0]
+    // console.log(await clusterInfo.metrics.readCAdvisorMetrics(x))
+    clusterInfo.vcpus = 0
+    clusterInfo.memory = 0
+    for (let node of clusterInfo.nodes.values()) {
+        await clusterInfo.metrics.readNodeMetrics(node)
+        clusterInfo.vcpus += node.machineMetricValues.get('machine_cpu_cores')?.value!
+        clusterInfo.memory += node.machineMetricValues.get('machine_memory_bytes')?.value!
+    }
+    console.log('clusterInfo.memory', clusterInfo.memory)
+    console.log('clusterInfo.vcpus', clusterInfo.vcpus)
     clusterInfo.startInterval(clusterInfo.interval)
 
     return clusterInfo
@@ -696,7 +706,8 @@ getMyKubernetesData().then ( async (kwirthData) => {
 
         saToken.createToken('kwirth-sa',kwirthData.namespace).then ( () => {
             setTimeout ( () => {
-                saToken.extractToken('kwirth-sa',kwirthData.namespace).then ( async (token) => {
+                console.log('Extracting token...')
+                saToken.extractToken('kwirth-sa', kwirthData.namespace).then ( async (token) => {
                     if (token)  {
                         console.log('SA token obtained succesfully')
                         var clusterInfo = await initCluster(token)
@@ -722,6 +733,7 @@ getMyKubernetesData().then ( async (kwirthData) => {
                     }
                 })
                 .catch ( (err) => {
+                    console.log((err as Error).stack)
                     console.log('Could not get SA token, exiting...')
                 })    
             }, 5000)

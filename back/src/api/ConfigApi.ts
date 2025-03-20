@@ -87,9 +87,9 @@ export class ConfigApi {
                 try {
                     var list:any[] = []
                     var respReplica = await this.appsV1Api.listNamespacedReplicaSet(req.params.namespace)
-                    list.push (...respReplica.body.items.map (n => { return { name:n?.metadata?.name, type:'replica' }}))
+                    list.push (...respReplica.body.items.filter(r => r.status?.replicas!>0).map (n => { return { name:n?.metadata?.name, type:'replica' }}))
                     var respStateful = await this.appsV1Api.listNamespacedStatefulSet(req.params.namespace)
-                    list.push (...respStateful.body.items.map (n => { return { name:n?.metadata?.name, type:'stateful' }}))
+                    list.push (...respStateful.body.items.filter(r => r.status?.replicas!>0).map (n => { return { name:n?.metadata?.name, type:'stateful' }}))
                     var respDaemon = await this.appsV1Api.listNamespacedDaemonSet(req.params.namespace)
                     list.push (...respDaemon.body.items.map (n => { return { name:n?.metadata?.name, type:'daemon' }}))
                     res.status(200).json(list)
@@ -109,7 +109,7 @@ export class ConfigApi {
             .get( async (req:Request, res:Response) => {
                 try {
                     var response= await this.coreApi.listNamespacedPod(req.params.namespace)
-                    var pods = response.body.items.filter (n => n?.metadata?.ownerReferences![0].name===req.params.group).map (n => n?.metadata?.name)
+                    var pods = response.body.items.filter (n => n?.metadata?.ownerReferences![0].name===req.params.group).filter(p => p.status?.phase?.toLowerCase()==='running').map (n => n?.metadata?.name)
                     res.status(200).json(pods)
                 }
                 catch (err) {

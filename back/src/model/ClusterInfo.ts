@@ -5,12 +5,12 @@ export interface NodeInfo {
     name:string
     ip:string
     kubernetesNode: V1Node
-    containerMetricValues: Map<string,number>
-    prevContainerMetricValues: Map<string,number>
-    podMetricValues: Map<string,number>
-    prevPodMetricValues: Map<string,number>
-    machineMetricValues: Map<string,number>
-    prevMachineMetricValues: Map<string,number>
+    containerMetricValues: Map<string,{value: number, timestamp:number}>
+    prevContainerMetricValues: Map<string,{value: number, timestamp:number}>
+    podMetricValues: Map<string,{value: number, timestamp:number}>
+    prevPodMetricValues: Map<string,{value: number, timestamp:number}>
+    machineMetricValues: Map<string,{value: number, timestamp:number}>
+    prevMachineMetricValues: Map<string,{value: number, timestamp:number}>
     timestamp: number
 }
 
@@ -23,6 +23,8 @@ export class ClusterInfo {
     public metrics!: Metrics;
     public interval: number = 60
     public intervalRef: number = -1
+    public vcpus: number = 0
+    public memory: number = 0
 
     stopInterval = () => clearTimeout(this.intervalRef)
 

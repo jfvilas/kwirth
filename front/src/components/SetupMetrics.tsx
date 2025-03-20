@@ -130,11 +130,10 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
 
                     <Stack direction={'row'} spacing={1} >
                         <Stack direction={'column'} sx={{width:'70%'}}>
-                            <TextField value={filter} onChange={(event) => setFilter(event.target.value)} sx={{width:'100%'}} variant='standard' label='Filter'></TextField>
+                            <TextField value={filter} onChange={(event) => setFilter(event.target.value)} sx={{width:'100%'}} variant='standard' label='Filter' autoFocus></TextField>
                             <List sx={{ width: '100%', height:'70%', overflowY: 'auto' }}>
                                 {Array.from(props.metricsList.keys()).map((value) => {
                                     if (value.includes(filter) && (value.startsWith('container_') || value.startsWith('kwirth_'))) {
-                                        //const labelId = `checkbox-list-label-${value}`
                                         return (
                                             <ListItem key={value} disablePadding >
                                                 <ListItemButton onClick={() => metricAddOrRemove(value)} dense>
@@ -159,6 +158,7 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
                             <FormControl variant="standard">
                                 <InputLabel sx={{ml:1}}>Chart</InputLabel>
                                 <Select value={chartType.toString()} onChange={onChangeChartType} sx={{ml:1}} variant='standard'>
+                                    <MenuItem value={'value'}>Value</MenuItem>
                                     <MenuItem value={'line'}>Line</MenuItem>
                                     <MenuItem value={'area'}>Area</MenuItem>
                                     <MenuItem value={'bar'}>Bar</MenuItem>

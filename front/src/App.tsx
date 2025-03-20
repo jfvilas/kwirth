@@ -478,11 +478,8 @@ const App: React.FC = () => {
     }
 
     const reconnectInstance = (wsEvent:any) => {
-        console.log(wsEvent)
         let tab = tabs.find(tab => tab.ws === wsEvent.target)
-        console.log(tab)
         if (!tab || !tab.channelObject || !tab.channelObject.reconnectKey) return
-        console.log(tab.channelObject)
         var cluster = clusters!.find(c => c.name === tab!.channelObject!.clusterName)
         if (!cluster) return
 

@@ -14,17 +14,93 @@ class MetricsChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    getAssetMetrics = (serviceConfig:ServiceConfig, assets:AssetData[]) : AssetMetrics => {
+    getAssetMetrics = (serviceConfig:ServiceConfig, assets:AssetData[], usePrevMetricSet:boolean) : AssetMetrics => {
         var assetMetrics:AssetMetrics = { assetName: this.getAssetMetricName(serviceConfig, assets), values: [] }
-        for (var metricName of serviceConfig.data.metrics) {
-            var uniqueValues:number[]=[]
-            for (var asset of assets) {
-                var result = this.clusterInfo.metrics.getContainerMetricValue(this.clusterInfo, metricName, serviceConfig.view, asset)
-                uniqueValues.push(result)
-            }
-            var metricValue = this.clusterInfo.metrics.getTotal(this.clusterInfo, metricName,uniqueValues)
-            assetMetrics.values.push ( {metricName, metricValue})
+
+        var newAssets:AssetData[] = []
+        if (serviceConfig.view=== ServiceConfigViewEnum.CONTAINER) {
+            newAssets = assets
         }
+        else {
+            for (var a of assets) {
+                if (!newAssets.find(na => na.podName===a.podName)) {
+                    newAssets.push({
+                        podNode: a.podNode,
+                        podNamespace: a.podNamespace,
+                        podGroup: a.podGroup,
+                        podName: a.podName,
+                        containerName: ''
+                    })
+                }
+            }
+        }
+
+        for (let metricName of serviceConfig.data.metrics) {
+            let sourceMetricName = metricName
+            if (metricName === 'kwirth_cluster_container_memory_percentage') sourceMetricName = 'container_memory_working_set_bytes'
+            if (metricName === 'kwirth_cluster_container_cpu_percentage') sourceMetricName = 'container_cpu_usage_seconds_total'
+            if (metricName === 'kwirth_cluster_container_random_counter' || metricName === 'kwirth_cluster_container_random_gauge') sourceMetricName = 'container_cpu_system_seconds_total'
+
+            let uniqueValues:number[] = []
+
+            for (let asset of newAssets) {
+                let total=0
+                let node = this.clusterInfo.nodes.get(asset.podNode)
+                if (node) {
+                    let metric
+                    if (usePrevMetricSet)
+                        metric = this.clusterInfo.metrics.extractContainerMetrics(this.clusterInfo, node.prevPodMetricValues, node.prevContainerMetricValues, sourceMetricName, serviceConfig.view, node, asset)
+                    else
+                        metric = this.clusterInfo.metrics.extractContainerMetrics(this.clusterInfo, node.podMetricValues, node.containerMetricValues, sourceMetricName, serviceConfig.view, node, asset)
+                    total = metric.value
+                }
+                else {
+                    console.log('No node found for calculating pod metric value', asset)
+                }
+                uniqueValues.push(total)        
+            }
+
+            let metricValue = uniqueValues.reduce((acc,value) => acc+value, 0)
+            assetMetrics.values.push ( { metricName:metricName, metricValue })
+        }
+
+        for (var i=0;i<assetMetrics.values.length;i++) {
+            let m = assetMetrics.values[i]
+
+            if (m.metricName === 'kwirth_cluster_container_memory_percentage') {
+                let clusterMemory = this.clusterInfo.memory
+                if (Number.isNaN(this.clusterInfo.memory)) clusterMemory=Number.MAX_VALUE
+                m.metricValue = Math.round(m.metricValue/clusterMemory*100*100)/100
+            }
+            else if (m.metricName === 'kwirth_cluster_container_cpu_percentage') {
+                if (!usePrevMetricSet) {
+                    // we perform a recursive call if-and-only-if we are not extracting prev values
+                    var prevValues = this.getAssetMetrics(serviceConfig, newAssets, true)
+                    console.log('x', prevValues)
+
+                    let prev = prevValues.values.find(pm => pm.metricName === m.metricName)
+                    if (prev) {
+                        m.metricValue -= prev.metricValue
+                        let totalSecs = this.clusterInfo.interval * this.clusterInfo.vcpus
+                        console.log('totalsecs', totalSecs)
+        
+                        m.metricValue = Math.round(m.metricValue/totalSecs*100*100)/100
+                        console.log('assetMetrics cpu final', assetMetrics)
+                    }
+                    else {
+                        console.log(`No previous value found for ${m.metricName}`)
+                    }
+                }
+            }
+            else if (m.metricName === 'kwirth_cluster_container_random_counter') {
+                m.metricValue = Math.round(Math.random()*100*100)/100
+            }
+            else if (m.metricName === 'kwirth_cluster_container_random_gauge') {
+                m.metricValue = Math.round(Math.random()*100)/100
+            }
+        }
+
+
         return assetMetrics
     }
 
@@ -81,14 +157,14 @@ class MetricsChannel implements IChannel {
             switch(serviceConfig.view) {
                 case ServiceConfigViewEnum.NAMESPACE:
                     if (serviceConfig.data.aggregate) {
-                        let assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets)
+                        let assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
                         const namespaces = [...new Set(instance.assets.map(item => item.podNamespace))]
                         for (let namespace of namespaces) {
                             let assets = instance.assets.filter(a => a.podNamespace === namespace)
-                            let assetMetrics = this.getAssetMetrics(serviceConfig, assets)
+                            let assetMetrics = this.getAssetMetrics(serviceConfig, assets, false)
                             metricsMessage.assets.push(assetMetrics)
                         }
 
@@ -96,14 +172,14 @@ class MetricsChannel implements IChannel {
                     break
                 case ServiceConfigViewEnum.GROUP:
                     if (serviceConfig.data.aggregate) {
-                        var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets)
+                        var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
                         const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
                         for (let groupName of groupNames) {
                             let assets=instance.assets.filter(a => a.podGroup === groupName)
-                            let assetMetrics = this.getAssetMetrics(serviceConfig, assets)
+                            let assetMetrics = this.getAssetMetrics(serviceConfig, assets, false)
                             metricsMessage.assets.push(assetMetrics)
                         }
                     }
@@ -111,27 +187,26 @@ class MetricsChannel implements IChannel {
                 case ServiceConfigViewEnum.POD:
                     console.log('assets', instance.assets)
                     if (serviceConfig.data.aggregate) {
-                        var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets)
+                        var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
-                        //var differentPodNames = [ ...new Set (instance.assets.map(asset=> asset.podName))]
-                        const podNames = [...new Set(instance.assets.map(item => item.podName))]
+                        const podNames = [...new Set(instance.assets.map(asset => asset.podName))]
                         for (var podName of podNames) {
                             var assets = instance.assets.filter(a => a.podName === podName)
-                            var assetMetrics = this.getAssetMetrics(serviceConfig, assets)
+                            var assetMetrics = this.getAssetMetrics(serviceConfig, assets, false)
                             metricsMessage.assets.push(assetMetrics)
                         }
                     }
                     break
                 case ServiceConfigViewEnum.CONTAINER:
                     if (serviceConfig.data.aggregate) {
-                        var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets)
+                        var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
                         for (var asset of instance.assets) {
-                            var assetMetrics = this.getAssetMetrics(serviceConfig, [asset])
+                            var assetMetrics = this.getAssetMetrics(serviceConfig, [asset], false)
                             metricsMessage.assets.push(assetMetrics)
                         }
                     }
