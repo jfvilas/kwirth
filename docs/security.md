@@ -5,7 +5,6 @@ There exist three levels of security that must be taken into account:
   2. User security.
   3. API security.
 
-
 ### Administrator security
 When you first deploy Kwirth there will exist an admin account. The credentials for the admin account are strong credentials like these:
 

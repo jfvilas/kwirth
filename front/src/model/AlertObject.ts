@@ -1,6 +1,6 @@
-import { ServiceMessage } from "@jfvilas/kwirth-common"
+import { InstanceMessage } from "@jfvilas/kwirth-common"
 
-export interface IAlertMessage extends ServiceMessage {
+export interface IAlertMessage extends InstanceMessage {
     timestamp?: Date
     severity: AlertSeverityEnum
     text: string

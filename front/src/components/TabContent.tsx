@@ -1,6 +1,6 @@
 import { Box, Stack, Typography } from '@mui/material'
 import { LogObject } from '../model/LogObject'
-import { LogMessage, ServiceConfigScopeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { FiredAlert } from '../model/AlertObject'
 import { MetricsObject } from '../model/MetricsObject'
@@ -141,14 +141,13 @@ const TabContent: React.FC<any> = (props:IProps) => {
         var mergedSeries = mergeSeries(names, series)
 
         const renderLabel = (data:any) => {
-            series.map (s => console.log(s[data.index]))
+            // series.map (s => console.log(s[data.index]))
             var values:any[] = series.map (s => s[data.index])
             var total:number =values.reduce((acc,value) => acc+value.value, 0)
             return <text x={data.x + data.width/3.5} y={data.y-10}>{total.toPrecision(3)}</text>
         }
         let  height=300
 
-        console.log(series)
         switch (dataMetrics.type) {
             case 'value':
                 height=40+series.length*80
@@ -156,10 +155,10 @@ const TabContent: React.FC<any> = (props:IProps) => {
                     <Stack direction={'row'}>
                         {
                             <Typography textAlign={'center'} alignSelf={'center'} width={'100%'}>
-                                { series.map( (s,index) => {
+                                { series.map( (serie,index) => {
                                     return (<>
                                         <Typography textAlign={'center'} alignSelf={'center'} width={'100%'} fontSize={48} color={series.length===1?colour:colours[index]}>
-                                            {s[s.length-1].value}
+                                            {serie[serie.length-1].value}
                                         </Typography>
                                         <Typography textAlign={'center'} alignSelf={'center'} width={'100%'} fontSize={12} color={series.length===1?colour:colours[index]}>
                                             {names[index]}

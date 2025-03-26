@@ -26,6 +26,7 @@ interface IResourceSelected {
 
 interface IProps {
     onAdd:(resource:IResourceSelected) => {}
+    onChangeCluster:(clusterName:string) => {}
     clusters:Cluster[]
     channels:string[]
     sx:SxProps
@@ -98,6 +99,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
         setPods([])
         setAllContainers([])
         setContainers([])
+        if (props.onChangeCluster !== undefined) props.onChangeCluster(value)
     }
 
     const onChangeView = (event: SelectChangeEvent) => {

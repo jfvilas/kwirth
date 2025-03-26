@@ -1,5 +1,5 @@
 import { ClusterInfo, NodeInfo } from "../model/ClusterInfo"
-import { ServiceConfigViewEnum } from "@jfvilas/kwirth-common"
+import { InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
 
 export interface AssetData {
     podNode:string
@@ -171,6 +171,22 @@ export class Metrics {
         text += '# TYPE kwirth_cluster_container_random_gauge gauge\n'
         text += `kwirth_cluster_container_random_gauge{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n`
 
+        text += '# HELP kwirth_cluster_container_transmit_percentage Percentage of data sent in relation to the whole cluster\n'
+        text += '# TYPE kwirth_cluster_container_transmit_percentage gauge\n'
+        text += 'kwirth_cluster_container_transmit_percentage{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
+
+        text += '# HELP kwirth_cluster_container_receive_percentage Percentage of data received in relation to the whole cluster\n'
+        text += '# TYPE kwirth_cluster_container_receive_percentage gauge\n'
+        text += 'kwirth_cluster_container_receive_percentage{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
+
+        text += '# HELP kwirth_cluster_container_transmit_mbps Mbps of data sent over the last period\n'
+        text += '# TYPE kwirth_cluster_container_transmit_mbps gauge\n'
+        text += 'kwirth_cluster_container_transmit_mbps{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
+
+        text += '# HELP kwirth_cluster_container_receive_mbps Mbps of data received over the last period\n'
+        text += '# TYPE kwirth_cluster_container_receive_mbps gauge\n'
+        text += 'kwirth_cluster_container_receive_mbps{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
+
         return text
     }
 
@@ -312,13 +328,6 @@ export class Metrics {
                                     console.log('Original metric:   ', sampledMetricName, newPodMetricValues.get(sampledMetricName))
                                     console.log('Duplicated  metric:', sampledMetricName, newValue)
                                     newPodMetricValues.set(sampledMetricName, { value: newValue + newPodMetricValues.get(sampledMetricName)!.value, timestamp:timestamp } )
-                                    // +++ review
-                                    // if (timestamp>newPodMetricValues.get(sampledMetricName)!.timestamp) {
-                                    //     newPodMetricValues.set(sampledMetricName, { value: newValue + newPodMetricValues.get(sampledMetricName)!.value, timestamp:timestamp } )
-                                    // }
-                                    // else {
-                                    //     newPodMetricValues.set(sampledMetricName, { value: newValue + newPodMetricValues.get(sampledMetricName)!.value, timestamp:timestamp } )
-                                    // }
                                 }
                             }
                             else
@@ -363,8 +372,8 @@ export class Metrics {
         this.loadingClusterMetrics = false
     }
 
-    public extractContainerMetrics = (clusterInfo:ClusterInfo, podMetricsSet:Map<string,{value: number, timestamp:number}>, containerMetricsSet:Map<string,{value: number, timestamp:number}>, requestedMetricName:string, view:ServiceConfigViewEnum, node:NodeInfo, asset:AssetData) : {value:number, timestamp:number|undefined }=> {
-        if (view === ServiceConfigViewEnum.CONTAINER) {
+    public extractContainerMetrics = (clusterInfo:ClusterInfo, podMetricsSet:Map<string,{value: number, timestamp:number}>, containerMetricsSet:Map<string,{value: number, timestamp:number}>, requestedMetricName:string, view:InstanceConfigViewEnum, node:NodeInfo, asset:AssetData) : {value:number, timestamp:number|undefined }=> {
+        if (view === InstanceConfigViewEnum.CONTAINER) {
             var metricName = asset.podNamespace + '/' + asset.podName + '/' + asset.containerName + '/' + requestedMetricName
             var value = containerMetricsSet.get(metricName)?.value
             if (value !== undefined) {
@@ -376,18 +385,16 @@ export class Metrics {
             }    
         }
         else {
-            console.log('asset', asset)
             // we extract all metrics in the metricsValue that have an impact in calculating requested metrics (for instance, several container metrics for calculating pod metric)
             // we get some metric values ignoring the container (just ckecking namespace, pod and metricname)
             var subset = Array.from(containerMetricsSet.keys()).filter (k => k.startsWith(asset.podNamespace + '/' + asset.podName+'/') && k.endsWith('/'+requestedMetricName))
-            console.log('subset', subset)
             if (subset.length===0) {
                 // if we cannot get metrics when extracting data from container metrics, we look for podMetrics
                 var podValue = podMetricsSet.get(asset.podNamespace + '/' + asset.podName+'/'+requestedMetricName)?.value
                 if (podValue)
                     return  { value: podValue, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
                 else {
-                    console.log('Pod metric value not found')
+                    console.log(`Pod metric value not found for: ${asset.podNamespace + '/' + asset.podName+'/'+requestedMetricName}`)
                     return  { value: 0, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
                 }
             }
@@ -395,7 +402,6 @@ export class Metrics {
                 var accum = 0
                 for (var submetric of subset) { 
                     var v = containerMetricsSet.get(submetric)!.value
-                    console.log(submetric,'=',v)
                     accum +=v
                 }
                 return  { value: accum, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }

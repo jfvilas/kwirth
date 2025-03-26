@@ -1,5 +1,5 @@
-import { ServiceMessage } from './ServiceMessage';
-export interface LogMessage extends ServiceMessage {
+import { InstanceMessage } from './InstanceMessage';
+export interface LogMessage extends InstanceMessage {
     timestamp?: Date;
     text: string;
 }

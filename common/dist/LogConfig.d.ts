@@ -1,5 +1,5 @@
-import { ServiceConfig } from './ServiceConfig';
-export interface LogConfig extends ServiceConfig {
+import { InstanceConfig } from './InstanceConfig';
+export interface LogConfig extends InstanceConfig {
     timestamp: boolean;
     previous: boolean;
     maxMessages: number;

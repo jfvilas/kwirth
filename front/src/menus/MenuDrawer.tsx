@@ -20,9 +20,10 @@ enum MenuDrawerOption {
     Exit
 }
 interface IProps {
-    optionSelected: (opt:MenuDrawerOption) => {};
-    uploadSelected: (a:React.ChangeEvent<HTMLInputElement>) => {};
-    user:User;
+    optionSelected: (opt:MenuDrawerOption) => {}
+    uploadSelected: (a:React.ChangeEvent<HTMLInputElement>) => {}
+    selectedCluster:string
+    user:User
   }
   
 const MenuDrawer: React.FC<any> = (props:IProps) => {
@@ -33,16 +34,16 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
 
     const menu=(
         <MenuList sx={{height:'85vh'}}>
-            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.NewBoard)}><CreateNewFolderTwoTone/>&nbsp;New</MenuItem>
-            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.OpenBoard)}><FileOpenTwoTone/>&nbsp;Load</MenuItem>
-            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.SaveBoard)}><SaveTwoTone/>&nbsp;Save</MenuItem>
-            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveBoardAs)}><SaveAsTwoTone/>&nbsp;Save as...</MenuItem>
-            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.DeleteBoard)}><DeleteTwoTone/>&nbsp;Delete</MenuItem>
+            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.NewBoard)}><CreateNewFolderTwoTone/>&nbsp;New board</MenuItem>
+            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.OpenBoard)}><FileOpenTwoTone/>&nbsp;Load board</MenuItem>
+            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.SaveBoard)}><SaveTwoTone/>&nbsp;Save board</MenuItem>
+            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveBoardAs)}><SaveAsTwoTone/>&nbsp;Save board as...</MenuItem>
+            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.DeleteBoard)}><DeleteTwoTone/>&nbsp;Delete board...</MenuItem>
             <Divider/>
             <MenuItem key='boardexp' onClick={() => optionSelected(MenuDrawerOption.ExportBoards)}><ImportExport/>&nbsp;Export all boards (to downloadable file)</MenuItem>
             <MenuItem key='boardimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new boards from file (and merge overwriting)</MenuItem>
             <MenuItem key='settingsu' onClick={() => optionSelected(MenuDrawerOption.SettingsUser)}><Settings/>&nbsp;User settings</MenuItem>
-            <MenuItem key='settingsc' onClick={() => optionSelected(MenuDrawerOption.SettingsCluster)}><Settings/>&nbsp;Cluster Settings</MenuItem>
+            <MenuItem key='settingsc' onClick={() => optionSelected(MenuDrawerOption.SettingsCluster)} disabled={props.selectedCluster===undefined}><Settings/>&nbsp;Cluster Settings</MenuItem>
             <Divider/>
             { props.user.scope==='cluster' && 
                 <div>
@@ -56,9 +57,9 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
             }
             <MenuItem key='exit' onClick={() => optionSelected(MenuDrawerOption.Exit)}><ExitToApp />&nbsp;Exit Kwirth</MenuItem>
         </MenuList>
-    );
-    
-    return menu;
-};
+    )
 
-export { MenuDrawer, MenuDrawerOption };
+    return menu
+}
+
+export { MenuDrawer, MenuDrawerOption }

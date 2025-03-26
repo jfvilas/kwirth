@@ -1,20 +1,22 @@
 import express, { Request, Response} from 'express'
 import { CoreV1Api, AppsV1Api } from '@kubernetes/client-node'
-import { KwirthData, ServiceConfigChannelEnum } from '@jfvilas/kwirth-common'
+import { IChannel, KwirthData } from '@jfvilas/kwirth-common'
 import { validKey } from '../tools/AuthorizationManagement'
-import { IChannel } from '../model/IChannel'
 import { ApiKeyApi } from './ApiKeyApi'
+import { ClusterInfo } from '../model/ClusterInfo'
 
 export class ConfigApi {
     public route = express.Router()
     coreApi: CoreV1Api
     appsV1Api: AppsV1Api
     kwirthData: KwirthData
+    clusterInfo: ClusterInfo
 
-    constructor (coreApi:CoreV1Api, appsV1Api:AppsV1Api, apiKeyApi: ApiKeyApi, kwirthData:KwirthData, channels:Map<string,IChannel>) {
+    constructor (coreApi:CoreV1Api, appsV1Api:AppsV1Api, apiKeyApi: ApiKeyApi, kwirthData:KwirthData, clusterInfo:ClusterInfo, channels:Map<string,IChannel>) {
         this.coreApi = coreApi
         this.appsV1Api = appsV1Api
         this.kwirthData = kwirthData
+        this.clusterInfo = clusterInfo
 
         // return kwirth version information
         this.route.route('/version')
@@ -32,8 +34,7 @@ export class ConfigApi {
         this.route.route('/channel')
             .get( async (req:Request, res:Response) => {
                 try {
-                    var chList:string[] = [ServiceConfigChannelEnum.LOG, ServiceConfigChannelEnum.ALARM, ServiceConfigChannelEnum.METRICS]
-                    chList.push (...Array.from(channels.keys()))
+                    var chList:string[] =  [...Array.from(channels.keys())]
                     res.status(200).json(chList)
                 }
                 catch (err) {
@@ -50,7 +51,7 @@ export class ConfigApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    var cluster={ name:kwirthData.clusterName, inCluster:kwirthData.inCluster }
+                    var cluster={ name:kwirthData.clusterName, inCluster:kwirthData.inCluster, metricsInterval: this.clusterInfo.metricsInterval }
                     res.status(200).json(cluster)
                 }
                 catch (err) {

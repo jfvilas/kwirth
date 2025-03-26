@@ -1,12 +1,12 @@
-export declare enum ServiceMessageTypeEnum {
+export declare enum InstanceMessageTypeEnum {
     DATA = "data",
     SIGNAL = "signal"
 }
-export interface ServiceMessage {
+export interface InstanceMessage {
     channel: string;
     instance: string;
     reconnectKey?: string;
-    type: ServiceMessageTypeEnum;
+    type: InstanceMessageTypeEnum;
     namespace?: string;
     pod?: string;
     container?: string;

@@ -1,4 +1,4 @@
-import { AlarmSeverityEnum, ServiceConfigViewEnum } from "@jfvilas/kwirth-common";
+import { AlarmSeverityEnum, InstanceConfigViewEnum } from "@jfvilas/kwirth-common";
 
 export interface FiredAlarm {
     timestamp: number
@@ -13,12 +13,12 @@ export interface FiredAlarm {
 export class AlarmObject {
     public name?: string
     public clusterName: string = ''
-    public view?: ServiceConfigViewEnum
+    public view?: InstanceConfigViewEnum
     public namespace?: string
     public group?: string
     public pod?: string
     public container?: string
-    public serviceInstance: string = ''
+    public instanceId: string = ''
     public started: boolean=false
     public paused: boolean=false
     public pending: boolean=false

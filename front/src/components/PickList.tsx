@@ -1,5 +1,5 @@
-import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography, List , ListItemButton , ListItem } from '@mui/material';
-import { PickListConfig } from '../model/PickListConfig';
+import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography, List , ListItemButton , ListItem } from '@mui/material'
+import { PickListConfig } from '../model/PickListConfig'
 
 interface IProps {
     config:PickListConfig
@@ -28,4 +28,4 @@ const PickList: React.FC<any> = (props:IProps) => {
     )
 }
 
-export default PickList;
+export default PickList

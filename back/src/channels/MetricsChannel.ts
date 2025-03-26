@@ -1,5 +1,4 @@
-import { AssetMetrics, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, ServiceConfig, ServiceConfigActionEnum, ServiceConfigChannelEnum, ServiceConfigFlowEnum, ServiceConfigViewEnum, ServiceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
-import { IChannel } from '../model/IChannel'
+import { AssetMetrics, ChannelCapabilities, IChannel, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../model/ClusterInfo'
 import { AssetData } from '../tools/MetricsTools'
 import WebSocket from 'ws'
@@ -8,22 +7,34 @@ class MetricsChannel implements IChannel {
     clusterInfo: ClusterInfo
 
     // list of intervals (and its associated metrics) that produce metrics streams    
-    websocketMetrics:Map<WebSocket, {instanceId:string, timeout: NodeJS.Timeout, working:boolean, paused:boolean, assets: AssetData[], serviceConfig:ServiceConfig} []> = new Map()  
+    websocketMetrics:Map<WebSocket, {instanceId:string, timeout: NodeJS.Timeout, working:boolean, paused:boolean, assets: AssetData[], instanceConfig:InstanceConfig} []> = new Map()  
 
     constructor (clusterInfo:ClusterInfo) {
         this.clusterInfo = clusterInfo
     }
 
-    getAssetMetrics = (serviceConfig:ServiceConfig, assets:AssetData[], usePrevMetricSet:boolean) : AssetMetrics => {
-        var assetMetrics:AssetMetrics = { assetName: this.getAssetMetricName(serviceConfig, assets), values: [] }
+    getCapabilities(): ChannelCapabilities {
+        return {
+            pauseable: true,
+            modifyable: true,
+            reconnectable: true
+        }
+    }
+
+    getChannelScopeLevel(scope: string): number {
+        return ['','subcribe','create','cluster'].indexOf(scope)
+    }
+
+    getAssetMetrics = (instanceConfig:InstanceConfig, assets:AssetData[], usePrevMetricSet:boolean) : AssetMetrics => {
+        var assetMetrics:AssetMetrics = { assetName: this.getAssetMetricName(instanceConfig, assets), values: [] }
 
         var newAssets:AssetData[] = []
-        if (serviceConfig.view=== ServiceConfigViewEnum.CONTAINER) {
+        if (instanceConfig.view=== InstanceConfigViewEnum.CONTAINER) {
             newAssets = assets
         }
         else {
             for (var a of assets) {
-                if (!newAssets.find(na => na.podName===a.podName)) {
+                if (!newAssets.find(na => na.podName === a.podName)) {
                     newAssets.push({
                         podNode: a.podNode,
                         podNamespace: a.podNamespace,
@@ -35,10 +46,17 @@ class MetricsChannel implements IChannel {
             }
         }
 
-        for (let metricName of serviceConfig.data.metrics) {
+        for (let metricName of instanceConfig.data.metrics) {
             let sourceMetricName = metricName
             if (metricName === 'kwirth_cluster_container_memory_percentage') sourceMetricName = 'container_memory_working_set_bytes'
             if (metricName === 'kwirth_cluster_container_cpu_percentage') sourceMetricName = 'container_cpu_usage_seconds_total'
+
+            if (metricName === 'kwirth_cluster_container_transmit_percentage') sourceMetricName = 'container_network_transmit_bytes_total'
+            if (metricName === 'kwirth_cluster_container_receive_percentage') sourceMetricName = 'container_network_receive_bytes_total'
+
+            if (metricName === 'kwirth_cluster_container_transmit_mbps') sourceMetricName = 'container_network_transmit_bytes_total'
+            if (metricName === 'kwirth_cluster_container_receive_mbps') sourceMetricName = 'container_network_receive_bytes_total'
+
             if (metricName === 'kwirth_cluster_container_random_counter' || metricName === 'kwirth_cluster_container_random_gauge') sourceMetricName = 'container_cpu_system_seconds_total'
 
             let uniqueValues:number[] = []
@@ -49,63 +67,93 @@ class MetricsChannel implements IChannel {
                 if (node) {
                     let metric
                     if (usePrevMetricSet)
-                        metric = this.clusterInfo.metrics.extractContainerMetrics(this.clusterInfo, node.prevPodMetricValues, node.prevContainerMetricValues, sourceMetricName, serviceConfig.view, node, asset)
+                        metric = this.clusterInfo.metrics.extractContainerMetrics(this.clusterInfo, node.prevPodMetricValues, node.prevContainerMetricValues, sourceMetricName, instanceConfig.view, node, asset)
                     else
-                        metric = this.clusterInfo.metrics.extractContainerMetrics(this.clusterInfo, node.podMetricValues, node.containerMetricValues, sourceMetricName, serviceConfig.view, node, asset)
+                        metric = this.clusterInfo.metrics.extractContainerMetrics(this.clusterInfo, node.podMetricValues, node.containerMetricValues, sourceMetricName, instanceConfig.view, node, asset)
                     total = metric.value
                 }
                 else {
                     console.log('No node found for calculating pod metric value', asset)
                 }
-                uniqueValues.push(total)        
+                uniqueValues.push(total)
             }
 
-            let metricValue = uniqueValues.reduce((acc,value) => acc+value, 0)
-            assetMetrics.values.push ( { metricName:metricName, metricValue })
+            let metricValue = uniqueValues.reduce((acc,value) => acc + value, 0)
+            assetMetrics.values.push ({ metricName, metricValue })
         }
 
-        for (var i=0;i<assetMetrics.values.length;i++) {
+        for (var i=0; i<assetMetrics.values.length; i++) {
             let m = assetMetrics.values[i]
 
-            if (m.metricName === 'kwirth_cluster_container_memory_percentage') {
-                let clusterMemory = this.clusterInfo.memory
-                if (Number.isNaN(this.clusterInfo.memory)) clusterMemory=Number.MAX_VALUE
-                m.metricValue = Math.round(m.metricValue/clusterMemory*100*100)/100
-            }
-            else if (m.metricName === 'kwirth_cluster_container_cpu_percentage') {
-                if (!usePrevMetricSet) {
-                    // we perform a recursive call if-and-only-if we are not extracting prev values
-                    var prevValues = this.getAssetMetrics(serviceConfig, newAssets, true)
-                    console.log('x', prevValues)
+            switch(m.metricName) {
+                case 'kwirth_cluster_container_memory_percentage':
+                    let clusterMemory = this.clusterInfo.memory
+                    if (Number.isNaN(this.clusterInfo.memory)) clusterMemory=Number.MAX_VALUE
+                    m.metricValue = Math.round(m.metricValue/clusterMemory*100*100)/100
+                    break
+                case 'kwirth_cluster_container_cpu_percentage':
+                    if (!usePrevMetricSet) {
+                        // we perform a recursive call if-and-only-if we are not extracting prev values
+                        var prevValues = this.getAssetMetrics(instanceConfig, newAssets, true)
+    
+                        let prev = prevValues.values.find(prevMetric => prevMetric.metricName === m.metricName)
+                        if (prev) {
+                            m.metricValue -= prev.metricValue
+                            let totalSecs = this.clusterInfo.metricsInterval * this.clusterInfo.vcpus       
+                            m.metricValue = Math.round(m.metricValue/totalSecs*100*100)/100
+                        }
+                        else {
+                            console.log(`No previous value  [CPU] found for ${m.metricName}`)
+                        }
+                    }
+                    break
+                case 'kwirth_cluster_container_random_counter':
+                    m.metricValue = Date.now() % (Math.random()*32*1000000)
+                    break
+                case 'kwirth_cluster_container_random_gauge':
+                    m.metricValue = Math.round(Math.random()*100)/100
+                    break
+                case 'kwirth_cluster_container_transmit_percentage':
+                case 'kwirth_cluster_container_receive_percentage':
+                    // get total transmit/receive bytes
+                    let totalBytes:number = 0
+                    for (var node of this.clusterInfo.nodes.values()) {
+                        let sourceMetricName = m.metricName==='kwirth_cluster_container_transmit_percentage'? 'container_network_transmit_bytes_total':'container_network_receive_bytes_total'
+                        let nodeMetrics = Array.from(node.podMetricValues.keys()).filter(k => k.endsWith('/'+sourceMetricName))
+                        nodeMetrics.map ( m => {
+                            totalBytes += node.podMetricValues.get(m)?.value!
+                        })
+                    }
+                    m.metricValue = Math.round(m.metricValue/totalBytes*100*100)/100
+                    break
+                case 'kwirth_cluster_container_transmit_mbps':
+                case 'kwirth_cluster_container_receive_mbps':
+                    if (!usePrevMetricSet) {
+                        // we perform a recursive call if-and-only-if we are not extracting prev values
+                        var prevValues = this.getAssetMetrics(instanceConfig, newAssets, true)
+                        let prev = prevValues.values.find(prevMetric => prevMetric.metricName === m.metricName)
 
-                    let prev = prevValues.values.find(pm => pm.metricName === m.metricName)
-                    if (prev) {
-                        m.metricValue -= prev.metricValue
-                        let totalSecs = this.clusterInfo.interval * this.clusterInfo.vcpus
-                        console.log('totalsecs', totalSecs)
-        
-                        m.metricValue = Math.round(m.metricValue/totalSecs*100*100)/100
-                        console.log('assetMetrics cpu final', assetMetrics)
+                        if (prev) {
+                            m.metricValue -= prev.metricValue // we get the value of bytes sent/received on the last period
+                            m.metricValue *= 8  // we convert into bits
+                            m.metricValue /= (1024*1024)  // we convert into Mbits
+                            let totalSecs = this.clusterInfo.metricsInterval
+                            m.metricValue = Math.round(m.metricValue/totalSecs*100*100)/100   // we build a percentage with 2 decimal positions
+                        }
+                        else {
+                            console.log(`No previous value  [NETWORK] found for ${m.metricName}`)
+                        }
                     }
-                    else {
-                        console.log(`No previous value found for ${m.metricName}`)
-                    }
-                }
-            }
-            else if (m.metricName === 'kwirth_cluster_container_random_counter') {
-                m.metricValue = Math.round(Math.random()*100*100)/100
-            }
-            else if (m.metricName === 'kwirth_cluster_container_random_gauge') {
-                m.metricValue = Math.round(Math.random()*100)/100
+                    break
+
             }
         }
-
 
         return assetMetrics
     }
 
-    getAssetMetricName = (serviceConfig:ServiceConfig, assets:AssetData[]) : string => {
-        switch (serviceConfig.view) {
+    getAssetMetricName = (instanceConfig:InstanceConfig, assets:AssetData[]) : string => {
+        switch (instanceConfig.view) {
             case 'namespace':
                 return [...new Set (assets.map (a => a.podNamespace))].join(',')
             case 'group':
@@ -141,78 +189,77 @@ class MetricsChannel implements IChannel {
         }
     
         instance.working=true
-        let serviceConfig = instance.serviceConfig
+        let instanceConfig = instance.instanceConfig
     
         try {
             var metricsMessage:MetricsMessage = {
-                channel: ServiceConfigChannelEnum.METRICS,
-                type: ServiceMessageTypeEnum.DATA,
-                instance: serviceConfig.instance,
+                channel: InstanceConfigChannelEnum.METRICS,
+                type: InstanceMessageTypeEnum.DATA,
+                instance: instanceConfig.instance,
                 assets: [],
-                namespace: serviceConfig.namespace,
-                pod: serviceConfig.pod,
+                namespace: instanceConfig.namespace,
+                pod: instanceConfig.pod,
                 timestamp: Date.now()
             }
     
-            switch(serviceConfig.view) {
-                case ServiceConfigViewEnum.NAMESPACE:
-                    if (serviceConfig.data.aggregate) {
-                        let assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets, false)
+            switch(instanceConfig.view) {
+                case InstanceConfigViewEnum.NAMESPACE:
+                    if (instanceConfig.data.aggregate) {
+                        let assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
                         const namespaces = [...new Set(instance.assets.map(item => item.podNamespace))]
                         for (let namespace of namespaces) {
                             let assets = instance.assets.filter(a => a.podNamespace === namespace)
-                            let assetMetrics = this.getAssetMetrics(serviceConfig, assets, false)
+                            let assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
                             metricsMessage.assets.push(assetMetrics)
                         }
 
                     }
                     break
-                case ServiceConfigViewEnum.GROUP:
-                    if (serviceConfig.data.aggregate) {
-                        var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets, false)
+                case InstanceConfigViewEnum.GROUP:
+                    if (instanceConfig.data.aggregate) {
+                        var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
                         const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
                         for (let groupName of groupNames) {
                             let assets=instance.assets.filter(a => a.podGroup === groupName)
-                            let assetMetrics = this.getAssetMetrics(serviceConfig, assets, false)
+                            let assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
                             metricsMessage.assets.push(assetMetrics)
                         }
                     }
                     break
-                case ServiceConfigViewEnum.POD:
-                    console.log('assets', instance.assets)
-                    if (serviceConfig.data.aggregate) {
-                        var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets, false)
+                case InstanceConfigViewEnum.POD:
+                    if (instanceConfig.data.aggregate) {
+                        var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
-                        const podNames = [...new Set(instance.assets.map(asset => asset.podName))]
-                        for (var podName of podNames) {
+                        const uniquePodNames = [...new Set(instance.assets.map(asset => asset.podName))]
+                        for (var podName of uniquePodNames) {
                             var assets = instance.assets.filter(a => a.podName === podName)
-                            var assetMetrics = this.getAssetMetrics(serviceConfig, assets, false)
+                            var assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
                             metricsMessage.assets.push(assetMetrics)
                         }
                     }
                     break
-                case ServiceConfigViewEnum.CONTAINER:
-                    if (serviceConfig.data.aggregate) {
-                        var assetMetrics = this.getAssetMetrics(serviceConfig, instance.assets, false)
+                case InstanceConfigViewEnum.CONTAINER:
+                    if (instanceConfig.data.aggregate) {
+                        var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
                     else {
                         for (var asset of instance.assets) {
-                            var assetMetrics = this.getAssetMetrics(serviceConfig, [asset], false)
+                            var assetMetrics = this.getAssetMetrics(instanceConfig, [asset], false)
                             metricsMessage.assets.push(assetMetrics)
                         }
                     }
                     break
                 default:
-                    console.log(`Invalid view:`, serviceConfig.view)
+                    console.log(`Invalid view:`, instanceConfig.view)
             }
     
             try {
@@ -224,35 +271,35 @@ class MetricsChannel implements IChannel {
             instance.working=false
         }
         catch (err) {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.WARNING, `Cannot read metrics for instance ${instanceId}`, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.WARNING, `Cannot read metrics for instance ${instanceId}`, instanceConfig)
             console.log('Error reading metrics', err)
         }
     }
     
-    sendServiceConfigMessage = (ws:WebSocket, action:ServiceConfigActionEnum, flow: ServiceConfigFlowEnum, channel: ServiceConfigChannelEnum, serviceConfig:ServiceConfig, text:string) => {
+    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string) => {
         var resp:any = {
             action,
             flow,
             channel,
-            instance: serviceConfig.instance,
+            instance: instanceConfig.instance,
             type: 'signal',
             text
         }
         ws.send(JSON.stringify(resp))
     }
 
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, serviceConfig: ServiceConfig) {
+    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig) {
         var sgnMsg:SignalMessage = {
             level,
-            channel: serviceConfig.channel,
-            instance: serviceConfig.instance,
-            type: ServiceMessageTypeEnum.SIGNAL,
+            channel: instanceConfig.channel,
+            instance: instanceConfig.instance,
+            type: InstanceMessageTypeEnum.SIGNAL,
             text
         }
         webSocket.send(JSON.stringify(sgnMsg))
     }
 
-    async startInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             const podResponse = await this.clusterInfo.coreApi.readNamespacedPod(podName, podNamespace)
             const owner = podResponse.body.metadata?.ownerReferences![0]!
@@ -260,16 +307,16 @@ class MetricsChannel implements IChannel {
             const podGroup = gtype+'+'+owner.name
             const podNode = podResponse.body.spec?.nodeName
             
-            switch (serviceConfig.data.mode) {
+            switch (instanceConfig.data.mode) {
                 case MetricsConfigModeEnum.SNAPSHOT:
                     if (podNode) {
                         console.log(`Send snapshot metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
                         var instances = this.websocketMetrics.get(webSocket)
-                        var instance = instances?.find((instance) => instance.instanceId === serviceConfig.instance)
+                        var instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
                         if (instance)
-                            this.sendMetricsDataInstance(webSocket, serviceConfig.instance)
+                            this.sendMetricsDataInstance(webSocket, instanceConfig.instance)
                         else
-                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${serviceConfig.instance} not found`, serviceConfig) 
+                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig) 
                     }
                     break
                 case MetricsConfigModeEnum.STREAM:
@@ -277,16 +324,16 @@ class MetricsChannel implements IChannel {
                         console.log(`Start pod metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
                         if (this.websocketMetrics.has(webSocket)) {
                             var instances = this.websocketMetrics.get(webSocket)
-                            var instance = instances?.find((instance) => instance.instanceId === serviceConfig.instance)
+                            var instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
                             if (!instance) {
                                 // new instance for an existing websocket
-                                var interval=(serviceConfig.data.interval? serviceConfig.data.interval:60)*1000
-                                var timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,serviceConfig.instance), interval)
-                                instances?.push({instanceId:serviceConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], serviceConfig})
+                                var interval=(instanceConfig.data.interval? instanceConfig.data.interval:60)*1000
+                                var timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
+                                instances?.push({instanceId:instanceConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], instanceConfig: instanceConfig})
                                 return
                             }
                             
-                            if (serviceConfig.data.view === ServiceConfigViewEnum.CONTAINER) {
+                            if (instanceConfig.data.view === InstanceConfigViewEnum.CONTAINER) {
                                 instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
                             }
                             else {
@@ -297,10 +344,10 @@ class MetricsChannel implements IChannel {
                         }
                         else {
                             this.websocketMetrics.set(webSocket, [])
-                            var interval=(serviceConfig.data.interval? serviceConfig.data.interval:60)*1000
-                            var timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,serviceConfig.instance), interval)
+                            var interval=(instanceConfig.data.interval? instanceConfig.data.interval:60)*1000
+                            var timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
                             var instances = this.websocketMetrics.get(webSocket)
-                            instances?.push({instanceId:serviceConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], serviceConfig})
+                            instances?.push({instanceId:instanceConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], instanceConfig: instanceConfig})
                         }
                     }
                     else {
@@ -308,77 +355,55 @@ class MetricsChannel implements IChannel {
                     }
                     break
                 default:
-                    this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid mode: ${serviceConfig.data.mode}`, serviceConfig.data.mode)
+                    this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid mode: ${instanceConfig.data.mode}`, instanceConfig.data.mode)
                     break
             }
         }
         catch (err:any) {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, serviceConfig)
-            console.log('Generic error starting metrics service', err)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
+            console.log('Generic error starting metrics instance', err)
         }
     }
 
-    stopInstance (webSocket: WebSocket, serviceConfig: ServiceConfig): void {
-        this.removeInstance (webSocket,serviceConfig.instance)
-        this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics service stopped')
+    stopInstance (webSocket: WebSocket, instanceConfig: InstanceConfig): void {
+        this.removeInstance (webSocket,instanceConfig.instance)
+        this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.STOP, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics instance stopped')
     }
 
-    modifyService (webSocket:WebSocket, serviceConfig: ServiceConfig) : void {
+    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig) : void {
         let runningInstances = this.websocketMetrics.get(webSocket)
-        let instance = runningInstances?.find(i => i.instanceId === serviceConfig.instance)
+        let instance = runningInstances?.find(i => i.instanceId === instanceConfig.instance)
         if (instance) {
-            // only modifiable propertis of the metrics config
-            instance.serviceConfig.data.metrics = serviceConfig.data.metrics
-            instance.serviceConfig.data.interval = serviceConfig.data.interval
-            instance.serviceConfig.data.aggregate = serviceConfig.data.aggregate
-            this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.MODIFY, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics modified')
+            // only modifiable properties of the metrics config
+            instance.instanceConfig.data.metrics = instanceConfig.data.metrics
+            instance.instanceConfig.data.interval = instanceConfig.data.interval
+            instance.instanceConfig.data.aggregate = instanceConfig.data.aggregate
+            this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.MODIFY, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics modified')
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${serviceConfig.instance} not found`, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
         }   
     }
 
-    updateInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, eventType:string, podNamespace:string, podName:string, containerName:string) : void {
-            var metricsConfig = serviceConfig as MetricsConfig
-            var instances = this.websocketMetrics.get(webSocket)
-            var instance = instances?.find((instance) => instance.instanceId === metricsConfig.instance)
-            if (instance) {
-                if (eventType==='DELETED') {
-                    instance.assets = instance.assets.filter(c => c.podNamespace!==podNamespace && c.podName!==podName && c.containerName!==containerName)
-                }
-                if (eventType==='MODIFIED') {
-                    var thisPod = instance.assets.find(p => p.podNamespace===podNamespace && p.podName===podName && p.containerName===containerName)
-                }
-            }
-    }
-
-    getServiceScopeLevel(scope: string): number {
-        return ['','subcribe','create','cluster'].indexOf(scope)
-    }
-
-    processModifyServiceConfig(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
-        
-    }
-
-    pauseContinueChannel(webSocket: WebSocket, serviceConfig: ServiceConfig, action: ServiceConfigActionEnum): void {
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceConfigActionEnum): void {
         let runningInstances = this.websocketMetrics.get(webSocket)
-        let instance = runningInstances?.find(i => i.instanceId === serviceConfig.instance)
+        let instance = runningInstances?.find(i => i.instanceId === instanceConfig.instance)
         if (instance) {
-            if (action === ServiceConfigActionEnum.PAUSE) {
+            if (action === InstanceConfigActionEnum.PAUSE) {
                 instance.paused = true
-                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.PAUSE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics paused')
+                this.sendInstanceConfigMessage(webSocket, InstanceConfigActionEnum.PAUSE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics paused')
             }
-            if (action === ServiceConfigActionEnum.CONTINUE) {
+            if (action === InstanceConfigActionEnum.CONTINUE) {
                 instance.paused = false
-                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.CONTINUE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.METRICS, serviceConfig, 'Metrics continued')
+                this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.CONTINUE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics continued')
             }
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${serviceConfig.instance} not found`, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
         }
     }
 
-    removeService(webSocket: WebSocket): void {
+    removeConnection(webSocket: WebSocket): void {
         if (this.websocketMetrics.has(webSocket)) {
             let instances=this.websocketMetrics.get(webSocket)
             if (instances) {

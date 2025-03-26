@@ -1,23 +1,23 @@
-import React, { useState, useContext } from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material';
-import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox';
-import { SessionContext, SessionContextType } from '../model/SessionContext';
-import { accessKeySerialize, accessKeyBuild } from '@jfvilas/kwirth-common';
-import { User } from '../model/User';
-import { addPostAuthorization } from '../tools/AuthorizationManagement';
+import React, { useState, useContext } from 'react'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material'
+import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox'
+import { SessionContext, SessionContextType } from '../model/SessionContext'
+import { accessKeySerialize, accessKeyBuild } from '@jfvilas/kwirth-common'
+import { User } from '../model/User'
+import { addPostAuthorization } from '../tools/AuthorizationManagement'
 
 interface IProps {
       onClose:(result:boolean,user:User|null, accessKey:string) => {}
 }
 
 const Login: React.FC<any> = (props:IProps) => {
-    const {backendUrl} = useContext(SessionContext) as SessionContextType;
-    const [msgBox, setMsgBox] = useState(<></>);
-    const [user, setUser] = useState('');
-    const [changingPassword, setChangingPassword] = useState(false);
-    const [password, setPassword] = useState('');
-    const [newPassword1, setNewPassword1] = useState('');
-    const [newPassword2, setNewPassword2] = useState('');
+    const {backendUrl} = useContext(SessionContext) as SessionContextType
+    const [msgBox, setMsgBox] = useState(<></>)
+    const [user, setUser] = useState('')
+    const [changingPassword, setChangingPassword] = useState(false)
+    const [password, setPassword] = useState('')
+    const [newPassword1, setNewPassword1] = useState('')
+    const [newPassword2, setNewPassword2] = useState('')
 
     const login = async (user:string, password:string, newpassword:string='') => {
         var payload
@@ -132,7 +132,7 @@ const Login: React.FC<any> = (props:IProps) => {
             </DialogActions>
         </Dialog>
         {msgBox}
-    </>);
-};
+    </>)
+}
 
-export default Login;
+export default Login

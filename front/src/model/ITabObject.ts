@@ -1,11 +1,11 @@
-import { ServiceConfigViewEnum } from "@jfvilas/kwirth-common"
+import { InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
 import { AlertObject } from "./AlertObject"
 import { LogObject } from "./LogObject"
 import { MetricsObject } from "./MetricsObject"
 
 interface IChannelObject {
     clusterName: string
-    view: ServiceConfigViewEnum
+    view: InstanceConfigViewEnum
     namespace: string
     group: string
     pod: string

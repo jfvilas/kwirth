@@ -1,4 +1,4 @@
-import { MetricsConfigModeEnum, ServiceMessage } from "@jfvilas/kwirth-common";
+import { MetricsConfigModeEnum, InstanceMessage } from "@jfvilas/kwirth-common";
 
 export interface AssetMetrics {
     assetName: string
@@ -8,7 +8,7 @@ export interface AssetMetrics {
     }[]
 }
 
-export interface IMetricsMessage extends ServiceMessage {
+export interface IMetricsMessage extends InstanceMessage {
     assets: AssetMetrics[]
     timestamp: number
 }

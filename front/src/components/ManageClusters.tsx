@@ -1,27 +1,27 @@
-import React, { useState } from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material';
-import { Cluster } from '../model/Cluster';
-import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox';
+import React, { useState } from 'react'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material'
+import { Cluster } from '../model/Cluster'
+import { MsgBoxButtons, MsgBoxYesNo } from '../tools/MsgBox'
 
 interface IProps {
-  onClose:(clusters:Cluster[]) => {};
-  clusters:Cluster[];
+  onClose:(clusters:Cluster[]) => {}
+  clusters:Cluster[]
 }
 
 const ManageClusters: React.FC<any> = (props:IProps) => {
-  const [clusters, setClusters] = useState<Cluster[]>(props.clusters);
-  const [selectedCluster, setSelectedCluster] = useState<Cluster|null>();
-  const [name, setName] = useState<string>('');
-  const [url, setUrl] = useState<string>('');
-  const [accessString, setAccessKey] = useState<string>('');
-  const [msgBox, setMsgBox] =useState(<></>);
+  const [clusters, setClusters] = useState<Cluster[]>(props.clusters)
+  const [selectedCluster, setSelectedCluster] = useState<Cluster|null>()
+  const [name, setName] = useState<string>('')
+  const [url, setUrl] = useState<string>('')
+  const [accessString, setAccessKey] = useState<string>('')
+  const [msgBox, setMsgBox] =useState(<></>)
 
   const onClusterSelected = (idSelected:string|null) => {
-    var cluster=clusters?.find(k => k.id===idSelected);
-    setSelectedCluster(cluster);
-    setName(cluster?.name!);
-    setUrl(cluster?.url!);
-    setAccessKey(cluster?.accessString!);
+    var cluster=clusters?.find(k => k.id===idSelected)
+    setSelectedCluster(cluster)
+    setName(cluster?.name!)
+    setUrl(cluster?.url!)
+    setAccessKey(cluster?.accessString!)
   }
 
   const onClickSave= async () => {
@@ -39,30 +39,30 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
       c.url=url;
       clusters?.push(c);
     }
-    setName('');
-    setUrl('');
-    setAccessKey('');
-    setClusters(clusters);
+    setName('')
+    setUrl('')
+    setAccessKey('')
+    setClusters(clusters)
   }
 
   const onClickNew= () => {
-    setSelectedCluster(undefined);
-    setName('');
-    setUrl('');
-    setAccessKey('');
+    setSelectedCluster(undefined)
+    setName('')
+    setUrl('')
+    setAccessKey('')
   }
 
   const onClickDelete= () => {
-    setMsgBox(MsgBoxYesNo('Delete Cluster',`Are you sure you want to delete cluster ${selectedCluster?.name}?`, setMsgBox, (a:MsgBoxButtons)=> a===MsgBoxButtons.Yes? onConfirmDelete() : {}));
+    setMsgBox(MsgBoxYesNo('Delete Cluster',`Are you sure you want to delete cluster ${selectedCluster?.name}?`, setMsgBox, (a:MsgBoxButtons)=> a===MsgBoxButtons.Yes? onConfirmDelete() : {}))
   }
 
   const onConfirmDelete= async () => {
     if (selectedCluster) {
-      clusters.splice(clusters?.findIndex(c => c.id===selectedCluster.id)!,1);
-      setName('');
-      setUrl('');
-      setAccessKey('');
-      setSelectedCluster(undefined);
+      clusters.splice(clusters?.findIndex(c => c.id===selectedCluster.id)!,1)
+      setName('')
+      setUrl('')
+      setAccessKey('')
+      setSelectedCluster(undefined)
     }
   }
 
@@ -98,7 +98,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
       </DialogActions>
     </Dialog>
     {msgBox}
-  </>);
-};
+  </>)
+}
 
-export default ManageClusters;
+export default ManageClusters

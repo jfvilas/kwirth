@@ -1,4 +1,4 @@
-import { ServiceMessage } from "./ServiceMessage";
+import { InstanceMessage } from "./InstanceMessage";
 export interface AssetMetrics {
     assetName: string;
     values: {
@@ -6,7 +6,7 @@ export interface AssetMetrics {
         metricValue: number;
     }[];
 }
-export interface MetricsMessage extends ServiceMessage {
+export interface MetricsMessage extends InstanceMessage {
     assets: AssetMetrics[];
     timestamp: number;
 }

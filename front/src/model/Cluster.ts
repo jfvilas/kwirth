@@ -11,6 +11,7 @@ export class Cluster {
     public inCluster: boolean = false
     public metricsList: Map<string,MetricDescription> = new Map()
     public kwirthData?: KwirthData
+    public metricsInterval: number = 60
     
     constructor () {
         this.id=Guid.create().toString()

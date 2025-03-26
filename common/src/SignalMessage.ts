@@ -1,4 +1,4 @@
-import { ServiceMessage } from './ServiceMessage'
+import { InstanceMessage } from './InstanceMessage'
 
 export enum SignalMessageLevelEnum {
     INFO='info',
@@ -6,7 +6,7 @@ export enum SignalMessageLevelEnum {
     ERROR='error'
 }
 
-export interface SignalMessage extends ServiceMessage {
+export interface SignalMessage extends InstanceMessage {
     timestamp?: Date
     level: SignalMessageLevelEnum
     text: string

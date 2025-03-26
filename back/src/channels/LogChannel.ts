@@ -1,5 +1,4 @@
-import { LogMessage, ServiceConfig, ServiceConfigActionEnum, ServiceConfigChannelEnum, ServiceConfigFlowEnum, ServiceMessage, ServiceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common';
-import { IChannel } from '../model/IChannel'
+import { ChannelCapabilities, IChannel, LogMessage, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common';
 import * as stream from 'stream'
 import WebSocket from 'ws'
 import { PassThrough } from 'stream'; 
@@ -12,6 +11,14 @@ class LogChannel implements IChannel {
  
     constructor (clusterInfo:ClusterInfo) {
         this.clusterInfo = clusterInfo
+    }
+
+    getCapabilities(): ChannelCapabilities {
+        return {
+            pauseable: false,
+            modifyable: false,
+            reconnectable: false
+        }
     }
 
     containsInstance(instanceId: string): boolean {
@@ -35,24 +42,24 @@ class LogChannel implements IChannel {
         return false
     }
 
-    sendServiceConfigMessage = (ws:WebSocket, action:ServiceConfigActionEnum, flow: ServiceConfigFlowEnum, channel: ServiceConfigChannelEnum, serviceConfig:ServiceConfig, text:string) => {
+    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string) => {
         var resp:any = {
             action,
             flow,
             channel,
-            instance: serviceConfig.instance,
+            instance: instanceConfig.instance,
             type: 'signal',
             text
         }
         ws.send(JSON.stringify(resp))
     }
 
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, serviceConfig: ServiceConfig) {
+    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig) {
         var sgnMsg:SignalMessage = {
             level,
-            channel: serviceConfig.channel,
-            instance: serviceConfig.instance,
-            type: ServiceMessageTypeEnum.SIGNAL,
+            channel: instanceConfig.channel,
+            instance: instanceConfig.instance,
+            type: InstanceMessageTypeEnum.SIGNAL,
             text
         }
         webSocket.send(JSON.stringify(sgnMsg))
@@ -76,10 +83,10 @@ class LogChannel implements IChannel {
         var msg:LogMessage = {
             namespace: podNamespace,
             instance: instanceId,
-            type: ServiceMessageTypeEnum.DATA,
+            type: InstanceMessageTypeEnum.DATA,
             pod: podName,
             container: containerName,
-            channel: ServiceConfigChannelEnum.LOG,
+            channel: InstanceConfigChannelEnum.LOG,
             text: '',
         }
         for (var line of logLines) {
@@ -90,15 +97,15 @@ class LogChannel implements IChannel {
         }
     }
     
-    async startInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
-        console.log(`Start instance ${serviceConfig.instance} (view: ${serviceConfig.view})`)
+    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+        console.log(`Start instance ${instanceConfig.instance} (view: ${instanceConfig.view})`)
         try {
             var streamConfig = { 
                 follow: true, 
                 pretty: false, 
-                timestamps: serviceConfig.data.timestamp,
-                previous: Boolean(serviceConfig.data.previous),
-                tailLines: serviceConfig.data.maxMessages
+                timestamps: instanceConfig.data.timestamp,
+                previous: Boolean(instanceConfig.data.previous),
+                tailLines: instanceConfig.data.maxMessages
             }
     
             const logStream:PassThrough = new stream.PassThrough()
@@ -116,72 +123,64 @@ class LogChannel implements IChannel {
                     this.buffer.set(webSocket,next)
                     text=text.substring(0,i)
                 }
-                this.sendLogData(webSocket, podNamespace, podName, containerName, text, serviceConfig.instance)
+                this.sendLogData(webSocket, podNamespace, podName, containerName, text, instanceConfig.instance)
             })
     
             if (!this.websocketLog.get(webSocket)) this.websocketLog.set(webSocket, [])
 
             this.websocketLog.get(webSocket)?.push ({
-                instanceId: serviceConfig.instance, 
+                instanceId: instanceConfig.instance, 
                 logStream: logStream,
-                timestamps: serviceConfig.data.timestamp,
-                previous: serviceConfig.data.previous,
-                tailLines: serviceConfig.data.tailLines,
+                timestamps: instanceConfig.data.timestamp,
+                previous: instanceConfig.data.previous,
+                tailLines: instanceConfig.data.tailLines,
                 paused:false
             })
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, logStream,  streamConfig)
         }
         catch (err:any) {
             console.log('Generic error starting pod log', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
         }
     }
 
-    stopInstance(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
-        if (this.websocketLog.get(webSocket)?.find(i => i.instanceId === serviceConfig.instance)) {
-            this.removeInstance(webSocket, serviceConfig.instance)
-            this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.LOG, serviceConfig, 'Log service stopped')
+    stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
+        if (this.websocketLog.get(webSocket)?.find(i => i.instanceId === instanceConfig.instance)) {
+            this.removeInstance(webSocket, instanceConfig.instance)
+            this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.STOP, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.LOG, instanceConfig, 'Log instance stopped')
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
         }
     }
 
-    getServiceScopeLevel(scope: string): number {
+    getChannelScopeLevel(scope: string): number {
         return ['', 'filter', 'view', 'cluster'].indexOf(scope)
     }
 
-    processModifyServiceConfig(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
-        
-    }
-
-    pauseContinueChannel(webSocket: WebSocket, serviceConfig: ServiceConfig, action: ServiceConfigActionEnum): void {
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceConfigActionEnum): void {
         let logInstances = this.websocketLog.get(webSocket)
-        let logInstance = logInstances?.find(i => i.instanceId === serviceConfig.instance)
+        let logInstance = logInstances?.find(i => i.instanceId === instanceConfig.instance)
         if (logInstance) {
-            if (action === ServiceConfigActionEnum.PAUSE) {
+            if (action === InstanceConfigActionEnum.PAUSE) {
                 logInstance.paused = true
-                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.PAUSE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm paused')
+                this.sendInstanceConfigMessage(webSocket, InstanceConfigActionEnum.PAUSE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.ALARM, instanceConfig, 'Alarm paused')
             }
-            if (action === ServiceConfigActionEnum.CONTINUE) {
+            if (action === InstanceConfigActionEnum.CONTINUE) {
                 logInstance.paused = false
-                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.CONTINUE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALARM, serviceConfig, 'Alarm continued')
+                this.sendInstanceConfigMessage(webSocket, InstanceConfigActionEnum.CONTINUE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.ALARM, instanceConfig, 'Alarm continued')
             }
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${serviceConfig.instance} not found`, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
         }
     }
 
-    updateInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, eventType:string, podNamespace:string, podName:string, containerName:string) : void {
+    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig) : void {
 
     }
 
-    modifyService (webSocket:WebSocket, serviceConfig: ServiceConfig) : void {
-
-    }
-
-    removeService(webSocket: WebSocket): void {
+    removeConnection(webSocket: WebSocket): void {
         if (this.websocketLog.get(webSocket)) {
             for (var instance of this.websocketLog?.get(webSocket)!) {
                 this.removeInstance (webSocket, instance.instanceId)

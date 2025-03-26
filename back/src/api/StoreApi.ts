@@ -40,7 +40,7 @@ export class StoreApi {
                 })
             })
 
-        // get objects in a group
+        // get an array of object names in a group
         this.route.route('/:user/:group')
             .all( async (req,res, next) => {
                 if (!validKey(req,res, apiKeyApi)) return
@@ -62,6 +62,7 @@ export class StoreApi {
                 })
             })
 
+        // get an object
         this.route.route('/:user/:group/:key')
             .all( async (req,res, next) => {
                 if (!validKey(req,res, apiKeyApi)) return
@@ -71,10 +72,10 @@ export class StoreApi {
                 StoreApi.semaphore.use ( async () => {
                     try {
                         var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
-                        if (data[req.params.group+'-'+req.params.key]===undefined)
+                        if (data[req.params.group+'-'+req.params.key] === undefined)
                             res.status(404).json()
                         else
-                            res.status(200).json(data[req.params.group+'-'+req.params.key])
+                            res.status(200).json(data[req.params.group + '-' + req.params.key])
                     }      
                     catch (err) {
                         res.status(500).json()

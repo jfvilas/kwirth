@@ -18,9 +18,9 @@ const SettingsCluster: React.FC<any> = (props:IProps) => {
 
     return (<>
         <Dialog open={true} >
-            <DialogTitle>Settings</DialogTitle>
-            <DialogContent sx={{height:'30vh'}}>
-                <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
+            <DialogTitle>Cluster settings</DialogTitle>
+            <DialogContent >
+                <Stack spacing={2} direction={'column'} sx={{width: '40vh' }}>
                     <TextField value={clusterMetricsInterval} onChange={onChangeClusterMetricsInterval} variant='standard' label='Cluster metrics read interval (seconds)' SelectProps={{native: true}} type='number'></TextField>
                 </Stack>
             </DialogContent>

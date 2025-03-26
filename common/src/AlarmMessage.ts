@@ -1,4 +1,4 @@
-import { ServiceMessage } from './ServiceMessage'
+import { InstanceMessage } from './InstanceMessage'
 
 export enum AlarmSeverityEnum {
     INFO = 'info',
@@ -6,7 +6,7 @@ export enum AlarmSeverityEnum {
     ERROR = 'error'
 }
 
-export interface AlarmMessage extends ServiceMessage {
+export interface AlarmMessage extends InstanceMessage {
     timestamp?: Date
     severity: AlarmSeverityEnum
     text: string

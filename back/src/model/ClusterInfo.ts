@@ -21,17 +21,17 @@ export class ClusterInfo {
     public logApi!: Log
     public token: string = ''
     public metrics!: Metrics;
-    public interval: number = 60
-    public intervalRef: number = -1
+    public metricsInterval: number = 60
+    public metricsIntervalRef: number = -1
     public vcpus: number = 0
     public memory: number = 0
 
-    stopInterval = () => clearTimeout(this.intervalRef)
+    stopInterval = () => clearTimeout(this.metricsIntervalRef)
 
     startInterval = (seconds: number) => { 
-        this.interval = seconds
-        this.intervalRef = setInterval(() => { 
+        this.metricsInterval = seconds
+        this.metricsIntervalRef = setInterval(() => { 
             this.metrics.readClusterMetrics(this) 
-        }, this.interval * 1000, {})
+        }, this.metricsInterval * 1000, {})
     }
 }

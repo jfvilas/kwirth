@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 // material & icons
 import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Menu, Person, Weekend } from '@mui/icons-material'
+import { Settings as SettingsIcon, Menu, Person } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
@@ -30,8 +30,8 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, MetricsConfigModeEnum, ServiceConfigActionEnum, ServiceConfigFlowEnum, ServiceConfigChannelEnum, ServiceMessage, versionGreatThan, ServiceConfigScopeEnum, ServiceConfigViewEnum, ServiceConfig, ServiceConfigObjectEnum, ServiceMessageTypeEnum } from '@jfvilas/kwirth-common'
-import { ITabObject } from './model/TabObject'
+import { KwirthData, MetricsConfigModeEnum, InstanceConfigActionEnum, InstanceConfigFlowEnum, InstanceConfigChannelEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
+import { ITabObject } from './model/ITabObject'
 import { MetricDescription } from './model/MetricDescription'
 
 import { ILogMessage, LogObject } from './model/LogObject'
@@ -41,6 +41,7 @@ import { IMetricsMessage, MetricsObject } from './model/MetricsObject'
 import { SetupLog } from './components/SetupLog'
 import { SetupAlert } from './components/SetupAlert'
 import { SetupMetrics } from './components/SetupMetrics'
+import { IBoard } from './model/IBoard'
 
 
 const App: React.FC = () => {
@@ -63,6 +64,7 @@ const App: React.FC = () => {
     const [highlightedTabs, setHighlightedTabs] = useState<ITabObject[]>([])
     const [pausedTabs, setPausedTabs] = useState<ITabObject[]>([])
 
+    const [selectedCluster, setSelectedCluster] = useState<string>()
     const [selectedTabName, setSelectedTabName] = useState<string>()
     const selectedTabRef = useRef(selectedTabName)
     selectedTabRef.current=selectedTabName
@@ -110,7 +112,7 @@ const App: React.FC = () => {
     
     useEffect ( () => {
         //+++ when a board is loaded all messages are received: alarms should not be in effect until everything is received
-        //+++ plan to use kubernetes metrics for alarming based on resource usage (basic kubernetes metrics on pods and nodes)
+        //+++ plan to use metrics channel for alarming based on resource usage (cpu > 80, freemem<10,....)
         //+++ add options to asterisk log lines containing a specific text (like 'password', 'pw', etc...)
 
         if (logged) {
@@ -229,7 +231,7 @@ const App: React.FC = () => {
                 data: undefined,
                 instance: '',
                 reconnectKey: '',
-                view: selection.view as ServiceConfigViewEnum,
+                view: selection.view as InstanceConfigViewEnum,
                 namespace: selection.namespaces.join(','),
                 group: selection.groups.join(','),
                 pod: selection.pods.join(','),
@@ -244,36 +246,36 @@ const App: React.FC = () => {
             console.log(`WS connected: ${newTab.ws!.url}`)
             
             newTab.keepaliveRef = setInterval(() => {
-                var serviceConfig:ServiceConfig = {
-                    channel: ServiceConfigChannelEnum.NONE,
-                    objects: ServiceConfigObjectEnum.PODS,                    
-                    flow: ServiceConfigFlowEnum.REQUEST,
-                    action: ServiceConfigActionEnum.PING,
+                var instanceConfig:InstanceConfig = {
+                    channel: InstanceConfigChannelEnum.NONE,
+                    objects: InstanceConfigObjectEnum.PODS,                    
+                    flow: InstanceConfigFlowEnum.REQUEST,
+                    action: InstanceConfigActionEnum.PING,
                     instance: '',
-                    scope: ServiceConfigScopeEnum.NONE,
+                    scope: InstanceConfigScopeEnum.NONE,
                     accessKey: '',
-                    view: ServiceConfigViewEnum.NONE,
+                    view: InstanceConfigViewEnum.NONE,
                     namespace: '',
                     group: '',
                     pod: '',
                     container: ''
                 }
-                if (newTab.ws) newTab.ws.send(JSON.stringify(serviceConfig))
+                if (newTab.ws) newTab.ws.send(JSON.stringify(instanceConfig))
             }, (settings?.keepAliveInterval || 60) * 1000,'')  
         }
 
         switch(selection.channel) {
-            case ServiceConfigChannelEnum.LOG:
+            case InstanceConfigChannelEnum.LOG:
                 let logObject = new LogObject()
                 newTab.channelObject.data = logObject
                 break
 
-            case ServiceConfigChannelEnum.METRICS:
+            case InstanceConfigChannelEnum.METRICS:
                 let metricsObject = new MetricsObject()
                 newTab.channelObject.data = metricsObject
                 break
 
-            case ServiceConfigChannelEnum.ALERT:
+            case InstanceConfigChannelEnum.ALERT:
                 let alertObject = new AlertObject()
                 alertObject.regexInfo = []
                 alertObject.regexWarning = []
@@ -302,9 +304,9 @@ const App: React.FC = () => {
     }
 
     const wsOnMessage = (wsEvent:any) => {
-        var serviceMessage:ServiceMessage
+        var instanceMessage:InstanceMessage
         try {
-            serviceMessage = JSON.parse(wsEvent.data) as ServiceMessage
+            instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
         }
         catch (err:any) {
             console.log(err.stack)
@@ -312,21 +314,21 @@ const App: React.FC = () => {
             return
         }
 
-        switch(serviceMessage.channel) {
-            case ServiceConfigChannelEnum.NONE:
+        switch(instanceMessage.channel) {
+            case InstanceConfigChannelEnum.NONE:
                 // we receive keepalive responses through this channel
                 break
-            case ServiceConfigChannelEnum.LOG:
+            case InstanceConfigChannelEnum.LOG:
                 processLogMessage(wsEvent)
                 break
-            case ServiceConfigChannelEnum.ALERT:
+            case InstanceConfigChannelEnum.ALERT:
                 processAlertMessage(wsEvent)
                 break
-            case ServiceConfigChannelEnum.METRICS:
+            case InstanceConfigChannelEnum.METRICS:
                 processMetricsMessage(wsEvent)
                 break
             default:
-                console.log('Received invalid channel in message: ', serviceMessage)
+                console.log('Received invalid channel in message: ', instanceMessage)
                 break
         }
     }
@@ -354,7 +356,7 @@ const App: React.FC = () => {
         let dataLog = tab.channelObject.data as LogObject
 
         switch (msg.type) {
-            case ServiceMessageTypeEnum.DATA:
+            case InstanceMessageTypeEnum.DATA:
                 dataLog.messages.push(msg)
                 if (dataLog.messages.length > dataLog.maxMessages) dataLog.messages.splice(0, dataLog.messages.length - dataLog.maxMessages)
 
@@ -373,7 +375,7 @@ const App: React.FC = () => {
                     }
                 }
                 break
-            case ServiceMessageTypeEnum.SIGNAL:
+            case InstanceMessageTypeEnum.SIGNAL:
                 tab.channelObject.instance = msg.instance
                 if (msg.reconnectKey) tab.channelObject.reconnectKey = msg.reconnectKey
                 dataLog.messages.push(msg)
@@ -392,7 +394,7 @@ const App: React.FC = () => {
 
         let dataAlert = tab.channelObject.data as AlertObject
         switch (msg.type) {
-            case ServiceMessageTypeEnum.DATA:
+            case InstanceMessageTypeEnum.DATA:
                 dataAlert.firedAlerts.push ({
                     timestamp: new Date(msg.timestamp!).getTime(),
                     severity: msg.severity,
@@ -405,7 +407,7 @@ const App: React.FC = () => {
                 if (dataAlert.firedAlerts.length > dataAlert.maxAlerts) dataAlert.firedAlerts.splice(0, dataAlert.firedAlerts.length - dataAlert.maxAlerts)
                 if (!tab.channelPaused) setRefreshTabContent(Math.random())
                 break
-            case ServiceMessageTypeEnum.SIGNAL:
+            case InstanceMessageTypeEnum.SIGNAL:
                 tab.channelObject.instance = msg.instance
                 if (msg.reconnectKey) tab.channelObject.reconnectKey = msg.reconnectKey
                 break
@@ -422,14 +424,14 @@ const App: React.FC = () => {
 
         let dataMetrics = tab.channelObject.data as MetricsObject
         switch (msg.type) {
-            case ServiceMessageTypeEnum.DATA:
+            case InstanceMessageTypeEnum.DATA:
                 dataMetrics.assetMetricsValues.push(msg)
                 if (dataMetrics.assetMetricsValues.length > dataMetrics.depth) {
                     dataMetrics.assetMetricsValues.shift()
                 }
                 if (!tab.channelPaused) setRefreshTabContent(Math.random())
                 break
-            case ServiceMessageTypeEnum.SIGNAL:
+            case InstanceMessageTypeEnum.SIGNAL:
                 tab.channelObject.instance = msg.instance
                 if (msg.reconnectKey) tab.channelObject.reconnectKey = msg.reconnectKey
                 break
@@ -441,13 +443,13 @@ const App: React.FC = () => {
     
     const onClickChannelStart = () => {
         switch (selectedTab?.channelId) {
-            case ServiceConfigChannelEnum.LOG:
+            case InstanceConfigChannelEnum.LOG:
                 setShowSetupLog(true)
                 break
-            case ServiceConfigChannelEnum.ALERT:
+            case InstanceConfigChannelEnum.ALERT:
                 setShowSetupAlert(true)
                 break
-            case ServiceConfigChannelEnum.METRICS:
+            case InstanceConfigChannelEnum.METRICS:
                 setShowSetupMetrics(true)
                 break
         }
@@ -459,22 +461,22 @@ const App: React.FC = () => {
         let tab = tabs.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
         console.log('Reconnected, will reconfigure')
-        let serviceConfig:ServiceConfig = {
-            channel: ServiceConfigChannelEnum.NONE,
-            objects: ServiceConfigObjectEnum.PODS,
-            flow: ServiceConfigFlowEnum.REQUEST,
-            action: ServiceConfigActionEnum.RECONNECT,
+        let instanceConfig:InstanceConfig = {
+            channel: InstanceConfigChannelEnum.NONE,
+            objects: InstanceConfigObjectEnum.PODS,
+            flow: InstanceConfigFlowEnum.REQUEST,
+            action: InstanceConfigActionEnum.RECONNECT,
             instance: '',
             reconnectKey: tab.channelObject.reconnectKey,
-            scope: ServiceConfigScopeEnum.NONE,
+            scope: InstanceConfigScopeEnum.NONE,
             accessKey: '',
-            view: ServiceConfigViewEnum.NONE,
+            view: InstanceConfigViewEnum.NONE,
             namespace: '',
             group: '',
             pod: '',
             container: ''
         }
-        wsEvent.target.send(JSON.stringify(serviceConfig))
+        wsEvent.target.send(JSON.stringify(instanceConfig))
     }
 
     const reconnectInstance = (wsEvent:any) => {
@@ -505,20 +507,18 @@ const App: React.FC = () => {
         }
 
         if (tab.ws && tab.ws.readyState === tab.ws.OPEN) {
-            //tab.ws.onerror = () => console.log(`Error detected on WS: ${tab.ws!.url}`)
             tab.ws.onerror = (event) => reconnectInstance(event)
             tab.ws.onmessage = (event) => wsOnMessage(event)
-            //tab.ws.onclose = (_event) => console.log(`WS tab disconnected: ${tab.ws!.url}`)
             tab.ws.onclose = (event) => reconnectInstance(event)
     
-            var serviceConfig: ServiceConfig = {
+            var instanceConfig: InstanceConfig = {
                 channel: tab.channelId,
-                objects: ServiceConfigObjectEnum.PODS,
-                action: ServiceConfigActionEnum.START,
-                flow: ServiceConfigFlowEnum.REQUEST,
+                objects: InstanceConfigObjectEnum.PODS,
+                action: InstanceConfigActionEnum.START,
+                flow: InstanceConfigFlowEnum.REQUEST,
                 instance: '',
                 accessKey: cluster!.accessString,
-                scope: ServiceConfigScopeEnum.SUBSCRIBE,
+                scope: InstanceConfigScopeEnum.SUBSCRIBE,
                 view: tab.channelObject.view!,
                 namespace: tab.channelObject.namespace!,
                 group: tab.channelObject.group!,
@@ -526,31 +526,31 @@ const App: React.FC = () => {
                 container: tab.channelObject.container!,
             }
             switch (tab.channelId) {
-                case ServiceConfigChannelEnum.LOG: 
+                case InstanceConfigChannelEnum.LOG: 
                     let dataLog = tab.channelObject.data as LogObject
                     if (!cluster) {
                         setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at log configuration ${tab.channelObject.clusterName} does not exist.`, setMsgBox))
                         return
                     }
-                    serviceConfig.data = {
+                    instanceConfig.data = {
                         timestamp: dataLog.timestamp,
                         previous: dataLog.previous,
                         maxMessages: dataLog.maxMessages
                     }
                     break
-                case ServiceConfigChannelEnum.ALERT:
+                case InstanceConfigChannelEnum.ALERT:
                     let dataAlert = tab.channelObject.data as AlertObject
                     dataAlert.firedAlerts=[]
-                    serviceConfig.data = {
+                    instanceConfig.data = {
                         regexInfo: dataAlert.regexInfo,
                         regexWarning: dataAlert.regexWarning,
                         regexError: dataAlert.regexError
                     }
                     break
-                case ServiceConfigChannelEnum.METRICS:
+                case InstanceConfigChannelEnum.METRICS:
                     var dataMetrics = tab.channelObject.data as MetricsObject
                     dataMetrics.assetMetricsValues=[]
-                    serviceConfig.data = {
+                    instanceConfig.data = {
                         mode: dataMetrics.mode,
                         aggregate: dataMetrics.aggregate,
                         interval: dataMetrics.interval,
@@ -558,7 +558,7 @@ const App: React.FC = () => {
                     }
                     break
             }
-            tab.ws.send(JSON.stringify(serviceConfig))
+            tab.ws.send(JSON.stringify(instanceConfig))
             tab.channelStarted = true
             tab.channelPaused = false
 
@@ -578,33 +578,33 @@ const App: React.FC = () => {
         if (!tab.channelObject) return
         var cluster = clusters!.find(c => c.name===tab.channelObject!.clusterName)
 
-        var serviceConfig: ServiceConfig = {
+        var instanceConfig: InstanceConfig = {
             channel: tab.channelId,
-            objects: ServiceConfigObjectEnum.PODS,
-            action: ServiceConfigActionEnum.STOP,
-            flow: ServiceConfigFlowEnum.REQUEST,
+            objects: InstanceConfigObjectEnum.PODS,
+            action: InstanceConfigActionEnum.STOP,
+            flow: InstanceConfigFlowEnum.REQUEST,
             instance: tab.channelObject.instance,
             accessKey: cluster!.accessString,
             view: tab.channelObject.view!,
-            scope: ServiceConfigScopeEnum.NONE,
+            scope: InstanceConfigScopeEnum.NONE,
             namespace: '',
             group: '',
             pod: '',
             container: ''
         }
         switch (tab.channelId) {
-            case ServiceConfigChannelEnum.LOG:
+            case InstanceConfigChannelEnum.LOG:
                 var dataLog = tab.channelObject.data as LogObject
                 dataLog.messages.push({
                     text: '=========================================================================',
                     pod: '',
                     channel: 'log',
-                    type: ServiceMessageTypeEnum.DATA,
+                    type: InstanceMessageTypeEnum.DATA,
                     instance: ''
                 }) 
                 setRefreshTabContent(Math.random())
                 break
-            case ServiceConfigChannelEnum.ALERT:
+            case InstanceConfigChannelEnum.ALERT:
                 var dataAlert = tab.channelObject.data as AlertObject
                 dataAlert.firedAlerts.push({
                     timestamp: Date.now(),
@@ -615,10 +615,10 @@ const App: React.FC = () => {
                 })
                 setRefreshTabContent(Math.random())
                 break
-            case ServiceConfigChannelEnum.METRICS:
+            case InstanceConfigChannelEnum.METRICS:
                 break
         }
-        if (tab.ws) tab.ws.send(JSON.stringify(serviceConfig))
+        if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
         tab.channelStarted = false
         tab.channelPaused = false
     }
@@ -629,14 +629,14 @@ const App: React.FC = () => {
 
         var cluster = clusters!.find(c => c.name === selectedTab!.channelObject!.clusterName)
 
-        var serviceConfig:ServiceConfig = {
+        var instanceConfig:InstanceConfig = {
             channel: selectedTab.channelId,
-            objects: ServiceConfigObjectEnum.PODS,
-            action: ServiceConfigActionEnum.PAUSE,
-            flow: ServiceConfigFlowEnum.REQUEST,
+            objects: InstanceConfigObjectEnum.PODS,
+            action: InstanceConfigActionEnum.PAUSE,
+            flow: InstanceConfigFlowEnum.REQUEST,
             instance: selectedTab.channelObject?.instance,
             accessKey: cluster!.accessString,
-            scope: ServiceConfigScopeEnum.SUBSCRIBE,
+            scope: InstanceConfigScopeEnum.SUBSCRIBE,
             view: selectedTab.channelObject.view,
             namespace: selectedTab.channelObject.namespace,
             group: selectedTab.channelObject.group,
@@ -647,14 +647,14 @@ const App: React.FC = () => {
         if (selectedTab.channelPaused) {
             selectedTab.channelPaused = false
             setPausedTabs(tabs.filter(t => t.channelPaused))
-            serviceConfig.action = ServiceConfigActionEnum.CONTINUE
+            instanceConfig.action = InstanceConfigActionEnum.CONTINUE
         }
         else {
             selectedTab.channelPaused = true
             setPausedTabs( (prev) => [...prev, selectedTab!])
-            serviceConfig.action = ServiceConfigActionEnum.PAUSE
+            instanceConfig.action = InstanceConfigActionEnum.PAUSE
         }
-        selectedTab.ws.send(JSON.stringify(serviceConfig))
+        selectedTab.ws.send(JSON.stringify(instanceConfig))
     }
 
     const stopTab = (tab:ITabObject) => {
@@ -722,30 +722,21 @@ const App: React.FC = () => {
             case MenuTabOption.TabRemove:
                 onClickTabRemove()
                 break
-            // case MenuTabOption.LogBackground:
-            //     if (selectedTab && selectedTab.logObject) selectedTab.logObject.showBackgroundNotification=!selectedTab.logObject.showBackgroundNotification
-            //     break
-            // case MenuTabOption.LogTimestamp:
-            //     if (selectedTab && selectedTab.logObject) selectedTab.logObject.addTimestamp=!selectedTab.logObject.addTimestamp
-            //     break
             case MenuTabOption.TabSetDefault:
                 if (selectedTab && selectedTab.channelObject) selectedTab.defaultTab=true
                 break
             case MenuTabOption.TabManageRestart:
                 // switch(selectedTab && selectedTab.logObject?.view) {
-                //     case ServiceConfigViewEnum.GROUP:
+                //     case .GROUP:
                 //         // restart a deployment
                 //         fetch (`${backendUrl}/managecluster/restartdeployment/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.group}`, addPostAuthorization(accessString))
                 //         break
-                //     case ServiceConfigViewEnum.POD:
+                //     case .POD:
                 //         // restart a pod
                 //         fetch (`${backendUrl}/managecluster/restartpod/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.pod}`, addPostAuthorization(accessString))
                 //         break
                 // }
                 break
-            // case MenuTabOption.MetricsStart:
-            //     onClickMetricsStart()
-            //     break
             case MenuTabOption.ChannelStart:
                 onClickChannelStart()
                 break
@@ -758,54 +749,41 @@ const App: React.FC = () => {
         }
     }
 
-    const saveBoard = (boardName:string) => {
-        // var newTabs:TabObject[]=[]
-        // for (var tab of tabs) {
-        //     var newTab = new TabObject()
-        //     newTab.name=tab.name
-        //     newTab.defaultTab=tab.defaultTab
-        //     if (tab.logObject) {
-        //         newTab.logObject=new LogObject()
-        //         newTab.logObject.addTimestamp=tab.logObject.addTimestamp
-        //         newTab.logObject.alarms=tab.logObject.alarms
-        //         newTab.logObject.clusterName=tab.logObject.clusterName
-        //         newTab.logObject.filter=tab.logObject.filter
-        //         newTab.logObject.view=tab.logObject.view
-        //         newTab.logObject.namespace=tab.logObject.namespace
-        //         newTab.logObject.group=tab.logObject.group
-        //         newTab.logObject.pod=tab.logObject.pod
-        //         newTab.logObject.container=tab.logObject.container
-        //         newTab.logObject.paused=tab.logObject.paused
-        //         newTab.logObject.showBackgroundNotification=tab.logObject.showBackgroundNotification
-        //         newTab.logObject.started=tab.logObject.started
-        //     }
-        //     if (tab.metricsObject) {
-        //         newTab.metricsObject=new MetricsObject()
-        //         newTab.metricsObject.name=tab.metricsObject.name
-        //         newTab.metricsObject.clusterName=tab.metricsObject.clusterName
-        //         newTab.metricsObject.view=tab.metricsObject.view
-        //         newTab.metricsObject.namespace=tab.metricsObject.namespace
-        //         newTab.metricsObject.group=tab.metricsObject.group
-        //         newTab.metricsObject.pod=tab.metricsObject.pod
-        //         newTab.metricsObject.container=tab.metricsObject.container
-        //         newTab.metricsObject.clusterName=tab.metricsObject.clusterName
-        //         newTab.metricsObject.alarms=tab.metricsObject.alarms
-        //         newTab.metricsObject.started=tab.metricsObject.started
-        //         newTab.metricsObject.aggregate=tab.metricsObject.aggregate
-        //         newTab.metricsObject.depth=tab.metricsObject.depth
-        //         newTab.metricsObject.interval=tab.metricsObject.interval
-        //         newTab.metricsObject.metrics=tab.metricsObject.metrics
-        //         newTab.metricsObject.mode=tab.metricsObject.mode
-        //         newTab.metricsObject.paused=tab.metricsObject.paused
-        //         newTab.metricsObject.started=tab.metricsObject.started
-        //         newTab.metricsObject.view=tab.metricsObject.view
-        //         newTab.metricsObject.width=tab.metricsObject.width
-        //     }
-        //     newTabs.push(newTab)
-        // }
-        // var payload=JSON.stringify(newTabs)
-        // fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addPostAuthorization(accessString, payload))
-        // if (currentBoardName!==boardName) setCurrentBoardName(boardName)
+    const saveBoard = (name:string) => {
+        var newTabs:ITabObject[]=[]
+        for (var tab of tabs) {
+            var newTab:ITabObject = {
+                name: tab.name,
+                defaultTab: tab.defaultTab,
+                ws: null,
+                keepaliveRef: 0,
+                channelId: tab.channelId,
+                channelObject: JSON.parse(JSON.stringify(tab.channelObject)),
+                channelStarted: false,
+                channelPaused: false,
+                channelPending: false
+            }
+            switch(tab.channelId) {
+                case InstanceConfigChannelEnum.LOG:
+                    (newTab.channelObject.data as LogObject).messages=[]
+                    break
+                case InstanceConfigChannelEnum.METRICS:
+                    (newTab.channelObject.data as MetricsObject).assetMetricsValues = []
+                    break
+                case InstanceConfigChannelEnum.ALERT:
+                    (newTab.channelObject.data as AlertObject).firedAlerts = []
+                    break
+            }
+            newTabs.push(newTab)
+        }
+        let board:IBoard={
+            name,
+            description: 'desc',
+            tabs: newTabs
+        }
+        var payload=JSON.stringify( board )
+        fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addPostAuthorization(accessString, payload))
+        if (currentBoardName!==name) setCurrentBoardName(name)
     }
 
     const saveBoardClosed = (boardName:string|null) => {
@@ -817,8 +795,8 @@ const App: React.FC = () => {
         if (boardName) {
             clearTabs()
             var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
-            var newTabs=JSON.parse(n) as ITabObject[]
-            setTabs(newTabs)
+            var board = JSON.parse(n) as IBoard
+            setTabs(board.tabs)
             setCurrentBoardName(boardName)
             setBoardLoaded(true)
         }
@@ -956,11 +934,15 @@ const App: React.FC = () => {
         if (newSettings) writeSettings(newSettings)
     }
 
-    const settingsClusterClosed = (interval:number) => {
+    const settingsClusterClosed = (metricsInterval:number) => {
         setShowSettingsCluster(false)
-        if (interval) {
-            let payload = JSON.stringify( { interval } )
-            fetch (`${backendUrl}/metrics/config`, addPostAuthorization(accessString, payload))
+        if (metricsInterval) {
+            var cluster = clusters!.find(c => c.name === selectedCluster)
+            if (cluster)  {
+                cluster.metricsInterval = metricsInterval
+                let payload = JSON.stringify( { metricsInterval } )
+                fetch (`${backendUrl}/metrics/config`, addPostAuthorization(accessString, payload))
+            }
         }
     }
 
@@ -1083,13 +1065,13 @@ const App: React.FC = () => {
 
             <Drawer sx={{ flexShrink: 0, '& .MuiDrawer-paper': {mt: '64px'} }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
                 <Stack direction={'column'}>
-                    <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} user={user}/>
+                    <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} selectedCluster={selectedCluster} user={user}/>
                     <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>
                 </Stack>
             </Drawer>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
-                <ResourceSelector clusters={clusters} channels={channels} onAdd={onResourceSelectorAdd} sx={{ mt:1, ml:1 }}/>
+                <ResourceSelector clusters={clusters} channels={channels} onAdd={onResourceSelectorAdd} onChangeCluster={(c:string) => setSelectedCluster (c)} sx={{ mt:1, ml:1 }}/>
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
                     <Tabs value={selectedTabName || (tabs.length>0? tabs[0].name:'')} onChange={onChangeTabs} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
                         { tabs.length>0 && tabs.map(t => {
@@ -1119,8 +1101,8 @@ const App: React.FC = () => {
             { showSetupAlert && <SetupAlert onClose={onAlertSetupClosed} settings={settings} channelObject={selectedTab?.channelObject} /> }
             { showSetupMetrics && <SetupMetrics onClose={onSetupMetricsClosed} settings={settings} channelObject={selectedTab?.channelObject} metricsList={clusters!.find(c => c.name===selectedTab!.channelObject!.clusterName)?.metricsList!} /> }
 
-            { showSettingsUser && <SettingsUser  onClose={settingsUserClosed} settings={settings} /> }
-            { showSettingsCluster && <SettingsCluster  onClose={settingsClusterClosed} /> }
+            { showSettingsUser && <SettingsUser onClose={settingsUserClosed} settings={settings} /> }
+            { showSettingsCluster && <SettingsCluster onClose={settingsClusterClosed} clusterMetricsInterval={clusters!.find(c => c.name===selectedCluster)?.metricsInterval} /> }
             { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { pickListConfig!==null && <PickList config={pickListConfig}/> }
             { msgBox }

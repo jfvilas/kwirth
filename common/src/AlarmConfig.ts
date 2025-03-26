@@ -1,6 +1,6 @@
-import { ServiceConfig } from './ServiceConfig'
+import { InstanceConfig } from './InstanceConfig'
 
-export interface AlarmConfig extends ServiceConfig {
+export interface AlarmConfig extends InstanceConfig {
     regexInfo: string[]
     regexWarning: string[]
     regexError: string[]

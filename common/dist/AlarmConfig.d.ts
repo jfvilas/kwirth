@@ -1,5 +1,5 @@
-import { ServiceConfig } from './ServiceConfig';
-export interface AlarmConfig extends ServiceConfig {
+import { InstanceConfig } from './InstanceConfig';
+export interface AlarmConfig extends InstanceConfig {
     regexInfo: string[];
     regexWarning: string[];
     regexError: string[];

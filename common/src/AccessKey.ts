@@ -66,21 +66,21 @@ function buildResource (scope:string, namespace:string, groupType:string, groupN
 }
 
 /*
-    +++ review all this info, it is not fresh
-    
+ 
     ResourceIdentifier is composed by:
 
-        scope can a comma-separated list of: cluster, api, view|filter, restart
+        scope can a comma-separated list of: cluster, api, view, filter, restart,...
             cluster is the admin level, can do everything
             api can create api keys
             view or filter, can view logs
             restart, can restart pods or deployments
+            ...
 
             for example, a user that can view and restart would have the scope 'view,restart'
 
         NOTE: group is the type and name of a group: 'replica', 'stateful' or 'daemon', a plus sign ('+'), and the name of the group, example: 'replica+rs1', 'stateful+mongo'
 
-        the rest of fields are names (regex in fact) according to this rules:
+        the rest of fields are comma-separated names according to this rules:
             - it can be a direct name, like: 'mynamespace', 'your-replicaset', 'our-pod'...
             - it can be an '', indicating any resource of the scope is valid
             - it can be a comma-separated list of names, like: namespace 'dev,pre', or pod 'my-pod,our-pod,your-pod'
@@ -88,35 +88,35 @@ function buildResource (scope:string, namespace:string, groupType:string, groupN
         full access is created by using cluster scope:
             scope: cluster
             namespace: ''
-            set: ''
+            group: ''
             pod: ''
             container: ''
 
         for example, an accessKey that gives access to view logs of namespaces production and staging would be something like
             scope: view
-            namespace: ['production','staging']
-            set: ''
+            namespace: 'production,staging'
+            group: ''
             pod: ''
             container: ''
 
         access to restart any pod in 'development' namespace is like this:
             scope: restart
             namespace: 'development'
-            set: ''
+            group: ''
             pod: ''
             container: ''
 
-        an accessKey that allows viewing logs of pod 'my-pod' in the whole cluster would be something like:
+        an accessKey that allows viewing logs of pods 'my-pod' and 'your-pod' in the whole cluster would be something like:
             scope: view
             namespace: ''
-            set: ''
-            pod: my-pod
+            group: ''
+            pod: 'my-pod,your-pod'
             container: ''      
 
-        the names are infact regex, so you, for allowing a requestor to restart any pod of the accounting application in preproduction environment you would use this:
+        In the furture we have plans to treat the names as regex, so, for allowing a requestor to restart any pod of the accounting application in preproduction environment you would use this:
             scope: restart
             namespace: 'preproduction'
-            set: ''
+            group: ''
             pod: '^account-'
             container: ''      
 

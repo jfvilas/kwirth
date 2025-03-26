@@ -2,6 +2,7 @@
 * [Installation](installation)
 * [How it works](how)
 * [Data streaming](datastreaming)
+* [Channels](channels)
 * [Security](security)
 * [Change log](changelog)
 * [Common tasks](commontasks)

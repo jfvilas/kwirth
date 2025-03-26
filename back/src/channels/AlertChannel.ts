@@ -1,5 +1,4 @@
-import { ServiceConfig, ServiceConfigActionEnum, ServiceConfigChannelEnum, ServiceConfigFlowEnum, ServiceMessage, ServiceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common';
-import { IChannel } from '../model/IChannel'
+import { ChannelCapabilities, IChannel, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common';
 import * as stream from 'stream'
 import WebSocket from 'ws'
 import { PassThrough } from 'stream'; 
@@ -11,7 +10,7 @@ enum AlertSeverityEnum {
     ERROR = "error"
 }
 
-interface AlertMessage extends ServiceMessage {
+interface AlertMessage extends InstanceMessage {
     timestamp?: Date;
     severity: AlertSeverityEnum;
     text: string;
@@ -27,16 +26,24 @@ class AlertChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
+    getCapabilities(): ChannelCapabilities {
+        return {
+            pauseable: false,
+            modifyable: false,
+            reconnectable: false
+        }
+    }
+    
     sendAlert = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alertSeverity:AlertSeverityEnum, line:string, instanceId: string) => {
         // line includes timestam at front (beacuse of log stream configuration at startup)
         var i = line.indexOf(' ')
         var msg:AlertMessage = {
             namespace: podNamespace,
             instance: instanceId,
-            type: ServiceMessageTypeEnum.DATA,
+            type: InstanceMessageTypeEnum.DATA,
             pod: podName,
             container: containerName,
-            channel: ServiceConfigChannelEnum.ALERT,
+            channel: InstanceConfigChannelEnum.ALERT,
             text: line.substring(i+1),
             timestamp: new Date(line.substring(0,i)),
             severity: alertSeverity
@@ -77,46 +84,46 @@ class AlertChannel implements IChannel {
         }
     }
 
-    sendServiceConfigMessage = (ws:WebSocket, action:ServiceConfigActionEnum, flow: ServiceConfigFlowEnum, channel: ServiceConfigChannelEnum, serviceConfig:ServiceConfig, text:string) => {
+    sendInstanceConfigMessage = (ws:WebSocket, action: InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string) => {
         var resp:any = {
             action,
             flow,
             channel,
-            instance: serviceConfig.instance,
+            instance: instanceConfig.instance,
             type: 'signal',
             text
         }
         ws.send(JSON.stringify(resp))
     }
 
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, serviceConfig: ServiceConfig) {
+    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig) {
         var sgnMsg:SignalMessage = {
             level,
-            channel: serviceConfig.channel,
-            instance: serviceConfig.instance,
-            type: ServiceMessageTypeEnum.SIGNAL,
+            channel: instanceConfig.channel,
+            instance: instanceConfig.instance,
+            type: InstanceMessageTypeEnum.SIGNAL,
             text
         }
         webSocket.send(JSON.stringify(sgnMsg))
     }
 
-    async startInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             // firstly we convert regex string into RegExp strings
             var regexes: Map<AlertSeverityEnum, RegExp[]> = new Map()
 
             var regExps: RegExp[] = []
-            for (var regStr of serviceConfig.data.regexInfo)
+            for (var regStr of instanceConfig.data.regexInfo)
                 regExps.push(new RegExp (regStr))
             regexes.set(AlertSeverityEnum.INFO,regExps)
 
             regExps = []
-            for (var regStr of serviceConfig.data.regexWarning)
+            for (var regStr of instanceConfig.data.regexWarning)
                 regExps.push(new RegExp (regStr))
             regexes.set(AlertSeverityEnum.WARNING,regExps)
 
             regExps = []
-            for (var regStr of serviceConfig.data.regexError)
+            for (var regStr of instanceConfig.data.regexError)
                 regExps.push(new RegExp (regStr))
             regexes.set(AlertSeverityEnum.ERROR,regExps)
 
@@ -135,11 +142,11 @@ class AlertChannel implements IChannel {
                     this.buffer.set(webSocket,next)
                     text=text.substring(0,i)
                 }
-                this.sendAlertData(webSocket, podNamespace, podName, containerName, text, serviceConfig.instance)
+                this.sendAlertData(webSocket, podNamespace, podName, containerName, text, instanceConfig.instance)
             })
 
             if (!this.websocketAlerts.get(webSocket)) this.websocketAlerts.set(webSocket, [])
-                this.websocketAlerts.get(webSocket)?.push ({ instanceId: serviceConfig.instance, working:true, paused:false, logStream:logStream, regExps: regexes })   
+                this.websocketAlerts.get(webSocket)?.push ({ instanceId: instanceConfig.instance, working:true, paused:false, logStream:logStream, regExps: regexes })   
 
             var kubernetesStreamConfig = {
                 follow: true, 
@@ -151,56 +158,52 @@ class AlertChannel implements IChannel {
         }
         catch (err:any) {
             console.log('Generic error starting pod log', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
         }
 
     }
 
-    stopInstance(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
-        if (this.websocketAlerts.get(webSocket)?.find(i => i.instanceId === serviceConfig.instance)) {
-            this.removeInstance(webSocket, serviceConfig.instance)
-            this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.STOP, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALERT, serviceConfig, 'Alert service stopped')
+    stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
+        if (this.websocketAlerts.get(webSocket)?.find(i => i.instanceId === instanceConfig.instance)) {
+            this.removeInstance(webSocket, instanceConfig.instance)
+            this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.STOP, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.ALERT, instanceConfig, 'Alert instance stopped')
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
         }
     }
 
-    getServiceScopeLevel(scope: string): number {
+    getChannelScopeLevel(scope: string): number {
         return ['','subcribe','create','cluster'].indexOf(scope)
     }
 
-    processModifyServiceConfig(webSocket: WebSocket, serviceConfig: ServiceConfig): void {
+    processModifyInstanceConfig(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
         
     }
 
-    pauseContinueChannel(webSocket: WebSocket, serviceConfig: ServiceConfig, action: ServiceConfigActionEnum): void {
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceConfigActionEnum): void {
         let alertInstances = this.websocketAlerts.get(webSocket)
-        let alertInstance = alertInstances?.find(i => i.instanceId === serviceConfig.instance)
+        let alertInstance = alertInstances?.find(i => i.instanceId === instanceConfig.instance)
         if (alertInstance) {
-            if (action === ServiceConfigActionEnum.PAUSE) {
+            if (action === InstanceConfigActionEnum.PAUSE) {
                 alertInstance.paused = true
-                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.PAUSE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALERT, serviceConfig, 'Alert paused')
+                this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.PAUSE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.ALERT, instanceConfig, 'Alert paused')
             }
-            if (action === ServiceConfigActionEnum.CONTINUE) {
+            if (action === InstanceConfigActionEnum.CONTINUE) {
                 alertInstance.paused = false
-                this.sendServiceConfigMessage(webSocket,ServiceConfigActionEnum.CONTINUE, ServiceConfigFlowEnum.RESPONSE, ServiceConfigChannelEnum.ALERT, serviceConfig, 'Alert continued')
+                this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.CONTINUE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.ALERT, instanceConfig, 'Alert continued')
             }
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${serviceConfig.instance} not found`, serviceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
         }
     }
 
-    updateInstance (webSocket: WebSocket, serviceConfig: ServiceConfig, eventType:string, podNamespace:string, podName:string, containerName:string) : void {
+    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig) : void {
 
     }
 
-    modifyService (webSocket:WebSocket, serviceConfig: ServiceConfig) : void {
-
-    }
-
-    removeService(webSocket: WebSocket): void {
+    removeConnection(webSocket: WebSocket): void {
         if (this.websocketAlerts.get(webSocket)) {
             for (var instance of this.websocketAlerts?.get(webSocket)!) {
                 this.removeInstance (webSocket, instance.instanceId)

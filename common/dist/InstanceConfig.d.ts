@@ -1,4 +1,4 @@
-export declare enum ServiceConfigChannelEnum {
+export declare enum InstanceConfigChannelEnum {
     NONE = "none",
     LOG = "log",
     METRICS = "metrics",
@@ -6,7 +6,7 @@ export declare enum ServiceConfigChannelEnum {
     ALARM = "alarm",
     ALERT = "alert"
 }
-export declare enum ServiceConfigActionEnum {
+export declare enum InstanceConfigActionEnum {
     START = "start",
     STOP = "stop",
     PAUSE = "pause",
@@ -15,15 +15,15 @@ export declare enum ServiceConfigActionEnum {
     PING = "ping",
     RECONNECT = "reconnect"
 }
-export declare enum ServiceConfigObjectEnum {
+export declare enum InstanceConfigObjectEnum {
     PODS = "pods",
     EVENTS = "events"
 }
-export declare enum ServiceConfigFlowEnum {
+export declare enum InstanceConfigFlowEnum {
     REQUEST = "request",
     RESPONSE = "response"
 }
-export declare enum ServiceConfigViewEnum {
+export declare enum InstanceConfigViewEnum {
     NONE = "none",
     CLUSTER = "cluster",
     NAMESPACE = "namespace",
@@ -31,7 +31,7 @@ export declare enum ServiceConfigViewEnum {
     POD = "pod",
     CONTAINER = "container"
 }
-export declare enum ServiceConfigScopeEnum {
+export declare enum InstanceConfigScopeEnum {
     NONE = "none",
     FILTER = "filter",
     VIEW = "view",
@@ -43,15 +43,15 @@ export declare enum ServiceConfigScopeEnum {
     CREATE = "create",
     SUBSCRIBE = "subscribe"
 }
-export interface ServiceConfig {
+export interface InstanceConfig {
     channel: string;
-    objects: ServiceConfigObjectEnum;
-    action: ServiceConfigActionEnum;
-    flow: ServiceConfigFlowEnum;
+    objects: InstanceConfigObjectEnum;
+    action: InstanceConfigActionEnum;
+    flow: InstanceConfigFlowEnum;
     instance: string;
     accessKey: string;
     scope: string;
-    view: ServiceConfigViewEnum;
+    view: InstanceConfigViewEnum;
     namespace: string;
     group: string;
     pod: string;

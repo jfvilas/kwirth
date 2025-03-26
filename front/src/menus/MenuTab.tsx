@@ -1,9 +1,7 @@
-//import React, { useContext } from 'react'
 import React from 'react'
 import { Collapse, Divider, Menu, MenuItem, MenuList, Typography } from '@mui/material'
 import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, Info } from '@mui/icons-material'
-//import { SessionContext, SessionContextType } from '../model/SessionContext'
-import { ITabObject } from '../model/TabObject'
+import { ITabObject } from '../model/ITabObject'
 
 enum MenuTabOption {
     AlarmCreate,

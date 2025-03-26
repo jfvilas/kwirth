@@ -1,6 +1,6 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, SelectChangeEvent, Stack, TextField, Tooltip, Typography} from '@mui/material'
-import { MetricsConfigModeEnum, ServiceConfigViewEnum } from '@jfvilas/kwirth-common'
+import { MetricsConfigModeEnum, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { Settings } from '../model/Settings'
 import { MetricDescription } from '../model/MetricDescription'
 
@@ -78,16 +78,16 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
 
     var multiAssets=false
     switch (props.channelObject.view) {
-        case ServiceConfigViewEnum.NAMESPACE:
+        case InstanceConfigViewEnum.NAMESPACE:
             multiAssets = props.channelObject.namespace.split(',').length > 1
             break
-        case ServiceConfigViewEnum.GROUP:
+        case InstanceConfigViewEnum.GROUP:
             multiAssets = props.channelObject.group.split(',').length > 1
             break
-        case ServiceConfigViewEnum.POD:
+        case InstanceConfigViewEnum.POD:
             multiAssets = props.channelObject.pod.split(',').length > 1
             break
-        case ServiceConfigViewEnum.CONTAINER:
+        case InstanceConfigViewEnum.CONTAINER:
             multiAssets = props.channelObject.container.split(',').length > 1
             break
 

@@ -1,6 +1,6 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material'
-import { ITabObject } from '../model/TabObject'
+import { ITabObject } from '../model/ITabObject'
 
 interface IProps {
     onClose:(a:string|null) => {}
