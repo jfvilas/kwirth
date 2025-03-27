@@ -13,5 +13,6 @@ export class LogObject {
     public pending: boolean = false
     public timestamp: boolean = false
     public follow: boolean = true
+    public fromStart: boolean = false
     public backgroundNotification: boolean = true
 }

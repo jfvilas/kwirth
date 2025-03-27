@@ -535,7 +535,8 @@ const App: React.FC = () => {
                     instanceConfig.data = {
                         timestamp: dataLog.timestamp,
                         previous: dataLog.previous,
-                        maxMessages: dataLog.maxMessages
+                        maxMessages: dataLog.maxMessages,
+                        fromStart: dataLog.fromStart
                     }
                     break
                 case InstanceConfigChannelEnum.ALERT:
@@ -968,7 +969,7 @@ const App: React.FC = () => {
         startChannel(tab)
     }
 
-    const onSetupLogClosed = (maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean) => {
+    const onSetupLogClosed = (maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean) => {
         setShowSetupLog(false)       
         setAnchorMenuTab(null)
         if (maxMessages === 0) return
@@ -978,6 +979,7 @@ const App: React.FC = () => {
 
         var dataLog = tab.channelObject.data as LogObject
         dataLog.maxMessages = maxMessages
+        dataLog.fromStart = fromStart
         dataLog.previous = previous
         dataLog.timestamp = timestamp
         dataLog.follow = follow

@@ -5,6 +5,7 @@ class Settings {
     public logPrevious: boolean = false
     public logTimestamp: boolean = false
     public logFollow: boolean = true
+    public fromStart: boolean = false
 
     public metricsMode: MetricsConfigModeEnum = MetricsConfigModeEnum.STREAM
     public metricsDepth: number = 10

@@ -99,13 +99,14 @@ class LogChannel implements IChannel {
     
     async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         console.log(`Start instance ${instanceConfig.instance} (view: ${instanceConfig.view})`)
+        console.log('instanceConfig.data',instanceConfig.data)
         try {
             var streamConfig = { 
                 follow: true, 
                 pretty: false, 
                 timestamps: instanceConfig.data.timestamp,
                 previous: Boolean(instanceConfig.data.previous),
-                tailLines: instanceConfig.data.maxMessages
+                ...(instanceConfig.data.fromStart? {} : {sinceSeconds:1800})
             }
     
             const logStream:PassThrough = new stream.PassThrough()
@@ -136,6 +137,8 @@ class LogChannel implements IChannel {
                 tailLines: instanceConfig.data.tailLines,
                 paused:false
             })
+            console.log('streamConfig')
+            console.log(streamConfig)
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, logStream,  streamConfig)
         }
         catch (err:any) {
