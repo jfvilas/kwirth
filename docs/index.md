@@ -1,7 +1,7 @@
 # Kwirth
-Kwirth is the final implementation of the idea of having a simple way to manage logging and metrics inside a Kubernetes cluster. Maybe you feel comfortable with your DataDog or your Grafana and the Loki and the Promtrail,  or the Prometheus stack. But maybe these (and other tools) are too complex for you, or maybe you just need a simple realtime observability tool.
+Kwirth is the final implementation of the idea of having a simple way to manage logging, metrics, and other observability information inside a Kubernetes cluster. Maybe you feel comfortable with your DataDog or your Grafana and the Loki and the Promtrail, or the Prometheus stack, or a full ELK stack. But maybe these (and other tools) are too complex for you, or maybe you just need a **simple realtime observability tool**.
 
-If this is the case, **Kwirth is the answer to your needs**. Just *one pod to access get all the observability you need* from your main Kubernetes cluster, or even **consolidate observability information from different clusters**. When we say 'observability' we mean 'logging', 'metrics', 'alerts', 'signales', etc.
+If this is the case, **Kwirth is the answer to your needs**. Just *one pod to access all the observability you need* from your main Kubernetes cluster, or even **consolidate observability information from different clusters**. When we say 'observability' we mean 'logging', 'metrics', 'alerts', 'signals', etc.
 
 You can access the source code [**HERE**](https://github.com/jfvilas/kwirth).
 
