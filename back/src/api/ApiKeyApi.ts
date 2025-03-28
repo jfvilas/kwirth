@@ -26,7 +26,7 @@ export class ApiKeyApi {
             .get( async (req:Request,res:Response) => {
                 var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[]
                 for (var apikey of ApiKeyApi.apiKeys)
-                    if (!storedKeys.some(s => accessKeySerialize(s.accessKey)===accessKeySerialize(apikey.accessKey))) storedKeys.push(apikey)
+                    if (!storedKeys.some(s => accessKeySerialize(s.accessKey) === accessKeySerialize(apikey.accessKey))) storedKeys.push(apikey)
                 res.status(200).json(storedKeys)
             })
             .post( async (req:Request, res:Response) => {
@@ -47,10 +47,10 @@ export class ApiKeyApi {
                         
                         VALUES:
                         scope: cluster|api|filter|view|restart
-                        namespace: name
-                        group: {deployment|replica|daemon|stateful}+name   (type of pod group, a plus sign, name of the group)
-                        pod: name
-                        container: name
+                        namespace: names (comma separated name list)
+                        group: {deployment|replica|daemon|stateful}+name (type of pod group, a plus sign, name of the group). it is also comma separated name list
+                        pod: names (comma separated name list)
+                        container: names (comma separated name list)
 
                         EXAMPLES:
                         cluster::::  // all the cluster logs
@@ -105,7 +105,7 @@ export class ApiKeyApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                var storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[]
+                var storedKeys=await configMaps.read('kwirth.keys', []) as ApiKey[]
                 var key=storedKeys.filter(apiKey => apiKey.accessKey.id===req.params.key)
                 if (key.length>0)
                     res.status(200).json(key[0])
@@ -124,7 +124,7 @@ export class ApiKeyApi {
                     storedKeys=cleanApiKeys(storedKeys)
                     storedKeys=storedKeys.filter(apiKey => apiKey.accessKey.id!==req.params.key)
                     await configMaps.write('kwirth.keys', storedKeys )
-                    ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type==='volatile'), ...storedKeys]
+                    ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type === 'volatile'), ...storedKeys]
                     res.status(200).json({})
                 }
                 catch (err) {
@@ -140,7 +140,7 @@ export class ApiKeyApi {
                     storedKeys=storedKeys.filter(k => k.accessKey.id!==key.accessKey.id)
                     storedKeys.push(key)
                     await configMaps.write('kwirth.keys',storedKeys)
-                    ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type==='volatile'), ...storedKeys]
+                    ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type === 'volatile'), ...storedKeys]
 
                     res.status(200).json({})
                 }

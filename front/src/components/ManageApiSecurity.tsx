@@ -67,7 +67,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
     const onClickSave= async () => {
         var res=buildResource(scope, namespace, groupType, groupName, pod, container)
         var payload
-        if (selectedKey!==undefined) {
+        if (selectedKey !== undefined) {
             selectedKey.accessKey.type=keyType
             selectedKey.accessKey.resource=res
             var key={ accessKey:selectedKey?.accessKey, description, expire }
@@ -88,7 +88,7 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
         setSelectedKey(undefined)
         setDescrition('')
         var a = Date.now()
-        a+=1000*60*60*24*30 // 30 days
+        a += 1000*60*60*24*30 // 30 days
         setExpire(a)
         setKeyType('permanent')
         setScope('')
