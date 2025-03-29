@@ -5,7 +5,7 @@ import { User } from '../model/User';
 
 enum MenuDrawerOption {
     NewBoard,
-    OpenBoard,
+    LoadBoard,
     SaveBoard,
     SaveBoardAs,
     DeleteBoard,
@@ -35,7 +35,7 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
     const menu=(
         <MenuList sx={{height:'85vh'}}>
             <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.NewBoard)}><CreateNewFolderTwoTone/>&nbsp;New board</MenuItem>
-            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.OpenBoard)}><FileOpenTwoTone/>&nbsp;Load board</MenuItem>
+            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.LoadBoard)}><FileOpenTwoTone/>&nbsp;Load board</MenuItem>
             <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.SaveBoard)}><SaveTwoTone/>&nbsp;Save board</MenuItem>
             <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveBoardAs)}><SaveAsTwoTone/>&nbsp;Save board as...</MenuItem>
             <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.DeleteBoard)}><DeleteTwoTone/>&nbsp;Delete board...</MenuItem>

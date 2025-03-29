@@ -13,7 +13,8 @@ import { PickListConfig } from './model/PickListConfig'
 
 // components
 import RenameTab from './components/RenameTab'
-import SaveBoard from './components/SaveBoard'
+import { SaveBoard } from './components/board/SaveBoard'
+import { SelectBoard }  from './components/board/SelectBoard'
 import ManageApiSecurity from './components/ManageApiSecurity'
 import PickList from './components/PickList'
 import Login from './components/Login'
@@ -94,17 +95,23 @@ const App: React.FC = () => {
     var pickListConfigRef=useRef(pickListConfig)
     pickListConfigRef.current=pickListConfig
 
+    // boards
+    const [boardLoaded, setBoardLoaded] = useState<boolean>(false)
+    const [currentBoardName, setCurrentBoardName] = useState('')
+    const [currentBoardDescription, setCurrentBoardDescription] = useState('')
+    const [boards, setBoards] = useState<{name:string, description:string}[]>([])
+    const [selectBoardAction, setSelectBoardAction] = useState('')
+
     // components
     const [showRenameTab, setShowRenameLog]=useState<boolean>(false)
     const [showManageClusters, setShowManageClusters]=useState<boolean>(false)
     const [showSaveBoard, setShowSaveBoard]=useState<boolean>(false)
+    const [showSelectBoard, setShowSelectBoard]=useState<boolean>(false)
     const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false)
     const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false)
     const [showSettingsUser, setShowSettingsUser]=useState<boolean>(false)
     const [showSettingsCluster, setShowSettingsCluster]=useState<boolean>(false)
     const [initialMessage, setInitialMessage]=useState<string>('')
-    const [boardLoaded, setBoardLoaded] = useState<boolean>(false)
-    const [currentBoardName, setCurrentBoardName] = useState('')
     const [showSetupLog, setShowSetupLog]=useState<boolean>(false)
     const [showSetupAlert, setShowSetupAlert]=useState<boolean>(false)
     const [showSetupMetrics, setShowSetupMetrics]=useState<boolean>(false)
@@ -750,8 +757,8 @@ const App: React.FC = () => {
         }
     }
 
-    const saveBoard = (name:string) => {
-        var newTabs:ITabObject[]=[]
+    const saveBoard = (name:string, description:string) => {
+        var newTabs:ITabObject[] = []
         for (var tab of tabs) {
             var newTab:ITabObject = {
                 name: tab.name,
@@ -777,51 +784,54 @@ const App: React.FC = () => {
             }
             newTabs.push(newTab)
         }
-        let board:IBoard={
+        let board:IBoard = {
             name,
-            description: 'desc',
+            description,
             tabs: newTabs
         }
         var payload=JSON.stringify( board )
         fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addPostAuthorization(accessString, payload))
-        if (currentBoardName!==name) setCurrentBoardName(name)
+        if (currentBoardName !== name) {
+            setCurrentBoardName(name)
+            setCurrentBoardDescription(description)
+        }
     }
 
-    const saveBoardClosed = (boardName:string|null) => {
+    const saveBoardClosed = (name?:string, description?:string) => {
         setShowSaveBoard(false)
-        if (boardName) saveBoard(boardName)
+        if (name) saveBoard(name, description||'No description')
     }
 
-    const loadBoardSelected = async (boardName:string) => {
-        if (boardName) {
-            clearTabs()
-            var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
-            var board = JSON.parse(n) as IBoard
-            setTabs(board.tabs)
-            setCurrentBoardName(boardName)
-            setBoardLoaded(true)
+    const selectBoardClosed = async (action:string, name?:string) => {
+        setShowSelectBoard(false)
+        if (name) {
+            if (action==='delete') {
+                setMsgBox(MsgBoxYesNo('Delete board',`Are you sure you want to delete board ${name} (you cannot undo this action?`,setMsgBox, (button) => {
+                    if (button===MsgBoxButtons.Yes) {
+                        fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addDeleteAuthorization(accessString))
+                        if (name === currentBoardName) {
+                            setCurrentBoardName('untitled')
+                            setCurrentBoardDescription('No description yet')                            
+                        }
+                    }
+                }))
+            }
+            else if (action='load') {
+                if (name) {
+                    clearTabs()
+                    var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
+                    var board = JSON.parse(n) as IBoard
+                    setTabs(board.tabs)
+                    setCurrentBoardName(name)
+                    setCurrentBoardDescription(board.description)
+                    setBoardLoaded(true)
+                }                       
+            }
         }
     }
 
     const showNoBoards = () => {
         setMsgBox(MsgBoxOk('Board management','You have no boards stored in your personal Kwirth space', setMsgBox))
-    }
-
-    const loadBoard = async () => {
-        var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
-        if (allBoards.length===0)
-            showNoBoards()
-        else
-            pickList('Load board...','Please, select the board you want to load:', allBoards, loadBoardSelected)
-    }
-
-    const deleteBoardSelected = (boardName:string) => {
-        setMsgBox(MsgBoxYesNo('Delete board',`Are you ure you want to delete board ${boardName}`,setMsgBox, (button) => {
-            if (button===MsgBoxButtons.Yes) {
-                fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addDeleteAuthorization(accessString))
-                setCurrentBoardName('')
-            }
-        }))
     }
 
     const clearTabs = () => {
@@ -837,25 +847,56 @@ const App: React.FC = () => {
             case MenuDrawerOption.NewBoard:
                 clearTabs()
                 setCurrentBoardName('untitled')
+                setCurrentBoardDescription('No description yet')
                 break
             case MenuDrawerOption.SaveBoard:
                 if (currentBoardName!=='' && currentBoardName!=='untitled')
-                    saveBoard(currentBoardName)
-                else
+                    saveBoard(currentBoardName, currentBoardDescription)
+                else {
                     setShowSaveBoard(true)
+                }
                 break
             case MenuDrawerOption.SaveBoardAs:
+                var allBoards:IBoard[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
+                var values = allBoards.map( b => {
+                    let name=Object.keys(b)[0]
+                    let board = JSON.parse((b as any)[name]) as IBoard
+                    return { name: board.name,  description: board.description }
+                })
+                setBoards(values)
                 setShowSaveBoard(true)
                 break
-            case MenuDrawerOption.OpenBoard:
-                loadBoard()
+            case MenuDrawerOption.LoadBoard:
+                var allBoards:IBoard[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
+                if (allBoards.length===0) {
+                    showNoBoards()
+                }
+                else {
+                    var values = allBoards.map( b => {
+                        let name=Object.keys(b)[0]
+                        let board = JSON.parse((b as any)[name]) as IBoard
+                        return { name: board.name,  description: board.description }
+                    })
+                    setBoards(values)
+                    setSelectBoardAction ('load')
+                    setShowSelectBoard(true)
+                }
                 break
             case MenuDrawerOption.DeleteBoard:
-                var allBoards:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
-                if (allBoards.length===0)
+                var allBoards:IBoard[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
+                if (allBoards.length===0) {
                     showNoBoards()
-                else
-                    pickList('Board delete...','Please, select the board you want to delete:',allBoards,deleteBoardSelected)
+                }
+                else {
+                    var values = allBoards.map( b => {
+                        let name=Object.keys(b)[0]
+                        let board = JSON.parse((b as any)[name]) as IBoard
+                        return { name: board.name,  description: board.description }
+                    })
+                    setBoards( values )
+                    setSelectBoardAction ('delete')
+                    setShowSelectBoard(true)
+                }        
                 break
             case MenuDrawerOption.ManageCluster:
                 setShowManageClusters(true)
@@ -916,6 +957,7 @@ const App: React.FC = () => {
     }
 
     const handleUpload = (event:any) => {
+        setMenuDrawerOpen(false)        
         const file = event.target.files[0]
         if (file) {
             const reader = new FileReader()
@@ -1042,6 +1084,7 @@ const App: React.FC = () => {
             setUser(user)
             setAccessString(accessKey)
             setCurrentBoardName('untitled')
+            setCurrentBoardDescription('No description yet')
             clearTabs()
         }
     }
@@ -1060,8 +1103,12 @@ const App: React.FC = () => {
                 <Toolbar>
                     <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
                     <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth</Typography>
-                    <Typography variant="h6" component="div" sx={{mr:2}}>{currentBoardName}</Typography>
-                    <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user?.scope}]</div>} sx={{ mr:2 }}><Person/></Tooltip>
+                    <Tooltip title={<div style={{textAlign:'center'}}>{currentBoardName}<br/><br/>{currentBoardDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
+                        <Typography variant="h6" component="div" sx={{mr:2, cursor:'default'}}>{currentBoardName}</Typography>
+                    </Tooltip>
+                    <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user?.scope}]</div>} sx={{ mr:2 }} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -6]}}]}}}>
+                        <Person/>
+                    </Tooltip>
                 </Toolbar>
             </AppBar>
 
@@ -1094,7 +1141,8 @@ const App: React.FC = () => {
             </Box>
 
             { showRenameTab && <RenameTab onClose={renameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }
-            { showSaveBoard && <SaveBoard onClose={saveBoardClosed} name={currentBoardName} /> }
+            { showSaveBoard && <SaveBoard onClose={saveBoardClosed} name={currentBoardName} description={currentBoardDescription} values={boards} /> }
+            { showSelectBoard && <SelectBoard onSelect={selectBoardClosed} values={boards} action={selectBoardAction}/> }
             { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }

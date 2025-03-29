@@ -1,15 +1,17 @@
-import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField } from '@mui/material';
-import { ChangeEvent, useState } from 'react';
+import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField } from '@mui/material'
+import { toNamespacedPath } from 'path'
+import { ChangeEvent, useState } from 'react'
 
 interface IProps {
-    onClose:(a?:string) => {},
+    onClose:(name?:string, description?:string) => {},
     name:string
-    desc:string
+    description:string
+    values:{name:string, description:string}[]
 }
 
 const SaveBoard: React.FC<any> = (props:IProps) => {
-    const [newname, setNewname] = useState(props.name);
-    const [desc, setDesc] = useState(props.desc);
+    const [newname, setNewname] = useState(props.name)
+    const [desc, setDesc] = useState(props.description)
 
     const onChangeNewname = (event:ChangeEvent<HTMLInputElement>) => {
         setNewname(event.target.value);
@@ -33,11 +35,11 @@ const SaveBoard: React.FC<any> = (props:IProps) => {
                 </DialogContentText>
             </DialogContent>
             <DialogActions>
-                <Button onClick={() => props.onClose(newname)} disabled={newname===props.name}>OK</Button>
-                <Button onClick={() => props.onClose(undefined)}>CANCEL</Button>
+                <Button onClick={() => props.onClose(newname, desc)} disabled={Boolean(props.values.find(b => b.name === newname))}>OK</Button>
+                <Button onClick={() => props.onClose()}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     )
 }
 
-export default SaveBoard;
+export { SaveBoard }
