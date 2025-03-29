@@ -96,7 +96,7 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
         <Dialog open={true} maxWidth={false} sx={{'& .MuiDialog-paper': { width: '50vw', maxWidth: '60vw', height:'60vh', maxHeight:'40vw' } }}>
             <DialogTitle>Configure metrics for {props.channelObject.view}</DialogTitle>
             <DialogContent >
-                <Stack spacing={2} sx={{ flexShrink: 0, display: 'flex', flexDirection: 'column', mt:'16px' }}>
+                <Stack spacing={2} direction={'column'} sx={{ mt:'16px' }}>
                     <Stack direction={'row'} spacing={1} >
                         <FormControl sx={{width:'25%'}}>
                             <InputLabel>Mode</InputLabel>
@@ -128,10 +128,11 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
                         <TextField value={metricsInterval} onChange={onChangeMetricsInterval} sx={{width:'25%'}} variant='standard' label='Interval' type='number'></TextField>
                     </Stack>
 
-                    <Stack direction={'row'} spacing={1} >
+                    <TextField value={filter} onChange={(event) => setFilter(event.target.value)} sx={{width:'100%'}} variant='standard' label='Filter' autoFocus></TextField>
+
+                    <Stack direction={'row'} spacing={1} sx={{width:'100%', height:'22vh'}}>
                         <Stack direction={'column'} sx={{width:'70%'}}>
-                            <TextField value={filter} onChange={(event) => setFilter(event.target.value)} sx={{width:'100%'}} variant='standard' label='Filter' autoFocus></TextField>
-                            <List sx={{ width: '100%', height:'70%', overflowY: 'auto' }}>
+                            <List sx={{ width: '100%', overflowY: 'auto' }}>
                                 {Array.from(props.metricsList.keys()).map((value) => {
                                     if (value.includes(filter) && (value.startsWith('container_') || value.startsWith('kwirth_'))) {
                                         return (
@@ -172,7 +173,6 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
                     <Stack direction="row" spacing={1} sx={{width:'100%', flexWrap: 'wrap', maxWidth:'100%', height:'25%', overflowY:'auto'}} >
                         { metricsChecked.map((value,index) => <Chip key={index} label={value} onDelete={() => metricsDelete(value)} size="small"/> ) }
                     </Stack>
-
 
                 </Stack>
 

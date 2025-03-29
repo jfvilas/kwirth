@@ -1,6 +1,6 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, MenuItem, Select, SelectChangeEvent, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
-import { Settings } from '../model/Settings'
+import { Settings } from '../../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
 interface IProps {
@@ -22,50 +22,6 @@ const SettingsUser: React.FC<any> = (props:IProps) => {
     const [metricsAggregate, setMetricsAggregate] = useState(props.settings.metricsAggregate)
     const [keepAliveInterval, setKeepAliveInterval] = useState(props.settings.keepAliveInterval)
 
-    const onChangeLogMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
-        setLogMaxMessages(+event.target.value)
-    }
-
-    const onChangeLogPrevious = (event:ChangeEvent<HTMLInputElement>) => {
-        setLogPrevious(event.target.checked)
-    }
-
-    const onChangeLogTimestamp = (event:ChangeEvent<HTMLInputElement>) => {
-        setLogTimestamp(event.target.checked)
-    }
-
-    const onChangeLogFollow = (event:ChangeEvent<HTMLInputElement>) => {
-        setLogFollow(event.target.checked)
-    }
-
-    const onChangeAlertMaxAlerts = (event:ChangeEvent<HTMLInputElement>) => {
-        setAlertMaxAlerts(+event.target.value)
-    }
-
-    const onChangeMetricsMode = (event: SelectChangeEvent) => {
-        setMetricsMode(event.target.value)
-    }
-
-    const onChangeMetricsDepth = (event: SelectChangeEvent) => {
-        setMetricsDepth(+event.target.value)
-    }
-
-    const onChangeMetricsWidth = (event: SelectChangeEvent) => {
-        setMetricsWidth(+event.target.value)
-    }
-
-    const onChangeMetricsInterval = (event:ChangeEvent<HTMLInputElement>) => {
-        setMetricsInterval(+event.target.value)
-    }
-
-    const onChangeMetricsAggregate = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setMetricsAggregate(event.target.checked)
-    }
-
-    const onChangeKeepAliveInterval = (event:ChangeEvent<HTMLInputElement>) => {
-        setKeepAliveInterval(+event.target.value)
-    }
-
     const closeOk = () =>{
         var newSettings=new Settings()
         newSettings.logMaxMessages=logMaxMessages
@@ -81,9 +37,12 @@ const SettingsUser: React.FC<any> = (props:IProps) => {
     }
 
     return (<>
-        <Dialog open={true} >
+        <Dialog open={true}>
             <DialogTitle>Settings</DialogTitle>
-            <DialogContent sx={{height:'30vh'}}>
+            <DialogContent sx={{height:'40vh'}}>
+                <Typography>
+                    This settings do establishes the defult settings to use when you start a new instance.
+                </Typography>
                 <Tabs value={value} onChange={(_: React.SyntheticEvent, newValue: string) => { setValue(newValue)}} sx={{mb:'16px'}}>
                     <Tab key='log' label='Log' value='log' />
                     <Tab key='alert' label='Alert' value='alert' />
@@ -93,40 +52,40 @@ const SettingsUser: React.FC<any> = (props:IProps) => {
 
                 <div hidden={value!=='log'}>
                     <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                        <TextField value={logMaxMessages} onChange={onChangeLogMaxMessages} variant='standard'label='Max messages' SelectProps={{native: true}} type='number'></TextField>
+                        <TextField value={logMaxMessages} onChange={(e) => setLogMaxMessages(+e.target.value)} variant='standard'label='Max messages' SelectProps={{native: true}} type='number'></TextField>
                         <Stack direction='row' alignItems={'baseline'}>
-                            <Switch checked={logPrevious} onChange={onChangeLogPrevious}/><Typography>Get messages of previous container</Typography>
+                            <Switch checked={logPrevious} onChange={(e) => setLogPrevious(e.target.checked)}/><Typography>Get messages of previous container</Typography>
                         </Stack>
                         <Stack direction='row' alignItems={'baseline'}>
-                            <Switch checked={logTimestamp} onChange={onChangeLogTimestamp}/><Typography>Add timestamp to messages</Typography>
+                            <Switch checked={logTimestamp} onChange={(e) => setLogTimestamp(e.target.checked)}/><Typography>Add timestamp to messages</Typography>
                         </Stack>
                         <Stack direction='row' alignItems={'baseline'}>
-                            <Switch checked={logFollow} onChange={onChangeLogFollow}/><Typography>Follow new messages</Typography>
+                            <Switch checked={logFollow} onChange={(e) => setLogFollow(e.target.checked)}/><Typography>Follow new messages</Typography>
                         </Stack>
                     </Stack>
                 </div>
                 
                 <div hidden={value!=='alert'}>
                     <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                        <TextField value={alertMaxAlerts} onChange={onChangeAlertMaxAlerts} variant='standard'label='Max alerts' SelectProps={{native: true}} type='number'></TextField>
+                        <TextField value={alertMaxAlerts} onChange={(e) => setAlertMaxAlerts(+e.target.value)} variant='standard'label='Max alerts' SelectProps={{native: true}} type='number'></TextField>
                     </Stack>
                 </div>
 
                 <div hidden={value!=='metrics'}>
                     <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
                         <FormControl fullWidth variant='standard'>
-                            <InputLabel id='modelabel'>Mode</InputLabel>
-                            <Select value={metricsMode} onChange={onChangeMetricsMode} labelId='modelabel'>
+                            <InputLabel>Mode</InputLabel>
+                            <Select value={metricsMode} onChange={(e) => setMetricsMode(e.target.value)}>
                                 <MenuItem value={'snapshot'}>Snapshot</MenuItem>
                                 <MenuItem value={'stream'}>Stream</MenuItem>
                             </Select>
                         </FormControl>
-                        <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={onChangeMetricsAggregate}/>} label='Aggregate resource metrics' />
+                        <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={(e) => setMetricsAggregate(e.target.checked)}/>} label='Aggregate resource metrics' />
                         {/* <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField> */}
                         <Stack spacing={1} direction={'row'}>
                             <FormControl variant='standard' sx={{width:'33%'}}>
-                                <InputLabel id='labeldepth'>Depth</InputLabel>
-                                <Select value={metricsDepth.toString()} onChange={onChangeMetricsDepth} labelId='labeldepth' variant='standard'>
+                                <InputLabel>Depth</InputLabel>
+                                <Select value={metricsDepth.toString()} onChange={(e) => setMetricsDepth(+e.target.value)} variant='standard'>
                                 <MenuItem value={10}>10</MenuItem>
                                 <MenuItem value={20}>20</MenuItem>
                                 <MenuItem value={50}>50</MenuItem>
@@ -134,8 +93,8 @@ const SettingsUser: React.FC<any> = (props:IProps) => {
                                 </Select>
                             </FormControl>
                             <FormControl variant='standard' sx={{width:'33%'}}>
-                                <InputLabel id='labelwidth'>Width</InputLabel>
-                                <Select value={metricsWidth.toString()} onChange={onChangeMetricsWidth} labelId='labelwidth' variant='standard'>
+                                <InputLabel>Width</InputLabel>
+                                <Select value={metricsWidth.toString()} onChange={(e) => setMetricsWidth(+e.target.value)} variant='standard'>
                                 <MenuItem value={1}>1</MenuItem>
                                 <MenuItem value={2}>2</MenuItem>
                                 <MenuItem value={3}>3</MenuItem>
@@ -145,14 +104,14 @@ const SettingsUser: React.FC<any> = (props:IProps) => {
                                 </Select>
                             </FormControl>
 
-                            <TextField value={metricsInterval} onChange={onChangeMetricsInterval} sx={{width:'33%'}} variant='standard' label='Interval' type='number' ></TextField>
+                            <TextField value={metricsInterval} onChange={(e) => setMetricsInterval(+e.target.value)} sx={{width:'33%'}} variant='standard' label='Interval' type='number' ></TextField>
                         </Stack>
                     </Stack>
                 </div>
 
                 <div hidden={value!=='kwirth'}>
                     <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                        <TextField value={keepAliveInterval} onChange={onChangeKeepAliveInterval} variant='standard' label='Keep-alive interval (seconds)' SelectProps={{native: true}} type='number'></TextField>
+                        <TextField value={keepAliveInterval} onChange={(e) => setKeepAliveInterval(+e.target.value)} variant='standard' label='Keep-alive interval (seconds)' SelectProps={{native: true}} type='number'></TextField>
                     </Stack>
                 </div>
                 
