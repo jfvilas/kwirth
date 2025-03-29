@@ -1,6 +1,6 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Switch, TextField, Typography } from '@mui/material'
-import { Settings } from '../model/Settings'
+import { Settings } from '../../model/Settings'
 
 interface IProps {
     onClose:(maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean) => {}

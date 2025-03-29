@@ -39,9 +39,9 @@ import { ILogMessage, LogObject } from './model/LogObject'
 import { AlertObject, AlertSeverityEnum, IAlertMessage } from './model/AlertObject'
 import { IMetricsMessage, MetricsObject } from './model/MetricsObject'
 
-import { SetupLog } from './components/SetupLog'
-import { SetupAlert } from './components/SetupAlert'
-import { SetupMetrics } from './components/SetupMetrics'
+import { SetupLog } from './components/channels/SetupLog'
+import { SetupAlert } from './components/channels/SetupAlert'
+import { SetupMetrics } from './components/channels/SetupMetrics'
 import { IBoard } from './model/IBoard'
 
 

@@ -1,8 +1,8 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, SelectChangeEvent, Stack, TextField, Tooltip, Typography} from '@mui/material'
 import { MetricsConfigModeEnum, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
-import { Settings } from '../model/Settings'
-import { MetricDescription } from '../model/MetricDescription'
+import { Settings } from '../../model/Settings'
+import { MetricDescription } from '../../model/MetricDescription'
 
 interface IProps {
     onClose:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number, aggregate:boolean, merge:boolean, stack:boolean, chart:string) => {}
