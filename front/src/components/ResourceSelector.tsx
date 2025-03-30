@@ -25,14 +25,14 @@ interface IResourceSelected {
 }
 
 interface IProps {
-    onAdd:(resource:IResourceSelected) => {}
-    onChangeCluster:(clusterName:string) => {}
-    clusters:Cluster[]
-    channels:string[]
-    sx:SxProps
+    onAdd: (resource:IResourceSelected) => {}
+    onChangeCluster: (clusterName:string) => {}
+    clusters: Cluster[]
+    channels: string[]
+    sx: SxProps
 }
 
-interface GroupData {
+interface IGroup {
     // these names match with the ones returned in the "/config/groups" fetch.
     type:string,  // rs, ds, ss
     name:string
@@ -70,7 +70,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
 
     const loadAllGroups = async (cluster:Cluster,namespace:string) => {
         var response = await fetch(`${selectedCluster!.url}/config/${namespace}/groups?cluster=${cluster.name}`, addGetAuthorization(selectedCluster!.accessString))
-        var data = await response.json() as GroupData[]
+        var data = await response.json() as IGroup[]
         setAllGroups((prev) => [...prev, ...data.map(d => d.type+'+'+d.name)])
         setGroups([])
     }

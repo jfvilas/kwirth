@@ -1,4 +1,4 @@
-import { Box, Stack, Typography } from '@mui/material'
+import { Alert, Box, Stack, Typography } from '@mui/material'
 import { LogObject } from '../model/LogObject'
 import { LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
@@ -141,10 +141,9 @@ const TabContent: React.FC<any> = (props:IProps) => {
         var mergedSeries = mergeSeries(names, series)
 
         const renderLabel = (data:any) => {
-            // series.map (s => console.log(s[data.index]))
             var values:any[] = series.map (s => s[data.index])
             var total:number =values.reduce((acc,value) => acc+value.value, 0)
-            return <text x={data.x + data.width/3.5} y={data.y-10}>{total.toPrecision(3)}</text>
+            return <text x={data.x + data.width/3.5} y={data.y-10}>{total.toPrecision(3).replace(/0+$/, "")}</text>
         }
         let  height=300
 
@@ -218,7 +217,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
                         <Legend/>
                         { series.map ((serie,index) =>
                             <Bar name={names[index]} {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={series.length===1?colour:colours[index]}>
-                                { index === series.length-1 ? <LabelList dataKey={names[index]} position='insideTop' content={ renderLabel }/> : null }
+                                { index === series.length-1 && series.length > 1 ? <LabelList dataKey={names[index]} position='insideTop' content={ renderLabel }/> : null }
                             </Bar>
                         )}
                     </BarChart>
@@ -256,9 +255,14 @@ const TabContent: React.FC<any> = (props:IProps) => {
         )
     }
 
+    const formatMetricsError = (dataMetrics:MetricsObject) => {
+        return <>{dataMetrics.errors && dataMetrics.errors!=='' &&  <Alert severity="error">{dataMetrics.errors}</Alert>}</>
+    }
     const formatMetrics = () => {
         let dataMetrics = props.channelObject.data as MetricsObject
-        if (!dataMetrics.metrics || dataMetrics.assetMetricsValues.length === 0) return <></>
+        if (!dataMetrics.metrics || dataMetrics.assetMetricsValues.length === 0) {
+            return <>{formatMetricsError(dataMetrics)}</>
+        }
 
         let data:Map<string, Map<string, { timestamp:string, value:number}[]>> = new Map()
         for (var assetMetricsValues of dataMetrics.assetMetricsValues) {
@@ -292,6 +296,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 rows.push(allCharts.slice(i, i + dataMetrics.width))
             }
             return (<>
+                {formatMetricsError(dataMetrics)}
                 {rows.map((row, index) => (
                     <div key={index} style={{ display: 'flex', justifyContent: 'space-around' }}>
                         {row}
@@ -315,6 +320,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 }
             }
             return (<>
+                {formatMetricsError(dataMetrics)}
                 {rows.map((row, index) => (
                     <div key={index} style={{ display: 'flex', justifyContent: 'space-around' }}>
                         {row}
@@ -326,7 +332,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
 
     return (
         <>
-        <Box sx={{ flex:1, overflowY: 'auto', ml:1 }}>
+        <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
             {/* show log lines */}
             {props.channelObject &&  props.channel === 'log' && props.channelObject.data && props.channelObject.data.messages && formatLog() }
 

@@ -12,8 +12,7 @@ interface IValue {
 }
 
 const SelectBoard: React.FC<any> = (props:IProps) => {
-    console.log(props.values)
-    return (
+   return (
         <Dialog open={true}>
             <DialogTitle>
                 Select board
@@ -25,8 +24,8 @@ const SelectBoard: React.FC<any> = (props:IProps) => {
                             props.action === 'delete'? 'Select board to delete' : 'Select board to load'
                         }</Typography>
                         <List>
-                            {props.values?.map(v => <ListItemButton onClick={() => props.onSelect(props.action, v.name)}>
-                                <ListItem key={v.name}>
+                            {props.values?.map(v => <ListItemButton onClick={() => props.onSelect(props.action, v.name)} key={v.name}>
+                                <ListItem>
                                     <Stack direction={'column'}>
                                         <Typography>{v.name}</Typography>
                                         <Typography color={'darkgray'} fontSize={12}>{v.description}</Typography>

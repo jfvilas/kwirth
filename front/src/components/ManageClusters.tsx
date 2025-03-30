@@ -26,18 +26,18 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
 
   const onClickSave= async () => {
     if (selectedCluster) {
-      selectedCluster.accessString=accessString;
-      selectedCluster.name=name;
-      selectedCluster.url=url;
-      clusters.splice(clusters?.findIndex(c => c.id===selectedCluster.id)!,1);
-      clusters?.push(selectedCluster);
+      selectedCluster.accessString=accessString
+      selectedCluster.name=name
+      selectedCluster.url=url
+      clusters.splice(clusters?.findIndex(c => c.id===selectedCluster.id)!,1)
+      clusters?.push(selectedCluster)
     }
     else {
-      var c=new Cluster();
-      c.accessString=accessString;
-      c.name=name;
-      c.url=url;
-      clusters?.push(c);
+      var c=new Cluster()
+      c.accessString=accessString
+      c.name=name
+      c.url=url
+      clusters?.push(c)
     }
     setName('')
     setUrl('')

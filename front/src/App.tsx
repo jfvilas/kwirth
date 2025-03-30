@@ -31,7 +31,7 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, MetricsConfigModeEnum, InstanceConfigActionEnum, InstanceConfigFlowEnum, InstanceConfigChannelEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
+import { KwirthData, MetricsConfigModeEnum, InstanceConfigActionEnum, InstanceConfigFlowEnum, InstanceConfigChannelEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
 import { ITabObject } from './model/ITabObject'
 import { MetricDescription } from './model/MetricDescription'
 
@@ -43,6 +43,7 @@ import { SetupLog } from './components/channels/SetupLog'
 import { SetupAlert } from './components/channels/SetupAlert'
 import { SetupMetrics } from './components/channels/SetupMetrics'
 import { IBoard } from './model/IBoard'
+import { sign } from 'crypto'
 
 
 const App: React.FC = () => {
@@ -58,6 +59,8 @@ const App: React.FC = () => {
     const [msgBox, setMsgBox] =useState(<></>)
 
     const [clusters, setClusters] = useState<Cluster[]>()
+    const [selectedClusterName, setSelectedClusterName] = useState<string>()
+    const [selectedCluster, setSelectedCluster] = useState<Cluster>(new Cluster())
     const clustersRef = useRef(clusters)
     clustersRef.current=clusters
 
@@ -65,7 +68,6 @@ const App: React.FC = () => {
     const [highlightedTabs, setHighlightedTabs] = useState<ITabObject[]>([])
     const [pausedTabs, setPausedTabs] = useState<ITabObject[]>([])
 
-    const [selectedCluster, setSelectedCluster] = useState<string>()
     const [selectedTabName, setSelectedTabName] = useState<string>()
     const selectedTabRef = useRef(selectedTabName)
     selectedTabRef.current=selectedTabName
@@ -149,7 +151,7 @@ const App: React.FC = () => {
                         }
                     }
                 }
-                onChangeTabs(null, tabs[0].name)
+                onChangeTab(null, tabs[0].name)
             }
         }
     }, [boardLoaded])
@@ -178,8 +180,8 @@ const App: React.FC = () => {
         clusterList.push(srcCluster)
         setClusters(clusterList)
 
-        for (var cluster of clusterList){
-            if (!cluster.metricsList) getMetricsNames(cluster)
+        for (let cluster of clusterList) {
+            await getMetricsNames(cluster)
         }
     }
 
@@ -213,6 +215,10 @@ const App: React.FC = () => {
         setSettings(newSettings)
         var payload=JSON.stringify(newSettings)
         fetch (`${backendUrl}/store/${user?.id}/settings/general`, addPostAuthorization(accessString, payload))
+    }
+
+    const onChangeCluster = (cname:string) => {
+        setSelectedClusterName (cname)
     }
 
     const onResourceSelectorAdd = (selection:IResourceSelected) => {
@@ -297,7 +303,7 @@ const App: React.FC = () => {
         setSelectedTabName(newTab.name)
     }
 
-    const onChangeTabs = (_event:any, tabName?:string)=> {
+    const onChangeTab = (_event:any, tabName?:string)=> {
         var newTab = tabs.find(tab => tab.name === tabName)
         if (newTab) {
             if (newTab.channelObject) {
@@ -342,11 +348,12 @@ const App: React.FC = () => {
 
     const getMetricsNames = async (cluster:Cluster) => {
         try {
+            console.log(`Receiving metrics for cluster ${cluster.name}`)
             cluster.metricsList=new Map()
-            var response = await fetch (`${backendUrl}/metrics`, addGetAuthorization(accessString))
+            var response = await fetch (`${cluster.url}/metrics`, addGetAuthorization(cluster.accessString))
             var json=await response.json() as MetricDescription[]
             json.map( jsonMetric => cluster.metricsList.set(jsonMetric.metric, jsonMetric))
-            console.log(`Metrics for cluster ${cluster.name} have been received`)
+            console.log(`Metrics for cluster ${cluster.name} have been received (${Array.from(cluster.metricsList.keys()).length})`)
         }
         catch (err) {
             console.log('Error obtaining metrics list')
@@ -439,8 +446,13 @@ const App: React.FC = () => {
                 if (!tab.channelPaused) setRefreshTabContent(Math.random())
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                tab.channelObject.instance = msg.instance
-                if (msg.reconnectKey) tab.channelObject.reconnectKey = msg.reconnectKey
+                var signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                tab.channelObject.instance = signalMessage.instance
+                if (signalMessage.reconnectKey) tab.channelObject.reconnectKey = signalMessage.reconnectKey
+                if (signalMessage.level==='error') {
+                    dataMetrics.errors = signalMessage.text
+                    setRefreshTabContent(Math.random())
+                }
                 break
             default:
                 console.log(`Invalid message type ${msg.type}`)
@@ -487,19 +499,21 @@ const App: React.FC = () => {
     }
 
     const reconnectInstance = (wsEvent:any) => {
-        let tab = tabs.find(tab => tab.ws === wsEvent.target)
-        if (!tab || !tab.channelObject || !tab.channelObject.reconnectKey) return
-        var cluster = clusters!.find(c => c.name === tab!.channelObject!.clusterName)
-        if (!cluster) return
+        return
+        // +++ pending review
+        // let tab = tabs.find(tab => tab.ws === wsEvent.target)
+        // if (!tab || !tab.channelObject || !tab.channelObject.reconnectKey) return
+        // var cluster = clusters!.find(c => c.name === tab!.channelObject!.clusterName)
+        // if (!cluster) return
 
-        console.log(`Will reconnect using ${tab.channelObject.reconnectKey}`)
+        // console.log(`Will reconnect using ${tab.channelObject.reconnectKey}`)
 
-        let selfId = setInterval( (key, url, tab) => {
-            console.log(`Trying to reconnect using ${key}, ${url}`)
-            let ws = new WebSocket(url)
-            ws.onopen = (event) => reconnectedInstance(event, selfId)
-            tab.ws = ws
-        }, 5000, tab.channelObject.reconnectKey, cluster.url, tab)
+        // let selfId = setInterval( (key, url, tab) => {
+        //     console.log(`Trying to reconnect using ${key}, ${url}`)
+        //     let ws = new WebSocket(url)
+        //     ws.onopen = (event) => reconnectedInstance(event, selfId)
+        //     tab.ws = ws
+        // }, 5000, tab.channelObject.reconnectKey, cluster.url, tab)
     }
     
     const startChannel = (tab:ITabObject) => {
@@ -797,12 +811,12 @@ const App: React.FC = () => {
         }
     }
 
-    const saveBoardClosed = (name?:string, description?:string) => {
+    const onSaveBoardClosed = (name?:string, description?:string) => {
         setShowSaveBoard(false)
         if (name) saveBoard(name, description||'No description')
     }
 
-    const selectBoardClosed = async (action:string, name?:string) => {
+    const onSelectBoardClosed = async (action:string, name?:string) => {
         setShowSelectBoard(false)
         if (name) {
             if (action==='delete') {
@@ -834,6 +848,22 @@ const App: React.FC = () => {
         setMsgBox(MsgBoxOk('Board management','You have no boards stored in your personal Kwirth space', setMsgBox))
     }
 
+    const getBoards = async () => {
+        var allBoards:IBoard[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
+        if (allBoards.length===0) {
+            showNoBoards()
+            return undefined
+        }
+        else {
+            var values = allBoards.map( b => {
+                let name=Object.keys(b)[0]
+                let board = JSON.parse((b as any)[name]) as IBoard
+                return { name: board.name,  description: board.description }
+            })
+            return values
+        }
+    }
+
     const clearTabs = () => {
         for (var tab of tabs) {
             stopTab(tab)
@@ -856,47 +886,28 @@ const App: React.FC = () => {
                     setShowSaveBoard(true)
                 }
                 break
-            case MenuDrawerOption.SaveBoardAs:
-                var allBoards:IBoard[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
-                var values = allBoards.map( b => {
-                    let name=Object.keys(b)[0]
-                    let board = JSON.parse((b as any)[name]) as IBoard
-                    return { name: board.name,  description: board.description }
-                })
-                setBoards(values)
-                setShowSaveBoard(true)
+            case MenuDrawerOption.SaveBoardAs: {
+                    let values = await getBoards()
+                    if (values) {
+                        setBoards(values)
+                        setShowSaveBoard(true)
+                }}
                 break
-            case MenuDrawerOption.LoadBoard:
-                var allBoards:IBoard[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
-                if (allBoards.length===0) {
-                    showNoBoards()
-                }
-                else {
-                    var values = allBoards.map( b => {
-                        let name=Object.keys(b)[0]
-                        let board = JSON.parse((b as any)[name]) as IBoard
-                        return { name: board.name,  description: board.description }
-                    })
+            case MenuDrawerOption.LoadBoard: {
+                let values = await getBoards()
+                if (values) {
                     setBoards(values)
                     setSelectBoardAction ('load')
                     setShowSelectBoard(true)
-                }
+                }}
                 break
-            case MenuDrawerOption.DeleteBoard:
-                var allBoards:IBoard[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
-                if (allBoards.length===0) {
-                    showNoBoards()
-                }
-                else {
-                    var values = allBoards.map( b => {
-                        let name=Object.keys(b)[0]
-                        let board = JSON.parse((b as any)[name]) as IBoard
-                        return { name: board.name,  description: board.description }
-                    })
+            case MenuDrawerOption.DeleteBoard: {
+                let values = await getBoards()
+                if (values) {
                     setBoards( values )
                     setSelectBoardAction ('delete')
                     setShowSelectBoard(true)
-                }        
+                }}
                 break
             case MenuDrawerOption.ManageCluster:
                 setShowManageClusters(true)
@@ -972,15 +983,15 @@ const App: React.FC = () => {
         }
     }
 
-    const settingsUserClosed = (newSettings:Settings) => {
+    const onSettingsUserClosed = (newSettings:Settings) => {
         setShowSettingsUser(false)
         if (newSettings) writeSettings(newSettings)
     }
 
-    const settingsClusterClosed = (metricsInterval:number) => {
+    const onSettingsClusterClosed = (metricsInterval:number) => {
         setShowSettingsCluster(false)
         if (metricsInterval) {
-            var cluster = clusters!.find(c => c.name === selectedCluster)
+            var cluster = clusters!.find(c => c.name === selectedClusterName)
             if (cluster)  {
                 cluster.metricsInterval = metricsInterval
                 let payload = JSON.stringify( { metricsInterval } )
@@ -1046,7 +1057,7 @@ const App: React.FC = () => {
         startChannel(tab)
     }
 
-    const renameTabClosed = (newname:string|null) => {
+    const onRenameTabClosed = (newname:string|null) => {
         setShowRenameLog(false)
         if (newname!=null) {
             selectedTab!.name=newname
@@ -1071,7 +1082,7 @@ const App: React.FC = () => {
         setPickListConfig(null)
     }
 
-    const manageClustersClosed = (cc:Cluster[]) => {
+    const onManageClustersClosed = (cc:Cluster[]) => {
         setShowManageClusters(false)
         var payload=JSON.stringify(cc)
         fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addPostAuthorization(accessString, payload))
@@ -1114,15 +1125,15 @@ const App: React.FC = () => {
 
             <Drawer sx={{ flexShrink: 0, '& .MuiDrawer-paper': {mt: '64px'} }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
                 <Stack direction={'column'}>
-                    <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} selectedCluster={selectedCluster} user={user}/>
+                    <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} selectedCluster={selectedClusterName} user={user}/>
                     <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>
                 </Stack>
             </Drawer>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
-                <ResourceSelector clusters={clusters} channels={channels} onAdd={onResourceSelectorAdd} onChangeCluster={(c:string) => setSelectedCluster (c)} sx={{ mt:1, ml:1 }}/>
+                <ResourceSelector clusters={clusters} channels={channels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }}/>
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
-                    <Tabs value={selectedTabName || (tabs.length>0? tabs[0].name:'')} onChange={onChangeTabs} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
+                    <Tabs value={selectedTabName || (tabs.length>0? tabs[0].name:'')} onChange={onChangeTab} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
                         { tabs.length>0 && tabs.map(t => {
                             if (t===selectedTab) {
                                 return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':pausedTabs.includes(t)?'#cccccc':'')}}/>
@@ -1140,10 +1151,10 @@ const App: React.FC = () => {
                 <TabContent lastLineRef={lastLineRef} channel={selectedTab?.channelId} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent}/>
             </Box>
 
-            { showRenameTab && <RenameTab onClose={renameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }
-            { showSaveBoard && <SaveBoard onClose={saveBoardClosed} name={currentBoardName} description={currentBoardDescription} values={boards} /> }
-            { showSelectBoard && <SelectBoard onSelect={selectBoardClosed} values={boards} action={selectBoardAction}/> }
-            { showManageClusters && <ManageClusters onClose={manageClustersClosed} clusters={clusters}/> }
+            { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }
+            { showSaveBoard && <SaveBoard onClose={onSaveBoardClosed} name={currentBoardName} description={currentBoardDescription} values={boards} /> }
+            { showSelectBoard && <SelectBoard onSelect={onSelectBoardClosed} values={boards} action={selectBoardAction}/> }
+            { showManageClusters && <ManageClusters onClose={onManageClustersClosed} clusters={clusters}/> }
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
 
@@ -1151,8 +1162,8 @@ const App: React.FC = () => {
             { showSetupAlert && <SetupAlert onClose={onAlertSetupClosed} settings={settings} channelObject={selectedTab?.channelObject} /> }
             { showSetupMetrics && <SetupMetrics onClose={onSetupMetricsClosed} settings={settings} channelObject={selectedTab?.channelObject} metricsList={clusters!.find(c => c.name===selectedTab!.channelObject!.clusterName)?.metricsList!} /> }
 
-            { showSettingsUser && <SettingsUser onClose={settingsUserClosed} settings={settings} /> }
-            { showSettingsCluster && <SettingsCluster onClose={settingsClusterClosed} clusterMetricsInterval={clusters!.find(c => c.name===selectedCluster)?.metricsInterval} /> }
+            { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settings} /> }
+            { showSettingsCluster && <SettingsCluster onClose={onSettingsClusterClosed} clusterMetricsInterval={clusters!.find(c => c.name===selectedClusterName)?.metricsInterval} /> }
             { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { pickListConfig!==null && <PickList config={pickListConfig}/> }
             { msgBox }
