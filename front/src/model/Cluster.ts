@@ -12,6 +12,7 @@ export class Cluster {
     public metricsList: Map<string,MetricDescription> = new Map()
     public kwirthData?: KwirthData
     public metricsInterval: number = 60
+    public channels: string[] = []
     
     constructor () {
         this.id=Guid.create().toString()

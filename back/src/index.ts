@@ -28,6 +28,7 @@ import { Metrics } from './tools/MetricsTools'
 import { LogChannel } from './channels/LogChannel'
 import { AlertChannel } from './channels/AlertChannel'
 import { MetricsChannel } from './channels/MetricsChannel'
+import cluster from 'cluster'
 
 const http = require('http')
 const cors = require('cors')
@@ -285,9 +286,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
             for (let namespace of validNamespaces) {
                 for (let group of instanceConfig.group.split(',')) {
                     let groupPods = (await getPodsFromGroup(coreApi, appsApi, namespace, group))
-                    console.log('checking ', namespace, group)
                     if (groupPods.pods.length > 0) {
-                        console.log('START ', groupPods.labelSelector)
                         let specificInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
                         specificInstanceConfig.group = group
                         watchPods(`/api/v1/namespaces/${namespace}/${instanceConfig.objects}`, { labelSelector: groupPods.labelSelector }, webSocket, specificInstanceConfig)
@@ -597,6 +596,21 @@ const launch = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
     })
 }
 
+const loadMetricsInfo = async (clusterInfo: ClusterInfo) => {
+    console.log('Metrics information for cluster is being loaded asynchronously')
+    await clusterInfo.metrics.loadClusterMetrics(Array.from(clusterInfo.nodes.values()))
+    clusterInfo.vcpus = 0
+    clusterInfo.memory = 0
+    for (let node of clusterInfo.nodes.values()) {
+        await clusterInfo.metrics.readNodeMetrics(node)
+        clusterInfo.vcpus += node.machineMetricValues.get('machine_cpu_cores')?.value!
+        clusterInfo.memory += node.machineMetricValues.get('machine_memory_bytes')?.value!
+    }
+    console.log('clusterInfo.memory', clusterInfo.memory)
+    console.log('clusterInfo.vcpus', clusterInfo.vcpus)
+    clusterInfo.startInterval(clusterInfo.metricsInterval)
+}
+
 const initCluster = async (token:string) : Promise<ClusterInfo> => {
     // load nodes
     var resp = await coreApi.listNode()
@@ -629,19 +643,7 @@ const initCluster = async (token:string) : Promise<ClusterInfo> => {
     clusterInfo.appsApi = appsApi
     clusterInfo.logApi = logApi
 
-    await clusterInfo.metrics.loadClusterMetrics(Array.from(nodes.values()))
-    // var x = [...clusterInfo.nodes.values()][0]
-    // console.log(await clusterInfo.metrics.readCAdvisorMetrics(x))
-    clusterInfo.vcpus = 0
-    clusterInfo.memory = 0
-    for (let node of clusterInfo.nodes.values()) {
-        await clusterInfo.metrics.readNodeMetrics(node)
-        clusterInfo.vcpus += node.machineMetricValues.get('machine_cpu_cores')?.value!
-        clusterInfo.memory += node.machineMetricValues.get('machine_memory_bytes')?.value!
-    }
-    console.log('clusterInfo.memory', clusterInfo.memory)
-    console.log('clusterInfo.vcpus', clusterInfo.vcpus)
-    clusterInfo.startInterval(clusterInfo.metricsInterval)
+    loadMetricsInfo(clusterInfo)
 
     return clusterInfo
 }
@@ -656,36 +658,6 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 getMyKubernetesData().then ( async (kwirthData) => {
     try {
         saToken = new ServiceAccountToken(coreApi, kwirthData.namespace)
-        // saToken.createToken('kwirth-sa',kwirthData.namespace).then ( () => {
-        //     saToken.extractToken('kwirth-sa',kwirthData.namespace).then ( async (token) => {
-        //         if (token)  {
-        //             console.log('SA token obtained succesfully')
-        //             var clusterInfo = await initCluster(token)
-
-        //             // load extensions
-        //             var logChannel = new LogChannel(clusterInfo)
-        //             var alertChannel = new AlertChannel(clusterInfo)
-        //             var metricsChannel = new MetricsChannel(clusterInfo)
-        //             channels.set('log', logChannel)
-        //             channels.set('alert', alertChannel)
-        //             channels.set('metrics', metricsChannel)
-
-        //             console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
-        //             console.log(`Detected own namespace: ${kwirthData.namespace}`)
-        //             if (kwirthData.deployment !== '')
-        //                 console.log(`Detected own deployment: ${kwirthData.deployment}`)
-        //             else
-        //                 console.log(`No deployment detected. Kwirth is not running inside a cluster`)
-        //             launch(kwirthData, clusterInfo)
-        //         }
-        //         else {
-        //             console.log('SA token is invalid, exiting...')
-        //         }
-        //     })
-        //     .catch ( (err) => {
-        //         console.log('Could not get SA token, exiting...')
-        //     })
-        // } )                    
 
         saToken.createToken('kwirth-sa',kwirthData.namespace).then ( () => {
             setTimeout ( () => {

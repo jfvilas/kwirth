@@ -31,7 +31,7 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, MetricsConfigModeEnum, InstanceConfigActionEnum, InstanceConfigFlowEnum, InstanceConfigChannelEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
+import { KwirthData, MetricsConfigModeEnum, InstanceConfigActionEnum, InstanceConfigFlowEnum, InstanceConfigChannelEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { ITabObject } from './model/ITabObject'
 import { MetricDescription } from './model/MetricDescription'
 
@@ -43,7 +43,6 @@ import { SetupLog } from './components/channels/SetupLog'
 import { SetupAlert } from './components/channels/SetupAlert'
 import { SetupMetrics } from './components/channels/SetupMetrics'
 import { IBoard } from './model/IBoard'
-import { sign } from 'crypto'
 
 
 const App: React.FC = () => {
@@ -60,7 +59,6 @@ const App: React.FC = () => {
 
     const [clusters, setClusters] = useState<Cluster[]>()
     const [selectedClusterName, setSelectedClusterName] = useState<string>()
-    const [selectedCluster, setSelectedCluster] = useState<Cluster>(new Cluster())
     const clustersRef = useRef(clusters)
     clustersRef.current=clusters
 
@@ -127,7 +125,7 @@ const App: React.FC = () => {
         if (logged) {
             if (!clustersRef.current) getClusters()
             if (!settingsRef.current) readSettings()
-            if (!channelsRef.current) readChannels()
+            //if (!channelsRef.current) readChannels()
         }
     })
 
@@ -181,18 +179,32 @@ const App: React.FC = () => {
         setClusters(clusterList)
 
         for (let cluster of clusterList) {
-            await getMetricsNames(cluster)
+            await readChannels(cluster)
+            if (cluster.channels.includes('metrics')) {
+                await getMetricsNames(cluster)
+            }
         }
     }
 
-    const readChannels = async () => {
-        var resp=await fetch (`${backendUrl}/config/channel`, addGetAuthorization(accessString))
+    // const readChannels = async () => {
+    //     var resp=await fetch (`${backendUrl}/config/channel`, addGetAuthorization(accessString))
+    //     if (resp.status===200) {
+    //         var json=await resp.json()
+    //         if (json) setChannels(json)
+    //     }
+    //     else {
+    //         setChannels([])
+    //     }
+    // }
+
+    const readChannels = async (cluster: Cluster) => {
+        var resp=await fetch (`${cluster.url}/config/channel`, addGetAuthorization(cluster.accessString))
         if (resp.status===200) {
             var json=await resp.json()
-            if (json) setChannels(json)
+            if (json) cluster.channels = json
         }
         else {
-            setChannels([])
+            cluster.channels = []
         }
     }
 
@@ -218,7 +230,11 @@ const App: React.FC = () => {
     }
 
     const onChangeCluster = (cname:string) => {
-        setSelectedClusterName (cname)
+        let cluster = clusters!.find(c => c.name === cname)
+        if (cluster) {
+            setSelectedClusterName (cname)
+            setChannels(cluster.channels)
+        }
     }
 
     const onResourceSelectorAdd = (selection:IResourceSelected) => {
@@ -449,7 +465,7 @@ const App: React.FC = () => {
                 var signalMessage = JSON.parse(wsEvent.data) as SignalMessage
                 tab.channelObject.instance = signalMessage.instance
                 if (signalMessage.reconnectKey) tab.channelObject.reconnectKey = signalMessage.reconnectKey
-                if (signalMessage.level==='error') {
+                if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
                     dataMetrics.errors = signalMessage.text
                     setRefreshTabContent(Math.random())
                 }
@@ -474,29 +490,29 @@ const App: React.FC = () => {
         }
     }
 
-    const reconnectedInstance = (wsEvent:any, id:NodeJS.Timer) => {
-        clearInterval(id)
-        console.log('Reconnect interval cleared')
-        let tab = tabs.find(tab => tab.ws === wsEvent.target)
-        if (!tab || !tab.channelObject) return
-        console.log('Reconnected, will reconfigure')
-        let instanceConfig:InstanceConfig = {
-            channel: InstanceConfigChannelEnum.NONE,
-            objects: InstanceConfigObjectEnum.PODS,
-            flow: InstanceConfigFlowEnum.REQUEST,
-            action: InstanceConfigActionEnum.RECONNECT,
-            instance: '',
-            reconnectKey: tab.channelObject.reconnectKey,
-            scope: InstanceConfigScopeEnum.NONE,
-            accessKey: '',
-            view: InstanceConfigViewEnum.NONE,
-            namespace: '',
-            group: '',
-            pod: '',
-            container: ''
-        }
-        wsEvent.target.send(JSON.stringify(instanceConfig))
-    }
+    // const reconnectedInstance = (wsEvent:any, id:NodeJS.Timer) => {
+    //     clearInterval(id)
+    //     console.log('Reconnect interval cleared')
+    //     let tab = tabs.find(tab => tab.ws === wsEvent.target)
+    //     if (!tab || !tab.channelObject) return
+    //     console.log('Reconnected, will reconfigure')
+    //     let instanceConfig:InstanceConfig = {
+    //         channel: InstanceConfigChannelEnum.NONE,
+    //         objects: InstanceConfigObjectEnum.PODS,
+    //         flow: InstanceConfigFlowEnum.REQUEST,
+    //         action: InstanceConfigActionEnum.RECONNECT,
+    //         instance: '',
+    //         reconnectKey: tab.channelObject.reconnectKey,
+    //         scope: InstanceConfigScopeEnum.NONE,
+    //         accessKey: '',
+    //         view: InstanceConfigViewEnum.NONE,
+    //         namespace: '',
+    //         group: '',
+    //         pod: '',
+    //         container: ''
+    //     }
+    //     wsEvent.target.send(JSON.stringify(instanceConfig))
+    // }
 
     const reconnectInstance = (wsEvent:any) => {
         return
@@ -995,7 +1011,7 @@ const App: React.FC = () => {
             if (cluster)  {
                 cluster.metricsInterval = metricsInterval
                 let payload = JSON.stringify( { metricsInterval } )
-                fetch (`${backendUrl}/metrics/config`, addPostAuthorization(accessString, payload))
+                fetch (`${cluster.url}/metrics/config`, addPostAuthorization(cluster.accessString, payload))
             }
         }
     }

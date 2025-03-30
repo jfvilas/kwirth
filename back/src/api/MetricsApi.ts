@@ -67,6 +67,7 @@ export class MetricsApi {
                 try {
                     var data = req.body as any
                     if (data.interval) {
+                        clusterInfo.metricsInterval=data.interval
                         clusterInfo.stopInterval()
                         clusterInfo.startInterval(+data.interval) 
                         console.log(`New metrics cluster interval set to ${data.interval}`)
