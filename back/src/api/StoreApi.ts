@@ -54,17 +54,11 @@ export class StoreApi {
                         if (data === undefined)
                             res.status(200).json([])
                         else {
-                            console.log('req.p', req.query)
                             if (req.query.full) {
                                 let selectedGroupObjects = Object.keys(data).filter(k => k.startsWith(req.params.group+'-'))
-                                console.log(selectedGroupObjects)
                                 let objects = selectedGroupObjects.map ( o => {
-                                    console.log(o)
-                                    console.log('data[o]')
-                                    console.log(data[o])
                                     return { [o.substring(o.indexOf('-')+1)]: data[o] }
                                 })
-                                console.log(objects)
                                 res.status(200).json(objects)
                             }
                             else {
@@ -89,10 +83,12 @@ export class StoreApi {
                 StoreApi.semaphore.use ( async () => {
                     try {
                         var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
-                        if (data[req.params.group+'-'+req.params.key] === undefined)
+                        if (data[req.params.group+'-'+req.params.key] === undefined) {
                             res.status(404).json()
-                        else
+                        }
+                        else {
                             res.status(200).json(data[req.params.group + '-' + req.params.key])
+                        }
                     }      
                     catch (err) {
                         res.status(500).json()

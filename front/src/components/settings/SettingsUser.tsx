@@ -10,28 +10,40 @@ interface IProps {
 
 const SettingsUser: React.FC<any> = (props:IProps) => {
     const [value, setValue] = React.useState('log')
-    const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages)
+    const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages)    
+    const [logFromStart, setLogFromStart] = useState(props.settings.logFromStart)
     const [logPrevious, setLogPrevious] = useState(props.settings.logPrevious)
     const [logTimestamp, setLogTimestamp] = useState(props.settings.logTimestamp)
     const [logFollow, setLogFollow] = useState(props.settings.logFollow)
+
     const [alertMaxAlerts, setAlertMaxAlerts] = useState(props.settings.alertMaxAlerts)
+
     const [metricsMode, setMetricsMode] = useState(props.settings.metricsMode.toString())
     const [metricsDepth, setMetricsDepth] = useState(props.settings.metricsDepth)
     const [metricsWidth, setMetricsWidth] = useState(props.settings.metricsWidth)
     const [metricsInterval, setMetricsInterval] = useState(props.settings.metricsInterval)
     const [metricsAggregate, setMetricsAggregate] = useState(props.settings.metricsAggregate)
+    const [metricsMerge, setMetricsMerge] = useState(props.settings.metricsMerge)
+    const [metricsStack, setMetricsStack] = useState(props.settings.metricsStack)
+    const [metricsChart, setMetricsChart] = useState(props.settings.metricsChart)
+
     const [keepAliveInterval, setKeepAliveInterval] = useState(props.settings.keepAliveInterval)
 
     const closeOk = () =>{
         var newSettings=new Settings()
-        newSettings.logMaxMessages=logMaxMessages
-        newSettings.logPrevious=Boolean(logPrevious)
-        newSettings.logTimestamp=Boolean(logTimestamp)
+        newSettings.logMaxMessages = logMaxMessages
+        newSettings.logFromStart = logFromStart
+        newSettings.logPrevious = false
+        newSettings.logTimestamp = logTimestamp
+        newSettings.logFollow = logFollow
         newSettings.metricsMode = metricsMode as MetricsConfigModeEnum
         newSettings.metricsWidth = metricsWidth
         newSettings.metricsDepth = metricsDepth
         newSettings.metricsInterval = metricsInterval
         newSettings.metricsAggregate = metricsAggregate
+        newSettings.metricsChart = metricsChart
+        newSettings.metricsMerge = metricsMerge
+        newSettings.metricsStack = metricsStack
         newSettings.keepAliveInterval = keepAliveInterval
         props.onClose(newSettings)
     }
@@ -39,9 +51,9 @@ const SettingsUser: React.FC<any> = (props:IProps) => {
     return (<>
         <Dialog open={true}>
             <DialogTitle>Settings</DialogTitle>
-            <DialogContent sx={{height:'40vh'}}>
+            <DialogContent sx={{height:'42vh'}}>
                 <Typography>
-                    This settings do establishes the defult settings to use when you start a new instance.
+                    This settings establish the default settings to use when you start a new instance.
                 </Typography>
                 <Tabs value={value} onChange={(_: React.SyntheticEvent, newValue: string) => { setValue(newValue)}} sx={{mb:'16px'}}>
                     <Tab key='log' label='Log' value='log' />
@@ -51,10 +63,13 @@ const SettingsUser: React.FC<any> = (props:IProps) => {
                 </Tabs>
 
                 <div hidden={value!=='log'}>
-                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
+                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column' }}>
                         <TextField value={logMaxMessages} onChange={(e) => setLogMaxMessages(+e.target.value)} variant='standard'label='Max messages' SelectProps={{native: true}} type='number'></TextField>
                         <Stack direction='row' alignItems={'baseline'}>
-                            <Switch checked={logPrevious} onChange={(e) => setLogPrevious(e.target.checked)}/><Typography>Get messages of previous container</Typography>
+                            <Switch checked={logFromStart} onChange={(e) => setLogFromStart(e.target.checked)}/><Typography>Get messages from container start time</Typography>
+                        </Stack>
+                        <Stack direction='row' alignItems={'baseline'}>
+                            <Switch checked={false} disabled={true} onChange={(e) => setLogPrevious(e.target.checked)}/><Typography>Get messages of previous container</Typography>
                         </Stack>
                         <Stack direction='row' alignItems={'baseline'}>
                             <Switch checked={logTimestamp} onChange={(e) => setLogTimestamp(e.target.checked)}/><Typography>Add timestamp to messages</Typography>
@@ -66,22 +81,36 @@ const SettingsUser: React.FC<any> = (props:IProps) => {
                 </div>
                 
                 <div hidden={value!=='alert'}>
-                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
+                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column' }}>
                         <TextField value={alertMaxAlerts} onChange={(e) => setAlertMaxAlerts(+e.target.value)} variant='standard'label='Max alerts' SelectProps={{native: true}} type='number'></TextField>
                     </Stack>
                 </div>
 
                 <div hidden={value!=='metrics'}>
-                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                        <FormControl fullWidth variant='standard'>
-                            <InputLabel>Mode</InputLabel>
-                            <Select value={metricsMode} onChange={(e) => setMetricsMode(e.target.value)}>
-                                <MenuItem value={'snapshot'}>Snapshot</MenuItem>
-                                <MenuItem value={'stream'}>Stream</MenuItem>
-                            </Select>
-                        </FormControl>
-                        <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={(e) => setMetricsAggregate(e.target.checked)}/>} label='Aggregate resource metrics' />
-                        {/* <TextField value={metricsMetrics} onChange={onChangeMetricsMetrics} variant='standard'label='Metrics' SelectProps={{native: true}}></TextField> */}
+                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Stack direction={'row'} spacing={1} >
+                            <FormControl fullWidth variant='standard'>
+                                <InputLabel>Mode</InputLabel>
+                                <Select value={metricsMode} onChange={(e) => setMetricsMode(e.target.value)}>
+                                    <MenuItem value={'snapshot'}>Snapshot</MenuItem>
+                                    <MenuItem value={'stream'}>Stream</MenuItem>
+                                </Select>
+                            </FormControl>
+                            <FormControl fullWidth variant='standard'>
+                                <InputLabel>Chart</InputLabel>
+                                <Select value={metricsChart} onChange={(e) => setMetricsChart(e.target.value)}>
+                                    <MenuItem value={'value'}>Value</MenuItem>
+                                    <MenuItem value={'line'}>Line</MenuItem>
+                                    <MenuItem value={'area'}>Area</MenuItem>
+                                    <MenuItem value={'bar'}>Bar</MenuItem>
+                                    <MenuItem value={'pie'}>Pie</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Stack>
+
+                        <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={(e) => setMetricsAggregate(e.target.checked)}/>} label='Aggregate resource metrics (when multiple objects)' />
+                        <FormControlLabel control={<Checkbox checked={metricsMerge} onChange={(e) => setMetricsMerge(e.target.checked)}/>} label='Merge resource metrics (when multiple objects)' />
+                        <FormControlLabel control={<Checkbox checked={metricsStack} onChange={(e) => setMetricsStack(e.target.checked)}/>} label='Stack resource metrics (when multiple objects)' />
                         <Stack spacing={1} direction={'row'}>
                             <FormControl variant='standard' sx={{width:'33%'}}>
                                 <InputLabel>Depth</InputLabel>
@@ -110,7 +139,7 @@ const SettingsUser: React.FC<any> = (props:IProps) => {
                 </div>
 
                 <div hidden={value!=='kwirth'}>
-                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
+                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column' }}>
                         <TextField value={keepAliveInterval} onChange={(e) => setKeepAliveInterval(+e.target.value)} variant='standard' label='Keep-alive interval (seconds)' SelectProps={{native: true}} type='number'></TextField>
                     </Stack>
                 </div>

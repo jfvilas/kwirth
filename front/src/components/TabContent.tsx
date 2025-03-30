@@ -147,7 +147,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
         }
         let  height=300
 
-        switch (dataMetrics.type) {
+        switch (dataMetrics.chart) {
             case 'value':
                 height=40+series.length*80
                 result = (
@@ -240,9 +240,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 )
                 break
             default:
-                result = (
-                    <>{'unsupported chart type'}</>
-                )
+                result = <Alert severity="error">Unsupported chart type '{dataMetrics.chart}'</Alert>
                 break
         }
         return (

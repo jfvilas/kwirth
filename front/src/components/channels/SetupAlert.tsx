@@ -1,13 +1,11 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField } from '@mui/material'
-import { Settings } from '../../model/Settings'
 import { AlertObject } from '../../model/AlertObject'
 import { IChannelObject } from '../../model/ITabObject'
 
 interface IProps {
     onClose:(regexInfo:string[], regexWarning:string[], regexError:string[], maxAlerts:number) => {}
     channelObject : IChannelObject
-    settings: Settings
 }
 
 const SetupAlert: React.FC<any> = (props:IProps) => {
@@ -18,7 +16,7 @@ const SetupAlert: React.FC<any> = (props:IProps) => {
     const [regexInfo, setRegexInfo] = useState(dataAlert.regexInfo)
     const [regexWarning, setRegexWarning] = useState(dataAlert.regexWarning)
     const [regexError, setRegexError] = useState(dataAlert.regexError)
-    const [maxAlerts, setMaxAlerts] = useState(props.settings.alertMaxAlerts)
+    const [maxAlerts, setMaxAlerts] = useState(dataAlert.maxAlerts)
 
     const onChangeRegexInfo = (event:ChangeEvent<HTMLInputElement>) => {
         setInfo(event.target.value)

@@ -1,18 +1,20 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Switch, TextField, Typography } from '@mui/material'
-import { Settings } from '../../model/Settings'
+import { IChannelObject } from '../../model/ITabObject'
+import { LogObject } from '../../model/LogObject'
 
 interface IProps {
     onClose:(maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean) => {}
-    settings: Settings
+    channelObject : IChannelObject
 }
 
 const SetupLog: React.FC<any> = (props:IProps) => {
-    const [maxMessages, setMaxMessages] = useState(props.settings.logMaxMessages)
-    const [previous, setPrevious] = useState(props.settings.logPrevious)
-    const [timestamp, setTimestamp] = useState(props.settings.logTimestamp)
-    const [follow, setFollow] = useState(props.settings.logFollow)
-    const [fromStart, setFromStart] = useState(props.settings.fromStart)
+    var dataLog = props.channelObject.data as LogObject
+    const [maxMessages, setMaxMessages] = useState(dataLog.maxMessages)
+    const [previous, setPrevious] = useState(dataLog.previous)
+    const [timestamp, setTimestamp] = useState(dataLog.timestamp)
+    const [follow, setFollow] = useState(dataLog.follow)
+    const [fromStart, setFromStart] = useState(dataLog.fromStart)
 
     const onChangeMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
         setMaxMessages(+event.target.value)

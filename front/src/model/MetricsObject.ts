@@ -24,6 +24,6 @@ export class MetricsObject {
     public aggregate: boolean = true
     public merge : boolean = false
     public stack : boolean = false
-    public type : string = 'line'
+    public chart : string = 'line'
     public errors : string = ''
 }

@@ -35,13 +35,13 @@ export class MetricsApi {
                 try {
                     if (req.params.action==='node') {
                         var json:any = {}
-                        for(var k of this.clusterInfo.nodes.get(req.params.nodename)?.containerMetricValues.keys()!) {
-                            var v = this.clusterInfo.nodes.get(req.params.nodename)?.containerMetricValues.get(k)
-                            json[k]=v
+                        for(var key of this.clusterInfo.nodes.get(req.params.nodename)?.containerMetricValues.keys()!) {
+                            var value = this.clusterInfo.nodes.get(req.params.nodename)?.containerMetricValues.get(key)
+                            json[key]=value
                         }
-                        for(var k of this.clusterInfo.nodes.get(req.params.nodename)?.machineMetricValues.keys()!) {
-                            var v = this.clusterInfo.nodes.get(req.params.nodename)?.machineMetricValues.get(k)
-                            json[k]=v
+                        for(var key of this.clusterInfo.nodes.get(req.params.nodename)?.machineMetricValues.keys()!) {
+                            var value = this.clusterInfo.nodes.get(req.params.nodename)?.machineMetricValues.get(key)
+                            json[key]=value
                         }
                         res.status(200).json(json)
                     }
@@ -63,14 +63,24 @@ export class MetricsApi {
                 if (!validKey(req, res, apiKeyApi)) return
                 next()
             })
+            .get( async (req:Request, res:Response) => {
+                try {
+                    res.status(200).json({ metricsInterval: clusterInfo.metricsInterval })
+                }
+                catch (err) {
+                    res.status(400).send()
+                    console.log('Error sending metrics settings')
+                    console.log(err)
+                }
+            })
             .post( async (req:Request, res:Response) => {
                 try {
                     var data = req.body as any
-                    if (data.interval) {
-                        clusterInfo.metricsInterval=data.interval
+                    if (data.metricsInterval) {
+                        clusterInfo.metricsInterval=data.metricsInterval
                         clusterInfo.stopInterval()
-                        clusterInfo.startInterval(+data.interval) 
-                        console.log(`New metrics cluster interval set to ${data.interval}`)
+                        clusterInfo.startInterval(+data.metricsInterval) 
+                        console.log(`New metrics cluster interval set to ${data.metricsInterval}`)
                     }
                     res.status(200).json()
                 }

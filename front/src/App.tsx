@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 // material & icons
 import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Menu, Person } from '@mui/icons-material'
+import { Settings as SettingsIcon, Menu, Person, LogoDev } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
@@ -182,20 +182,11 @@ const App: React.FC = () => {
             await readChannels(cluster)
             if (cluster.channels.includes('metrics')) {
                 await getMetricsNames(cluster)
+                let data = await (await fetch (`${cluster.url}/metrics/config`, addGetAuthorization(cluster.accessString))).json()
+                cluster.metricsInterval = data.metricsInterval
             }
         }
     }
-
-    // const readChannels = async () => {
-    //     var resp=await fetch (`${backendUrl}/config/channel`, addGetAuthorization(accessString))
-    //     if (resp.status===200) {
-    //         var json=await resp.json()
-    //         if (json) setChannels(json)
-    //     }
-    //     else {
-    //         setChannels([])
-    //     }
-    // }
 
     const readChannels = async (cluster: Cluster) => {
         var resp=await fetch (`${cluster.url}/config/channel`, addGetAuthorization(cluster.accessString))
@@ -209,7 +200,7 @@ const App: React.FC = () => {
     }
 
     const readSettings = async () => {
-        var resp=await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString))
+        var resp = await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString))
         if (resp.status===200) {
             var json=await resp.json()
             if (json) {
@@ -296,16 +287,30 @@ const App: React.FC = () => {
         switch(selection.channel) {
             case InstanceConfigChannelEnum.LOG:
                 let logObject = new LogObject()
+                logObject.follow = settingsRef.current?.logFollow || true
+                logObject.maxMessages = settingsRef.current?.logMaxMessages || 1000
+                logObject.previous = settingsRef.current?.logPrevious || false
+                logObject.timestamp = settingsRef.current?.logTimestamp || true
                 newTab.channelObject.data = logObject
                 break
 
             case InstanceConfigChannelEnum.METRICS:
                 let metricsObject = new MetricsObject()
+                metricsObject.interval = settingsRef.current?.metricsInterval || 60
+                metricsObject.depth = settingsRef.current?.metricsDepth || 3
+                metricsObject.width = settingsRef.current?.metricsWidth || 2
+                metricsObject.chart = settingsRef.current?.metricsChart || 'line'
+                metricsObject.mode = settingsRef.current?.metricsMode || MetricsConfigModeEnum.STREAM
+                metricsObject.aggregate = settingsRef.current?.metricsAggregate || false
+                metricsObject.merge = settingsRef.current?.metricsMerge || false
+                metricsObject.stack = settingsRef.current?.metricsStack || false
+                metricsObject.metrics = []
                 newTab.channelObject.data = metricsObject
                 break
 
             case InstanceConfigChannelEnum.ALERT:
                 let alertObject = new AlertObject()
+                alertObject.maxAlerts = settingsRef.current?.alertMaxAlerts || 25
                 alertObject.regexInfo = []
                 alertObject.regexWarning = []
                 alertObject.regexError = []
@@ -599,7 +604,6 @@ const App: React.FC = () => {
             tab.ws.send(JSON.stringify(instanceConfig))
             tab.channelStarted = true
             tab.channelPaused = false
-
         }
         else {
             console.log('Tab web socket is not started')
@@ -1004,13 +1008,13 @@ const App: React.FC = () => {
         if (newSettings) writeSettings(newSettings)
     }
 
-    const onSettingsClusterClosed = (metricsInterval:number) => {
+    const onSettingsClusterClosed = (readMetricsInterval:number) => {
         setShowSettingsCluster(false)
-        if (metricsInterval) {
+        if (readMetricsInterval) {
             var cluster = clusters!.find(c => c.name === selectedClusterName)
             if (cluster)  {
-                cluster.metricsInterval = metricsInterval
-                let payload = JSON.stringify( { metricsInterval } )
+                cluster.metricsInterval = readMetricsInterval
+                let payload = JSON.stringify( { metricsInterval: readMetricsInterval } )
                 fetch (`${cluster.url}/metrics/config`, addPostAuthorization(cluster.accessString, payload))
             }
         }
@@ -1034,7 +1038,7 @@ const App: React.FC = () => {
         dataMetrics.aggregate = aggregate
         dataMetrics.merge = merge
         dataMetrics.stack = stack
-        dataMetrics.type = type
+        dataMetrics.chart = type
         startChannel(tab)
     }
 
@@ -1174,9 +1178,9 @@ const App: React.FC = () => {
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
 
-            { showSetupLog && <SetupLog onClose={onSetupLogClosed} settings={settings} channelObject={selectedTab?.channelObject} /> }
-            { showSetupAlert && <SetupAlert onClose={onAlertSetupClosed} settings={settings} channelObject={selectedTab?.channelObject} /> }
-            { showSetupMetrics && <SetupMetrics onClose={onSetupMetricsClosed} settings={settings} channelObject={selectedTab?.channelObject} metricsList={clusters!.find(c => c.name===selectedTab!.channelObject!.clusterName)?.metricsList!} /> }
+            { showSetupLog && <SetupLog onClose={onSetupLogClosed} channelObject={selectedTab?.channelObject} /> }
+            { showSetupAlert && <SetupAlert onClose={onAlertSetupClosed} channelObject={selectedTab?.channelObject} /> }
+            { showSetupMetrics && <SetupMetrics onClose={onSetupMetricsClosed} channelObject={selectedTab?.channelObject} metrics={clusters!.find(c => c.name===selectedTab!.channelObject!.clusterName)?.metricsList!} /> }
 
             { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settings} /> }
             { showSettingsCluster && <SettingsCluster onClose={onSettingsClusterClosed} clusterMetricsInterval={clusters!.find(c => c.name===selectedClusterName)?.metricsInterval} /> }
