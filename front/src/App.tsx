@@ -9,14 +9,14 @@ import { User } from './model/User'
 import { Cluster } from './model/Cluster'
 
 // tools
-import { PickListConfig } from './model/PickListConfig'
+//import { PickListConfig } from './model/PickListConfig'
 
 // components
 import RenameTab from './components/RenameTab'
 import { SaveBoard } from './components/board/SaveBoard'
 import { SelectBoard }  from './components/board/SelectBoard'
 import ManageApiSecurity from './components/ManageApiSecurity'
-import PickList from './components/PickList'
+//import PickList from './components/PickList'
 import Login from './components/Login'
 import ManageClusters from './components/ManageClusters'
 import ManageUserSecurity from './components/ManageUserSecurity'
@@ -91,9 +91,9 @@ const App: React.FC = () => {
     const [menuDrawerOpen,setMenuDrawerOpen]=useState(false)
 
     // dialogs
-    const [pickListConfig, setPickListConfig] = useState<PickListConfig|null>(null)
-    var pickListConfigRef=useRef(pickListConfig)
-    pickListConfigRef.current=pickListConfig
+    // const [pickListConfig, setPickListConfig] = useState<PickListConfig|null>(null)
+    // var pickListConfigRef=useRef(pickListConfig)
+    // pickListConfigRef.current=pickListConfig
 
     // boards
     const [boardLoaded, setBoardLoaded] = useState<boolean>(false)
@@ -1085,22 +1085,22 @@ const App: React.FC = () => {
         }
     }
 
-    const pickList = (title:string, message:string, values:string[], onClose:(a:string) => void ) =>{
-        var plc:PickListConfig=new PickListConfig()
-        plc.title=title
-        plc.message=message
-        plc.values=values
-        plc.originOnClose=onClose
-        plc.onClose=pickListClosed
-        setPickListConfig(plc)
-        setShowPickList(true)
-    }
+    // const pickList = (title:string, message:string, values:string[], onClose:(a:string) => void ) =>{
+    //     var plc:PickListConfig=new PickListConfig()
+    //     plc.title=title
+    //     plc.message=message
+    //     plc.values=values
+    //     plc.originOnClose=onClose
+    //     plc.onClose=pickListClosed
+    //     setPickListConfig(plc)
+    //     setShowPickList(true)
+    // }
 
-    const pickListClosed = (a:string|null) => {
-        setShowPickList(false)
-        if (a!==null) pickListConfigRef?.current?.originOnClose(a)
-        setPickListConfig(null)
-    }
+    // const pickListClosed = (a:string|null) => {
+    //     setShowPickList(false)
+    //     if (a!==null) pickListConfigRef?.current?.originOnClose(a)
+    //     setPickListConfig(null)
+    // }
 
     const onManageClustersClosed = (cc:Cluster[]) => {
         setShowManageClusters(false)
@@ -1185,7 +1185,7 @@ const App: React.FC = () => {
             { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settings} /> }
             { showSettingsCluster && <SettingsCluster onClose={onSettingsClusterClosed} clusterMetricsInterval={clusters!.find(c => c.name===selectedClusterName)?.metricsInterval} /> }
             { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
-            { pickListConfig!==null && <PickList config={pickListConfig}/> }
+            {/* { pickListConfig!==null && <PickList config={pickListConfig}/> } */}
             { msgBox }
         </SessionContext.Provider>
     </>)

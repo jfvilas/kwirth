@@ -5,21 +5,18 @@ interface IProps {
     onClose:(name?:string, description?:string) => {},
     name:string
     description:string
-    values:{name:string, description:string}[]
+    values:IValue[]
+}
+
+interface IValue {
+    name:string,
+    description:string
 }
 
 const SaveBoard: React.FC<any> = (props:IProps) => {
     const [newname, setNewname] = useState(props.name)
     const [desc, setDesc] = useState(props.description)
 
-    const onChangeNewname = (event:ChangeEvent<HTMLInputElement>) => {
-        setNewname(event.target.value);
-    }
-  
-    const onChangeDesc = (event:ChangeEvent<HTMLInputElement>) => {
-        setDesc(event.target.value);
-    }
-  
     return (
         <Dialog open={true} disableRestoreFocus={true}>
             <DialogTitle>
@@ -28,8 +25,8 @@ const SaveBoard: React.FC<any> = (props:IProps) => {
             <DialogContent >
                 <DialogContentText>
                     <Stack direction='column' spacing={2} sx={{width:'40vh'}}>
-                        <TextField value={newname} onChange={onChangeNewname} variant='standard' label='New name' autoFocus ></TextField>
-                        <TextField value={desc} onChange={onChangeDesc} variant='standard' label='Description' ></TextField>
+                        <TextField value={newname} onChange={(e) => setNewname(e.target.value)} variant='standard' label='New name' autoFocus ></TextField>
+                        <TextField value={desc} onChange={(e) => setDesc(e.target.value)} variant='standard' label='Description' ></TextField>
                     </Stack>
                 </DialogContentText>
             </DialogContent>

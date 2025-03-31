@@ -102,10 +102,10 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
                     <Stack direction={'row'} spacing={1} sx={{width:'100%', height:'22vh'}}>
                         <Stack direction={'column'} sx={{width:'70%'}}>
                             <List sx={{ width: '100%', overflowY: 'auto' }}>
-                                {Array.from(props.metrics.keys()).map((value) => {
+                                {Array.from(props.metrics.keys()).map((value, index) => {
                                     if (value.includes(filter) && (value.startsWith('container_') || value.startsWith('kwirth_'))) {
                                         return (
-                                            <ListItem key={value} disablePadding>
+                                            <ListItem key={index} disablePadding>
                                                 <ListItemButton onClick={() => metricAddOrRemove(value)} dense>
                                                     <Tooltip title={<><Typography fontSize={12}><b>{props.metrics.get(value)?.type}</b></Typography><Typography fontSize={12}>{props.metrics.get(value)?.help}</Typography></>} placement="bottom-start" enterDelay={750}>
                                                         <ListItemText primary={value} sx={{color:metrics.includes(value)?'black':'gray'}} />
@@ -115,7 +115,8 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
                                         )
                                     }
                                     else {
-                                        return <></>
+                                        return <React.Fragment key={index} />
+                                        
                                     }
                                 })}
                             </List>
