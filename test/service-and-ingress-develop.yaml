@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kwirth-svc
+  namespace: kwirth
+spec:
+  selector:
+    app: kwirth
+  ports:
+    - name: kwirth-port
+      protocol: TCP
+      port: 3883
+      targetPort: 3883
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-kwirth
+  namespace: kwirth
+  annotations:
+    nginx.ingress.kubernetes.io/affinity: cookie
+    # required for websocket duration > 60s
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  # if you want to publish Kwirth securely you would need to add something like this:
+  # tls:
+  # - hosts:
+  #   - www.kwirth-dns.com
+  #   secretName: www.kwirth-dns.com.tls
+  rules:
+  - host: localhost
+    http:
+      paths:
+        - path: /kwirth
+          pathType: Prefix
+          backend:
+            service:
+              name: kwirth-svc
+              port:
+                number: 3883
