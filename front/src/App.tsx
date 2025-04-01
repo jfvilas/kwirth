@@ -471,7 +471,7 @@ const App: React.FC = () => {
                 tab.channelObject.instance = signalMessage.instance
                 if (signalMessage.reconnectKey) tab.channelObject.reconnectKey = signalMessage.reconnectKey
                 if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
-                    dataMetrics.errors = signalMessage.text
+                    dataMetrics.errors.push(signalMessage.text)
                     setRefreshTabContent(Math.random())
                 }
                 break
@@ -592,6 +592,7 @@ const App: React.FC = () => {
                     break
                 case InstanceConfigChannelEnum.METRICS:
                     var dataMetrics = tab.channelObject.data as MetricsObject
+                    dataMetrics.errors = []
                     dataMetrics.assetMetricsValues=[]
                     instanceConfig.data = {
                         mode: dataMetrics.mode,

@@ -1,10 +1,11 @@
-import { Alert, Box, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button, Stack, Typography } from '@mui/material'
 import { LogObject } from '../model/LogObject'
 import { LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { FiredAlert } from '../model/AlertObject'
 import { MetricsObject } from '../model/MetricsObject'
 import { ReactJSXElement } from '@emotion/react/types/jsx-namespace'
+import { useState } from 'react'
 
 interface IProps {
     channel: string
@@ -14,6 +15,7 @@ interface IProps {
 }
   
 const TabContent: React.FC<any> = (props:IProps) => {
+    const [refresh, setRefresh] = useState(false)
     const colours = [
         "#6e5bb8", // morado oscuro
         "#4a9076", // verde oscuro
@@ -178,7 +180,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
                         <YAxis />
                         <Tooltip />
                         <Legend/>
-                        { series.map ((serie,index) => <Line name={names[index]} type="monotone" dataKey={names[index]} stroke={series.length===1?colour:colours[index]} activeDot={{ r: 8 }} />) }
+                        { series.map ((serie,index) => <Line key={index} name={names[index]} type="monotone" dataKey={names[index]} stroke={series.length===1?colour:colours[index]} activeDot={{ r: 8 }} />) }
                     </LineChart>
                 )
                 break
@@ -254,8 +256,14 @@ const TabContent: React.FC<any> = (props:IProps) => {
     }
 
     const formatMetricsError = (dataMetrics:MetricsObject) => {
-        return <>{dataMetrics.errors && dataMetrics.errors!=='' &&  <Alert severity="error">{dataMetrics.errors}</Alert>}</>
+        return <>{
+            dataMetrics.errors && dataMetrics.errors.length>0 &&
+                dataMetrics.errors.map((e,index) => { 
+                    return <Alert severity="error" action={<Button onClick={() => { dataMetrics.errors.splice(index,1); setRefresh(!refresh)} }>Remove</Button>}>{e}</Alert>
+                })
+        }</>
     }
+
     const formatMetrics = () => {
         let dataMetrics = props.channelObject.data as MetricsObject
         if (!dataMetrics.metrics || dataMetrics.assetMetricsValues.length === 0) {

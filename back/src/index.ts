@@ -201,8 +201,14 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, insta
         }
     },
     (err) => {
-        console.log('Generic error starting watchPods', err)
-        sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, JSON.stringify(err), instanceConfig)
+        if (err !== null) {
+            console.log('Generic error starting watchPods')
+            console.log(err)
+            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, JSON.stringify(err), instanceConfig)
+        }
+        else {
+            // watch method launches a 'done' invocation several minutes after starting streaming, I don't know why.
+        }
     })
 }
 

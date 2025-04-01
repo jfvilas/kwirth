@@ -25,5 +25,5 @@ export class MetricsObject {
     public merge : boolean = false
     public stack : boolean = false
     public chart : string = 'line'
-    public errors : string = ''
+    public errors : string[] = []
 }
