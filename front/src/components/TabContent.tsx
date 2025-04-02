@@ -256,12 +256,13 @@ const TabContent: React.FC<any> = (props:IProps) => {
     }
 
     const formatMetricsError = (dataMetrics:MetricsObject) => {
-        return <>{
-            dataMetrics.errors && dataMetrics.errors.length>0 &&
-                dataMetrics.errors.map((e,index) => { 
-                    return <Alert severity="error" action={<Button onClick={() => { dataMetrics.errors.splice(index,1); setRefresh(!refresh)} }>Remove</Button>}>{e}</Alert>
-                })
-        }</>
+        if (!dataMetrics.errors || dataMetrics.errors.length === 0) return <></>
+
+        return <>
+            {dataMetrics.errors.map((e,index) => { 
+                return <Alert severity="error" action={<Button onClick={() => { dataMetrics.errors.splice(index,1); setRefresh(!refresh)} }>Remove</Button>}>{e}</Alert>
+            })}
+        </>
     }
 
     const formatMetrics = () => {

@@ -20,7 +20,7 @@ export class ApiKeyApi {
 
         this.route.route('/')
             .all( async (req,res, next) => {
-                if (!validKey(req,res, this)) return
+                if (! (await validKey(req,res, this))) return
                 next()
             })
             .get( async (req:Request,res:Response) => {
@@ -100,7 +100,7 @@ export class ApiKeyApi {
 
         this.route.route('/:key')
             .all( async (req,res, next) => {
-                if (!validKey(req,res, this)) return
+                if (await !validKey(req,res, this)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -154,7 +154,7 @@ export class ApiKeyApi {
     refreshKeys = async () => {
         var storedKeys = await this.configMaps.read('kwirth.keys', [])
         storedKeys = cleanApiKeys(storedKeys)
-        this.configMaps.write('kwirth.keys', storedKeys )
+        await this.configMaps.write('kwirth.keys', storedKeys )
         ApiKeyApi.apiKeys = storedKeys
     }
     

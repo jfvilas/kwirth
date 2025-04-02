@@ -17,14 +17,14 @@ export const validBearerKey = (accessKey:AccessKey) : boolean => {
     return hash === accessKey.id
 }
 
-export const validKey = async (req:any,res:any, apiKeyApi: ApiKeyApi) => {
+export const validKey = async (req:any,res:any, apiKeyApi: ApiKeyApi) : Promise<boolean> => {
     if (req.headers.authorization) {
         var receivedAccessString=req.headers.authorization.replaceAll('Bearer ','').trim()
         var receivedAccessKey = accessKeyDeserialize(receivedAccessString)
         let computedExpire = 0
         if (receivedAccessKey.type.startsWith('bearer:')) {
             if (!validBearerKey(receivedAccessKey))
-                console.log('Hashes do not match')
+                console.log('Hashes do not match')            
             else
                 computedExpire = +receivedAccessKey.type.split(':')[1]
         }
@@ -33,7 +33,11 @@ export const validKey = async (req:any,res:any, apiKeyApi: ApiKeyApi) => {
             if (!key) {
                 await apiKeyApi.refreshKeys()
                 key = ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
-                if (!key) console.log('Inexistent key: '+receivedAccessString)
+                if (!key) {
+                    console.log('Inexistent key: '+receivedAccessString)
+                    res.status(403).json()
+                    return false
+                }            
             }
             else {
                 computedExpire = key.expire
