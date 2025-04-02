@@ -9,7 +9,7 @@ export const cleanApiKeys = (apiKeys:ApiKey[]) => {
     return apiKeys;
 }
 
-export const validBearerKey = (accessKey:AccessKey) : boolean => {
+export const validBearerKey = (accessKey:AccessKey): boolean => {
     let masterKey = 'Kwirth4Ever'
     let expire = accessKey.type.split(':')[1]
     let input = masterKey + '|' + accessKey.resource + '|' + expire
@@ -17,7 +17,7 @@ export const validBearerKey = (accessKey:AccessKey) : boolean => {
     return hash === accessKey.id
 }
 
-export const validKey = async (req:any,res:any, apiKeyApi: ApiKeyApi) : Promise<boolean> => {
+export const validKey = async (req:any,res:any, apiKeyApi: ApiKeyApi): Promise<boolean> => {
     if (req.headers.authorization) {
         var receivedAccessString=req.headers.authorization.replaceAll('Bearer ','').trim()
         var receivedAccessKey = accessKeyDeserialize(receivedAccessString)
@@ -59,7 +59,7 @@ export const validKey = async (req:any,res:any, apiKeyApi: ApiKeyApi) : Promise<
     }
 }
 
-export const getChannelScopeLevel = (channels:Map<string, IChannel>, instanceConfigChannel:string, scope:string) : number => {
+export const getChannelScopeLevel = (channels:Map<string, IChannel>, instanceConfigChannel:string): number => {
     switch (instanceConfigChannel) {
         default:
             if (channels.has(instanceConfigChannel)) {
@@ -71,13 +71,13 @@ export const getChannelScopeLevel = (channels:Map<string, IChannel>, instanceCon
     }
 }
 
-export const validAuth = (req:any, res:any, channels:Map<string, IChannel>, reqScope:string, instanceConfigChannel: InstanceConfigChannelEnum, namespace:string, group:string, pod:string, container:string) => {
+export const validAuth = (req:any, res:any, channels:Map<string, IChannel>, reqScope:string, instanceConfigChannel: InstanceConfigChannelEnum, namespace:string, group:string, pod:string, container:string): boolean => {
     var key=req.headers.authorization.replaceAll('Bearer ','').trim()
     var accessKey=accessKeyDeserialize(key)
     var resId=parseResource(accessKey.resource)
 
     if (resId.scope==='cluster') return true
-    if (getChannelScopeLevel(channels, instanceConfigChannel, reqScope) < getChannelScopeLevel(channels, instanceConfigChannel, resId.scope)) {
+    if (getChannelScopeLevel(channels, instanceConfigChannel) < getChannelScopeLevel(channels, instanceConfigChannel)) {
         console.log('Insufficient scope level')
         return false
     }

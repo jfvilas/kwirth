@@ -17,7 +17,7 @@ export class StoreApi {
 
         // get groups
         this.route.route('/:user')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (! (await validKey(req,res, apiKeyApi))) return
                 next()
             })
@@ -43,8 +43,8 @@ export class StoreApi {
         // get an array of object names in a group
         // if parameter full is present we return an array containing all the objects
         this.route.route('/:user/:group')
-            .all( async (req,res, next) => {
-                if (! (await validKey(req,res, apiKeyApi))) return
+            .all( async (req:Request,res:Response, next) => {
+                if (! (await validKey(req,res,apiKeyApi))) return
                 next()
             })
             .get(async (req:Request, res:Response) => {
@@ -75,7 +75,7 @@ export class StoreApi {
 
         // get an object
         this.route.route('/:user/:group/:key')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (! (await validKey(req,res, apiKeyApi))) return
                 next()
             })

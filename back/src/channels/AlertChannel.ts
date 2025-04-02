@@ -34,7 +34,7 @@ class AlertChannel implements IChannel {
         }
     }
     
-    sendAlert = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alertSeverity:AlertSeverityEnum, line:string, instanceId: string) => {
+    sendAlert = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alertSeverity:AlertSeverityEnum, line:string, instanceId: string): void => {
         // line includes timestam at front (beacuse of log stream configuration at startup)
         var i = line.indexOf(' ')
         var msg:AlertMessage = {
@@ -51,7 +51,7 @@ class AlertChannel implements IChannel {
         webSocket.send(JSON.stringify(msg))   
     }
 
-    processAlertSeverity = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alertSeverity:AlertSeverityEnum, regexes:RegExp[], line:string, instaceId:string) => {
+    processAlertSeverity = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alertSeverity:AlertSeverityEnum, regexes:RegExp[], line:string, instaceId:string): void => {
         for (var regex of regexes) {
             var i = line.indexOf(' ')
             if (regex.test(line.substring(i))) {
@@ -60,7 +60,7 @@ class AlertChannel implements IChannel {
         }
     }
 
-    sendAlertData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, source:string, instanceId:string) => {
+    sendAlertData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, source:string, instanceId:string): void => {
         var instances = this.websocketAlerts.get(webSocket)
         if (!instances) {
             console.log('No instances found for sendAlertData')
@@ -84,7 +84,7 @@ class AlertChannel implements IChannel {
         }
     }
 
-    sendInstanceConfigMessage = (ws:WebSocket, action: InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string) => {
+    sendInstanceConfigMessage = (ws:WebSocket, action: InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
         var resp:any = {
             action,
             flow,
@@ -96,7 +96,7 @@ class AlertChannel implements IChannel {
         ws.send(JSON.stringify(resp))
     }
 
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig) {
+    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
         var sgnMsg:SignalMessage = {
             level,
             channel: instanceConfig.channel,
@@ -199,7 +199,7 @@ class AlertChannel implements IChannel {
         }
     }
 
-    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig) : void {
+    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
 
     }
 

@@ -240,8 +240,8 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
             let podResource = accessKeyResources.find(resource => resource.pod===podName)
             if (!podResource) continue
 
-            var haveLevel = getChannelScopeLevel(channels, instanceConfig.channel, podResource!.scope)
-            var requiredLevel = getChannelScopeLevel(channels, instanceConfig.channel, podResource!.scope)
+            var haveLevel = getChannelScopeLevel(channels, instanceConfig.channel)
+            var requiredLevel = getChannelScopeLevel(channels, instanceConfig.channel)
             if (haveLevel<requiredLevel) {
                 console.log(`Insufficent level ${haveLevel} < ${requiredLevel}`)
                 continue

@@ -60,13 +60,13 @@ export class Metrics {
         return objects
     }
 
-    public getMetric(metricName:string) {
-        var metric = this.metricsList.get(metricName)
-        return metric
-    }
+    // public getMetric(metricName:string): MetricDefinition|undefined {
+    //     var metric = this.metricsList.get(metricName)
+    //     return metric
+    // }
 
     // adds proprties to matrics map
-    addRecordType (map:Map<string,MetricDefinition>, mname:string, recordType:string, value:string) {
+    addRecordType (map:Map<string,MetricDefinition>, mname:string, recordType:string, value:string): void {
         if (!map.has(mname)) map.set(mname,{help: '', type: '', eval: ''})
         switch(recordType) {
             case '# HELP':
@@ -82,7 +82,7 @@ export class Metrics {
     }
 
     // creates a map containing all existing metrics existing in a cluster node (and their properties)
-    async loadNodeMetrics(node:NodeInfo):Promise <Map<string,MetricDefinition>> {
+    async loadNodeMetrics(node:NodeInfo): Promise <Map<string,MetricDefinition>> {
         var map:Map<string,MetricDefinition> = new Map()
 
         var allMetrics = await this.readCAdvisorMetrics(node)
@@ -127,7 +127,7 @@ export class Metrics {
     }
 
     // creates a map containing all the metrics existing in the cluser (and their properties)
-    public async loadClusterMetrics(nodes:NodeInfo[]) {
+    public async loadClusterMetrics(nodes:NodeInfo[]): Promise<void> {
         var resultMap = await this.loadNodeMetrics(nodes[0])
 
         for (var node of nodes.slice(1)) {
@@ -144,7 +144,7 @@ export class Metrics {
     */
 
     // read metric raw values at a specific cluster node (invokes kubelet's cAdvisor)
-    public readCAdvisorMetrics = async (node:NodeInfo) => {
+    public readCAdvisorMetrics = async (node:NodeInfo): Promise<string> => {
         var text=''
         try {
             var resp = await fetch (`https://${node.ip}:10250/metrics/cadvisor`, { headers: { Authorization: 'Bearer ' + this.token} })
@@ -191,7 +191,7 @@ export class Metrics {
     }
 
     // reads node metrics and loads 'metricValues' with parsed and formated data
-    public async readNodeMetrics(node:NodeInfo) {
+    public async readNodeMetrics(node:NodeInfo): Promise<void> {
         var rawSampledNodeMetrics = await this.readCAdvisorMetrics(node)
         const regex = /(?:\s*([^=^{]*)=\"([^"]*)",*)/gm;
         var lines=rawSampledNodeMetrics.split('\n')
@@ -358,7 +358,7 @@ export class Metrics {
         node.timestamp = Date.now()
     }
 
-    public readClusterMetrics = async (clusterInfo: ClusterInfo) => {
+    public readClusterMetrics = async (clusterInfo: ClusterInfo): Promise<void> => {
         // +++ we should check cluster config (number of nodes) from time to time
         if (this.loadingClusterMetrics) {
             console.log(`Still loading cluster metrics ${new Date().toTimeString()}`)
@@ -372,7 +372,7 @@ export class Metrics {
         this.loadingClusterMetrics = false
     }
 
-    public extractContainerMetrics = (clusterInfo:ClusterInfo, podMetricsSet:Map<string,{value: number, timestamp:number}>, containerMetricsSet:Map<string,{value: number, timestamp:number}>, requestedMetricName:string, view:InstanceConfigViewEnum, node:NodeInfo, asset:AssetData) : {value:number, timestamp:number|undefined }=> {
+    public extractContainerMetrics = (clusterInfo:ClusterInfo, podMetricsSet:Map<string,{value: number, timestamp:number}>, containerMetricsSet:Map<string,{value: number, timestamp:number}>, requestedMetricName:string, view:InstanceConfigViewEnum, node:NodeInfo, asset:AssetData): {value:number, timestamp:number|undefined }=> {
         if (view === InstanceConfigViewEnum.CONTAINER) {
             var metricName = asset.podNamespace + '/' + asset.podName + '/' + asset.containerName + '/' + requestedMetricName
             var value = containerMetricsSet.get(metricName)?.value

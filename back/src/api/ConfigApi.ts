@@ -45,7 +45,7 @@ export class ConfigApi {
         
         // returns cluster information of the k8 cluster which this kwirth is connected to or running inside
         this.route.route('/cluster')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (! (await validKey(req,res, apiKeyApi))) return
                 next()
             })
@@ -62,7 +62,7 @@ export class ConfigApi {
         
         // get all namespaces
         this.route.route('/namespace')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (! (await validKey(req,res, apiKeyApi))) return
                 next()
             })
@@ -103,7 +103,7 @@ export class ConfigApi {
 
         // get all pods in a namespace in a group
         this.route.route('/:namespace/:group/pods')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (! (await validKey(req,res, apiKeyApi))) return
                 next()
             })
@@ -121,7 +121,7 @@ export class ConfigApi {
 
         // returns an array containing all the containers running inside a pod
         this.route.route('/:namespace/:pod/containers')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (! (await validKey(req,res, apiKeyApi))) return
                 next()
             })

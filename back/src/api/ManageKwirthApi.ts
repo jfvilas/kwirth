@@ -15,7 +15,7 @@ export class ManageKwirthApi {
         this.appsApi=appsApi
 
         this.route.route('/restart')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (await !validKey(req, res, apiKeyApi)) return
                 next()
             })
@@ -31,7 +31,7 @@ export class ManageKwirthApi {
             })
         
         this.route.route('/pause')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (await !validKey(req, res, apiKeyApi)) return
                 next()
             })

@@ -11,7 +11,7 @@ export class MetricsApi {
         this.clusterInfo = clusterInfo
 
         this.route.route('/')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (await !validKey(req, res, apiKeyApi)) return
                 next()
             })
@@ -27,7 +27,7 @@ export class MetricsApi {
                 }
             })
         this.route.route('/debug/:action/:nodename')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (await !validKey(req, res, apiKeyApi)) return
                 next()
             })
@@ -59,7 +59,7 @@ export class MetricsApi {
             })
 
         this.route.route('/config')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (await !validKey(req, res, apiKeyApi)) return
                 next()
             })

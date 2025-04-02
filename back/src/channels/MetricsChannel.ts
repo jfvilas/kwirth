@@ -25,7 +25,7 @@ class MetricsChannel implements IChannel {
         return ['','subcribe','create','cluster'].indexOf(scope)
     }
 
-    getAssetMetrics = (instanceConfig:InstanceConfig, assets:AssetData[], usePrevMetricSet:boolean) : AssetMetrics => {
+    getAssetMetrics = (instanceConfig:InstanceConfig, assets:AssetData[], usePrevMetricSet:boolean): AssetMetrics => {
         var assetMetrics:AssetMetrics = { assetName: this.getAssetMetricName(instanceConfig, assets), values: [] }
 
         var newAssets:AssetData[] = []
@@ -152,7 +152,7 @@ class MetricsChannel implements IChannel {
         return assetMetrics
     }
 
-    getAssetMetricName = (instanceConfig:InstanceConfig, assets:AssetData[]) : string => {
+    getAssetMetricName = (instanceConfig:InstanceConfig, assets:AssetData[]): string => {
         switch (instanceConfig.view) {
             case 'namespace':
                 return [...new Set (assets.map (a => a.podNamespace))].join(',')
@@ -167,7 +167,7 @@ class MetricsChannel implements IChannel {
         }
     }
 
-    sendMetricsDataInstance = (webSocket:WebSocket, instanceId:string) => {
+    sendMetricsDataInstance = (webSocket:WebSocket, instanceId:string): void => {
         // get instance
         var instances = this.websocketMetrics.get(webSocket)
         if (!instances) {
@@ -276,7 +276,7 @@ class MetricsChannel implements IChannel {
         }
     }
     
-    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string) => {
+    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
         var resp:any = {
             action,
             flow,
@@ -288,7 +288,7 @@ class MetricsChannel implements IChannel {
         ws.send(JSON.stringify(resp))
     }
 
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig) {
+    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
         var sgnMsg:SignalMessage = {
             level,
             channel: instanceConfig.channel,
@@ -370,7 +370,7 @@ class MetricsChannel implements IChannel {
         this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.STOP, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics instance stopped')
     }
 
-    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig) : void {
+    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
         let runningInstances = this.websocketMetrics.get(webSocket)
         let instance = runningInstances?.find(i => i.instanceId === instanceConfig.instance)
         if (instance) {

@@ -9,7 +9,7 @@ export class ConfigMaps {
         this.namespace=namespace
     }
 
-    public write = async (name:string, data:any) =>{
+    public write = async (name:string, data:any): Promise<any> =>{
         try {
             var configMap:V1ConfigMap = {
                 metadata: {
@@ -42,7 +42,7 @@ export class ConfigMaps {
     
     }
     
-    public read = async (name:string, defaultValue:any=undefined) => {
+    public read = async (name:string, defaultValue:any=undefined): Promise<any> => {
         try {
             var ct = await this.coreApi?.readNamespacedConfigMap(name,this.namespace)
             if (ct.body.data===undefined) ct.body.data={ data: defaultValue }

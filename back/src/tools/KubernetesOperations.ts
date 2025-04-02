@@ -7,9 +7,9 @@ import { AppsV1Api, CoreV1Api } from "@kubernetes/client-node";
  * @param namespace namespace
  * @param group a name of a deployment or a qualified name of a group, thta is 'type+name', example: replica+rs1, stateful+mongo, daemon+monitoring 
  */
-export const restartGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, group:string) => {
+export const restartGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, group:string): Promise<void> => {
     try {
-        var result=await getPodsFromGroup(coreApi, appsApi, namespace, group);
+        var result = await getPodsFromGroup(coreApi, appsApi, namespace, group);
 
         // Delete all pods, which forces kubernetes to recreate them
         for (const pod of result.pods) {
@@ -26,15 +26,15 @@ export const restartGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespa
     }
 }
 
-export const restartPod = async (coreApi:CoreV1Api, namespace:string, podName:string) => {
+export const restartPod = async (coreApi:CoreV1Api, namespace:string, podName:string): Promise<void> => {
     await coreApi.deleteNamespacedPod(podName, namespace);
 }
 
-export const pauseDeployment = async (appsApi:AppsV1Api, namespace:string, deploymentName:string) => {
-    console.log(`Pausing ${namespace}/${deploymentName}`);
-    const deployment = await appsApi.readNamespacedDeployment(deploymentName, namespace);
-    deployment.body.spec!.paused = true;
-    await appsApi.replaceNamespacedDeployment(deploymentName, namespace, deployment.body);
+export const pauseDeployment = async (appsApi:AppsV1Api, namespace:string, deploymentName:string): Promise<void> => {
+    console.log(`Pausing ${namespace}/${deploymentName}`)
+    const deployment = await appsApi.readNamespacedDeployment(deploymentName, namespace)
+    deployment.body.spec!.paused = true
+    await appsApi.replaceNamespacedDeployment(deploymentName, namespace, deployment.body)
 }
 
 /**

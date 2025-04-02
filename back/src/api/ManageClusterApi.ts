@@ -19,7 +19,7 @@ export class ManageClusterApi {
         this.channels = channels
 
         this.route.route('/find')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (await !validKey(req, res, apiKeyApi)) return
                 next()
             })
@@ -94,7 +94,7 @@ export class ManageClusterApi {
             })
 
         this.route.route('/restartdeployment/:namespace/:deployment')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (await !validKey(req, res, apiKeyApi)) return
                 next()
             })
@@ -112,7 +112,7 @@ export class ManageClusterApi {
             })
 
         this.route.route('/restartpod/:namespace/:podName')
-            .all( async (req,res, next) => {
+            .all( async (req:Request,res:Response, next) => {
                 if (await !validKey(req, res, apiKeyApi)) return
                 next()
             })

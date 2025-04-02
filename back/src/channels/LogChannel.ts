@@ -42,7 +42,7 @@ class LogChannel implements IChannel {
         return false
     }
 
-    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string) => {
+    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
         var resp:any = {
             action,
             flow,
@@ -54,7 +54,7 @@ class LogChannel implements IChannel {
         ws.send(JSON.stringify(resp))
     }
 
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig) {
+    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
         var sgnMsg:SignalMessage = {
             level,
             channel: instanceConfig.channel,
@@ -65,7 +65,7 @@ class LogChannel implements IChannel {
         webSocket.send(JSON.stringify(sgnMsg))
     }
 
-    sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName: string, source:string, instanceId:string) => {
+    sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName: string, source:string, instanceId:string): void => {
         var instances = this.websocketLog.get(webSocket)
         if (!instances) {
             console.log('No instances found for sendLogData')
@@ -176,7 +176,7 @@ class LogChannel implements IChannel {
         }
     }
 
-    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig) : void {
+    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
 
     }
 
