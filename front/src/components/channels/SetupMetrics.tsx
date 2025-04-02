@@ -76,7 +76,7 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
                         </FormControl>
                         <FormControl variant="standard" sx={{width:'25%'}}>
                             <InputLabel>Depth</InputLabel>
-                            <Select value={metricsDepth.toString()} onChange={(e) => setMetricsDepth(+e.target.value)} variant='standard'>
+                            <Select value={metricsDepth} onChange={(e) => setMetricsDepth(+e.target.value)} variant='standard'>
                                 <MenuItem value={10}>10</MenuItem>
                                 <MenuItem value={20}>20</MenuItem>
                                 <MenuItem value={50}>50</MenuItem>
@@ -85,7 +85,7 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
                         </FormControl>
                         <FormControl variant="standard" sx={{width:'25%'}}>
                             <InputLabel>Width</InputLabel>
-                            <Select value={metricsWidth.toString()} onChange={(e)=> setMetricsWidth(+e.target.value)} variant='standard'>
+                            <Select value={metricsWidth} onChange={(e)=> setMetricsWidth(+e.target.value)} variant='standard'>
                                 <MenuItem value={1}>1</MenuItem>
                                 <MenuItem value={2}>2</MenuItem>
                                 <MenuItem value={3}>3</MenuItem>
@@ -128,7 +128,7 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
                             <FormControlLabel control={<Checkbox checked={assetStack} onChange={(e) => setAssetStack(e.target.checked)}/>} disabled={!assetMerge || !('area bar'.includes(chart))} label='Stack' />
                             <FormControl variant="standard">
                                 <InputLabel sx={{ml:1}}>Chart</InputLabel>
-                                <Select value={chart.toString()} onChange={(e) => setChart(e.target.value)} sx={{ml:1}} variant='standard'>
+                                <Select value={chart} onChange={(e) => setChart(e.target.value)} sx={{ml:1}} variant='standard'>
                                     <MenuItem value={'value'}>Value</MenuItem>
                                     <MenuItem value={'line'}>Line</MenuItem>
                                     <MenuItem value={'area'}>Area</MenuItem>

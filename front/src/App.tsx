@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 // material & icons
 import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Menu, Person, LogoDev } from '@mui/icons-material'
+import { Settings as SettingsIcon, Menu, Person, LogoDev, BarChart, Warning, Subject } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
@@ -297,7 +297,7 @@ const App: React.FC = () => {
             case InstanceConfigChannelEnum.METRICS:
                 let metricsObject = new MetricsObject()
                 metricsObject.interval = settingsRef.current?.metricsInterval || 60
-                metricsObject.depth = settingsRef.current?.metricsDepth || 3
+                metricsObject.depth = settingsRef.current?.metricsDepth || 10
                 metricsObject.width = settingsRef.current?.metricsWidth || 2
                 metricsObject.chart = settingsRef.current?.metricsChart || 'line'
                 metricsObject.mode = settingsRef.current?.metricsMode || MetricsConfigModeEnum.STREAM
@@ -1156,11 +1156,15 @@ const App: React.FC = () => {
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
                     <Tabs value={selectedTabName || (tabs.length>0? tabs[0].name:'')} onChange={onChangeTab} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
                         { tabs.length>0 && tabs.map(t => {
+                            let icon = <Box sx={{minWidth:'24px'}}/>
+                            if (t.channelId==='metrics') icon = <BarChart sx={{mr:2}}/>
+                            if (t.channelId==='log') icon = <Subject sx={{mr:1}}/>
+                            if (t.channelId==='alert') icon = <Warning sx={{mr:1}}/>
                             if (t===selectedTab) {
-                                return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':pausedTabs.includes(t)?'#cccccc':'')}}/>
+                                return <Tab key={t.name} label={<>{icon}{t.name}</>} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':pausedTabs.includes(t)?'#cccccc':'')}}/>
                             }
                             else {
-                                return <Tab key={t.name} label={t.name} value={t.name} icon={<IconButton><Box sx={{minWidth:'20px'}} /></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':pausedTabs.includes(t)?'#cccccc':'')}}/>
+                                return <Tab key={t.name} label={<>{icon}{t.name}</>} value={t.name} icon={<IconButton><Box sx={{minWidth:'20px'}}/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':pausedTabs.includes(t)?'#cccccc':'')}}/>
                             }
                         })}
                     </Tabs>
