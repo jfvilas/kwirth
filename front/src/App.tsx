@@ -115,7 +115,7 @@ const App: React.FC = () => {
     const [showSetupLog, setShowSetupLog]=useState<boolean>(false)
     const [showSetupAlert, setShowSetupAlert]=useState<boolean>(false)
     const [showSetupMetrics, setShowSetupMetrics]=useState<boolean>(false)
-    const [showPickList, setShowPickList]=useState<boolean>(false)
+    //const [showPickList, setShowPickList]=useState<boolean>(false)
     
     useEffect ( () => {
         //+++ when a board is loaded all messages are received: alarms should not be in effect until everything is received

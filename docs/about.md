@@ -30,4 +30,4 @@ I'm still learning to better programming. Since I started with BASIC on the ZX81
   - JavaScript
   - TypeScript (these days... ;)) 
 
-I never worked as a developer, I've been always working on infrastructure and architecture, may be my next life (which is planned to start around 2045) I would rebirth as a full stack developer (when I mean full-stack I  mean really-full stack, from intrastructure to UI).
+I never worked as a developer, I've been always working on infrastructure and architecture, may be my next life (which is planned to start around 2045) I would rebirth as a full stack developer (when I mean full-stack I  mean really-full stack, from infrastructure to UI).

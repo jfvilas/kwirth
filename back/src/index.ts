@@ -256,7 +256,7 @@ const processReconnect = async (webSocket: WebSocket, instanceConfig: InstanceCo
     console.log(`Trying to reconnect ${instanceConfig.instance} with key ${instanceConfig.reconnectKey}`)
     for (var channel of channels.values()) {
         if (channel.containsInstance(instanceConfig.instance)) {
-            // +++ reconnect process has to be optimized (defferentiating between onError and onClose)
+            // +++ reconnect process has to be optimized (differentiating between onError and onClose)
             var updated = channel.updateConnection(webSocket, instanceConfig.instance)
             if (updated) {
                 sendInstanceConfigSignalMessage(webSocket, InstanceConfigActionEnum.RECONNECT, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Reconnect successful')

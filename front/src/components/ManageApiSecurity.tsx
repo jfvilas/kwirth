@@ -150,9 +150,9 @@ const ManageApiSecurity: React.FC<any> = (props:IProps) => {
                             </Select>
                         </FormControl>
                         <FormControl variant='standard'>
-                            <InputLabel id='type'>Type</InputLabel>
-                            <Select labelId='type' value={scope} onChange={(e) => setScope(e.target.value)} >
-                                { ['cluster','api','restart','view'].map( (value:string) => {
+                            <InputLabel>Scope</InputLabel>
+                            <Select value={scope} onChange={(e) => setScope(e.target.value)} >
+                                { ['cluster','api','restart','view','filter','stream','snapshot'].map( (value:string) => {
                                     return <MenuItem key={value} value={value}>{value}</MenuItem>
                                 })}
                             </Select>
