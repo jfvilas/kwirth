@@ -19,7 +19,7 @@ For being flexible enough to accomodate a big volume of workload without consumi
 ### Summarizing
 The main concepts to keep in mind when thinking in a Kwirth way are: features (i.e., channels), web sockets (communication with clients) and instances (services the clients use). All this stuff is shown on next figure.
 
-![kwrithconcepts](./_media/kwirth-kwirth-channels.png)
+![kwirthconcepts](./_media/kwirth-kwirth-channels.png)
 
 ### Kwirth Core
 With the introduction of channels, all the specific logic for handling and serving Kubernetes data has been moved to channel implementations, so, what remains inside Kwirth is what we call **Kwirth core**, and that comprises:
@@ -31,7 +31,7 @@ With the introduction of channels, all the specific logic for handling and servi
 
 What follows is a zoomed view of Kwirth core.
 
-![kwrithcore](./_media/kwirth-kwirth-components.png)
+![kwirthcore](./_media/kwirth-kwirth-components.png)
 
 ## Existing channels
 Starting with Kwirth 0.4 these are the channels you will find integrated inside Kwirth core:

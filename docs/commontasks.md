@@ -39,7 +39,7 @@ What you can see in the main Kwirth is:
     - 'API security' allows viewing and managing API keys you can create to share with other parties.
     - 'User security' is for managing users that will have access to this instance of Kwirth.
     - Update Kwirth' (an *admin option* only permforms a Kwirth restart), so if you deployed Kwirth with 'latest' tag in the OCI image, Kwirth will restart with the **newest version**.`
-    - **Exit Kwrith**, just logging you off.
+    - **Exit Kwirth**, just logging you off.
     - At the very end of the menu you will find the version of the Kwirth you are workking with.
 
 

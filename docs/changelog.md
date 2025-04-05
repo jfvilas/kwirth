@@ -1,7 +1,7 @@
 # Change log
 Although not too exhaustive, this page contains some detail on what we have been done on each version.
 
-## 0.4
+## 0.3.155
   - Strong architecture changes have been introduced inside Kwirth, specially for being able to suport different kinds of connections consuming different kinds of information (not only logs).
   - Added channels to Kwirth. A **channel** represents a specific kind of information that Kwirth takes from kubernetes and send to clients. First implemented channels (included in Kwirth core) are: **log**, **metrics**, **alert**.
   - Kwirth can now be extended creating new channels that can be loaded on runtime, so increasing Kwirth capabilities does not imply modifying Kwirth core. Channels can be added by creating channels and loading them at run time.
