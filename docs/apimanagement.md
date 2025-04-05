@@ -7,7 +7,7 @@ But there are situations in which you may want to create and share an API key fo
 
 The API management tool (named **API Security**) is on the main menu (the burger icon) but is only visible to admins and users holding an *scope* of type 'API'.
 
-![api security menu option](api-security-menu-option.png)
+![api security menu option](./_media/api-security-menu-option.png)
 
 ## API Keys explained
 An API key requires the following information to be created:

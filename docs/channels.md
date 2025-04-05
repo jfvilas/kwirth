@@ -125,4 +125,4 @@ And this is what each property means:
  - **reconnectKey**. Is a reconnect key (obtained when starting an instance) that you can use to reconnect a broken web socket connection.
  - **data**. This is a generic holder for your channel specific data.
 
-This strucutre (and some others) as well as some 'enums', are included in the **@jfvilas/kwirth-common** package.
+This strucutre (and some others) as well as some 'enums', are included in the (**@jfvilas/kwirth-common**)[https://www.npmjs.com/package/@jfvilas/kwirth-common] package.

@@ -1,20 +1,20 @@
 # Data streaming
 Kwirth, originally a log exporting system, can export **any** Kubernetes data in real time. In the very first versions only log data was exported from Kubernetes (through Kwirth streaming mechanisms). Starting with version 0.3, Kwirth can also export:
 
-  - Signaling data, that is, events related to control of the streams (info messages, error messaes and so on)
+  - Signaling data, that is, events related stream control (info messages, error messaes and so on)
   - Metrics data, that is, Kwirth can export Kubernetes metrics (container related metrics) in real time.
 
-And since version 0.4 source data is managed in **channels**, what represent in fact an extension mechanism for adding new functionality to Kwirth.
+And since **version 0.4** source data is managed in **channels**, what represent in fact an extension mechanism for adding new functionality to Kwirth. That is, th kind of data Kwirth exports is not managed nor produced at Kwirth core server. Channels are developed independently and can eb added or removed from a Kwirth core server. this way you can configure your Kiwrth to manage only the information you want to publish.
 
 ## How it works
 As you may know, it's up to Kwirth clients to open connections to Kwirth server, I mean, opening web sockets for requesting data. Opening a websocket from a client to Kwirth is free, that is, there are no security requirements for opening the web socket. Security comes into action once the web socket is open and you want to start receiving a stream of data, wherever it be log, metrics or anything else. It's important to note that a web socket is a non-dedicated transport, what means that an open web socket can be used to stream different kinds of data. For sending data from server to client in an ordered way, a web socket can be used as a transport for different **intances**. An instance is a stream of data with a common **scope** and a common **view** (aside form other common characteristics less relevant at this moment).
 
-  - **scope** is a spec of the kind of action you want to perform with the stream of data, for example:
+  - **scope** is a spec of the kind of action you want to perform with the source kuberntes objects through the data stream, for example:
     - View log lines
     - View pod status (obtaining real-time status streamed)
     - Receive metrics in real-time (a stream of metics in real-time)
     - Receive a metrics snapshot (just instant values with no streaming) 
-  - **view** means what group of data you want to receive, that is, if your view states a namespace, you can decide what data you want to receive, for example:
+  - **view** means what group of data you want to receive, that is, you can decide what are the source kubernetes object you want to work with. For example:
     - Receive data for a set of pods (selected, for example, via a regex).
     - Receive data for a whole namespace.
     - Receive consolidated log info from all the namespaces in the cluster.
@@ -24,7 +24,7 @@ It is important to understand what a **view** means:
   - If you open and start a streaming log channel, and your view is set to **namespace**, you will receive a stream of log lines including all the pods in the namespace.
   - Using the same scope, if your view is set to **container** you will receive a stream of log lines that are produced by all the containers that fulfill your scope declaration.
 
-Simply put, scope is the action you want to perform, and view is a the type of objects your want to work with (namespaces, groups, pods or containers)
+Simply put, scope is the action you want to perform, and view is the set of objects your want to work with (namespaces, groups, pods or containers)
 
 ## Messaging
 When a client opens a web socket, the next action is to send an 'start instance' message, that is, to send a message to the Kiwrth server explaining what kind of **streaming data** the client wants to receive.
@@ -49,7 +49,7 @@ A typical 'start instance' message would contain this information:
   - specific data for configuring the streaming service according to the type of service the client is starting, that is, log streaming requires specific configuration that is different from the one used in metrics streaming.
 
 ## Channels
-Up to this vesion of Kwirth, following streaming services are available.
+Up to this vesion of Kwirth, following streaming services, i.e., **channels**, are available.
 
 ### Log Streaming Service
 Log streaming means receiving log data streams at client that is originated at a set of resurces (or an individual one).
@@ -57,7 +57,7 @@ Log streaming means receiving log data streams at client that is originated at a
 A typical 'start log instance' message for receiving all log lines originated at 'production' namespace would be created like this (Typescript sample):
 
 ```javascript
-var logConfig:LogConfig = {
+var logConfig:InstanceConfig = {
     action: 'start',
     flow: 'request',
     channel: 'log',
@@ -71,6 +71,7 @@ var logConfig:LogConfig = {
     pod: '', 
     container: '',
     data: {
+      fromStart: false
       timestamp: true,
       previous: false,
       maxMessages: 5000
@@ -93,7 +94,7 @@ You will typically receive an answer like this one to that request:
 }
 ```
 
-With this example 'start instance' call you will receive one only stream of log merging information from 3 different namespace (production, qa and cert).
+With this 'start instance' example you will receive one only stream of log merging information from 3 different namespace (production, qa and cert).
 
 Following messages could be other 'signal' messages (from Kwirth to client). For example, next message is a signal message stating that a log for a specific container has started:
 
@@ -119,13 +120,13 @@ If everything is ok, the Kwirth server would start sending log messages. What fo
   "type": "data"
 }
 {
-"channel": "log",
-"container": "controller",
-"instance": "812afcd2-e8fd-4f3b-b157-08127707b677",
-"namespace": "ingress-nginx",
-"pod": "ingress-nginx-controller-7f6c7c5b59-tsls7",
-"text: "87.58.88.174 - - [25/Mar/2025:19:23:32 +0000] \"GET /api/logout HTTP/2.0\" 200 0 \"https://eulensecure.eulensecure.com/reports\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36\" 68 0.154 [pro-eulen-gateway-platform-svc-8080] [] 10.0.5.123:8080 0 0.154 200 2b79e96150faecc9b9694c7ad851079b",
-"type": "data"  
+  "channel": "log",
+  "container": "controller",
+  "instance": "812afcd2-e8fd-4f3b-b157-08127707b677",
+  "namespace": "ingress-nginx",
+  "pod": "ingress-nginx-controller-7f6c7c5b59-tsls7",
+  "text: "87.58.88.174 - - [25/Mar/2025:19:23:32 +0000] \"GET /api/logout HTTP/2.0\" 200 0 \"https://www.google.com/reports\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36\" 68 0.154 [gateway-platform-svc-8080] [] 10.0.5.123:8080 0 0.154 200 2b79e96150faecc9b9694c7ad851079b",
+  "type": "data"  
 }
 ```
 
@@ -137,24 +138,24 @@ Metrics streaming means sending resource metrics from server to client. When tal
 A typical 'metrics start' for receiving a stream of data about pod 'shopping-cart' IN A SET OF NAMESPACES would be created like this (Typescript sample):
 
 ```javascript
-var metricsConfig:MetricsConfig = {
-  "channel": "metrics",
-  "objects": "pods",
-  "action": "start",
-  "flow": "request",
-  "instance": "",
-  "accessKey": "2f945f32-5865-9f34-3f3e-437c5623c0c7|permanent|cluster:::::",
-  "scope": "subscribe",
-  "view": "namespace",
-  "namespace": "pro,kafka,ingress-nginx,default,data",
-  "group": "",
-  "pod": "shopping-cart",
-  "container": "",
-  "data": {
-    "mode": "stream",
-    "aggregate": false,
-    "interval": 5,
-    "metrics": ["container_blkio_device_usage_total_write"]
+var metricsConfig:InstanceConfig = {
+  channel: "metrics",
+  objects: "pods",
+  action: "start",
+  flow: "request",
+  instance: "",
+  accessKey: "2f945f32-5865-9f34-3f3e-437c5623c0c7|permanent|cluster:::::",
+  scope: "subscribe",
+  view: "namespace",
+  namespace: "pro,kafka,ingress-nginx,default,data",
+  group: "",
+  pod: "shopping-cart",
+  container: "",
+  data: {
+    mode: "stream",
+    aggregate: false,
+    interval: 5,
+    metrics: ["container_blkio_device_usage_total_write"]
   }
 }
 ws.send(JSON.stringify(metricsConfig))
@@ -162,7 +163,13 @@ ws.send(JSON.stringify(metricsConfig))
 If everything is ok, the Kwirth server would start sending metrics messages. What follows is a stream of JSON messages sent by Kwirth:
 
 ```json
-{"level":"info","channel":"metrics","instance":"9a3edb19-8c3f-44cc-8983-1ba3267c7d49","type":"signal","text":"Container ADDED: ingress-nginx/ingress-nginx-controller-7f6c7c5b59-tsls7/controller"}
+{
+  "level":"info",
+  "channel":"metrics",
+  "instance":"9a3edb19-8c3f-44cc-8983-1ba3267c7d49",
+  "type":"signal",
+  "text":"Container ADDED: ingress-nginx/ingress-nginx-controller-7f6c7c5b59-tsls7/controller"
+}
 ```
 
 And what follows is a sample of a metric message with metric data.
