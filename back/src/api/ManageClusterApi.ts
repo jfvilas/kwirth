@@ -45,10 +45,15 @@ export class ManageClusterApi {
                                 podListResp = await this.coreApi.listPodForAllNamespaces(undefined, undefined, undefined, labelSelector)
                             switch (data) {
                                 case 'id':
-                                    var podList=podListResp.body.items.map(pod => {
+                                    let podList = podListResp.body.items.map(pod => {
                                         return { namespace:pod.metadata?.namespace, name:pod.metadata?.name }
                                     })
                                     res.status(200).json(podList)
+                                case 'containers':
+                                    let podListContainer = podListResp.body.items.map(pod => {
+                                        return { namespace:pod.metadata?.namespace, name:pod.metadata?.name, containers: pod.spec?.containers.map( (c) => c.name) }
+                                    })
+                                    res.status(200).json(podListContainer)
                                     break
                                 case 'all':
                                     res.status(200).json(podListResp.body.items)

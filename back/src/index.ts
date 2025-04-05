@@ -419,9 +419,9 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
     }
 
     // +++ maybe we can perform this things later when knowing what the action is
-    var accessKeyResources=parseResources(accessKeyDeserialize(instanceConfig.accessKey).resource)
+    var accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resource)
 
-    var requestedNamespaces=instanceConfig.namespace.split(',').filter(ns => ns!=='')
+    var requestedNamespaces = instanceConfig.namespace.split(',').filter(ns => ns!=='')
     var allowedNamespaces:string[] = []
     if (accessKeyResources.find(akr => akr.scope==='cluster')) {
         let res = await coreApi.listNamespace()

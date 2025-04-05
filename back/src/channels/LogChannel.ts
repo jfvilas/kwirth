@@ -132,7 +132,8 @@ class LogChannel implements IChannel {
                 instanceId: instanceConfig.instance, 
                 logStream: logStream,
                 timestamps: instanceConfig.data.timestamp,
-                previous: instanceConfig.data.previous,
+                //previous: instanceConfig.data.previous,
+                previous: false,
                 tailLines: instanceConfig.data.tailLines,
                 paused:false
             })
