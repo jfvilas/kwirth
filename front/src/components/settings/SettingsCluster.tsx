@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField } from '@mui/material'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material'
 
 interface IProps {
     onClose:(interval?:number) => {}
+    clusterName: string
     clusterMetricsInterval:number
 }
 const SettingsCluster: React.FC<any> = (props:IProps) => {
@@ -13,6 +14,7 @@ const SettingsCluster: React.FC<any> = (props:IProps) => {
             <DialogTitle>Cluster settings</DialogTitle>
             <DialogContent >
                 <Stack spacing={2} direction={'column'} sx={{width: '40vh' }}>
+                    <Typography>Enter Kwirth cluster configuration for cluster '<b>{props.clusterName}</b>'</Typography>
                     <TextField value={clusterMetricsInterval} onChange={(e) => setClusterMetricsInterval(+e.target.value)} variant='standard' label='Cluster metrics read interval (seconds)' SelectProps={{native: true}} type='number'></TextField>
                 </Stack>
             </DialogContent>

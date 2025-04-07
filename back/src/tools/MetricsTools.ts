@@ -151,7 +151,7 @@ export class Metrics {
             text = await resp.text()
         }
         catch (error:any) {
-            console.log('Error reading cAdvisor metrics', error.stack)
+            console.log(`Error reading cAdvisor metrics at node ${node.ip}`, error.stack)
             text=''
         }
         // add kwirth container metrics

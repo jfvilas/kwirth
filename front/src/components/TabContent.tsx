@@ -66,24 +66,24 @@ const TabContent: React.FC<any> = (props:IProps) => {
             if (props.channelObject.view==='pod') prefix = message.container || ''
             if (props.channelObject.view==='container' && props.channelObject.container.includes(',')) prefix = message.container || ''
             if (props.channelObject.view==='namespace') {
-                return <><span style={{color:"blue"}}>{message.pod+' '}</span>{txt}</>
+                return <><span style={{color:'blue'}}>{message.pod+' '}</span>{txt}</>
             }
             else
-                return <><span style={{color:"blue"}}>{prefix+' '}</span>{txt}</>
+                return <><span style={{color:'blue'}}>{prefix+' '}</span>{txt}</>
         }
         else if (message.type==='signal') {
             if ((message as any).action) {
-                return <span style={{color:"black"}}><b>{"***** "+message.text+" *****"}</b></span>
+                return <span style={{color:'black'}}><b>{`***** ${message.text} *****`}</b></span>
             }
             else {
-                var sgn=message as SignalMessage
-                switch (sgn.level) {
+                var signal=message as SignalMessage
+                switch (signal.level) {
                     case SignalMessageLevelEnum.INFO:
-                        return <span style={{color:"blue"}}><b>{`***** ${sgn.text} *****`}</b></span>
+                        return <span style={{color:'blue'}}><b>{`***** ${signal.text} *****`}</b></span>
                     case SignalMessageLevelEnum.WARNING:
-                        return <span style={{color:"orange"}}><b>{`***** ${sgn.text} *****`}</b></span>
+                        return <span style={{color:'orange'}}><b>{`***** ${signal.text} *****`}</b></span>
                     case SignalMessageLevelEnum.ERROR:
-                        return <span style={{color:"red"}}><b>{`***** ${sgn.text} *****`}</b></span>
+                        return <span style={{color:'red'}}><b>{`***** ${signal.text} *****`}</b></span>
                 }
             }
         }
@@ -145,7 +145,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
         const renderLabel = (data:any) => {
             var values:any[] = series.map (s => s[data.index])
             var total:number =values.reduce((acc,value) => acc+value.value, 0)
-            return <text x={data.x + data.width/3.5} y={data.y-10}>{total.toPrecision(3).replace(/0+$/, "")}</text>
+            return <text x={data.x + data.width/3.5} y={data.y-10}>{total.toPrecision(3).replace(/0+$/, '')}</text>
         }
         let  height=300
 
@@ -175,12 +175,12 @@ const TabContent: React.FC<any> = (props:IProps) => {
             case 'line':
                 result = (
                     <LineChart data={mergedSeries}>
-                        <CartesianGrid strokeDasharray="3 3"/>
-                        <XAxis dataKey="timestamp" fontSize={8}/>
+                        <CartesianGrid strokeDasharray='3 3'/>
+                        <XAxis dataKey='timestamp' fontSize={8}/>
                         <YAxis />
                         <Tooltip />
                         <Legend/>
-                        { series.map ((serie,index) => <Line key={index} name={names[index]} type="monotone" dataKey={names[index]} stroke={series.length===1?colour:colours[index]} activeDot={{ r: 8 }} />) }
+                        { series.map ((_serie,index) => <Line key={index} name={names[index]} type='monotone' dataKey={names[index]} stroke={series.length===1?colour:colours[index]} activeDot={{ r: 8 }} />) }
                     </LineChart>
                 )
                 break
@@ -189,7 +189,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
                     <AreaChart data={mergedSeries}>
                         <defs>
                             {
-                                series.map( (s,index) => {
+                                series.map( (_serie,index) => {
                                     return (
                                         <linearGradient key={index} id={`color${series.length===1?colour:colours[index]}`} x1='0' y1='0' x2='0' y2='1'>
                                             <stop offset='7%' stopColor={series.length===1?colour:colours[index]} stopOpacity={0.8}/>
@@ -199,26 +199,27 @@ const TabContent: React.FC<any> = (props:IProps) => {
                                 })
                             }
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3"/>
-                        <XAxis dataKey="timestamp" fontSize={8}/>
+                        <CartesianGrid strokeDasharray='3 3'/>
+                        <XAxis dataKey='timestamp' fontSize={8}/>
                         <YAxis />
                         <Tooltip />
                         <Legend/>
-                        { series.map ((serie,index) => 
-                            <Area key={index} name={names[index]} type="monotone" {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={`url(#color${series.length===1?colour:colours[index]})`}/> )}
+                        { series.map ((_serie,index) => 
+                            <Area key={index} name={names[index]} type='monotone' {...(dataMetrics.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={`url(#color${series.length===1?colour:colours[index]})`}/> )
+                        }
                     </AreaChart>
                 )
                 break
             case 'bar':
                 result = (
                     <BarChart data={mergedSeries}>
-                        <CartesianGrid strokeDasharray="3 3"/>
-                        <XAxis dataKey="timestamp" fontSize={8}/>
+                        <CartesianGrid strokeDasharray='3 3'/>
+                        <XAxis dataKey='timestamp' fontSize={8}/>
                         <YAxis />
                         <Tooltip/>
                         <Legend/>
                         { series.map ((serie,index) =>
-                            <Bar name={names[index]} {...(dataMetrics.stack? {stackId:"1"}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={series.length===1?colour:colours[index]}>
+                            <Bar name={names[index]} {...(dataMetrics.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={series.length===1?colour:colours[index]}>
                                 { index === series.length-1 && series.length > 1 ? <LabelList dataKey={names[index]} position='insideTop' content={ renderLabel }/> : null }
                             </Bar>
                         )}
@@ -242,13 +243,13 @@ const TabContent: React.FC<any> = (props:IProps) => {
                 )
                 break
             default:
-                result = <Alert severity="error">Unsupported chart type '{dataMetrics.chart}'</Alert>
+                result = <Alert severity='error'>Unsupported chart type '{dataMetrics.chart}'</Alert>
                 break
         }
         return (
-            <Stack direction={'column'} alignItems={'center'} width={'100%'}>
+            <Stack direction={'column'} alignItems={'center'} width={'100%'} sx={{mb:'24px'}}>
                 <Typography>{metric}</Typography>
-                <ResponsiveContainer width="100%" height={height} key={metric+JSON.stringify(names)}>
+                <ResponsiveContainer width='100%' height={height} key={metric+JSON.stringify(names)}>
                     {result}
                 </ResponsiveContainer>                        
             </Stack>
@@ -260,7 +261,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
 
         return <>
             {dataMetrics.errors.map((e,index) => { 
-                return <Alert severity="error" action={<Button onClick={() => { dataMetrics.errors.splice(index,1); setRefresh(!refresh)} }>Remove</Button>}>{e}</Alert>
+                return <Alert severity='error' action={<Button onClick={() => { dataMetrics.errors.splice(index,1); setRefresh(!refresh)} }>Remove</Button>}>{e}</Alert>
             })}
         </>
     }

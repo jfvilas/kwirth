@@ -60,13 +60,6 @@ spec:
       containers:
         - name: nginx
           image: nginx
-          resources:
-            limits:
-              cpu: '1'
-              memory: 2Gi
-            requests:
-              cpu: 500m
-              memory: 1Gi
         - name: kwirth
           image: kwirth:latest
           imagePullPolicy: Never
@@ -77,10 +70,3 @@ spec:
             - name: kwirth
               containerPort: 3883
               protocol: TCP
-          resources:
-            limits:
-              cpu: '1'
-              memory: 2Gi
-            requests:
-              cpu: 500m
-              memory: 1Gi

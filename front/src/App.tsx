@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 // material & icons
 import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Menu, Person, LogoDev, BarChart, Warning, Subject } from '@mui/icons-material'
+import { Settings as SettingsIcon, Menu, Person, BarChart, Warning, Subject } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
@@ -125,7 +125,6 @@ const App: React.FC = () => {
         if (logged) {
             if (!clustersRef.current) getClusters()
             if (!settingsRef.current) readSettings()
-            //if (!channelsRef.current) readChannels()
         }
     })
 
@@ -179,7 +178,8 @@ const App: React.FC = () => {
         setClusters(clusterList)
 
         for (let cluster of clusterList) {
-            await readChannels(cluster)
+            await readClusterInfo(cluster)
+            await readClusterChannels(cluster)
             if (cluster.channels.includes('metrics')) {
                 await getMetricsNames(cluster)
                 let data = await (await fetch (`${cluster.url}/metrics/config`, addGetAuthorization(cluster.accessString))).json()
@@ -188,7 +188,17 @@ const App: React.FC = () => {
         }
     }
 
-    const readChannels = async (cluster: Cluster) => {
+    const readClusterInfo = async (cluster: Cluster) => {
+        let response = await fetch(`${cluster.url}/config/version`, addGetAuthorization(cluster.accessString))
+        if (response.status===200) {
+            let  json = await response.json()
+            if (json) {
+                cluster.kwirthData = json
+            }
+        }
+    }
+
+    const readClusterChannels = async (cluster: Cluster) => {
         var resp=await fetch (`${cluster.url}/config/channel`, addGetAuthorization(cluster.accessString))
         if (resp.status===200) {
             var json=await resp.json()
@@ -1129,6 +1139,18 @@ const App: React.FC = () => {
         </div>
     </>)
 
+    const formatTabName = (tab : ITabObject) => {
+        if (!tab.name) return <>undefined</>
+
+        let icon = <Box sx={{minWidth:'24px'}}/>
+        if (tab.channelId==='metrics') icon = <BarChart sx={{mr:2}}/>
+        if (tab.channelId==='log') icon = <Subject sx={{mr:1}}/>
+        if (tab.channelId==='alert') icon = <Warning sx={{mr:1}}/>
+        let name = tab.name
+        if (name.length>20) name = tab.name.slice(0, 8) + '...' + tab.name.slice(-8)
+        return <>{icon}{name}</>
+    }
+
     return (<>
         <SessionContext.Provider value={{ user, accessKey: accessString, logged, backendUrl }}>
             <AppBar position="sticky" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
@@ -1154,17 +1176,13 @@ const App: React.FC = () => {
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
                 <ResourceSelector clusters={clusters} channels={channels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }}/>
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
-                    <Tabs value={selectedTabName || (tabs.length>0? tabs[0].name:'')} onChange={onChangeTab} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
-                        { tabs.length>0 && tabs.map(t => {
-                            let icon = <Box sx={{minWidth:'24px'}}/>
-                            if (t.channelId==='metrics') icon = <BarChart sx={{mr:2}}/>
-                            if (t.channelId==='log') icon = <Subject sx={{mr:1}}/>
-                            if (t.channelId==='alert') icon = <Warning sx={{mr:1}}/>
-                            if (t===selectedTab) {
-                                return <Tab key={t.name} label={<>{icon}{t.name}</>} value={t.name} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':pausedTabs.includes(t)?'#cccccc':'')}}/>
+                    <Tabs value={selectedTabName} onChange={onChangeTab} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
+                        { tabs.length>0 && tabs.map(tab => {
+                            if (tab===selectedTab) {
+                                return <Tab key={tab.name} label={formatTabName(tab)} value={tab.name} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(tab)?'pink':pausedTabs.includes(tab)?'#cccccc':'')}}/>
                             }
                             else {
-                                return <Tab key={t.name} label={<>{icon}{t.name}</>} value={t.name} icon={<IconButton><Box sx={{minWidth:'20px'}}/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(t)?'pink':pausedTabs.includes(t)?'#cccccc':'')}}/>
+                                return <Tab key={tab.name} label={formatTabName(tab)} value={tab.name} icon={<Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(tab)?'pink':pausedTabs.includes(tab)?'#cccccc':'')}}/>
                             }
                         })}
                     </Tabs>
@@ -1188,7 +1206,7 @@ const App: React.FC = () => {
             { showSetupMetrics && <SetupMetrics onClose={onSetupMetricsClosed} channelObject={selectedTab?.channelObject} metrics={clusters!.find(c => c.name===selectedTab!.channelObject!.clusterName)?.metricsList!} /> }
 
             { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settings} /> }
-            { showSettingsCluster && <SettingsCluster onClose={onSettingsClusterClosed} clusterMetricsInterval={clusters!.find(c => c.name===selectedClusterName)?.metricsInterval} /> }
+            { showSettingsCluster && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters!.find(c => c.name===selectedClusterName)?.metricsInterval} /> }
             { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             {/* { pickListConfig!==null && <PickList config={pickListConfig}/> } */}
             { msgBox }

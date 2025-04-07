@@ -50,7 +50,7 @@ const Login: React.FC<any> = (props:IProps) => {
     const onClickOk = async () => {
         var result
         if(changingPassword) {
-            if (newPassword1===newPassword2) {
+            if (newPassword1 === newPassword2) {
                 result = await login(user,password,newPassword1)
                 if (result && result.status===200) {
                     setUser('')
@@ -103,9 +103,7 @@ const Login: React.FC<any> = (props:IProps) => {
 
     const onClickChangePassword = async () => {
         var result=await login(user,password)
-        if (result && result.status===200) {
-            setChangingPassword(true);
-        }
+        if (result && result.status === 200) setChangingPassword(true)
     }
 
     return (<>
