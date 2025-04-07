@@ -5,6 +5,7 @@ import { KwirthData } from '@jfvilas/kwirth-common';
 export class Cluster {
     public id: string
     public name: string = ''
+    public enabled: boolean = true
     public url: string = ''
     public accessString: string = ''
     public source: boolean|undefined = false

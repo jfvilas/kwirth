@@ -194,8 +194,8 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }}>
                 <InputLabel id='cluster'>Cluster</InputLabel>
                 <Select labelId='cluster' value={selectedCluster?.name} onChange={onChangeCluster}>
-                { props.clusters?.map( (value) => {
-                    return <MenuItem key={value.name} value={value.name}>{value.name}</MenuItem>
+                { props.clusters?.map( (cluster) => {
+                    return <MenuItem key={cluster.name} value={cluster.name} disabled={!cluster.enabled}>{cluster.name}</MenuItem>
                 })}
                 </Select>
             </FormControl>

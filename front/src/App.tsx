@@ -157,9 +157,10 @@ const App: React.FC = () => {
         // get current cluster
         var response = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString))
         var srcCluster = await response.json() as Cluster
-        srcCluster.url=backendUrl
-        srcCluster.accessString=accessString
-        srcCluster.source=true
+        srcCluster.url = backendUrl
+        srcCluster.accessString = accessString
+        srcCluster.source = true
+        srcCluster.enabled = true
         response = await fetch(`${backendUrl}/config/version`, addGetAuthorization(accessString))
         srcCluster.kwirthData = await response.json() as KwirthData
         if (versionGreatThan(srcCluster.kwirthData.version,srcCluster.kwirthData.lastVersion)) {
@@ -178,24 +179,34 @@ const App: React.FC = () => {
         setClusters(clusterList)
 
         for (let cluster of clusterList) {
-            await readClusterInfo(cluster)
-            await readClusterChannels(cluster)
-            if (cluster.channels.includes('metrics')) {
-                await getMetricsNames(cluster)
-                let data = await (await fetch (`${cluster.url}/metrics/config`, addGetAuthorization(cluster.accessString))).json()
-                cluster.metricsInterval = data.metricsInterval
+            if (await readClusterInfo(cluster)) {
+                cluster.enabled = true
+                await readClusterChannels(cluster)
+                if (cluster.channels.includes('metrics')) {
+                    await getMetricsNames(cluster)
+                    let data = await (await fetch (`${cluster.url}/metrics/config`, addGetAuthorization(cluster.accessString))).json()
+                    cluster.metricsInterval = data.metricsInterval
+                }
+            }
+            else {
+                cluster.enabled = false
             }
         }
     }
 
-    const readClusterInfo = async (cluster: Cluster) => {
-        let response = await fetch(`${cluster.url}/config/version`, addGetAuthorization(cluster.accessString))
-        if (response.status===200) {
-            let  json = await response.json()
-            if (json) {
-                cluster.kwirthData = json
+    const readClusterInfo = async (cluster: Cluster): Promise<boolean> => {
+        try {
+            let response = await fetch(`${cluster.url}/config/version`, addGetAuthorization(cluster.accessString))
+            if (response.status===200) {
+                let  json = await response.json()
+                if (json) {
+                    cluster.kwirthData = json
+                    return true
+                }
             }
         }
+        catch (error) {}
+        return false
     }
 
     const readClusterChannels = async (cluster: Cluster) => {
