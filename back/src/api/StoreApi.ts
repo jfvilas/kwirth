@@ -1,16 +1,16 @@
 import express, { Request, Response} from 'express'
-import { ConfigMaps } from '../tools/ConfigMaps'
 import Semaphore from 'ts-semaphore'
 import { validKey } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
+import { IConfigMaps } from '../tools/IConfigMap'
 
 export class StoreApi {
-    configMaps:ConfigMaps
+    configMaps: IConfigMaps
     static semaphore:Semaphore = new Semaphore(1)
 
     public route = express.Router()
 
-    constructor (config:ConfigMaps, apiKeyApi: ApiKeyApi) {
+    constructor (config: IConfigMaps, apiKeyApi: ApiKeyApi) {
         this.configMaps=config
 
         // A group is implemented by prepending 'groupname-' (the group name and a dash) to key name

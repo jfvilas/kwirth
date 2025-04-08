@@ -1,7 +1,8 @@
 import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod } from '@kubernetes/client-node'
+import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
-import { Secrets } from './tools/Secrets'
-import { ConfigMaps } from './tools/ConfigMaps'
+import { KubernetesSecrets } from './tools/KubernetesSecrets'
+import { KubernetesConfigMaps } from './tools/KubernetesConfigMaps'
 import { VERSION } from './version'
 
 // HTTP server for serving front, api and websockets
@@ -29,6 +30,10 @@ import { LogChannel } from './channels/LogChannel'
 import { AlertChannel } from './channels/AlertChannel'
 import { MetricsChannel } from './channels/MetricsChannel'
 import cluster from 'cluster'
+import { ISecrets } from './tools/ISecrets'
+import { IConfigMaps } from './tools/IConfigMap'
+import { DockerSecrets } from './tools/DockerSecrets'
+import { DockerConfigMaps } from './tools/DockerConfigMaps'
 
 const http = require('http')
 const cors = require('cors')
@@ -46,9 +51,37 @@ const appsApi = kubeConfig.makeApiClient(AppsV1Api)
 const logApi = new Log(kubeConfig)
 
 var saToken: ServiceAccountToken
-var secrets: Secrets
-var configMaps: ConfigMaps
+var secrets: ISecrets
+var configMaps: IConfigMaps
 const rootPath = process.env.KWIRTH_ROOTPATH || ''
+
+const getExecutionEnvironment = async ():Promise<string> => {
+    console.log('Detecting execution environment...')
+
+    // we keep this order of detection, since kubernetes also has a docker engine
+    console.log('Trying Kubernetes...')
+    try {
+        await coreApi.listPodForAllNamespaces()
+        return 'kubernetes'
+    }
+    catch {}
+
+    console.log('Trying WinDocker...')
+    try {
+        let wd = new Docker({ socketPath: '//./pipe/docker_engine' })
+        return 'windocker'
+    }
+    catch {}
+
+    console.log('Trying LinuxDocker...')
+    try {
+        let ld = new Docker()
+        return 'linuxdocker'
+    }
+    catch {}
+
+    return 'undetected'
+}
 
 // get the namespace where Kwirth is running on
 const getMyKubernetesData = async ():Promise<KwirthData> => {
@@ -551,9 +584,9 @@ const getLastKwirthVersion = async (kwirthData:KwirthData) => {
     }
 }
 
-const launch = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
-    secrets = new Secrets(coreApi, kwirthData.namespace)
-    configMaps = new ConfigMaps(coreApi, kwirthData.namespace)
+const runKubernetes = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
+    secrets = new KubernetesSecrets(coreApi, kwirthData.namespace)
+    configMaps = new KubernetesConfigMaps(coreApi, kwirthData.namespace)
 
     await getLastKwirthVersion(kwirthData)
     // serve front
@@ -654,57 +687,147 @@ const initCluster = async (token:string) : Promise<ClusterInfo> => {
     return clusterInfo
 }
 
+const launchKubernetes = async() => {
+    console.log('Start Kubernetes Kwirth')
+    let kwirthData = await getMyKubernetesData()
+    if (kwirthData) {
+        try {
+            saToken = new ServiceAccountToken(coreApi, kwirthData.namespace)    
+            await saToken.createToken('kwirth-sa',kwirthData.namespace)
+
+            setTimeout ( async () => {
+                console.log('Extracting token...')
+                let token = await saToken.extractToken('kwirth-sa', kwirthData.namespace)
+
+                if (token)  {
+                    console.log('SA token obtained succesfully')
+                    var clusterInfo = await initCluster(token)
+
+                    // load channel extensions
+                    var logChannel = new LogChannel(clusterInfo)
+                    var alertChannel = new AlertChannel(clusterInfo)
+                    var metricsChannel = new MetricsChannel(clusterInfo)
+                    channels.set('log', logChannel)
+                    channels.set('alert', alertChannel)
+                    channels.set('metrics', metricsChannel)
+
+                    console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
+                    console.log(`Detected own namespace: ${kwirthData.namespace}`)
+                    if (kwirthData.deployment !== '')
+                        console.log(`Detected own deployment: ${kwirthData.deployment}`)
+                    else
+                        console.log(`No deployment detected. Kwirth is not running inside a cluster`)
+                    runKubernetes(kwirthData, clusterInfo)
+                }
+                else {
+                    console.log('SA token is invalid, exiting...')
+                }
+            }, 5000)
+        }
+        catch (err){
+            console.log(err)
+        }
+    }
+    else {
+        console.log('Cannot get namespace, exiting...')
+    }    
+}
+
+const runDocker = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
+    console.log(kwirthData)
+    secrets = new DockerSecrets(coreApi, '/secrets')
+    configMaps = new DockerConfigMaps(coreApi, '/configmaps')
+
+    await getLastKwirthVersion(kwirthData)
+    
+    //serve front
+    console.log(`SPA is available at: ${rootPath}/front`)
+    app.get(`/`, (req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
+
+    app.get(`${rootPath}`, (req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
+    app.use(`${rootPath}/front`, express.static('./dist/front'))
+
+    // serve config API
+    var ka:ApiKeyApi = new ApiKeyApi(configMaps)
+    app.use(`${rootPath}/key`, ka.route)
+    var va:ConfigApi = new ConfigApi(coreApi, appsApi, ka, kwirthData, clusterInfo, channels)
+    app.use(`${rootPath}/config`, va.route)
+    var sa:StoreApi = new StoreApi(configMaps, ka)
+    app.use(`${rootPath}/store`, sa.route)
+    var ua:UserApi = new UserApi(secrets, ka)
+    app.use(`${rootPath}/user`, ua.route)
+    var la:LoginApi = new LoginApi(secrets, configMaps)
+    app.use(`${rootPath}/login`, la.route)
+    var mk:ManageKwirthApi = new ManageKwirthApi(coreApi, appsApi, ka, kwirthData)
+    app.use(`${rootPath}/managekwirth`, mk.route)
+    var mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi, ka, channels)
+    app.use(`${rootPath}/managecluster`, mc.route)
+    // var ma:MetricsApi = new MetricsApi(clusterInfo, ka)
+    // app.use(`${rootPath}/metrics`, ma.route)
+
+    // obtain remote ip
+    app.use(requestIp.mw())
+    
+    // listen
+    server.listen(PORT, () => {
+        console.log(`Server is listening on port ${PORT}`)
+        console.log(`Context being used: ${kubeConfig.currentContext}`)
+        if (kwirthData.inCluster) {
+            console.log(`Kwirth is running INSIDE cluster`)
+        }
+        else {
+            console.log(`Cluster name (according to kubeconfig context): ${kubeConfig.getCluster(kubeConfig.currentContext)?.name}. Kwirth is running OUTSIDE a cluster`)
+        }
+        console.log(`KWI1500I Control is being given to Kwirth`)
+    })
+    process.on('exit', () => {
+        console.log('exiting')
+    })
+}
+
+const launchDocker = async() => {
+    console.log('Start Docker Kwirth')
+    let clusterInfo = new ClusterInfo()
+    let kwirthData: KwirthData = { 
+        clusterName: 'inDocker',
+        namespace: '',
+        deployment: '',
+        inCluster:false,
+        version:VERSION,
+        lastVersion: VERSION
+    }
+    clusterInfo.nodes = new Map()
+    clusterInfo.metrics = new Metrics('')
+    clusterInfo.metricsInterval = 60
+    clusterInfo.token = ''
+
+    // load channel extensions
+    var logChannel = new LogChannel(clusterInfo)
+    channels.set('log', logChannel)
+
+    console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
+    runDocker(kwirthData, clusterInfo)
+}
 
 ////////////////////////////////////////////////////////////// START /////////////////////////////////////////////////////////
 console.log(`Kwirth version is ${VERSION}`)
 console.log(`Kwirth started at ${new Date().toISOString()}`)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
-// serve front application
-getMyKubernetesData().then ( async (kwirthData) => {
-    try {
-        saToken = new ServiceAccountToken(coreApi, kwirthData.namespace)
-
-        saToken.createToken('kwirth-sa',kwirthData.namespace).then ( () => {
-            setTimeout ( () => {
-                console.log('Extracting token...')
-                saToken.extractToken('kwirth-sa', kwirthData.namespace).then ( async (token) => {
-                    if (token)  {
-                        console.log('SA token obtained succesfully')
-                        var clusterInfo = await initCluster(token)
-    
-                        // load extensions
-                        var logChannel = new LogChannel(clusterInfo)
-                        var alertChannel = new AlertChannel(clusterInfo)
-                        var metricsChannel = new MetricsChannel(clusterInfo)
-                        channels.set('log', logChannel)
-                        channels.set('alert', alertChannel)
-                        channels.set('metrics', metricsChannel)
-    
-                        console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
-                        console.log(`Detected own namespace: ${kwirthData.namespace}`)
-                        if (kwirthData.deployment !== '')
-                            console.log(`Detected own deployment: ${kwirthData.deployment}`)
-                        else
-                            console.log(`No deployment detected. Kwirth is not running inside a cluster`)
-                        launch(kwirthData, clusterInfo)
-                    }
-                    else {
-                        console.log('SA token is invalid, exiting...')
-                    }
-                })
-                .catch ( (err) => {
-                    console.log((err as Error).stack)
-                    console.log('Could not get SA token, exiting...')
-                })    
-            }, 5000)
-        })        
-
-    }
-    catch (err){
-        console.log(err)
-    }
+getExecutionEnvironment().then( async (exenv:string) => {
+    switch (exenv) {
+        case 'windocker':
+        case 'linuxdocker':
+            launchDocker()
+            break
+        case 'kubernetes':
+            launchKubernetes()
+            break
+        default:
+            console.log('Unuspported execution environment. Existing...')
+        }
 })
-.catch ( (err) => {
-    console.log('Cannot get namespace, exiting...')
+.catch( (error) => {
+    console.log ()
+    console.log ('Cannot determine execution environment')
 })

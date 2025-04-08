@@ -1,6 +1,7 @@
 import { CoreV1Api, V1ConfigMap } from '@kubernetes/client-node'
+import { IConfigMaps } from './IConfigMap'
 
-export class ConfigMaps {
+export class KubernetesConfigMaps implements IConfigMaps {
     coreApi:CoreV1Api
     namespace:string
 

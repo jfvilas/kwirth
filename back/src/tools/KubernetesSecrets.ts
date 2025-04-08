@@ -1,6 +1,7 @@
 import { CoreV1Api } from '@kubernetes/client-node'
+import { ISecrets } from './ISecrets'
 
-export class  Secrets {
+export class KubernetesSecrets implements ISecrets {
     coreApi:CoreV1Api
     namespace:string
 
@@ -27,7 +28,7 @@ export class  Secrets {
         }
     }
     
-    public read = async (name:string) => {        
+    public read = async (name:string, _defaultValue?:any) => {        
         var ct = await this.coreApi?.readNamespacedSecret(name,this.namespace)
         return ct.body.data
     }  

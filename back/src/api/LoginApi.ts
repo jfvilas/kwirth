@@ -1,41 +1,19 @@
 import express, { Request, Response} from 'express'
 import Semaphore from 'ts-semaphore'
-import { Secrets } from '../tools/Secrets'
 import { ApiKeyApi } from './ApiKeyApi'
 import { ApiKey } from '@jfvilas/kwirth-common'
-import { ConfigMaps } from '../tools/ConfigMaps'
 import { accessKeyCreate } from '@jfvilas/kwirth-common'
 import { cleanApiKeys } from '../tools/AuthorizationManagement'
+import { ISecrets } from '../tools/ISecrets'
+import { IConfigMaps } from '../tools/IConfigMap'
 
 export class LoginApi {
-    secrets:Secrets
-    configMaps:ConfigMaps
+    secrets: ISecrets
+    configMaps: IConfigMaps
     static semaphore:Semaphore = new Semaphore(1)
     public route = express.Router()
 
-    createApiKey = async (req:Request, username:string) : Promise<ApiKey> => {
-        var ip=(req as any).clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress
-        var apiKey:ApiKey = {
-            accessKey: accessKeyCreate('permanent', 'cluster:::::'),
-            description: `Login user '${username}' at ${new Date().toISOString()} from ${ip}`,
-            expire: Date.now() + 24*60*60*1000  // 24h
-        }
-        var storedKeys = await this.configMaps.read('kwirth.keys', [])
-        storedKeys = cleanApiKeys(storedKeys)
-        storedKeys.push(apiKey)
-        this.configMaps.write('kwirth.keys', storedKeys )
-        ApiKeyApi.apiKeys = storedKeys
-        return apiKey
-    }
-
-    okResponse = (user:any) => {
-        var newObject:any={}
-        Object.assign(newObject,user)
-        delete newObject['password']
-        return newObject
-    }
-    
-    constructor (secrets:Secrets, configMaps:ConfigMaps) {
+    constructor (secrets: ISecrets, configMaps: IConfigMaps) {
         this.secrets = secrets
         this.configMaps = configMaps
 
@@ -87,4 +65,27 @@ export class LoginApi {
         })
 
     }
+
+    createApiKey = async (req:Request, username:string) : Promise<ApiKey> => {
+        var ip=(req as any).clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress
+        var apiKey:ApiKey = {
+            accessKey: accessKeyCreate('permanent', 'cluster:::::'),
+            description: `Login user '${username}' at ${new Date().toISOString()} from ${ip}`,
+            expire: Date.now() + 24*60*60*1000  // 24h
+        }
+        var storedKeys = await this.configMaps.read('kwirth.keys', [])
+        storedKeys = cleanApiKeys(storedKeys)
+        storedKeys.push(apiKey)
+        this.configMaps.write('kwirth.keys', storedKeys )
+        ApiKeyApi.apiKeys = storedKeys
+        return apiKey
+    }
+
+    okResponse = (user:any) => {
+        var newObject:any={}
+        Object.assign(newObject,user)
+        delete newObject['password']
+        return newObject
+    }
+    
 }

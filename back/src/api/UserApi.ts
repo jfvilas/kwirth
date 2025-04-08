@@ -1,16 +1,16 @@
 import express, { Request, Response} from 'express'
-import { Secrets } from '../tools/Secrets'
 import Semaphore from 'ts-semaphore'
 import { validKey } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
+import { ISecrets } from '../tools/ISecrets'
 
 export class UserApi {
-    secrets:Secrets
-    static semaphore:Semaphore = new Semaphore(1)
+    secrets: ISecrets
+    static semaphore: Semaphore = new Semaphore(1)
 
     public route = express.Router()
 
-    constructor (secrets:Secrets, apiKeyApi:ApiKeyApi) {
+    constructor (secrets: ISecrets, apiKeyApi: ApiKeyApi) {
       this.secrets=secrets
 
       this.route.route('/')

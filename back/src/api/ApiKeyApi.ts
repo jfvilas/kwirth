@@ -1,19 +1,19 @@
 import express, { Request, Response} from 'express'
-import { ConfigMaps } from '../tools/ConfigMaps'
 import { accessKeyBuild, ApiKey } from '@jfvilas/kwirth-common'
 import { cleanApiKeys, validKey } from '../tools/AuthorizationManagement'
 import { AccessKey, accessKeyCreate, accessKeySerialize } from '@jfvilas/kwirth-common'
 import * as crypto from 'crypto'
+import { IConfigMaps } from '../tools/IConfigMap'
 
 export class ApiKeyApi {
-    configMaps:ConfigMaps;
+    configMaps: IConfigMaps
     public static apiKeys:ApiKey[]=[]
     public route = express.Router()
 
-    constructor (configMaps:ConfigMaps) {
+    constructor (configMaps: IConfigMaps) {
         this.configMaps = configMaps
 
-        configMaps.read('kwirth.keys',[]).then( result => {
+        configMaps.read('kwirth.keys',[]).then( (result:any) => {
             if (result) result=cleanApiKeys(result)
             ApiKeyApi.apiKeys=result
         })
