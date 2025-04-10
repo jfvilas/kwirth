@@ -778,12 +778,12 @@ const loadMetricsInfo = async (clusterInfo: ClusterInfo) => {
 const initCluster = async (token:string) : Promise<ClusterInfo> => {
     // inictialize cluster
     var clusterInfo = new ClusterInfo()
-    clusterInfo.loadName()
     clusterInfo.token = token
     clusterInfo.coreApi = coreApi
     clusterInfo.appsApi = appsApi
     clusterInfo.logApi = logApi
 
+    clusterInfo.loadName()
     clusterInfo.nodes = await clusterInfo.loadNodes()
     console.log('Node config loaded')
 

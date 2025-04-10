@@ -367,7 +367,7 @@ export class MetricsTools {
         this.loadingClusterMetrics = true
         console.log(`About to read cluster metrics ${new Date().toTimeString()}`)
 
-        await clusterInfo.loadNodes()
+        clusterInfo.nodes = await clusterInfo.loadNodes()
         
         for (var node of clusterInfo.nodes.values()) {
             await this.readNodeMetrics(node)
