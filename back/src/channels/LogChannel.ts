@@ -130,7 +130,7 @@ class LogChannel implements IChannel {
             logStream.on('data', chunk => {
                 var text:string=chunk.toString('utf8')
                 this.sendBlock(webSocket, instanceConfig, podNamespace, podName, containerName, text, true)
-                if (global.gc) global.gc()  // +++ add in other critical loops
+                if (global.gc) global.gc()
             })
         
             if (!this.websocketLog.get(webSocket)) this.websocketLog.set(webSocket, [])

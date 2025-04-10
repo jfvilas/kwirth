@@ -364,6 +364,8 @@ export class MetricsTools {
             console.log(`Still loading cluster metrics ${new Date().toTimeString()}`)
             return
         }
+
+        if (global.gc) global.gc()
         this.loadingClusterMetrics = true
         console.log(`About to read cluster metrics ${new Date().toTimeString()}`)
 

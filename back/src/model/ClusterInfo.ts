@@ -36,7 +36,6 @@ export class ClusterInfo {
     startInterval = (seconds: number) => {
         this.metricsInterval = seconds
         this.metricsIntervalRef = setInterval(() => {
-            this.nodes
             this.metrics.readClusterMetrics(this) 
         }, this.metricsInterval * 1000, {})
     }
