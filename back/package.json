@@ -8,12 +8,12 @@
     "build": "tsc",
     "startold": "tsc && node dist/index.js",
     "start-wsl": "CHOKIDAR_USEPOLLING=true npx nodemon src/index.ts",
-    "start": "npx nodemon src/index.ts"
+    "start": "set NODE_OPTIONS='--max-old-space-size=1024' && npx nodemon src/index.ts"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@jfvilas/kwirth-common": "^0.3.55",
+    "@jfvilas/kwirth-common": "^0.3.56",
     "@kubernetes/client-node": "^0.21.0",
     "@types/node": "^20.12.13",
     "body-parser": "^1.20.2",

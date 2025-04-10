@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod } from '@kubernetes/client-node'
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod, V1ObjectMeta, V1PodSpec, V1Container } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -14,7 +14,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import WebSocket from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { InstanceConfigActionEnum, InstanceConfigFlowEnum, versionGreatThan, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, KwirthData, InstanceConfigChannelEnum, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, IChannel } from '@jfvilas/kwirth-common'
+import { InstanceConfigActionEnum, InstanceConfigFlowEnum, versionGreatThan, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, KwirthData, InstanceConfigChannelEnum, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, IChannel, ClusterTypeEnum } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { getChannelScopeLevel, validBearerKey } from './tools/AuthorizationManagement'
 import { getPodsFromGroup } from './tools/KubernetesOperations'
@@ -29,7 +29,6 @@ import { Metrics } from './tools/MetricsTools'
 import { LogChannel } from './channels/LogChannel'
 import { AlertChannel } from './channels/AlertChannel'
 import { MetricsChannel } from './channels/MetricsChannel'
-import cluster from 'cluster'
 import { ISecrets } from './tools/ISecrets'
 import { IConfigMaps } from './tools/IConfigMap'
 import { DockerSecrets } from './tools/DockerSecrets'
@@ -49,6 +48,8 @@ kubeConfig.loadFromDefault()
 const coreApi = kubeConfig.makeApiClient(CoreV1Api)
 const appsApi = kubeConfig.makeApiClient(AppsV1Api)
 const logApi = new Log(kubeConfig)
+var dockerApi: Docker = new Docker()
+var thisKwirthData: KwirthData
 
 var saToken: ServiceAccountToken
 var secrets: ISecrets
@@ -68,7 +69,7 @@ const getExecutionEnvironment = async ():Promise<string> => {
 
     console.log('Trying WinDocker...')
     try {
-        let wd = new Docker({ socketPath: '//./pipe/docker_engine' })
+        dockerApi = new Docker({ socketPath: '//./pipe/docker_engine' })
         return 'windocker'
     }
     catch {}
@@ -103,11 +104,11 @@ const getMyKubernetesData = async ():Promise<KwirthData> => {
                 }
             }
         }
-        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, version:VERSION, lastVersion: VERSION }
+        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES }
     }
     else {
         // this namespace will be used to access secrets and configmaps
-        return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION }
+        return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES }
     }
 }
 
@@ -168,70 +169,122 @@ const deleteObject = async (eventType:string, podNamespace:string, podName:strin
     }
 }
 
-// watches for pod changes (add, delete...) inside the group pointed by the requestor
-const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, instanceConfig:InstanceConfig) => {
-    const watch = new Watch(kubeConfig)
-
-    watch.watch(apiPath, labelSelector, (eventType:string, obj:any) => {
-        let podName:string = obj.metadata.name
-        let podNamespace:string = obj.metadata.namespace
-        if (eventType === 'ADDED') {
-            if (obj.status.phase.toLowerCase()!=='running') {
-                console.log('Not running pod:', podNamespace+'/'+podName)
-                return
-            }
-            for (var container of obj.spec.containers) {
-                let containerName = container.name
-                switch (instanceConfig.view) {
-                    case InstanceConfigViewEnum.NAMESPACE:
+const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containers:string[]) => {
+    if (eventType === 'ADDED') {
+        for (var container of containers) {
+            let containerName = container
+            switch (instanceConfig.view) {
+                case InstanceConfigViewEnum.NAMESPACE:
+                    addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
+                    break
+                case InstanceConfigViewEnum.GROUP:
+                    var [_groupType, groupName] = instanceConfig.group.split('+')
+                    if (podName.startsWith(groupName)) {  // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
                         addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
-                        break
-                    case InstanceConfigViewEnum.GROUP:
-                        var [_groupType, groupName] = instanceConfig.group.split('+')
-                        if (podName.startsWith(groupName)) {  // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
+                    }
+                    break
+                case InstanceConfigViewEnum.POD:
+                    if ((instanceConfig.namespace==='' || (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace))) && instanceConfig.pod.split(',').includes(podName)) {
+                        if (instanceConfig.pod.split(',').includes(podName)) {
+                            console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName}`)
                             addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
                         }
-                        break
-                    case InstanceConfigViewEnum.POD:
-                        if ((instanceConfig.namespace==='' || (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace))) && instanceConfig.pod.split(',').includes(podName)) {
-                            if (instanceConfig.pod.split(',').includes(podName)) {
-                                console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName}`)
-                                addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
-                            }
+                    }
+                    break
+                case InstanceConfigViewEnum.CONTAINER:
+                    // container has the form: podname+containername (includes a plus sign as separating char)
+                    var icContainers = Array.from (new Set (instanceConfig.container.split(',').map (c => c.split('+')[1])))
+                    var scPods = Array.from (new  Set (instanceConfig.container.split(',').map (c => c.split('+')[0])))
+                    console.log('sccontainers')
+                    console.log(scPods)
+                    console.log(icContainers)
+                    console.log(containerName)
+                    if (icContainers.includes(containerName) && scPods.includes(podName)) {
+                        if (instanceConfig.container.split(',').includes(podName+'+'+containerName)) {
+                            console.log(`Container ADDED: ${podNamespace}/${podName}/${containerName}`)
+                            addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
                         }
-                        break
-                    case InstanceConfigViewEnum.CONTAINER:
-                        // container has the form: podname+containername (includes a plus sign as separating char)
-                        var sccontainers = Array.from (new Set (instanceConfig.container.split(',').map (c => c.split('+')[1])))
-                        var scpods = Array.from (new  Set (instanceConfig.container.split(',').map (c => c.split('+')[0])))
-                        if (sccontainers.includes(containerName) && scpods.includes(podName)) {
-                            if (instanceConfig.container.split(',').includes(podName+'+'+containerName)) {
-                                console.log(`Container ADDED: ${podNamespace}/${podName}/${containerName}`)
-                                addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
-                            }
-                        }
-                        else {
-                            console.log(`Excluded container: ${containerName}`)
-                        }
-                        break
-                    default:
-                        console.log('Invalid instanceConfig view')
-                        break
-                }
+                    }
+                    else {
+                        console.log(`Excluded container: ${containerName}`)
+                    }
+                    break
+                default:
+                    console.log('Invalid instanceConfig view')
+                    break
             }
         }
-        else if (eventType === 'MODIFIED') {
-            deleteObject(eventType, podNamespace, podName, '', webSocket, instanceConfig)
-            sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Pod ${eventType}: ${podNamespace}/${podName}`, instanceConfig)
+    }
+    else if (eventType === 'MODIFIED') {
+        deleteObject(eventType, podNamespace, podName, '', webSocket, instanceConfig)
+        sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Pod ${eventType}: ${podNamespace}/${podName}`, instanceConfig)
+    }
+    else if (eventType === 'DELETED') {
+        modifyObject(eventType, podNamespace, podName, '', webSocket, instanceConfig)
+        sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Pod ${eventType}: ${podNamespace}/${podName}`, instanceConfig)
+    }
+    else {
+        console.log(`Pod ${eventType} is unmanaged`)
+        sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Received unmanaged event (${eventType}): ${podNamespace}/${podName}`, instanceConfig)
+    }
+
+}
+
+const watchDockerPods = (apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:InstanceConfig) => {
+    //launch included containers
+
+    console.log(apiPath)
+    console.log(queryParams)
+    console.log([ queryParams['$dockerContainerName']])
+    let ml = '{'+queryParams.labelSelector+'}'
+    let kvps:string[] = queryParams.labelSelector.split(',')
+    const jsonObject: { [key: string]: string } = {}
+    kvps.forEach(kvp => {
+        const [key, value] = kvp.split('=')
+        jsonObject[key] = value
+    })
+    console.log(jsonObject)
+    processEvent('ADDED', webSocket, instanceConfig, '$docker', '$docker', [ jsonObject['$dockerContainerName']] )
+
+
+    // listen for changes
+    // dockerApi.getEvents({ filters: { type: ['container'], event: ['start'] } }, (err, eventStream) => {
+    //     if (err) {
+    //       console.error('Error listening to events:', err)
+    //       return
+    //     }
+    
+    //     if (eventStream) {
+    //         eventStream.on('data', async buffer => {
+    //             const event = JSON.parse(buffer.toString());
+    //             const containerId = event.id;
+
+    //             const containerInfo = await dockerApi.getContainer(containerId).inspect();
+    //             //streamLogs(containerInfo);
+    //             console.log('containerInfo')
+    //             console.log(containerInfo.Name)
+    //             processEvent('ADDED', webSocket, instanceConfig, '$docker', '$docker', [containerInfo.Name])
+    //         })
+    //     }
+    // })
+}
+
+// watches for pod changes (add, delete...) inside the group pointed by the requestor
+const watchKubernetesPods = (apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:InstanceConfig) => {
+    const watch = new Watch(kubeConfig)
+
+    watch.watch(apiPath, queryParams, (eventType:string, obj:any) => {
+        let podName:string = obj.metadata.name
+        let podNamespace:string = obj.metadata.namespace
+
+        if (obj.status.phase.toLowerCase()!=='running') {
+            console.log('Not running pod:', podNamespace+'/'+podName)
+            return
         }
-        else if (eventType === 'DELETED') {
-            modifyObject(eventType, podNamespace, podName, '', webSocket, instanceConfig)
-            sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Pod ${eventType}: ${podNamespace}/${podName}`, instanceConfig)
-        }
-        else {
-            console.log(`Pod ${eventType} is unmanaged`)
-            sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Received unmanaged event (${eventType}): ${podNamespace}/${podName}`, instanceConfig)
-        }
+        
+        // let containerNames = obj.spec.containers.map( (c: any) => c.name.replaceAll('/',''))
+        // processEvent(eventType, webSocket, instanceConfig, podNamespace, podName, containerNames)
+        processEvent(eventType, webSocket, instanceConfig, podNamespace, podName, obj.spec.containers)
     },
     (err) => {
         if (err !== null) {
@@ -245,42 +298,72 @@ const watchPods = (apiPath:string, labelSelector:any, webSocket:WebSocket, insta
     })
 }
 
+const watchPods = (apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:InstanceConfig) => {
+    if (thisKwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+        watchDockerPods(apiPath, queryParams, webSocket, instanceConfig)
+    }
+    else {
+        watchKubernetesPods(apiPath, queryParams, webSocket, instanceConfig)
+    }
+}
+
 // +++ this function should be refactored to check only for requested resources included in instanceConfig, since, for example, a 'cluster' scope in
 // accessKeyResources will create a list including all pods in the cluster
 const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, accessKeyResources:ResourceIdentifier[], validNamespaces:string[], validPodNames:string[]) => {
-    var allPods=await coreApi.listPodForAllNamespaces() //+++ can be optimized if instanceConfig.namespace is specified
     var selectedPods:V1Pod[]=[]
+    if (thisKwirthData.clusterType === ClusterTypeEnum.DOCKER) {
 
-    for (var pod of allPods.body.items) {
-        var podName = pod.metadata?.name!
-        var podNamespace = pod.metadata?.namespace!
-
-        let existClusterScope = accessKeyResources.find(resource => resource.scope==='cluster') !== null
-        if (!existClusterScope) {
-            if (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace)) {
-                if (! validNamespaces.includes(podNamespace)) continue
-            }
-
-            //+++ other filters (not just 'pod') pending implementation (that is, obtain a list of pods checking groups, for example)
-            // if (metricsConfig.pod!=='' && metricsConfig.pod.split(',').includes(podName)) {
-            //     if (! validPodNames.includes(podName)) continue
-            // }
-
-            if (instanceConfig.pod!=='' && instanceConfig.pod.split(',').includes(podName)) {
-                if (! validPodNames.includes(podName)) continue
-            }
-
-            let podResource = accessKeyResources.find(resource => resource.pod===podName)
-            if (!podResource) continue
-
-            var haveLevel = getChannelScopeLevel(channels, instanceConfig.channel)
-            var requiredLevel = getChannelScopeLevel(channels, instanceConfig.channel)
-            if (haveLevel<requiredLevel) {
-                console.log(`Insufficent level ${haveLevel} < ${requiredLevel}`)
-                continue
-            }
-        }
+        let pod = new V1Pod()
+        pod.metadata = new V1ObjectMeta()
+        pod.metadata.name = '$docker'
+        pod.metadata.namespace = '$docker'
+        pod.metadata.labels = { app: '$docker', name:'$docker' }
+        pod.spec = new V1PodSpec()
+        pod.spec.containers = []
+        
+        // let containers = await dockerApi.listContainers( { all:false} )
+        // for (var container of containers) {
+        //     let c = new V1Container()
+        //     let name =  container.Names ? container.Names[0] : container.Id
+        //     c.name = name.replaceAll('/','')
+        //     pod.spec.containers.push(c)
+        // }
         selectedPods.push(pod)
+    }
+    else {
+        var allPods=await coreApi.listPodForAllNamespaces() //+++ can be optimized if instanceConfig.namespace is specified
+
+        for (var pod of allPods.body.items) {
+            var podName = pod.metadata?.name!
+            var podNamespace = pod.metadata?.namespace!
+
+            let existClusterScope = accessKeyResources.find(resource => resource.scope==='cluster') !== null
+            if (!existClusterScope) {
+                if (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace)) {
+                    if (! validNamespaces.includes(podNamespace)) continue
+                }
+
+                //+++ other filters (not just 'pod') pending implementation (that is, obtain a list of pods checking groups, for example)
+                // if (metricsConfig.pod!=='' && metricsConfig.pod.split(',').includes(podName)) {
+                //     if (! validPodNames.includes(podName)) continue
+                // }
+
+                if (instanceConfig.pod!=='' && instanceConfig.pod.split(',').includes(podName)) {
+                    if (! validPodNames.includes(podName)) continue
+                }
+
+                let podResource = accessKeyResources.find(resource => resource.pod===podName)
+                if (!podResource) continue
+
+                var haveLevel = getChannelScopeLevel(channels, instanceConfig.channel)
+                var requiredLevel = getChannelScopeLevel(channels, instanceConfig.channel)
+                if (haveLevel<requiredLevel) {
+                    console.log(`Insufficent level ${haveLevel} < ${requiredLevel}`)
+                    continue
+                }
+            }
+            selectedPods.push(pod)
+        }
     }
     return selectedPods
 }
@@ -357,12 +440,41 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
             }
             sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
+        // case 'container':
+        //     for (let container of instanceConfig.container.split(',')) {
+        //         let [podName, containerName] = container.split('+')
+        //         let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
+        //         if (validPod) {
+        //             let metadataLabels = validPod.metadata?.labels
+        //             if (metadataLabels) {
+        //                 let labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
+        //                 let specificInstanceConfig: InstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
+        //                 specificInstanceConfig.container = container
+        //                 watchPods(`/api/v1/${instanceConfig.objects}`, { labelSelector }, webSocket, specificInstanceConfig)
+        //             }
+        //             else {
+        //                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels for container '${podName}/${containerName}'`, instanceConfig)
+        //             }
+        //         }
+        //         else {
+        //             sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to container '${podName}/${containerName}'  (or pod does not exsist)`, instanceConfig)
+        //         }
+        //     }
+        //     sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
+        //     break
         case 'container':
+            console.log(requestedValidatedPods)
             for (let container of instanceConfig.container.split(',')) {
                 let [podName, containerName] = container.split('+')
                 let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
+                //let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName && p.spec?.containers.find(c => c.name === containerName))
+                console.log("podName+'/'+containerName")
+                console.log(podName+'/'+containerName+':  '+validPod)
                 if (validPod) {
                     let metadataLabels = validPod.metadata?.labels
+                    metadataLabels!['$dockerContainerName'] = containerName
+                    console.log('metadataLabels')
+                    console.log(metadataLabels)
                     if (metadataLabels) {
                         let labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
                         let specificInstanceConfig: InstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
@@ -379,6 +491,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
             }
             sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
+
         default:
             sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: invalid view '${instanceConfig.view}'`, instanceConfig)
             break
@@ -456,31 +569,43 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
 
     var requestedNamespaces = instanceConfig.namespace.split(',').filter(ns => ns!=='')
     var allowedNamespaces:string[] = []
-    if (accessKeyResources.find(akr => akr.scope==='cluster')) {
-        let res = await coreApi.listNamespace()
-        allowedNamespaces = res.body.items.map(n => n.metadata?.name as string)
+    if (thisKwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+        allowedNamespaces = ['$docker']
+        validNamespaces = ['$docker']
     }
     else {
-        allowedNamespaces = accessKeyResources.filter(r => r.namespace!='').map(r => r.namespace)
+        if (accessKeyResources.find(akr => akr.scope==='cluster')) {
+            let res = await coreApi.listNamespace()
+            allowedNamespaces = res.body.items.map(n => n.metadata?.name as string)
+        }
+        else {
+            allowedNamespaces = accessKeyResources.filter(r => r.namespace!='').map(r => r.namespace)
+        }
+        allowedNamespaces = [...new Set(allowedNamespaces)]
+        var validNamespaces = requestedNamespaces.filter(ns => allowedNamespaces.includes(ns))
+        validNamespaces = [...new Set(validNamespaces)]
     }
-    allowedNamespaces = [...new Set(allowedNamespaces)]
-    var validNamespaces = requestedNamespaces.filter(ns => allowedNamespaces.includes(ns))
-    validNamespaces = [...new Set(validNamespaces)]
 
     var requestedPodNames = instanceConfig.pod.split(',').filter(podName => podName!=='')
     var allowedPodNames:string[] = []
     var validPodNames:string[] = []
-    if (accessKeyResources.find(akr => akr.scope === 'cluster')) {
-        for (var ns of validNamespaces) {
-            let res = await coreApi.listNamespacedPod(ns)
-            allowedPodNames.push (...res.body.items.map(p => p.metadata?.name as string))
-        }
-        validPodNames = [...new Set(allowedPodNames)]
+    if (thisKwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+        allowedPodNames =  ['$docker']
+        validPodNames =  ['$docker']
     }
     else {
-        allowedPodNames = accessKeyResources.filter(r => r.pod!='').map(r => r.pod)
-        validPodNames = requestedPodNames.filter(podName => allowedPodNames.includes(podName))
-        validPodNames = [...new Set(validPodNames)]
+        if (accessKeyResources.find(akr => akr.scope === 'cluster')) {
+            for (var ns of validNamespaces) {
+                let res = await coreApi.listNamespacedPod(ns)
+                allowedPodNames.push (...res.body.items.map(p => p.metadata?.name as string))
+            }
+            validPodNames = [...new Set(allowedPodNames)]
+        }
+        else {
+            allowedPodNames = accessKeyResources.filter(r => r.pod!='').map(r => r.pod)
+            validPodNames = requestedPodNames.filter(podName => allowedPodNames.includes(podName))
+            validPodNames = [...new Set(validPodNames)]
+        }
     }
 
     console.log('validNamespaces')
@@ -689,19 +814,20 @@ const initCluster = async (token:string) : Promise<ClusterInfo> => {
 
 const launchKubernetes = async() => {
     console.log('Start Kubernetes Kwirth')
-    let kwirthData = await getMyKubernetesData()
-    if (kwirthData) {
+    thisKwirthData = await getMyKubernetesData()
+    if (thisKwirthData) {
         try {
-            saToken = new ServiceAccountToken(coreApi, kwirthData.namespace)    
-            await saToken.createToken('kwirth-sa',kwirthData.namespace)
+            saToken = new ServiceAccountToken(coreApi, thisKwirthData.namespace)    
+            await saToken.createToken('kwirth-sa',thisKwirthData.namespace)
 
             setTimeout ( async () => {
                 console.log('Extracting token...')
-                let token = await saToken.extractToken('kwirth-sa', kwirthData.namespace)
+                let token = await saToken.extractToken('kwirth-sa', thisKwirthData.namespace)
 
                 if (token)  {
                     console.log('SA token obtained succesfully')
                     var clusterInfo = await initCluster(token)
+                    clusterInfo.clusterType = thisKwirthData.clusterType
 
                     // load channel extensions
                     var logChannel = new LogChannel(clusterInfo)
@@ -712,12 +838,12 @@ const launchKubernetes = async() => {
                     channels.set('metrics', metricsChannel)
 
                     console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
-                    console.log(`Detected own namespace: ${kwirthData.namespace}`)
-                    if (kwirthData.deployment !== '')
-                        console.log(`Detected own deployment: ${kwirthData.deployment}`)
+                    console.log(`Detected own namespace: ${thisKwirthData.namespace}`)
+                    if (thisKwirthData.deployment !== '')
+                        console.log(`Detected own deployment: ${thisKwirthData.deployment}`)
                     else
                         console.log(`No deployment detected. Kwirth is not running inside a cluster`)
-                    runKubernetes(kwirthData, clusterInfo)
+                    runKubernetes(thisKwirthData, clusterInfo)
                 }
                 else {
                     console.log('SA token is invalid, exiting...')
@@ -734,6 +860,7 @@ const launchKubernetes = async() => {
 }
 
 const runDocker = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
+    thisKwirthData = kwirthData
     console.log(kwirthData)
     secrets = new DockerSecrets(coreApi, '/secrets')
     configMaps = new DockerConfigMaps(coreApi, '/configmaps')
@@ -750,8 +877,9 @@ const runDocker = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
     // serve config API
     var ka:ApiKeyApi = new ApiKeyApi(configMaps)
     app.use(`${rootPath}/key`, ka.route)
-    var va:ConfigApi = new ConfigApi(coreApi, appsApi, ka, kwirthData, clusterInfo, channels)
-    app.use(`${rootPath}/config`, va.route)
+    var ca:ConfigApi = new ConfigApi(coreApi, appsApi, ka, kwirthData, clusterInfo, channels)
+    ca.setDockerApi(dockerApi)
+    app.use(`${rootPath}/config`, ca.route)
     var sa:StoreApi = new StoreApi(configMaps, ka)
     app.use(`${rootPath}/store`, sa.route)
     var ua:UserApi = new UserApi(secrets, ka)
@@ -788,18 +916,21 @@ const runDocker = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
 const launchDocker = async() => {
     console.log('Start Docker Kwirth')
     let clusterInfo = new ClusterInfo()
-    let kwirthData: KwirthData = { 
+    let kwirthData: KwirthData = {
         clusterName: 'inDocker',
         namespace: '',
         deployment: '',
-        inCluster:false,
-        version:VERSION,
-        lastVersion: VERSION
+        inCluster: false,
+        version: VERSION,
+        lastVersion: VERSION,
+        clusterType: ClusterTypeEnum.DOCKER
     }
     clusterInfo.nodes = new Map()
     clusterInfo.metrics = new Metrics('')
     clusterInfo.metricsInterval = 60
     clusterInfo.token = ''
+    clusterInfo.clusterType = ClusterTypeEnum.DOCKER
+    clusterInfo.dockerApi = dockerApi
 
     // load channel extensions
     var logChannel = new LogChannel(clusterInfo)
@@ -821,7 +952,8 @@ getExecutionEnvironment().then( async (exenv:string) => {
             launchDocker()
             break
         case 'kubernetes':
-            launchKubernetes()
+            launchDocker()
+            //launchKubernetes()
             break
         default:
             console.log('Unuspported execution environment. Existing...')

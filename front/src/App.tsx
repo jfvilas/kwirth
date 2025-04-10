@@ -163,6 +163,8 @@ const App: React.FC = () => {
         srcCluster.enabled = true
         response = await fetch(`${backendUrl}/config/version`, addGetAuthorization(accessString))
         srcCluster.kwirthData = await response.json() as KwirthData
+        console.log('gkd')
+        console.log(srcCluster.kwirthData)
         if (versionGreatThan(srcCluster.kwirthData.version,srcCluster.kwirthData.lastVersion)) {
             setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
         }

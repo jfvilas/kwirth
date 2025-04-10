@@ -1,5 +1,7 @@
 import { AppsV1Api, CoreV1Api, Log, V1Node } from "@kubernetes/client-node";
 import { Metrics } from "../tools/MetricsTools";
+import { ClusterTypeEnum } from "@jfvilas/kwirth-common";
+import Docker from 'dockerode'
 
 export interface NodeInfo {
     name:string
@@ -16,6 +18,7 @@ export interface NodeInfo {
 
 export class ClusterInfo {
     public nodes: Map<string, NodeInfo> = new Map()
+    public dockerApi!: Docker
     public coreApi!: CoreV1Api
     public appsApi!: AppsV1Api
     public logApi!: Log
@@ -25,6 +28,7 @@ export class ClusterInfo {
     public metricsIntervalRef: number = -1
     public vcpus: number = 0
     public memory: number = 0
+    public clusterType: ClusterTypeEnum = ClusterTypeEnum.KUBERNETES
 
     stopInterval = () => clearTimeout(this.metricsIntervalRef)
 

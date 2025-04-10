@@ -1,22 +1,28 @@
 import express, { Request, Response} from 'express'
 import { CoreV1Api, AppsV1Api } from '@kubernetes/client-node'
-import { IChannel, KwirthData } from '@jfvilas/kwirth-common'
+import { ClusterTypeEnum, IChannel, KwirthData } from '@jfvilas/kwirth-common'
 import { validKey } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
 import { ClusterInfo } from '../model/ClusterInfo'
+import Docker from 'dockerode'
 
 export class ConfigApi {
     public route = express.Router()
+    dockerApi : Docker
     coreApi: CoreV1Api
     appsV1Api: AppsV1Api
     kwirthData: KwirthData
     clusterInfo: ClusterInfo
 
+    setDockerApi = (dockerApi:Docker) => {
+        this.dockerApi = dockerApi
+    }
     constructor (coreApi:CoreV1Api, appsV1Api:AppsV1Api, apiKeyApi: ApiKeyApi, kwirthData:KwirthData, clusterInfo:ClusterInfo, channels:Map<string,IChannel>) {
         this.coreApi = coreApi
         this.appsV1Api = appsV1Api
         this.kwirthData = kwirthData
         this.clusterInfo = clusterInfo
+        this.dockerApi = new Docker()
 
         // return kwirth version information
         this.route.route('/version')
@@ -126,19 +132,26 @@ export class ConfigApi {
                 next()
             })
             .get( async (req:Request, res:Response) => {
-                try {
-                    var response= await this.coreApi.listNamespacedPod(req.params.namespace)
-                    var searchPod = response.body.items.filter (p => p?.metadata?.name===req.params.pod)
-                    if (searchPod.length===0) {
-                        res.status(200).json([])
-                        return
-                    }
-                    var conts = searchPod[0].spec?.containers.map(c => c.name)
-                    res.status(200).json(conts)
+                if (this.kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+                    let runningContainers= await this.dockerApi.listContainers( { all:false } )
+                    let names = runningContainers.map(rc => rc.Names? rc.Names[0].replaceAll('/','') : 'unnamed')
+                    res.status(200).json(names)
                 }
-                catch (err) {
-                    res.status(200).json([])
-                    console.log(err)
+                else {
+                    try {
+                        var response= await this.coreApi.listNamespacedPod(req.params.namespace)
+                        var searchPod = response.body.items.filter (p => p?.metadata?.name===req.params.pod)
+                        if (searchPod.length===0) {
+                            res.status(200).json([])
+                            return
+                        }
+                        var conts = searchPod[0].spec?.containers.map(c => c.name)
+                        res.status(200).json(conts)
+                    }
+                    catch (err) {
+                        res.status(200).json([])
+                        console.log(err)
+                    }
                 }
             })
     }

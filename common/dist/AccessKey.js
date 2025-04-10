@@ -12,7 +12,9 @@ const guid_1 = __importDefault(require("guid"));
     
     where:
         id: is a GUID
-        type: is volatile' or 'permanent' (the second type is persisted when created)
+        type: is 'volatile', 'permanent' (it is persisted when created)  or 'bearer:....'
+            in case of a bearer accessKey, the type contains the expire for the key, that is, for example:
+               bearer:
         resource: is a stringified ResourceIdentifier
 */
 class AccessKey {

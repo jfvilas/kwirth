@@ -1,13 +1,13 @@
-import { ChannelCapabilities, IChannel, LogMessage, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common';
-import * as stream from 'stream'
+import { ChannelCapabilities, IChannel, LogMessage, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum } from '@jfvilas/kwirth-common';
 import WebSocket from 'ws'
-import { PassThrough } from 'stream'; 
-import { ClusterInfo } from '../model/ClusterInfo';
+import * as stream from 'stream'
+import { PassThrough } from 'stream'
+import { ClusterInfo } from '../model/ClusterInfo'
 
 class LogChannel implements IChannel {
     clusterInfo : ClusterInfo
     buffer: Map<WebSocket,string>= new Map()  // used for incomplete buffering log messages    
-    websocketLog:Map<WebSocket, {instanceId:string, logStream:PassThrough, timestamps: boolean, previous:boolean, tailLines:number, paused:boolean }[]>= new Map()  
+    websocketLog:Map<WebSocket, {instanceId:string, passThrouoghStream?:PassThrough, readableStream?: NodeJS.ReadableStream, timestamps: boolean, previous:boolean, tailLines:number, paused:boolean }[]>= new Map()  
  
     constructor (clusterInfo:ClusterInfo) {
         this.clusterInfo = clusterInfo
@@ -65,10 +65,11 @@ class LogChannel implements IChannel {
         webSocket.send(JSON.stringify(sgnMsg))
     }
 
-    sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName: string, source:string, instanceId:string): void => {
+    sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName: string, source:string, instanceId:string, stripHeader:boolean): void => {
         var instances = this.websocketLog.get(webSocket)
         if (!instances) {
             console.log('No instances found for sendLogData')
+            // perform cleaning
             return
         }
         var instance = instances.find (i => i.instanceId === instanceId)
@@ -91,18 +92,70 @@ class LogChannel implements IChannel {
         }
         for (var line of logLines) {
             if (line.trim() !== '') {
+                //if (line.length<7) console.log(line, line.length)
+                if (stripHeader && line.length>=8) line=line.substring(8)
                 msg.text=line
                 webSocket.send(JSON.stringify(msg))   
             }
         }
     }
+
+    sendBlock (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string, text:string, stripHeader:boolean)  {
+        if (this.buffer.get(webSocket)!==undefined) {
+            // if we have some text from a previous incompleted chunk, we prepend it now
+            text=this.buffer.get(webSocket)+text
+            this.buffer.delete(webSocket)
+        }
+        if (!text.endsWith('\n')) {
+            // it's an incomplete chunk, we cut on the last complete line and store the rest of data for prepending it to next chunk
+            var i=text.lastIndexOf('\n')
+            var next=text.substring(i)
+            this.buffer.set(webSocket,next)
+            text=text.substring(0,i)
+        }
+        this.sendLogData(webSocket, podNamespace, podName, containerName, text, instanceConfig.instance, stripHeader)
+    }
+
+    async startDockerStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+        try {
+            let container = this.clusterInfo.dockerApi.getContainer(containerName)
+            const logStream = await container.logs({
+                follow: true,
+                stdout: true,
+                stderr: true,
+                timestamps: instanceConfig.data.timestamp as boolean,
+                ...(instanceConfig.data.fromStart? {} : {since: Date.now()-1800})
+            })
+          
+            logStream.on('data', chunk => {
+                var text:string=chunk.toString('utf8')
+                this.sendBlock(webSocket, instanceConfig, podNamespace, podName, containerName, text, true)
+                if (global.gc) global.gc()  // +++ add in other critical loops
+            })
+        
+            if (!this.websocketLog.get(webSocket)) this.websocketLog.set(webSocket, [])
+            this.websocketLog.get(webSocket)?.push ({
+                instanceId: instanceConfig.instance, 
+                readableStream: logStream,
+                timestamps: instanceConfig.data.timestamp,
+                //previous: instanceConfig.data.previous,
+                previous: false,
+                tailLines: instanceConfig.data.tailLines,
+                paused:false
+            })
     
-    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
-        console.log(`Start instance ${instanceConfig.instance} (view: ${instanceConfig.view})`)
+        }
+        catch (err:any) {
+            console.log('Generic error starting pod log', err)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
+        }
+    }
+
+    async startKubernetesStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             var streamConfig = { 
                 follow: true, 
-                pretty: false, 
+                pretty: false,
                 timestamps: instanceConfig.data.timestamp,
                 previous: Boolean(instanceConfig.data.previous),
                 ...(instanceConfig.data.fromStart? {} : {sinceSeconds:1800})
@@ -111,26 +164,14 @@ class LogChannel implements IChannel {
             const logStream:PassThrough = new stream.PassThrough()
             logStream.on('data', (chunk:any) => {
                 var text:string=chunk.toString('utf8')
-                if (this.buffer.get(webSocket)!==undefined) {
-                    // if we have some text from a previous incompleted chunk, we prepend it now
-                    text=this.buffer.get(webSocket)+text
-                    this.buffer.delete(webSocket)
-                }
-                if (!text.endsWith('\n')) {
-                    // it's an incomplete chunk, we cut on the last complete line and store the rest of data for prepending it to next chunk
-                    var i=text.lastIndexOf('\n')
-                    var next=text.substring(i)
-                    this.buffer.set(webSocket,next)
-                    text=text.substring(0,i)
-                }
-                this.sendLogData(webSocket, podNamespace, podName, containerName, text, instanceConfig.instance)
+                this.sendBlock(webSocket, instanceConfig, podNamespace, podName, containerName, text, false)
             })
     
             if (!this.websocketLog.get(webSocket)) this.websocketLog.set(webSocket, [])
 
             this.websocketLog.get(webSocket)?.push ({
                 instanceId: instanceConfig.instance, 
-                logStream: logStream,
+                passThrouoghStream: logStream,
                 timestamps: instanceConfig.data.timestamp,
                 //previous: instanceConfig.data.previous,
                 previous: false,
@@ -142,6 +183,17 @@ class LogChannel implements IChannel {
         catch (err:any) {
             console.log('Generic error starting pod log', err)
             this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
+        }
+    }
+
+    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+        console.log(`Start instance ${instanceConfig.instance} (view: ${instanceConfig.view})`)
+
+        if (this.clusterInfo.clusterType === ClusterTypeEnum.DOCKER) {
+            this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName)
+        }
+        else {
+            this.startKubernetesStream(webSocket, instanceConfig, podNamespace, podName, containerName)
         }
     }
 
@@ -201,8 +253,8 @@ class LogChannel implements IChannel {
                 while (instanceIndex>=0) {
                     if (instanceIndex>=0) {
                         var instance = instances[instanceIndex]
-                        if (instance.logStream)
-                            instance.logStream.removeAllListeners()
+                        if (instance.passThrouoghStream)
+                            instance.passThrouoghStream.removeAllListeners()
                         else
                             console.log(`Alarm logStream not found of instance id ${instanceId}`)
                         instances.splice(instanceIndex,1)
