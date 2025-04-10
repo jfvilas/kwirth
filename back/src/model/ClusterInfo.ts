@@ -52,6 +52,21 @@ export class ClusterInfo {
         }
     }
 
+    loadMetricsInfo = async () => {
+        console.log('Metrics information for cluster is being loaded asynchronously')
+        await this.metrics.loadClusterMetrics(Array.from(this.nodes.values()))
+        this.vcpus = 0
+        this.memory = 0
+        for (let node of this.nodes.values()) {
+            await this.metrics.readNodeMetrics(node)
+            this.vcpus += node.machineMetricValues.get('machine_cpu_cores')?.value!
+            this.memory += node.machineMetricValues.get('machine_memory_bytes')?.value!
+        }
+        console.log('clusterInfo.memory', this.memory)
+        console.log('clusterInfo.vcpus', this.vcpus)
+        this.startInterval(this.metricsInterval)
+    }
+
     loadNodes = async () => {
         // load nodes
         var resp = await this.coreApi.listNode()

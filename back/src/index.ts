@@ -760,21 +760,6 @@ const runKubernetes = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) =>
     })
 }
 
-const loadMetricsInfo = async (clusterInfo: ClusterInfo) => {
-    console.log('Metrics information for cluster is being loaded asynchronously')
-    await clusterInfo.metrics.loadClusterMetrics(Array.from(clusterInfo.nodes.values()))
-    clusterInfo.vcpus = 0
-    clusterInfo.memory = 0
-    for (let node of clusterInfo.nodes.values()) {
-        await clusterInfo.metrics.readNodeMetrics(node)
-        clusterInfo.vcpus += node.machineMetricValues.get('machine_cpu_cores')?.value!
-        clusterInfo.memory += node.machineMetricValues.get('machine_memory_bytes')?.value!
-    }
-    console.log('clusterInfo.memory', clusterInfo.memory)
-    console.log('clusterInfo.vcpus', clusterInfo.vcpus)
-    clusterInfo.startInterval(clusterInfo.metricsInterval)
-}
-
 const initCluster = async (token:string) : Promise<ClusterInfo> => {
     // inictialize cluster
     var clusterInfo = new ClusterInfo()
@@ -789,8 +774,7 @@ const initCluster = async (token:string) : Promise<ClusterInfo> => {
 
     clusterInfo.metrics = new MetricsTools(token)
     clusterInfo.metricsInterval = 60
-
-    loadMetricsInfo(clusterInfo)
+    clusterInfo.loadMetricsInfo()
 
     return clusterInfo
 }
