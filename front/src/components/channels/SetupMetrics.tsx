@@ -102,7 +102,7 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
                     <Stack direction={'row'} spacing={1} sx={{width:'100%', height:'22vh'}}>
                         <Stack direction={'column'} sx={{width:'70%'}}>
                             <List sx={{ width: '100%', overflowY: 'auto' }}>
-                                {Array.from(props.metrics.keys()).map((value, index) => {
+                                {props.metrics && Array.from(props.metrics.keys()).map((value, index) => {
                                     if (value.includes(filter) && (value.startsWith('container_') || value.startsWith('kwirth_'))) {
                                         return (
                                             <ListItem key={index} disablePadding>

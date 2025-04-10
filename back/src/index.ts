@@ -56,6 +56,7 @@ var secrets: ISecrets
 var configMaps: IConfigMaps
 const rootPath = process.env.KWIRTH_ROOTPATH || ''
 
+// discover where we are running in: docker, kubernetes...
 const getExecutionEnvironment = async ():Promise<string> => {
     console.log('Detecting execution environment...')
 
@@ -85,7 +86,7 @@ const getExecutionEnvironment = async ():Promise<string> => {
 }
 
 // get the namespace where Kwirth is running on
-const getMyKubernetesData = async ():Promise<KwirthData> => {
+const getKubernetesData = async ():Promise<KwirthData> => {
     var podName=process.env.HOSTNAME
     var depName=''
     const pods = await coreApi.listPodForAllNamespaces()
@@ -509,7 +510,7 @@ const processStopInstanceConfig = async (webSocket: WebSocket, instanceConfig: I
 
 const processPauseContinueInstanceConfig = async (instanceConfig: InstanceConfig, webSocket: WebSocket, action:InstanceConfigActionEnum) => {
     if (channels.has(instanceConfig.channel)) {
-        channels.get(instanceConfig.channel)?.pauseContinueInstance(webSocket, instanceConfig, instanceConfig.action)            
+        channels.get(instanceConfig.channel)?.pauseContinueInstance(webSocket, instanceConfig, instanceConfig.action)
     }
     else {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.channel} does not exist`, instanceConfig)
@@ -781,7 +782,7 @@ const initCluster = async (token:string) : Promise<ClusterInfo> => {
 
 const launchKubernetes = async() => {
     console.log('Start Kubernetes Kwirth')
-    thisKwirthData = await getMyKubernetesData()
+    thisKwirthData = await getKubernetesData()
     if (thisKwirthData) {
         try {
             saToken = new ServiceAccountToken(coreApi, thisKwirthData.namespace)    
@@ -919,8 +920,8 @@ getExecutionEnvironment().then( async (exenv:string) => {
             launchDocker()
             break
         case 'kubernetes':
-            //launchDocker()
-            launchKubernetes()
+            launchDocker()
+            //launchKubernetes()
             break
         default:
             console.log('Unuspported execution environment. Existing...')
