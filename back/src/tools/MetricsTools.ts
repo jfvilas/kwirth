@@ -15,7 +15,7 @@ export interface MetricDefinition {
     eval:string
 }
 
-export class Metrics {
+export class MetricsTools {
     private token:string
     private metricsList:Map<string,MetricDefinition>
     private loadingClusterMetrics: boolean = false
@@ -366,6 +366,9 @@ export class Metrics {
         }
         this.loadingClusterMetrics = true
         console.log(`About to read cluster metrics ${new Date().toTimeString()}`)
+
+        await clusterInfo.loadNodes()
+        
         for (var node of clusterInfo.nodes.values()) {
             await this.readNodeMetrics(node)
         }

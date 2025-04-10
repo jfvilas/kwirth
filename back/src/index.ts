@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod, V1ObjectMeta, V1PodSpec, V1Container } from '@kubernetes/client-node'
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod, V1ObjectMeta, V1PodSpec, V1Container, V1NodeStatus } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -25,7 +25,7 @@ import { ServiceAccountToken } from './tools/ServiceAccountToken'
 import { MetricsApi } from './api/MetricsApi'
 import { v4 as uuidv4 } from 'uuid'
 
-import { Metrics } from './tools/MetricsTools'
+import { MetricsTools } from './tools/MetricsTools'
 import { LogChannel } from './channels/LogChannel'
 import { AlertChannel } from './channels/AlertChannel'
 import { MetricsChannel } from './channels/MetricsChannel'
@@ -776,36 +776,19 @@ const loadMetricsInfo = async (clusterInfo: ClusterInfo) => {
 }
 
 const initCluster = async (token:string) : Promise<ClusterInfo> => {
-    // load nodes
-    var resp = await coreApi.listNode()
-    var nodes:Map<string, NodeInfo> = new Map()
-    for (var node of resp.body.items) {
-        var nodeData:NodeInfo = {
-            name: node.metadata?.name!,
-            ip: node.status?.addresses!.find(a => a.type === 'InternalIP')?.address!,
-            kubernetesNode: node,
-            containerMetricValues: new Map(),
-            prevContainerMetricValues: new Map(),
-            machineMetricValues: new Map(),
-            timestamp: 0,
-            podMetricValues: new Map(),
-            prevPodMetricValues: new Map(),
-            prevMachineMetricValues: new Map()
-        }
-        nodes.set(nodeData.name, nodeData)
-        console.log('Found node', nodeData.name)
-    }
-    console.log('Node config loaded')
-
     // inictialize cluster
     var clusterInfo = new ClusterInfo()
-    clusterInfo.nodes = nodes
-    clusterInfo.metrics = new Metrics(token)
-    clusterInfo.metricsInterval = 60
+    clusterInfo.loadName()
     clusterInfo.token = token
     clusterInfo.coreApi = coreApi
     clusterInfo.appsApi = appsApi
     clusterInfo.logApi = logApi
+
+    clusterInfo.nodes = await clusterInfo.loadNodes()
+    console.log('Node config loaded')
+
+    clusterInfo.metrics = new MetricsTools(token)
+    clusterInfo.metricsInterval = 60
 
     loadMetricsInfo(clusterInfo)
 
@@ -926,7 +909,7 @@ const launchDocker = async() => {
         clusterType: ClusterTypeEnum.DOCKER
     }
     clusterInfo.nodes = new Map()
-    clusterInfo.metrics = new Metrics('')
+    clusterInfo.metrics = new MetricsTools('')
     clusterInfo.metricsInterval = 60
     clusterInfo.token = ''
     clusterInfo.clusterType = ClusterTypeEnum.DOCKER
@@ -952,8 +935,8 @@ getExecutionEnvironment().then( async (exenv:string) => {
             launchDocker()
             break
         case 'kubernetes':
-            launchDocker()
-            //launchKubernetes()
+            //launchDocker()
+            launchKubernetes()
             break
         default:
             console.log('Unuspported execution environment. Existing...')
