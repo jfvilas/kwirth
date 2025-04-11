@@ -21,6 +21,7 @@ export class DockerTools {
             }
             else {
                 let cname = c.Names ? c.Names[0] : c.Id
+                if (cname.startsWith('/')) cname = cname.substring(1)
                 if (podName === '$docker' && containerName === cname)  id = c.Id
             } 
         })
