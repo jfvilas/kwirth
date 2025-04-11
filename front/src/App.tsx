@@ -883,6 +883,14 @@ const App: React.FC = () => {
                     clearTabs()
                     var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
                     var board = JSON.parse(n) as IBoard
+                    let errors = ''
+                    for (let t of board.tabs) {
+                        let clusterName = t.channelObject.clusterName
+                        if (!clusters?.find(c => c.name === clusterName)) {
+                            errors += `Cluster '${clusterName}' used in tab ${t.name} does not exsist<br/><br/>`
+                        }
+                    }
+                    if (errors!=='') setMsgBox(MsgBoxOkError('Kwirth',`Some errors have been detected when loading board:<br/><br/>${errors}`, setMsgBox))
                     setTabs(board.tabs)
                     setCurrentBoardName(name)
                     setCurrentBoardDescription(board.description)

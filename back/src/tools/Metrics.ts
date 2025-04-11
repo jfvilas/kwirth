@@ -168,7 +168,7 @@ export class MetricsTools {
         text += '# TYPE kwirth_cluster_container_cpu_percentage gauge\n'
         text += 'kwirth_cluster_container_cpu_percentage{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
 
-        text += '# HELP kwirth_cluster_container_random_counter Accumulated conatiner random values\n'
+        text += '# HELP kwirth_cluster_container_random_counter Accumulated container random values\n'
         text += '# TYPE kwirth_cluster_container_random_counter counter\n'
         text += `kwirth_cluster_container_random_counter{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n`
 

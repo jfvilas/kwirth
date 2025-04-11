@@ -12,7 +12,7 @@ Although not too exhaustive, this page contains some detail on what we have been
   - Mectrics channel at Kwirth core implement several custom metrics that simplify observability by aggregating and calculating high level data like:
     - **kwirth_cluster_container_memory_percentage** Percentage of memory used by object from the whole cluster
     - **kwirth_cluster_container_cpu_percentage** Percentage of cpu used from the whole cluster
-    - **kwirth_cluster_container_random_counter** Accumulated conatiner random values
+    - **kwirth_cluster_container_random_counter** Accumulated container random values
     - **kwirth_cluster_container_random_gauge** Instant container random values
     - **kwirth_cluster_container_transmit_percentage** Percentage of data sent in relation to the whole cluster
     - **kwirth_cluster_container_receive_percentage** Percentage of data received in relation to the whole cluster

@@ -10,7 +10,7 @@ export class DockerTools {
     }
 
     public getContainerId = async (podName:string, containerName: string) => {
-        let id =''
+        let id
         let runningContainers= await this.clusterInfo.dockerApi.listContainers( { all:false } )
         runningContainers.forEach(c => {
             if (c.Labels['com.docker.compose.project']) {
@@ -18,6 +18,10 @@ export class DockerTools {
                 let serviceName = c.Labels['com.docker.compose.service'] || undefined
                 if (!serviceName) serviceName = project + '-' + crypto.createHash('md5').update(c.Labels['com.docker.compose.config-hash']).digest('hex').slice(0,6)
                 if (project === podName && containerName === serviceName) id = c.Id
+            }
+            else {
+                let cname = c.Names ? c.Names[0] : c.Id
+                if (podName === '$docker' && containerName === cname)  id = c.Id
             } 
         })
         return id

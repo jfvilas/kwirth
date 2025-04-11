@@ -196,9 +196,9 @@ const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:Inst
                     break
                 case InstanceConfigViewEnum.CONTAINER:
                     // container has the form: podname+containername (includes a plus sign as separating char)
-                    var icContainers = Array.from (new Set (instanceConfig.container.split(',').map (c => c.split('+')[1])))
-                    var icPods = Array.from (new  Set (instanceConfig.container.split(',').map (c => c.split('+')[0])))
-                    if (icContainers.includes(containerName) && icPods.includes(podName)) {
+                    var instanceContainers = Array.from (new Set (instanceConfig.container.split(',').map (c => c.split('+')[1])))
+                    var instancePods = Array.from (new  Set (instanceConfig.container.split(',').map (c => c.split('+')[0])))
+                    if (instanceContainers.includes(containerName) && instancePods.includes(podName)) {
                         if (instanceConfig.container.split(',').includes(podName+'+'+containerName)) {
                             console.log(`Container ADDED: ${podNamespace}/${podName}/${containerName}`)
                             addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
@@ -246,7 +246,6 @@ const watchDockerPods = async (apiPath:string, queryParams:any, webSocket:WebSoc
         for (var container of containers) {
             processEvent('ADDED', webSocket, instanceConfig, '$docker', jsonObject['$dockerPodName'], [ container ] )
         }
-
     }
     else if (instanceConfig.view==='container') {
         let ml = '{'+queryParams.labelSelector+'}'
@@ -256,7 +255,15 @@ const watchDockerPods = async (apiPath:string, queryParams:any, webSocket:WebSoc
             const [key, value] = kvp.split('=')
             jsonObject[key] = value
         })
-        processEvent('ADDED', webSocket, instanceConfig, '$docker', jsonObject['$dockerPodName'], [ jsonObject['$dockerContainerName']] )
+        let podName=jsonObject['$dockerPodName']
+        let containerName = jsonObject['$dockerContainerName']
+        let id = await clusterInfo.dockerTools.getContainerId(podName, containerName )
+        if (id) {
+            processEvent('ADDED', webSocket, instanceConfig, '$docker', podName, [ containerName ] )
+        }
+        else {
+            sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Container ${podName}/${containerName} does not exist.`, instanceConfig)
+        }
     }
 
 
@@ -981,41 +988,53 @@ console.log(`Kwirth version is ${VERSION}`)
 console.log(`Kwirth started at ${new Date().toISOString()}`)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
-console.log('                                                                                                    ')
-console.log('                                          @@@@@@@@@                                                 ')
-console.log('                                       :@#@*.                                                       ')
-console.log('                                      @*-#.                                                         ')
-console.log('                                     @=:+%               -@@@:                                      ')
-console.log('                                   @@=.:+ =@.          @@ @= .                                      ')
-console.log('                                   ==+##%*-                                                         ')
-console.log('                                 .@@#@  ##@  .+@@@@@@@@@@@@@@@@@                                    ')
-console.log('                                          .+++-....:::::::::...-*@.@+                               ')
-console.log('                                    @@+@%+-:::::::::::::::::::::.:.*@@                              ')
-console.log('                                   *@:::.:::::::::::::::::::::::::.% @                              ')
-console.log('                                    @+.:::::::::::::::::::::::::::.@                                ')
-console.log('                                     @ ..:::::::::::::::::::::::::.%                                ')
-console.log('                                     @.=.::::::::::::::::::::::::::#                                ')
-console.log('                                   .@=#@@@@@@@#=......=*@@@@@@@@@@@@                                ')
-console.log('                                               -@@@@@@@               .                             ')
-console.log('                                 @@.                               @@*@@                            ')
-console.log('                                .%-@    @      @  -@  * @@@  :@@@@%=. #@                            ')
-console.log('                                 @:=%@#:@%@@##@@ .@*#%#+- :+#*-::::.- :@                            ')
-console.log('                                 :+..:= .    ..  --:::::..  ..:::::.@*:@                            ')
-console.log('                                  @-=..=#@@@@%#@ @:::::::+@@*::::::.+=#                             ')
-console.log('                                   *=%+       +  @:....:..  ..:::::..+%                             ')
-console.log('                                   @#@@#:::::.@  %@-:* .::::::::::-+@+                              ')
-console.log('                                     # .-::::.*     .@@.::::::::::*=              @@@@@             ')
-console.log(' %@@@@@@@.  +@@@@@                     :=::-:::=@@@@   .:::::::::+*                 @@@             ')
-console.log('    @@@      @@                        =*..% @@%:@#@.+:.......:.:@      @@@         @@@             ')
-console.log('    @@@    .@@                       @. .             --                :@@         @@@             ')
-console.log('    @@@   @@         @@@@@@@    @@@ @@@@@@@@@@@@@@@@:@=.@@@@@* @@@@@  @@@@@@@@@@    @@@ *@@@@@@@    ')
-console.log('    @@@ %@             %@@      @@@@-:   @@      @@@  =.  -@@@@:  @@     @@         @@@@@     @@@   ')
-console.log('    @@@@@@              @@@    @@@@@    :@       @@@ +-:: @@@  %        @@@         @@@       @@@   ')
-console.log('    @@@ -@@@            @@@ -%@@  @@@   @@ @    .@@@ .... @@@* -        @@@         @@@       @@@   ')
-console.log('    @@@   @@@@           @@@  @    @@% @@  .@@   @@@ @@@@ @@@*   @@@@@@ @@@         @@@       @@@   ')
-console.log('    @@@     @@@          @@@ @@    @@@ @  :* :+  @@@      @@@@=         @@@         @@@       @@@   ')
-console.log('    @@@      @@@@         @@@@      @@@@   .=    @@@     .@@@=          @@@         @@@       @@@   ')
-console.log('.@@@@@:@     =@@@@@       @@       @@@     @@@@@@@@@%   %@@@@@@         @@@@ @=  @#@@@@@   @@@@@%@ ')
+console.log('                                                                                                                        ')
+console.log('                                                   =@@@@@@@@@-                                                          ')
+console.log('                                                .@%#@@+..                                                               ')
+console.log('                                              .@*-+%                                                                    ')
+console.log('                                             #%-.+#                                                                     ')
+console.log('                                            -%:.=@                   @@@@..                                             ')
+console.log('                                          :@*::.@  @              @@ @@*@*:                                             ')
+console.log('                                           .:...@ .@@              %                                                    ')
+console.log('                                         @@@@@@@%*@         :.:+@@#%@@++                                                ')
+console.log('                                        @@       :..@@%%@@@#*++=:....:-=+#%@@=                                          ')
+console.log('                                                  -+:::::...::::::::::::::..:+%#@@-                                     ')
+console.log('                                           .@.=@%+::.::::::::::::::::::::::::.:.-%@*                                    ')
+console.log('                                          :@-%+:..:::::::::::::::::::::::::::::.@ :@                                    ')
+console.log('                                          .@-...::::::::::::::::::::::::::::::: @ %@                                    ')
+console.log('                                            ==.:::::::::::::::::::::::::::::::: @                                       ')
+console.log('                                            .+...::::::::::::::::::::::::::::::.@                                       ')
+console.log('                                            .++=.::::::::::::::::::::::::::::::.%                                       ')
+console.log('                                           =@  ::.:::::::...:::...::::::::......%                                       ')
+console.log('                                          .@.:@@@@@#####%@@*:..=%@@@%##%%@@@@@@%@                                       ')
+console.log('                                        @@                 .@@@%                  =@%@                                  ')
+console.log('                                       .+#.                                     @%+.@@:                                 ')
+console.log('                                       #+:@     @        @  -@  @# @@@@   @@@@@@-:: :@@                                 ')
+console.log('                                        @.-*@@ #@%@@@+=%@@ -%=*#+++-  .=#+:.......   @                                  ')
+console.log('                                        @-...@  .........  :=::::::::....:::::::.%@: @                                  ')
+console.log('                                         @.*- .@@+-:-*#%#%@*:::::::::---:-::::::. @=-=                                  ')
+console.log('                                         *::#-  .:=-=::.*= %:::::::::-==-::::::::.:.@                                   ')
+console.log('                                          @:-+:........:=  %:.....:::....::::::::.:*.                                   ')
+console.log('                                          %#*@@=::::::.=@  @@-.=. .:::::::::::::-*@*                                    ')
+console.log('                                            %. =:::::::-*     =@@#.::::::::::::=@                 @@@@@@*               ')
+console.log('  @@@@@@@@@.   @@@@@@@                         --::::...+-@@@@:   .:::::::::::-@                     @@@.               ')
+console.log('     @@@         @@:                           %=:::+*@:: @@@@+ ..::::::::::::@                      @@@.               ')
+console.log('     @@@       @@@                             :-   * @=%#    .++-:.     ..:...        @@@           @@@.               ')
+console.log('     @@@      @@                            .@      .            ..                    @@@           @@@.               ')
+console.log('     @@@    @@@          @@@@@@@@.     @@@ @@@@@@@@@@@@@@@@@@@@=#+:+@@@@@@ +@@@@@   @@@@@@@@@@@*     @@@  =@@@@@@@@     ')
+console.log('     @@@  +@@               @@@       +@@@@.      @:  #    @@@  :..   @@@@@@@  @@      @@@           @@@%@@.    @@@@    ')
+console.log('     @@@.@@                 @@@@      @@@@@  @ . @@        @@@  +:::: @@@@             @@@           @@@@        @@@    ')
+console.log('     @@@=@@@@                @@@     @@ .@@.    @@%       @@@@  .:::: @@@@ =.          @@@           @@@         @@@    ')
+console.log('     @@@  =@@@@              @@@@%@@@@   @@@    @@ -@+    @@@@  ..... @@@@ =  .        @@@           @@@         @@@    ')
+console.log('     @@@    @@@@.             @@@   @%    @@@  @@    %@-   @@@**@@@%@ @@@@ =  @@@@@@@  @@@           @@@         @@@    ')
+console.log('     @@@     .@@@@            @@@@ @@     @@@  @. .@. :@   @@@      % @@@@ +       .   @@@           @@@         @@@    ')
+console.log('     @@@       @@@@@           @@@@@       @@@@@    @. :* =@@@      @ @@@@             @@@           @@@         @@@    ')
+console.log('     @@@         @@@@          @@@@        *@@@      @     @@@      = @@@@             @@@@          @@@         @@@    ')
+console.log('  @@@@@@@@@     @@@@@@@@@       @@@         @@@      @@@@@@@@@@@@   @@@@@@@@@           @@@@@@@=  @@@@@@@@@   @@@@@@@@@ ')
+console.log('                                                                                                                        ')
+console.log('                                              https://jfvilas.github.io/kwirth                                          ')
+console.log('                                                                                                                        ')
+console.log('                                                                                                                        ')
 
 getExecutionEnvironment().then( async (exenv:string) => {
     switch (exenv) {

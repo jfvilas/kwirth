@@ -122,8 +122,13 @@ class LogChannel implements IChannel {
 
     async startDockerStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
-            let id = containerName
-            if (podName!=='$docker') id = await this.clusterInfo.dockerTools.getContainerId(podName, containerName)
+            // if (podName!=='$docker') {
+            let id = await this.clusterInfo.dockerTools.getContainerId(podName, containerName)
+            // }
+            if (!id) {
+                this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Cannot obtain Id for container ${podName}/${containerName}`,instanceConfig)
+                return
+            }
             
             let container = this.clusterInfo.dockerApi.getContainer(id)
             const logStream = await container.logs({
