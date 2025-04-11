@@ -73,14 +73,19 @@ export class ConfigApi {
                 next()
             })
             .get( async (req:Request, res:Response) => {
-                try {
-                    var response = await this.coreApi.listNamespace()
-                    var namespaces = response.body.items.map (n => n?.metadata?.name)
-                    res.status(200).json(namespaces)
+                if (this.kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+                    res.status(200).json(['$docker'])
                 }
-                catch (err) {
-                    res.status(200).json([])
-                    console.log(err)
+                else {
+                    try {
+                        var response = await this.coreApi.listNamespace()
+                        var namespaces = response.body.items.map (n => n?.metadata?.name)
+                        res.status(200).json(namespaces)
+                    }
+                    catch (err) {
+                        res.status(200).json([])
+                        console.log(err)
+                    }
                 }
             })
 
@@ -115,8 +120,14 @@ export class ConfigApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    var response= await this.coreApi.listNamespacedPod(req.params.namespace)
-                    var pods = response.body.items.filter (n => n?.metadata?.ownerReferences![0].name===req.params.group).filter(p => p.status?.phase?.toLowerCase()==='running').map (n => n?.metadata?.name)
+                    let pods:(string|undefined)[] = []
+                    if (this.kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+                        pods = await this.clusterInfo.dockerTools.getAllPodNames()
+                    }
+                    else {
+                        var response= await this.coreApi.listNamespacedPod(req.params.namespace)
+                        pods = response.body.items.filter (n => n?.metadata?.ownerReferences![0].name===req.params.group).filter(p => p.status?.phase?.toLowerCase()==='running').map(n => n?.metadata?.name)                            
+                    }
                     res.status(200).json(pods)
                 }
                 catch (err) {
@@ -133,8 +144,7 @@ export class ConfigApi {
             })
             .get( async (req:Request, res:Response) => {
                 if (this.kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
-                    let runningContainers= await this.dockerApi.listContainers( { all:false } )
-                    let names = runningContainers.map(rc => rc.Names? rc.Names[0].replaceAll('/','') : 'unnamed')
+                    let names = await this.clusterInfo.dockerTools.getContainers(req.params.pod)
                     res.status(200).json(names)
                 }
                 else {

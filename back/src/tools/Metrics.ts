@@ -10,19 +10,19 @@ export interface AssetData {
 }
 
 export interface MetricDefinition {
-    help:string
-    type:string
-    eval:string
+    help: string
+    type: string
+    eval: string
 }
 
 export class MetricsTools {
-    private token:string
-    private metricsList:Map<string,MetricDefinition>
+    private clusterInfo:ClusterInfo
+    private metricsList: Map<string,MetricDefinition>
     private loadingClusterMetrics: boolean = false
 
-    constructor (token:string) {
-        this.token=token
-        this.metricsList=new Map()
+    constructor (clusterInfo:ClusterInfo) {
+        this.clusterInfo = clusterInfo
+        this.metricsList = new Map()
     }
 
     /*
@@ -60,23 +60,18 @@ export class MetricsTools {
         return objects
     }
 
-    // public getMetric(metricName:string): MetricDefinition|undefined {
-    //     var metric = this.metricsList.get(metricName)
-    //     return metric
-    // }
-
     // adds proprties to matrics map
-    addRecordType (map:Map<string,MetricDefinition>, mname:string, recordType:string, value:string): void {
-        if (!map.has(mname)) map.set(mname,{help: '', type: '', eval: ''})
+    addRecordType (map:Map<string,MetricDefinition>, metricName:string, recordType:string, value:string): void {
+        if (!map.has(metricName)) map.set(metricName,{help: '', type: '', eval: ''})
         switch(recordType) {
             case '# HELP':
-                map.get(mname)!.help = value
+                map.get(metricName)!.help = value
                 break
             case '# TYPE':
-                map.get(mname)!.type = value
+                map.get(metricName)!.type = value
                 break
             case '# EVAL':
-                map.get(mname)!.eval = value
+                map.get(metricName)!.eval = value
                 break
         }
     }
@@ -126,17 +121,27 @@ export class MetricsTools {
         return map
     }
 
-    // creates a map containing all the metrics existing in the cluser (and their properties)
-    public async loadClusterMetrics(nodes:NodeInfo[]): Promise<void> {
-        var resultMap = await this.loadNodeMetrics(nodes[0])
+    startMetrics = async () => {
+        console.log('Metrics information for cluster is being loaded asynchronously')
+        let nodes = Array.from(this.clusterInfo.nodes.values())
 
-        for (var node of nodes.slice(1)) {
+        this.metricsList = new Map()
+        for (var node of nodes) {
             var nodeMetricsMap = await this.loadNodeMetrics(node)
             for (var m of nodeMetricsMap.keys()) {
-                if (!resultMap.has(m)) resultMap.set(m,nodeMetricsMap.get(m)!)
+                if (!this.metricsList.has(m)) this.metricsList.set(m,nodeMetricsMap.get(m)!)
             }
         }
-        this.metricsList = resultMap
+
+        this.clusterInfo.vcpus = 0
+        this.clusterInfo.memory = 0
+        for (let node of nodes.values()) {
+            await this.readNodeMetrics(node)
+            if (node.machineMetricValues.get('machine_cpu_cores')) this.clusterInfo.vcpus += node.machineMetricValues.get('machine_cpu_cores')!.value
+            if (node.machineMetricValues.get('machine_memory_bytes')) this.clusterInfo.memory += node.machineMetricValues.get('machine_memory_bytes')!.value
+        }
+        this.clusterInfo.startInterval(this.clusterInfo.metricsInterval)
+        console.log('Metrics recollection started')
     }
 
     /*
@@ -147,7 +152,7 @@ export class MetricsTools {
     public readCAdvisorMetrics = async (node:NodeInfo): Promise<string> => {
         var text=''
         try {
-            var resp = await fetch (`https://${node.ip}:10250/metrics/cadvisor`, { headers: { Authorization: 'Bearer ' + this.token} })
+            var resp = await fetch (`https://${node.ip}:10250/metrics/cadvisor`, { headers: { Authorization: 'Bearer ' + this.clusterInfo.token} })
             text = await resp.text()
         }
         catch (error:any) {

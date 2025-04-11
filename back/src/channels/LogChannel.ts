@@ -3,6 +3,7 @@ import WebSocket from 'ws'
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../model/ClusterInfo'
+import * as crypto from 'crypto'
 
 class LogChannel implements IChannel {
     clusterInfo : ClusterInfo
@@ -15,7 +16,7 @@ class LogChannel implements IChannel {
 
     getCapabilities(): ChannelCapabilities {
         return {
-            pauseable: false,
+            pauseable: true,
             modifyable: false,
             reconnectable: false
         }
@@ -65,20 +66,20 @@ class LogChannel implements IChannel {
         webSocket.send(JSON.stringify(sgnMsg))
     }
 
-    sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName: string, source:string, instanceId:string, stripHeader:boolean): void => {
+    sendLogData = (webSocket:WebSocket, podNamespace:string, podName:string, containerName: string, source:string, instanceId:string, stripHeader:boolean): boolean => {
         var instances = this.websocketLog.get(webSocket)
         if (!instances) {
             console.log('No instances found for sendLogData')
             // perform cleaning
-            return
+            return false
         }
         var instance = instances.find (i => i.instanceId === instanceId)
         if (!instance) {
             console.log(`No instance found for sendLogData instance ${instanceId}`)
-            return
+            return false
         }
 
-        if (instance.paused) return
+        if (instance.paused) return true
 
         const logLines = source.split('\n')
         var msg:LogMessage = {
@@ -98,6 +99,7 @@ class LogChannel implements IChannel {
                 webSocket.send(JSON.stringify(msg))   
             }
         }
+        return true
     }
 
     sendBlock (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string, text:string, stripHeader:boolean)  {
@@ -113,12 +115,17 @@ class LogChannel implements IChannel {
             this.buffer.set(webSocket,next)
             text=text.substring(0,i)
         }
-        this.sendLogData(webSocket, podNamespace, podName, containerName, text, instanceConfig.instance, stripHeader)
+        if (! this.sendLogData(webSocket, podNamespace, podName, containerName, text, instanceConfig.instance, stripHeader)) {
+            this.removeInstance(webSocket, instanceConfig.instance)
+        }
     }
 
     async startDockerStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
-            let container = this.clusterInfo.dockerApi.getContainer(containerName)
+            let id = containerName
+            if (podName!=='$docker') id = await this.clusterInfo.dockerTools.getContainerId(podName, containerName)
+            
+            let container = this.clusterInfo.dockerApi.getContainer(id)
             const logStream = await container.logs({
                 follow: true,
                 stdout: true,
@@ -142,8 +149,7 @@ class LogChannel implements IChannel {
                 previous: false,
                 tailLines: instanceConfig.data.tailLines,
                 paused:false
-            })
-    
+            })    
         }
         catch (err:any) {
             console.log('Generic error starting pod log', err)
@@ -189,7 +195,7 @@ class LogChannel implements IChannel {
     async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         console.log(`Start instance ${instanceConfig.instance} (view: ${instanceConfig.view})`)
 
-        if (this.clusterInfo.clusterType === ClusterTypeEnum.DOCKER) {
+        if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
             this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName)
         }
         else {

@@ -138,12 +138,12 @@ const App: React.FC = () => {
 
                     if (cluster) {
                         tab.ws = new WebSocket(cluster.url)
-                        tab.ws!.onerror = () => console.log(`Error detected on WS: ${tab.ws!.url}`)
-                        tab.ws!.onmessage = (event) => wsOnMessage(event)
-                        tab.ws!.onclose = (event) => console.log(`WS tab disconnected: ${tab.ws!.url}`)
+                        tab.ws.onerror = () => console.log(`Error detected on WS: ${tab.ws?.url}`)
+                        tab.ws.onmessage = (event) => wsOnMessage(event)
+                        tab.ws.onclose = (event) => console.log(`WS tab disconnected: ${tab.ws?.url}`)
 
                         tab.ws.onopen = () => {
-                            console.log(`WS connected: ${tab.name} to ${tab.ws!.url}`)
+                            console.log(`WS connected: ${tab.name} to ${tab.ws?.url}`)
                             if (tab.channelObject) startChannel(tab)
                         }
                     }
@@ -174,7 +174,7 @@ const App: React.FC = () => {
         response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString))
         if (response.status===200) {
             clusterList=JSON.parse (await response.json())
-            clusterList=clusterList.filter (c => c.name!==srcCluster.name)
+            clusterList=clusterList.filter (c => c.name !== srcCluster.name)
         }
 
         clusterList.push(srcCluster)
@@ -244,7 +244,8 @@ const App: React.FC = () => {
     }
 
     const onChangeCluster = (cname:string) => {
-        let cluster = clusters!.find(c => c.name === cname)
+        if (!clusters) return
+        let cluster = clusters.find(c => c.name === cname)
         if (cluster) {
             setSelectedClusterName (cname)
             setChannels(cluster.channels)
@@ -252,7 +253,8 @@ const App: React.FC = () => {
     }
 
     const onResourceSelectorAdd = (selection:IResourceSelected) => {
-        var cluster = clusters!.find(c => c.name===selection.clusterName)
+        if (!clusters) return
+        let cluster = clusters.find(c => c.name===selection.clusterName)
         if (!cluster) {
             setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.clusterName} does not exist.`, setMsgBox))
             return
@@ -286,7 +288,7 @@ const App: React.FC = () => {
         }
         newTab.ws = new WebSocket(cluster.url)
         newTab.ws.onopen = () => {
-            console.log(`WS connected: ${newTab.ws!.url}`)
+            console.log(`WS connected: ${newTab.ws?.url}`)
             
             newTab.keepaliveRef = setInterval(() => {
                 var instanceConfig:InstanceConfig = {
@@ -454,7 +456,7 @@ const App: React.FC = () => {
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA:
                 dataAlert.firedAlerts.push ({
-                    timestamp: new Date(msg.timestamp!).getTime(),
+                    timestamp: msg.timestamp? new Date(msg.timestamp).getTime(): Date.now(),
                     severity: msg.severity,
                     text: msg.text,
                     namespace: msg.namespace,
@@ -477,7 +479,7 @@ const App: React.FC = () => {
     
     const processMetricsMessage = (wsEvent:any) => {
         var msg = JSON.parse(wsEvent.data) as IMetricsMessage
-        var tab=tabs.find(tab => tab.ws!==null && tab.ws===wsEvent.target)
+        var tab=tabs.find(tab => tab.ws !== null && tab.ws===wsEvent.target)
         if (!tab || !tab.channelObject) return
 
         let dataMetrics = tab.channelObject.data as MetricsObject
@@ -561,11 +563,11 @@ const App: React.FC = () => {
     }
     
     const startChannel = (tab:ITabObject) => {
-        if (!tab || !tab.channelObject) {
+        if (!clusters || !tab || !tab.channelObject) {
             console.log('No active tab found')
             return
         }
-        var cluster = clusters!.find(c => c.name === tab.channelObject!.clusterName)
+        let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
         if (!cluster) {
             setMsgBox(MsgBoxOk('Kwirth',`Cluster set at channel configuration (${tab.channelObject.clusterName}) does not exist.`, setMsgBox))
             return
@@ -582,13 +584,13 @@ const App: React.FC = () => {
                 action: InstanceConfigActionEnum.START,
                 flow: InstanceConfigFlowEnum.REQUEST,
                 instance: '',
-                accessKey: cluster!.accessString,
+                accessKey: cluster.accessString,
                 scope: InstanceConfigScopeEnum.SUBSCRIBE,
-                view: tab.channelObject.view!,
-                namespace: tab.channelObject.namespace!,
-                group: tab.channelObject.group!,
-                pod: tab.channelObject.pod!,
-                container: tab.channelObject.container!,
+                view: tab.channelObject.view,
+                namespace: tab.channelObject.namespace,
+                group: tab.channelObject.group,
+                pod: tab.channelObject.pod,
+                container: tab.channelObject.container,
             }
             switch (tab.channelId) {
                 case InstanceConfigChannelEnum.LOG: 
@@ -641,17 +643,18 @@ const App: React.FC = () => {
 
 
     const stopChannel = (tab:ITabObject) => {
-        if (!tab.channelObject) return
-        var cluster = clusters!.find(c => c.name===tab.channelObject!.clusterName)
+        if (!clusters || !tab || !tab.channelObject) return
+        let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
 
-        var instanceConfig: InstanceConfig = {
+        if (!cluster) return
+        let instanceConfig: InstanceConfig = {
             channel: tab.channelId,
             objects: InstanceConfigObjectEnum.PODS,
             action: InstanceConfigActionEnum.STOP,
             flow: InstanceConfigFlowEnum.REQUEST,
             instance: tab.channelObject.instance,
-            accessKey: cluster!.accessString,
-            view: tab.channelObject.view!,
+            accessKey: cluster.accessString,
+            view: tab.channelObject.view,
             scope: InstanceConfigScopeEnum.NONE,
             namespace: '',
             group: '',
@@ -691,17 +694,17 @@ const App: React.FC = () => {
 
     const onClickChannelPause = () => {
         setAnchorMenuTab(null)
-        if (!selectedTab || !selectedTab.channelObject || !selectedTab.ws) return
-
-        var cluster = clusters!.find(c => c.name === selectedTab!.channelObject!.clusterName)
-
+        if (!clusters || !selectedTab || !selectedTab.channelObject || !selectedTab.ws) return
+        var cluster = clusters.find(c => c.name === selectedTab!.channelObject.clusterName)
+        if(!cluster) return
+        
         var instanceConfig:InstanceConfig = {
             channel: selectedTab.channelId,
             objects: InstanceConfigObjectEnum.PODS,
             action: InstanceConfigActionEnum.PAUSE,
             flow: InstanceConfigFlowEnum.REQUEST,
             instance: selectedTab.channelObject?.instance,
-            accessKey: cluster!.accessString,
+            accessKey: cluster.accessString,
             scope: InstanceConfigScopeEnum.SUBSCRIBE,
             view: selectedTab.channelObject.view,
             namespace: selectedTab.channelObject.namespace,
@@ -734,7 +737,7 @@ const App: React.FC = () => {
         if (selectedTab.channelObject) stopChannel(selectedTab)
         selectedTab.ws?.close()
         clearInterval(selectedTab.keepaliveRef)
-        setTabs(tabs.filter(t => t!==selectedTab))
+        setTabs(tabs.filter(t => t !== selectedTab))
         if (tabs.length>1) setSelectedTabName(tabs.find(t => t !== selectedTab)?.name)
     }
 
@@ -744,7 +747,8 @@ const App: React.FC = () => {
             case MenuTabOption.TabInfo:
                 if (selectedTab) {
                     var a=`
-                        <b>Name</b>: ${selectedTab.name}<br/>
+                        <b>Tab type</b>: ${selectedTab.channelId}</br>
+                        <b>Cluster</b>: ${selectedTab.channelObject.clusterName}</br>
                         <b>View</b>: ${selectedTab.channelObject.view}<br/>
                         <b>Namespace</b>: ${selectedTab.channelObject.namespace}<br/>
                         <b>Group</b>: ${selectedTab.channelObject.group}<br/>
@@ -924,7 +928,7 @@ const App: React.FC = () => {
                 setCurrentBoardDescription('No description yet')
                 break
             case MenuDrawerOption.SaveBoard:
-                if (currentBoardName!=='' && currentBoardName!=='untitled')
+                if (currentBoardName !== '' && currentBoardName !== 'untitled')
                     saveBoard(currentBoardName, currentBoardDescription)
                 else {
                     setShowSaveBoard(true)
@@ -1033,9 +1037,10 @@ const App: React.FC = () => {
     }
 
     const onSettingsClusterClosed = (readMetricsInterval:number) => {
+        if (!clusters) return
         setShowSettingsCluster(false)
         if (readMetricsInterval) {
-            var cluster = clusters!.find(c => c.name === selectedClusterName)
+            var cluster = clusters.find(c => c.name === selectedClusterName)
             if (cluster)  {
                 cluster.metricsInterval = readMetricsInterval
                 let payload = JSON.stringify( { metricsInterval: readMetricsInterval } )
@@ -1103,8 +1108,9 @@ const App: React.FC = () => {
 
     const onRenameTabClosed = (newname:string|null) => {
         setShowRenameLog(false)
-        if (newname!=null) {
-            selectedTab!.name=newname
+        if (!selectedTab) return
+        if (newname != null) {
+            selectedTab.name=newname
             setSelectedTabName(newname)
         }
     }
@@ -1216,11 +1222,11 @@ const App: React.FC = () => {
 
             { showSetupLog && <SetupLog onClose={onSetupLogClosed} channelObject={selectedTab?.channelObject} /> }
             { showSetupAlert && <SetupAlert onClose={onAlertSetupClosed} channelObject={selectedTab?.channelObject} /> }
-            { showSetupMetrics && <SetupMetrics onClose={onSetupMetricsClosed} channelObject={selectedTab?.channelObject} metrics={clusters!.find(c => c.name===selectedTab!.channelObject!.clusterName)?.metricsList!} /> }
+            { showSetupMetrics && clusters && <SetupMetrics onClose={onSetupMetricsClosed} channelObject={selectedTab?.channelObject} metrics={clusters.find(c => c.name === selectedTab!.channelObject.clusterName)?.metricsList!} /> }
 
             { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settings} /> }
-            { showSettingsCluster && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters!.find(c => c.name===selectedClusterName)?.metricsInterval} /> }
-            { initialMessage!=='' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
+            { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.metricsInterval} /> }
+            { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             {/* { pickListConfig!==null && <PickList config={pickListConfig}/> } */}
             { msgBox }
         </SessionContext.Provider>

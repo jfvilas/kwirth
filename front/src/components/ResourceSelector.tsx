@@ -55,9 +55,12 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     const [channel, setChannel] = useState('')
     const [msgBox, setMsgBox] =useState(<></>)
 
+    let isDocker = selectedCluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER
+
     const getNamespaces = async (cluster:Cluster) => {
         if (cluster) {
-            var response = await fetch(`${cluster.url}/config/namespace?cluster=${cluster.name}`, addGetAuthorization(cluster!.accessString))
+            //var response = await fetch(`${cluster.url}/config/namespace?cluster=${cluster.name}`, addGetAuthorization(cluster!.accessString))
+            var response = await fetch(`${cluster.url}/config/namespace`, addGetAuthorization(cluster.accessString))
             if (response.status!==200) {
                 setMsgBox(MsgBoxOkError('Resource Selector',`Error accessing cluster: ${JSON.stringify(response.status)}`, setMsgBox))
             }
@@ -77,14 +80,23 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     }
 
     const loadAllPods = async (namespace:string, group:string) => {
-        var [gtype,gname] = group.split('+')
-        var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}&cluster=${selectedCluster?.name}`, addGetAuthorization(selectedCluster!.accessString))
-        var data = await response.json()
-        setAllPods((prev) => [...prev, ...data])
+        if (isDocker) {
+            var [gtype,gname] = group.split('+')
+            var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}&cluster=${selectedCluster?.name}`, addGetAuthorization(selectedCluster!.accessString))
+            var data = await response.json()
+            setAllPods((prev) => [...prev, ...data])
+        }
+        else {
+            var [gtype,gname] = group.split('+')
+            var response = await fetch(`${selectedCluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}&cluster=${selectedCluster?.name}`, addGetAuthorization(selectedCluster!.accessString))
+            var data = await response.json()
+            setAllPods((prev) => [...prev, ...data])
+        }
     }
 
-    const loadAllContainers = async (cluster: Cluster, namespace:string,pod:string) => {
-        var response = await fetch(`${cluster.url}/config/${namespace}/${pod}/containers?cluster=${cluster?.name}`, addGetAuthorization(cluster!.accessString))
+    const loadAllContainers = async (cluster: Cluster, namespace:string, pod:string) => {
+        //var response = await fetch(`${cluster.url}/config/${namespace}/${pod}/containers?cluster=${cluster?.name}`, addGetAuthorization(cluster!.accessString))
+        var response = await fetch(`${cluster.url}/config/${namespace}/${pod}/containers`, addGetAuthorization(cluster.accessString))
         var data = await response.json()
         setAllContainers((prev) => [...prev, ...(data as string[]).map(c => pod+'+'+c)])
     }
@@ -94,15 +106,23 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
         let cluster = props.clusters?.find(c => c.name===value)!
         if (cluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER) {
             setSelectedCluster(cluster)
-            setView('container')
-            setAllNamespaces(['$docker'])
-            setNamespaces(['$docker'])
-            setAllGroups(['$docker'])
-            setGroups(['$docker'])
-            setAllPods(['$docker'])
-            setPods(['$docker'])
+            // setView('container')
+            // setAllNamespaces(['$docker'])
+            // setNamespaces(['$docker'])
+            // setAllGroups(['$docker'])
+            // setGroups(['$docker'])
+            // setAllPods(['$docker'])
+            // setPods(['$docker'])
+            // setAllContainers([])
+            // loadAllContainers(cluster, '$docker','$docker')
+            // setContainers([])
+            setView('')
+            setAllNamespaces([])
+            setNamespaces([])
+            setAllGroups([])
+            setGroups([])
+            setPods([])
             setAllContainers([])
-            loadAllContainers(cluster, '$docker','$docker')
             setContainers([])
         }
         else {
@@ -120,26 +140,60 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
     }
 
     const onChangeView = (event: SelectChangeEvent) => {
-        var value=event.target.value
-        setView(value)
-        setNamespaces([])
-        setAllGroups([])
-        setGroups([])
-        setPods([])
-        setAllContainers([])
-        setContainers([])
-        getNamespaces(props.clusters?.find(c => c.name===selectedCluster.name)!)
+        let view=event.target.value
+        setView(view)
+
+        if (isDocker) {
+            setNamespaces(['$docker'])
+            setGroups(['$docker'])
+            setAllPods([])
+            setPods([])
+            setContainers([])
+            loadAllPods('$docker', '$docker')
+        }
+        else {
+            setNamespaces([])
+            setAllGroups([])
+            setGroups([])
+            setPods([])
+            setAllContainers([])
+            setContainers([])
+            getNamespaces(props.clusters?.find(c => c.name===selectedCluster.name)!)
+        }
     }
 
     const onChangeNamespaces = (event: SelectChangeEvent<typeof namespaces>) => {
         var nss  = event.target.value as string[]
-        setNamespaces(nss)
-        setAllGroups([])
-        setGroups([])
-        setPods([])
-        setAllContainers([])
-        setContainers([])
-        if (view!=='namespace') nss.map (ns => loadAllGroups(selectedCluster, ns))
+        // if (isDocker){
+        //     setNamespaces(nss)
+        //     setAllContainers([])
+        //     setContainers([])
+        //     if (view!=='namespace') nss.map (ns => loadAllContainers(selectedCluster, ns, '$docker'))
+        // }
+        // else {
+        //     setNamespaces(nss)
+        //     setAllGroups([])
+        //     setGroups([])
+        //     setPods([])
+        //     setAllContainers([])
+        //     setContainers([])
+        //     if (view!=='namespace') nss.map (ns => loadAllGroups(selectedCluster, ns))
+        // }
+        if (isDocker){
+            setNamespaces(['$docker'])
+            setAllPods([])
+            setPods([])
+            if (view!=='namespace') nss.map (ns => loadAllPods('$docker','$docker'))
+        }
+        else {
+            setNamespaces(nss)
+            setAllGroups([])
+            setGroups([])
+            setPods([])
+            setAllContainers([])
+            setContainers([])
+            if (view!=='namespace') nss.map (ns => loadAllGroups(selectedCluster, ns))
+        }
     }
 
     const onChangeGroup = (event: SelectChangeEvent<typeof groups>) => {
@@ -217,16 +271,20 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={selectedCluster.name===''  || selectedCluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={selectedCluster.name===''}>
                 <InputLabel id='view'>View</InputLabel>
                 <Select labelId='view' value={view} onChange={onChangeView} >
-                { ['namespace','group','pod','container'].map( (value:string) => {
+                {/* { ['namespace','group','pod','container'].map( (value:string) => {
                     return <MenuItem key={value} value={value}>{value}</MenuItem>
-                })}
+                })} */}
+                    <MenuItem key={'namespace'} value={'namespace'} disabled={isDocker}>namespace</MenuItem>
+                    <MenuItem key={'group'} value={'group'} disabled={isDocker}>group</MenuItem>
+                    <MenuItem key={'pod'} value={'pod'}>pod</MenuItem>
+                    <MenuItem key={'container'} value={'container'}>container</MenuItem>
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={view==='' || selectedCluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={view==='' || isDocker}>
                 <InputLabel id='namespace'>Namespace</InputLabel>
                 <Select labelId='namespace' onChange={onChangeNamespaces} multiple value={namespaces} renderValue={(selected) => selected.join(', ')}>
                 { allNamespaces && allNamespaces.map( (namespace:string) => {
@@ -240,7 +298,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={namespaces.length===0 || view==='namespace' || selectedCluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={namespaces.length===0 || view==='namespace' || isDocker}>
                 <InputLabel id='group'>Group</InputLabel>
                 <Select labelId='group' onChange={onChangeGroup} value={groups} multiple renderValue={(selected) => selected.join(', ')}>
                 { allGroups && allGroups.map( (value) => 
@@ -252,7 +310,7 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={groups.length === 0 || view==='namespace' || view==='group'  || selectedCluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={(!isDocker && (groups.length === 0 || view==='namespace' || view==='group')) || (isDocker && (view ==='namespace' || namespaces.length === 0))}>
                 <InputLabel id='pod'>Pod</InputLabel>
                 <Select labelId='pod' value={pods} onChange={onChangePod} multiple renderValue={(selected) => selected.join(', ')}>
                 { allPods && allPods.map( (value:string) =>
@@ -271,7 +329,12 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 <Select labelId='container' value={containers} onChange={onChangeContainer} multiple renderValue={(selected) => selected.join(', ')}>
                 { allContainers && allContainers.map( (value:string) => 
                     <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
-                        <Checkbox checked={containers.includes(value)} />{ selectedCluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER? value.replaceAll('$docker+',''): value }
+                        {/* <Checkbox checked={containers.includes(value)} />{ isDocker? value.replaceAll('$docker+',''): value } */}
+                        <Checkbox checked={containers.includes(value)} />
+                        <Stack direction={'column'}>
+                            {value.split('+')[1]}
+                            <Typography color={'darkgray'} fontSize={12}>{value.split('+')[0]}</Typography>
+                        </Stack>
                     </MenuItem>
                 )}
                 </Select>

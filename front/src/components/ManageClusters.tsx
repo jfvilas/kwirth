@@ -89,7 +89,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
                                 <ListItem>
                                   <Stack direction={'column'}>
                                       <Typography>{c.name}</Typography>
-                                      <Typography color={'darkgray'} fontSize={12}>{c.kwirthData?.version}<b> ({c.kwirthData?.clusterType})</b></Typography>
+                                      {c.kwirthData?.clusterType && <Typography color={'darkgray'} fontSize={12}>{c.kwirthData?.version}<b> ({c.kwirthData?.clusterType})</b></Typography>}
                                   </Stack>
                                 </ListItem>
                             </ListItemButton>

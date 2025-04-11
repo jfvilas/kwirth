@@ -1,6 +1,6 @@
 import { AssetMetrics, ChannelCapabilities, IChannel, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../model/ClusterInfo'
-import { AssetData } from '../tools/MetricsTools'
+import { AssetData } from '../tools/Metrics'
 import WebSocket from 'ws'
 
 class MetricsChannel implements IChannel {

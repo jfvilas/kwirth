@@ -20,12 +20,12 @@ import { getChannelScopeLevel, validBearerKey } from './tools/AuthorizationManag
 import { getPodsFromGroup } from './tools/KubernetesOperations'
 
 import express, { Request, Response} from 'express'
-import { ClusterInfo, NodeInfo } from './model/ClusterInfo'
+import { ClusterInfo } from './model/ClusterInfo'
 import { ServiceAccountToken } from './tools/ServiceAccountToken'
 import { MetricsApi } from './api/MetricsApi'
 import { v4 as uuidv4 } from 'uuid'
 
-import { MetricsTools } from './tools/MetricsTools'
+import { MetricsTools as Metrics } from './tools/Metrics'
 import { LogChannel } from './channels/LogChannel'
 import { AlertChannel } from './channels/AlertChannel'
 import { MetricsChannel } from './channels/MetricsChannel'
@@ -33,6 +33,7 @@ import { ISecrets } from './tools/ISecrets'
 import { IConfigMaps } from './tools/IConfigMap'
 import { DockerSecrets } from './tools/DockerSecrets'
 import { DockerConfigMaps } from './tools/DockerConfigMaps'
+import { DockerTools } from './tools/KwirthApi'
 
 const http = require('http')
 const cors = require('cors')
@@ -49,7 +50,8 @@ const coreApi = kubeConfig.makeApiClient(CoreV1Api)
 const appsApi = kubeConfig.makeApiClient(AppsV1Api)
 const logApi = new Log(kubeConfig)
 var dockerApi: Docker = new Docker()
-var thisKwirthData: KwirthData
+var kwirthData: KwirthData
+var clusterInfo: ClusterInfo
 
 var saToken: ServiceAccountToken
 var secrets: ISecrets
@@ -195,12 +197,8 @@ const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:Inst
                 case InstanceConfigViewEnum.CONTAINER:
                     // container has the form: podname+containername (includes a plus sign as separating char)
                     var icContainers = Array.from (new Set (instanceConfig.container.split(',').map (c => c.split('+')[1])))
-                    var scPods = Array.from (new  Set (instanceConfig.container.split(',').map (c => c.split('+')[0])))
-                    console.log('sccontainers')
-                    console.log(scPods)
-                    console.log(icContainers)
-                    console.log(containerName)
-                    if (icContainers.includes(containerName) && scPods.includes(podName)) {
+                    var icPods = Array.from (new  Set (instanceConfig.container.split(',').map (c => c.split('+')[0])))
+                    if (icContainers.includes(containerName) && icPods.includes(podName)) {
                         if (instanceConfig.container.split(',').includes(podName+'+'+containerName)) {
                             console.log(`Container ADDED: ${podNamespace}/${podName}/${containerName}`)
                             addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
@@ -231,21 +229,35 @@ const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:Inst
 
 }
 
-const watchDockerPods = (apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:InstanceConfig) => {
+const watchDockerPods = async (apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:InstanceConfig) => {
     //launch included containers
 
-    console.log(apiPath)
-    console.log(queryParams)
-    console.log([ queryParams['$dockerContainerName']])
-    let ml = '{'+queryParams.labelSelector+'}'
-    let kvps:string[] = queryParams.labelSelector.split(',')
-    const jsonObject: { [key: string]: string } = {}
-    kvps.forEach(kvp => {
-        const [key, value] = kvp.split('=')
-        jsonObject[key] = value
-    })
-    console.log(jsonObject)
-    processEvent('ADDED', webSocket, instanceConfig, '$docker', '$docker', [ jsonObject['$dockerContainerName']] )
+    if (instanceConfig.view==='pod') {
+        // get all containers in pod
+        let ml = '{'+queryParams.labelSelector+'}'
+        let kvps:string[] = queryParams.labelSelector.split(',')
+        const jsonObject: { [key: string]: string } = {}
+        kvps.forEach(kvp => {
+            const [key, value] = kvp.split('=')
+            jsonObject[key] = value
+        })
+
+        let containers = await clusterInfo.dockerTools.getContainers(jsonObject['$dockerPodName'])
+        for (var container of containers) {
+            processEvent('ADDED', webSocket, instanceConfig, '$docker', jsonObject['$dockerPodName'], [ container ] )
+        }
+
+    }
+    else if (instanceConfig.view==='container') {
+        let ml = '{'+queryParams.labelSelector+'}'
+        let kvps:string[] = queryParams.labelSelector.split(',')
+        const jsonObject: { [key: string]: string } = {}
+        kvps.forEach(kvp => {
+            const [key, value] = kvp.split('=')
+            jsonObject[key] = value
+        })
+        processEvent('ADDED', webSocket, instanceConfig, '$docker', jsonObject['$dockerPodName'], [ jsonObject['$dockerContainerName']] )
+    }
 
 
     // listen for changes
@@ -300,7 +312,7 @@ const watchKubernetesPods = (apiPath:string, queryParams:any, webSocket:WebSocke
 }
 
 const watchPods = (apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:InstanceConfig) => {
-    if (thisKwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+    if (kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
         watchDockerPods(apiPath, queryParams, webSocket, instanceConfig)
     }
     else {
@@ -312,59 +324,43 @@ const watchPods = (apiPath:string, queryParams:any, webSocket:WebSocket, instanc
 // accessKeyResources will create a list including all pods in the cluster
 const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, accessKeyResources:ResourceIdentifier[], validNamespaces:string[], validPodNames:string[]) => {
     var selectedPods:V1Pod[]=[]
-    if (thisKwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+    let allPods
 
-        let pod = new V1Pod()
-        pod.metadata = new V1ObjectMeta()
-        pod.metadata.name = '$docker'
-        pod.metadata.namespace = '$docker'
-        pod.metadata.labels = { app: '$docker', name:'$docker' }
-        pod.spec = new V1PodSpec()
-        pod.spec.containers = []
-        
-        // let containers = await dockerApi.listContainers( { all:false} )
-        // for (var container of containers) {
-        //     let c = new V1Container()
-        //     let name =  container.Names ? container.Names[0] : container.Id
-        //     c.name = name.replaceAll('/','')
-        //     pod.spec.containers.push(c)
-        // }
-        selectedPods.push(pod)
-    }
-    else {
-        var allPods=await coreApi.listPodForAllNamespaces() //+++ can be optimized if instanceConfig.namespace is specified
+    if (kwirthData.clusterType === ClusterTypeEnum.DOCKER)
+        allPods = await clusterInfo.dockerTools.getAllPods()
+    else
+        allPods = (await clusterInfo.coreApi.listPodForAllNamespaces()).body.items //+++ can be optimized if instanceConfig.namespace is specified
 
-        for (var pod of allPods.body.items) {
-            var podName = pod.metadata?.name!
-            var podNamespace = pod.metadata?.namespace!
+    for (var pod of allPods) {
+        var podName = pod.metadata?.name!
+        var podNamespace = pod.metadata?.namespace!
 
-            let existClusterScope = accessKeyResources.find(resource => resource.scope==='cluster') !== null
-            if (!existClusterScope) {
-                if (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace)) {
-                    if (! validNamespaces.includes(podNamespace)) continue
-                }
-
-                //+++ other filters (not just 'pod') pending implementation (that is, obtain a list of pods checking groups, for example)
-                // if (metricsConfig.pod!=='' && metricsConfig.pod.split(',').includes(podName)) {
-                //     if (! validPodNames.includes(podName)) continue
-                // }
-
-                if (instanceConfig.pod!=='' && instanceConfig.pod.split(',').includes(podName)) {
-                    if (! validPodNames.includes(podName)) continue
-                }
-
-                let podResource = accessKeyResources.find(resource => resource.pod===podName)
-                if (!podResource) continue
-
-                var haveLevel = getChannelScopeLevel(channels, instanceConfig.channel)
-                var requiredLevel = getChannelScopeLevel(channels, instanceConfig.channel)
-                if (haveLevel<requiredLevel) {
-                    console.log(`Insufficent level ${haveLevel} < ${requiredLevel}`)
-                    continue
-                }
+        let existClusterScope = accessKeyResources.find(resource => resource.scope==='cluster') !== null
+        if (!existClusterScope) {
+            if (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace)) {
+                if (! validNamespaces.includes(podNamespace)) continue
             }
-            selectedPods.push(pod)
+
+            //+++ other filters (not just 'pod') pending implementation (that is, obtain a list of pods checking groups, for example)
+            // if (metricsConfig.pod!=='' && metricsConfig.pod.split(',').includes(podName)) {
+            //     if (! validPodNames.includes(podName)) continue
+            // }
+
+            if (instanceConfig.pod!=='' && instanceConfig.pod.split(',').includes(podName)) {
+                if (! validPodNames.includes(podName)) continue
+            }
+
+            let podResource = accessKeyResources.find(resource => resource.pod===podName)
+            if (!podResource) continue
+
+            var haveLevel = getChannelScopeLevel(channels, instanceConfig.channel)
+            var requiredLevel = getChannelScopeLevel(channels, instanceConfig.channel)
+            if (haveLevel<requiredLevel) {
+                console.log(`Insufficent level ${haveLevel} < ${requiredLevel}`)
+                continue
+            }
         }
+        selectedPods.push(pod)
     }
     return selectedPods
 }
@@ -420,11 +416,33 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
             }
             sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
+        // case 'pod':
+        //     for (let podName of instanceConfig.pod.split(',')) {
+        //         let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
+        //         if (validPod) {
+        //             var metadataLabels = validPod.metadata?.labels
+        //             if (metadataLabels) {
+        //                 var labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
+        //                 let specificInstanceConfig: InstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
+        //                 specificInstanceConfig.pod = podName
+        //                 watchPods(`/api/v1/${instanceConfig.objects}`, { labelSelector }, webSocket, specificInstanceConfig)
+        //             }
+        //             else {
+        //                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels for pod '${podName}'`, instanceConfig)
+        //             }
+        //         }
+        //         else {
+        //             sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}' (or pod does not exsist)`, instanceConfig)
+        //         }
+        //     }
+        //     sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
+        //     break
         case 'pod':
             for (let podName of instanceConfig.pod.split(',')) {
                 let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
                 if (validPod) {
-                    var metadataLabels = validPod.metadata?.labels
+                    let metadataLabels = validPod.metadata?.labels
+                    metadataLabels!['$dockerPodName'] = podName
                     if (metadataLabels) {
                         var labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
                         let specificInstanceConfig: InstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
@@ -441,6 +459,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
             }
             sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
+
         // case 'container':
         //     for (let container of instanceConfig.container.split(',')) {
         //         let [podName, containerName] = container.split('+')
@@ -464,18 +483,13 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
         //     sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
         //     break
         case 'container':
-            console.log(requestedValidatedPods)
             for (let container of instanceConfig.container.split(',')) {
                 let [podName, containerName] = container.split('+')
                 let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
-                //let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName && p.spec?.containers.find(c => c.name === containerName))
-                console.log("podName+'/'+containerName")
-                console.log(podName+'/'+containerName+':  '+validPod)
                 if (validPod) {
                     let metadataLabels = validPod.metadata?.labels
                     metadataLabels!['$dockerContainerName'] = containerName
-                    console.log('metadataLabels')
-                    console.log(metadataLabels)
+                    metadataLabels!['$dockerPodName'] = podName
                     if (metadataLabels) {
                         let labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
                         let specificInstanceConfig: InstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
@@ -515,6 +529,62 @@ const processPauseContinueInstanceConfig = async (instanceConfig: InstanceConfig
     else {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.channel} does not exist`, instanceConfig)
     }
+}
+
+const getAllowedNamespaces = async (accessKeyResources:ResourceIdentifier[]) => {
+    let allowedNamespaces:string[] = []
+    if (kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+        allowedNamespaces = ['$docker']
+    }
+    else {
+        if (accessKeyResources.find(akr => akr.scope==='cluster')) {
+            let res = await coreApi.listNamespace()
+            allowedNamespaces = res.body.items.map(n => n.metadata?.name as string)
+        }
+        else {
+            allowedNamespaces = accessKeyResources.filter(r => r.namespace!='').map(r => r.namespace)
+        }
+        allowedNamespaces = [...new Set(allowedNamespaces)]
+    }
+    return allowedNamespaces
+}
+
+const getAllowedPodNames = async (validNamespaces:string[]) => {
+    let allowedPodNames:string[] = []
+    if (kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+        allowedPodNames =  ['$docker']
+    }
+    else {
+        for (var ns of validNamespaces) {
+            let res = await coreApi.listNamespacedPod(ns)
+            allowedPodNames.push (...res.body.items.map(p => p.metadata?.name as string))
+        }
+    }
+    return [...new Set(allowedPodNames)]
+}
+
+const getValidPodNames = async (validNamespaces:string[]) => {
+    let validPodNames:string[] = []
+
+    if (kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+        validPodNames = await clusterInfo.dockerTools.getAllPodNames()
+    }
+    else {
+        throw 'asdad'
+    }
+    return validPodNames
+}
+
+const getValidNamespaces = (requestedNamespaces:string[], allowedNamespaces:string[]) => {
+    let validNamespaces:string[] = []
+    if (kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+        validNamespaces = ['$docker']
+    }
+    else {
+        validNamespaces = requestedNamespaces.filter(ns => allowedNamespaces.includes(ns))
+        validNamespaces = [...new Set(validNamespaces)]
+    }
+    return validNamespaces
 }
 
 // clients send requests to start receiving log
@@ -566,41 +636,26 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
     }
 
     // +++ maybe we can perform this things later when knowing what the action is
-    var accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resource)
+    let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resource)
 
-    var requestedNamespaces = instanceConfig.namespace.split(',').filter(ns => ns!=='')
-    var allowedNamespaces:string[] = []
-    if (thisKwirthData.clusterType === ClusterTypeEnum.DOCKER) {
-        allowedNamespaces = ['$docker']
-        validNamespaces = ['$docker']
-    }
-    else {
-        if (accessKeyResources.find(akr => akr.scope==='cluster')) {
-            let res = await coreApi.listNamespace()
-            allowedNamespaces = res.body.items.map(n => n.metadata?.name as string)
-        }
-        else {
-            allowedNamespaces = accessKeyResources.filter(r => r.namespace!='').map(r => r.namespace)
-        }
-        allowedNamespaces = [...new Set(allowedNamespaces)]
-        var validNamespaces = requestedNamespaces.filter(ns => allowedNamespaces.includes(ns))
-        validNamespaces = [...new Set(validNamespaces)]
-    }
+    let requestedNamespaces = instanceConfig.namespace.split(',').filter(ns => ns!=='')
+    let allowedNamespaces:string[] = []
+    let validNamespaces:string[] = []
 
-    var requestedPodNames = instanceConfig.pod.split(',').filter(podName => podName!=='')
-    var allowedPodNames:string[] = []
-    var validPodNames:string[] = []
-    if (thisKwirthData.clusterType === ClusterTypeEnum.DOCKER) {
-        allowedPodNames =  ['$docker']
-        validPodNames =  ['$docker']
+    allowedNamespaces = await getAllowedNamespaces(accessKeyResources)
+    validNamespaces = getValidNamespaces(requestedNamespaces, allowedNamespaces)
+
+    let requestedPodNames = instanceConfig.pod.split(',').filter(podName => podName!=='')
+    let allowedPodNames:string[] = []
+    let validPodNames:string[] = []
+    if (kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+        allowedPodNames = await getAllowedPodNames(validNamespaces)
+        validPodNames = await getValidPodNames(validNamespaces)
     }
     else {
         if (accessKeyResources.find(akr => akr.scope === 'cluster')) {
-            for (var ns of validNamespaces) {
-                let res = await coreApi.listNamespacedPod(ns)
-                allowedPodNames.push (...res.body.items.map(p => p.metadata?.name as string))
-            }
-            validPodNames = [...new Set(allowedPodNames)]
+            allowedPodNames = await getAllowedPodNames(validNamespaces)
+            validPodNames = allowedPodNames
         }
         else {
             allowedPodNames = accessKeyResources.filter(r => r.pod!='').map(r => r.pod)
@@ -684,7 +739,7 @@ wss.on('connection', (ws:WebSocket, req) => {
     })
 })
 
-const getLastKwirthVersion = async (kwirthData:KwirthData) => {
+const getLastKwirthVersion = async () : Promise<string|undefined> => {
     kwirthData.lastVersion=kwirthData.version
     try {
         var hubResp = await fetch ('https://hub.docker.com/v2/repositories/jfvilasoutlook/kwirth/tags?page_size=25&page=1&ordering=last_updated&name=')
@@ -696,8 +751,8 @@ const getLastKwirthVersion = async (kwirthData:KwirthData) => {
                 if (regex.test(result.name)) {
                     if (versionGreatThan(result.name, kwirthData.version)) {
                         console.log(`New version available: ${result.name}`)
-                        kwirthData.lastVersion=result.name
-                        break
+                        //kwirthData.lastVersion=result.name
+                        return result.name
                     }
                 }
             }
@@ -708,13 +763,17 @@ const getLastKwirthVersion = async (kwirthData:KwirthData) => {
         console.log('Error trying to determine last Kwirth version')
         console.log(err)
     }
+
+    return undefined
 }
 
-const runKubernetes = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
+const runKubernetes = async () => {
     secrets = new KubernetesSecrets(coreApi, kwirthData.namespace)
     configMaps = new KubernetesConfigMaps(coreApi, kwirthData.namespace)
 
-    await getLastKwirthVersion(kwirthData)
+    let lastVersion = await getLastKwirthVersion()
+    if (lastVersion) kwirthData.lastVersion = lastVersion
+
     // serve front
     console.log(`SPA is available at: ${rootPath}/front`)
     app.get(`/`, (req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
@@ -761,41 +820,48 @@ const runKubernetes = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) =>
     })
 }
 
-const initCluster = async (token:string) : Promise<ClusterInfo> => {
+const initKubernetesCluster = async (token:string) : Promise<void> => {
     // inictialize cluster
-    var clusterInfo = new ClusterInfo()
     clusterInfo.token = token
     clusterInfo.coreApi = coreApi
     clusterInfo.appsApi = appsApi
     clusterInfo.logApi = logApi
+    clusterInfo.dockerTools = new DockerTools(clusterInfo)
 
-    clusterInfo.loadName()
+    clusterInfo.loadKubernetesClusterName()
     clusterInfo.nodes = await clusterInfo.loadNodes()
     console.log('Node config loaded')
 
-    clusterInfo.metrics = new MetricsTools(token)
+    clusterInfo.metrics = new Metrics(clusterInfo)
     clusterInfo.metricsInterval = 60
-    clusterInfo.loadMetricsInfo()
+    clusterInfo.metrics.startMetrics()
 
-    return clusterInfo
+    console.log('ClusterInfo:')
+    console.log('  ClusterInfo Summary:')
+    console.log('  Name', clusterInfo.name)
+    console.log('  Type', clusterInfo.type)
+    console.log('  Falvour', clusterInfo.flavour)
+    console.log('  vCPU', clusterInfo.vcpus)
+    console.log('  Memory (GB)', clusterInfo.memory/1024/1024/1024)
+    console.log('  Nodes', clusterInfo.nodes.size)
 }
 
 const launchKubernetes = async() => {
     console.log('Start Kubernetes Kwirth')
-    thisKwirthData = await getKubernetesData()
-    if (thisKwirthData) {
+    kwirthData = await getKubernetesData()
+    if (kwirthData) {
         try {
-            saToken = new ServiceAccountToken(coreApi, thisKwirthData.namespace)    
-            await saToken.createToken('kwirth-sa',thisKwirthData.namespace)
+            saToken = new ServiceAccountToken(coreApi, kwirthData.namespace)    
+            await saToken.createToken('kwirth-sa',kwirthData.namespace)
 
             setTimeout ( async () => {
                 console.log('Extracting token...')
-                let token = await saToken.extractToken('kwirth-sa', thisKwirthData.namespace)
+                let token = await saToken.extractToken('kwirth-sa', kwirthData.namespace)
 
                 if (token)  {
                     console.log('SA token obtained succesfully')
-                    var clusterInfo = await initCluster(token)
-                    clusterInfo.clusterType = thisKwirthData.clusterType
+                    await initKubernetesCluster(token)
+                    clusterInfo.type = kwirthData.clusterType
 
                     // load channel extensions
                     var logChannel = new LogChannel(clusterInfo)
@@ -806,12 +872,12 @@ const launchKubernetes = async() => {
                     channels.set('metrics', metricsChannel)
 
                     console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
-                    console.log(`Detected own namespace: ${thisKwirthData.namespace}`)
-                    if (thisKwirthData.deployment !== '')
-                        console.log(`Detected own deployment: ${thisKwirthData.deployment}`)
+                    console.log(`Detected own namespace: ${kwirthData.namespace}`)
+                    if (kwirthData.deployment !== '')
+                        console.log(`Detected own deployment: ${kwirthData.deployment}`)
                     else
                         console.log(`No deployment detected. Kwirth is not running inside a cluster`)
-                    runKubernetes(thisKwirthData, clusterInfo)
+                    runKubernetes()
                 }
                 else {
                     console.log('SA token is invalid, exiting...')
@@ -827,13 +893,12 @@ const launchKubernetes = async() => {
     }    
 }
 
-const runDocker = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
-    thisKwirthData = kwirthData
-    console.log(kwirthData)
+const runDocker = async () => {
     secrets = new DockerSecrets(coreApi, '/secrets')
     configMaps = new DockerConfigMaps(coreApi, '/configmaps')
 
-    await getLastKwirthVersion(kwirthData)
+    let lastVersion = await getLastKwirthVersion()
+    if (lastVersion) kwirthData.lastVersion = lastVersion
     
     //serve front
     console.log(`SPA is available at: ${rootPath}/front`)
@@ -883,35 +948,74 @@ const runDocker = async (kwirthData: KwirthData, clusterInfo:ClusterInfo) => {
 
 const launchDocker = async() => {
     console.log('Start Docker Kwirth')
-    let clusterInfo = new ClusterInfo()
-    let kwirthData: KwirthData = {
-        clusterName: 'inDocker',
+    clusterInfo = new ClusterInfo()
+    kwirthData = {
         namespace: '',
         deployment: '',
         inCluster: false,
         version: VERSION,
         lastVersion: VERSION,
+        clusterName: 'inDocker',
         clusterType: ClusterTypeEnum.DOCKER
     }
     clusterInfo.nodes = new Map()
-    clusterInfo.metrics = new MetricsTools('')
+    clusterInfo.metrics = new Metrics(clusterInfo)
     clusterInfo.metricsInterval = 60
     clusterInfo.token = ''
-    clusterInfo.clusterType = ClusterTypeEnum.DOCKER
     clusterInfo.dockerApi = dockerApi
+    clusterInfo.dockerTools = new DockerTools(clusterInfo)
+    clusterInfo.name = 'docker'
+    clusterInfo.type = ClusterTypeEnum.DOCKER
+    clusterInfo.flavour = 'docker'
 
     // load channel extensions
     var logChannel = new LogChannel(clusterInfo)
     channels.set('log', logChannel)
 
     console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
-    runDocker(kwirthData, clusterInfo)
+    runDocker()
 }
 
 ////////////////////////////////////////////////////////////// START /////////////////////////////////////////////////////////
 console.log(`Kwirth version is ${VERSION}`)
 console.log(`Kwirth started at ${new Date().toISOString()}`)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+
+console.log('                                                                                                    ')
+console.log('                                          @@@@@@@@@                                                 ')
+console.log('                                       :@#@*.                                                       ')
+console.log('                                      @*-#.                                                         ')
+console.log('                                     @=:+%               -@@@:                                      ')
+console.log('                                   @@=.:+ =@.          @@ @= .                                      ')
+console.log('                                   ==+##%*-                                                         ')
+console.log('                                 .@@#@  ##@  .+@@@@@@@@@@@@@@@@@                                    ')
+console.log('                                          .+++-....:::::::::...-*@.@+                               ')
+console.log('                                    @@+@%+-:::::::::::::::::::::.:.*@@                              ')
+console.log('                                   *@:::.:::::::::::::::::::::::::.% @                              ')
+console.log('                                    @+.:::::::::::::::::::::::::::.@                                ')
+console.log('                                     @ ..:::::::::::::::::::::::::.%                                ')
+console.log('                                     @.=.::::::::::::::::::::::::::#                                ')
+console.log('                                   .@=#@@@@@@@#=......=*@@@@@@@@@@@@                                ')
+console.log('                                               -@@@@@@@               .                             ')
+console.log('                                 @@.                               @@*@@                            ')
+console.log('                                .%-@    @      @  -@  * @@@  :@@@@%=. #@                            ')
+console.log('                                 @:=%@#:@%@@##@@ .@*#%#+- :+#*-::::.- :@                            ')
+console.log('                                 :+..:= .    ..  --:::::..  ..:::::.@*:@                            ')
+console.log('                                  @-=..=#@@@@%#@ @:::::::+@@*::::::.+=#                             ')
+console.log('                                   *=%+       +  @:....:..  ..:::::..+%                             ')
+console.log('                                   @#@@#:::::.@  %@-:* .::::::::::-+@+                              ')
+console.log('                                     # .-::::.*     .@@.::::::::::*=              @@@@@             ')
+console.log(' %@@@@@@@.  +@@@@@                     :=::-:::=@@@@   .:::::::::+*                 @@@             ')
+console.log('    @@@      @@                        =*..% @@%:@#@.+:.......:.:@      @@@         @@@             ')
+console.log('    @@@    .@@                       @. .             --                :@@         @@@             ')
+console.log('    @@@   @@         @@@@@@@    @@@ @@@@@@@@@@@@@@@@:@=.@@@@@* @@@@@  @@@@@@@@@@    @@@ *@@@@@@@    ')
+console.log('    @@@ %@             %@@      @@@@-:   @@      @@@  =.  -@@@@:  @@     @@         @@@@@     @@@   ')
+console.log('    @@@@@@              @@@    @@@@@    :@       @@@ +-:: @@@  %        @@@         @@@       @@@   ')
+console.log('    @@@ -@@@            @@@ -%@@  @@@   @@ @    .@@@ .... @@@* -        @@@         @@@       @@@   ')
+console.log('    @@@   @@@@           @@@  @    @@% @@  .@@   @@@ @@@@ @@@*   @@@@@@ @@@         @@@       @@@   ')
+console.log('    @@@     @@@          @@@ @@    @@@ @  :* :+  @@@      @@@@=         @@@         @@@       @@@   ')
+console.log('    @@@      @@@@         @@@@      @@@@   .=    @@@     .@@@=          @@@         @@@       @@@   ')
+console.log('.@@@@@:@     =@@@@@       @@       @@@     @@@@@@@@@%   %@@@@@@         @@@@ @=  @#@@@@@   @@@@@%@ ')
 
 getExecutionEnvironment().then( async (exenv:string) => {
     switch (exenv) {
@@ -928,6 +1032,6 @@ getExecutionEnvironment().then( async (exenv:string) => {
         }
 })
 .catch( (error) => {
-    console.log ()
+    console.log (error)
     console.log ('Cannot determine execution environment')
 })

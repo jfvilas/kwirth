@@ -1,7 +1,8 @@
 import { AppsV1Api, CoreV1Api, Log, V1Node } from "@kubernetes/client-node";
-import { MetricsTools } from "../tools/MetricsTools";
+import { MetricsTools } from "../tools/Metrics";
 import { ClusterTypeEnum } from "@jfvilas/kwirth-common";
 import Docker from 'dockerode'
+import { DockerTools } from "../tools/KwirthApi";
 
 export interface NodeInfo {
     name:string
@@ -19,6 +20,7 @@ export interface NodeInfo {
 export class ClusterInfo {
     public name: string = ''
     public nodes: Map<string, NodeInfo> = new Map()
+    public dockerTools!: DockerTools
     public dockerApi!: Docker
     public coreApi!: CoreV1Api
     public appsApi!: AppsV1Api
@@ -29,7 +31,8 @@ export class ClusterInfo {
     public metricsIntervalRef: number = -1
     public vcpus: number = 0
     public memory: number = 0
-    public clusterType: ClusterTypeEnum = ClusterTypeEnum.KUBERNETES
+    public type: ClusterTypeEnum = ClusterTypeEnum.KUBERNETES
+    public flavour: string ='unknown'
 
     stopInterval = () => clearTimeout(this.metricsIntervalRef)
 
@@ -40,30 +43,28 @@ export class ClusterInfo {
         }, this.metricsInterval * 1000, {})
     }
 
-    loadName = async() => {
+    loadKubernetesClusterName = async() => {
         if (this.name !== '') return
         var resp = await this.coreApi.listNode()
         if (!resp.body.items || resp.body.items.length===0) return 'unnamed'
 
         let node = resp.body.items[0]
         if (node.metadata?.labels && node.metadata?.labels['kubernetes.azure.com/cluster']) {
+            this.flavour = 'aks'
             this.name = node.metadata?.labels['kubernetes.azure.com/cluster']
         }
-    }
+        if (node.metadata?.annotations && node.metadata?.annotations['k3s.io/hostname']) {
+            let hostname = node.metadata?.annotations['k3s.io/hostname'].toLocaleLowerCase()
+            this.flavour = hostname.startsWith('k3d') ? 'k3d' : 'k3s'
 
-    loadMetricsInfo = async () => {
-        console.log('Metrics information for cluster is being loaded asynchronously')
-        await this.metrics.loadClusterMetrics(Array.from(this.nodes.values()))
-        this.vcpus = 0
-        this.memory = 0
-        for (let node of this.nodes.values()) {
-            await this.metrics.readNodeMetrics(node)
-            this.vcpus += node.machineMetricValues.get('machine_cpu_cores')?.value!
-            this.memory += node.machineMetricValues.get('machine_memory_bytes')?.value!
+            let i = hostname.indexOf('-agent-')
+            if (i>=0) 
+                this.name = hostname.substring(0,i)
+            else {
+                i = hostname.indexOf('-server-')
+                if (i>=0) this.name = hostname.substring(0,i)
+            }
         }
-        console.log('clusterInfo.memory', this.memory)
-        console.log('clusterInfo.vcpus', this.vcpus)
-        this.startInterval(this.metricsInterval)
     }
 
     loadNodes = async () => {

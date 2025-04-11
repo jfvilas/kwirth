@@ -29,7 +29,7 @@ export class ServiceAccountToken {
             await this.deleteToken(serviceAccountName, namespace)
         }
         catch (err) {
-            console.log('token does not exists. we will create')
+            console.log('Token does not exists. we will create')
         }
 
         // we now create it
