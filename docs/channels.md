@@ -56,7 +56,7 @@ When you create a new channel, the first thing you should do is to review the in
 
 ```typescript
 interface IChannel {
-    getCapabilities(): ChannelCapabilities
+    getChannelData(): ChannelData
     getChannelScopeLevel(scope:string) : number
     
     startInstance (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void
@@ -72,7 +72,7 @@ interface IChannel {
 ```
 
 And this is a short explanation on each function:
-  - **getCapabilities**. Th channel must implement this function to inform Kwirth core which capabiities does it support. This refers to 'pausing', 'reconnecting', etc.
+  - **getChannelData**. Th channel must implement this function to inform Kwirth core which capabiities does it support. This refers to 'pausing', 'reconnecting', etc.
   - **getChannelScopeLevel**. Your channel may need to offer different scope levels to your users. For example, in metrics channel the clients can just do SNAPSHOT (obtaining a set of metrics) or do STREAM (that is, obtaining metrics through a stream of data implemented as an instance on a web socket). This function returns an id that Kwirth core uses for deciding if a specific user has an Access Key with a scope for performing the fucntion he requested. For example, if the user has an access key for getting SNAPSHOT (value 1) and requests a metrics STREAM (value 2), Kwirth will deny the request.
   - **startInstance**. This function is invoked when a client requests to start a new instance of the channel.
   - **pauseContinueInstance**. This funciton will be invoked when the client connected to the channel wants to pause receiving data (but not stopping the instance) or continue receiving data if instance has been previously paused.

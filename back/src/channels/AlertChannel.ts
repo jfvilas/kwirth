@@ -1,4 +1,4 @@
-import { ChannelCapabilities, IChannel, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common';
+import { ChannelData, IChannel, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common';
 import * as stream from 'stream'
 import WebSocket from 'ws'
 import { PassThrough } from 'stream'; 
@@ -26,8 +26,9 @@ class AlertChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    getCapabilities(): ChannelCapabilities {
+    getChannelData(): ChannelData {
         return {
+            id: 'alert',
             pauseable: false,
             modifyable: false,
             reconnectable: false

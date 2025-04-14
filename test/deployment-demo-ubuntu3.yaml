@@ -18,7 +18,7 @@ spec:
         - name: ubuntu3
           image: ubuntu
           command: ["/bin/sh"]
-          args: ["-c", "while true; do date; sleep 15; done"]
+          args: ["-c", "while true; do date; sleep 5; done"]
           resources:
             limits:
               cpu: '1'

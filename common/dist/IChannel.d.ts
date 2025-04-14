@@ -1,12 +1,13 @@
 import { InstanceConfig, InstanceConfigActionEnum } from './InstanceConfig';
 import WebSocket from 'ws';
-type ChannelCapabilities = {
+type ChannelData = {
+    id: string;
     pauseable: boolean;
     modifyable: boolean;
     reconnectable: boolean;
 };
 interface IChannel {
-    getCapabilities(): ChannelCapabilities;
+    getChannelData(): ChannelData;
     getChannelScopeLevel(scope: string): number;
     startInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): void;
     pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceConfigActionEnum): void;
@@ -17,5 +18,5 @@ interface IChannel {
     removeConnection(webSocket: WebSocket): void;
     updateConnection(webSocket: WebSocket, instanceId: string): boolean;
 }
-export type { ChannelCapabilities };
+export type { ChannelData };
 export { IChannel };

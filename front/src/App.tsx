@@ -163,8 +163,6 @@ const App: React.FC = () => {
         srcCluster.enabled = true
         response = await fetch(`${backendUrl}/config/version`, addGetAuthorization(accessString))
         srcCluster.kwirthData = await response.json() as KwirthData
-        console.log('gkd')
-        console.log(srcCluster.kwirthData)
         if (versionGreatThan(srcCluster.kwirthData.version,srcCluster.kwirthData.lastVersion)) {
             setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
         }
@@ -181,18 +179,22 @@ const App: React.FC = () => {
         setClusters(clusterList)
 
         for (let cluster of clusterList) {
-            if (await readClusterInfo(cluster)) {
-                cluster.enabled = true
-                await readClusterChannels(cluster)
-                if (cluster.channels.includes('metrics')) {
-                    await getMetricsNames(cluster)
-                    let data = await (await fetch (`${cluster.url}/metrics/config`, addGetAuthorization(cluster.accessString))).json()
-                    cluster.metricsInterval = data.metricsInterval
-                }
+            setClusterStatus(cluster)
+        }
+    }
+
+    const setClusterStatus = async (cluster:Cluster): Promise<void> => {
+        if (await readClusterInfo(cluster)) {
+            cluster.enabled = true
+            await readClusterChannels(cluster)
+            if (cluster.channels.includes('metrics')) {
+                await getMetricsNames(cluster)
+                let data = await (await fetch (`${cluster.url}/metrics/config`, addGetAuthorization(cluster.accessString))).json()
+                cluster.metricsInterval = data.metricsInterval
             }
-            else {
-                cluster.enabled = false
-            }
+        }
+        else {
+            cluster.enabled = false
         }
     }
 
@@ -305,7 +307,10 @@ const App: React.FC = () => {
                     pod: '',
                     container: ''
                 }
-                if (newTab.ws) newTab.ws.send(JSON.stringify(instanceConfig))
+                // +++ if ws is closed don't try to keepalive
+                if (newTab.ws && newTab.ws.readyState === WebSocket.OPEN) {
+                    newTab.ws.send(JSON.stringify(instanceConfig))
+                }
             }, (settings?.keepAliveInterval || 60) * 1000,'')  
         }
 
@@ -520,46 +525,63 @@ const App: React.FC = () => {
         }
     }
 
-    // const reconnectedInstance = (wsEvent:any, id:NodeJS.Timer) => {
-    //     clearInterval(id)
-    //     console.log('Reconnect interval cleared')
-    //     let tab = tabs.find(tab => tab.ws === wsEvent.target)
-    //     if (!tab || !tab.channelObject) return
-    //     console.log('Reconnected, will reconfigure')
-    //     let instanceConfig:InstanceConfig = {
-    //         channel: InstanceConfigChannelEnum.NONE,
-    //         objects: InstanceConfigObjectEnum.PODS,
-    //         flow: InstanceConfigFlowEnum.REQUEST,
-    //         action: InstanceConfigActionEnum.RECONNECT,
-    //         instance: '',
-    //         reconnectKey: tab.channelObject.reconnectKey,
-    //         scope: InstanceConfigScopeEnum.NONE,
-    //         accessKey: '',
-    //         view: InstanceConfigViewEnum.NONE,
-    //         namespace: '',
-    //         group: '',
-    //         pod: '',
-    //         container: ''
-    //     }
-    //     wsEvent.target.send(JSON.stringify(instanceConfig))
-    // }
+    const reconnectedInstance = (wsEvent:any, id:NodeJS.Timer) => {
+        clearInterval(id)
+        console.log('Reconnect interval cleared')
+        let tab = tabs.find(tab => tab.ws === wsEvent.target)
+        if (!tab || !tab.channelObject) return
+        console.log('Reconnected, will reconfigure')
+        let instanceConfig:InstanceConfig = {
+            channel: tab.channelId,
+            objects: InstanceConfigObjectEnum.PODS,
+            flow: InstanceConfigFlowEnum.REQUEST,
+            action: InstanceConfigActionEnum.RECONNECT,
+            instance: tab.channelObject.instance,
+            reconnectKey: tab.channelObject.reconnectKey,
+            scope: InstanceConfigScopeEnum.NONE,
+            accessKey: '',
+            view: InstanceConfigViewEnum.NONE,
+            namespace: '',
+            group: '',
+            pod: '',
+            container: ''
+        }
+        if (wsEvent.target) {
+            tab.ws = wsEvent.target
+            tab.ws!.onerror = (event) => reconnectInstance(event)
+            tab.ws!.onmessage = (event) => wsOnMessage(event)
+            tab.ws!.onclose = (event) => reconnectInstance(event)
+            wsEvent.target.send(JSON.stringify(instanceConfig))
+        }
+        else {
+            console.log('Target not set')
+        }
+    }
 
     const reconnectInstance = (wsEvent:any) => {
-        return
-        // +++ pending review
-        // let tab = tabs.find(tab => tab.ws === wsEvent.target)
-        // if (!tab || !tab.channelObject || !tab.channelObject.reconnectKey) return
-        // var cluster = clusters!.find(c => c.name === tab!.channelObject!.clusterName)
-        // if (!cluster) return
+        console.log('Reconnecting...')
+        let tab = tabs.find(tab => tab.ws === wsEvent.target)
+        if (!clusters || !tab || !tab.channelObject || !tab.channelObject.reconnectKey) return
+        if (tab.ws) {
+            tab.ws.onerror = null
+            tab.ws.onmessage = null
+            tab.ws.onclose = null
+            tab.ws = null
+        }
+        let cluster = clusters.find(c => c.name === tab!.channelObject!.clusterName)
+        if (!cluster) return
 
-        // console.log(`Will reconnect using ${tab.channelObject.reconnectKey}`)
+        console.log(`Will reconnect using key '${tab.channelObject.reconnectKey}'`)
 
-        // let selfId = setInterval( (key, url, tab) => {
-        //     console.log(`Trying to reconnect using ${key}, ${url}`)
-        //     let ws = new WebSocket(url)
-        //     ws.onopen = (event) => reconnectedInstance(event, selfId)
-        //     tab.ws = ws
-        // }, 5000, tab.channelObject.reconnectKey, cluster.url, tab)
+        let selfId = setInterval( (key, url, tab) => {
+            console.log(`Trying to reconnect using ${key}, ${url}`)
+            try {
+                let ws = new WebSocket(url)
+                ws.onopen = (event) => reconnectedInstance(event, selfId)
+                tab.ws = ws
+            }
+            catch  {}
+        }, 10000, tab.channelObject.reconnectKey, cluster!.url, tab)
     }
     
     const startChannel = (tab:ITabObject) => {
@@ -573,7 +595,7 @@ const App: React.FC = () => {
             return
         }
 
-        if (tab.ws && tab.ws.readyState === tab.ws.OPEN) {
+        if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
             tab.ws.onerror = (event) => reconnectInstance(event)
             tab.ws.onmessage = (event) => wsOnMessage(event)
             tab.ws.onclose = (event) => reconnectInstance(event)
@@ -1142,8 +1164,12 @@ const App: React.FC = () => {
 
     const onManageClustersClosed = (cc:Cluster[]) => {
         setShowManageClusters(false)
-        var payload=JSON.stringify(cc)
+        let otherClusters = cc.filter (c => !c.source)
+        var payload=JSON.stringify(otherClusters)
         fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addPostAuthorization(accessString, payload))
+        for (var c of otherClusters) {
+            setClusterStatus(c)
+        }
         setClusters(cc)
     }
 

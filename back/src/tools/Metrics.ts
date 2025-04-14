@@ -122,7 +122,7 @@ export class MetricsTools {
     }
 
     startMetrics = async () => {
-        console.log('Metrics information for cluster is being loaded asynchronously')
+        console.log('Metrics information for cluster is being loaded')
         let nodes = Array.from(this.clusterInfo.nodes.values())
 
         this.metricsList = new Map()
@@ -153,6 +153,8 @@ export class MetricsTools {
         var text=''
         try {
             var resp = await fetch (`https://${node.ip}:10250/metrics/cadvisor`, { headers: { Authorization: 'Bearer ' + this.clusterInfo.token} })
+            //var resp = await fetch (`https://psd-k8s-dev.azure.plexusdevops.com/kwirth/metrics/debug/text/aks-basv2pool-33612910-vmss000000`, { headers: { Authorization: '7db98cec-8891-7c53-539a-f7917c650662|permanent|cluster::+::'} })
+
             text = await resp.text()
         }
         catch (error:any) {
@@ -374,8 +376,7 @@ export class MetricsTools {
         this.loadingClusterMetrics = true
         console.log(`About to read cluster metrics ${new Date().toTimeString()}`)
 
-        clusterInfo.nodes = await clusterInfo.loadNodes()
-        
+        //clusterInfo.nodes = await clusterInfo.loadNodes()
         for (var node of clusterInfo.nodes.values()) {
             await this.readNodeMetrics(node)
         }

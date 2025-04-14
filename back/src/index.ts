@@ -4,6 +4,7 @@ import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
 import { KubernetesConfigMaps } from './tools/KubernetesConfigMaps'
 import { VERSION } from './version'
+import { getLastKwirthVersion, showLogo } from './tools/branding/Branding'
 
 // HTTP server for serving front, api and websockets
 import { StoreApi } from './api/StoreApi'
@@ -51,7 +52,8 @@ const appsApi = kubeConfig.makeApiClient(AppsV1Api)
 const logApi = new Log(kubeConfig)
 var dockerApi: Docker = new Docker()
 var kwirthData: KwirthData
-var clusterInfo: ClusterInfo
+var clusterInfo: ClusterInfo = new ClusterInfo()
+
 
 var saToken: ServiceAccountToken
 var secrets: ISecrets
@@ -198,6 +200,9 @@ const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:Inst
                     // container has the form: podname+containername (includes a plus sign as separating char)
                     var instanceContainers = Array.from (new Set (instanceConfig.container.split(',').map (c => c.split('+')[1])))
                     var instancePods = Array.from (new  Set (instanceConfig.container.split(',').map (c => c.split('+')[0])))
+                    console.log('instancePods')
+                    console.log(instancePods,podName)
+                    console.log(instanceContainers, containerName)
                     if (instanceContainers.includes(containerName) && instancePods.includes(podName)) {
                         if (instanceConfig.container.split(',').includes(podName+'+'+containerName)) {
                             console.log(`Container ADDED: ${podNamespace}/${podName}/${containerName}`)
@@ -242,9 +247,9 @@ const watchDockerPods = async (apiPath:string, queryParams:any, webSocket:WebSoc
             jsonObject[key] = value
         })
 
-        let containers = await clusterInfo.dockerTools.getContainers(jsonObject['$dockerPodName'])
+        let containers = await clusterInfo.dockerTools.getContainers(jsonObject['kwirthDockerPodName'])
         for (var container of containers) {
-            processEvent('ADDED', webSocket, instanceConfig, '$docker', jsonObject['$dockerPodName'], [ container ] )
+            processEvent('ADDED', webSocket, instanceConfig, '$docker', jsonObject['kwirthDockerPodName'], [ container ] )
         }
     }
     else if (instanceConfig.view==='container') {
@@ -255,8 +260,8 @@ const watchDockerPods = async (apiPath:string, queryParams:any, webSocket:WebSoc
             const [key, value] = kvp.split('=')
             jsonObject[key] = value
         })
-        let podName=jsonObject['$dockerPodName']
-        let containerName = jsonObject['$dockerContainerName']
+        let podName=jsonObject['kwirthDockerPodName']
+        let containerName = jsonObject['kwirthDockerContainerName']
         let id = await clusterInfo.dockerTools.getContainerId(podName, containerName )
         if (id) {
             processEvent('ADDED', webSocket, instanceConfig, '$docker', podName, [ containerName ] )
@@ -302,9 +307,8 @@ const watchKubernetesPods = (apiPath:string, queryParams:any, webSocket:WebSocke
             return
         }
         
-        // let containerNames = obj.spec.containers.map( (c: any) => c.name.replaceAll('/',''))
-        // processEvent(eventType, webSocket, instanceConfig, podNamespace, podName, containerNames)
-        processEvent(eventType, webSocket, instanceConfig, podNamespace, podName, obj.spec.containers)
+        let containerNames = obj.spec.containers.map( (c: any) => c.name)
+        processEvent(eventType, webSocket, instanceConfig, podNamespace, podName, containerNames)
     },
     (err) => {
         if (err !== null) {
@@ -373,12 +377,15 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
 }
 
 const processReconnect = async (webSocket: WebSocket, instanceConfig: InstanceConfig) => {
-    console.log(`Trying to reconnect ${instanceConfig.instance} with key ${instanceConfig.reconnectKey}`)
+    console.log(`Trying to reconnect instance '${instanceConfig.instance}' with key '${instanceConfig.reconnectKey}'`)
     for (var channel of channels.values()) {
+        console.log('channel', channel.getChannelData().id)
         if (channel.containsInstance(instanceConfig.instance)) {
-            // +++ reconnect process has to be optimized (differentiating between onError and onClose)
+            console.log('detected channel', channel.getChannelData().id)
+
             var updated = channel.updateConnection(webSocket, instanceConfig.instance)
             if (updated) {
+                console.log('UPDATED')
                 sendInstanceConfigSignalMessage(webSocket, InstanceConfigActionEnum.RECONNECT, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Reconnect successful')
                 return
             }
@@ -449,8 +456,11 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
                 let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
                 if (validPod) {
                     let metadataLabels = validPod.metadata?.labels
-                    metadataLabels!['$dockerPodName'] = podName
                     if (metadataLabels) {
+                        if (kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+                            metadataLabels['kwirthDockerPodName'] = podName
+                        }
+
                         var labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
                         let specificInstanceConfig: InstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
                         specificInstanceConfig.pod = podName
@@ -495,9 +505,13 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
                 let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
                 if (validPod) {
                     let metadataLabels = validPod.metadata?.labels
-                    metadataLabels!['$dockerContainerName'] = containerName
-                    metadataLabels!['$dockerPodName'] = podName
+
                     if (metadataLabels) {
+                        if (kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+                            metadataLabels['kwirthDockerContainerName'] = containerName
+                            metadataLabels['kwirthDockerPodName'] = podName
+                        }
+    
                         let labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
                         let specificInstanceConfig: InstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
                         specificInstanceConfig.container = container
@@ -616,7 +630,9 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
     }
 
     if (instanceConfig.action === InstanceConfigActionEnum.RECONNECT) {
-        if (!channels.get(instanceConfig.channel)?.getCapabilities().reconnectable) {
+        console.log('reconnect received')
+        if (!channels.get(instanceConfig.channel)?.getChannelData().reconnectable) {
+            console.log(`Reconnect capability not enabled for channel ${instanceConfig.channel} and instance ${instanceConfig.instance}`)
             sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Channel ${instanceConfig.channel} does not support reconnect`, instanceConfig)
             return
         }
@@ -695,7 +711,7 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
             break
         case InstanceConfigActionEnum.MODIFY:
             if (channels.has(instanceConfig.channel)) {
-                if (!channels.get(instanceConfig.channel)?.getCapabilities().modifyable) {
+                if (!channels.get(instanceConfig.channel)?.getChannelData().modifyable) {
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Channel ${instanceConfig.channel} does not support MODIFY`, instanceConfig)
                     return
                 }
@@ -708,7 +724,7 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         case InstanceConfigActionEnum.PAUSE:
         case InstanceConfigActionEnum.CONTINUE:   
             if (channels.has(instanceConfig.channel)) {
-                if (!channels.get(instanceConfig.channel)?.getCapabilities().pauseable) {
+                if (!channels.get(instanceConfig.channel)?.getChannelData().pauseable) {
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Channel ${instanceConfig.channel} does not support PAUSE/CONTINUE`, instanceConfig)
                     return
                 }    
@@ -746,39 +762,11 @@ wss.on('connection', (ws:WebSocket, req) => {
     })
 })
 
-const getLastKwirthVersion = async () : Promise<string|undefined> => {
-    kwirthData.lastVersion=kwirthData.version
-    try {
-        var hubResp = await fetch ('https://hub.docker.com/v2/repositories/jfvilasoutlook/kwirth/tags?page_size=25&page=1&ordering=last_updated&name=')
-        var json = await hubResp.json()
-        if (json) {
-            var results=json.results as any[]
-            for (var result of results) {
-                var regex = /^\d+\.\d+\.\d+$/
-                if (regex.test(result.name)) {
-                    if (versionGreatThan(result.name, kwirthData.version)) {
-                        console.log(`New version available: ${result.name}`)
-                        //kwirthData.lastVersion=result.name
-                        return result.name
-                    }
-                }
-            }
-            console.log('No new Kwirth version found on Docker hub')
-        }
-    }
-    catch (err) {
-        console.log('Error trying to determine last Kwirth version')
-        console.log(err)
-    }
-
-    return undefined
-}
-
 const runKubernetes = async () => {
     secrets = new KubernetesSecrets(coreApi, kwirthData.namespace)
     configMaps = new KubernetesConfigMaps(coreApi, kwirthData.namespace)
 
-    let lastVersion = await getLastKwirthVersion()
+    let lastVersion = await getLastKwirthVersion(kwirthData)
     if (lastVersion) kwirthData.lastVersion = lastVersion
 
     // serve front
@@ -841,16 +829,15 @@ const initKubernetesCluster = async (token:string) : Promise<void> => {
 
     clusterInfo.metrics = new Metrics(clusterInfo)
     clusterInfo.metricsInterval = 60
-    clusterInfo.metrics.startMetrics()
+    await clusterInfo.metrics.startMetrics()
 
-    console.log('ClusterInfo:')
-    console.log('  ClusterInfo Summary:')
-    console.log('  Name', clusterInfo.name)
-    console.log('  Type', clusterInfo.type)
-    console.log('  Falvour', clusterInfo.flavour)
-    console.log('  vCPU', clusterInfo.vcpus)
-    console.log('  Memory (GB)', clusterInfo.memory/1024/1024/1024)
-    console.log('  Nodes', clusterInfo.nodes.size)
+    console.log('Source Info')
+    console.log('  Name:', clusterInfo.name)
+    console.log('  Type:', clusterInfo.type)
+    console.log('  Flavour:', clusterInfo.flavour)
+    console.log('  vCPU:', clusterInfo.vcpus)
+    console.log('  Memory (GB):', clusterInfo.memory/1024/1024/1024)
+    console.log('  Nodes:', clusterInfo.nodes.size)
 }
 
 const launchKubernetes = async() => {
@@ -904,7 +891,7 @@ const runDocker = async () => {
     secrets = new DockerSecrets(coreApi, '/secrets')
     configMaps = new DockerConfigMaps(coreApi, '/configmaps')
 
-    let lastVersion = await getLastKwirthVersion()
+    let lastVersion = await getLastKwirthVersion(kwirthData)
     if (lastVersion) kwirthData.lastVersion = lastVersion
     
     //serve front
@@ -955,7 +942,6 @@ const runDocker = async () => {
 
 const launchDocker = async() => {
     console.log('Start Docker Kwirth')
-    clusterInfo = new ClusterInfo()
     kwirthData = {
         namespace: '',
         deployment: '',
@@ -987,54 +973,7 @@ const launchDocker = async() => {
 console.log(`Kwirth version is ${VERSION}`)
 console.log(`Kwirth started at ${new Date().toISOString()}`)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-
-console.log('                                                                                                                        ')
-console.log('                                                   =@@@@@@@@@-                                                          ')
-console.log('                                                .@%#@@+..                                                               ')
-console.log('                                              .@*-+%                                                                    ')
-console.log('                                             #%-.+#                                                                     ')
-console.log('                                            -%:.=@                   @@@@..                                             ')
-console.log('                                          :@*::.@  @              @@ @@*@*:                                             ')
-console.log('                                           .:...@ .@@              %                                                    ')
-console.log('                                         @@@@@@@%*@         :.:+@@#%@@++                                                ')
-console.log('                                        @@       :..@@%%@@@#*++=:....:-=+#%@@=                                          ')
-console.log('                                                  -+:::::...::::::::::::::..:+%#@@-                                     ')
-console.log('                                           .@.=@%+::.::::::::::::::::::::::::.:.-%@*                                    ')
-console.log('                                          :@-%+:..:::::::::::::::::::::::::::::.@ :@                                    ')
-console.log('                                          .@-...::::::::::::::::::::::::::::::: @ %@                                    ')
-console.log('                                            ==.:::::::::::::::::::::::::::::::: @                                       ')
-console.log('                                            .+...::::::::::::::::::::::::::::::.@                                       ')
-console.log('                                            .++=.::::::::::::::::::::::::::::::.%                                       ')
-console.log('                                           =@  ::.:::::::...:::...::::::::......%                                       ')
-console.log('                                          .@.:@@@@@#####%@@*:..=%@@@%##%%@@@@@@%@                                       ')
-console.log('                                        @@                 .@@@%                  =@%@                                  ')
-console.log('                                       .+#.                                     @%+.@@:                                 ')
-console.log('                                       #+:@     @        @  -@  @# @@@@   @@@@@@-:: :@@                                 ')
-console.log('                                        @.-*@@ #@%@@@+=%@@ -%=*#+++-  .=#+:.......   @                                  ')
-console.log('                                        @-...@  .........  :=::::::::....:::::::.%@: @                                  ')
-console.log('                                         @.*- .@@+-:-*#%#%@*:::::::::---:-::::::. @=-=                                  ')
-console.log('                                         *::#-  .:=-=::.*= %:::::::::-==-::::::::.:.@                                   ')
-console.log('                                          @:-+:........:=  %:.....:::....::::::::.:*.                                   ')
-console.log('                                          %#*@@=::::::.=@  @@-.=. .:::::::::::::-*@*                                    ')
-console.log('                                            %. =:::::::-*     =@@#.::::::::::::=@                 @@@@@@*               ')
-console.log('  @@@@@@@@@.   @@@@@@@                         --::::...+-@@@@:   .:::::::::::-@                     @@@.               ')
-console.log('     @@@         @@:                           %=:::+*@:: @@@@+ ..::::::::::::@                      @@@.               ')
-console.log('     @@@       @@@                             :-   * @=%#    .++-:.     ..:...        @@@           @@@.               ')
-console.log('     @@@      @@                            .@      .            ..                    @@@           @@@.               ')
-console.log('     @@@    @@@          @@@@@@@@.     @@@ @@@@@@@@@@@@@@@@@@@@=#+:+@@@@@@ +@@@@@   @@@@@@@@@@@*     @@@  =@@@@@@@@     ')
-console.log('     @@@  +@@               @@@       +@@@@.      @:  #    @@@  :..   @@@@@@@  @@      @@@           @@@%@@.    @@@@    ')
-console.log('     @@@.@@                 @@@@      @@@@@  @ . @@        @@@  +:::: @@@@             @@@           @@@@        @@@    ')
-console.log('     @@@=@@@@                @@@     @@ .@@.    @@%       @@@@  .:::: @@@@ =.          @@@           @@@         @@@    ')
-console.log('     @@@  =@@@@              @@@@%@@@@   @@@    @@ -@+    @@@@  ..... @@@@ =  .        @@@           @@@         @@@    ')
-console.log('     @@@    @@@@.             @@@   @%    @@@  @@    %@-   @@@**@@@%@ @@@@ =  @@@@@@@  @@@           @@@         @@@    ')
-console.log('     @@@     .@@@@            @@@@ @@     @@@  @. .@. :@   @@@      % @@@@ +       .   @@@           @@@         @@@    ')
-console.log('     @@@       @@@@@           @@@@@       @@@@@    @. :* =@@@      @ @@@@             @@@           @@@         @@@    ')
-console.log('     @@@         @@@@          @@@@        *@@@      @     @@@      = @@@@             @@@@          @@@         @@@    ')
-console.log('  @@@@@@@@@     @@@@@@@@@       @@@         @@@      @@@@@@@@@@@@   @@@@@@@@@           @@@@@@@=  @@@@@@@@@   @@@@@@@@@ ')
-console.log('                                                                                                                        ')
-console.log('                                              https://jfvilas.github.io/kwirth                                          ')
-console.log('                                                                                                                        ')
-console.log('                                                                                                                        ')
+showLogo()
 
 getExecutionEnvironment().then( async (exenv:string) => {
     switch (exenv) {
@@ -1043,8 +982,8 @@ getExecutionEnvironment().then( async (exenv:string) => {
             launchDocker()
             break
         case 'kubernetes':
-            launchDocker()
-            //launchKubernetes()
+            //launchDocker()
+            launchKubernetes()
             break
         default:
             console.log('Unuspported execution environment. Existing...')

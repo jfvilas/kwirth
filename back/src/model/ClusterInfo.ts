@@ -52,8 +52,26 @@ export class ClusterInfo {
         if (node.metadata?.labels && node.metadata?.labels['kubernetes.azure.com/cluster']) {
             this.flavour = 'aks'
             this.name = node.metadata?.labels['kubernetes.azure.com/cluster']
+            let rg = node.metadata?.labels['kubernetes.azure.com/network-resourcegroup']
+            if (this.name.startsWith(rg+'_')) this.name = this.name.substring(rg.length+1)            
         }
-        if (node.metadata?.annotations && node.metadata?.annotations['k3s.io/hostname']) {
+        else if (node.metadata?.labels && node.metadata?.labels['k8s.io/cloud-provider-aws']) {
+            this.flavour = 'eks'
+            if (node.metadata?.annotations) {
+                let lastAppliedConfig = node.metadata?.annotations['kubectl.kubernetes.io/last-applied-configuration']
+                if (lastAppliedConfig) {
+                    let config = JSON.parse(lastAppliedConfig)
+                    if (config) {
+                        let spec = config['spec']
+                        if (spec) {
+                            let tags = spec['tags']
+                            this.name = tags['karpenter.sh/discovery']
+                        }
+                    }
+                }
+            }
+        }
+        else if (node.metadata?.annotations && node.metadata?.annotations['k3s.io/hostname']) {
             let hostname = node.metadata?.annotations['k3s.io/hostname'].toLocaleLowerCase()
             this.flavour = hostname.startsWith('k3d') ? 'k3d' : 'k3s'
 

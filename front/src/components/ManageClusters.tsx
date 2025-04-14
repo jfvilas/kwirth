@@ -50,7 +50,9 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
         try {
             let response = await fetch(`${url}/config/version`, addGetAuthorization(accessKey))
             let data = await response.json()
-            setMsgBox(MsgBoxOk('Test cluster',`Connection to cluster has been succesfully tested. This is cluster data: <br/><br/>${JSON.stringify(data,null,2)}`, setMsgBox))
+            let status = JSON.stringify(data).replaceAll(',',',<br/>')
+            status = status.replaceAll('{','').replaceAll('}','')
+            setMsgBox(MsgBoxOk('Test cluster',`Connection to cluster has been succesfully tested. This is cluster data: <br/><br/>${status}`, setMsgBox))
         }
         catch (error) {
             setMsgBox(MsgBoxOk('Test cluster',`Couldn't test connection. Error: <br/><br/>${error}`, setMsgBox))
@@ -107,7 +109,7 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
             <DialogActions>
               <Stack direction='row' spacing={1}>
                 <Button onClick={onClickNew}>NEW</Button>
-                <Button onClick={onClickSave} disabled={selectedCluster?.source}>SAVE</Button>
+                <Button onClick={onClickSave} disabled={selectedCluster?.source || name==='' || url==='' || accessKey==='' }>SAVE</Button>
                 <Button onClick={onClickTest} disabled={!url || !url.toLocaleLowerCase().startsWith('http') || !accessKey}>TEST</Button>
                 <Button onClick={onClickDelete} disabled={selectedCluster===undefined || selectedCluster?.source}>DELETE</Button>
               </Stack>
