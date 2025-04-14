@@ -550,7 +550,8 @@ const App: React.FC = () => {
             tab.ws = wsEvent.target
             tab.ws!.onerror = (event) => reconnectInstance(event)
             tab.ws!.onmessage = (event) => wsOnMessage(event)
-            tab.ws!.onclose = (event) => reconnectInstance(event)
+            //tab.ws!.onclose = (event) => reconnectInstance(event)
+            tab.ws!.onclose = (event) => console.log('Socket close 2')
             wsEvent.target.send(JSON.stringify(instanceConfig))
         }
         else {
@@ -598,7 +599,8 @@ const App: React.FC = () => {
         if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
             tab.ws.onerror = (event) => reconnectInstance(event)
             tab.ws.onmessage = (event) => wsOnMessage(event)
-            tab.ws.onclose = (event) => reconnectInstance(event)
+            // +++ tab.ws.onclose = (event) => reconnectInstance(event)
+            tab.ws.onclose = (event) => console.log('Socket close')
     
             var instanceConfig: InstanceConfig = {
                 channel: tab.channelId,

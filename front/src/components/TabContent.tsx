@@ -145,7 +145,7 @@ const TabContent: React.FC<any> = (props:IProps) => {
         const renderLabel = (data:any) => {
             var values:any[] = series.map (s => s[data.index])
             var total:number =values.reduce((acc,value) => acc+value.value, 0)
-            return <text x={data.x + data.width/3.5} y={data.y-10}>{total.toPrecision(3).replace(/0+$/, '')}</text>
+            return <text x={data.x + data.width/3.5} y={data.y-10}>{total.toPrecision(3).replace(/0+$/, '').replace(/\.+$/, '')}</text>
         }
         let  height=300
 

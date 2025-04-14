@@ -687,10 +687,12 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         }
     }
 
-    console.log('validNamespaces')
-    console.log(validNamespaces)
-    console.log('validPodNames')
-    console.log(validPodNames)
+    console.log('Request:', instanceConfig.flow, instanceConfig.action, instanceConfig.channel, instanceConfig.scope)
+    console.log('validNamespaces:', validNamespaces)
+    console.log('validPodNames:', validPodNames)
+
+    // +++ revisar si 'scope' en el instanceconfig se utiliza para algo, ya qu eexiste action por un lado, y el scope de los recursos de la accesskey por otro
+    
 
     switch (instanceConfig.action) {
         case InstanceConfigActionEnum.START:
