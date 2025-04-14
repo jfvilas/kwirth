@@ -1,8 +1,9 @@
 import { Info, Warning, Error, HelpOutline } from '@mui/icons-material';
-import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography } from '@mui/material';
+import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography, CircularProgress, Grid, Box } from '@mui/material';
 import { Dispatch, SetStateAction } from 'react';
 
 enum MsgBoxButtons {
+    None=0,
     Ok=1,
     Yes=2,
     YesToAll=4,
@@ -11,7 +12,8 @@ enum MsgBoxButtons {
     Cancel=32
 }
 
-// +++ add MsgWait and MsgWaitCancel
+const MsgBoxWait = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxWaitShow(title,message,onClose, MsgBoxButtons.None, <Info fontSize='large' color='info'/>, onResult);
+const MsgBoxWaitCancel = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxWaitShow(title,message,onClose, MsgBoxButtons.Cancel, <Info fontSize='large' color='info'/>, onResult);
 const MsgBoxOk = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Ok, <Info fontSize='large' color='info'/>, onResult);
 const MsgBoxOkWarning = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Ok, <Warning fontSize='large' color='warning'/>, onResult);
 const MsgBoxOkError = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, onResult?:(a:MsgBoxButtons)=>void) => MsgBoxShow(title,message,onClose, MsgBoxButtons.Ok, <Error fontSize='large' color='error'/>, onResult);
@@ -34,13 +36,37 @@ const MsgBoxShow = (title:string, message:string, onClose:Dispatch<SetStateActio
                 </DialogContentText>
             </DialogContent>
             <DialogActions>
-                { buttons & MsgBoxButtons.Ok? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Ok)}}>ok</Button>:<></>}
-                { buttons & MsgBoxButtons.Yes? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Yes)}}>yes</Button>:<></>}
-                { buttons & MsgBoxButtons.No? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.No)}}>no</Button>:<></>}
-                { buttons & MsgBoxButtons.Cancel? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Cancel)}}>cancel</Button>:<></>}
+                { (buttons & MsgBoxButtons.Ok)? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Ok)}}>ok</Button>:<></>}
+                { (buttons & MsgBoxButtons.Yes)? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Yes)}}>yes</Button>:<></>}
+                { (buttons & MsgBoxButtons.No)? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.No)}}>no</Button>:<></>}
+                { (buttons & MsgBoxButtons.Cancel)? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Cancel)}}>cancel</Button>:<></>}
             </DialogActions>
         </Dialog>
-    );
+    )
 }
 
-export { MsgBoxButtons, MsgBoxOk, MsgBoxOkWarning, MsgBoxOkError, MsgBoxOkCancel, MsgBoxYesNo, MsgBoxYesNoCancel }
+const MsgBoxWaitShow = (title:string, message:string, onClose:Dispatch<SetStateAction<JSX.Element>>, buttons:MsgBoxButtons, icon:JSX.Element, onResult?:(a:MsgBoxButtons)=>void) => {
+    return (
+        <Dialog open={true}>
+            <DialogTitle>
+                {title}
+            </DialogTitle>
+            <DialogContent >
+                <Stack direction={'row'} alignItems={'center'} alignContent={'center'}>
+                    <Box>
+                        <CircularProgress size={50} />
+                    </Box>
+                        
+                        <Typography sx={{ml:4}}>
+                            <div dangerouslySetInnerHTML={{__html: message}}/>
+                        </Typography>
+                </Stack>                
+            </DialogContent>
+            <DialogActions>
+                { (buttons & MsgBoxButtons.Cancel)? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Cancel)}}>cancel</Button>:<></> }
+            </DialogActions>
+        </Dialog>
+    )
+}
+
+export { MsgBoxButtons, MsgBoxOk, MsgBoxOkWarning, MsgBoxOkError, MsgBoxOkCancel, MsgBoxYesNo, MsgBoxYesNoCancel, MsgBoxWait, MsgBoxWaitCancel }

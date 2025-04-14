@@ -72,20 +72,27 @@ const getExecutionEnvironment = async ():Promise<string> => {
     }
     catch {}
 
-    console.log('Trying WinDocker...')
+    console.log('Trying Linux...')
+    try {
+        dockerApi = new Docker({ socketPath: '/var/run/docker.sock'})
+        await dockerApi.listContainers( { all:false } )
+        return 'linux'
+    }
+    catch (err) {
+        console.log(err)
+    }
+
+    console.log('Trying Windows...')
     try {
         dockerApi = new Docker({ socketPath: '//./pipe/docker_engine' })
-        return 'windocker'
+        await dockerApi.listContainers( { all:false } )
+        return 'windows'
     }
-    catch {}
-
-    console.log('Trying LinuxDocker...')
-    try {
-        let ld = new Docker()
-        return 'linuxdocker'
+    catch (err) {
+        console.log(err)
     }
-    catch {}
 
+    dockerApi = new Docker()
     return 'undetected'
 }
 
@@ -379,13 +386,9 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
 const processReconnect = async (webSocket: WebSocket, instanceConfig: InstanceConfig) => {
     console.log(`Trying to reconnect instance '${instanceConfig.instance}' with key '${instanceConfig.reconnectKey}'`)
     for (var channel of channels.values()) {
-        console.log('channel', channel.getChannelData().id)
         if (channel.containsInstance(instanceConfig.instance)) {
-            console.log('detected channel', channel.getChannelData().id)
-
             var updated = channel.updateConnection(webSocket, instanceConfig.instance)
             if (updated) {
-                console.log('UPDATED')
                 sendInstanceConfigSignalMessage(webSocket, InstanceConfigActionEnum.RECONNECT, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Reconnect successful')
                 return
             }
@@ -395,6 +398,7 @@ const processReconnect = async (webSocket: WebSocket, instanceConfig: InstanceCo
             }
         }
     }
+    console.log(`Instance not found`)
     sendInstanceConfigSignalMessage(webSocket, InstanceConfigActionEnum.RECONNECT, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance has not been found')
 }
 
@@ -979,8 +983,8 @@ showLogo()
 
 getExecutionEnvironment().then( async (exenv:string) => {
     switch (exenv) {
-        case 'windocker':
-        case 'linuxdocker':
+        case 'windows':
+        case 'linux':
             launchDocker()
             break
         case 'kubernetes':

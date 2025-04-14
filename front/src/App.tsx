@@ -138,14 +138,13 @@ const App: React.FC = () => {
 
                     if (cluster) {
                         tab.ws = new WebSocket(cluster.url)
-                        tab.ws.onerror = () => console.log(`Error detected on WS: ${tab.ws?.url}`)
-                        tab.ws.onmessage = (event) => wsOnMessage(event)
-                        tab.ws.onclose = (event) => console.log(`WS tab disconnected: ${tab.ws?.url}`)
-
                         tab.ws.onopen = () => {
-                            console.log(`WS connected: ${tab.name} to ${tab.ws?.url}`)
+                            console.log(`WS connected tab: ${tab.name} to ${tab.ws?.url}`)
                             if (tab.channelObject) startChannel(tab)
                         }
+                        tab.ws.onerror = (event) => reconnectInstance(event)
+                        tab.ws.onmessage = (event) => wsOnMessage(event)
+                        tab.ws.onclose = (event) => reconnectInstance(event)
                     }
                 }
                 onChangeTab(null, tabs[0].name)
@@ -527,10 +526,9 @@ const App: React.FC = () => {
 
     const reconnectedInstance = (wsEvent:any, id:NodeJS.Timer) => {
         clearInterval(id)
-        console.log('Reconnect interval cleared')
+        console.log('Reconnected, will reconfigure socket')
         let tab = tabs.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
-        console.log('Reconnected, will reconfigure')
         let instanceConfig:InstanceConfig = {
             channel: tab.channelId,
             objects: InstanceConfigObjectEnum.PODS,
@@ -550,8 +548,7 @@ const App: React.FC = () => {
             tab.ws = wsEvent.target
             tab.ws!.onerror = (event) => reconnectInstance(event)
             tab.ws!.onmessage = (event) => wsOnMessage(event)
-            //tab.ws!.onclose = (event) => reconnectInstance(event)
-            tab.ws!.onclose = (event) => console.log('Socket close 2')
+            tab.ws!.onclose = (event) => reconnectInstance(event)
             wsEvent.target.send(JSON.stringify(instanceConfig))
         }
         else {
@@ -571,8 +568,6 @@ const App: React.FC = () => {
         }
         let cluster = clusters.find(c => c.name === tab!.channelObject!.clusterName)
         if (!cluster) return
-
-        console.log(`Will reconnect using key '${tab.channelObject.reconnectKey}'`)
 
         let selfId = setInterval( (key, url, tab) => {
             console.log(`Trying to reconnect using ${key}, ${url}`)
@@ -599,8 +594,7 @@ const App: React.FC = () => {
         if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
             tab.ws.onerror = (event) => reconnectInstance(event)
             tab.ws.onmessage = (event) => wsOnMessage(event)
-            // +++ tab.ws.onclose = (event) => reconnectInstance(event)
-            tab.ws.onclose = (event) => console.log('Socket close')
+            tab.ws.onclose = (event) => reconnectInstance(event)
     
             var instanceConfig: InstanceConfig = {
                 channel: tab.channelId,

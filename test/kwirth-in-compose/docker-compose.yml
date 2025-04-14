@@ -1,0 +1,36 @@
+services:
+  kwirth:
+    image: kwirth
+    restart: unless-stopped
+    volumes:
+      - //c/temp/kwirthdocker/configmaps:/configmaps
+      - //c/temp/kwirthdocker/secrets:/secrets
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - node_network
+    ports:
+      - 3884:3883
+
+  webapp:
+    restart: unless-stopped
+    build: .
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - node_network
+
+  proxy:
+    restart: unless-stopped
+    image: nginx
+    ports:
+      - 4080:80
+    depends_on:
+      - webapp
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - node_network
+
+networks:
+  node_network:

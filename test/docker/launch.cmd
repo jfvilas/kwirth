@@ -1,2 +1,0 @@
-rem docker run -p 3883:3883 -v //c/temp/kwirthdocker/configmaps:/configmaps -v //c/temp/kwirthdocker/secrets:/secrets kwirth
-docker run -p 3884:3883 -e KWIRTH_ROOTPATH="/kwirth" -v //c/temp/kwirthdocker/configmaps:/configmaps -v //c/temp/kwirthdocker/secrets:/secrets kwirth

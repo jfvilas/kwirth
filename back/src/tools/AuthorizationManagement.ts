@@ -22,7 +22,7 @@ export const validKey = async (req:any,res:any, apiKeyApi: ApiKeyApi): Promise<b
         var receivedAccessString=req.headers.authorization.replaceAll('Bearer ','').trim()
         var receivedAccessKey = accessKeyDeserialize(receivedAccessString)
         let computedExpire = 0
-        if (receivedAccessKey.type.startsWith('bearer:')) {
+        if (receivedAccessKey.type && receivedAccessKey.type.startsWith('bearer:')) {
             if (!validBearerKey(receivedAccessKey))
                 console.log('Hashes do not match')            
             else

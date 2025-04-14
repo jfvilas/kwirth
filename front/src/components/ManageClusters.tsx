@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material'
 import { Cluster } from '../model/Cluster'
-import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from '../tools/MsgBox'
+import { MsgBoxButtons, MsgBoxOk, MsgBoxWaitCancel, MsgBoxYesNo } from '../tools/MsgBox'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 
 interface IProps {
@@ -48,11 +48,31 @@ const ManageClusters: React.FC<any> = (props:IProps) => {
 
     const onClickTest= async () => {
         try {
+            let kwirthOk = false
+            let apiKeyOk = false
+            setMsgBox (MsgBoxWaitCancel('Test cluster','In order to add cluster to your cluster list we must first ensure we can connect with it and, if so, test if Kwirth is available and, if so, if evaluate Kwirth version for knowing if it is suitable for being connected to this Kwirth server.', setMsgBox))
             let response = await fetch(`${url}/config/version`, addGetAuthorization(accessKey))
             let data = await response.json()
+            kwirthOk = true
+
+            // connected, test api key
+            response = await fetch(`${url}/config/cluster`, addGetAuthorization(accessKey))
+            if (response.status === 200) apiKeyOk = true
+
             let status = JSON.stringify(data).replaceAll(',',',<br/>')
             status = status.replaceAll('{','').replaceAll('}','')
-            setMsgBox(MsgBoxOk('Test cluster',`Connection to cluster has been succesfully tested. This is cluster data: <br/><br/>${status}`, setMsgBox))
+
+            if (kwirthOk && apiKeyOk) {
+                setMsgBox(MsgBoxOk('Test cluster',`Connection to cluster and API key have been <font color=green>succesfully tested</font>. This is cluster data: <br/><br/>${status}`, setMsgBox))
+            }
+            else {
+                if (kwirthOk) {
+                    setMsgBox(MsgBoxOk('Test cluster',`Connection to cluster has been <font color=green>succesfully tested</font>:<br/><br/>${status}<br/><br/>But, Kwirth API key you've entered <font color=red>seems not to be correct</font>.`, setMsgBox))
+                }
+                else {
+                    setMsgBox(MsgBoxOk('Test cluster',`Connection to cluster nor API key <font color='red'>couldn't be tested</font>.`, setMsgBox))
+                }
+            }
         }
         catch (error) {
             setMsgBox(MsgBoxOk('Test cluster',`Couldn't test connection. Error: <br/><br/>${error}`, setMsgBox))
