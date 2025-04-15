@@ -306,7 +306,6 @@ const App: React.FC = () => {
                     pod: '',
                     container: ''
                 }
-                // +++ if ws is closed don't try to keepalive
                 if (newTab.ws && newTab.ws.readyState === WebSocket.OPEN) {
                     newTab.ws.send(JSON.stringify(instanceConfig))
                 }
@@ -753,10 +752,26 @@ const App: React.FC = () => {
         if (!selectedTab) return
 
         if (selectedTab.channelObject) stopChannel(selectedTab)
+
+        if (selectedTab.ws) {
+            selectedTab.ws.onopen = null
+            selectedTab.ws.onerror = null
+            selectedTab.ws.onmessage = null
+            selectedTab.ws.onclose = null
+        }
+
         selectedTab.ws?.close()
         clearInterval(selectedTab.keepaliveRef)
-        setTabs(tabs.filter(t => t !== selectedTab))
-        if (tabs.length>1) setSelectedTabName(tabs.find(t => t !== selectedTab)?.name)
+        let current = tabs.findIndex(t => t === selectedTab)
+        let newTabs= tabs.filter(t => t !== selectedTab)
+
+        if (current >= newTabs.length) current--
+        if (current>=0 && current<newTabs.length) {
+            newTabs[current].channelPending = false
+            setHighlightedTabs (highlightedTabs.filter(t => t.channelObject && t.channelPending))
+        setSelectedTabName(newTabs[current].name)
+        }
+        setTabs(newTabs)
     }
 
     const menuTabOptionSelected = (option: MenuTabOption) => {
