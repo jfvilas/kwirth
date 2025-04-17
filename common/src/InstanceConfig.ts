@@ -71,3 +71,12 @@ export interface InstanceConfig {
     reconnectKey?: string
     data?: any
 }
+
+export interface InstanceConfigResponse {
+    action: InstanceConfigActionEnum
+    flow: InstanceConfigFlowEnum
+    channel: string
+    instance: string
+    type: string
+    text: string
+}

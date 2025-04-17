@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod, V1ObjectMeta, V1PodSpec, V1Container, V1NodeStatus } from '@kubernetes/client-node'
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, V1Pod } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -15,7 +15,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import WebSocket from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { InstanceConfigActionEnum, InstanceConfigFlowEnum, versionGreatThan, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, KwirthData, InstanceConfigChannelEnum, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, IChannel, ClusterTypeEnum } from '@jfvilas/kwirth-common'
+import { InstanceConfigActionEnum, InstanceConfigFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, KwirthData, InstanceConfigChannelEnum, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, IChannel, ClusterTypeEnum, InstanceConfigResponse } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { getChannelScopeLevel, validBearerKey } from './tools/AuthorizationManagement'
 import { getPodsFromGroup } from './tools/KubernetesOperations'
@@ -141,19 +141,19 @@ const sendChannelSignal = (webSocket: WebSocket, level: SignalMessageLevelEnum, 
 }
 
 const sendInstanceConfigSignalMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: string, instanceConfig:InstanceConfig, text:string) => {
-    var resp:any = {
+    var resp:InstanceConfigResponse = {
         action,
         flow,
         channel,
         instance: instanceConfig.instance,
         ...(instanceConfig.reconnectKey && { reconnectKey: instanceConfig.reconnectKey }),
-        type: 'signal',
+        type: InstanceMessageTypeEnum.SIGNAL,
         text
     }
     ws.send(JSON.stringify(resp))
 }
 
-const addObject = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, instanceConfig:InstanceConfig) => {
+const addObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) => {
     console.log(`startPodInstance '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
 
     sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Container ADDED: ${podNamespace}/${podName}/${containerName}`, instanceConfig)
@@ -187,19 +187,19 @@ const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:Inst
             let containerName = container
             switch (instanceConfig.view) {
                 case InstanceConfigViewEnum.NAMESPACE:
-                    addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
+                    addObject(webSocket, instanceConfig, podNamespace, podName, containerName)
                     break
                 case InstanceConfigViewEnum.GROUP:
                     var [_groupType, groupName] = instanceConfig.group.split('+')
                     if (podName.startsWith(groupName)) {  // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
-                        addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
+                        addObject(webSocket, instanceConfig, podNamespace, podName, containerName)
                     }
                     break
                 case InstanceConfigViewEnum.POD:
                     if ((instanceConfig.namespace==='' || (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace))) && instanceConfig.pod.split(',').includes(podName)) {
                         if (instanceConfig.pod.split(',').includes(podName)) {
                             console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName}`)
-                            addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
+                            addObject(webSocket, instanceConfig, podNamespace, podName, containerName)
                         }
                     }
                     break
@@ -213,7 +213,7 @@ const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:Inst
                     if (instanceContainers.includes(containerName) && instancePods.includes(podName)) {
                         if (instanceConfig.container.split(',').includes(podName+'+'+containerName)) {
                             console.log(`Container ADDED: ${podNamespace}/${podName}/${containerName}`)
-                            addObject(webSocket, podNamespace, podName, containerName, instanceConfig)
+                            addObject(webSocket, instanceConfig, podNamespace, podName, containerName)
                         }
                     }
                     else {
@@ -384,9 +384,11 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
 }
 
 const processReconnect = async (webSocket: WebSocket, instanceConfig: InstanceConfig) => {
-    console.log(`Trying to reconnect instance '${instanceConfig.instance}' with key '${instanceConfig.reconnectKey}'`)
+    console.log(`Trying to reconnect instance '${instanceConfig.instance}' with key '${instanceConfig.reconnectKey}' on channel ${instanceConfig.channel}`)
     for (var channel of channels.values()) {
+        console.log('review channel', channel.getChannelData().id)
         if (channel.containsInstance(instanceConfig.instance)) {
+            console.log('found channel', channel.getChannelData().id)
             var updated = channel.updateConnection(webSocket, instanceConfig.instance)
             if (updated) {
                 sendInstanceConfigSignalMessage(webSocket, InstanceConfigActionEnum.RECONNECT, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Reconnect successful')
@@ -396,6 +398,9 @@ const processReconnect = async (webSocket: WebSocket, instanceConfig: InstanceCo
                 sendInstanceConfigSignalMessage(webSocket, InstanceConfigActionEnum.RECONNECT, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'An error has ocurred while updating connection')
                 return
             }
+        }
+        else {
+            console.log('instance not found on channel')
         }
     }
     console.log(`Instance not found`)
@@ -616,6 +621,8 @@ const getValidNamespaces = (requestedNamespaces:string[], allowedNamespaces:stri
 const processClientMessage = async (message:string, webSocket:WebSocket) => {
     const instanceConfig = JSON.parse(message) as InstanceConfig
 
+    console.log('Request:', instanceConfig.flow, instanceConfig.action, instanceConfig.channel, instanceConfig.scope)
+
     if (instanceConfig.flow !== InstanceConfigFlowEnum.REQUEST) {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Invalid flow received', instanceConfig)
         return
@@ -696,7 +703,6 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
     console.log('validPodNames:', validPodNames)
 
     // +++ revisar si 'scope' en el instanceconfig se utiliza para algo, ya qu eexiste action por un lado, y el scope de los recursos de la accesskey por otro
-    
 
     switch (instanceConfig.action) {
         case InstanceConfigActionEnum.START:
@@ -762,9 +768,10 @@ wss.on('connection', (ws:WebSocket, req) => {
 
     ws.on('close', () => {
         console.log('Client disconnected')
-        for (var channel of channels.keys()) {
-            channels.get(channel)?.removeConnection(ws as any)
-        }
+        // we do not remove connectios for the client to reconnect
+        // for (var channel of channels.keys()) {
+        //     channels.get(channel)?.removeConnection(ws as any)
+        // }
     })
 })
 

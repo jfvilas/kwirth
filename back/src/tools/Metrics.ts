@@ -55,12 +55,13 @@ export class MetricsTools {
 
     */
 
+    // obteians the list of metrics available (its names, types and descriptions)
     public getMetricsList() {
         var objects = Array.from(this.metricsList.keys()).map ( metricName => { return { metric:metricName, ...this.metricsList.get(metricName)} })
         return objects
     }
 
-    // adds proprties to matrics map
+    // adds properties to matrics map
     addRecordType (map:Map<string,MetricDefinition>, metricName:string, recordType:string, value:string): void {
         if (!map.has(metricName)) map.set(metricName,{help: '', type: '', eval: ''})
         switch(recordType) {
@@ -76,7 +77,7 @@ export class MetricsTools {
         }
     }
 
-    // creates a map containing all existing metrics existing in a cluster node (and their properties)
+    // creates a map containing all existing metrics in a cluster node (and their properties), but not values
     async loadNodeMetrics(node:NodeInfo): Promise <Map<string,MetricDefinition>> {
         var map:Map<string,MetricDefinition> = new Map()
 
@@ -365,6 +366,7 @@ export class MetricsTools {
         node.timestamp = Date.now()
     }
 
+    // read metrics and values for all nodes in the cluster
     public readClusterMetrics = async (clusterInfo: ClusterInfo): Promise<void> => {
         // +++ we should check cluster config (number of nodes) from time to time
         if (this.loadingClusterMetrics) {
@@ -374,15 +376,34 @@ export class MetricsTools {
 
         if (global.gc) global.gc()
         this.loadingClusterMetrics = true
-        console.log(`About to read cluster metrics ${new Date().toTimeString()}`)
 
-        //clusterInfo.nodes = await clusterInfo.loadNodes()
-        for (var node of clusterInfo.nodes.values()) {
-            await this.readNodeMetrics(node)
+        try {
+            console.log(`About to read cluster metrics ${new Date().toTimeString()}`)
+
+            // we rebuild the list of nodes
+            let newNodeSet = await clusterInfo.loadNodes()
+            // remove inxistent nodes
+            for (let nodeName of Array.from(clusterInfo.nodes.keys())) {
+                if (!newNodeSet.get(nodeName)) clusterInfo.nodes.delete(nodeName)
+            }
+            // add new nodes
+            for (let nodeName of Array.from(newNodeSet.keys())) {
+                if (!clusterInfo.nodes.get(nodeName)) clusterInfo.nodes.set(nodeName, newNodeSet.get(nodeName)!)
+            }
+
+            // we read the metrics of the nodeset
+            for (let node of clusterInfo.nodes.values()) {
+                await this.readNodeMetrics(node)
+            }
+        }
+        catch (err) {
+            console.log('Error reading cluster metrics')
+            console.log(err)
         }
         this.loadingClusterMetrics = false
     }
 
+    // get a spsecific value for a concrete metric
     public extractContainerMetrics = (clusterInfo:ClusterInfo, podMetricsSet:Map<string,{value: number, timestamp:number}>, containerMetricsSet:Map<string,{value: number, timestamp:number}>, requestedMetricName:string, view:InstanceConfigViewEnum, node:NodeInfo, asset:AssetData): {value:number, timestamp:number|undefined }=> {
         if (view === InstanceConfigViewEnum.CONTAINER) {
             var metricName = asset.podNamespace + '/' + asset.podName + '/' + asset.containerName + '/' + requestedMetricName

@@ -21,7 +21,7 @@ import Login from './components/Login'
 import ManageClusters from './components/ManageClusters'
 import ManageUserSecurity from './components/ManageUserSecurity'
 import { ResourceSelector, IResourceSelected } from './components/ResourceSelector'
-import { TabContent } from './components/TabContent'
+import { TabContent } from './components/tab/TabContent'
 import { SettingsUser } from './components/settings/SettingsUser'
 import { SettingsCluster } from './components/settings/SettingsCluster'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
@@ -133,19 +133,44 @@ const App: React.FC = () => {
             setBoardLoaded(false)
             if (tabs.length>0) {               
                 for(let tab of tabs) {
-                    let baseClusterName=tab.channelObject?.clusterName
-                    let cluster=clusters!.find(c => c.name === baseClusterName)
+                    let clusterName = tab.channelObject?.clusterName
+                    let cluster = clusters!.find(c => c.name === clusterName)
 
-                    if (cluster) {
-                        tab.ws = new WebSocket(cluster.url)
-                        tab.ws.onopen = () => {
-                            console.log(`WS connected tab: ${tab.name} to ${tab.ws?.url}`)
-                            if (tab.channelObject) startChannel(tab)
-                        }
-                        tab.ws.onerror = (event) => reconnectInstance(event)
-                        tab.ws.onmessage = (event) => wsOnMessage(event)
-                        tab.ws.onclose = (event) => reconnectInstance(event)
-                    }
+                    if (cluster) startSocket(tab, cluster, () => {
+                        console.log(`WS connected: ${tab.ws?.url}`)
+            
+                        tab.keepaliveRef = setInterval(() => {
+                            var instanceConfig:InstanceConfig = {
+                                channel: InstanceConfigChannelEnum.NONE,
+                                objects: InstanceConfigObjectEnum.PODS,                    
+                                flow: InstanceConfigFlowEnum.REQUEST,
+                                action: InstanceConfigActionEnum.PING,
+                                instance: '',
+                                scope: InstanceConfigScopeEnum.NONE,
+                                accessKey: '',
+                                view: InstanceConfigViewEnum.NONE,
+                                namespace: '',
+                                group: '',
+                                pod: '',
+                                container: ''
+                            }
+                            if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+                                tab.ws.send(JSON.stringify(instanceConfig))
+                            }
+                        }, (settings?.keepAliveInterval || 60) * 1000,'')  
+                        startChannel(tab)
+                    })
+                    
+                    // if (cluster) {
+                    //     tab.ws = new WebSocket(cluster.url)
+                    //     tab.ws.onopen = () => {
+                    //         console.log(`WS connected tab: ${tab.name} to ${tab.ws?.url}`)
+                    //         if (tab.channelObject) startChannel(tab)
+                    //     }
+                    //     tab.ws.onerror = (event) => reconnectInstance(event)
+                    //     tab.ws.onmessage = (event) => wsOnMessage(event)
+                    //     tab.ws.onclose = (event) => reconnectInstance(event)
+                    // }
                 }
                 onChangeTab(null, tabs[0].name)
             }
@@ -253,6 +278,38 @@ const App: React.FC = () => {
         }
     }
 
+    const startSocket = (tab:ITabObject, cluster:Cluster, fn: () => void) => {
+        tab.ws = new WebSocket(cluster.url)
+        tab.ws.onopen = fn
+    }
+
+    // const startSocketOld = (tab:ITabObject, cluster:Cluster) => {
+    //     tab.ws = new WebSocket(cluster.url)
+    //     tab.ws.onopen = () => {
+    //         console.log(`WS connected: ${tab.ws?.url}`)
+            
+    //         tab.keepaliveRef = setInterval(() => {
+    //             var instanceConfig:InstanceConfig = {
+    //                 channel: InstanceConfigChannelEnum.NONE,
+    //                 objects: InstanceConfigObjectEnum.PODS,                    
+    //                 flow: InstanceConfigFlowEnum.REQUEST,
+    //                 action: InstanceConfigActionEnum.PING,
+    //                 instance: '',
+    //                 scope: InstanceConfigScopeEnum.NONE,
+    //                 accessKey: '',
+    //                 view: InstanceConfigViewEnum.NONE,
+    //                 namespace: '',
+    //                 group: '',
+    //                 pod: '',
+    //                 container: ''
+    //             }
+    //             if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+    //                 tab.ws.send(JSON.stringify(instanceConfig))
+    //             }
+    //         }, (settings?.keepAliveInterval || 60) * 1000,'')  
+    //     }
+    // }
+
     const onResourceSelectorAdd = (selection:IResourceSelected) => {
         if (!clusters) return
         let cluster = clusters.find(c => c.name===selection.clusterName)
@@ -287,8 +344,42 @@ const App: React.FC = () => {
             channelPaused: false,
             channelPending: false
         }
-        newTab.ws = new WebSocket(cluster.url)
-        newTab.ws.onopen = () => {
+
+        switch(selection.channel) {
+            case InstanceConfigChannelEnum.LOG:
+                let logObject = new LogObject()
+                logObject.follow = settingsRef.current?.logFollow || true
+                logObject.maxMessages = settingsRef.current?.logMaxMessages || 1000
+                logObject.previous = settingsRef.current?.logPrevious || false
+                logObject.timestamp = settingsRef.current?.logTimestamp || true
+                newTab.channelObject.data = logObject
+                break
+            case InstanceConfigChannelEnum.METRICS:
+                let metricsObject = new MetricsObject()
+                metricsObject.interval = settingsRef.current?.metricsInterval || 60
+                metricsObject.depth = settingsRef.current?.metricsDepth || 10
+                metricsObject.width = settingsRef.current?.metricsWidth || 2
+                metricsObject.chart = settingsRef.current?.metricsChart || 'line'
+                metricsObject.mode = settingsRef.current?.metricsMode || MetricsConfigModeEnum.STREAM
+                metricsObject.aggregate = settingsRef.current?.metricsAggregate || false
+                metricsObject.merge = settingsRef.current?.metricsMerge || false
+                metricsObject.stack = settingsRef.current?.metricsStack || false
+                metricsObject.metrics = []
+                newTab.channelObject.data = metricsObject
+                break
+            case InstanceConfigChannelEnum.ALERT:
+                let alertObject = new AlertObject()
+                alertObject.maxAlerts = settingsRef.current?.alertMaxAlerts || 40
+                alertObject.regexInfo = []
+                alertObject.regexWarning = []
+                alertObject.regexError = []
+                newTab.channelObject.data = alertObject
+                break
+            default:
+                console.log(`Error, invalid channel: `, selection.channel)
+        }
+
+        startSocket(newTab, cluster, () => {
             console.log(`WS connected: ${newTab.ws?.url}`)
             
             newTab.keepaliveRef = setInterval(() => {
@@ -310,44 +401,8 @@ const App: React.FC = () => {
                     newTab.ws.send(JSON.stringify(instanceConfig))
                 }
             }, (settings?.keepAliveInterval || 60) * 1000,'')  
-        }
 
-        switch(selection.channel) {
-            case InstanceConfigChannelEnum.LOG:
-                let logObject = new LogObject()
-                logObject.follow = settingsRef.current?.logFollow || true
-                logObject.maxMessages = settingsRef.current?.logMaxMessages || 1000
-                logObject.previous = settingsRef.current?.logPrevious || false
-                logObject.timestamp = settingsRef.current?.logTimestamp || true
-                newTab.channelObject.data = logObject
-                break
-
-            case InstanceConfigChannelEnum.METRICS:
-                let metricsObject = new MetricsObject()
-                metricsObject.interval = settingsRef.current?.metricsInterval || 60
-                metricsObject.depth = settingsRef.current?.metricsDepth || 10
-                metricsObject.width = settingsRef.current?.metricsWidth || 2
-                metricsObject.chart = settingsRef.current?.metricsChart || 'line'
-                metricsObject.mode = settingsRef.current?.metricsMode || MetricsConfigModeEnum.STREAM
-                metricsObject.aggregate = settingsRef.current?.metricsAggregate || false
-                metricsObject.merge = settingsRef.current?.metricsMerge || false
-                metricsObject.stack = settingsRef.current?.metricsStack || false
-                metricsObject.metrics = []
-                newTab.channelObject.data = metricsObject
-                break
-
-            case InstanceConfigChannelEnum.ALERT:
-                let alertObject = new AlertObject()
-                alertObject.maxAlerts = settingsRef.current?.alertMaxAlerts || 25
-                alertObject.regexInfo = []
-                alertObject.regexWarning = []
-                alertObject.regexError = []
-                newTab.channelObject.data = alertObject
-                break
-
-            default:
-                console.log(`Error, invalid channel: `, selection.channel)
-        }
+        })
         setTabs((prev) => [...prev, newTab])
         setSelectedTabName(newTab.name)
     }
@@ -427,7 +482,9 @@ const App: React.FC = () => {
                 if (selectedTabRef.current === tab.name) {
                     if (!tab.channelPaused) {
                         setRefreshTabContent(Math.random())
-                        if (dataLog.follow && lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
+                        if (dataLog.follow && lastLineRef.current) {
+                            (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
+                        }
                     }
                 }
                 else {
@@ -568,6 +625,36 @@ const App: React.FC = () => {
         let cluster = clusters.find(c => c.name === tab!.channelObject!.clusterName)
         if (!cluster) return
 
+        switch (tab.channelId) {
+            case InstanceConfigChannelEnum.LOG:
+                var dataLog = tab.channelObject.data as LogObject
+                dataLog.messages.push({
+                    pod: '',
+                    channel: 'log',
+                    type: InstanceMessageTypeEnum.DATA,
+                    instance: '',
+                    text: '*** Lost connection ***'
+                })
+                break
+            case InstanceConfigChannelEnum.ALERT:
+                var dataAlert = tab.channelObject.data as AlertObject
+                dataAlert.firedAlerts.push({
+                    timestamp: Date.now(),
+                    severity: AlertSeverityEnum.ERROR,
+                    namespace:'',
+                    container: '',
+                    text: '*** Lost connection ***'
+                })
+                break
+
+            case InstanceConfigChannelEnum.METRICS:
+                var dataMetrics = tab.channelObject.data as MetricsObject
+                dataMetrics.errors.push('*** Lost connection ***')
+                break
+        }
+        setRefreshTabContent(Math.random())
+
+
         let selfId = setInterval( (key, url, tab) => {
             console.log(`Trying to reconnect using ${key}, ${url}`)
             try {
@@ -602,7 +689,7 @@ const App: React.FC = () => {
                 flow: InstanceConfigFlowEnum.REQUEST,
                 instance: '',
                 accessKey: cluster.accessString,
-                scope: InstanceConfigScopeEnum.SUBSCRIBE,
+                scope: InstanceConfigScopeEnum.NONE,
                 view: tab.channelObject.view,
                 namespace: tab.channelObject.namespace,
                 group: tab.channelObject.group,
@@ -722,7 +809,7 @@ const App: React.FC = () => {
             flow: InstanceConfigFlowEnum.REQUEST,
             instance: selectedTab.channelObject?.instance,
             accessKey: cluster.accessString,
-            scope: InstanceConfigScopeEnum.SUBSCRIBE,
+            scope: InstanceConfigScopeEnum.NONE,
             view: selectedTab.channelObject.view,
             namespace: selectedTab.channelObject.namespace,
             group: selectedTab.channelObject.group,
@@ -900,7 +987,7 @@ const App: React.FC = () => {
     const onSelectBoardClosed = async (action:string, name?:string) => {
         setShowSelectBoard(false)
         if (name) {
-            if (action==='delete') {
+            if (action === 'delete') {
                 setMsgBox(MsgBoxYesNo('Delete board',`Are you sure you want to delete board ${name} (you cannot undo this action?`,setMsgBox, (button) => {
                     if (button===MsgBoxButtons.Yes) {
                         fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addDeleteAuthorization(accessString))
@@ -911,24 +998,22 @@ const App: React.FC = () => {
                     }
                 }))
             }
-            else if (action='load') {
-                if (name) {
-                    clearTabs()
-                    var n = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
-                    var board = JSON.parse(n) as IBoard
-                    let errors = ''
-                    for (let t of board.tabs) {
-                        let clusterName = t.channelObject.clusterName
-                        if (!clusters?.find(c => c.name === clusterName)) {
-                            errors += `Cluster '${clusterName}' used in tab ${t.name} does not exsist<br/><br/>`
-                        }
+            else if (action === 'load') {
+                clearTabs()
+                var boardDef = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
+                var board = JSON.parse(boardDef) as IBoard
+                let errors = ''
+                for (let t of board.tabs) {
+                    let clusterName = t.channelObject.clusterName
+                    if (!clusters?.find(c => c.name === clusterName)) {
+                        errors += `Cluster '${clusterName}' used in tab ${t.name} does not exsist<br/><br/>`
                     }
-                    if (errors!=='') setMsgBox(MsgBoxOkError('Kwirth',`Some errors have been detected when loading board:<br/><br/>${errors}`, setMsgBox))
-                    setTabs(board.tabs)
-                    setCurrentBoardName(name)
-                    setCurrentBoardDescription(board.description)
-                    setBoardLoaded(true)
-                }                       
+                }
+                if (errors!=='') setMsgBox(MsgBoxOkError('Kwirth',`Some errors have been detected when loading board:<br/><br/>${errors}`, setMsgBox))
+                setTabs(board.tabs)
+                setCurrentBoardName(name)
+                setCurrentBoardDescription(board.description)
+                setBoardLoaded(true)
             }
         }
     }

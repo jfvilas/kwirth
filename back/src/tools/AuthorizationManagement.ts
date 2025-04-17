@@ -1,5 +1,5 @@
 import { ApiKeyApi } from '../api/ApiKeyApi'
-import { AccessKey, accessKeyDeserialize, accessKeySerialize, IChannel, parseResource, InstanceConfigScopeEnum } from '@jfvilas/kwirth-common'
+import { AccessKey, accessKeyDeserialize, accessKeySerialize, IChannel, parseResource } from '@jfvilas/kwirth-common'
 import { ApiKey } from '@jfvilas/kwirth-common'
 import { InstanceConfigChannelEnum } from '@jfvilas/kwirth-common';
 import * as crypto from 'crypto'

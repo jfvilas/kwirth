@@ -90,20 +90,24 @@ export class ClusterInfo {
         var resp = await this.coreApi.listNode()
         var nodes:Map<string, NodeInfo> = new Map()
         for (var node of resp.body.items) {
-            var nodeData:NodeInfo = {
-                name: node.metadata?.name!,
-                ip: node.status?.addresses!.find(a => a.type === 'InternalIP')?.address!,
-                kubernetesNode: node,
-                containerMetricValues: new Map(),
-                prevContainerMetricValues: new Map(),
-                machineMetricValues: new Map(),
-                timestamp: 0,
-                podMetricValues: new Map(),
-                prevPodMetricValues: new Map(),
-                prevMachineMetricValues: new Map()
+            if (node.spec?.unschedulable) {
+                console.log(`WARNING: Node ${node.metadata?.name} is unschedulable`)
             }
-            nodes.set(nodeData.name, nodeData)
-            // +++ we need to check node status (only availables should be used)
+            else {
+                var nodeData:NodeInfo = {
+                    name: node.metadata?.name!,
+                    ip: node.status?.addresses!.find(a => a.type === 'InternalIP')?.address!,
+                    kubernetesNode: node,
+                    containerMetricValues: new Map(),
+                    prevContainerMetricValues: new Map(),
+                    machineMetricValues: new Map(),
+                    timestamp: 0,
+                    podMetricValues: new Map(),
+                    prevPodMetricValues: new Map(),
+                    prevMachineMetricValues: new Map()
+                }
+                nodes.set(nodeData.name, nodeData)
+            }
         }
         return nodes
     }

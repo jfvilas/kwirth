@@ -1,20 +1,14 @@
-import { Alert, Box, Button, Stack, Typography } from '@mui/material'
-import { LogObject } from '../model/LogObject'
-import { LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
-import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
-import { FiredAlert } from '../model/AlertObject'
-import { MetricsObject } from '../model/MetricsObject'
+import { useState } from "react"
 import { ReactJSXElement } from '@emotion/react/types/jsx-namespace'
-import { useState } from 'react'
+import { MetricsObject } from "../../model/MetricsObject"
+import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
+import { Alert, Button, Stack, Typography } from "@mui/material"
 
 interface IProps {
-    channel: string
-    lastLineRef: React.MutableRefObject<null>
-    logObject: LogObject
-    channelObject: any
+    channelObject:any
 }
-  
-const TabContent: React.FC<any> = (props:IProps) => {
+
+const TabContentMetrics: React.FC<any> = (props:IProps) => {
     const [refresh, setRefresh] = useState(false)
     const colours = [
         "#6e5bb8", // morado oscuro
@@ -50,78 +44,6 @@ const TabContent: React.FC<any> = (props:IProps) => {
         "#d2ebfa", // azul muy claro pastel
         "#f1c1d2"  // rosa bebé pastel
     ]
-    
-    const formatLogLine = (message:LogMessage|null, index:number) => {
-        if (!message) return null
-
-        if (message.type==='data') {
-            var txt=message.text
-            if (props.channelObject.view==='namespace') {
-                var preLength = message.pod!.length+1
-                var preBlanks = ' '.repeat(preLength)
-                txt=txt.replaceAll('\n','\n'+preBlanks).trimEnd()
-            }
-
-            var prefix = ''
-            if (props.channelObject.view==='pod') prefix = message.container || ''
-            if (props.channelObject.view==='container' && props.channelObject.container.includes(',')) prefix = message.container || ''
-            if (props.channelObject.view==='namespace') {
-                return <><span style={{color:'blue'}}>{message.pod+' '}</span>{txt}</>
-            }
-            else
-                return <><span style={{color:'blue'}}>{prefix+' '}</span>{txt}</>
-        }
-        else if (message.type==='signal') {
-            if ((message as any).action) {
-                return <span style={{color:'black'}}><b>{`***** ${message.text} *****`}</b></span>
-            }
-            else {
-                var signal=message as SignalMessage
-                switch (signal.level) {
-                    case SignalMessageLevelEnum.INFO:
-                        return <span style={{color:'blue'}}><b>{`***** ${signal.text} *****`}</b></span>
-                    case SignalMessageLevelEnum.WARNING:
-                        return <span style={{color:'orange'}}><b>{`***** ${signal.text} *****`}</b></span>
-                    case SignalMessageLevelEnum.ERROR:
-                        return <span style={{color:'red'}}><b>{`***** ${signal.text} *****`}</b></span>
-                }
-            }
-        }
-        else  {
-            return <span>{message.text}</span>
-        }
-    }
-
-    const formatLog = () => {
-        var messages = props.channelObject.data.messages as LogMessage[]
-        return <pre>
-            {messages.map((message, index) => {
-                if (index===props.channelObject.data.messages.length-1)
-                    return <><div key={index} ref={props.lastLineRef} >{formatLogLine(message, index)}</div><div key={-1} >&nbsp;</div></>
-                else 
-                    return <div key={index}>{formatLogLine(message, index)}</div>
-            })}
-        </pre>
-    }
-
-    const formatAlert = () => {
-        let firedAlerts = props.channelObject.data.firedAlerts as FiredAlert[]
-        return (<pre>{
-            firedAlerts.map(alert => {
-                var color = 'black'
-                if (alert.severity === 'warning') color='orange'
-                if (alert.severity === 'error') color='red'
-                let prefix = ''
-                if (props.channelObject.view==='namespace') 
-                    prefix = alert.namespace+'/'
-                else 
-                    prefix += alert.namespace+'/'+ alert.pod +'/'
-                prefix = prefix + alert.container + ' '
-                if (alert.namespace==='') prefix=''
-                return <>{prefix}<span style={{color}}>{new Date(alert.timestamp).toISOString() + ' ' + alert.text} </span><br/></>
-            })
-        }</pre>)
-    }
 
     const mergeSeries = (names:string[], series:any[]) => {
         if (!names || names.length===0) return []
@@ -338,19 +260,6 @@ const TabContent: React.FC<any> = (props:IProps) => {
         }
     }
 
-    return (
-        <>
-        <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
-            {/* show log lines */}
-            {props.channelObject &&  props.channel === 'log' && props.channelObject.data && props.channelObject.data.messages && formatLog() }
-
-            {/* show alerts */}
-            { props.channelObject &&  props.channel==='alert' && props.channelObject.data && props.channelObject.data.firedAlerts && formatAlert() }
-
-            {/* show metrics */}
-            { props.channelObject &&  props.channel==='metrics' && props.channelObject.data.assetMetricsValues && formatMetrics() }
-        </Box>
-        </>
-    )
+    return formatMetrics()
 }
-export { TabContent }
+export { TabContentMetrics }

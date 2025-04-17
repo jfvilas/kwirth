@@ -10,6 +10,7 @@ import IconReplicaSet from'../icons/svg/rs.svg'
 import IconStatefulSet from'../icons/svg/ss.svg'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { ClusterTypeEnum } from '@jfvilas/kwirth-common'
+import cluster from 'cluster'
 const KIconDaemonSet = () => <img src={IconDaemonSet} alt='ds' height={'16px'}/>
 const KIconReplicaSet = () => <img src={IconReplicaSet} alt='rs' height={'16px'}/>
 const KIconStatefulSet = () => <img src={IconStatefulSet} alt='ss' height={'16px'}/>
@@ -238,8 +239,8 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
         <Stack direction='row' spacing={1} sx={{...props.sx}} alignItems='baseline'>
 
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }}>
-                <InputLabel id='cluster'>Cluster</InputLabel>
-                <Select labelId='cluster' value={selectedCluster?.name} onChange={onChangeCluster}>
+                <InputLabel>Cluster</InputLabel>
+                <Select value={selectedCluster?.name} onChange={onChangeCluster}>
                 { props.clusters?.map( (cluster) => {
                     return <MenuItem key={cluster.name} value={cluster.name} disabled={!cluster.enabled}>{cluster.name + (cluster.kwirthData?.clusterType? ` (${cluster.kwirthData?.clusterType[0]})` : '')} </MenuItem>
                 })}
@@ -247,8 +248,8 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             </FormControl>
 
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={selectedCluster.name===''}>
-                <InputLabel id='view'>View</InputLabel>
-                <Select labelId='view' value={view} onChange={onChangeView} >
+                <InputLabel>View</InputLabel>
+                <Select value={view} onChange={onChangeView} >
                 {/* { ['namespace','group','pod','container'].map( (value:string) => {
                     return <MenuItem key={value} value={value}>{value}</MenuItem>
                 })} */}
@@ -260,8 +261,8 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             </FormControl>
 
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={view==='' || isDocker}>
-                <InputLabel id='namespace'>Namespace</InputLabel>
-                <Select labelId='namespace' onChange={onChangeNamespaces} multiple value={namespaces} renderValue={(selected) => selected.join(', ')}>
+                <InputLabel>Namespace</InputLabel>
+                <Select onChange={onChangeNamespaces} multiple value={namespaces} renderValue={(selected) => selected.join(', ')}>
                 { allNamespaces && allNamespaces.map( (namespace:string) => {
                     return (
                         <MenuItem key={namespace} value={namespace}>
@@ -274,8 +275,8 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             </FormControl>
 
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={namespaces.length===0 || view==='namespace' || isDocker}>
-                <InputLabel id='group'>Group</InputLabel>
-                <Select labelId='group' onChange={onChangeGroup} value={groups} multiple renderValue={(selected) => selected.join(', ')}>
+                <InputLabel>Group</InputLabel>
+                <Select onChange={onChangeGroup} value={groups} multiple renderValue={(selected) => selected.join(', ')}>
                 { allGroups && allGroups.map( (value) => 
                     <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
                         <Checkbox checked={groups.includes (value)} />
@@ -286,8 +287,8 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             </FormControl>
 
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={(!isDocker && (groups.length === 0 || view==='namespace' || view==='group')) || (isDocker && (view ==='namespace' || namespaces.length === 0))}>
-                <InputLabel id='pod'>Pod</InputLabel>
-                <Select labelId='pod' value={pods} onChange={onChangePod} multiple renderValue={(selected) => selected.join(', ')}>
+                <InputLabel >Pod</InputLabel>
+                <Select value={pods} onChange={onChangePod} multiple renderValue={(selected) => selected.join(', ')}>
                 { allPods && allPods.map( (value:string) =>
                     <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
                         <Checkbox checked={pods.includes (value)} />{value}
@@ -298,8 +299,8 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
             </FormControl>
 
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={pods.length === 0 || view==='namespace' || view==='group' || view==='pod'}>
-                <InputLabel id='container'>Container</InputLabel>
-                <Select labelId='container' value={containers} onChange={onChangeContainer} multiple renderValue={(selected) => selected.join(', ')}>
+                <InputLabel >Container</InputLabel>
+                <Select value={containers} onChange={onChangeContainer} multiple renderValue={(selected) => selected.join(', ')}>
                 { allContainers && allContainers.map( (value:string) => 
                     <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
                         {/* <Checkbox checked={containers.includes(value)} />{ isDocker? value.replaceAll('$docker+',''): value } */}
@@ -313,9 +314,9 @@ const ResourceSelector: React.FC<any> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }}>
-                <InputLabel id='channel'>Channel</InputLabel>
-                <Select labelId='channel' value={channel} onChange={onChangeChannel}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={selectedCluster.name === ''}>
+                <InputLabel >Channel</InputLabel>
+                <Select value={channel} onChange={onChangeChannel}>
                     {
                         supportedChannels.map(c => <MenuItem key={c} value={c}>{c}</MenuItem> )
                     }

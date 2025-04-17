@@ -1,35 +1,40 @@
-import { AssetMetrics, ChannelData, IChannel, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { AssetMetrics, ChannelData, IChannel, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../model/ClusterInfo'
 import { AssetData } from '../tools/Metrics'
 import WebSocket from 'ws'
+
+interface IInstance {
+    instanceId: string
+    timeout: NodeJS.Timeout
+    working: boolean
+    paused: boolean
+    assets: AssetData[]
+    instanceConfig: InstanceConfig
+    interval: number
+}
 
 class MetricsChannel implements IChannel {
     clusterInfo: ClusterInfo
 
     // list of intervals (and its associated metrics) that produce metrics streams    
-    //websocketMetrics:Map<WebSocket, {instanceId:string, timeout: NodeJS.Timeout, working:boolean, paused:boolean, assets: AssetData[], instanceConfig:InstanceConfig} []> = new Map()  
-    websocketMetrics:{ ws:WebSocket, instances: {instanceId:string, timeout: NodeJS.Timeout, working:boolean, paused:boolean, assets: AssetData[], instanceConfig:InstanceConfig, interval:number}[] }[] = []
-
+    websocketMetrics: {
+        ws:WebSocket,
+        instances: IInstance[]
+    }[] = []
+    
     constructor (clusterInfo:ClusterInfo) {
         this.clusterInfo = clusterInfo
     }
 
     getChannelData(): ChannelData {
         return {
-            id: 'channel',
+            id: 'metrics',
             pauseable: true,
             modifyable: true,
             reconnectable: true
         }
     }
 
-    // containsInstance(instanceId: string): boolean {
-    //     for (var instances of this.websocketMetrics.values()) {
-    //         var exists = instances.find(i => i.instanceId === instanceId)
-    //         if (exists) return true
-    //     }
-    //     return false
-    // }
     containsInstance(instanceId: string): boolean {
         for (var socket of this.websocketMetrics) {
             var exists = socket.instances.find(i => i.instanceId === instanceId)
@@ -184,116 +189,6 @@ class MetricsChannel implements IChannel {
         }
     }
 
-    // sendMetricsDataInstance = (webSocket:WebSocket, instanceId:string): void => {
-    //     // get instance
-    //     var instances = this.websocketMetrics.get(webSocket)
-        
-    //     if (!instances) {
-    //         console.log('No instances found for sendMetricsData')
-    //         return
-    //     }
-    //     var instance = instances.find (i => i.instanceId === instanceId)
-    //     if (!instance) {
-    //         console.log(`No instance found for sendMetricsData instance ${instanceId}`)
-    //         return
-    //     }
-    //     if (instance.working) {
-    //         console.log(`Previous instance of ${instanceId} is still running`)
-    //         return
-    //     }
-    //     if (instance.paused) {
-    //         console.log(`Instance ${instanceId} is paused, no SMD performed`)
-    //         return
-    //     }
-    
-    //     instance.working=true
-    //     let instanceConfig = instance.instanceConfig
-    
-    //     try {
-    //         var metricsMessage:MetricsMessage = {
-    //             channel: InstanceConfigChannelEnum.METRICS,
-    //             type: InstanceMessageTypeEnum.DATA,
-    //             instance: instanceConfig.instance,
-    //             assets: [],
-    //             namespace: instanceConfig.namespace,
-    //             pod: instanceConfig.pod,
-    //             timestamp: Date.now()
-    //         }
-    
-    //         switch(instanceConfig.view) {
-    //             case InstanceConfigViewEnum.NAMESPACE:
-    //                 if (instanceConfig.data.aggregate) {
-    //                     let assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
-    //                     metricsMessage.assets.push(assetMetrics)
-    //                 }
-    //                 else {
-    //                     const namespaces = [...new Set(instance.assets.map(item => item.podNamespace))]
-    //                     for (let namespace of namespaces) {
-    //                         let assets = instance.assets.filter(a => a.podNamespace === namespace)
-    //                         let assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
-    //                         metricsMessage.assets.push(assetMetrics)
-    //                     }
-
-    //                 }
-    //                 break
-    //             case InstanceConfigViewEnum.GROUP:
-    //                 if (instanceConfig.data.aggregate) {
-    //                     var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
-    //                     metricsMessage.assets.push(assetMetrics)
-    //                 }
-    //                 else {
-    //                     const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
-    //                     for (let groupName of groupNames) {
-    //                         let assets=instance.assets.filter(a => a.podGroup === groupName)
-    //                         let assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
-    //                         metricsMessage.assets.push(assetMetrics)
-    //                     }
-    //                 }
-    //                 break
-    //             case InstanceConfigViewEnum.POD:
-    //                 if (instanceConfig.data.aggregate) {
-    //                     var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
-    //                     metricsMessage.assets.push(assetMetrics)
-    //                 }
-    //                 else {
-    //                     const uniquePodNames = [...new Set(instance.assets.map(asset => asset.podName))]
-    //                     for (var podName of uniquePodNames) {
-    //                         var assets = instance.assets.filter(a => a.podName === podName)
-    //                         var assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
-    //                         metricsMessage.assets.push(assetMetrics)
-    //                     }
-    //                 }
-    //                 break
-    //             case InstanceConfigViewEnum.CONTAINER:
-    //                 if (instanceConfig.data.aggregate) {
-    //                     var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
-    //                     metricsMessage.assets.push(assetMetrics)
-    //                 }
-    //                 else {
-    //                     for (var asset of instance.assets) {
-    //                         var assetMetrics = this.getAssetMetrics(instanceConfig, [asset], false)
-    //                         metricsMessage.assets.push(assetMetrics)
-    //                     }
-    //                 }
-    //                 break
-    //             default:
-    //                 console.log(`Invalid view:`, instanceConfig.view)
-    //         }
-    
-    //         try {
-    //             webSocket.send(JSON.stringify(metricsMessage))
-    //         }
-    //         catch (err) {
-    //             console.log('Socket error, we should forget interval')
-    //         }
-    //         instance.working=false
-    //     }
-    //     catch (err) {
-    //         this.sendChannelSignal(webSocket, SignalMessageLevelEnum.WARNING, `Cannot read metrics for instance ${instanceId}`, instanceConfig)
-    //         console.log('Error reading metrics', err)
-    //     }
-    // }
-
     sendMetricsDataInstance = (webSocket:WebSocket, instanceId:string): void => {
         let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
         if (!socket) {
@@ -409,12 +304,12 @@ class MetricsChannel implements IChannel {
     }
     
     sendInstanceConfigMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
-        var resp:any = {
+        var resp:InstanceConfigResponse = {
             action,
             flow,
             channel,
             instance: instanceConfig.instance,
-            type: 'signal',
+            type: InstanceMessageTypeEnum.SIGNAL,
             text
         }
         ws.send(JSON.stringify(resp))
@@ -430,72 +325,6 @@ class MetricsChannel implements IChannel {
         }
         webSocket.send(JSON.stringify(sgnMsg))
     }
-
-    // async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
-    //     try {
-    //         const podResponse = await this.clusterInfo.coreApi.readNamespacedPod(podName, podNamespace)
-    //         const owner = podResponse.body.metadata?.ownerReferences![0]!
-    //         const gtype = owner.kind.toLocaleLowerCase().replace('set','')  // gtype is 'replica', 'stateful' or 'daemon'
-    //         const podGroup = gtype+'+'+owner.name
-    //         const podNode = podResponse.body.spec?.nodeName
-            
-    //         switch (instanceConfig.data.mode) {
-    //             case MetricsConfigModeEnum.SNAPSHOT:
-    //                 if (podNode) {
-    //                     console.log(`Send snapshot metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
-    //                     var instances = this.websocketMetrics.get(webSocket)
-    //                     var instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
-    //                     if (instance)
-    //                         this.sendMetricsDataInstance(webSocket, instanceConfig.instance)
-    //                     else
-    //                         this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig) 
-    //                 }
-    //                 break
-    //             case MetricsConfigModeEnum.STREAM:
-    //                 if (podNode) {
-    //                     console.log(`Start pod metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
-    //                     if (this.websocketMetrics.has(webSocket)) {
-    //                         var instances = this.websocketMetrics.get(webSocket)
-    //                         var instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
-    //                         if (!instance) {
-    //                             // new instance for an existing websocket
-    //                             var interval=(instanceConfig.data.interval? instanceConfig.data.interval:60)*1000
-    //                             var timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
-    //                             instances?.push({instanceId:instanceConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], instanceConfig: instanceConfig})
-    //                             return
-    //                         }
-                            
-    //                         if (instanceConfig.data.view === InstanceConfigViewEnum.CONTAINER) {
-    //                             instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
-    //                         }
-    //                         else {
-    //                             if (!instance.assets.find(a => a.podName === podName && a.containerName === containerName)) {
-    //                                 instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})                            
-    //                             }
-    //                         }
-    //                     }
-    //                     else {
-    //                         this.websocketMetrics.set(webSocket, [])
-    //                         var interval=(instanceConfig.data.interval? instanceConfig.data.interval:60)*1000
-    //                         var timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
-    //                         var instances = this.websocketMetrics.get(webSocket)
-    //                         instances?.push({instanceId:instanceConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], instanceConfig: instanceConfig})
-    //                     }
-    //                 }
-    //                 else {
-    //                     console.log(`Cannot determine node for ${podNamespace}/${podName}}, will not be added`)
-    //                 }
-    //                 break
-    //             default:
-    //                 this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid mode: ${instanceConfig.data.mode}`, instanceConfig.data.mode)
-    //                 break
-    //         }
-    //     }
-    //     catch (err:any) {
-    //         this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
-    //         console.log('Generic error starting metrics instance', err)
-    //     }
-    // }
 
     async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
@@ -557,7 +386,7 @@ class MetricsChannel implements IChannel {
                         }
                         else {
                             this.websocketMetrics.push( {ws:webSocket, instances:[]} )
-                            let interval=(instanceConfig.data.interval? instanceConfig.data.interval:60)*1000
+                            let interval = (instanceConfig.data.interval? instanceConfig.data.interval:60)*1000
                             let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
 
                             let instances = this.websocketMetrics.find(entry => entry.ws === webSocket)?.instances
@@ -584,20 +413,6 @@ class MetricsChannel implements IChannel {
         this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.STOP, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics instance stopped')
     }
 
-    // modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
-    //     let runningInstances = this.websocketMetrics.get(webSocket)
-    //     let instance = runningInstances?.find(i => i.instanceId === instanceConfig.instance)
-    //     if (instance) {
-    //         // only modifiable properties of the metrics config
-    //         instance.instanceConfig.data.metrics = instanceConfig.data.metrics
-    //         instance.instanceConfig.data.interval = instanceConfig.data.interval
-    //         instance.instanceConfig.data.aggregate = instanceConfig.data.aggregate
-    //         this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.MODIFY, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics modified')
-    //     }
-    //     else {
-    //         this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
-    //     }   
-    // }
     modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
         let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
         if (!socket) {
@@ -619,23 +434,6 @@ class MetricsChannel implements IChannel {
         }   
     }
 
-    // pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceConfigActionEnum): void {
-    //     let runningInstances = this.websocketMetrics.get(webSocket)
-    //     let instance = runningInstances?.find(i => i.instanceId === instanceConfig.instance)
-    //     if (instance) {
-    //         if (action === InstanceConfigActionEnum.PAUSE) {
-    //             instance.paused = true
-    //             this.sendInstanceConfigMessage(webSocket, InstanceConfigActionEnum.PAUSE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics paused')
-    //         }
-    //         if (action === InstanceConfigActionEnum.CONTINUE) {
-    //             instance.paused = false
-    //             this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.CONTINUE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics continued')
-    //         }
-    //     }
-    //     else {
-    //         this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
-    //     }
-    // }
     pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceConfigActionEnum): void {
         let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
         if (!socket) {
@@ -660,18 +458,6 @@ class MetricsChannel implements IChannel {
         }
     }
 
-    // removeConnection(webSocket: WebSocket): void {
-    //     if (this.websocketMetrics.has(webSocket)) {
-    //         let instances=this.websocketMetrics.get(webSocket)
-    //         if (instances) {
-    //             for (var i=0;i<instances.length;i++) {
-    //                 console.log(`Interval for instance ${instances[i].instanceId} has been removed`)
-    //                 this.removeInstance(webSocket, instances[i].instanceId)
-    //             }
-    //         }
-    //         this.websocketMetrics.delete(webSocket)
-    //     }
-    // }
     removeConnection(webSocket: WebSocket): void {
         let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
         if (socket) {
@@ -687,18 +473,6 @@ class MetricsChannel implements IChannel {
         }
     }
 
-    // updateConnection(webSocket: WebSocket, instanceId: string): boolean {
-    //     for (let [key,value] of this.websocketMetrics.entries()) {
-    //         var exists = value.find(i => i.instanceId === instanceId)
-    //         if (exists) {
-    //             let temp = value
-    //             this.websocketMetrics.delete(key)
-    //             this.websocketMetrics.set(webSocket, value)
-    //             return true
-    //         }
-    //     }
-    //     return false
-    // }
     updateConnection(newWebSocket: WebSocket, instanceId: string): boolean {
         for (let entry of this.websocketMetrics) {
             var exists = entry.instances.find(i => i.instanceId === instanceId)
@@ -707,6 +481,7 @@ class MetricsChannel implements IChannel {
                 console.log('starting')
                 for (var instance of entry.instances) {
                     console.log('update', instance.instanceId)
+                    console.log('interval', instance.interval, instance.instanceConfig.data.interval)
                     clearInterval(instance.timeout)
                     instance.timeout = setInterval(() => this.sendMetricsDataInstance(newWebSocket, instanceId), instance.interval)
                 }
@@ -716,28 +491,6 @@ class MetricsChannel implements IChannel {
         return false
     }
         
-    // removeInstance(webSocket: WebSocket, instanceId: string): void {
-    //     if (this.websocketMetrics.has(webSocket)) {
-    //         var instances = this.websocketMetrics.get(webSocket)
-    //         if (instances) {
-    //             var instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
-    //             if (instanceIndex>=0) {
-    //                 clearInterval(instances[instanceIndex].timeout)
-    //                 instances.splice(instanceIndex,1)
-    //             }
-    //             else{
-    //                 console.log('Instance not found, cannot delete')
-    //             }
-    //         }
-    //         else {
-    //             console.log('There are no Instances on websocket')
-    //         }
-    //     }
-    //     else {
-    //         console.log('WebSocket not found on intervals')
-    //     }
-    // }
-
     removeInstance(webSocket: WebSocket, instanceId: string): void {
         let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
         if (socket) {
