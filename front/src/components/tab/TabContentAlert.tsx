@@ -1,16 +1,16 @@
-import { AlarmMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
-import { FiredAlert } from '../../model/AlertObject'
+import { AlertObject, FiredAlert } from '../../model/AlertObject'
+import { IChannelObject } from '../../model/ITabObject'
 
 interface IProps {
-    channelObject:any
+    channelObject: IChannelObject
     lastLineRef: React.MutableRefObject<null>
 }
 
 const TabContentAlert: React.FC<any> = (props:IProps) => {
     const formatAlert = () => {
-        let firedAlerts = props.channelObject.data.firedAlerts as FiredAlert[]
+        let alertObject = props.channelObject.data as AlertObject
         return (<pre>{
-            firedAlerts.map(alert => {
+            alertObject.firedAlerts.map(alert => {
                 var color = 'black'
                 if (alert.severity === 'warning') color='orange'
                 if (alert.severity === 'error') color='red'

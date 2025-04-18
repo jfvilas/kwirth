@@ -6,7 +6,8 @@ export class DockerSecrets implements ISecrets {
     path:string
 
     constructor (_coreApi: CoreV1Api, namespace:string) {
-        if (!namespace.endsWith('/')) namespace+='/'
+        // namespace is used as a folder path
+        if (!namespace.endsWith('/')) namespace += '/'
         this.path = namespace
     }
 
@@ -17,11 +18,11 @@ export class DockerSecrets implements ISecrets {
         catch (err:any) {
             console.log(`Error writing secret (${err}).`)
             console.log(err)
-            return {}
+            return
         }
     }
     
-    public read = async (name:string, defaultValue?:any) => {
+    public read = async (name:string, defaultValue?:any): Promise<any> => {
         try {
             let data:any = fs.readFileSync(this.path+name, 'utf-8')
             var jdata=JSON.parse(data)

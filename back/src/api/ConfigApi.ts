@@ -90,7 +90,7 @@ export class ConfigApi {
             })
 
         // get all deployments in a namespace
-        this.route.route(['/:namespace/sets','/:namespace/groups'])
+        this.route.route('/:namespace/groups')
             .all( async (req:Request, res:Response, next) => {
                 if (! (await validKey(req,res, apiKeyApi))) return
                 next()

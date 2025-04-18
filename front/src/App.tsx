@@ -159,18 +159,7 @@ const App: React.FC = () => {
                             }
                         }, (settings?.keepAliveInterval || 60) * 1000,'')  
                         startChannel(tab)
-                    })
-                    
-                    // if (cluster) {
-                    //     tab.ws = new WebSocket(cluster.url)
-                    //     tab.ws.onopen = () => {
-                    //         console.log(`WS connected tab: ${tab.name} to ${tab.ws?.url}`)
-                    //         if (tab.channelObject) startChannel(tab)
-                    //     }
-                    //     tab.ws.onerror = (event) => reconnectInstance(event)
-                    //     tab.ws.onmessage = (event) => wsOnMessage(event)
-                    //     tab.ws.onclose = (event) => reconnectInstance(event)
-                    // }
+                    })                    
                 }
                 onChangeTab(null, tabs[0].name)
             }
@@ -321,7 +310,7 @@ const App: React.FC = () => {
         var tabName = selection.suggestedName
         // create unduplicated (unique) name (adding a '-number' suffix)
         let index = -1
-        while (tabs.find (t => t.name === tabName + index)) index -= 1
+        while (tabs.find (t => t.name === tabName + index.toString())) index -= 1
 
         var newTab:ITabObject = {
             name: tabName+index.toString(),
@@ -915,7 +904,7 @@ const App: React.FC = () => {
             case MenuTabOption.TabSetDefault:
                 if (selectedTab && selectedTab.channelObject) selectedTab.defaultTab=true
                 break
-            case MenuTabOption.TabManageRestart:
+            // case MenuTabOption.TabManageRestart:
                 // switch(selectedTab && selectedTab.logObject?.view) {
                 //     case .GROUP:
                 //         // restart a deployment
@@ -926,7 +915,7 @@ const App: React.FC = () => {
                 //         fetch (`${backendUrl}/managecluster/restartpod/${selectedTab?.logObject?.namespace}/${selectedTab?.logObject?.pod}`, addPostAuthorization(accessString))
                 //         break
                 // }
-                break
+                // break
             case MenuTabOption.ChannelStart:
                 onClickChannelStart()
                 break

@@ -20,15 +20,18 @@ export class KubernetesSecrets implements ISecrets {
         };
         try {
             await this.coreApi?.replaceNamespacedSecret(name,this.namespace, secret)
-            return {}
         }
         catch (err) {
-            await this.coreApi?.createNamespacedSecret(this.namespace, secret)
-            return {}
+            try {
+                await this.coreApi?.createNamespacedSecret(this.namespace, secret)
+            }
+            catch (err) {
+                console.log(`Error writing secret ${name}`, err)
+            }
         }
     }
     
-    public read = async (name:string, _defaultValue?:any) => {        
+    public read = async (name:string, _defaultValue?:any): Promise<any> => {        
         var ct = await this.coreApi?.readNamespacedSecret(name,this.namespace)
         return ct.body.data
     }  

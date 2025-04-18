@@ -3,9 +3,14 @@ import { ReactJSXElement } from '@emotion/react/types/jsx-namespace'
 import { MetricsObject } from "../../model/MetricsObject"
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { Alert, Button, Stack, Typography } from "@mui/material"
+import { IChannelObject } from "../../model/ITabObject"
 
 interface IProps {
-    channelObject:any
+    channelObject:IChannelObject
+}
+interface ISample {
+    timestamp:string
+    value:number
 }
 
 const TabContentMetrics: React.FC<any> = (props:IProps) => {
@@ -45,9 +50,14 @@ const TabContentMetrics: React.FC<any> = (props:IProps) => {
         "#f1c1d2"  // rosa bebé pastel
     ]
 
-    const mergeSeries = (names:string[], series:any[]) => {
+    const mergeSeries = (names:string[], series:ISample[][]) => {
+        // names is an array of names of series
+        // series is an array of arrays of samples
+        // example:
+        //   [default, ingress-nginx]
+        //   [  [ {timestamp:'dad',value:1}, {timestamp:'dad',value:2} ], [ {timestamp:'dad',value:4}, {timestamp:'dad',value:0} ]  ]
         if (!names || names.length===0) return []
-        var resultSeries:any[] = []
+        let resultSeries = []
 
         for (var i=0; i<series[0].length; i++) {
             var item: { [key: string]: any } = {}
@@ -57,16 +67,22 @@ const TabContentMetrics: React.FC<any> = (props:IProps) => {
             }
             resultSeries.push(item)
         }
+
+        // result is:
+        // [ 
+        //   {timestamp: '09:16:27', default: 0.21, ingress-nginx: 0.93}
+        //   {timestamp: '09:16:32', default: 0.5, ingress-nginx: 0.04}
+        // ]
         return resultSeries
     }
 
-    const addChart = (dataMetrics: MetricsObject, metric:string, names:string[], series:any[], colour:string) => {
+    const addChart = (dataMetrics: MetricsObject, metric:string, names:string[], series:ISample[][], colour:string) => {
         var result: ReactJSXElement
         var mergedSeries = mergeSeries(names, series)
 
         const renderLabel = (data:any) => {
             var values:any[] = series.map (s => s[data.index])
-            var total:number =values.reduce((acc,value) => acc+value.value, 0)
+            var total:number = values.reduce((acc,value) => acc+value.value, 0)
             return <text x={data.x + data.width/3.5} y={data.y-10}>{total.toPrecision(3).replace(/0+$/, '').replace(/\.+$/, '')}</text>
         }
         let  height=300
@@ -194,7 +210,7 @@ const TabContentMetrics: React.FC<any> = (props:IProps) => {
             return <>{formatMetricsError(dataMetrics)}</>
         }
 
-        let data:Map<string, Map<string, { timestamp:string, value:number}[]>> = new Map()
+        let data:Map<string, Map<string, ISample[]>> = new Map()
         for (var assetMetricsValues of dataMetrics.assetMetricsValues) {
             var ts = new Date(assetMetricsValues.timestamp)
             var timestamp = ts.getHours().toString().padStart(2,'0')+':'+ts.getMinutes().toString().padStart(2,'0')+':'+ts.getSeconds().toString().padStart(2,'0')
@@ -208,15 +224,15 @@ const TabContentMetrics: React.FC<any> = (props:IProps) => {
             }   
         }
 
-        let allCharts:any[] = []
+        let allCharts:ReactJSXElement[] = []
         if (dataMetrics.merge) {
             var assetNames=Array.from(data.keys())
             var firstAsset=assetNames[0]
             var allMetrics:string[] = Array.from(new Set(data.get(firstAsset)!.keys()))
 
             for (let metric of allMetrics) {
-                var series = assetNames.map(an => {
-                    return data.get(an)!.get(metric)
+                var series = assetNames.map(assetName => {
+                    return data.get(assetName)!.get(metric)!
                 })
                 allCharts.push(<>{addChart(dataMetrics, metric, assetNames, series, '')}</>)
             }
@@ -237,12 +253,12 @@ const TabContentMetrics: React.FC<any> = (props:IProps) => {
         else {
             let allCharts = Array.from(data.keys()!).map( (asset, index)  =>  {
                 return Array.from(data.get(asset)?.keys()!).map ( metric => {
-                    var serie:any=data.get(asset)?.get(metric)!
-                    return (<>{addChart(dataMetrics, metric, [asset], [serie], colours[index])}</>)
+                    var series = data.get(asset)?.get(metric)!
+                    return (<>{addChart(dataMetrics, metric, [asset], [series], colours[index])}</>)
                 })
             })
 
-            // convert allResults (a list of charts) into a series of rows of charts
+            // convert allCharts (an array of charts) into a series of rows of charts
             let rows = []
             for (var resultAsset of allCharts) {
                 for (let i = 0; i < resultAsset.length; i += dataMetrics.width) {

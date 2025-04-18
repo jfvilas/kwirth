@@ -277,28 +277,6 @@ const watchDockerPods = async (apiPath:string, queryParams:any, webSocket:WebSoc
             sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Container ${podName}/${containerName} does not exist.`, instanceConfig)
         }
     }
-
-
-    // listen for changes
-    // dockerApi.getEvents({ filters: { type: ['container'], event: ['start'] } }, (err, eventStream) => {
-    //     if (err) {
-    //       console.error('Error listening to events:', err)
-    //       return
-    //     }
-    
-    //     if (eventStream) {
-    //         eventStream.on('data', async buffer => {
-    //             const event = JSON.parse(buffer.toString());
-    //             const containerId = event.id;
-
-    //             const containerInfo = await dockerApi.getContainer(containerId).inspect();
-    //             //streamLogs(containerInfo);
-    //             console.log('containerInfo')
-    //             console.log(containerInfo.Name)
-    //             processEvent('ADDED', webSocket, instanceConfig, '$docker', '$docker', [containerInfo.Name])
-    //         })
-    //     }
-    // })
 }
 
 // watches for pod changes (add, delete...) inside the group pointed by the requestor
@@ -621,7 +599,7 @@ const getValidNamespaces = (requestedNamespaces:string[], allowedNamespaces:stri
 const processClientMessage = async (message:string, webSocket:WebSocket) => {
     const instanceConfig = JSON.parse(message) as InstanceConfig
 
-    console.log('Request:', instanceConfig.flow, instanceConfig.action, instanceConfig.channel, instanceConfig.scope)
+    console.log('Request:', instanceConfig.flow, instanceConfig.action, instanceConfig.channel)
 
     if (instanceConfig.flow !== InstanceConfigFlowEnum.REQUEST) {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Invalid flow received', instanceConfig)
@@ -698,7 +676,6 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
         }
     }
 
-    console.log('Request:', instanceConfig.flow, instanceConfig.action, instanceConfig.channel, instanceConfig.scope)
     console.log('validNamespaces:', validNamespaces)
     console.log('validPodNames:', validPodNames)
 

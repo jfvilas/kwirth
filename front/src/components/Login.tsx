@@ -42,8 +42,8 @@ const Login: React.FC<any> = (props:IProps) => {
     }
 
     const loginOk = (jsonResult:any) => {
-        var receivedUser:User=jsonResult as User
-        var accessKey=accessKeyBuild(jsonResult.accessKey.id, jsonResult.accessKey.type, jsonResult.accessKey.resource)
+        var receivedUser:User = jsonResult as User
+        var accessKey = accessKeyBuild(jsonResult.accessKey.id, jsonResult.accessKey.type, jsonResult.accessKey.resource)
         props.onClose(true, receivedUser, accessKeySerialize(accessKey))
     }
 
