@@ -5,13 +5,14 @@ import { TabContentMetrics } from './TabContentMetrics'
 import { IChannelObject } from '../../model/ITabObject'
 
 interface IProps {
-    channel: string
+    channel?: string
     lastLineRef: React.MutableRefObject<null>
-    channelObject: IChannelObject
+    channelObject?: IChannelObject
+    refreshTabContent: number
 }
 
-const TabContent: React.FC<any> = (props:IProps) => {
-
+const TabContent: React.FC<IProps> = (props:IProps) => {
+    
     return (
         <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
             {/* show log lines */}

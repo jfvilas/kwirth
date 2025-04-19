@@ -5,12 +5,12 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxWaitCancel, MsgBoxYesNo } from '../tools
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 
 interface IProps {
-  onClose:(clusters:Cluster[]) => {}
-  clusters:Cluster[]
+  onClose:(clusters:Cluster[]) => void
+  clusters?: Cluster[]
 }
 
-const ManageClusters: React.FC<any> = (props:IProps) => {
-    const [clusters, setClusters] = useState<Cluster[]>(props.clusters)
+const ManageClusters: React.FC<IProps> = (props:IProps) => {
+    const [clusters, setClusters] = useState<Cluster[]>(props.clusters || [])
     const [selectedCluster, setSelectedCluster] = useState<Cluster|null>()
     const [name, setName] = useState<string>('')
     const [url, setUrl] = useState<string>('')

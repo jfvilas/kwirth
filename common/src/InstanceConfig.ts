@@ -1,31 +1,35 @@
-export enum InstanceConfigChannelEnum {
-    NONE = 'none',
-    LOG = 'log',
-    METRICS = 'metrics',
-    AUDIT = 'audit',
-    ALARM = 'alarm',
-    ALERT = 'alert'
-}
+import { InstanceMessage } from "./InstanceMessage"
 
-export enum InstanceConfigActionEnum {
-    START = 'start',
-    STOP = 'stop',
-    PAUSE = 'pause',
-    CONTINUE = 'continue',
-    MODIFY = 'modify',
-    PING = 'ping',
-    RECONNECT = 'reconnect'
-}
+// export enum InstanceConfigChannelEnum {
+//     NONE = 'none',
+//     LOG = 'log',
+//     METRICS = 'metrics',
+//     AUDIT = 'audit',
+//     ALARM = 'alarm',
+//     ALERT = 'alert'
+// }
+
+// export enum InstanceConfigActionEnum {
+//     NONE = 'none',
+//     START = 'start',
+//     STOP = 'stop',
+//     PAUSE = 'pause',
+//     CONTINUE = 'continue',
+//     MODIFY = 'modify',
+//     PING = 'ping',
+//     RECONNECT = 'reconnect'
+// }
 
 export enum InstanceConfigObjectEnum {
     PODS = 'pods',
     EVENTS = 'events'
 }
 
-export enum InstanceConfigFlowEnum {
-    REQUEST = 'request',
-    RESPONSE = 'response'
-}
+// export enum InstanceConfigFlowEnum {
+//     REQUEST = 'request',
+//     RESPONSE = 'response',
+//     UNSOLICITED = 'unsolicited'
+// }
 
 export enum InstanceConfigViewEnum {
     NONE = 'none',
@@ -55,12 +59,8 @@ export enum InstanceConfigScopeEnum {
     SUBSCRIBE = 'subscribe',
 }
 
-export interface InstanceConfig {
-    channel: string
+export interface InstanceConfig extends InstanceMessage{
     objects: InstanceConfigObjectEnum
-    action: InstanceConfigActionEnum
-    flow: InstanceConfigFlowEnum
-    instance: string
     accessKey: string
     scope: string
     view: InstanceConfigViewEnum
@@ -68,15 +68,11 @@ export interface InstanceConfig {
     group: string
     pod: string
     container: string
-    reconnectKey?: string
     data?: any
 }
 
-export interface InstanceConfigResponse {
-    action: InstanceConfigActionEnum
-    flow: InstanceConfigFlowEnum
-    channel: string
-    instance: string
-    type: string
+export interface InstanceConfigResponse extends InstanceMessage {
+    // action: InstanceConfigActionEnum
+    // flow: InstanceConfigFlowEnum
     text: string
 }

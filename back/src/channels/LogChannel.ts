@@ -1,8 +1,9 @@
-import { ChannelData, IChannel, LogMessage, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse } from '@jfvilas/kwirth-common';
+import { LogMessage, InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage } from '@jfvilas/kwirth-common';
 import WebSocket from 'ws'
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../model/ClusterInfo'
+import { ChannelData, IChannel } from './IChannel';
 
 interface IAsset {
     podNamespace:string,
@@ -27,6 +28,7 @@ class LogChannel implements IChannel {
     clusterInfo : ClusterInfo
     websocketLog: {
         ws:WebSocket,
+        lastRefresh: number,
         instances: IInstance[] 
     }[] = []
 
@@ -34,6 +36,10 @@ class LogChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
+    processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : boolean {
+        return true    
+    }
+    
     getChannelData(): ChannelData {
         return {
             id: 'log',
@@ -45,16 +51,13 @@ class LogChannel implements IChannel {
 
     containsInstance(instanceId: string): boolean {
         for (let socket of this.websocketLog) {
-            console.log('search socket')
-            console.log('instances', socket.instances)
             let exists = socket.instances.find(i => i.instanceId === instanceId)
             if (exists) return true
         }
-        console.log('socket not found')
         return false
     }
 
-    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
+    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
         var resp:InstanceConfigResponse = {
             action,
             flow,
@@ -68,6 +71,8 @@ class LogChannel implements IChannel {
 
     sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
         var signalMessage:SignalMessage = {
+            action: InstanceMessageActionEnum.NONE,
+            flow: InstanceMessageFlowEnum.RESPONSE,
             level,
             channel: instanceConfig.channel,
             instance: instanceConfig.instance,
@@ -88,7 +93,6 @@ class LogChannel implements IChannel {
         let instances = socket.instances
 
         if (!instances) {
-            console.log(this.websocketLog)
             console.log('No instances found for sendLogLines')
             // perform cleaning
             return false
@@ -103,12 +107,14 @@ class LogChannel implements IChannel {
 
         const logLines = text.split('\n')
         var logMessage:LogMessage = {
+            action: InstanceMessageActionEnum.NONE,
+            flow: InstanceMessageFlowEnum.UNSOLICITED,
             namespace: asset.podNamespace,
             instance: instanceId,
             type: InstanceMessageTypeEnum.DATA,
             pod: asset.podName,
             container: asset.containerName,
-            channel: InstanceConfigChannelEnum.LOG,
+            channel: InstanceMessageChannelEnum.LOG,
             text: '',
         }
         for (var line of logLines) {
@@ -149,7 +155,7 @@ class LogChannel implements IChannel {
                              
             let socket = this.websocketLog.find(s => s.ws === webSocket)
             if (!socket) {
-                let len = this.websocketLog.push( {ws:webSocket, instances:[]} )
+                let len = this.websocketLog.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
                 socket = this.websocketLog[len-1]
             }
 
@@ -192,6 +198,178 @@ class LogChannel implements IChannel {
         catch (err:any) {
             console.log('Generic error starting pod log', err)
             this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
+        }
+    }
+
+    async startKubernetesStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+        try {
+            let socket = this.websocketLog.find(s => s.ws === webSocket)
+            if (!socket) {
+                let len = this.websocketLog.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+                socket = this.websocketLog[len-1]
+            }
+
+            let instances = socket.instances
+            let instance = instances.find(i => i.instanceId === instanceConfig.instance)
+            if (!instance) {
+                let len = socket?.instances.push ({
+                    instanceId: instanceConfig.instance, 
+                    timestamps: instanceConfig.data.timestamp,
+                    previous: false,  // +++ previous support must be reviewed
+                    tailLines: instanceConfig.data.tailLines,
+                    paused:false,
+                    assets:[]
+                })
+                instance = socket?.instances[len-1]
+            }
+            
+            const logStream:PassThrough = new stream.PassThrough()
+            let asset = {
+                podNamespace,
+                podName,
+                containerName,
+                passThroughStream: logStream,
+                buffer: ''
+            }
+            instance.assets.push( asset )
+
+            asset.passThroughStream.on('data', (chunk) => {
+                try {
+                    var text:string=chunk.toString('utf8')
+                    this.sendBlock(webSocket, instanceConfig.instance, asset, text, false)
+                }
+                catch (err) {
+                    console.log(err)
+                }
+            })
+    
+            let streamConfig = { 
+                follow: true, 
+                pretty: false,
+                timestamps: instanceConfig.data.timestamp,
+                previous: Boolean(instanceConfig.data.previous),
+                ...(instanceConfig.data.fromStart? {} : {sinceSeconds:1800})
+            }
+            await this.clusterInfo.logApi.log(podNamespace, podName, containerName, asset.passThroughStream, streamConfig)
+        }
+        catch (err) {
+            console.log('Generic error starting pod log', err)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, (err as any).stack, instanceConfig)
+        }
+    }
+
+    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+        console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
+
+        if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
+            this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName)
+        }
+        else {
+            this.startKubernetesStream(webSocket, instanceConfig, podNamespace, podName, containerName)
+        }
+    }
+
+    stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
+        let socket = this.websocketLog.find(s => s.ws === webSocket)
+        if (!socket) return
+
+        if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
+            this.removeInstance(webSocket, instanceConfig.instance)
+            this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.LOG, instanceConfig, 'Log instance stopped')
+        }
+        else {
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
+        }
+    }
+
+    getChannelScopeLevel(scope: string): number {
+        return ['', 'filter', 'view', 'cluster'].indexOf(scope)
+    }
+
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
+        var socket = this.websocketLog.find(s => s.ws === webSocket)
+        if (!socket) {
+            console.log('No socket found for pci')
+            return
+        }
+        let instances = socket.instances
+
+        let instance = instances.find(i => i.instanceId === instanceConfig.instance)
+        if (instance) {
+            if (action === InstanceMessageActionEnum.PAUSE) {
+                instance.paused = true
+                this.sendInstanceConfigMessage(webSocket, InstanceMessageActionEnum.PAUSE, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.LOG, instanceConfig, 'Log paused')
+            }
+            if (action === InstanceMessageActionEnum.CONTINUE) {
+                instance.paused = false
+                this.sendInstanceConfigMessage(webSocket, InstanceMessageActionEnum.CONTINUE, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.LOG, instanceConfig, 'Log continued')
+            }
+        }
+        else {
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
+        }
+    }
+
+    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
+
+    }
+
+    removeInstance(webSocket: WebSocket, instanceId: string): void {
+        let socket = this.websocketLog.find(s => s.ws === webSocket)
+        if (socket) {
+            var instances = socket.instances
+            if (instances) {
+                let pos = instances.findIndex(t => t.instanceId === instanceId)
+                if (pos>=0) {
+                    let instance = instances[pos]
+                    for (var asset of instance.assets) {
+                        if (asset.passThroughStream)
+                            asset.passThroughStream.removeAllListeners()
+                        else
+                            console.log(`logStream not found of instance id ${instanceId} and asset ${asset.podNamespace}/${asset.podName}/${asset.containerName}`)
+                    }
+                    instances.splice(pos,1)
+                }
+                else {
+                    console.log(`Instance ${instanceId} not found, cannot delete`)
+                }
+            }
+            else {
+                console.log('There are no log Instances on websocket')
+            }
+        }
+        else {
+            console.log('WebSocket not found on logs')
+        }
+    }
+
+    containsConnection (webSocket:WebSocket) : boolean {
+        return Boolean (this.websocketLog.find(s => s.ws === webSocket))
+    }
+
+    removeConnection(webSocket: WebSocket): void {
+        let socket = this.websocketLog.find(s => s.ws === webSocket)
+        if (socket) {
+            for (let instance of socket.instances) {
+                this.removeInstance (webSocket, instance.instanceId)
+            }
+            let pos = this.websocketLog.findIndex(s => s.ws === webSocket)
+            this.websocketLog.splice(pos,1)
+        }
+        else {
+            console.log('WebSocket not found on logs for remove')
+        }
+    }
+
+    refreshConnection(webSocket: WebSocket): boolean {
+        let socket = this.websocketLog.find(s => s.ws === webSocket)
+        if (socket) {
+            socket.lastRefresh = Date.now()
+            return true
+        }
+        else {
+            console.log('WebSocket not found')
+            return false
         }
     }
 
@@ -242,162 +420,6 @@ class LogChannel implements IChannel {
             }
         }
         return false
-    }
-
-    async startKubernetesStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
-        try {
-            let socket = this.websocketLog.find(s => s.ws === webSocket)
-            if (!socket) {
-                let len = this.websocketLog.push( {ws:webSocket, instances:[]} )
-                socket = this.websocketLog[len-1]
-            }
-
-            let instances = socket.instances
-            let instance = instances.find(i => i.instanceId === instanceConfig.instance)
-            if (!instance) {
-                let len = socket?.instances.push ({
-                    instanceId: instanceConfig.instance, 
-                    timestamps: instanceConfig.data.timestamp,
-                    previous: false,  // +++ previous support must be reviewed
-                    tailLines: instanceConfig.data.tailLines,
-                    paused:false,
-                    assets:[]
-                })
-                instance = socket?.instances[len-1]
-            }
-            
-            const logStream:PassThrough = new stream.PassThrough()
-            let asset = {
-                podNamespace,
-                podName,
-                containerName,
-                passThroughStream: logStream,
-                buffer: ''
-            }
-            instance.assets.push( asset )
-
-            asset.passThroughStream.on('data', (chunk:any) => {
-                try {
-                    var text:string=chunk.toString('utf8')
-                    this.sendBlock(webSocket, instanceConfig.instance, asset, text, false)
-                }
-                catch (err) {
-                    console.log(err)
-                }
-            })
-    
-            let streamConfig = { 
-                follow: true, 
-                pretty: false,
-                timestamps: instanceConfig.data.timestamp,
-                previous: Boolean(instanceConfig.data.previous),
-                ...(instanceConfig.data.fromStart? {} : {sinceSeconds:1800})
-            }
-            await this.clusterInfo.logApi.log(podNamespace, podName, containerName, asset.passThroughStream, streamConfig)
-        }
-        catch (err:any) {
-            console.log('Generic error starting pod log', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
-        }
-    }
-
-    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
-        console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
-
-        if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
-            this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName)
-        }
-        else {
-            this.startKubernetesStream(webSocket, instanceConfig, podNamespace, podName, containerName)
-        }
-    }
-
-    stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
-        let socket = this.websocketLog.find(s => s.ws === webSocket)
-        if (!socket) return
-
-        if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
-            this.removeInstance(webSocket, instanceConfig.instance)
-            this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.STOP, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.LOG, instanceConfig, 'Log instance stopped')
-        }
-        else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
-        }
-    }
-
-    getChannelScopeLevel(scope: string): number {
-        return ['', 'filter', 'view', 'cluster'].indexOf(scope)
-    }
-
-    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceConfigActionEnum): void {
-        var socket = this.websocketLog.find(s => s.ws === webSocket)
-        if (!socket) {
-            console.log('No socket found for pci')
-            return
-        }
-        let instances = socket.instances
-
-        let instance = instances.find(i => i.instanceId === instanceConfig.instance)
-        if (instance) {
-            if (action === InstanceConfigActionEnum.PAUSE) {
-                instance.paused = true
-                this.sendInstanceConfigMessage(webSocket, InstanceConfigActionEnum.PAUSE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.LOG, instanceConfig, 'Log paused')
-            }
-            if (action === InstanceConfigActionEnum.CONTINUE) {
-                instance.paused = false
-                this.sendInstanceConfigMessage(webSocket, InstanceConfigActionEnum.CONTINUE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.LOG, instanceConfig, 'Log continued')
-            }
-        }
-        else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
-        }
-    }
-
-    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
-
-    }
-
-    removeConnection(webSocket: WebSocket): void {
-        let socket = this.websocketLog.find(s => s.ws === webSocket)
-        if (socket) {
-            for (let instance of socket.instances) {
-                this.removeInstance (webSocket, instance.instanceId)
-            }
-            let pos = this.websocketLog.findIndex(s => s.ws === webSocket)
-            this.websocketLog.splice(pos,1)
-        }
-        else {
-            console.log('WebSocket not found on logs for remove')
-        }
-    }
-
-    removeInstance(webSocket: WebSocket, instanceId: string): void {
-        let socket = this.websocketLog.find(s => s.ws === webSocket)
-        if (socket) {
-            var instances = socket.instances
-            if (instances) {
-                let pos = instances.findIndex(t => t.instanceId === instanceId)
-                if (pos>=0) {
-                    let instance = instances[pos]
-                    for (var asset of instance.assets) {
-                        if (asset.passThroughStream)
-                            asset.passThroughStream.removeAllListeners()
-                        else
-                            console.log(`logStream not found of instance id ${instanceId} and asset ${asset.podNamespace}/${asset.podName}/${asset.containerName}`)
-                    }
-                    instances.splice(pos,1)
-                }
-                else {
-                    console.log(`Instance ${instanceId} not found, cannot delete`)
-                }
-            }
-            else {
-                console.log('There are no log Instances on websocket')
-            }
-        }
-        else {
-            console.log('WebSocket not found on logs')
-        }
     }
 
 }

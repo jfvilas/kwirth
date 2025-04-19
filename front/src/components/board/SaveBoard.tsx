@@ -1,8 +1,8 @@
+import { useState } from 'react'
 import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField } from '@mui/material'
-import { ChangeEvent, useState } from 'react'
 
 interface IProps {
-    onClose:(name?:string, description?:string) => {},
+    onClose:(name?:string, description?:string) => void
     name:string
     description:string
     values:IValue[]
@@ -13,7 +13,7 @@ interface IValue {
     description:string
 }
 
-const SaveBoard: React.FC<any> = (props:IProps) => {
+const SaveBoard: React.FC<IProps> = (props:IProps) => {
     const [newname, setNewname] = useState(props.name)
     const [desc, setDesc] = useState(props.description)
 

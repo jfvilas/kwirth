@@ -1,7 +1,8 @@
-import { AssetMetrics, ChannelData, IChannel, MetricsConfig, MetricsConfigModeEnum, MetricsMessage, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse } from '@jfvilas/kwirth-common'
+import { AssetMetrics, MetricsConfigModeEnum, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../model/ClusterInfo'
 import { AssetData } from '../tools/Metrics'
 import WebSocket from 'ws'
+import { ChannelData, IChannel } from './IChannel'
 
 interface IInstance {
     instanceId: string
@@ -19,11 +20,16 @@ class MetricsChannel implements IChannel {
     // list of intervals (and its associated metrics) that produce metrics streams    
     websocketMetrics: {
         ws:WebSocket,
+        lastRefresh: number,
         instances: IInstance[]
     }[] = []
     
     constructor (clusterInfo:ClusterInfo) {
         this.clusterInfo = clusterInfo
+    }
+
+    processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : boolean {
+        return true    
     }
 
     getChannelData(): ChannelData {
@@ -220,13 +226,16 @@ class MetricsChannel implements IChannel {
     
         try {
             var metricsMessage:MetricsMessage = {
-                channel: InstanceConfigChannelEnum.METRICS,
+                action: InstanceMessageActionEnum.NONE,
+                flow: InstanceMessageFlowEnum.UNSOLICITED,
+                channel: InstanceMessageChannelEnum.METRICS,
                 type: InstanceMessageTypeEnum.DATA,
                 instance: instanceConfig.instance,
                 assets: [],
                 namespace: instanceConfig.namespace,
                 pod: instanceConfig.pod,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                container: '',
             }
     
             switch(instanceConfig.view) {
@@ -303,7 +312,7 @@ class MetricsChannel implements IChannel {
         }
     }
     
-    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
+    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
         var resp:InstanceConfigResponse = {
             action,
             flow,
@@ -316,14 +325,16 @@ class MetricsChannel implements IChannel {
     }
 
     sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
-        var sgnMsg:SignalMessage = {
+        var signalMessage:SignalMessage = {
+            action: InstanceMessageActionEnum.NONE,
+            flow: InstanceMessageFlowEnum.RESPONSE,
+            type: InstanceMessageTypeEnum.SIGNAL,
             level,
             channel: instanceConfig.channel,
             instance: instanceConfig.instance,
-            type: InstanceMessageTypeEnum.SIGNAL,
             text
         }
-        webSocket.send(JSON.stringify(sgnMsg))
+        webSocket.send(JSON.stringify(signalMessage))
     }
 
     async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
@@ -385,7 +396,7 @@ class MetricsChannel implements IChannel {
                             }
                         }
                         else {
-                            this.websocketMetrics.push( {ws:webSocket, instances:[]} )
+                            this.websocketMetrics.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
                             let interval = (instanceConfig.data.interval? instanceConfig.data.interval:60)*1000
                             let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
 
@@ -410,7 +421,7 @@ class MetricsChannel implements IChannel {
 
     stopInstance (webSocket: WebSocket, instanceConfig: InstanceConfig): void {
         this.removeInstance (webSocket,instanceConfig.instance)
-        this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.STOP, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics instance stopped')
+        this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.METRICS, instanceConfig, 'Metrics instance stopped')
     }
 
     modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
@@ -427,14 +438,14 @@ class MetricsChannel implements IChannel {
             instance.instanceConfig.data.metrics = instanceConfig.data.metrics
             instance.instanceConfig.data.interval = instanceConfig.data.interval
             instance.instanceConfig.data.aggregate = instanceConfig.data.aggregate
-            this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.MODIFY, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics modified')
+            this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.MODIFY, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.METRICS, instanceConfig, 'Metrics modified')
         }
         else {
             this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
         }   
     }
 
-    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceConfigActionEnum): void {
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
         let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
         if (!socket) {
             console.log('No socket found for startInstance snapshot')
@@ -444,13 +455,13 @@ class MetricsChannel implements IChannel {
 
         let instance = instances?.find(i => i.instanceId === instanceConfig.instance)
         if (instance) {
-            if (action === InstanceConfigActionEnum.PAUSE) {
+            if (action === InstanceMessageActionEnum.PAUSE) {
                 instance.paused = true
-                this.sendInstanceConfigMessage(webSocket, InstanceConfigActionEnum.PAUSE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics paused')
+                this.sendInstanceConfigMessage(webSocket, InstanceMessageActionEnum.PAUSE, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.METRICS, instanceConfig, 'Metrics paused')
             }
-            if (action === InstanceConfigActionEnum.CONTINUE) {
+            if (action === InstanceMessageActionEnum.CONTINUE) {
                 instance.paused = false
-                this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.CONTINUE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.METRICS, instanceConfig, 'Metrics continued')
+                this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.CONTINUE, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.METRICS, instanceConfig, 'Metrics continued')
             }
         }
         else {
@@ -458,39 +469,6 @@ class MetricsChannel implements IChannel {
         }
     }
 
-    removeConnection(webSocket: WebSocket): void {
-        let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
-        if (socket) {
-            let instances = socket.instances
-            if (instances) {
-                for (var i=0;i<instances.length;i++) {
-                    console.log(`Interval for instance ${instances[i].instanceId} has been removed`)
-                    this.removeInstance(webSocket, instances[i].instanceId)
-                }
-            }
-            var pos = this.websocketMetrics.findIndex(s => s.ws === webSocket)
-            this.websocketMetrics.splice(pos,1)
-        }
-    }
-
-    updateConnection(newWebSocket: WebSocket, instanceId: string): boolean {
-        for (let entry of this.websocketMetrics) {
-            var exists = entry.instances.find(i => i.instanceId === instanceId)
-            if (exists) {
-                entry.ws = newWebSocket
-                console.log('starting')
-                for (var instance of entry.instances) {
-                    console.log('update', instance.instanceId)
-                    console.log('interval', instance.interval, instance.instanceConfig.data.interval)
-                    clearInterval(instance.timeout)
-                    instance.timeout = setInterval(() => this.sendMetricsDataInstance(newWebSocket, instanceId), instance.interval)
-                }
-                return true
-            }
-        }
-        return false
-    }
-        
     removeInstance(webSocket: WebSocket, instanceId: string): void {
         let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
         if (socket) {
@@ -512,6 +490,55 @@ class MetricsChannel implements IChannel {
         else {
             console.log('WebSocket not found on intervals')
         }
+    }
+
+    containsConnection (webSocket:WebSocket) : boolean {
+        return Boolean (this.websocketMetrics.find(s => s.ws === webSocket))
+    }
+
+    removeConnection(webSocket: WebSocket): void {
+        let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
+        if (socket) {
+            let instances = socket.instances
+            if (instances) {
+                for (var i=0;i<instances.length;i++) {
+                    console.log(`Interval for instance ${instances[i].instanceId} has been removed`)
+                    this.removeInstance(webSocket, instances[i].instanceId)
+                }
+            }
+            var pos = this.websocketMetrics.findIndex(s => s.ws === webSocket)
+            this.websocketMetrics.splice(pos,1)
+        }
+    }
+
+    refreshConnection(webSocket: WebSocket): boolean {
+        let socket = this.websocketMetrics.find(s => s.ws === webSocket)
+        if (socket) {
+            socket.lastRefresh = Date.now()
+            return true
+        }
+        else {
+            console.log('WebSocket not found')
+            return false
+        }
+    }
+
+    updateConnection(newWebSocket: WebSocket, instanceId: string): boolean {
+        for (let entry of this.websocketMetrics) {
+            var exists = entry.instances.find(i => i.instanceId === instanceId)
+            if (exists) {
+                entry.ws = newWebSocket
+                console.log('starting')
+                for (var instance of entry.instances) {
+                    console.log('update', instance.instanceId)
+                    console.log('interval', instance.interval, instance.instanceConfig.data.interval)
+                    clearInterval(instance.timeout)
+                    instance.timeout = setInterval(() => this.sendMetricsDataInstance(newWebSocket, instanceId), instance.interval)
+                }
+                return true
+            }
+        }
+        return false
     }
 
 }

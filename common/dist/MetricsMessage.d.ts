@@ -9,4 +9,7 @@ export interface AssetMetrics {
 export interface MetricsMessage extends InstanceMessage {
     assets: AssetMetrics[];
     timestamp: number;
+    namespace: string;
+    pod: string;
+    container: string;
 }

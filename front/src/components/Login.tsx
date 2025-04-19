@@ -7,10 +7,10 @@ import { User } from '../model/User'
 import { addPostAuthorization } from '../tools/AuthorizationManagement'
 
 interface IProps {
-      onClose:(result:boolean,user:User|null, accessKey:string) => {}
+      onClose:(user:User|undefined, accessKey:string) => void
 }
 
-const Login: React.FC<any> = (props:IProps) => {
+const Login: React.FC<IProps> = (props:IProps) => {
     const {backendUrl} = useContext(SessionContext) as SessionContextType
     const [msgBox, setMsgBox] = useState(<></>)
     const [user, setUser] = useState('')
@@ -44,7 +44,7 @@ const Login: React.FC<any> = (props:IProps) => {
     const loginOk = (jsonResult:any) => {
         var receivedUser:User = jsonResult as User
         var accessKey = accessKeyBuild(jsonResult.accessKey.id, jsonResult.accessKey.type, jsonResult.accessKey.resource)
-        props.onClose(true, receivedUser, accessKeySerialize(accessKey))
+        props.onClose(receivedUser, accessKeySerialize(accessKey))
     }
 
     const onClickOk = async () => {
@@ -97,7 +97,7 @@ const Login: React.FC<any> = (props:IProps) => {
             setPassword('')
         }
         else {
-            props.onClose(false,null,'')
+            props.onClose(undefined,'')
         }
     }
 

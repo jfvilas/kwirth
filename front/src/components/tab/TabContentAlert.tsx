@@ -1,4 +1,4 @@
-import { AlertObject, FiredAlert } from '../../model/AlertObject'
+import { AlertObject } from '../../model/AlertObject'
 import { IChannelObject } from '../../model/ITabObject'
 
 interface IProps {
@@ -6,7 +6,7 @@ interface IProps {
     lastLineRef: React.MutableRefObject<null>
 }
 
-const TabContentAlert: React.FC<any> = (props:IProps) => {
+const TabContentAlert: React.FC<IProps> = (props:IProps) => {
     const formatAlert = () => {
         let alertObject = props.channelObject.data as AlertObject
         return (<pre>{
@@ -21,7 +21,7 @@ const TabContentAlert: React.FC<any> = (props:IProps) => {
                     prefix += alert.namespace+'/'+ alert.pod +'/'
                 prefix = prefix + alert.container + ' '
                 if (alert.namespace==='') prefix=''
-                return <>{prefix}<span style={{color}}>{new Date(alert.timestamp).toISOString() + ' ' + alert.text} </span><br/></>
+                return <>{prefix}<span style={{color}}>{new Date(alert.timestamp).toISOString() + ' ' + alert.text}</span><br/></>
             })
         }</pre>)
     }

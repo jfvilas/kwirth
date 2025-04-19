@@ -4,11 +4,12 @@ import { Settings } from '../../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
 interface IProps {
-    onClose:(newSettings:Settings|undefined) => {}
-    settings:Settings
+    onClose:(newSettings:Settings|undefined) => void
+    settings?:Settings
 }
 
-const SettingsUser: React.FC<any> = (props:IProps) => {
+const SettingsUser: React.FC<IProps> = (props:IProps) => {
+    if (!props.settings) props.settings = new Settings()
     const [value, setValue] = React.useState('log')
     const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages)    
     const [logFromStart, setLogFromStart] = useState(props.settings.logFromStart)
@@ -33,7 +34,7 @@ const SettingsUser: React.FC<any> = (props:IProps) => {
         var newSettings=new Settings()
         newSettings.logMaxMessages = logMaxMessages
         newSettings.logFromStart = logFromStart
-        newSettings.logPrevious = false
+        newSettings.logPrevious = logPrevious
         newSettings.logTimestamp = logTimestamp
         newSettings.logFollow = logFollow
         newSettings.metricsMode = metricsMode as MetricsConfigModeEnum

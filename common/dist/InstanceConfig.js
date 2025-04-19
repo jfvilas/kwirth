@@ -1,35 +1,34 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.InstanceConfigScopeEnum = exports.InstanceConfigViewEnum = exports.InstanceConfigFlowEnum = exports.InstanceConfigObjectEnum = exports.InstanceConfigActionEnum = exports.InstanceConfigChannelEnum = void 0;
-var InstanceConfigChannelEnum;
-(function (InstanceConfigChannelEnum) {
-    InstanceConfigChannelEnum["NONE"] = "none";
-    InstanceConfigChannelEnum["LOG"] = "log";
-    InstanceConfigChannelEnum["METRICS"] = "metrics";
-    InstanceConfigChannelEnum["AUDIT"] = "audit";
-    InstanceConfigChannelEnum["ALARM"] = "alarm";
-    InstanceConfigChannelEnum["ALERT"] = "alert";
-})(InstanceConfigChannelEnum || (exports.InstanceConfigChannelEnum = InstanceConfigChannelEnum = {}));
-var InstanceConfigActionEnum;
-(function (InstanceConfigActionEnum) {
-    InstanceConfigActionEnum["START"] = "start";
-    InstanceConfigActionEnum["STOP"] = "stop";
-    InstanceConfigActionEnum["PAUSE"] = "pause";
-    InstanceConfigActionEnum["CONTINUE"] = "continue";
-    InstanceConfigActionEnum["MODIFY"] = "modify";
-    InstanceConfigActionEnum["PING"] = "ping";
-    InstanceConfigActionEnum["RECONNECT"] = "reconnect";
-})(InstanceConfigActionEnum || (exports.InstanceConfigActionEnum = InstanceConfigActionEnum = {}));
+exports.InstanceConfigScopeEnum = exports.InstanceConfigViewEnum = exports.InstanceConfigObjectEnum = void 0;
+// export enum InstanceConfigChannelEnum {
+//     NONE = 'none',
+//     LOG = 'log',
+//     METRICS = 'metrics',
+//     AUDIT = 'audit',
+//     ALARM = 'alarm',
+//     ALERT = 'alert'
+// }
+// export enum InstanceConfigActionEnum {
+//     NONE = 'none',
+//     START = 'start',
+//     STOP = 'stop',
+//     PAUSE = 'pause',
+//     CONTINUE = 'continue',
+//     MODIFY = 'modify',
+//     PING = 'ping',
+//     RECONNECT = 'reconnect'
+// }
 var InstanceConfigObjectEnum;
 (function (InstanceConfigObjectEnum) {
     InstanceConfigObjectEnum["PODS"] = "pods";
     InstanceConfigObjectEnum["EVENTS"] = "events";
 })(InstanceConfigObjectEnum || (exports.InstanceConfigObjectEnum = InstanceConfigObjectEnum = {}));
-var InstanceConfigFlowEnum;
-(function (InstanceConfigFlowEnum) {
-    InstanceConfigFlowEnum["REQUEST"] = "request";
-    InstanceConfigFlowEnum["RESPONSE"] = "response";
-})(InstanceConfigFlowEnum || (exports.InstanceConfigFlowEnum = InstanceConfigFlowEnum = {}));
+// export enum InstanceConfigFlowEnum {
+//     REQUEST = 'request',
+//     RESPONSE = 'response',
+//     UNSOLICITED = 'unsolicited'
+// }
 var InstanceConfigViewEnum;
 (function (InstanceConfigViewEnum) {
     InstanceConfigViewEnum["NONE"] = "none";

@@ -20,15 +20,15 @@ enum MenuTabOption {
 }
 
 interface IProps {
-    onClose:() => {}
-    optionSelected: (opt:MenuTabOption) => {}
-    anchorMenuTab:Element
-    tabs:ITabObject[]
-    selectedTab:ITabObject
-    selectedTabIndex:number
+    onClose:() => void
+    optionSelected: (opt:MenuTabOption) => void
+    anchorMenuTab: Element
+    tabs: ITabObject[]
+    selectedTab?: ITabObject
+    selectedTabIndex: number
 }
 
-const MenuTab: React.FC<any> = (props:IProps) => {
+const MenuTab: React.FC<IProps> = (props:IProps) => {
     const [subMenuTabOpen, setSubmenuTabOpen] = React.useState(false)
 
     const menuTabs=(

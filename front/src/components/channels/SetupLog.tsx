@@ -4,12 +4,12 @@ import { IChannelObject } from '../../model/ITabObject'
 import { LogObject } from '../../model/LogObject'
 
 interface IProps {
-    onClose:(maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean) => {}
-    channelObject : IChannelObject
+    onClose:(maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean) => void
+    channelObject?: IChannelObject
 }
 
-const SetupLog: React.FC<any> = (props:IProps) => {
-    var dataLog = props.channelObject.data as LogObject
+const SetupLog: React.FC<IProps> = (props:IProps) => {
+    var dataLog = props.channelObject?.data as LogObject
     const [maxMessages, setMaxMessages] = useState(dataLog.maxMessages)
     const [previous, setPrevious] = useState(dataLog.previous)
     const [timestamp, setTimestamp] = useState(dataLog.timestamp)

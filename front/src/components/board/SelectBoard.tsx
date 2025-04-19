@@ -11,7 +11,7 @@ interface IValue {
     description:string
 }
 
-const SelectBoard: React.FC<any> = (props:IProps) => {
+const SelectBoard: React.FC<IProps> = (props:IProps) => {
    return (
         <Dialog open={true}>
             <DialogTitle>

@@ -1,10 +1,11 @@
 import express, { Request, Response} from 'express'
 import { CoreV1Api, AppsV1Api } from '@kubernetes/client-node'
-import { ClusterTypeEnum, IChannel, KwirthData } from '@jfvilas/kwirth-common'
+import { ClusterTypeEnum, KwirthData } from '@jfvilas/kwirth-common'
 import { validKey } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
 import { ClusterInfo } from '../model/ClusterInfo'
 import Docker from 'dockerode'
+import { IChannel } from '../channels/IChannel'
 
 export class ConfigApi {
     public route = express.Router()

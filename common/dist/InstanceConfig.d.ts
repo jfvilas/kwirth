@@ -1,27 +1,7 @@
-export declare enum InstanceConfigChannelEnum {
-    NONE = "none",
-    LOG = "log",
-    METRICS = "metrics",
-    AUDIT = "audit",
-    ALARM = "alarm",
-    ALERT = "alert"
-}
-export declare enum InstanceConfigActionEnum {
-    START = "start",
-    STOP = "stop",
-    PAUSE = "pause",
-    CONTINUE = "continue",
-    MODIFY = "modify",
-    PING = "ping",
-    RECONNECT = "reconnect"
-}
+import { InstanceMessage } from "./InstanceMessage";
 export declare enum InstanceConfigObjectEnum {
     PODS = "pods",
     EVENTS = "events"
-}
-export declare enum InstanceConfigFlowEnum {
-    REQUEST = "request",
-    RESPONSE = "response"
 }
 export declare enum InstanceConfigViewEnum {
     NONE = "none",
@@ -43,12 +23,8 @@ export declare enum InstanceConfigScopeEnum {
     CREATE = "create",
     SUBSCRIBE = "subscribe"
 }
-export interface InstanceConfig {
-    channel: string;
+export interface InstanceConfig extends InstanceMessage {
     objects: InstanceConfigObjectEnum;
-    action: InstanceConfigActionEnum;
-    flow: InstanceConfigFlowEnum;
-    instance: string;
     accessKey: string;
     scope: string;
     view: InstanceConfigViewEnum;
@@ -56,14 +32,8 @@ export interface InstanceConfig {
     group: string;
     pod: string;
     container: string;
-    reconnectKey?: string;
     data?: any;
 }
-export interface InstanceConfigResponse {
-    action: InstanceConfigActionEnum;
-    flow: InstanceConfigFlowEnum;
-    channel: string;
-    instance: string;
-    type: string;
+export interface InstanceConfigResponse extends InstanceMessage {
     text: string;
 }

@@ -6,13 +6,13 @@ import { MetricsObject } from '../../model/MetricsObject'
 import { IChannelObject } from '../../model/ITabObject'
 
 interface IProps {
-    onClose:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number, aggregate:boolean, merge:boolean, stack:boolean, chart:string) => {}
-    channelObject: IChannelObject
+    onClose:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number, aggregate:boolean, merge:boolean, stack:boolean, chart:string) => void
+    channelObject?: IChannelObject
     metrics:Map<string,MetricDescription>
 }
 
-const SetupMetrics: React.FC<any> = (props:IProps) => {
-    var dataMetrics = props.channelObject.data as MetricsObject
+const SetupMetrics: React.FC<IProps> = (props:IProps) => {
+    var dataMetrics = props.channelObject?.data as MetricsObject
     const [metrics, setMetrics] = React.useState<string[]>(dataMetrics.metrics)
     const [metricsMode, setMetricsMode] = useState(dataMetrics.mode)
     const [metricsDepth, setMetricsDepth] = useState(dataMetrics.depth)
@@ -46,24 +46,27 @@ const SetupMetrics: React.FC<any> = (props:IProps) => {
     }
 
     var multiAssets=false
-    switch (props.channelObject.view) {
-        case InstanceConfigViewEnum.NAMESPACE:
-            multiAssets = props.channelObject.namespace.split(',').length > 1
-            break
-        case InstanceConfigViewEnum.GROUP:
-            multiAssets = props.channelObject.group.split(',').length > 1
-            break
-        case InstanceConfigViewEnum.POD:
-            multiAssets = props.channelObject.pod.split(',').length > 1
-            break
-        case InstanceConfigViewEnum.CONTAINER:
-            multiAssets = props.channelObject.container.split(',').length > 1
-            break
+    if (props.channelObject) {
+        switch (props.channelObject.view) {
+            case InstanceConfigViewEnum.NAMESPACE:
+                multiAssets = props.channelObject.namespace.split(',').length > 1
+                break
+            case InstanceConfigViewEnum.GROUP:
+                multiAssets = props.channelObject.group.split(',').length > 1
+                break
+            case InstanceConfigViewEnum.POD:
+                multiAssets = props.channelObject.pod.split(',').length > 1
+                break
+            case InstanceConfigViewEnum.CONTAINER:
+                multiAssets = props.channelObject.container.split(',').length > 1
+                break
 
+        }
     }
+
     return (<>
         <Dialog open={true} maxWidth={false} sx={{'& .MuiDialog-paper': { width: '50vw', maxWidth: '60vw', height:'60vh', maxHeight:'40vw' } }}>
-            <DialogTitle>Configure metrics for {props.channelObject.view}</DialogTitle>
+            <DialogTitle>Configure metrics for {props.channelObject?.view}</DialogTitle>
             <DialogContent >
                 <Stack spacing={2} direction={'column'} sx={{ mt:'16px' }}>
                     <Stack direction={'row'} spacing={1} >

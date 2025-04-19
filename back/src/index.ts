@@ -15,7 +15,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import WebSocket from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { InstanceConfigActionEnum, InstanceConfigFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, KwirthData, InstanceConfigChannelEnum, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, IChannel, ClusterTypeEnum, InstanceConfigResponse } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, KwirthData, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessage } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { getChannelScopeLevel, validBearerKey } from './tools/AuthorizationManagement'
 import { getPodsFromGroup } from './tools/KubernetesOperations'
@@ -35,6 +35,8 @@ import { IConfigMaps } from './tools/IConfigMap'
 import { DockerSecrets } from './tools/DockerSecrets'
 import { DockerConfigMaps } from './tools/DockerConfigMaps'
 import { DockerTools } from './tools/KwirthApi'
+import { OpsChannel } from './channels/OpsChannel'
+import { IChannel } from './channels/IChannel'
 
 const http = require('http')
 const cors = require('cors')
@@ -124,29 +126,30 @@ const getKubernetesData = async ():Promise<KwirthData> => {
     }
 }
 
-const sendChannelSignal = (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig) => {
-    if (channels.has(instanceConfig.channel)) {
-        var sgnMsg:SignalMessage = {
+const sendChannelSignal = (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceMessage: InstanceMessage) => {
+    if (channels.has(instanceMessage.channel)) {
+        var signalMessage:SignalMessage = {
+            action: InstanceMessageActionEnum.NONE,
+            flow: InstanceMessageFlowEnum.RESPONSE,
             level,
-            channel: instanceConfig.channel,
-            instance: instanceConfig.instance,
+            channel: instanceMessage.channel,
+            instance: instanceMessage.instance,
             type: InstanceMessageTypeEnum.SIGNAL,
             text
         }
-        webSocket.send(JSON.stringify(sgnMsg))
+        webSocket.send(JSON.stringify(signalMessage))
     }
     else {
-        console.log(`Unsupported channel ${instanceConfig.channel}`)
+        console.log(`Unsupported channel ${instanceMessage.channel}`)
     }
 }
 
-const sendInstanceConfigSignalMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: string, instanceConfig:InstanceConfig, text:string) => {
+const sendInstanceConfigSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: string, instanceMessage:InstanceMessage, text:string) => {
     var resp:InstanceConfigResponse = {
         action,
         flow,
         channel,
-        instance: instanceConfig.instance,
-        ...(instanceConfig.reconnectKey && { reconnectKey: instanceConfig.reconnectKey }),
+        instance: instanceMessage.instance,
         type: InstanceMessageTypeEnum.SIGNAL,
         text
     }
@@ -362,18 +365,18 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
 }
 
 const processReconnect = async (webSocket: WebSocket, instanceConfig: InstanceConfig) => {
-    console.log(`Trying to reconnect instance '${instanceConfig.instance}' with key '${instanceConfig.reconnectKey}' on channel ${instanceConfig.channel}`)
+    console.log(`Trying to reconnect instance '${instanceConfig.instance}' on channel ${instanceConfig.channel}`)
     for (var channel of channels.values()) {
         console.log('review channel', channel.getChannelData().id)
         if (channel.containsInstance(instanceConfig.instance)) {
             console.log('found channel', channel.getChannelData().id)
             var updated = channel.updateConnection(webSocket, instanceConfig.instance)
             if (updated) {
-                sendInstanceConfigSignalMessage(webSocket, InstanceConfigActionEnum.RECONNECT, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Reconnect successful')
+                sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.RECONNECT, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Reconnect successful')
                 return
             }
             else {
-                sendInstanceConfigSignalMessage(webSocket, InstanceConfigActionEnum.RECONNECT, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'An error has ocurred while updating connection')
+                sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.RECONNECT, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'An error has ocurred while updating connection')
                 return
             }
         }
@@ -382,7 +385,7 @@ const processReconnect = async (webSocket: WebSocket, instanceConfig: InstanceCo
         }
     }
     console.log(`Instance not found`)
-    sendInstanceConfigSignalMessage(webSocket, InstanceConfigActionEnum.RECONNECT, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance has not been found')
+    sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.RECONNECT, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance has not been found')
 }
 
 const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: InstanceConfig, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validPodNames: string[]) => {
@@ -394,13 +397,12 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
     }
     
     instanceConfig.instance = uuidv4()
-    instanceConfig.reconnectKey = uuidv4()
     switch (instanceConfig.view) {
         case 'namespace':
             for (let ns of validNamespaces) {
                 watchPods(`/api/v1/namespaces/${ns}/${instanceConfig.objects}`, {}, webSocket, instanceConfig)
             }
-            sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
+            sendInstanceConfigSignalMessage(webSocket,InstanceMessageActionEnum.START, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
         case 'group':
             for (let namespace of validNamespaces) {
@@ -415,29 +417,8 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
                         console.log(`No pods on namespace ${namespace}`)
                 }
             }
-            sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
+            sendInstanceConfigSignalMessage(webSocket,InstanceMessageActionEnum.START, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
-        // case 'pod':
-        //     for (let podName of instanceConfig.pod.split(',')) {
-        //         let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
-        //         if (validPod) {
-        //             var metadataLabels = validPod.metadata?.labels
-        //             if (metadataLabels) {
-        //                 var labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
-        //                 let specificInstanceConfig: InstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
-        //                 specificInstanceConfig.pod = podName
-        //                 watchPods(`/api/v1/${instanceConfig.objects}`, { labelSelector }, webSocket, specificInstanceConfig)
-        //             }
-        //             else {
-        //                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels for pod '${podName}'`, instanceConfig)
-        //             }
-        //         }
-        //         else {
-        //             sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}' (or pod does not exsist)`, instanceConfig)
-        //         }
-        //     }
-        //     sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
-        //     break
         case 'pod':
             for (let podName of instanceConfig.pod.split(',')) {
                 let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
@@ -461,31 +442,8 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}' (or pod does not exsist)`, instanceConfig)
                 }
             }
-            sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
+            sendInstanceConfigSignalMessage(webSocket,InstanceMessageActionEnum.START, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
-
-        // case 'container':
-        //     for (let container of instanceConfig.container.split(',')) {
-        //         let [podName, containerName] = container.split('+')
-        //         let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
-        //         if (validPod) {
-        //             let metadataLabels = validPod.metadata?.labels
-        //             if (metadataLabels) {
-        //                 let labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
-        //                 let specificInstanceConfig: InstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
-        //                 specificInstanceConfig.container = container
-        //                 watchPods(`/api/v1/${instanceConfig.objects}`, { labelSelector }, webSocket, specificInstanceConfig)
-        //             }
-        //             else {
-        //                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: cannot get metadata labels for container '${podName}/${containerName}'`, instanceConfig)
-        //             }
-        //         }
-        //         else {
-        //             sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to container '${podName}/${containerName}'  (or pod does not exsist)`, instanceConfig)
-        //         }
-        //     }
-        //     sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
-        //     break
         case 'container':
             for (let container of instanceConfig.container.split(',')) {
                 let [podName, containerName] = container.split('+')
@@ -512,7 +470,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to container '${podName}/${containerName}'  (or pod does not exsist)`, instanceConfig)
                 }
             }
-            sendInstanceConfigSignalMessage(webSocket,InstanceConfigActionEnum.START, InstanceConfigFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
+            sendInstanceConfigSignalMessage(webSocket,InstanceMessageActionEnum.START, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
 
         default:
@@ -530,7 +488,7 @@ const processStopInstanceConfig = async (webSocket: WebSocket, instanceConfig: I
     }
 }
 
-const processPauseContinueInstanceConfig = async (instanceConfig: InstanceConfig, webSocket: WebSocket, action:InstanceConfigActionEnum) => {
+const processPauseContinueInstanceConfig = async (instanceConfig: InstanceConfig, webSocket: WebSocket, action:InstanceMessageActionEnum) => {
     if (channels.has(instanceConfig.channel)) {
         channels.get(instanceConfig.channel)?.pauseContinueInstance(webSocket, instanceConfig, instanceConfig.action)
     }
@@ -595,30 +553,63 @@ const getValidNamespaces = (requestedNamespaces:string[], allowedNamespaces:stri
     return validNamespaces
 }
 
+const processPing = (webSocket:WebSocket, instanceMessage:InstanceMessage): void => {
+    for (var channel of channels.values()) {
+        if (channel.containsConnection(webSocket)) {
+            var refreshed = channel.refreshConnection(webSocket)
+            if (refreshed) {
+                sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.PING, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'OK')
+                return
+            }
+            else {
+                sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.PING, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'An error has ocurred while refreshing connection')
+                return
+            }
+        }
+        else {
+            console.log(`Ping socket not found on channel ${instanceMessage.channel}`)
+        }
+    }
+    console.log(`Ping socket not found`)
+    sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.PING, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Socket has not been found')
+}
+
+const processCommand = (webSocket:WebSocket, instanceMessage:InstanceMessage): void => {
+    let channel = channels.get(instanceMessage.channel)
+    if (channel) {
+        let instance = channel.containsInstance(instanceMessage.instance)
+        if (instance) {
+            channel.processCommand(webSocket, instanceMessage)
+        }
+        else {
+            console.log(`Instance not found`)
+            sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.PING, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Socket has not been found')
+        }   
+    }
+    else {
+        console.log(`Channel not found`)
+        sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.PING, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Socket has not been found')
+    }
+}
+
 // clients send requests to start receiving log
 const processClientMessage = async (message:string, webSocket:WebSocket) => {
-    const instanceConfig = JSON.parse(message) as InstanceConfig
+    const instanceMessage = JSON.parse(message) as InstanceMessage
 
+    if (instanceMessage.flow !== InstanceMessageFlowEnum.REQUEST) {
+        sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Invalid flow received', instanceMessage)
+        return
+    }
+
+    if (instanceMessage.action === InstanceMessageActionEnum.PING) {
+        processPing(webSocket, instanceMessage)
+        return
+    }
+
+    const instanceConfig = JSON.parse(message) as InstanceConfig
     console.log('Request:', instanceConfig.flow, instanceConfig.action, instanceConfig.channel)
 
-    if (instanceConfig.flow !== InstanceConfigFlowEnum.REQUEST) {
-        sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Invalid flow received', instanceConfig)
-        return
-    }
-
-    if (instanceConfig.action === InstanceConfigActionEnum.PING) {
-        var signalMessage:SignalMessage = {
-            level: SignalMessageLevelEnum.INFO,
-            channel: InstanceConfigChannelEnum.NONE,
-            instance: '',
-            type: InstanceMessageTypeEnum.SIGNAL,
-            text: 'OK'
-        }
-        webSocket.send(JSON.stringify(signalMessage))
-        return
-    }
-
-    if (instanceConfig.action === InstanceConfigActionEnum.RECONNECT) {
+    if (instanceConfig.action === InstanceMessageActionEnum.RECONNECT) {
         console.log('reconnect received')
         if (!channels.get(instanceConfig.channel)?.getChannelData().reconnectable) {
             console.log(`Reconnect capability not enabled for channel ${instanceConfig.channel} and instance ${instanceConfig.instance}`)
@@ -681,8 +672,13 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
 
     // +++ revisar si 'scope' en el instanceconfig se utiliza para algo, ya qu eexiste action por un lado, y el scope de los recursos de la accesskey por otro
 
+    if (instanceMessage.action === InstanceMessageActionEnum.COMMAND) {
+        processCommand(webSocket, instanceMessage)
+        return
+    }
+
     switch (instanceConfig.action) {
-        case InstanceConfigActionEnum.START:
+        case InstanceMessageActionEnum.START:
             if (channels.has(instanceConfig.channel)) {
                 processStartInstanceConfig(webSocket, instanceConfig, accessKeyResources, validNamespaces, validPodNames)
             }
@@ -690,7 +686,7 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid InstanceConfig channel: ${instanceConfig.channel}`, instanceConfig)
             }
             break
-        case InstanceConfigActionEnum.STOP:
+        case InstanceMessageActionEnum.STOP:
             if (channels.has(instanceConfig.channel)) {
                 processStopInstanceConfig(webSocket, instanceConfig)
             }
@@ -698,7 +694,7 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid InstanceConfig channel: ${instanceConfig.channel}`, instanceConfig)
             }
             break
-        case InstanceConfigActionEnum.MODIFY:
+        case InstanceMessageActionEnum.MODIFY:
             if (channels.has(instanceConfig.channel)) {
                 if (!channels.get(instanceConfig.channel)?.getChannelData().modifyable) {
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Channel ${instanceConfig.channel} does not support MODIFY`, instanceConfig)
@@ -710,8 +706,8 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
                 sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid InstanceConfig type: ${instanceConfig.channel}`, instanceConfig)
             }
             break
-        case InstanceConfigActionEnum.PAUSE:
-        case InstanceConfigActionEnum.CONTINUE:   
+        case InstanceMessageActionEnum.PAUSE:
+        case InstanceMessageActionEnum.CONTINUE:   
             if (channels.has(instanceConfig.channel)) {
                 if (!channels.get(instanceConfig.channel)?.getChannelData().pauseable) {
                     sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Channel ${instanceConfig.channel} does not support PAUSE/CONTINUE`, instanceConfig)
@@ -848,12 +844,10 @@ const launchKubernetes = async() => {
                     clusterInfo.type = kwirthData.clusterType
 
                     // load channel extensions
-                    var logChannel = new LogChannel(clusterInfo)
-                    var alertChannel = new AlertChannel(clusterInfo)
-                    var metricsChannel = new MetricsChannel(clusterInfo)
-                    channels.set('log', logChannel)
-                    channels.set('alert', alertChannel)
-                    channels.set('metrics', metricsChannel)
+                    channels.set('log', new LogChannel(clusterInfo))
+                    channels.set('alert', new AlertChannel(clusterInfo))
+                    channels.set('metrics', new MetricsChannel(clusterInfo))
+                    channels.set('ops', new OpsChannel(clusterInfo))
 
                     console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
                     console.log(`Detected own namespace: ${kwirthData.namespace}`)
@@ -972,7 +966,6 @@ getExecutionEnvironment().then( async (exenv:string) => {
             launchDocker()
             break
         case 'kubernetes':
-            //launchDocker()
             launchKubernetes()
             break
         default:

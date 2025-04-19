@@ -1,8 +1,9 @@
 import { ApiKeyApi } from '../api/ApiKeyApi'
-import { AccessKey, accessKeyDeserialize, accessKeySerialize, IChannel, parseResource } from '@jfvilas/kwirth-common'
+import { AccessKey, accessKeyDeserialize, accessKeySerialize, InstanceMessageChannelEnum, parseResource } from '@jfvilas/kwirth-common'
 import { ApiKey } from '@jfvilas/kwirth-common'
-import { InstanceConfigChannelEnum } from '@jfvilas/kwirth-common';
 import * as crypto from 'crypto'
+import { IChannel } from '../channels/IChannel'
+import { Request, Response } from 'express'
 
 export const cleanApiKeys = (apiKeys:ApiKey[]) => {
     apiKeys=apiKeys.filter(a => a.expire>=Date.now());
@@ -17,9 +18,9 @@ export const validBearerKey = (accessKey:AccessKey): boolean => {
     return hash === accessKey.id
 }
 
-export const validKey = async (req:any,res:any, apiKeyApi: ApiKeyApi): Promise<boolean> => {
+export const validKey = async (req:Request,res:Response, apiKeyApi: ApiKeyApi): Promise<boolean> => {
     if (req.headers.authorization) {
-        var receivedAccessString=req.headers.authorization.replaceAll('Bearer ','').trim()
+        var receivedAccessString = req.headers.authorization.replaceAll('Bearer ','').trim()
         var receivedAccessKey = accessKeyDeserialize(receivedAccessString)
         let computedExpire = 0
         if (receivedAccessKey.type && receivedAccessKey.type.startsWith('bearer:')) {
@@ -71,7 +72,9 @@ export const getChannelScopeLevel = (channels:Map<string, IChannel>, instanceCon
     }
 }
 
-export const validAuth = (req:any, res:any, channels:Map<string, IChannel>, reqScope:string, instanceConfigChannel: InstanceConfigChannelEnum, namespace:string, group:string, pod:string, container:string): boolean => {
+export const validAuth = (req:Request, res:Response, channels:Map<string, IChannel>, reqScope:string, instanceConfigChannel: InstanceMessageChannelEnum, namespace:string, group:string, pod:string, container:string): boolean => {
+    if (!req.headers.authorization) return false
+    
     var key=req.headers.authorization.replaceAll('Bearer ','').trim()
     var accessKey=accessKeyDeserialize(key)
     var resId=parseResource(accessKey.resource)

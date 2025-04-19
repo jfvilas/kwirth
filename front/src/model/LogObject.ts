@@ -3,6 +3,9 @@ import { LogMessage, InstanceMessage } from "@jfvilas/kwirth-common";
 export interface ILogMessage extends InstanceMessage {
     timestamp?: Date
     text: string
+    namespace: string
+    pod: string
+    container: string
 }
 
 export class LogObject {

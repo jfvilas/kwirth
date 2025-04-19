@@ -5,7 +5,7 @@ interface IProps {
     config:PickListConfig
 }
 
-const PickList: React.FC<any> = (props:IProps) => {
+const PickList: React.FC<IProps> = (props:IProps) => {
     return (
         <Dialog open={true}>
             <DialogTitle>

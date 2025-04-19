@@ -3,12 +3,12 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextF
 import { ITabObject } from '../model/ITabObject'
 
 interface IProps {
-    onClose:(a:string|null) => {}
-    tabs:ITabObject[]
-    oldname:string
+    onClose:(a:string|undefined) => void
+    tabs: ITabObject[]
+    oldname?: string
 }
 
-const RenameTab: React.FC<any> = (props:IProps) => {
+const RenameTab: React.FC<IProps> = (props:IProps) => {
     const [newname, setNewname] = useState(props.oldname)
 
     const onChangeNewname = (event:ChangeEvent<HTMLInputElement>) => {
@@ -26,7 +26,7 @@ const RenameTab: React.FC<any> = (props:IProps) => {
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => props.onClose(newname)} disabled={props.tabs.some(t => t.name===newname)}>OK</Button>
-                <Button onClick={() => props.onClose(null)}>CANCEL</Button>
+                <Button onClick={() => props.onClose(undefined)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>);

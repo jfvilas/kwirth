@@ -4,12 +4,13 @@ import { AlertObject } from '../../model/AlertObject'
 import { IChannelObject } from '../../model/ITabObject'
 
 interface IProps {
-    onClose:(regexInfo:string[], regexWarning:string[], regexError:string[], maxAlerts:number) => {}
-    channelObject : IChannelObject
+    onClose:(regexInfo:string[], regexWarning:string[], regexError:string[], maxAlerts:number) => void
+    channelObject?: IChannelObject
 }
 
-const SetupAlert: React.FC<any> = (props:IProps) => {
-    var dataAlert = props.channelObject.data as AlertObject
+const SetupAlert: React.FC<IProps> = (props:IProps) => {
+    var dataAlert = props.channelObject?.data as AlertObject
+    
     const [info, setInfo] = useState('')
     const [warning, setWarning] = useState('')
     const [error, setError] = useState('')

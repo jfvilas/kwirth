@@ -7,10 +7,10 @@ import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addP
 const copy = require('clipboard-copy')
 
 interface IProps {
-    onClose:() => {};
+    onClose:() => void
 }
 
-const ManageUserSecurity: React.FC<any> = (props:IProps) => {
+const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
     const {accessKey: accessString, backendUrl} = useContext(SessionContext) as SessionContextType
     const [users, setUsers] = useState<string[]>()
     const [selectedUser, setSelectedUser] = useState<User|undefined>(undefined)

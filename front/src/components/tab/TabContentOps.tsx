@@ -1,13 +1,15 @@
+import { useState } from 'react'
 import { InstanceMessage, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { IChannelObject } from '../../model/ITabObject'
 import { LogObject } from '../../model/LogObject'
+import { Button, TextField } from '@mui/material'
 
 interface IProps {
     channelObject: IChannelObject
-    lastLineRef: React.MutableRefObject<null>
 }
 
-const TabContentLog: React.FC<IProps> = (props:IProps) => {
+const TabContentOps: React.FC<IProps> = (props:IProps) => {
+    const [command, setCommand] = useState('')
 
     const formatLogLine = (imessage:InstanceMessage|null, index:number) => {
         if (!imessage) return null
@@ -47,18 +49,17 @@ const TabContentLog: React.FC<IProps> = (props:IProps) => {
     }
 
     const formatLog = () => {
-        if (!props.channelObject.data || !props.channelObject.data) return <pre key={456456}></pre>
+        if (!props.channelObject.data || !props.channelObject.data) return <></>
         let logObject = props.channelObject.data as LogObject
-        return <pre key={2342344}>
+        return <pre>
             {logObject.messages.map((message, index) => {
-                if (index === logObject.messages.length-1)
-                    return <div key={index} ref={props.lastLineRef} style={{marginBottom:'24px'}}>{formatLogLine(message, index)}</div>
-                else 
-                    return <div key={index}>{formatLogLine(message, index)}</div>
+                return <div key={index}>{formatLogLine(message, index)}</div>
             })}
         </pre>
     }
 
-    return formatLog()
+    return <>
+        <TextField value={command} onChange={(e) => setCommand(e.target.value)} /><Button>ENTER</Button>
+    </>
 }
-export { TabContentLog }
+export { TabContentOps }

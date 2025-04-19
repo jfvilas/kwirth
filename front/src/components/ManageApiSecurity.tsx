@@ -8,10 +8,10 @@ import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addP
 const copy = require('clipboard-copy')
 
 interface IProps {
-    onClose:() => {}
+    onClose:() => void
 }
 
-const ManageApiSecurity: React.FC<any> = (props:IProps) => {
+const ManageApiSecurity: React.FC<IProps> = (props:IProps) => {
     const {accessKey: accessString, backendUrl} = useContext(SessionContext) as SessionContextType;
     const [msgBox, setMsgBox] = useState(<></>)
     const [keys, setKeys] = useState<ApiKey[]|null>()

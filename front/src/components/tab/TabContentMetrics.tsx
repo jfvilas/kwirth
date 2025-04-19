@@ -13,7 +13,7 @@ interface ISample {
     value:number
 }
 
-const TabContentMetrics: React.FC<any> = (props:IProps) => {
+const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
     const [refresh, setRefresh] = useState(false)
     const colours = [
         "#6e5bb8", // morado oscuro

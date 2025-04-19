@@ -3,6 +3,9 @@ import { InstanceMessage } from "@jfvilas/kwirth-common"
 export interface IAlertMessage extends InstanceMessage {
     timestamp?: Date
     severity: AlertSeverityEnum
+    namespace: string
+    pod: string
+    container: string
     text: string
 }
 

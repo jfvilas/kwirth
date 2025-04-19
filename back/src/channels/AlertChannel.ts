@@ -1,8 +1,9 @@
-import { ChannelData, IChannel, InstanceConfig, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, AlertSeverityEnum, AlertMessage, InstanceMessage } from '@jfvilas/kwirth-common';
 import WebSocket from 'ws'
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../model/ClusterInfo'
+import { ChannelData, IChannel } from './IChannel';
 
 interface IAsset {
     podNamespace:string,
@@ -23,27 +24,20 @@ interface IInstance {
     paused:boolean
 }
 
-enum AlertSeverityEnum {
-    INFO = "info",
-    WARNING = "warning",
-    ERROR = "error"
-}
-
-interface AlertMessage extends InstanceMessage {
-    timestamp?: Date
-    severity: AlertSeverityEnum
-    text: string
-}
-
 class AlertChannel implements IChannel {    
     clusterInfo : ClusterInfo
     websocketAlert: {
         ws:WebSocket,
+        lastRefresh: number,
         instances: IInstance[] 
     }[] = []
 
     constructor (clusterInfo:ClusterInfo) {
         this.clusterInfo = clusterInfo
+    }
+
+    processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : boolean {
+        return true    
     }
 
     getChannelData(): ChannelData {
@@ -57,17 +51,13 @@ class AlertChannel implements IChannel {
 
     containsInstance(instanceId: string): boolean {
         for (let socket of this.websocketAlert) {
-            console.log('search socket')
-            console.log('instances', socket.instances)
             let exists = socket.instances.find(i => i.instanceId === instanceId)
             if (exists) return true
         }
-        console.log('socket not found in alert')
         return false
     }
 
-    // +++ sendInstanceConfigMessage & sendChannelSignal are very similar: only one can live!!
-    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceConfigActionEnum, flow: InstanceConfigFlowEnum, channel: InstanceConfigChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
+    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
         var resp:InstanceConfigResponse = {
             action,
             flow,
@@ -81,6 +71,8 @@ class AlertChannel implements IChannel {
 
     sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
         var signalMessage:SignalMessage = {
+            action: InstanceMessageActionEnum.NONE,
+            flow: InstanceMessageFlowEnum.RESPONSE,
             level,
             channel: instanceConfig.channel,
             instance: instanceConfig.instance,
@@ -93,15 +85,17 @@ class AlertChannel implements IChannel {
     sendAlert = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alertSeverity:AlertSeverityEnum, line:string, instanceId: string): void => {
         // line includes timestamp at front (beacuse of log stream configuration when starting logstream)
         var i = line.indexOf(' ')
-        var alertMessage:AlertMessage = {
-            namespace: podNamespace,
+        var alertMessage: AlertMessage = {
+            action: InstanceMessageActionEnum.NONE,
+            flow: InstanceMessageFlowEnum.UNSOLICITED,
             instance: instanceId,
             type: InstanceMessageTypeEnum.DATA,
+            namespace: podNamespace,
             pod: podName,
             container: containerName,
-            channel: InstanceConfigChannelEnum.ALERT,
-            text: line.substring(i+1),
-            timestamp: new Date(line.substring(0,i)),
+            channel: InstanceMessageChannelEnum.ALERT,
+            text: line.substring(i + 1),
+            timestamp: new Date(line.substring(0, i)),
             severity: alertSeverity
         }
         webSocket.send(JSON.stringify(alertMessage))   
@@ -174,7 +168,7 @@ class AlertChannel implements IChannel {
                              
             let socket = this.websocketAlert.find(s => s.ws === webSocket)
             if (!socket) {
-                let len = this.websocketAlert.push( {ws:webSocket, instances:[]} )
+                let len = this.websocketAlert.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
                 socket = this.websocketAlert[len-1]
             }
 
@@ -225,7 +219,7 @@ class AlertChannel implements IChannel {
         try {
             let socket = this.websocketAlert.find(s => s.ws === webSocket)
             if (!socket) {
-                let len = this.websocketAlert.push( {ws:webSocket, instances:[]} )
+                let len = this.websocketAlert.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
                 socket = this.websocketAlert[len-1]
             }
 
@@ -271,6 +265,141 @@ class AlertChannel implements IChannel {
         catch (err:any) {
             console.log('Generic error starting pod alert log', err)
             this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
+        }
+    }
+
+    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+        console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
+
+        let regexes: Map<AlertSeverityEnum, RegExp[]> = new Map()
+
+        let regExps: RegExp[] = []
+        for (let regStr of instanceConfig.data.regexInfo)
+            regExps.push(new RegExp (regStr))
+        regexes.set(AlertSeverityEnum.INFO, regExps)
+
+        regExps = []
+        for (let regStr of instanceConfig.data.regexWarning)
+            regExps.push(new RegExp (regStr))
+        regexes.set(AlertSeverityEnum.WARNING, regExps)
+
+        regExps = []
+        for (let regStr of instanceConfig.data.regexError)
+            regExps.push(new RegExp (regStr))
+        regexes.set(AlertSeverityEnum.ERROR, regExps)
+
+        if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
+            this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName, regexes)
+        }
+        else if (this.clusterInfo.type === ClusterTypeEnum.KUBERNETES) {
+            this.startKubernetesStream(webSocket, instanceConfig, podNamespace, podName, containerName, regexes)
+        }
+        else {
+            console.log('Unsuppoprted source')
+        }
+    }
+
+    stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
+        let socket = this.websocketAlert.find(s => s.ws === webSocket)
+        if (!socket) return
+
+        if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
+            this.removeInstance(webSocket, instanceConfig.instance)
+            this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.ALERT, instanceConfig, 'Log instance stopped')
+        }
+        else {
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
+        }
+    }
+
+    getChannelScopeLevel(scope: string): number {
+        return ['','subcribe','create','cluster'].indexOf(scope)
+    }
+
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
+        var socket = this.websocketAlert.find(s => s.ws === webSocket)
+        if (!socket) {
+            console.log('No socket found for pci')
+            return
+        }
+        let instances = socket.instances
+
+        let instance = instances.find(i => i.instanceId === instanceConfig.instance)
+        if (instance) {
+            if (action === InstanceMessageActionEnum.PAUSE) {
+                instance.paused = true
+                this.sendInstanceConfigMessage(webSocket, InstanceMessageActionEnum.PAUSE, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.ALERT, instanceConfig, 'Alert paused')
+            }
+            if (action === InstanceMessageActionEnum.CONTINUE) {
+                instance.paused = false
+                this.sendInstanceConfigMessage(webSocket, InstanceMessageActionEnum.CONTINUE, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.ALERT, instanceConfig, 'Alert continued')
+            }
+        }
+        else {
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
+        }
+    }
+
+    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
+
+    }
+
+    removeInstance(webSocket: WebSocket, instanceId: string): void {
+        let socket = this.websocketAlert.find(s => s.ws === webSocket)
+        if (socket) {
+            var instances = socket.instances
+            if (instances) {
+                let pos = instances.findIndex(t => t.instanceId === instanceId)
+                if (pos>=0) {
+                    let instance = instances[pos]
+                    for (var asset of instance.assets) {
+                        if (asset.passThroughStream)
+                            asset.passThroughStream.removeAllListeners()
+                        else
+                            console.log(`Alert stream not found of instance id ${instanceId} and asset ${asset.podNamespace}/${asset.podName}/${asset.containerName}`)
+                    }
+                    instances.splice(pos,1)
+                }
+                else {
+                    console.log(`Instance ${instanceId} not found, cannot delete`)
+                }
+            }
+            else {
+                console.log('There are no alert instances on websocket')
+            }
+        }
+        else {
+            console.log('WebSocket not found on alerts')
+        }
+    }
+
+    containsConnection (webSocket:WebSocket) : boolean {
+        return Boolean (this.websocketAlert.find(s => s.ws === webSocket))
+    }
+
+    removeConnection(webSocket: WebSocket): void {
+        let socket = this.websocketAlert.find(s => s.ws === webSocket)
+        if (socket) {
+            for (let instance of socket.instances) {
+                this.removeInstance (webSocket, instance.instanceId)
+            }
+            let pos = this.websocketAlert.findIndex(s => s.ws === webSocket)
+            this.websocketAlert.splice(pos,1)
+        }
+        else {
+            console.log('WebSocket not found on alerts for remove')
+        }
+    }
+
+    refreshConnection(webSocket: WebSocket): boolean {
+        let socket = this.websocketAlert.find(s => s.ws === webSocket)
+        if (socket) {
+            socket.lastRefresh = Date.now()
+            return true
+        }
+        else {
+            console.log('WebSocket not found')
+            return false
         }
     }
 
@@ -324,125 +453,6 @@ class AlertChannel implements IChannel {
             }
         }
         return false
-    }
-
-    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
-        console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
-
-        let regexes: Map<AlertSeverityEnum, RegExp[]> = new Map()
-
-        let regExps: RegExp[] = []
-        for (let regStr of instanceConfig.data.regexInfo)
-            regExps.push(new RegExp (regStr))
-        regexes.set(AlertSeverityEnum.INFO, regExps)
-
-        regExps = []
-        for (let regStr of instanceConfig.data.regexWarning)
-            regExps.push(new RegExp (regStr))
-        regexes.set(AlertSeverityEnum.WARNING, regExps)
-
-        regExps = []
-        for (let regStr of instanceConfig.data.regexError)
-            regExps.push(new RegExp (regStr))
-        regexes.set(AlertSeverityEnum.ERROR, regExps)
-
-        if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
-            this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName, regexes)
-        }
-        else if (this.clusterInfo.type === ClusterTypeEnum.KUBERNETES) {
-            this.startKubernetesStream(webSocket, instanceConfig, podNamespace, podName, containerName, regexes)
-        }
-        else {
-            console.log('Unsuppoprted source')
-        }
-    }
-
-    stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
-        let socket = this.websocketAlert.find(s => s.ws === webSocket)
-        if (!socket) return
-
-        if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
-            this.removeInstance(webSocket, instanceConfig.instance)
-            this.sendInstanceConfigMessage(webSocket,InstanceConfigActionEnum.STOP, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.ALERT, instanceConfig, 'Log instance stopped')
-        }
-        else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
-        }
-    }
-
-    getChannelScopeLevel(scope: string): number {
-        return ['','subcribe','create','cluster'].indexOf(scope)
-    }
-
-    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceConfigActionEnum): void {
-        var socket = this.websocketAlert.find(s => s.ws === webSocket)
-        if (!socket) {
-            console.log('No socket found for pci')
-            return
-        }
-        let instances = socket.instances
-
-        let instance = instances.find(i => i.instanceId === instanceConfig.instance)
-        if (instance) {
-            if (action === InstanceConfigActionEnum.PAUSE) {
-                instance.paused = true
-                this.sendInstanceConfigMessage(webSocket, InstanceConfigActionEnum.PAUSE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.ALERT, instanceConfig, 'Alert paused')
-            }
-            if (action === InstanceConfigActionEnum.CONTINUE) {
-                instance.paused = false
-                this.sendInstanceConfigMessage(webSocket, InstanceConfigActionEnum.CONTINUE, InstanceConfigFlowEnum.RESPONSE, InstanceConfigChannelEnum.ALERT, instanceConfig, 'Alert continued')
-            }
-        }
-        else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
-        }
-    }
-
-    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
-
-    }
-
-    removeConnection(webSocket: WebSocket): void {
-        let socket = this.websocketAlert.find(s => s.ws === webSocket)
-        if (socket) {
-            for (let instance of socket.instances) {
-                this.removeInstance (webSocket, instance.instanceId)
-            }
-            let pos = this.websocketAlert.findIndex(s => s.ws === webSocket)
-            this.websocketAlert.splice(pos,1)
-        }
-        else {
-            console.log('WebSocket not found on alerts for remove')
-        }
-    }
-
-    removeInstance(webSocket: WebSocket, instanceId: string): void {
-        let socket = this.websocketAlert.find(s => s.ws === webSocket)
-        if (socket) {
-            var instances = socket.instances
-            if (instances) {
-                let pos = instances.findIndex(t => t.instanceId === instanceId)
-                if (pos>=0) {
-                    let instance = instances[pos]
-                    for (var asset of instance.assets) {
-                        if (asset.passThroughStream)
-                            asset.passThroughStream.removeAllListeners()
-                        else
-                            console.log(`Alert stream not found of instance id ${instanceId} and asset ${asset.podNamespace}/${asset.podName}/${asset.containerName}`)
-                    }
-                    instances.splice(pos,1)
-                }
-                else {
-                    console.log(`Instance ${instanceId} not found, cannot delete`)
-                }
-            }
-            else {
-                console.log('There are no alert instances on websocket')
-            }
-        }
-        else {
-            console.log('WebSocket not found on alerts')
-        }
     }
 
 }

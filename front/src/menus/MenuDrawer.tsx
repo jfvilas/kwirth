@@ -20,13 +20,13 @@ enum MenuDrawerOption {
     Exit
 }
 interface IProps {
-    optionSelected: (opt:MenuDrawerOption) => {}
-    uploadSelected: (a:React.ChangeEvent<HTMLInputElement>) => {}
-    selectedCluster:string
-    user:User
+    optionSelected: (opt:MenuDrawerOption) => void
+    uploadSelected: (a:React.ChangeEvent<HTMLInputElement>) => void
+    selectedClusterName?: string
+    user?: User
   }
   
-const MenuDrawer: React.FC<any> = (props:IProps) => {
+const MenuDrawer: React.FC<IProps> = (props:IProps) => {
 
     const optionSelected = (opt:MenuDrawerOption) => {
         props.optionSelected(opt);
@@ -43,9 +43,9 @@ const MenuDrawer: React.FC<any> = (props:IProps) => {
             <MenuItem key='boardexp' onClick={() => optionSelected(MenuDrawerOption.ExportBoards)}><ImportExport/>&nbsp;Export all boards (to downloadable file)</MenuItem>
             <MenuItem key='boardimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new boards from file (and merge overwriting)</MenuItem>
             <MenuItem key='settingsu' onClick={() => optionSelected(MenuDrawerOption.SettingsUser)}><Settings/>&nbsp;User settings</MenuItem>
-            <MenuItem key='settingsc' onClick={() => optionSelected(MenuDrawerOption.SettingsCluster)} disabled={props.selectedCluster===undefined}><Settings/>&nbsp;Cluster Settings</MenuItem>
+            <MenuItem key='settingsc' onClick={() => optionSelected(MenuDrawerOption.SettingsCluster)} disabled={props.selectedClusterName===undefined}><Settings/>&nbsp;Cluster Settings</MenuItem>
             <Divider/>
-            { props.user.scope==='cluster' && 
+            { props.user?.scope==='cluster' && 
                 <div>
                     <MenuItem key='mc' onClick={() => optionSelected(MenuDrawerOption.ManageCluster)}><Edit/>&nbsp;Manage cluster list</MenuItem>
                     <MenuItem key='asec' onClick={() => optionSelected(MenuDrawerOption.ApiSecurity)}><Key/>&nbsp;API Security</MenuItem>
