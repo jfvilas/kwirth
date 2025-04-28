@@ -6,6 +6,7 @@ export interface ILogMessage extends InstanceMessage {
     namespace: string
     pod: string
     container: string
+    msgtype: 'logmessage'
 }
 
 export class LogObject {

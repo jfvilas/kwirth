@@ -7,6 +7,7 @@ export interface AssetMetrics {
     }[];
 }
 export interface MetricsMessage extends InstanceMessage {
+    msgtype: 'metricsmessage';
     assets: AssetMetrics[];
     timestamp: number;
     namespace: string;

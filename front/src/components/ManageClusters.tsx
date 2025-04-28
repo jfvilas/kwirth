@@ -141,4 +141,4 @@ const ManageClusters: React.FC<IProps> = (props:IProps) => {
     </>)
 }
 
-export default ManageClusters
+export { ManageClusters }

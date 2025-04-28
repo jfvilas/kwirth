@@ -1,7 +1,8 @@
-import { InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
+import { InstanceConfigViewEnum, InstanceMessageChannelEnum } from "@jfvilas/kwirth-common"
 import { AlertObject } from "./AlertObject"
 import { LogObject } from "./LogObject"
 import { MetricsObject } from "./MetricsObject"
+import { OpsObject } from "./OpsObject"
 
 interface IChannelObject {
     clusterName: string
@@ -11,15 +12,15 @@ interface IChannelObject {
     pod: string
     container: string
     instance: string
-    data: LogObject | MetricsObject | AlertObject | undefined
+    data: LogObject | MetricsObject | AlertObject | OpsObject | undefined
 }
 
 interface ITabObject {
     name?: string
-    ws: WebSocket|null
+    ws: WebSocket|undefined
     keepaliveRef: number
     defaultTab: boolean
-    channelId: string
+    channelId: InstanceMessageChannelEnum
     channelObject: IChannelObject
     channelStarted: boolean
     channelPaused: boolean

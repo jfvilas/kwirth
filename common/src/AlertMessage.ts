@@ -7,6 +7,7 @@ export enum AlertSeverityEnum {
 }
 
 export interface AlertMessage extends InstanceMessage {
+    msgtype: 'alertmessage'
     timestamp?: Date
     severity: AlertSeverityEnum
     namespace: string

@@ -1,4 +1,4 @@
-import { AppsV1Api, CoreV1Api, Log, V1Node } from "@kubernetes/client-node";
+import { AppsV1Api, CoreV1Api, Exec, Log, V1Node } from "@kubernetes/client-node";
 import { MetricsTools } from "../tools/Metrics";
 import { ClusterTypeEnum } from "@jfvilas/kwirth-common";
 import Docker from 'dockerode'
@@ -24,6 +24,7 @@ export class ClusterInfo {
     public dockerApi!: Docker
     public coreApi!: CoreV1Api
     public appsApi!: AppsV1Api
+    public execApi!: Exec
     public logApi!: Log
     public token: string = ''
     public metrics!: MetricsTools;

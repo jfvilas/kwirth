@@ -1,8 +1,8 @@
-import { AssetMetrics, MetricsConfigModeEnum, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage } from '@jfvilas/kwirth-common'
+import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../model/ClusterInfo'
 import { AssetData } from '../tools/Metrics'
 import WebSocket from 'ws'
-import { ChannelData, IChannel } from './IChannel'
+import { ChannelData, IChannel, SourceEnum } from './IChannel'
 
 interface IInstance {
     instanceId: string
@@ -28,8 +28,8 @@ class MetricsChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : boolean {
-        return true    
+    async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+        return true
     }
 
     getChannelData(): ChannelData {
@@ -37,7 +37,9 @@ class MetricsChannel implements IChannel {
             id: 'metrics',
             pauseable: true,
             modifyable: true,
-            reconnectable: true
+            reconnectable: true,
+            sources: [ SourceEnum.KUBERNETES ],
+            metrics: true
         }
     }
 
@@ -74,7 +76,7 @@ class MetricsChannel implements IChannel {
             }
         }
 
-        for (let metricName of instanceConfig.data.metrics) {
+        for (let metricName of (instanceConfig.data as MetricsConfig).metrics) {
             let sourceMetricName = metricName
             if (metricName === 'kwirth_cluster_container_memory_percentage') sourceMetricName = 'container_memory_working_set_bytes'
             if (metricName === 'kwirth_cluster_container_cpu_percentage') sourceMetricName = 'container_cpu_usage_seconds_total'
@@ -240,7 +242,7 @@ class MetricsChannel implements IChannel {
     
             switch(instanceConfig.view) {
                 case InstanceConfigViewEnum.NAMESPACE:
-                    if (instanceConfig.data.aggregate) {
+                    if ((instanceConfig.data as MetricsConfig).aggregate) {
                         let assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
@@ -255,7 +257,7 @@ class MetricsChannel implements IChannel {
                     }
                     break
                 case InstanceConfigViewEnum.GROUP:
-                    if (instanceConfig.data.aggregate) {
+                    if ((instanceConfig.data as MetricsConfig).aggregate) {
                         var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
@@ -269,7 +271,7 @@ class MetricsChannel implements IChannel {
                     }
                     break
                 case InstanceConfigViewEnum.POD:
-                    if (instanceConfig.data.aggregate) {
+                    if ((instanceConfig.data as MetricsConfig).aggregate) {
                         var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
@@ -283,7 +285,7 @@ class MetricsChannel implements IChannel {
                     }
                     break
                 case InstanceConfigViewEnum.CONTAINER:
-                    if (instanceConfig.data.aggregate) {
+                    if ((instanceConfig.data as MetricsConfig).aggregate) {
                         var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
                         metricsMessage.assets.push(assetMetrics)
                     }
@@ -345,7 +347,7 @@ class MetricsChannel implements IChannel {
             const podGroup = gtype+'+'+owner.name
             const podNode = podResponse.body.spec?.nodeName
             
-            switch (instanceConfig.data.mode) {
+            switch ((instanceConfig.data as MetricsConfig).mode) {
                 case MetricsConfigModeEnum.SNAPSHOT:
                     if (podNode) {
                         console.log(`Send snapshot metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
@@ -372,7 +374,7 @@ class MetricsChannel implements IChannel {
                             let instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
                             if (!instance) {
                                 // new instance for an existing websocket
-                                let interval=(instanceConfig.data.interval? instanceConfig.data.interval:60)*1000
+                                let interval=((instanceConfig.data as MetricsConfig).interval? (instanceConfig.data as MetricsConfig).interval:60)*1000
                                 let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
                                 instances?.push( {
                                     instanceId:instanceConfig.instance,
@@ -386,18 +388,27 @@ class MetricsChannel implements IChannel {
                                 return
                             }
                             
-                            if (instanceConfig.data.view === InstanceConfigViewEnum.CONTAINER) {
-                                instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
+                            if (instanceConfig.view === InstanceConfigViewEnum.CONTAINER) {
+                                instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
                             }
                             else {
-                                if (!instance.assets.find(a => a.podName === podName && a.containerName === containerName)) {
+                                if (!instance.assets.find(asset => asset.podName === podName && asset.containerName === containerName)) {
                                     instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})                            
                                 }
                             }
+                            // +++ +++ +++ 
+                            // if (instanceConfig.data.view === InstanceConfigViewEnum.CONTAINER) {
+                            //     instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
+                            // }
+                            // else {
+                            //     if (!instance.assets.find(a => a.podName === podName && a.containerName === containerName)) {
+                            //         instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})                            
+                            //     }
+                            // }
                         }
                         else {
                             this.websocketMetrics.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-                            let interval = (instanceConfig.data.interval? instanceConfig.data.interval:60)*1000
+                            let interval = ((instanceConfig.data as MetricsConfig).interval? (instanceConfig.data as MetricsConfig).interval:60)*1000
                             let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
 
                             let instances = this.websocketMetrics.find(entry => entry.ws === webSocket)?.instances
@@ -409,7 +420,7 @@ class MetricsChannel implements IChannel {
                     }
                     break
                 default:
-                    this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid mode: ${instanceConfig.data.mode}`, instanceConfig.data.mode)
+                    this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid mode: ${(instanceConfig.data as MetricsConfig).mode}`, instanceConfig)
                     break
             }
         }
@@ -435,9 +446,10 @@ class MetricsChannel implements IChannel {
         
         if (instance) {
             // only modifiable properties of the metrics config
-            instance.instanceConfig.data.metrics = instanceConfig.data.metrics
-            instance.instanceConfig.data.interval = instanceConfig.data.interval
-            instance.instanceConfig.data.aggregate = instanceConfig.data.aggregate
+            let destConfig = instance.instanceConfig.data as MetricsConfig
+            destConfig.metrics = (instanceConfig.data as MetricsConfig).metrics
+            destConfig.interval = (instanceConfig.data as MetricsConfig).interval
+            destConfig.aggregate = (instanceConfig.data as MetricsConfig).aggregate
             this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.MODIFY, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.METRICS, instanceConfig, 'Metrics modified')
         }
         else {
@@ -531,7 +543,7 @@ class MetricsChannel implements IChannel {
                 console.log('starting')
                 for (var instance of entry.instances) {
                     console.log('update', instance.instanceId)
-                    console.log('interval', instance.interval, instance.instanceConfig.data.interval)
+                    console.log('interval', instance.interval, (instance.instanceConfig.data as MetricsConfig).interval)
                     clearInterval(instance.timeout)
                     instance.timeout = setInterval(() => this.sendMetricsDataInstance(newWebSocket, instanceId), instance.interval)
                 }

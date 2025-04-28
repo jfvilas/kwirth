@@ -6,7 +6,7 @@
   "dependencies": {
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
-    "@jfvilas/kwirth-common": "^0.3.73",
+    "@jfvilas/kwirth-common": "^0.3.88",
     "@mui/icons-material": "^5.15.19",
     "@mui/material": "^5.15.19",
     "@testing-library/jest-dom": "^5.17.0",
@@ -24,7 +24,8 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.23.1",
     "react-scripts": "5.0.1",
-    "recharts": "^2.13.3"
+    "recharts": "^2.13.3",
+    "uuid": "^11.1.0"
   },
   "scripts": {
     "start": "react-scripts start",

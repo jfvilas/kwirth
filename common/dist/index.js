@@ -29,17 +29,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-__exportStar(require("./StreamMessage"), exports);
+//export * from './StreamMessage'
 __exportStar(require("./InstanceMessage"), exports);
+__exportStar(require("./InstanceConfig"), exports);
 __exportStar(require("./AlertMessage"), exports);
+__exportStar(require("./AlertConfig"), exports);
 __exportStar(require("./LogMessage"), exports);
+__exportStar(require("./LogConfig"), exports);
 __exportStar(require("./MetricsMessage"), exports);
+__exportStar(require("./MetricsConfig"), exports);
+__exportStar(require("./OpsMessage"), exports);
+__exportStar(require("./OpsConfig"), exports);
 __exportStar(require("./SignalMessage"), exports);
 __exportStar(require("./ApiKey"), exports);
 __exportStar(require("./AccessKey"), exports);
 __exportStar(require("./KwirthData"), exports);
-__exportStar(require("./AlarmConfig"), exports);
-__exportStar(require("./InstanceConfig"), exports);
 __exportStar(require("./LogConfig"), exports);
-__exportStar(require("./MetricsConfig"), exports);
 __exportStar(require("./Version"), exports);

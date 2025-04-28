@@ -1,9 +1,9 @@
-import { LogMessage, InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage } from '@jfvilas/kwirth-common';
+import { LogMessage, InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, LogConfig } from '@jfvilas/kwirth-common';
 import WebSocket from 'ws'
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../model/ClusterInfo'
-import { ChannelData, IChannel } from './IChannel';
+import { ChannelData, IChannel, SourceEnum } from './IChannel';
 
 interface IAsset {
     podNamespace:string,
@@ -19,7 +19,7 @@ interface IInstance {
     assets: IAsset[]
     timestamps: boolean,
     previous:boolean,
-    tailLines:number,
+    //tailLines:number,
     paused:boolean
 }
 
@@ -36,8 +36,8 @@ class LogChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : boolean {
-        return true    
+    async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+        return true
     }
     
     getChannelData(): ChannelData {
@@ -45,7 +45,9 @@ class LogChannel implements IChannel {
             id: 'log',
             pauseable: true,
             modifyable: false,
-            reconnectable: true
+            reconnectable: true,
+            sources: [ SourceEnum.DOCKER, SourceEnum.KUBERNETES ],
+            metrics: false
         }
     }
 
@@ -116,6 +118,7 @@ class LogChannel implements IChannel {
             container: asset.containerName,
             channel: InstanceMessageChannelEnum.LOG,
             text: '',
+            msgtype: 'logmessage'
         }
         for (var line of logLines) {
             if (line.trim() !== '') {
@@ -164,9 +167,9 @@ class LogChannel implements IChannel {
             if (!instance) {
                 let len = socket?.instances.push ({
                     instanceId: instanceConfig.instance, 
-                    timestamps: instanceConfig.data.timestamp,
+                    timestamps: (instanceConfig.data as LogConfig).timestamp,
                     previous: false,  // +++ previous must be reviewed
-                    tailLines: instanceConfig.data.tailLines,
+                    //tailLines: (instanceConfig.data as LogConfig).tailLines,
                     paused:false,
                     assets:[]
                 })
@@ -184,8 +187,8 @@ class LogChannel implements IChannel {
                 follow: true,
                 stdout: true,
                 stderr: true,
-                timestamps: instanceConfig.data.timestamp as boolean,
-                ...(instanceConfig.data.fromStart? {} : {since: Date.now()-1800})
+                timestamps: (instanceConfig.data as LogConfig).timestamp as boolean,
+                ...((instanceConfig.data as LogConfig).fromStart? {} : {since: Date.now()-1800})
             })
             asset.readableStream.on('data', chunk => {
                 var text:string=chunk.toString('utf8')
@@ -214,9 +217,9 @@ class LogChannel implements IChannel {
             if (!instance) {
                 let len = socket?.instances.push ({
                     instanceId: instanceConfig.instance, 
-                    timestamps: instanceConfig.data.timestamp,
+                    timestamps: (instanceConfig.data as LogConfig).timestamp,
                     previous: false,  // +++ previous support must be reviewed
-                    tailLines: instanceConfig.data.tailLines,
+                    //tailLines: instanceConfig.data.tailLines,
                     paused:false,
                     assets:[]
                 })
@@ -246,9 +249,9 @@ class LogChannel implements IChannel {
             let streamConfig = { 
                 follow: true, 
                 pretty: false,
-                timestamps: instanceConfig.data.timestamp,
-                previous: Boolean(instanceConfig.data.previous),
-                ...(instanceConfig.data.fromStart? {} : {sinceSeconds:1800})
+                timestamps: (instanceConfig.data as LogConfig).timestamp,
+                previous: Boolean((instanceConfig.data as LogConfig).previous),
+                ...((instanceConfig.data as LogConfig).fromStart? {} : {sinceSeconds:1800})
             }
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, asset.passThroughStream, streamConfig)
         }

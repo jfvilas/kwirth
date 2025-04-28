@@ -9,7 +9,7 @@ interface IProps {
 
 const TabContentLog: React.FC<IProps> = (props:IProps) => {
 
-    const formatLogLine = (imessage:InstanceMessage|null, index:number) => {
+    const formatLogLine = (imessage:InstanceMessage|null) => {
         if (!imessage) return null
 
         let logMessage = imessage as LogMessage
@@ -52,9 +52,9 @@ const TabContentLog: React.FC<IProps> = (props:IProps) => {
         return <pre key={2342344}>
             {logObject.messages.map((message, index) => {
                 if (index === logObject.messages.length-1)
-                    return <div key={index} ref={props.lastLineRef} style={{marginBottom:'24px'}}>{formatLogLine(message, index)}</div>
+                    return <div key={index} ref={props.lastLineRef} style={{marginBottom:'24px'}}>{formatLogLine(message)}</div>
                 else 
-                    return <div key={index}>{formatLogLine(message, index)}</div>
+                    return <div key={index}>{formatLogLine(message)}</div>
             })}
         </pre>
     }

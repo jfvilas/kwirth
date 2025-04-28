@@ -203,4 +203,4 @@ const ManageApiSecurity: React.FC<IProps> = (props:IProps) => {
     </>)
 }
 
-export default ManageApiSecurity
+export { ManageApiSecurity }

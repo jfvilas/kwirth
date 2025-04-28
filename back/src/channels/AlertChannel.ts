@@ -1,9 +1,9 @@
-import { InstanceConfig, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, AlertSeverityEnum, AlertMessage, InstanceMessage } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, AlertSeverityEnum, AlertMessage, InstanceMessage, AlertConfig } from '@jfvilas/kwirth-common';
 import WebSocket from 'ws'
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../model/ClusterInfo'
-import { ChannelData, IChannel } from './IChannel';
+import { ChannelData, IChannel, SourceEnum } from './IChannel';
 
 interface IAsset {
     podNamespace:string,
@@ -18,9 +18,9 @@ interface IInstance {
     instanceId:string, 
     assets: IAsset[]
     regExps: Map<AlertSeverityEnum, RegExp[]>
-    timestamps: boolean,
-    previous:boolean,
-    tailLines:number,
+    //timestamps: boolean,
+    //previous:boolean,
+    //tailLines:number,
     paused:boolean
 }
 
@@ -36,8 +36,8 @@ class AlertChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : boolean {
-        return true    
+    async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+        return true
     }
 
     getChannelData(): ChannelData {
@@ -45,7 +45,9 @@ class AlertChannel implements IChannel {
             id: 'alert',
             pauseable: true,
             modifyable: false,
-            reconnectable: true
+            reconnectable: true,
+            sources: [ SourceEnum.DOCKER, SourceEnum.KUBERNETES ],
+            metrics: false
         }
     }
 
@@ -84,8 +86,8 @@ class AlertChannel implements IChannel {
 
     sendAlert = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alertSeverity:AlertSeverityEnum, line:string, instanceId: string): void => {
         // line includes timestamp at front (beacuse of log stream configuration when starting logstream)
-        var i = line.indexOf(' ')
-        var alertMessage: AlertMessage = {
+        let i = line.indexOf(' ')
+        let alertMessage: AlertMessage = {
             action: InstanceMessageActionEnum.NONE,
             flow: InstanceMessageFlowEnum.UNSOLICITED,
             instance: instanceId,
@@ -96,7 +98,8 @@ class AlertChannel implements IChannel {
             channel: InstanceMessageChannelEnum.ALERT,
             text: line.substring(i + 1),
             timestamp: new Date(line.substring(0, i)),
-            severity: alertSeverity
+            severity: alertSeverity,
+            msgtype: 'alertmessage'
         }
         webSocket.send(JSON.stringify(alertMessage))   
     }
@@ -178,9 +181,9 @@ class AlertChannel implements IChannel {
                 let len = socket?.instances.push ({
                     instanceId: instanceConfig.instance, 
                     regExps,
-                    timestamps: instanceConfig.data.timestamp,
-                    previous: false,  // +++ previous must be reviewed
-                    tailLines: instanceConfig.data.tailLines,
+                    //timestamps: (instanceConfig.data as AlertConfig).timestamp,
+                    //previous: false,  // +++ previous must be reviewed
+                    //tailLines: instanceConfig.data.tailLines,
                     paused:false,
                     assets:[]
                 })
@@ -200,8 +203,8 @@ class AlertChannel implements IChannel {
                 follow: true,
                 stdout: true,
                 stderr: true,
-                timestamps: instanceConfig.data.timestamp as boolean,
-                ...(instanceConfig.data.fromStart? {} : {since: Date.now()-1800})
+                //timestamps: (instanceConfig.data as AlertConfig).timestamp as boolean,
+                //...(instanceConfig.data.fromStart? {} : {since: Date.now()-1800})
             })
             asset.readableStream.on('data', chunk => {
                 var text:string=chunk.toString('utf8')
@@ -229,9 +232,9 @@ class AlertChannel implements IChannel {
                 let len = socket?.instances.push ({
                     instanceId: instanceConfig.instance,
                     regExps,
-                    timestamps: instanceConfig.data.timestamp,
-                    previous: false,  // +++ previous support must be reviewed
-                    tailLines: instanceConfig.data.tailLines,
+                    //timestamps: instanceConfig.data.timestamp,
+                    //previous: false,  // +++ previous support must be reviewed
+                    //tailLines: instanceConfig.data.tailLines,
                     paused:false,
                     assets:[]
                 })
@@ -256,9 +259,9 @@ class AlertChannel implements IChannel {
             let streamConfig = { 
                 follow: true, 
                 pretty: false,
-                timestamps: instanceConfig.data.timestamp,
-                previous: Boolean(instanceConfig.data.previous),
-                ...(instanceConfig.data.fromStart? {} : {sinceSeconds:1800})
+                //timestamps: instanceConfig.data.timestamp,
+                //previous: Boolean(instanceConfig.data.previous),
+                //...(instanceConfig.data.fromStart? {} : {sinceSeconds:1800})
             }
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, asset.passThroughStream, streamConfig)
         }
@@ -274,17 +277,17 @@ class AlertChannel implements IChannel {
         let regexes: Map<AlertSeverityEnum, RegExp[]> = new Map()
 
         let regExps: RegExp[] = []
-        for (let regStr of instanceConfig.data.regexInfo)
+        for (let regStr of (instanceConfig.data as AlertConfig).regexInfo)
             regExps.push(new RegExp (regStr))
         regexes.set(AlertSeverityEnum.INFO, regExps)
 
         regExps = []
-        for (let regStr of instanceConfig.data.regexWarning)
+        for (let regStr of (instanceConfig.data as AlertConfig).regexWarning)
             regExps.push(new RegExp (regStr))
         regexes.set(AlertSeverityEnum.WARNING, regExps)
 
         regExps = []
-        for (let regStr of instanceConfig.data.regexError)
+        for (let regStr of (instanceConfig.data as AlertConfig).regexError)
             regExps.push(new RegExp (regStr))
         regexes.set(AlertSeverityEnum.ERROR, regExps)
 

@@ -1,4 +1,8 @@
+import { AlertConfig } from "./AlertConfig"
 import { InstanceMessage } from "./InstanceMessage"
+import { LogConfig } from "./LogConfig"
+import { MetricsConfig } from "./MetricsConfig"
+import { OpsConfig } from "./OpsConfig"
 
 // export enum InstanceConfigChannelEnum {
 //     NONE = 'none',
@@ -68,7 +72,7 @@ export interface InstanceConfig extends InstanceMessage{
     group: string
     pod: string
     container: string
-    data?: any
+    data?: LogConfig | AlertConfig | MetricsConfig | OpsConfig
 }
 
 export interface InstanceConfigResponse extends InstanceMessage {

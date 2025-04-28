@@ -133,4 +133,4 @@ const Login: React.FC<IProps> = (props:IProps) => {
     </>)
 }
 
-export default Login
+export { Login }

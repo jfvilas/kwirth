@@ -1,13 +1,11 @@
-import { InstanceConfig } from "./InstanceConfig";
-
 export enum MetricsConfigModeEnum {
     SNAPSHOT='snapshot',
     STREAM='stream'
 }
 
-export interface MetricsConfig extends InstanceConfig {
+export interface MetricsConfig {
     mode: MetricsConfigModeEnum
-    metrics: string[]
-    interval?: number
     aggregate: boolean
+    interval: number
+    metrics: string[]
 }

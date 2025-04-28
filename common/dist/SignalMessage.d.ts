@@ -6,6 +6,9 @@ export declare enum SignalMessageLevelEnum {
 }
 export interface SignalMessage extends InstanceMessage {
     timestamp?: Date;
+    namespace?: string;
+    pod?: string;
+    container?: string;
     level: SignalMessageLevelEnum;
     text: string;
 }

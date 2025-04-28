@@ -184,4 +184,4 @@ const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
     </>)
 }
 
-export default ManageUserSecurity
+export { ManageUserSecurity }

@@ -1,11 +1,18 @@
 import { InstanceConfig, InstanceMessage, InstanceMessageActionEnum } from '@jfvilas/kwirth-common'
 import WebSocket from 'ws'
 
+enum SourceEnum {
+    DOCKER = 'docker',
+    KUBERNETES = 'kubernetes'
+}
+
 type ChannelData = {
     id: string
     pauseable: boolean
     modifyable: boolean
     reconnectable: boolean
+    sources: SourceEnum[]
+    metrics: boolean
 }
 
 interface IChannel {
@@ -19,7 +26,7 @@ interface IChannel {
     stopInstance (webSocket:WebSocket, instanceConfig:InstanceConfig) : void
     removeInstance (webSocket:WebSocket, instanceId:string) : void
 
-    processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : boolean
+    processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean>
 
     containsConnection (webSocket:WebSocket) : boolean
     removeConnection (webSocket:WebSocket) : void
@@ -28,4 +35,4 @@ interface IChannel {
 }
 
 export type { ChannelData }
-export { IChannel }
+export { SourceEnum, IChannel }

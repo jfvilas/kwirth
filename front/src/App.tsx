@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 // material & icons
 import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Menu, Person, BarChart, Warning, Subject } from '@mui/icons-material'
+import { Settings as SettingsIcon, Menu, Person, BarChart, Terminal, Warning, Subject } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
@@ -12,10 +12,10 @@ import { Cluster } from './model/Cluster'
 import RenameTab from './components/RenameTab'
 import { SaveBoard } from './components/board/SaveBoard'
 import { SelectBoard }  from './components/board/SelectBoard'
-import ManageApiSecurity from './components/ManageApiSecurity'
-import Login from './components/Login'
-import ManageClusters from './components/ManageClusters'
-import ManageUserSecurity from './components/ManageUserSecurity'
+import { ManageApiSecurity } from './components/ManageApiSecurity'
+import { Login } from './components/Login'
+import { ManageClusters } from './components/ManageClusters'
+import { ManageUserSecurity } from './components/ManageUserSecurity'
 import { ResourceSelector, IResourceSelected } from './components/ResourceSelector'
 import { TabContent } from './components/tab/TabContent'
 import { SettingsUser } from './components/settings/SettingsUser'
@@ -27,7 +27,7 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, MetricsConfigModeEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum } from '@jfvilas/kwirth-common'
+import { KwirthData, MetricsConfigModeEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, LogConfig, AlertConfig, MetricsConfig, OpsConfig, OpsMessageResponse, OpsCommandEnum, OpsMessage } from '@jfvilas/kwirth-common'
 import { ITabObject } from './model/ITabObject'
 import { MetricDescription } from './model/MetricDescription'
 
@@ -39,7 +39,7 @@ import { SetupLog } from './components/channels/SetupLog'
 import { SetupAlert } from './components/channels/SetupAlert'
 import { SetupMetrics } from './components/channels/SetupMetrics'
 import { IBoard } from './model/IBoard'
-
+import { OpsObject } from './model/OpsObject'
 
 const App: React.FC = () => {
 
@@ -53,10 +53,10 @@ const App: React.FC = () => {
     const [accessString,setAccessString]=useState('')
     const [msgBox, setMsgBox] =useState(<></>)
 
-    const [clusters, setClusters] = useState<Cluster[]>()
-    const [selectedClusterName, setSelectedClusterName] = useState<string>()
+    const [clusters, setClusters] = useState<Cluster[]>([])
     const clustersRef = useRef(clusters)
-    clustersRef.current=clusters
+    clustersRef.current = clusters
+    const [selectedClusterName, setSelectedClusterName] = useState<string>()
 
     const [tabs, setTabs] = useState<ITabObject[]>([])
     const [highlightedTabs, setHighlightedTabs] = useState<ITabObject[]>([])
@@ -78,7 +78,7 @@ const App: React.FC = () => {
     const settingsRef = useRef(settings)
     settingsRef.current = settings
 
-    const [channels, setChannels] = useState<string[]>()
+    const [channels, setChannels] = useState<string[]>([])
     const channelsRef = useRef(channels)
     channelsRef.current= channels
 
@@ -106,14 +106,14 @@ const App: React.FC = () => {
     const [showSetupLog, setShowSetupLog]=useState<boolean>(false)
     const [showSetupAlert, setShowSetupAlert]=useState<boolean>(false)
     const [showSetupMetrics, setShowSetupMetrics]=useState<boolean>(false)
-    
+
     useEffect ( () => {
         //+++ when a board is loaded all messages are received: alarms should not be in effect until everything is received
         //+++ plan to use metrics channel for alarming based on resource usage (cpu > 80, freemem<10,....)
         //+++ add options to asterisk log lines containing a specific text (like 'password', 'pw', etc...)
 
         if (logged) {
-            if (!clustersRef.current) getClusters()
+            if (clustersRef.current.length===0) getClusters()
             if (!settingsRef.current) readSettings()
         }
     })
@@ -137,6 +137,7 @@ const App: React.FC = () => {
     }, [boardLoaded])
 
     const getClusters = async () => {
+        console.log('getc')
         // get current cluster
         let response = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString))
         let srcCluster = await response.json() as Cluster
@@ -243,7 +244,6 @@ const App: React.FC = () => {
     }
 
     const onResourceSelectorAdd = (selection:IResourceSelected) => {
-        if (!clusters) return
         let cluster = clusters.find(c => c.name===selection.clusterName)
         if (!cluster) {
             setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.clusterName} does not exist.`, setMsgBox))
@@ -257,7 +257,7 @@ const App: React.FC = () => {
 
         let newTab:ITabObject = {
             name: tabName+index.toString(),
-            ws: null,
+            ws: undefined,
             keepaliveRef: 60,
             defaultTab: false,
             channelId: selection.channel,
@@ -306,6 +306,10 @@ const App: React.FC = () => {
                 alertObject.regexError = []
                 newTab.channelObject.data = alertObject
                 break
+            case InstanceMessageChannelEnum.OPS:
+                let opsObject = new OpsObject()
+                newTab.channelObject.data = opsObject
+                break
             default:
                 console.log(`Error, invalid channel: `, selection.channel)
                 setMsgBox(MsgBoxOkError('Add resource', 'Channel is not supported', setMsgBox))
@@ -322,21 +326,6 @@ const App: React.FC = () => {
     const setKeepAlive = (tab:ITabObject) => {
         console.log(`WS connected: ${tab.ws?.url}`)
         tab.keepaliveRef = setInterval(() => {
-            // var instanceConfig:InstanceConfig = {
-            //     action: InstanceMessageActionEnum.PING,
-            //     channel: tab.channelId,
-            //     flow: InstanceMessageFlowEnum.REQUEST,
-            //     type: InstanceMessageTypeEnum.SIGNAL,
-            //     instance: '',
-            //     accessKey: '',
-            //     objects: InstanceConfigObjectEnum.PODS,
-            //     scope: InstanceConfigScopeEnum.NONE,
-            //     view: InstanceConfigViewEnum.NONE,
-            //     namespace: '',
-            //     group: '',
-            //     pod: '',
-            //     container: '',
-            // }
             let instanceConfig:InstanceMessage = {
                 action: InstanceMessageActionEnum.PING,
                 channel: tab.channelId,
@@ -375,6 +364,11 @@ const App: React.FC = () => {
             return
         }
 
+        if (instanceMessage.action === InstanceMessageActionEnum.PING) {
+            // nothing to do
+            return
+        }
+
         switch(instanceMessage.channel) {
             case InstanceMessageChannelEnum.NONE:
                 // we receive keepalive responses through this channel
@@ -387,6 +381,9 @@ const App: React.FC = () => {
                 break
             case InstanceMessageChannelEnum.METRICS:
                 processMetricsMessage(wsEvent)
+                break
+            case InstanceMessageChannelEnum.OPS:
+                processOpsMessage(wsEvent)
                 break
             default:
                 console.log('Received invalid channel in message: ', instanceMessage)
@@ -415,25 +412,25 @@ const App: React.FC = () => {
         if (!tab || !tab.channelObject) return
 
         let logMessage = JSON.parse(wsEvent.data) as ILogMessage
-        let dataLog = tab.channelObject.data as LogObject
+        let logObject = tab.channelObject.data as LogObject
 
         switch (logMessage.type) {
             case InstanceMessageTypeEnum.DATA:
-                dataLog.messages.push(logMessage)
-                if (dataLog.messages.length > dataLog.maxMessages) dataLog.messages.splice(0, dataLog.messages.length - dataLog.maxMessages)
+                logObject.messages.push(logMessage)
+                if (logObject.messages.length > logObject.maxMessages) logObject.messages.splice(0, logObject.messages.length - logObject.maxMessages)
 
                 // if current log is displayed (focused), add message to the screen
                 if (selectedTabRef.current === tab.name) {
                     if (!tab.channelPaused) {
                         setRefreshTabContent(Math.random())
-                        if (dataLog.follow && lastLineRef.current) {
+                        if (logObject.follow && lastLineRef.current) {
                             (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
                         }
                     }
                 }
                 else {
                     // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-                    if (dataLog.backgroundNotification && !tab.channelPaused) {
+                    if (logObject.backgroundNotification && !tab.channelPaused) {
                         tab.channelPending = true
                         setHighlightedTabs((prev)=> [...prev, tab!])
                     }
@@ -444,7 +441,7 @@ const App: React.FC = () => {
                 if (icm.flow === InstanceMessageFlowEnum.RESPONSE && icm.action === InstanceMessageActionEnum.START) {
                     tab.channelObject.instance = icm.instance
                 }
-                dataLog.messages.push(logMessage)
+                logObject.messages.push(logMessage)
                 setRefreshTabContent(Math.random())
                 break
             default:
@@ -458,10 +455,10 @@ const App: React.FC = () => {
         var tab=tabs.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
 
-        let dataAlert = tab.channelObject.data as AlertObject
+        let alertObject = tab.channelObject.data as AlertObject
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA:
-                dataAlert.firedAlerts.push ({
+                alertObject.firedAlerts.push ({
                     timestamp: msg.timestamp? new Date(msg.timestamp).getTime(): Date.now(),
                     severity: msg.severity,
                     text: msg.text,
@@ -470,7 +467,7 @@ const App: React.FC = () => {
                     pod: msg.pod,
                     container: msg.container
                 })
-                if (dataAlert.firedAlerts.length > dataAlert.maxAlerts) dataAlert.firedAlerts.splice(0, dataAlert.firedAlerts.length - dataAlert.maxAlerts)
+                if (alertObject.firedAlerts.length > alertObject.maxAlerts) alertObject.firedAlerts.splice(0, alertObject.firedAlerts.length - alertObject.maxAlerts)
                 if (!tab.channelPaused) setRefreshTabContent(Math.random())
                 break
             case InstanceMessageTypeEnum.SIGNAL:
@@ -490,12 +487,12 @@ const App: React.FC = () => {
         var tab=tabs.find(tab => tab.ws !== null && tab.ws===wsEvent.target)
         if (!tab || !tab.channelObject) return
 
-        let dataMetrics = tab.channelObject.data as MetricsObject
+        let metricsObject = tab.channelObject.data as MetricsObject
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA:
-                dataMetrics.assetMetricsValues.push(msg)
-                if (dataMetrics.assetMetricsValues.length > dataMetrics.depth) {
-                    dataMetrics.assetMetricsValues.shift()
+                metricsObject.assetMetricsValues.push(msg)
+                if (metricsObject.assetMetricsValues.length > metricsObject.depth) {
+                    metricsObject.assetMetricsValues.shift()
                 }
                 if (!tab.channelPaused) setRefreshTabContent(Math.random())
                 break
@@ -507,13 +504,121 @@ const App: React.FC = () => {
                 else {
                     let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
                     if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
-                        dataMetrics.errors.push(signalMessage.text)
+                        metricsObject.errors.push(signalMessage.text)
                         setRefreshTabContent(Math.random())
                     }
                 }
                 break
             default:
                 console.log(`Invalid message type ${msg.type}`)
+                break
+        }
+    }
+
+    function cleanANSI(texto: string): string {
+        //const regexAnsi = /\x1b\[[0-9;]*m/g; // Expresión regular para coincidir con secuencias ANSI
+        const regexAnsi = /\x1b\[[0-9;]*[mKHVfJrcegH]|\x1b\[\d*n/g;
+        return texto.replace(regexAnsi, ''); // Reemplaza todas las coincidencias por una cadena vacía
+      }
+
+    const processOpsMessage = (wsEvent:any) => {
+        var opsMessage = JSON.parse(wsEvent.data) as OpsMessageResponse
+        var tab = tabs.find(tab => tab.ws !== null && tab.ws===wsEvent.target)
+        if (!tab || !tab.channelObject) return
+
+        let opsObject = tab.channelObject.data as OpsObject
+        switch (opsMessage.type) {
+            case InstanceMessageTypeEnum.DATA:
+                if (opsMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
+                    switch (opsMessage.command) {
+                        case OpsCommandEnum.SHELL:
+                            opsObject.shells.push ({
+                                namespace: opsMessage.namespace,
+                                pod: opsMessage.pod,
+                                container: opsMessage.container,
+                                lines: [],
+                                connected: true
+                            })
+                            opsObject.shell = opsObject.shells[opsObject.shells.length-1]
+                            setRefreshTabContent(Math.random())
+                            break
+                        default:
+                            if (typeof opsMessage.data !== 'string')
+                                opsObject.messages.push(JSON.stringify(opsMessage.data))
+                            else
+                                opsObject.messages.push(opsMessage.data)
+                                setRefreshTabContent(Math.random())
+                                break
+                        }
+                }
+                else {
+                    let shell = opsObject.shells.find (c => c.namespace === opsMessage.namespace && c.pod === opsMessage.pod && c.container === opsMessage.container)
+                    if (shell) {
+                        shell.lines.push(cleanANSI(opsMessage.data))
+                        if (opsObject.shell) setRefreshTabContent(Math.random())  //+++ and visible shell is destinatiopn shell
+                    }
+                    else {
+                        opsObject.messages.push(opsMessage.data)
+                        setRefreshTabContent(Math.random())
+                    }
+                }
+                break
+            case InstanceMessageTypeEnum.SIGNAL:
+                if (opsMessage.flow === InstanceMessageFlowEnum.RESPONSE && opsMessage.action === InstanceMessageActionEnum.COMMAND) {
+                    if (opsMessage.command === OpsCommandEnum.SHELL) {
+                        opsObject.shell = undefined
+                        opsObject.messages.push(`Shell session to ${opsMessage.namespace}/${opsMessage.pod}/${opsMessage.container} ended`)
+                        let shell = opsObject.shells.find (c => c.namespace === opsMessage.namespace && c.pod === opsMessage.pod && c.container === opsMessage.container)
+                        if (shell) shell.connected = false
+                    }
+                    else {
+                        opsObject.messages.push(opsMessage.data)
+                    }
+                    setRefreshTabContent(Math.random())
+                    return
+                }
+                let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
+                    tab.channelObject.instance = signalMessage.instance
+                    opsObject.messages.push(signalMessage.text)
+                    setRefreshTabContent(Math.random())
+                }
+                else {
+                    console.log('wsEvent.data')
+                    console.log(wsEvent.data)
+                    
+                    // let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                    // dataOps.messages.push(signalMessage.text)
+                    // setRefreshTabContent(Math.random())
+
+                    // let uns = JSON.parse(wsEvent.data) as SignalMessage
+                    // setConsoleLines( (prev) => {
+                    //     if (prev && prev.length>0 && prev[prev.length-1].props && prev[prev.length-1].props.children.endsWith('\n')) {
+                    //         console.log('x')
+                    //         return [...prev, <TerminalOutput>{ limpiarANSI(uns.text)}</TerminalOutput>] 
+                    //     }
+                    //     else {
+                    //         if (prev.length>0) {
+                    //             console.log('y')
+                    //             return [...prev.slice(0,prev.length-1), <TerminalOutput>{prev[prev.length-1].props.children + limpiarANSI(uns.text)}</TerminalOutput>] 
+                    //         }
+                    //         else {
+                    //             console.log('z')
+                    //             return [...prev, <TerminalOutput>{limpiarANSI(uns.text)}</TerminalOutput>] 
+                    //         }
+                    //     }
+                    // })
+                    // if (consoleMode) {
+                    // }
+                    // else {
+                    //     let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                    //     dataOps.messages.push(signalMessage.text)
+                    //     }
+                    // setRefreshTabContent(Math.random())
+                }
+                break
+            default:
+                console.log(`Invalid message type ${opsMessage.type}`)
                 break
         }
     }
@@ -529,6 +634,11 @@ const App: React.FC = () => {
             case InstanceMessageChannelEnum.METRICS:
                 setShowSetupMetrics(true)
                 break
+            case InstanceMessageChannelEnum.OPS:
+                startChannel(selectedTab)
+                break
+            default:
+                console.log(`Unsupported channel ${selectedTab?.channelId}`)
         }
     }
 
@@ -568,20 +678,20 @@ const App: React.FC = () => {
     const reconnectSocket = (wsEvent:any) => {
         console.log('Reconnecting...')
         let tab = tabs.find(tab => tab.ws === wsEvent.target)
-        if (!clusters || !tab || !tab.channelObject) return
+        if (!tab || !tab.channelObject) return
         if (tab.ws) {
             tab.ws.onerror = null
             tab.ws.onmessage = null
             tab.ws.onclose = null
-            tab.ws = null
+            tab.ws = undefined
         }
         let cluster = clusters.find(c => c.name === tab!.channelObject!.clusterName)
         if (!cluster) return
 
         switch (tab.channelId) {
             case InstanceMessageChannelEnum.LOG:
-                var dataLog = tab.channelObject.data as LogObject
-                dataLog.messages.push({
+                let logObject = tab.channelObject.data as LogObject
+                logObject.messages.push({
                     action: InstanceMessageActionEnum.NONE,
                     flow: InstanceMessageFlowEnum.UNSOLICITED,
                     channel: InstanceMessageChannelEnum.LOG,
@@ -590,12 +700,13 @@ const App: React.FC = () => {
                     text: '*** Lost connection ***',
                     namespace: '',
                     pod: '',
-                    container: ''
+                    container: '',
+                    msgtype: 'logmessage'
                 })
                 break
             case InstanceMessageChannelEnum.ALERT:
-                var dataAlert = tab.channelObject.data as AlertObject
-                dataAlert.firedAlerts.push({
+                let alertObject = tab.channelObject.data as AlertObject
+                alertObject.firedAlerts.push({
                     timestamp: Date.now(),
                     severity: AlertSeverityEnum.ERROR,
                     namespace:'',
@@ -603,10 +714,12 @@ const App: React.FC = () => {
                     text: '*** Lost connection ***'
                 })
                 break
-
             case InstanceMessageChannelEnum.METRICS:
-                var dataMetrics = tab.channelObject.data as MetricsObject
-                dataMetrics.errors.push('*** Lost connection ***')
+                let metricsObject = tab.channelObject.data as MetricsObject
+                metricsObject.errors.push('*** Lost connection ***')
+                break
+            case InstanceMessageChannelEnum.METRICS:
+                console.log('reconnect not implemented')
                 break
         }
         setRefreshTabContent(Math.random())
@@ -624,7 +737,7 @@ const App: React.FC = () => {
     }
     
     const startChannel = (tab:ITabObject) => {
-        if (!clusters || !tab || !tab.channelObject) {
+        if (!tab || !tab.channelObject) {
             console.log('No active tab found')
             return
         }
@@ -656,40 +769,52 @@ const App: React.FC = () => {
             }
             switch (tab.channelId) {
                 case InstanceMessageChannelEnum.LOG:
-                    let dataLog = tab.channelObject.data as LogObject
+                    let logObject = tab.channelObject.data as LogObject
                     if (!cluster) {
                         setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at log configuration ${tab.channelObject.clusterName} does not exist.`, setMsgBox))
                         return
                     }
-                    instanceConfig.data = {
-                        timestamp: dataLog.timestamp,
-                        previous: dataLog.previous,
-                        maxMessages: dataLog.maxMessages,
-                        fromStart: dataLog.fromStart
+                    let logConfig:LogConfig = {
+                        timestamp: logObject.timestamp,
+                        previous: logObject.previous,
+                        maxMessages: logObject.maxMessages,
+                        fromStart: logObject.fromStart
                     }
+                    instanceConfig.data = logConfig
                     break
                 case InstanceMessageChannelEnum.ALERT:
-                    let dataAlert = tab.channelObject.data as AlertObject
-                    dataAlert.firedAlerts=[]
-                    instanceConfig.data = {
-                        regexInfo: dataAlert.regexInfo,
-                        regexWarning: dataAlert.regexWarning,
-                        regexError: dataAlert.regexError
+                    let alertObject = tab.channelObject.data as AlertObject
+                    alertObject.firedAlerts=[]
+                    let alertConfig:AlertConfig ={
+                        regexInfo: alertObject.regexInfo,
+                        regexWarning: alertObject.regexWarning,
+                        regexError: alertObject.regexError
                     }
+                    instanceConfig.data = alertConfig
                     break
                 case InstanceMessageChannelEnum.METRICS:
-                    var dataMetrics = tab.channelObject.data as MetricsObject
-                    dataMetrics.errors = []
-                    dataMetrics.assetMetricsValues=[]
-                    instanceConfig.data = {
-                        mode: dataMetrics.mode,
-                        aggregate: dataMetrics.aggregate,
-                        interval: dataMetrics.interval,
-                        metrics: dataMetrics.metrics,
+                    let metricsObject = tab.channelObject.data as MetricsObject
+                    metricsObject.errors = []
+                    metricsObject.assetMetricsValues=[]
+                    let metricsConfig:MetricsConfig = {
+                        mode: metricsObject.mode,
+                        aggregate: metricsObject.aggregate,
+                        interval: metricsObject.interval,
+                        metrics: metricsObject.metrics,
                     }
+                    instanceConfig.data = metricsConfig
+                    break
+                case InstanceMessageChannelEnum.OPS:
+                    let dataOps = tab.channelObject.data as OpsObject
+                    dataOps.accessKey = cluster.accessString
+                    dataOps.messages = []
+                    dataOps.shell = undefined
+                    dataOps.shells = []
+                    let opsConfig:OpsConfig = {}
+                    instanceConfig.data = opsConfig
                     break
                 default:
-                    setMsgBox(MsgBoxOkError('Start channel', 'Channel is not supported', setMsgBox))
+                    console.log('Channel is not supported')
                     break
             }
             tab.ws.send(JSON.stringify(instanceConfig))
@@ -706,9 +831,8 @@ const App: React.FC = () => {
         if (selectedTab && selectedTab.channelObject) stopChannel(selectedTab)
     }
 
-
     const stopChannel = (tab:ITabObject) => {
-        if (!clusters || !tab || !tab.channelObject) return
+        if (!tab || !tab.channelObject) return
         let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
 
         if (!cluster) return
@@ -729,8 +853,8 @@ const App: React.FC = () => {
         }
         switch (tab.channelId) {
             case InstanceMessageChannelEnum.LOG:
-                var dataLog = tab.channelObject.data as LogObject
-                dataLog.messages.push({
+                let logObject = tab.channelObject.data as LogObject
+                logObject.messages.push({
                     action: InstanceMessageActionEnum.NONE,
                     flow: InstanceMessageFlowEnum.UNSOLICITED,
                     text: '=========================================================================',
@@ -740,12 +864,13 @@ const App: React.FC = () => {
                     namespace: '',
                     pod: '',
                     container: '',
+                    msgtype: 'logmessage'
                 }) 
                 setRefreshTabContent(Math.random())
                 break
             case InstanceMessageChannelEnum.ALERT:
-                var dataAlert = tab.channelObject.data as AlertObject
-                dataAlert.firedAlerts.push({
+                let alertObject = tab.channelObject.data as AlertObject
+                alertObject.firedAlerts.push({
                     timestamp: Date.now(),
                     severity: AlertSeverityEnum.INFO,
                     namespace:'',
@@ -756,6 +881,11 @@ const App: React.FC = () => {
                 break
             case InstanceMessageChannelEnum.METRICS:
                 break
+            case InstanceMessageChannelEnum.OPS:
+                let dataOps = tab.channelObject.data as OpsObject
+                dataOps.messages.push('=========================================================================')
+                setRefreshTabContent(Math.random())
+                break
         }
         if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
         tab.channelStarted = false
@@ -764,7 +894,7 @@ const App: React.FC = () => {
 
     const onClickChannelPause = () => {
         setAnchorMenuTab(null)
-        if (!clusters || !selectedTab || !selectedTab.channelObject || !selectedTab.ws) return
+        if (!selectedTab || !selectedTab.channelObject || !selectedTab.ws) return
         var cluster = clusters.find(c => c.name === selectedTab!.channelObject.clusterName)
         if(!cluster) return
         
@@ -912,7 +1042,7 @@ const App: React.FC = () => {
             var newTab:ITabObject = {
                 name: tab.name,
                 defaultTab: tab.defaultTab,
-                ws: null,
+                ws: undefined,
                 keepaliveRef: 0,
                 channelId: tab.channelId,
                 channelObject: JSON.parse(JSON.stringify(tab.channelObject)),
@@ -972,7 +1102,7 @@ const App: React.FC = () => {
                 let errors = ''
                 for (let t of board.tabs) {
                     let clusterName = t.channelObject.clusterName
-                    if (!clusters?.find(c => c.name === clusterName)) {
+                    if (!clusters.find(c => c.name === clusterName)) {
                         errors += `Cluster '${clusterName}' used in tab ${t.name} does not exsist<br/><br/>`
                     }
                 }
@@ -1132,7 +1262,7 @@ const App: React.FC = () => {
     const onSettingsClusterClosed = (readMetricsInterval:number|undefined) => {
         setShowSettingsCluster(false)
         
-        if (!clusters || !readMetricsInterval) return
+        if (!readMetricsInterval) return
         if (readMetricsInterval) {
             var cluster = clusters.find(c => c.name === selectedClusterName)
             if (cluster)  {
@@ -1148,20 +1278,20 @@ const App: React.FC = () => {
         setAnchorMenuTab(null)
         if (metrics.length===0) return
 
-        var tab=tabs.find(t => t.name===selectedTabRef.current)
+        let tab=tabs.find(t => t.name===selectedTabRef.current)
         if (!tab || !tab.channelObject) return
 
-        var dataMetrics = tab.channelObject.data as MetricsObject
+        let metricsObject = tab.channelObject.data as MetricsObject
 
-        dataMetrics.metrics = metrics
-        dataMetrics.mode = mode
-        dataMetrics.depth = depth
-        dataMetrics.width = width
-        dataMetrics.interval = interval
-        dataMetrics.aggregate = aggregate
-        dataMetrics.merge = merge
-        dataMetrics.stack = stack
-        dataMetrics.chart = type
+        metricsObject.metrics = metrics
+        metricsObject.mode = mode
+        metricsObject.depth = depth
+        metricsObject.width = width
+        metricsObject.interval = interval
+        metricsObject.aggregate = aggregate
+        metricsObject.merge = merge
+        metricsObject.stack = stack
+        metricsObject.chart = type
         startChannel(tab)
     }
 
@@ -1173,13 +1303,13 @@ const App: React.FC = () => {
         var tab = tabs.find(t => t.name === selectedTabRef.current)
         if (!tab || !tab.channelObject) return
 
-        var dataLog = tab.channelObject.data as LogObject
-        dataLog.maxMessages = maxMessages
-        dataLog.fromStart = fromStart
-        dataLog.previous = previous
-        dataLog.timestamp = timestamp
-        dataLog.follow = follow
-        dataLog.messages = []
+        let logObject = tab.channelObject.data as LogObject
+        logObject.maxMessages = maxMessages
+        logObject.fromStart = fromStart
+        logObject.previous = previous
+        logObject.timestamp = timestamp
+        logObject.follow = follow
+        logObject.messages = []
         startChannel(tab)
     }
 
@@ -1191,12 +1321,12 @@ const App: React.FC = () => {
         var tab=tabs.find(t => t.name === selectedTabRef.current)
         if (!tab || !tab.channelObject) return
 
-        var dataAlert = tab.channelObject.data as AlertObject
-        dataAlert.regexInfo = regexInfo
-        dataAlert.regexWarning = regexWarning
-        dataAlert.regexError = regexError
-        dataAlert.maxAlerts = maxAlerts
-        dataAlert.firedAlerts = []
+        let alertObject = tab.channelObject.data as AlertObject
+        alertObject.regexInfo = regexInfo
+        alertObject.regexWarning = regexWarning
+        alertObject.regexError = regexError
+        alertObject.maxAlerts = maxAlerts
+        alertObject.firedAlerts = []
         startChannel(tab)
     }
 
@@ -1255,13 +1385,21 @@ const App: React.FC = () => {
         </div>
     </>)
 
+    const onShellInput = (prompt:string, terminalInput:string) => {
+        if (terminalInput === 'clear') {
+            console.log('clear')
+            return
+        }
+    }
+
     const formatTabName = (tab : ITabObject) => {
         if (!tab.name) return <>undefined</>
 
         let icon = <Box sx={{minWidth:'24px'}}/>
-        if (tab.channelId==='metrics') icon = <BarChart sx={{mr:2}}/>
-        if (tab.channelId==='log') icon = <Subject sx={{mr:1}}/>
-        if (tab.channelId==='alert') icon = <Warning sx={{mr:1}}/>
+        if (tab.channelId === InstanceMessageChannelEnum.LOG) icon = <Subject sx={{mr:1}}/>
+        if (tab.channelId === InstanceMessageChannelEnum.ALERT) icon = <Warning sx={{mr:1}}/>
+        if (tab.channelId === InstanceMessageChannelEnum.METRICS) icon = <BarChart sx={{mr:2}}/>
+        if (tab.channelId === InstanceMessageChannelEnum.OPS) icon = <Terminal sx={{mr:1}}/>
         let name = tab.name
         if (name.length>20) name = tab.name.slice(0, 8) + '...' + tab.name.slice(-8)
         return <>{icon}{name}</>
@@ -1307,7 +1445,7 @@ const App: React.FC = () => {
                 </Stack>
 
                 { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
-                <TabContent lastLineRef={lastLineRef} channel={selectedTab?.channelId} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent}/>
+                <TabContent lastLineRef={lastLineRef} channel={selectedTab?.channelId} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent} webSocket={selectedTab?.ws} onShellInput={onShellInput}/>
             </Box>
 
             { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }
