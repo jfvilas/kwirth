@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { IChannelObject } from '../../model/ITabObject'
-import { Box, Button, setRef, Stack, TextField } from '@mui/material'
+import { Box, Button, Stack, TextField } from '@mui/material'
 import { OpsObject } from '../../model/OpsObject'
 import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, OpsCommandEnum, OpsMessage } from '@jfvilas/kwirth-common'
 import { v4 as uuidv4 } from 'uuid'
@@ -97,7 +97,8 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
             group: '',
             pod: p,
             container: c,
-            params: params
+            params: params,
+            msgtype: 'opsmessage'
         }
         let payload = JSON.stringify( opsMessage )
         props.webSocket.send(payload)
@@ -136,7 +137,8 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
             group: '',
             pod: '',
             container: '',
-            params: terminalInput.split(' ')
+            params: terminalInput.split(' '),
+            msgtype: 'opsmessage'
         }
         let payload = JSON.stringify( opsMessage )
         if (props.webSocket) {

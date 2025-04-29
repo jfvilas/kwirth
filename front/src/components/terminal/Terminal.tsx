@@ -19,12 +19,12 @@ export interface Props {
 }
   
 const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, inputEnabled, startingInputValue = "" }: Props) => {
-    const [currentLineInput, setCurrentLineInput] = useState('');
-    const [cursorPos, setCursorPos] = useState(0);
+    const [currentLineInput, setCurrentLineInput] = useState('')
+    const [cursorPos, setCursorPos] = useState(0)
     const scrollIntoViewRef = useRef<HTMLDivElement>(null)
   
     const updateCurrentLineInput = (event: ChangeEvent<HTMLInputElement>) => {
-      setCurrentLineInput(event.target.value);
+      setCurrentLineInput(event.target.value)
     }
   
     // Calculates the total width in pixels of the characters to the right of the cursor.
@@ -58,7 +58,6 @@ const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, 
           event.preventDefault()
           return
         }
-        if(!onInput) return
 
         if (event.key === 'Enter') {
             let prompt = ''
@@ -98,9 +97,7 @@ const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, 
   
     // We use a hidden input to capture terminal input; make sure the hidden input is focused when clicking anywhere on the terminal
     useEffect(() => {
-        if (onInput == null) return
-        // keep reference to listeners so we can perform cleanup
-        const elListeners: { terminalEl: Element; listener: EventListenerOrEventListenerObject }[] = [];
+        const elListeners: { terminalEl: Element; listener: EventListenerOrEventListenerObject }[] = []
 
         for (let terminalEl of Array.from(document.getElementsByClassName('react-terminal-wrapper'))) {
             const listener = () => (terminalEl?.querySelector('.terminal-hidden-input') as HTMLElement)?.focus()
@@ -140,7 +137,7 @@ const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, 
                 {content()}
                 <div ref={ scrollIntoViewRef }></div>
             </div>
-            <input className="terminal-hidden-input" placeholder="Terminal Hidden Input" value={ currentLineInput } autoFocus={ onInput != null } onChange={ updateCurrentLineInput } onKeyDown={ handleInputKeyDown }/>
+            <input className="terminal-hidden-input" placeholder="Terminal Hidden Input" value={ currentLineInput } autoFocus={true} onChange={ updateCurrentLineInput } onKeyDown={ handleInputKeyDown }/>
         </div>
     )
 }
