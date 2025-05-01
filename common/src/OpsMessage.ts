@@ -13,7 +13,7 @@ export enum OpsCommandEnum {
     RESTART = 'restart',
     RESTARTPOD = 'restartpod',
     RESTARTALL = 'restartall',
-    RESTARTNAMESPACE = 'restartnamespace',
+    RESTARTNS = 'restartns',
 
     DELETE = 'delete'
 }

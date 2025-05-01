@@ -5,12 +5,12 @@ import { OpsObject } from '../../model/OpsObject'
 import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, OpsCommandEnum, OpsMessage } from '@jfvilas/kwirth-common'
 import { v4 as uuidv4 } from 'uuid'
 import { Terminal, ColorMode, TerminalOutput } from '../terminal/Terminal'
-import { SelectTerminal } from './SelectTerminal'
+import { SelectTerminal } from '../terminal/SelectTerminal'
 
 interface IProps {
     webSocket?: WebSocket
     channelObject: IChannelObject
-    onShellInput: (prompt:string, terminalInput:string) => void
+    //onShellInput: (prompt:string, terminalInput:string) => void
 }
 
 const TabContentOps: React.FC<IProps> = (props:IProps) => {
@@ -26,6 +26,13 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
     useEffect(() => {
         if (!opsObject.shell) commandRef.current?.focus()
     }, [refresh])
+
+    useEffect(() => {
+        if (!showSelector) {
+            window.addEventListener('keydown', onKeyDown)
+        }
+        return () => window.removeEventListener('keydown', onKeyDown)
+    })
 
     const onKeyDown = (event:any) => {
         let key = event.key
@@ -74,14 +81,23 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
     const sendCommand = (data:string) => {
         if (!props.webSocket)  return
 
-        let [ns,p,c] = ['','','']
-        let params = data.split(' ')
+        let [namespace,pod,container] = ['','','']
+        let params = data.trim().split(' ').map(p => p.trim()).filter(p => p!=='')
+        console.log(params)
         let cmd = params[0] as OpsCommandEnum
-        let obj = params[1]        
-        if (obj && (cmd === OpsCommandEnum.SHELL || cmd === OpsCommandEnum.RESTART || cmd === OpsCommandEnum.GET || cmd === OpsCommandEnum.DESCRIBE || cmd === OpsCommandEnum.EXECUTE)) {
-            [ns,p,c] = obj.split('/')
+        let obj = params[1]
+        if (obj && (cmd === OpsCommandEnum.SHELL || cmd === OpsCommandEnum.RESTART || cmd === OpsCommandEnum.RESTARTPOD || cmd === OpsCommandEnum.RESTARTNS || cmd === OpsCommandEnum.GET || cmd === OpsCommandEnum.DESCRIBE || cmd === OpsCommandEnum.EXECUTE)) {
+            [namespace,pod,container] = obj.split('/')
             if (cmd === OpsCommandEnum.EXECUTE) {
-                params = data.split(' ').splice(2)
+                params = params.slice(2)
+            }
+        }
+        if (cmd === OpsCommandEnum.SHELL) {
+            let index = opsObject.shells.findIndex ( s => s.namespace===namespace && s.pod===pod && s.container===container)
+            if (index>=0) {
+                opsObject.shell = opsObject.shells[index]
+                setRefresh(Math.random())
+                return
             }
         }
         let opsMessage:OpsMessage = {
@@ -93,10 +109,10 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
             instance: props.channelObject.instance,
             id: uuidv4(),
             command: cmd,
-            namespace: ns,
+            namespace: namespace,
             group: '',
-            pod: p,
-            container: c,
+            pod: pod,
+            container: container,
             params: params,
             msgtype: 'opsmessage'
         }
@@ -106,7 +122,7 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
 
     const formatConsole = () => {
         if (!props.channelObject.data || !props.channelObject.data) return <></>
-         if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
+        if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
 
         return <pre>
             {opsObject.messages.map((message, index) => {
@@ -119,9 +135,12 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
         </pre>
     }
 
-    const onShellInput = (prompt:string, terminalInput:string) => {        
-        if (terminalInput ==='clear') {
-            props.onShellInput('', 'clear')
+    const onShellInput = (prompt:string, shellInput:string) => {        
+        if (shellInput ==='clear') {
+            if (opsObject.shell) {
+                opsObject.shell.lines=[]
+                setRefresh(Math.random())
+            }
             return
         }
         let opsMessage:OpsMessage = {
@@ -129,21 +148,20 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
             action: InstanceMessageActionEnum.COMMAND,
             channel: InstanceMessageChannelEnum.OPS,
             type: InstanceMessageTypeEnum.DATA,
+            command: OpsCommandEnum.INPUT,
             accessKey: opsObject.accessKey,
             instance: props.channelObject.instance,
-            id: '1', //uuidv4(),
-            command: OpsCommandEnum.INPUT,
-            namespace: '',
+            id: opsObject.shell? opsObject.shell.id : '',
+            namespace: opsObject.shell? opsObject.shell.namespace : '',
             group: '',
-            pod: '',
-            container: '',
-            params: terminalInput.split(' '),
+            pod: opsObject.shell? opsObject.shell.pod : '',
+            container: opsObject.shell? opsObject.shell.container : '',
+            params: shellInput.split(' '),
             msgtype: 'opsmessage'
         }
         let payload = JSON.stringify( opsMessage )
         if (props.webSocket) {
             props.webSocket.send(payload)
-            props.onShellInput(prompt, terminalInput)
         }
     }
 
@@ -151,7 +169,6 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
         if (key === 'F12') {
             opsObject.shell = undefined
             setRefresh(Math.random())
-            // commandRef.current.focus();            
         }
         else if (key === 'F11') {
             setShowSelector(true)
@@ -164,10 +181,15 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
                 setRefresh(Math.random())
             }
         }
+        else if (key ==='^c') {
+            if (opsObject.shell) {
+                opsObject.shell.lines.push('^c')
+                setRefresh(Math.random())
+            }
+        }
     }
 
     const selectTerminal = (index:number) =>  {
-        console.log(index)
         setShowSelector(false)
         if (index>=0) {
             opsObject.shell = opsObject.shells[index]
@@ -180,7 +202,7 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
         if (shellIndex<0 ) return <></>
         let shell = opsObject.shells[shellIndex]
           return (
-            <Terminal name={`${namespace}/${pod}/${container}` + (shellIndex<10? `(Key F${shellIndex+1})`:'') } colorMode={ColorMode.Light} onInput={onShellInput} onKey={onShellKey} inputEnabled={shell.connected}>
+            <Terminal name={`${namespace}/${pod}/${container}` + (shellIndex<10? ` (Key F${shellIndex+1})`:'') } colorMode={ColorMode.Light} onInput={onShellInput} onKey={onShellKey} inputEnabled={shell.connected}>
                 {shell.lines.map(line => <TerminalOutput>{line}</TerminalOutput>)}
             </Terminal>
           )
@@ -195,10 +217,10 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
 
     return <>
         <Stack direction='column' alignItems={'start'} sx={{height:'80%', ml:1, mr:1}}>
-            {formatSelector()}
+            { formatSelector() }
             { opsObject.shell && showTerminal(opsObject.shell.namespace, opsObject.shell.pod, opsObject.shell.container) }
             { !opsObject.shell && <>            
-                <Box sx={{ flex:1, width:'100%' }}>
+                <Box sx={{ flex:1, overflowY: 'auto', width:'100%' }}>
                     {formatConsole()}
                 </Box>
                 <Stack direction={'row'} sx={{width:'100%'}}>

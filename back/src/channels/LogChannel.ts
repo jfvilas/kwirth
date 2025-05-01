@@ -43,6 +43,7 @@ class LogChannel implements IChannel {
     getChannelData(): ChannelData {
         return {
             id: 'log',
+            immediate: false,
             pauseable: true,
             modifyable: false,
             reconnectable: true,

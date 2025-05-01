@@ -40,6 +40,7 @@ import { SetupAlert } from './components/channels/SetupAlert'
 import { SetupMetrics } from './components/channels/SetupMetrics'
 import { IBoard } from './model/IBoard'
 import { OpsObject } from './model/OpsObject'
+import { OPSWELCOMEMESSAGE } from './tools/Constants'
 
 const App: React.FC = () => {
 
@@ -515,11 +516,10 @@ const App: React.FC = () => {
         }
     }
 
-    function cleanANSI(texto: string): string {
-        //const regexAnsi = /\x1b\[[0-9;]*m/g; // Expresión regular para coincidir con secuencias ANSI
+    function cleanANSI(text: string): string {
         const regexAnsi = /\x1b\[[0-9;]*[mKHVfJrcegH]|\x1b\[\d*n/g;
-        return texto.replace(regexAnsi, ''); // Reemplaza todas las coincidencias por una cadena vacía
-      }
+        return text.replace(regexAnsi, '') // replace all empty string matches
+    }
 
     const processOpsMessage = (wsEvent:any) => {
         var opsMessage = JSON.parse(wsEvent.data) as OpsMessageResponse
@@ -532,13 +532,20 @@ const App: React.FC = () => {
                 if (opsMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
                     switch (opsMessage.command) {
                         case OpsCommandEnum.SHELL:
-                            opsObject.shells.push ({
+                            // it's a response for a shell session start, so we add shell session to shells array
+                            let newShell = {
                                 namespace: opsMessage.namespace,
                                 pod: opsMessage.pod,
                                 container: opsMessage.container,
                                 lines: [],
-                                connected: true
-                            })
+                                connected: true,
+                                id: opsMessage.id
+                            }
+                            let index = opsObject.shells.findIndex(s => s.connected === false)
+                            if (index>=0)
+                                opsObject.shells[index] = newShell
+                            else
+                                opsObject.shells.push (newShell)
                             opsObject.shell = opsObject.shells[opsObject.shells.length-1]
                             setRefreshTabContent(Math.random())
                             break
@@ -552,7 +559,7 @@ const App: React.FC = () => {
                         }
                 }
                 else {
-                    let shell = opsObject.shells.find (c => c.namespace === opsMessage.namespace && c.pod === opsMessage.pod && c.container === opsMessage.container)
+                    let shell = opsObject.shells.find (s => s.id===opsMessage.id)
                     if (shell) {
                         shell.lines.push(cleanANSI(opsMessage.data))
                         if (opsObject.shell) setRefreshTabContent(Math.random())  //+++ and visible shell is destinatiopn shell
@@ -568,6 +575,7 @@ const App: React.FC = () => {
                     if (opsMessage.command === OpsCommandEnum.SHELL) {
                         opsObject.shell = undefined
                         opsObject.messages.push(`Shell session to ${opsMessage.namespace}/${opsMessage.pod}/${opsMessage.container} ended`)
+                        if (opsMessage.data) opsObject.messages.push(opsMessage.data)
                         let shell = opsObject.shells.find (c => c.namespace === opsMessage.namespace && c.pod === opsMessage.pod && c.container === opsMessage.container)
                         if (shell) shell.connected = false
                     }
@@ -585,36 +593,7 @@ const App: React.FC = () => {
                 }
                 else {
                     console.log('wsEvent.data')
-                    console.log(wsEvent.data)
-                    
-                    // let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                    // dataOps.messages.push(signalMessage.text)
-                    // setRefreshTabContent(Math.random())
-
-                    // let uns = JSON.parse(wsEvent.data) as SignalMessage
-                    // setConsoleLines( (prev) => {
-                    //     if (prev && prev.length>0 && prev[prev.length-1].props && prev[prev.length-1].props.children.endsWith('\n')) {
-                    //         console.log('x')
-                    //         return [...prev, <TerminalOutput>{ limpiarANSI(uns.text)}</TerminalOutput>] 
-                    //     }
-                    //     else {
-                    //         if (prev.length>0) {
-                    //             console.log('y')
-                    //             return [...prev.slice(0,prev.length-1), <TerminalOutput>{prev[prev.length-1].props.children + limpiarANSI(uns.text)}</TerminalOutput>] 
-                    //         }
-                    //         else {
-                    //             console.log('z')
-                    //             return [...prev, <TerminalOutput>{limpiarANSI(uns.text)}</TerminalOutput>] 
-                    //         }
-                    //     }
-                    // })
-                    // if (consoleMode) {
-                    // }
-                    // else {
-                    //     let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                    //     dataOps.messages.push(signalMessage.text)
-                    //     }
-                    // setRefreshTabContent(Math.random())
+                    console.log(wsEvent.data)                    
                 }
                 break
             default:
@@ -807,7 +786,7 @@ const App: React.FC = () => {
                 case InstanceMessageChannelEnum.OPS:
                     let dataOps = tab.channelObject.data as OpsObject
                     dataOps.accessKey = cluster.accessString
-                    dataOps.messages = []
+                    dataOps.messages = OPSWELCOMEMESSAGE
                     dataOps.shell = undefined
                     dataOps.shells = []
                     let opsConfig:OpsConfig = {}
@@ -1385,13 +1364,6 @@ const App: React.FC = () => {
         </div>
     </>)
 
-    const onShellInput = (prompt:string, terminalInput:string) => {
-        if (terminalInput === 'clear') {
-            console.log('clear')
-            return
-        }
-    }
-
     const formatTabName = (tab : ITabObject) => {
         if (!tab.name) return <>undefined</>
 
@@ -1445,7 +1417,7 @@ const App: React.FC = () => {
                 </Stack>
 
                 { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
-                <TabContent lastLineRef={lastLineRef} channel={selectedTab?.channelId} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent} webSocket={selectedTab?.ws} onShellInput={onShellInput}/>
+                <TabContent lastLineRef={lastLineRef} channel={selectedTab?.channelId} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent} webSocket={selectedTab?.ws}/>
             </Box>
 
             { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }

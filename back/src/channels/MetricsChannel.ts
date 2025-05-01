@@ -35,6 +35,7 @@ class MetricsChannel implements IChannel {
     getChannelData(): ChannelData {
         return {
             id: 'metrics',
+            immediate: false,
             pauseable: true,
             modifyable: true,
             reconnectable: true,
@@ -238,6 +239,7 @@ class MetricsChannel implements IChannel {
                 pod: instanceConfig.pod,
                 timestamp: Date.now(),
                 container: '',
+                msgtype: 'metricsmessage'
             }
     
             switch(instanceConfig.view) {

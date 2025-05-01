@@ -8,6 +8,7 @@ enum SourceEnum {
 
 type ChannelData = {
     id: string
+    immediate: boolean
     pauseable: boolean
     modifyable: boolean
     reconnectable: boolean

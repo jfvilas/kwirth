@@ -254,12 +254,10 @@ const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:Inst
     }
     else if (eventType === 'MODIFIED') {
         deleteObject(eventType, podNamespace, podName, '', webSocket, instanceConfig)
-        //sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Pod ${eventType}: ${podNamespace}/${podName}`, instanceConfig)
         sendChannelSignalAsset(webSocket, SignalMessageLevelEnum.INFO, `Pod MODIFIED: ${podNamespace}/${podName}`, instanceConfig, podNamespace, podName, '')
     }
     else if (eventType === 'DELETED') {
         modifyObject(eventType, podNamespace, podName, '', webSocket, instanceConfig)
-        //sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Pod ${eventType}: ${podNamespace}/${podName}`, instanceConfig)
         sendChannelSignalAsset(webSocket, SignalMessageLevelEnum.INFO, `Pod DELETED: ${podNamespace}/${podName}`, instanceConfig, podNamespace, podName, '')
     }
     else {
@@ -516,7 +514,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
                     }
                 }
                 else {
-                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to container '${podName}/${containerName}'  (or pod does not exsist)`, instanceConfig)
+                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}'  (or pod does not exsist)`, instanceConfig)
                 }
             }
             sendInstanceConfigSignalMessage(webSocket,InstanceMessageActionEnum.START, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
@@ -908,7 +906,7 @@ const launchKubernetes = async() => {
                     // load channel extensions
                     channels.set('log', new LogChannel(clusterInfo))
                     channels.set('alert', new AlertChannel(clusterInfo))
-                    //channels.set('metrics', new MetricsChannel(clusterInfo))
+                    //+++ channels.set('metrics', new MetricsChannel(clusterInfo))
                     channels.set('ops', new OpsChannel(clusterInfo))
 
                     let requireMetrics = Array.from(channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)

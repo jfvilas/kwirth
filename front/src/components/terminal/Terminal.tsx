@@ -50,7 +50,7 @@ const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, 
     }
   
     const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-        if (['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', ].includes(event.key)) {
+        if (['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12' ].includes(event.key)) {
             event.preventDefault()
             onKey(event.key)
         }
@@ -89,6 +89,21 @@ const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, 
             const inputWidth = calculateInputWidth(inputElement, charsToRightOfCursor)
             setCursorPos(inputWidth)
         }
+        else if ((event.key === 'c') && event.ctrlKey) {
+            event.preventDefault()
+            setCursorPos(0)
+            setCurrentLineInput('')
+            onKey('^c')
+        }
+        else if ((event.key === 'd') && event.ctrlKey) {
+            event.preventDefault()
+            if (currentLineInput==='') {
+                setCursorPos(0)
+                setCurrentLineInput('')
+                onInput('', 'exit')
+            }
+        }
+
     }
   
     useEffect(() => {

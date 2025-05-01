@@ -12,6 +12,7 @@ const SelectTerminal: React.FC<IProps> = (props:IProps) => {
     const [selectedIndex, setSelectedIndex] = useState(props.current)
     
     const handleKeyDown = (event: KeyboardEvent) => {
+        event.stopPropagation()
         if (event.key === 'ArrowDown') {
             setSelectedIndex(prev => (prev + 1) % props.shells.length)
         }
@@ -19,19 +20,18 @@ const SelectTerminal: React.FC<IProps> = (props:IProps) => {
             setSelectedIndex(prev => (prev - 1 + props.shells.length) % props.shells.length)
         }
         else if (event.key === 'Enter') {
-            props.onSelect(selectedIndex)
+            if (props.shells[selectedIndex] && props.shells[selectedIndex].connected) props.onSelect(selectedIndex)
         }
         else if (event.key === 'Escape') {
             // +++ does not work, pending review
             props.onSelect(-1)
         }
-      }
+    }
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [selectedIndex])
-      
       
    return (
         <Dialog open={true}>
