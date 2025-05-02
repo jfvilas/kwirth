@@ -1,10 +1,13 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, OpsMessage, OpsMessageResponse, OpsCommandEnum } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, OpsMessage, OpsMessageResponse, OpsCommandEnum, RouteMessage, RouteMessageResponse } from '@jfvilas/kwirth-common';
 import WebSocket from 'ws'
-import { ClusterInfo } from '../model/ClusterInfo'
-import { ChannelData, IChannel, SourceEnum } from './IChannel';
+import { ClusterInfo } from '../../model/ClusterInfo'
+import { ChannelData, IChannel, SourceEnum } from '../IChannel';
 import { Readable, Writable } from 'stream';
+import { execCommandGetDescribe as execCommandGetDescribe } from './GetCommand';
+import { execCommandRestart } from './RestartCommand';
+import { execCommandDelete } from './DeleteCommand';
 
-interface IAsset {
+export interface IAsset {
     podNamespace:string
     podName:string
     containerName:string
@@ -16,7 +19,7 @@ interface IAsset {
     shellId: string
 }
 
-interface IInstance {
+export interface IInstance {
     instanceId: string
     assets: IAsset[]
 }
@@ -148,6 +151,36 @@ class OpsChannel implements IChannel {
         }
     }
 
+    async executeRoutedCommand (instance:IInstance, opsMessage:OpsMessage) : Promise<OpsMessageResponse> {
+        switch (opsMessage.command) {
+            case OpsCommandEnum.GET:
+            case OpsCommandEnum.DESCRIBE:
+                return await execCommandGetDescribe(this.clusterInfo, instance, opsMessage)
+            case OpsCommandEnum.RESTARTPOD:
+            case OpsCommandEnum.RESTARTNS:
+                return await execCommandRestart(this.clusterInfo, instance, opsMessage)
+            case OpsCommandEnum.DELETE:
+                return await execCommandDelete(this.clusterInfo, instance, opsMessage)
+            default:
+                let execResponse: OpsMessageResponse = {
+                    action: opsMessage.action,
+                    flow: InstanceMessageFlowEnum.RESPONSE,
+                    type: InstanceMessageTypeEnum.SIGNAL,
+                    channel: opsMessage.channel,
+                    instance: opsMessage.instance,
+                    command: opsMessage.command,
+                    id: opsMessage.id,
+                    namespace: opsMessage.namespace,
+                    group: opsMessage.group,
+                    pod: opsMessage.pod,
+                    container: opsMessage.container,
+                    data: `Invalid command for route: '${opsMessage.command}'`,
+                    msgtype: 'opsmessageresponse'
+                }
+                return execResponse
+        }
+    }
+
     async executeCommand (webSocket:WebSocket, instance:IInstance, opsMessage:OpsMessage) : Promise<OpsMessageResponse | undefined> {
         let execResponse: OpsMessageResponse = {
             action: opsMessage.action,
@@ -183,50 +216,7 @@ class OpsChannel implements IChannel {
             }
             case OpsCommandEnum.GET:
             case OpsCommandEnum.DESCRIBE:
-                if (opsMessage.namespace==='' || !opsMessage.namespace) {
-                    execResponse.data = `Namespace, pod and container must be specified (formats 'ns', 'ns/pod' or 'ns/pod/container')`
-                    return execResponse
-                }
-
-                try {
-                    if ((opsMessage.pod==='' || !opsMessage.pod) && (opsMessage.container==='' || !opsMessage.container)) {
-                        let nsresp = await this.clusterInfo.coreApi.readNamespace(opsMessage.namespace)
-                        if (opsMessage.command === OpsCommandEnum.GET)
-                            execResponse.data = { name:nsresp.body.metadata?.name, creationTimestamp: nsresp.body.metadata?.creationTimestamp }
-                        else 
-                            execResponse.data = nsresp.body
-                        execResponse.type = InstanceMessageTypeEnum.DATA
-                        return execResponse
-                    }
-
-                    let presp = await this.clusterInfo.coreApi.readNamespacedPod(opsMessage.pod,opsMessage.namespace)
-                    if (opsMessage.container==='' || !opsMessage.container) {
-                        console.log(presp.body)
-                        if (opsMessage.command === OpsCommandEnum.GET)
-                            execResponse.data = { name:presp.body.metadata?.name, creationTimestamp: presp.body.metadata?.creationTimestamp, containers: presp.body.spec?.containers.map(c => c.name) }
-                        else
-                            execResponse.data = presp.body
-                        execResponse.type = InstanceMessageTypeEnum.DATA
-                    }
-                    else {
-                        let cont = presp.body.spec?.containers.find(c => c.name === opsMessage.container)
-                        if (cont) {
-                            if (opsMessage.command === OpsCommandEnum.GET)
-                                execResponse.data = { name: cont.name, image: cont.image }
-                            else
-                                execResponse.data = cont
-                            execResponse.type = InstanceMessageTypeEnum.DATA
-                        }
-                        else {
-                            execResponse.data = 'Container not found'
-                        }
-                    }
-                    return execResponse
-                }
-                catch (err) {
-                    console.log(err)
-                    execResponse.data = 'Cannot read data'
-                }
+                execResponse = await execCommandGetDescribe(this.clusterInfo, instance, opsMessage)
                 break
             case OpsCommandEnum.LIST:
                 execResponse.data = ''
@@ -306,7 +296,6 @@ class OpsChannel implements IChannel {
                         execResponse.data = 'Asset not found or not autorized'
                         return execResponse
                     }
-
                     try {
                         this.executeLinuxCommand(webSocket, instance, asset.podNamespace, asset.podName, asset.containerName, opsMessage.id, '/usr/sbin/killall5')
                         this.sendDataMessage(webSocket, instance.instanceId, `Container ${asset.podNamespace}/${asset.podName}/${asset.containerName} restarted`)
@@ -314,10 +303,10 @@ class OpsChannel implements IChannel {
                     catch (err) {
                         this.sendDataMessage(webSocket, instance.instanceId, `Error restarting container ${asset.podNamespace}/${asset.podName}/${asset.containerName}: ${err}`)
                     }
-
                     execResponse.type = InstanceMessageTypeEnum.DATA
                 }
                 break
+
             case OpsCommandEnum.RESTARTALL:
                 for (let asset of instance.assets) {
                     try {
@@ -329,43 +318,14 @@ class OpsChannel implements IChannel {
                 }
                 execResponse.type = InstanceMessageTypeEnum.DATA
                 break
+
             case OpsCommandEnum.RESTARTPOD:
-                if (opsMessage.namespace==='' || opsMessage.pod==='' || !opsMessage.namespace || !opsMessage.pod) {
-                    execResponse.data = `Namespace and pod must be specified (format 'ns/pod')`
-                    return execResponse
-                }
-                if (instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod)) {
-                    await this.restartPod(webSocket, instance, opsMessage.namespace, opsMessage.pod)
-                }
-                execResponse.type = InstanceMessageTypeEnum.DATA
-                break
             case OpsCommandEnum.RESTARTNS:
-                if (opsMessage.namespace==='' || !opsMessage.namespace) {
-                    execResponse.data = `Namespace must be specified`
-                    return execResponse
-                }
-                for (let asset of instance.assets) {
-                    if (asset.podNamespace === opsMessage.namespace) {
-                        try {
-                            await this.restartPod(webSocket, instance, asset.podNamespace, asset.podName)
-                            this.sendDataMessage(webSocket, instance.instanceId, `Pod ${asset.podNamespace}/${asset.podName} restarted`)
-                        }
-                        catch (err) {
-                            this.sendDataMessage(webSocket, instance.instanceId, `Error restarting pod ${asset.podNamespace}/${asset.podName}: ${err}`)
-                        }                
-                    }    
-                }
-                execResponse.type = InstanceMessageTypeEnum.DATA
-                break                
+                execResponse = await execCommandRestart(this.clusterInfo, instance, opsMessage)
+                break
+
             case OpsCommandEnum.DELETE:
-                if (opsMessage.namespace==='' || opsMessage.pod==='' || !opsMessage.namespace || !opsMessage.pod) {
-                    execResponse.data = `Namespace and pod must be specified (format 'ns/pod')`
-                    return execResponse
-                }
-                if (instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod)) {
-                    await this.clusterInfo.coreApi.deleteNamespacedPod(opsMessage.pod, opsMessage.namespace)
-                }
-                execResponse.type = InstanceMessageTypeEnum.DATA
+                execResponse = await execCommandDelete(this.clusterInfo, instance, opsMessage)
                 break
             default:
                 execResponse.data = `Invalid command '${opsMessage.command}'. Valid commands are: ${Object.keys(OpsCommandEnum)}`
@@ -416,11 +376,46 @@ class OpsChannel implements IChannel {
         }
     }
 
-    async processRoute (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+    addConnection = async (webScoket:WebSocket) => {
+        this.websocketOps.push ({
+            ws: webScoket,
+            lastRefresh: 0,
+            instances: []
+        })
+    }
+
+    async processRoute (instanceMessage:InstanceMessage) : Promise<RouteMessageResponse> {
         console.log('Route request received')
-        console.log('instanceMessage', instanceMessage)
-        this.processCommand(webSocket, instanceMessage)
-        return false
+        let srcMessage = instanceMessage as RouteMessage
+        let opsMessage = srcMessage.data as OpsMessage
+
+        let instance:IInstance = {
+            instanceId: opsMessage.instance,
+            assets: [ {
+                podNamespace: opsMessage.namespace,
+                podName: opsMessage.pod,
+                containerName: opsMessage.container,
+                inShellMode: false,
+                shellSocket: undefined,
+                stdin: undefined,
+                stdout: undefined,
+                stderr: undefined,
+                shellId: ''
+            } ]
+        }
+
+        let resp = await this.executeRoutedCommand(instance, opsMessage)
+
+        let routeMessageResponse:RouteMessageResponse = {
+            msgtype: 'routemessageresponse',
+            action: InstanceMessageActionEnum.ROUTE,
+            flow: InstanceMessageFlowEnum.RESPONSE,
+            type: InstanceMessageTypeEnum.DATA,
+            channel: InstanceMessageChannelEnum.OPS,
+            instance: '',
+            data: resp.data
+        }
+        return routeMessageResponse
     }
 
     async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {

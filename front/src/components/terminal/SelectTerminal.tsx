@@ -22,10 +22,6 @@ const SelectTerminal: React.FC<IProps> = (props:IProps) => {
         else if (event.key === 'Enter') {
             if (props.shells[selectedIndex] && props.shells[selectedIndex].connected) props.onSelect(selectedIndex)
         }
-        else if (event.key === 'Escape') {
-            // +++ does not work, pending review
-            props.onSelect(-1)
-        }
     }
 
     useEffect(() => {

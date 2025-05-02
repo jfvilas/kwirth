@@ -1,8 +1,8 @@
-import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
-import { ClusterInfo } from '../model/ClusterInfo'
-import { AssetData } from '../tools/Metrics'
+import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum, RouteMessageResponse } from '@jfvilas/kwirth-common'
+import { ClusterInfo } from '../../model/ClusterInfo'
+import { AssetData } from '../../tools/Metrics'
 import WebSocket from 'ws'
-import { ChannelData, IChannel, SourceEnum } from './IChannel'
+import { ChannelData, IChannel, SourceEnum } from '../IChannel'
 
 interface IInstance {
     instanceId: string
@@ -32,8 +32,8 @@ class MetricsChannel implements IChannel {
         return false
     }
 
-    async processRoute (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
-        return false
+    async processRoute (instanceMessage:InstanceMessage) : Promise<RouteMessageResponse|undefined> {
+        return undefined
     }
 
     getChannelData(): ChannelData {
@@ -403,15 +403,6 @@ class MetricsChannel implements IChannel {
                                     instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})                            
                                 }
                             }
-                            // +++ +++ +++ 
-                            // if (instanceConfig.data.view === InstanceConfigViewEnum.CONTAINER) {
-                            //     instance?.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
-                            // }
-                            // else {
-                            //     if (!instance.assets.find(a => a.podName === podName && a.containerName === containerName)) {
-                            //         instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})                            
-                            //     }
-                            // }
                         }
                         else {
                             this.websocketMetrics.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )

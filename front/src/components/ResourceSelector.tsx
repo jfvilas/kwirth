@@ -262,11 +262,9 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 <InputLabel>Cluster</InputLabel>
                 <Select value={cluster?.name} onChange={onChangeCluster}>
                 { props.clusters?.map( (cluster) => {
-                    // +++ we should indicate if running insde or outside cluster
                     return <MenuItem key={cluster.name} value={cluster.name} disabled={!cluster.enabled}>
                         {getIcon(cluster)} &nbsp; {cluster.name}
                     </MenuItem>
-                    
                 })}
                 </Select>
             </FormControl>
@@ -341,7 +339,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 <InputLabel >Channel</InputLabel>
                 <Select value={props.channels.length>0?channel:''} onChange={onChangeChannel}> 
                     {
-                        props.channels?.map(c => <MenuItem key={c} value={c}>{c}</MenuItem> )
+                        cluster.channels? cluster.channels.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>) : props.channels?.map(c => <MenuItem key={c} value={c}>{c}</MenuItem> )
                     }
                 </Select>
             </FormControl>

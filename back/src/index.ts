@@ -27,15 +27,15 @@ import { MetricsApi } from './api/MetricsApi'
 import { v4 as uuidv4 } from 'uuid'
 
 import { MetricsTools as Metrics } from './tools/Metrics'
-import { LogChannel } from './channels/LogChannel'
-import { AlertChannel } from './channels/AlertChannel'
-import { MetricsChannel } from './channels/MetricsChannel'
+import { LogChannel } from './channels/log/LogChannel'
+import { AlertChannel } from './channels/alert/AlertChannel'
+import { MetricsChannel } from './channels/metrics/MetricsChannel'
 import { ISecrets } from './tools/ISecrets'
 import { IConfigMaps } from './tools/IConfigMap'
 import { DockerSecrets } from './tools/DockerSecrets'
 import { DockerConfigMaps } from './tools/DockerConfigMaps'
 import { DockerTools } from './tools/KwirthApi'
-import { OpsChannel } from './channels/OpsChannel'
+import { OpsChannel } from './channels/ops/OpsChannel'
 import { IChannel } from './channels/IChannel'
 
 const http = require('http')
@@ -444,7 +444,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
             break
         case 'pod':
             for (let podName of instanceConfig.pod.split(',')) {
-                let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
+                let validPod = requestedValidatedPods.find(p => p.metadata?.name === podName)
                 if (validPod) {
                     let metadataLabels = validPod.metadata?.labels
                     if (metadataLabels) {
@@ -462,7 +462,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
                     }
                 }
                 else {
-                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}' (or pod does not exsist)`, instanceConfig)
+                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}' (or pod does not exsist) for pod access`, instanceConfig)
                 }
             }
             sendInstanceConfigSignalMessage(webSocket,InstanceMessageActionEnum.START, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
@@ -470,7 +470,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
         case 'container':
             for (let container of instanceConfig.container.split(',')) {
                 let [podName, containerName] = container.split('+')
-                let validPod=requestedValidatedPods.find(p => p.metadata?.name === podName)
+                let validPod = requestedValidatedPods.find(p => p.metadata?.name === podName)
                 if (validPod) {
                     let metadataLabels = validPod.metadata?.labels
 
@@ -490,7 +490,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
                     }
                 }
                 else {
-                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}'  (or pod does not exsist)`, instanceConfig)
+                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}'  (or pod does not exsist) for container access`, instanceConfig)
                 }
             }
             sendInstanceConfigSignalMessage(webSocket,InstanceMessageActionEnum.START, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
@@ -617,15 +617,20 @@ const processChannelCommand = (webSocket: WebSocket, instanceMessage: InstanceMe
     }
 }
 
-const processChannelRoute = (webSocket: WebSocket, instanceMessage: InstanceMessage): void => {
+const processChannelRoute = async (webSocket: WebSocket, instanceMessage: InstanceMessage): Promise<void> => {
     let channel = channels.get(instanceMessage.channel)
     if (channel) {
         let instance = channel.containsInstance(instanceMessage.instance)
         if (instance) {
             let routeMessage = instanceMessage as RouteMessage
             if (channels.has(routeMessage.destChannel)) {
-                // +++ should it be routeMessage instead of instanceMessage?
-                channel.processRoute(webSocket, instanceMessage)
+                let destChannel = channels.get(routeMessage.destChannel)
+                if (destChannel) {
+                    console.log(`Routing request to channel ${routeMessage.destChannel}`)
+                    let resp = await destChannel.processRoute(instanceMessage)
+                    console.log(resp)
+                    if (resp) webSocket.send(JSON.stringify(resp))
+                }
             }
             else {
                 console.log(`Dest channel '${routeMessage.destChannel}' does not exist for instance '${instanceMessage.instance}'`)
@@ -633,7 +638,7 @@ const processChannelRoute = (webSocket: WebSocket, instanceMessage: InstanceMess
             }
         }
         else {
-            console.log(`Instance '${instanceMessage.instance}' not found`)
+            console.log(`Instance '${instanceMessage.instance}' not found onf channel ${channel.getChannelData().id}`)
             sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found')
         }   
     }
@@ -678,7 +683,7 @@ const processClientMessage = async (message:string, webSocket:WebSocket) => {
     if (instanceMessage.action === InstanceMessageActionEnum.ROUTE) {
         let routeMessage = instanceMessage as RouteMessage
         console.log(`Route received from channel ${instanceMessage.channel} to ${routeMessage.destChannel}`)
-        if (!channels.get(instanceMessage.channel)?.getChannelData().routable) {
+        if (!channels.get(routeMessage.destChannel)?.getChannelData().routable) {
             console.log(`Route capability not enabled for channel ${routeMessage.destChannel} and instance ${instanceMessage.instance}`)
             sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Channel ${instanceMessage.channel} does not support reconnect`, instanceMessage)
             return

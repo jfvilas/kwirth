@@ -3,11 +3,15 @@ import { IChannelObject } from '../../model/ITabObject'
 import { LogObject } from '../../model/LogObject'
 
 interface IProps {
+    webSocket?: WebSocket
     channelObject: IChannelObject
     lastLineRef: React.MutableRefObject<null>
 }
 
 const TabContentLog: React.FC<IProps> = (props:IProps) => {
+    let logObject = props.channelObject.data as LogObject
+
+    if (!props.channelObject.data || !props.channelObject.data) return <pre></pre>
 
     const formatLogLine = (imessage:InstanceMessage|null) => {
         if (!imessage) return null
@@ -47,19 +51,52 @@ const TabContentLog: React.FC<IProps> = (props:IProps) => {
         }
     }
 
-    const formatLog = () => {
-        if (!props.channelObject.data || !props.channelObject.data) return <pre key={456456}></pre>
-        let logObject = props.channelObject.data as LogObject
-        return <pre key={2342344}>
-            {logObject.messages.map((message, index) => {
-                if (index === logObject.messages.length-1)
-                    return <div key={index} ref={props.lastLineRef} style={{marginBottom:'24px'}}>{formatLogLine(message)}</div>
-                else 
-                    return <div key={index}>{formatLogLine(message)}</div>
-            })}
-        </pre>
+    if (logObject.follow && props.lastLineRef.current) {
+        (props.lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
     }
 
-    return formatLog()
+    //
+    // sample to route command to another channel using open websocket
+    //
+    // const send = () => {
+    //     // route commnad
+    //     let om:OpsMessage = {
+    //         msgtype: 'opsmessage',
+    //         action: InstanceMessageActionEnum.COMMAND,
+    //         flow: InstanceMessageFlowEnum.IMMEDIATE,
+    //         type: InstanceMessageTypeEnum.DATA,
+    //         channel: InstanceMessageChannelEnum.OPS,
+    //         instance: '',
+    //         id: '1',
+    //         accessKey: logObject.accessKey,
+    //         command: OpsCommandEnum.RESTARTPOD,
+    //         namespace: props.channelObject.namespace,
+    //         group: props.channelObject.group,
+    //         pod: props.channelObject.pod,
+    //         container: props.channelObject.container
+    //     }
+    //     let rm: RouteMessage = {
+    //         msgtype: 'routemessage',
+    //         accessKey: logObject.accessKey,
+    //         destChannel: InstanceMessageChannelEnum.OPS,
+    //         action: InstanceMessageActionEnum.ROUTE,
+    //         flow: InstanceMessageFlowEnum.IMMEDIATE,
+    //         type: InstanceMessageTypeEnum.SIGNAL,
+    //         channel: InstanceMessageChannelEnum.LOG,
+    //         instance: props.channelObject.instance,
+    //         data: om
+    //     }
+    //     console.log(rm)
+    //     props.webSocket?.send(JSON.stringify(rm))
+    // }
+
+    return <>
+        <pre> {
+            logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })
+        }
+        </pre>
+        <br/>
+        <span ref={props.lastLineRef}></span>
+    </>
 }
 export { TabContentLog }

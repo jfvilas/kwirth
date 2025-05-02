@@ -19,6 +19,7 @@ enum MenuDrawerOption {
     ApiSecurity,
     Exit
 }
+
 interface IProps {
     optionSelected: (opt:MenuDrawerOption) => void
     uploadSelected: (a:React.ChangeEvent<HTMLInputElement>) => void

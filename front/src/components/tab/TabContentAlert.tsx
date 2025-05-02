@@ -18,9 +18,9 @@ const TabContentAlert: React.FC<IProps> = (props:IProps) => {
                 if (props.channelObject.view==='namespace') 
                     prefix = alert.namespace+'/'
                 else 
-                    prefix += alert.namespace+'/'+ alert.pod +'/'
-                prefix = prefix + alert.container + ' '
-                if (alert.namespace==='') prefix=''
+                    prefix = alert.namespace+'/'+ alert.pod +'/'
+                prefix += alert.container + ' '
+                if (alert.namespace === '') prefix=''
                 return <>{prefix}<span style={{color}}>{new Date(alert.timestamp).toISOString() + ' ' + alert.text}</span><br/></>
             })
         }</pre>)

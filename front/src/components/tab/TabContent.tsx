@@ -12,7 +12,6 @@ interface IProps {
     channelObject?: IChannelObject
     refreshTabContent?: number
     webSocket?: WebSocket
-    //onShellInput: (prompt:string, terminalInput:string) => void
 }
 
 const TabContent: React.FC<IProps> = (props:IProps) => {
@@ -21,7 +20,7 @@ const TabContent: React.FC<IProps> = (props:IProps) => {
             {/* show log lines */}
             { props.channelObject && props.channel === InstanceMessageChannelEnum.LOG && props.channelObject.data &&
                 <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
-                    <TabContentLog channelObject={props.channelObject} lastLineRef={props.lastLineRef}/>
+                    <TabContentLog channelObject={props.channelObject} lastLineRef={props.lastLineRef} webSocket={props.webSocket}/>
                 </Box>
                 }
 

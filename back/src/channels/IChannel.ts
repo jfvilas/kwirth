@@ -1,4 +1,4 @@
-import { InstanceConfig, InstanceMessage, InstanceMessageActionEnum } from '@jfvilas/kwirth-common'
+import { InstanceConfig, InstanceMessage, InstanceMessageActionEnum, RouteMessageResponse } from '@jfvilas/kwirth-common'
 import WebSocket from 'ws'
 
 enum SourceEnum {
@@ -29,7 +29,7 @@ interface IChannel {
     removeInstance (webSocket:WebSocket, instanceId:string) : void
 
     processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage, podNamespace?:string, podName?:string, containerName?:string) : Promise<boolean>
-    processRoute (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean>
+    processRoute (instanceMessage:InstanceMessage) : Promise<RouteMessageResponse|undefined>
 
     containsConnection (webSocket:WebSocket) : boolean
     removeConnection (webSocket:WebSocket) : void

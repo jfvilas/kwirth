@@ -10,6 +10,7 @@ export interface ILogMessage extends InstanceMessage {
 }
 
 export class LogObject {
+    public accessKey: string = ''
     public messages: LogMessage[] = []
     public maxMessages: number = 5000
     public previous: boolean = false

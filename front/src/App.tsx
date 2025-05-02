@@ -777,6 +777,7 @@ const App: React.FC = () => {
             switch (tab.channelId) {
                 case InstanceMessageChannelEnum.LOG:
                     let logObject = tab.channelObject.data as LogObject
+                    logObject.accessKey = cluster.accessString
                     if (!cluster) {
                         setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at log configuration ${tab.channelObject.clusterName} does not exist.`, setMsgBox))
                         return
@@ -1092,7 +1093,7 @@ const App: React.FC = () => {
         setShowSelectBoard(false)
         if (name) {
             if (action === 'delete') {
-                setMsgBox(MsgBoxYesNo('Delete board',`Are you sure you want to delete board ${name} (you cannot undo this action?`,setMsgBox, (button) => {
+                setMsgBox(MsgBoxYesNo('Delete board',`Are you sure you want to delete board ${name} (you cannot undo this action)?`,setMsgBox, (button) => {
                     if (button===MsgBoxButtons.Yes) {
                         fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addDeleteAuthorization(accessString))
                         if (name === currentBoardName) {
@@ -1407,12 +1408,12 @@ const App: React.FC = () => {
 
     return (<>
         <SessionContext.Provider value={{ user, accessKey: accessString, logged, backendUrl }}>
-            <AppBar position="static" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
+            <AppBar position='sticky' elevation={0} sx={{ zIndex: 99, height:'64px' }}>
                 <Toolbar>
-                    <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
-                    <Typography sx={{ ml:1, flexGrow: 1 }}>KWirth</Typography>
+                    <IconButton size='large' edge='start' color='inherit' sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
+                    <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth</Typography>
                     <Tooltip title={<div style={{textAlign:'center'}}>{currentBoardName}<br/><br/>{currentBoardDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
-                        <Typography variant="h6" component="div" sx={{mr:2, cursor:'default'}}>{currentBoardName}</Typography>
+                        <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentBoardName}</Typography>
                     </Tooltip>
                     <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user?.scope}]</div>} sx={{ mr:2 }} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -6]}}]}}}>
                         <Person/>

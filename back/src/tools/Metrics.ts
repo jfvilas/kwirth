@@ -368,7 +368,6 @@ export class MetricsTools {
 
     // read metrics and values for all nodes in the cluster
     public readClusterMetrics = async (clusterInfo: ClusterInfo): Promise<void> => {
-        // +++ we should check cluster config (number of nodes) from time to time
         if (this.loadingClusterMetrics) {
             console.log(`Still loading cluster metrics ${new Date().toTimeString()}`)
             return
