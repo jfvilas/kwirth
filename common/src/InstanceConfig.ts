@@ -76,7 +76,5 @@ export interface InstanceConfig extends InstanceMessage{
 }
 
 export interface InstanceConfigResponse extends InstanceMessage {
-    // action: InstanceConfigActionEnum
-    // flow: InstanceConfigFlowEnum
     text: string
 }

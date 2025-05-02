@@ -37,13 +37,18 @@ class AlertChannel implements IChannel {
     }
 
     async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
-        return true
+        return false
+    }
+
+    async processRoute (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+        return false
     }
 
     getChannelData(): ChannelData {
         return {
             id: 'alert',
-            immediate: false,
+            immediatable: false,
+            routable: false,
             pauseable: true,
             modifyable: false,
             reconnectable: true,

@@ -14,7 +14,7 @@ interface IAsset {
     stdout: Writable|undefined
     stderr: Writable|undefined
     shellId: string
-}        
+}
 
 interface IInstance {
     instanceId: string
@@ -37,13 +37,18 @@ class OpsChannel implements IChannel {
     getChannelData(): ChannelData {
         return {
             id: 'ops',
-            immediate: true,
+            immediatable: true,
+            routable: true,
             pauseable: false,
             modifyable: false,
             reconnectable: true,
             sources: [ SourceEnum.KUBERNETES ],
             metrics: false
         }
+    }
+
+    getChannelScopeLevel(scope: string): number {
+        return ['', 'get', 'execute', 'shell', 'restart', 'cluster'].indexOf(scope)
     }
 
     containsInstance(instanceId: string): boolean {
@@ -376,19 +381,46 @@ class OpsChannel implements IChannel {
             return false
         }
 
-        let instances = socket.instances
-        let instance = instances.find(i => i.instanceId === instanceMessage.instance)
-        if (!instance) {
-            this.sendSignalMessage(webSocket, instanceMessage.action, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceMessage.instance, `Instance not found`)
-            console.log(`Instance ${instanceMessage.instance} not found`)
-            return false
+        if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
+            let opsMessage = instanceMessage as OpsMessage
+            let instance:IInstance = {
+                instanceId: opsMessage.instance,
+                assets: [ {
+                    podNamespace: opsMessage.namespace,
+                    podName: opsMessage.pod,
+                    containerName: opsMessage.container,
+                    inShellMode: false,
+                    shellSocket: undefined,
+                    stdin: undefined,
+                    stdout: undefined,
+                    stderr: undefined,
+                    shellId: ''
+                } ]
+            }
+            let resp = await this.executeCommand(webSocket, instance, opsMessage)
+            if (resp) webSocket.send(JSON.stringify(resp))
+            return Boolean(resp)
         }
+        else {
+            let instances = socket.instances
+            let instance = instances.find(i => i.instanceId === instanceMessage.instance)
+            if (!instance) {
+                this.sendSignalMessage(webSocket, instanceMessage.action, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceMessage.instance, `Instance not found`)
+                console.log(`Instance ${instanceMessage.instance} not found`)
+                return false
+            }    
+            let opsMessage = instanceMessage as OpsMessage
+            let resp = await this.executeCommand(webSocket, instance, opsMessage)
+            if (resp) webSocket.send(JSON.stringify(resp))
+            return Boolean(resp)
+        }
+    }
 
-        let opsMessage = instanceMessage as OpsMessage
-        let resp = await this.executeCommand(webSocket, instance, opsMessage)
-        console.log(resp)
-        if (resp) webSocket.send(JSON.stringify(resp))
-        return Boolean(resp)
+    async processRoute (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+        console.log('Route request received')
+        console.log('instanceMessage', instanceMessage)
+        this.processCommand(webSocket, instanceMessage)
+        return false
     }
 
     async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
@@ -405,8 +437,7 @@ class OpsChannel implements IChannel {
         if (!instance) {
             instance = {
                 instanceId: instanceConfig.instance,
-                assets: [],
-                //view: instanceConfig.view
+                assets: []
             }
             instances.push(instance)
         }
@@ -441,16 +472,12 @@ class OpsChannel implements IChannel {
         }
     }
 
-    getChannelScopeLevel(scope: string): number {
-        return ['', 'filter', 'view', 'cluster'].indexOf(scope)
-    }
-
     pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
         console.log('Pause/Continue not supported')
     }
 
     modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
-
+        console.log('Modify not supported')
     }
 
     removeInstance(webSocket: WebSocket, instanceId: string): void {
@@ -462,6 +489,7 @@ class OpsChannel implements IChannel {
                 if (pos>=0) {
                     let instance = instances[pos]
                     for (var asset of instance.assets) {
+                            // +++ pending impl
                     }
                     instances.splice(pos,1)
                 }
@@ -516,7 +544,7 @@ class OpsChannel implements IChannel {
                 for (var instance of entry.instances) {
                     if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
                         for (let asset of instance.assets) {
-                            // pending
+                            // +++ pending impl
                         }
                     }
                     else if (this.clusterInfo.type === ClusterTypeEnum.KUBERNETES) {

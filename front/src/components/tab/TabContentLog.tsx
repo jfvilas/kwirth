@@ -1,4 +1,4 @@
-import { InstanceMessage, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { InstanceConfigViewEnum, InstanceMessage, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { IChannelObject } from '../../model/ITabObject'
 import { LogObject } from '../../model/LogObject'
 
@@ -15,16 +15,17 @@ const TabContentLog: React.FC<IProps> = (props:IProps) => {
         let logMessage = imessage as LogMessage
         if (logMessage.type === InstanceMessageTypeEnum.DATA) {
             var txt = logMessage.text
-            if (props.channelObject.view==='namespace') {
+            if (props.channelObject.view === InstanceConfigViewEnum.NAMESPACE) {
                 var preLength = logMessage.pod!.length+1
                 var preBlanks = ' '.repeat(preLength)
                 txt=txt.replaceAll('\n','\n'+preBlanks).trimEnd()
             }
 
             var prefix = ''
-            if (props.channelObject.view==='pod') prefix = logMessage.container || ''
-            if (props.channelObject.view==='container' && props.channelObject.container.includes(',')) prefix = logMessage.container || ''
-            if (props.channelObject.view==='namespace') {
+            if (props.channelObject.view === InstanceConfigViewEnum.CONTAINER && props.channelObject.container.includes(',')) prefix = logMessage.container || ''
+            if (props.channelObject.view === InstanceConfigViewEnum.POD) prefix = logMessage.container || ''
+            if (props.channelObject.view === InstanceConfigViewEnum.GROUP) prefix = logMessage.pod || ''
+            if (props.channelObject.view === InstanceConfigViewEnum.NAMESPACE) {
                 return <><span style={{color:'blue'}}>{logMessage.pod+' '}</span>{txt}</>
             }
             else

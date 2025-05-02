@@ -8,12 +8,22 @@ import { MsgBoxOkError } from '../tools/MsgBox'
 import IconDaemonSet from'../icons/svg/ds.svg'
 import IconReplicaSet from'../icons/svg/rs.svg'
 import IconStatefulSet from'../icons/svg/ss.svg'
+
+import IconKubernetesUnknown from'../icons/svg/k8s-unknown.svg'
+import IconKubernetesBlank from'../icons/svg/k8s-blank.svg'
+import IconKubernetes from'../icons/svg/k8s.svg'
+import IconDocker from'../icons/svg/docker-mark-blue.svg'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { ClusterTypeEnum, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
 
 const KIconDaemonSet = () => <img src={IconDaemonSet} alt='ds' height={'16px'}/>
 const KIconReplicaSet = () => <img src={IconReplicaSet} alt='rs' height={'16px'}/>
 const KIconStatefulSet = () => <img src={IconStatefulSet} alt='ss' height={'16px'}/>
+
+const KIconKubernetesUnknown = () => <img src={IconKubernetesUnknown} alt='kubernetes' height={'16px'}/>
+const KIconKubernetesBlank = () => <img src={IconKubernetesBlank} alt='kubernetes' height={'16px'}/>
+const KIconKubernetes = () => <img src={IconKubernetes} alt='kubernetes' height={'16px'}/>
+const KIconDocker = () => <img src={IconDocker} alt='docker' height={'16px'}/>
 
 interface IResourceSelected {
     channel: InstanceMessageChannelEnum
@@ -234,6 +244,17 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         return true
     }
 
+    const getIcon = (cluster:Cluster)  => {
+        if (!cluster.kwirthData || !cluster.kwirthData.clusterType) return <KIconKubernetesUnknown/>
+        if (cluster.kwirthData.clusterType[0] === 'd') return <KIconDocker/>
+        if (cluster.kwirthData.clusterType[0] === 'k') {
+            if (cluster.kwirthData.inCluster) 
+                return <KIconKubernetes/>
+            else
+                return <KIconKubernetesBlank/>
+        }
+    }
+
     return (<>
         <Stack direction='row' spacing={1} sx={{...props.sx}} alignItems='baseline'>
 
@@ -241,7 +262,11 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 <InputLabel>Cluster</InputLabel>
                 <Select value={cluster?.name} onChange={onChangeCluster}>
                 { props.clusters?.map( (cluster) => {
-                    return <MenuItem key={cluster.name} value={cluster.name} disabled={!cluster.enabled}>{cluster.name + (cluster.kwirthData?.clusterType? ` (${cluster.kwirthData?.clusterType[0]})` : '')} </MenuItem>
+                    // +++ we should indicate if running insde or outside cluster
+                    return <MenuItem key={cluster.name} value={cluster.name} disabled={!cluster.enabled}>
+                        {getIcon(cluster)} &nbsp; {cluster.name}
+                    </MenuItem>
+                    
                 })}
                 </Select>
             </FormControl>

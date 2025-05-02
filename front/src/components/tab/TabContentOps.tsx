@@ -10,7 +10,6 @@ import { SelectTerminal } from '../terminal/SelectTerminal'
 interface IProps {
     webSocket?: WebSocket
     channelObject: IChannelObject
-    //onShellInput: (prompt:string, terminalInput:string) => void
 }
 
 const TabContentOps: React.FC<IProps> = (props:IProps) => {
@@ -135,6 +134,44 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
         </pre>
     }
 
+    const startImmed = (shellInput:string) => {
+        if (props.webSocket) {
+            let ws = new WebSocket(props.webSocket?.url)
+            ws.onopen = (ev) => sendImmed(ev, shellInput)
+            ws.onmessage = (ev) => recvImmed(ev)
+            ws.onerror = (ev) => console.log('err')
+            ws.onclose = (ev) => console.log('close')
+        }
+    }
+
+    const recvImmed = (event:any) => {
+        console.log(event)
+    }
+
+    const sendImmed = (event:any, shellInput:string) => {
+        let [cmd, obj]  = shellInput.split(' ')
+        let [ns,p,c] = obj.split('/')
+
+        let opsMessage:OpsMessage = {
+            flow: InstanceMessageFlowEnum.IMMEDIATE,
+            action: InstanceMessageActionEnum.COMMAND,
+            channel: InstanceMessageChannelEnum.OPS,
+            type: InstanceMessageTypeEnum.DATA,
+            command: OpsCommandEnum.EXECUTE,
+            accessKey: opsObject.accessKey,
+            instance: '',
+            id: '1',
+            namespace: ns,
+            group: '',
+            pod: p,
+            container: c,
+            params: ['ls','/'],
+            msgtype: 'opsmessage'
+        }
+        let payload = JSON.stringify( opsMessage )
+        if (props.webSocket) event.target.send(payload)
+    }
+
     const onShellInput = (prompt:string, shellInput:string) => {        
         if (shellInput ==='clear') {
             if (opsObject.shell) {
@@ -143,6 +180,12 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
             }
             return
         }
+
+        if (shellInput.toLowerCase().startsWith('immed')) {
+            startImmed(shellInput)
+            return
+        }
+
         let opsMessage:OpsMessage = {
             flow: InstanceMessageFlowEnum.REQUEST,
             action: InstanceMessageActionEnum.COMMAND,
@@ -160,9 +203,7 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
             msgtype: 'opsmessage'
         }
         let payload = JSON.stringify( opsMessage )
-        if (props.webSocket) {
-            props.webSocket.send(payload)
-        }
+        if (props.webSocket) props.webSocket.send(payload)
     }
 
     const onShellKey = (key:string) => {

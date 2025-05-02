@@ -199,7 +199,7 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
 
         return <>
             {dataMetrics.errors.map((e,index) => { 
-                return <Alert severity='error' action={<Button onClick={() => { dataMetrics.errors.splice(index,1); setRefresh(!refresh)} }>Remove</Button>}>{e}</Alert>
+                return <Alert severity={e.severity} action={<Button onClick={() => { dataMetrics.errors.splice(index,1); setRefresh(!refresh)} }>Remove</Button>}>{e.text}</Alert>
             })}
         </>
     }

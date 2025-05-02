@@ -29,6 +29,8 @@ export * from './MetricsConfig'
 export * from './OpsMessage'
 export * from './OpsConfig'
 
+export * from './RouteMessage'
+
 export * from './SignalMessage'
 
 export * from './ApiKey'

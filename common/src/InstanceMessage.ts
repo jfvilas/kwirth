@@ -14,6 +14,7 @@ export enum InstanceMessageTypeEnum {
 
 export enum InstanceMessageActionEnum {
     NONE = 'none',
+    ROUTE = 'route',
     START = 'start',
     STOP = 'stop',
     PAUSE = 'pause',
@@ -25,6 +26,7 @@ export enum InstanceMessageActionEnum {
 }
 
 export enum InstanceMessageFlowEnum {
+    IMMEDIATE = 'immediate',
     REQUEST = 'request',
     RESPONSE = 'response',
     UNSOLICITED = 'unsolicited'

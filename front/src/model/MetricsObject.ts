@@ -1,4 +1,5 @@
 import { MetricsConfigModeEnum, InstanceMessage } from "@jfvilas/kwirth-common";
+import { AlertSeverityEnum } from "./AlertObject";
 
 export interface AssetMetrics {
     assetName: string
@@ -18,12 +19,12 @@ export class MetricsObject {
     public mode: MetricsConfigModeEnum = MetricsConfigModeEnum.SNAPSHOT
     public interval: number = 60
     public depth: number = 10
-    public width : number = 3
+    public width: number = 3
     public metrics: string[] = []
     public assetMetricsValues: IMetricsMessage[] = []
     public aggregate: boolean = true
-    public merge : boolean = false
-    public stack : boolean = false
-    public chart : string = 'line'
-    public errors : string[] = []
+    public merge: boolean = false
+    public stack: boolean = false
+    public chart: string = 'line'
+    public errors: { severity:AlertSeverityEnum, text:string }[] = []
 }

@@ -29,13 +29,18 @@ class MetricsChannel implements IChannel {
     }
 
     async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
-        return true
+        return false
+    }
+
+    async processRoute (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+        return false
     }
 
     getChannelData(): ChannelData {
         return {
             id: 'metrics',
-            immediate: false,
+            immediatable: false,
+            routable: false,
             pauseable: true,
             modifyable: true,
             reconnectable: true,

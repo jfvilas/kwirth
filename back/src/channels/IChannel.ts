@@ -8,7 +8,8 @@ enum SourceEnum {
 
 type ChannelData = {
     id: string
-    immediate: boolean
+    immediatable: boolean
+    routable: boolean
     pauseable: boolean
     modifyable: boolean
     reconnectable: boolean
@@ -27,7 +28,8 @@ interface IChannel {
     stopInstance (webSocket:WebSocket, instanceConfig:InstanceConfig) : void
     removeInstance (webSocket:WebSocket, instanceId:string) : void
 
-    processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean>
+    processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage, podNamespace?:string, podName?:string, containerName?:string) : Promise<boolean>
+    processRoute (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean>
 
     containsConnection (webSocket:WebSocket) : boolean
     removeConnection (webSocket:WebSocket) : void

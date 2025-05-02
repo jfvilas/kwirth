@@ -138,7 +138,6 @@ const App: React.FC = () => {
     }, [boardLoaded])
 
     const getClusters = async () => {
-        console.log('getc')
         // get current cluster
         let response = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString))
         let srcCluster = await response.json() as Cluster
@@ -438,12 +437,29 @@ const App: React.FC = () => {
                 }
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let icm = JSON.parse(wsEvent.data) as InstanceMessage
-                if (icm.flow === InstanceMessageFlowEnum.RESPONSE && icm.action === InstanceMessageActionEnum.START) {
-                    tab.channelObject.instance = icm.instance
+                let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
+                if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
+                    tab.channelObject.instance = instanceMessage.instance
                 }
-                logObject.messages.push(logMessage)
-                setRefreshTabContent(Math.random())
+                else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
+                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                    logObject.messages.push({
+                        msgtype: 'logmessage',
+                        text: signalMessage.text,
+                        namespace: '',
+                        pod: '',
+                        container: '',
+                        action: InstanceMessageActionEnum.NONE,
+                        flow: InstanceMessageFlowEnum.UNSOLICITED,
+                        type: InstanceMessageTypeEnum.DATA,
+                        channel: InstanceMessageChannelEnum.LOG,
+                        instance: signalMessage.instance
+                    })
+                }
+                else {
+                    logObject.messages.push(logMessage)
+                    setRefreshTabContent(Math.random())
+                }
                 break
             default:
                 console.log(`Invalid message type`, logMessage)
@@ -472,9 +488,17 @@ const App: React.FC = () => {
                 if (!tab.channelPaused) setRefreshTabContent(Math.random())
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let icm = JSON.parse(wsEvent.data) as InstanceMessage
-                if (icm.flow === InstanceMessageFlowEnum.RESPONSE && icm.action === InstanceMessageActionEnum.START) {
-                    tab.channelObject.instance = icm.instance
+                let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
+                if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
+                    tab.channelObject.instance = instanceMessage.instance
+                }
+                else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
+                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                    alertObject.firedAlerts.push({
+                        timestamp: signalMessage.timestamp?.getTime() || 0,
+                        severity: AlertSeverityEnum.INFO,
+                        text: signalMessage.text
+                    })
                 }
                 break
             default:
@@ -498,14 +522,18 @@ const App: React.FC = () => {
                 if (!tab.channelPaused) setRefreshTabContent(Math.random())
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let icm = JSON.parse(wsEvent.data) as InstanceMessage
-                if (icm.flow === InstanceMessageFlowEnum.RESPONSE && icm.action === InstanceMessageActionEnum.START) {
-                    tab.channelObject.instance = icm.instance
+                let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
+                if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
+                    tab.channelObject.instance = instanceMessage.instance
+                }
+                else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
+                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                    metricsObject.errors.push( { severity: AlertSeverityEnum.INFO, text: signalMessage.text })
                 }
                 else {
                     let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
                     if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
-                        metricsObject.errors.push(signalMessage.text)
+                        metricsObject.errors.push( { severity: AlertSeverityEnum.ERROR, text: signalMessage.text })
                         setRefreshTabContent(Math.random())
                     }
                 }
@@ -592,7 +620,7 @@ const App: React.FC = () => {
                     setRefreshTabContent(Math.random())
                 }
                 else {
-                    console.log('wsEvent.data')
+                    console.log('wsEvent.data on ops')
                     console.log(wsEvent.data)                    
                 }
                 break
@@ -626,7 +654,7 @@ const App: React.FC = () => {
         console.log('Reconnected, will reconfigure socket')
         let tab = tabs.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
-        console.log(tab)
+
         let instanceConfig:InstanceConfig = {
             channel: tab.channelId,
             objects: InstanceConfigObjectEnum.PODS,
@@ -650,7 +678,7 @@ const App: React.FC = () => {
             tab.ws!.send(JSON.stringify(instanceConfig))
         }
         else {
-            console.log('Target not set')
+            console.log('Target not set on recoonnect')
         }
     }
 
@@ -695,9 +723,9 @@ const App: React.FC = () => {
                 break
             case InstanceMessageChannelEnum.METRICS:
                 let metricsObject = tab.channelObject.data as MetricsObject
-                metricsObject.errors.push('*** Lost connection ***')
+                metricsObject.errors.push( { severity: AlertSeverityEnum.INFO, text: '*** Lost connection ***' })
                 break
-            case InstanceMessageChannelEnum.METRICS:
+            case InstanceMessageChannelEnum.OPS:
                 console.log('reconnect not implemented')
                 break
         }
@@ -1379,10 +1407,10 @@ const App: React.FC = () => {
 
     return (<>
         <SessionContext.Provider value={{ user, accessKey: accessString, logged, backendUrl }}>
-            <AppBar position="sticky" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
+            <AppBar position="static" elevation={0} sx={{ zIndex: 99, height:'64px' }}>
                 <Toolbar>
                     <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
-                    <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth</Typography>
+                    <Typography sx={{ ml:1, flexGrow: 1 }}>KWirth</Typography>
                     <Tooltip title={<div style={{textAlign:'center'}}>{currentBoardName}<br/><br/>{currentBoardDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
                         <Typography variant="h6" component="div" sx={{mr:2, cursor:'default'}}>{currentBoardName}</Typography>
                     </Tooltip>

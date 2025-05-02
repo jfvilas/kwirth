@@ -18,6 +18,7 @@ var InstanceMessageTypeEnum;
 var InstanceMessageActionEnum;
 (function (InstanceMessageActionEnum) {
     InstanceMessageActionEnum["NONE"] = "none";
+    InstanceMessageActionEnum["ROUTE"] = "route";
     InstanceMessageActionEnum["START"] = "start";
     InstanceMessageActionEnum["STOP"] = "stop";
     InstanceMessageActionEnum["PAUSE"] = "pause";
@@ -29,6 +30,7 @@ var InstanceMessageActionEnum;
 })(InstanceMessageActionEnum || (exports.InstanceMessageActionEnum = InstanceMessageActionEnum = {}));
 var InstanceMessageFlowEnum;
 (function (InstanceMessageFlowEnum) {
+    InstanceMessageFlowEnum["IMMEDIATE"] = "immediate";
     InstanceMessageFlowEnum["REQUEST"] = "request";
     InstanceMessageFlowEnum["RESPONSE"] = "response";
     InstanceMessageFlowEnum["UNSOLICITED"] = "unsolicited";
