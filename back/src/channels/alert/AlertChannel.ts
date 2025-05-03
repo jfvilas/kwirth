@@ -40,7 +40,7 @@ class AlertChannel implements IChannel {
         return false
     }
 
-    async processRoute (instanceMessage:InstanceMessage) : Promise<RouteMessageResponse|undefined> {
+    async processImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
         return undefined
     }
 

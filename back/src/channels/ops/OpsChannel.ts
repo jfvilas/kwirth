@@ -384,10 +384,9 @@ class OpsChannel implements IChannel {
         })
     }
 
-    async processRoute (instanceMessage:InstanceMessage) : Promise<RouteMessageResponse> {
+    async processImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
         console.log('Route request received')
-        let srcMessage = instanceMessage as RouteMessage
-        let opsMessage = srcMessage.data as OpsMessage
+        let opsMessage = instanceMessage as OpsMessage
 
         let instance:IInstance = {
             instanceId: opsMessage.instance,

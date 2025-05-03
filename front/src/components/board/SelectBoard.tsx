@@ -37,7 +37,7 @@ const SelectBoard: React.FC<IProps> = (props:IProps) => {
                 </DialogContentText>
             </DialogContent>
             <DialogActions>
-                <Button onClick={() => props.onSelect(props.action)}>CANCEL</Button>
+                <Button onClick={() => props.onSelect(props.action)}>{props.action === 'load'? 'CANCEL':'CLOSE'}</Button>
             </DialogActions>
         </Dialog>
     )

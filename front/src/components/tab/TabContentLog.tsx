@@ -1,6 +1,8 @@
-import { InstanceConfigViewEnum, InstanceMessage, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { InstanceConfigViewEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, LogMessage, OpsCommandEnum, OpsMessage, RouteMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { IChannelObject } from '../../model/ITabObject'
 import { LogObject } from '../../model/LogObject'
+import { Button, TextField } from '@mui/material'
+import { useState } from 'react'
 
 interface IProps {
     webSocket?: WebSocket
@@ -9,6 +11,7 @@ interface IProps {
 }
 
 const TabContentLog: React.FC<IProps> = (props:IProps) => {
+    const [input, setInput] = useState('')
     let logObject = props.channelObject.data as LogObject
 
     if (!props.channelObject.data || !props.channelObject.data) return <pre></pre>
@@ -55,46 +58,45 @@ const TabContentLog: React.FC<IProps> = (props:IProps) => {
         (props.lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
     }
 
-    //
-    // sample to route command to another channel using open websocket
-    //
-    // const send = () => {
-    //     // route commnad
-    //     let om:OpsMessage = {
-    //         msgtype: 'opsmessage',
-    //         action: InstanceMessageActionEnum.COMMAND,
-    //         flow: InstanceMessageFlowEnum.IMMEDIATE,
-    //         type: InstanceMessageTypeEnum.DATA,
-    //         channel: InstanceMessageChannelEnum.OPS,
-    //         instance: '',
-    //         id: '1',
-    //         accessKey: logObject.accessKey,
-    //         command: OpsCommandEnum.RESTARTPOD,
-    //         namespace: props.channelObject.namespace,
-    //         group: props.channelObject.group,
-    //         pod: props.channelObject.pod,
-    //         container: props.channelObject.container
-    //     }
-    //     let rm: RouteMessage = {
-    //         msgtype: 'routemessage',
-    //         accessKey: logObject.accessKey,
-    //         destChannel: InstanceMessageChannelEnum.OPS,
-    //         action: InstanceMessageActionEnum.ROUTE,
-    //         flow: InstanceMessageFlowEnum.IMMEDIATE,
-    //         type: InstanceMessageTypeEnum.SIGNAL,
-    //         channel: InstanceMessageChannelEnum.LOG,
-    //         instance: props.channelObject.instance,
-    //         data: om
-    //     }
-    //     console.log(rm)
-    //     props.webSocket?.send(JSON.stringify(rm))
-    // }
+    const send = () => {
+        // route commnad
+        let om:OpsMessage = {
+            msgtype: 'opsmessage',
+            action: InstanceMessageActionEnum.COMMAND,
+            flow: InstanceMessageFlowEnum.IMMEDIATE,
+            type: InstanceMessageTypeEnum.DATA,
+            channel: InstanceMessageChannelEnum.OPS,
+            instance: '',
+            id: '1',
+            accessKey: logObject.accessKey,
+            command: OpsCommandEnum.RESTARTPOD,
+            namespace: props.channelObject.namespace,
+            group: props.channelObject.group,
+            pod: props.channelObject.pod,
+            container: props.channelObject.container
+        }
+        let rm: RouteMessage = {
+            msgtype: 'routemessage',
+            accessKey: logObject.accessKey,
+            destChannel: InstanceMessageChannelEnum.OPS,
+            action: InstanceMessageActionEnum.ROUTE,
+            flow: InstanceMessageFlowEnum.IMMEDIATE,
+            type: InstanceMessageTypeEnum.SIGNAL,
+            channel: InstanceMessageChannelEnum.LOG,
+            instance: props.channelObject.instance,
+            data: om
+        }
+        console.log(rm)
+        props.webSocket?.send(JSON.stringify(rm))
+    }
 
     return <>
         <pre> {
             logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })
         }
         </pre>
+        <TextField value={input} onChange={(e) => setInput(e.target.value)}></TextField>
+        <Button onClick={send}>SEND</Button>
         <br/>
         <span ref={props.lastLineRef}></span>
     </>

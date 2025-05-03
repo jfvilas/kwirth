@@ -29,7 +29,7 @@ interface IChannel {
     removeInstance (webSocket:WebSocket, instanceId:string) : void
 
     processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage, podNamespace?:string, podName?:string, containerName?:string) : Promise<boolean>
-    processRoute (instanceMessage:InstanceMessage) : Promise<RouteMessageResponse|undefined>
+    processImmediateCommand (instanceMessage:InstanceMessage) : Promise<any>
 
     containsConnection (webSocket:WebSocket) : boolean
     removeConnection (webSocket:WebSocket) : void
