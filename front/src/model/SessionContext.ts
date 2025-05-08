@@ -4,7 +4,7 @@ import { User } from "./User";
 export type SessionContextType = {
     user: User|undefined;
     logged: boolean;
-    accessKey: string;
+    accessString: string;
     backendUrl: string;
 };
 

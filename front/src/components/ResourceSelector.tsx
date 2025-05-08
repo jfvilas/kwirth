@@ -1,13 +1,13 @@
-import React, { useContext, useState } from 'react'
+import React, { useState } from 'react'
 import { Button, Checkbox, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack, SxProps, Typography } from '@mui/material'
 import { Cluster } from '../model/Cluster'
-import { SessionContext, SessionContextType } from '../model/SessionContext'
 import { MsgBoxOkError } from '../tools/MsgBox'
 
 // app icons 
 import IconDaemonSet from'../icons/svg/ds.svg'
 import IconReplicaSet from'../icons/svg/rs.svg'
 import IconStatefulSet from'../icons/svg/ss.svg'
+import IconDeployment from'../icons/svg/dp.svg'
 
 import IconKubernetesUnknown from'../icons/svg/k8s-unknown.svg'
 import IconKubernetesBlank from'../icons/svg/k8s-blank.svg'
@@ -19,6 +19,7 @@ import { ClusterTypeEnum, InstanceMessageChannelEnum } from '@jfvilas/kwirth-com
 const KIconDaemonSet = () => <img src={IconDaemonSet} alt='ds' height={'16px'}/>
 const KIconReplicaSet = () => <img src={IconReplicaSet} alt='rs' height={'16px'}/>
 const KIconStatefulSet = () => <img src={IconStatefulSet} alt='ss' height={'16px'}/>
+const KIconDeployment = () => <img src={IconDeployment} alt='ss' height={'16px'}/>
 
 const KIconKubernetesUnknown = () => <img src={IconKubernetesUnknown} alt='kubernetes' height={'16px'}/>
 const KIconKubernetesBlank = () => <img src={IconKubernetesBlank} alt='kubernetes' height={'16px'}/>
@@ -51,7 +52,6 @@ interface IGroup {
 }
 
 const ResourceSelector: React.FC<IProps> = (props:IProps) => {
-    const {user} = useContext(SessionContext) as SessionContextType
     const [cluster, setCluster] = useState<Cluster>(props.clusters.find(c => c.source) || new Cluster())
     const [view, setView] = useState('')
     const [allNamespaces, setAllNamespaces] = useState<string[]>([])
@@ -69,49 +69,68 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
 
     const getNamespaces = async (cluster:Cluster) => {
         if (cluster) {
-            //var response = await fetch(`${cluster.url}/config/namespace?cluster=${cluster.name}`, addGetAuthorization(cluster!.accessString))
-            var response = await fetch(`${cluster.url}/config/namespace`, addGetAuthorization(cluster.accessString))
+            let response = await fetch(`${cluster.url}/config/namespace`, addGetAuthorization(cluster.accessString))
             if (response.status!==200) {
                 setMsgBox(MsgBoxOkError('Resource Selector',`Error accessing cluster: ${JSON.stringify(response.status)}`, setMsgBox))
             }
             else {
-                var data = await response.json()
-                if (user?.namespace!=='') data=(data as string[]).filter(ns => user?.namespace.includes(ns))
+                let data = await response.json()
                 setAllNamespaces(data)
             }
         }
     }
 
     const loadAllGroups = async (cluster:Cluster,namespace:string) => {
-        var response = await fetch(`${cluster!.url}/config/${namespace}/groups?cluster=${cluster.name}`, addGetAuthorization(cluster!.accessString))
-        var data = await response.json() as IGroup[]
+        let response = await fetch(`${cluster!.url}/config/${namespace}/groups`, addGetAuthorization(cluster!.accessString))
+        let data = await response.json() as IGroup[]
         setAllGroups((prev) => [...prev, ...data.map(d => d.type+'+'+d.name)])
         setGroups([])
     }
 
-    const loadAllPods = async (namespace:string, group:string) => {
+    // const loadAllPodsOld = async (namespace:string, group:string) => {
+    //     if (isDocker) {
+    //         let [gtype,gname] = group.split('+')
+    //         let response = await fetch(`${cluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(cluster!.accessString))
+    //         let data = await response.json()
+    //         setAllPods((prev) => [...prev, ...data])
+    //     }
+    //     else {
+    //         let [gtype,gname] = group.split('+')
+    //         let response = await fetch(`${cluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(cluster!.accessString))
+    //         let data = await response.json()
+    //         setAllPods((prev) => [...prev, ...data])
+    //     }
+    // }
+
+    const loadAllPods = async (namespaces:string[], groups:string[]) => {
         if (isDocker) {
-            let [gtype,gname] = group.split('+')
-            let response = await fetch(`${cluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}&cluster=${cluster?.name}`, addGetAuthorization(cluster!.accessString))
+            let [gtype,gname] = groups[0].split('+')
+            let response = await fetch(`${cluster!.url}/config/${namespaces[0]}/${gname}/pods?type=${gtype}`, addGetAuthorization(cluster!.accessString))
             let data = await response.json()
             setAllPods((prev) => [...prev, ...data])
         }
         else {
-            let [gtype,gname] = group.split('+')
-            let response = await fetch(`${cluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}&cluster=${cluster?.name}`, addGetAuthorization(cluster!.accessString))
-            let data = await response.json()
-            setAllPods((prev) => [...prev, ...data])
+            let list:string[] = []
+            for (let namespace of namespaces) {
+                for (let group of groups) {
+                    let [gtype,gname] = group.split('+')
+                    let response = await fetch(`${cluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(cluster!.accessString))
+                    let data = await response.json()
+                    list.push (...(data as string[]))
+                }
+            }
+            setAllPods((prev) => [...prev, ...new Set(list)])
         }
     }
 
     const loadAllContainers = async (cluster: Cluster, namespace:string, pod:string) => {
-        var response = await fetch(`${cluster.url}/config/${namespace}/${pod}/containers`, addGetAuthorization(cluster.accessString))
-        var data = await response.json()
+        let response = await fetch(`${cluster.url}/config/${namespace}/${pod}/containers`, addGetAuthorization(cluster.accessString))
+        let data = await response.json()
         setAllContainers((prev) => [...prev, ...(data as string[]).map(c => pod+'+'+c)])
     }
 
     const onChangeCluster = (event: SelectChangeEvent) => {
-        var value=event.target.value
+        let value=event.target.value
         let cluster = props.clusters?.find(c => c.name===value)!
         if (cluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER) {
             setCluster(cluster)
@@ -148,7 +167,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             setAllPods([])
             setPods([])
             setContainers([])
-            loadAllPods('$docker', '$docker')
+            loadAllPods(['$docker'], ['$docker'])
         }
         else {
             setNamespaces([])
@@ -162,12 +181,12 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     }
 
     const onChangeNamespaces = (event: SelectChangeEvent<typeof namespaces>) => {
-        var nss  = event.target.value as string[]
+        let nss  = event.target.value as string[]
         if (isDocker){
             setNamespaces(['$docker'])
             setAllPods([])
             setPods([])
-            if (view!=='namespace') nss.map (ns => loadAllPods('$docker','$docker'))
+            if (view!=='namespace') loadAllPods(['$docker'], ['$docker'])
         }
         else {
             setNamespaces(nss)
@@ -181,17 +200,17 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     }
 
     const onChangeGroup = (event: SelectChangeEvent<typeof groups>) => {
-        var groups  = event.target.value as string[]
+        let groups  = event.target.value as string[]
         setGroups(groups)
         setAllPods([])
         setPods([])
         setAllContainers([])
         setContainers([])
-        if (view!=='group') namespaces.map(namespace => groups.map(group => loadAllPods(namespace,group)))
+        if (view!=='group') loadAllPods(namespaces,groups)
     }
 
     const onChangePod= (event: SelectChangeEvent<typeof pods>) => {
-        var pods  = event.target.value as string[]
+        let pods  = event.target.value as string[]
         setPods(pods)
         setAllContainers([])
         setContainers([])
@@ -199,7 +218,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     }
 
     const onChangeContainer = (event: SelectChangeEvent<typeof containers>) => {
-        var cs  = event.target.value as string[]
+        let cs  = event.target.value as string[]
         setContainers(cs)
     }
 
@@ -208,7 +227,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     }
 
     const onAdd = () => {
-        var selection:IResourceSelected = {
+        let selection:IResourceSelected = {
             channel: channel,
             clusterName: cluster?.name,
             view,
@@ -272,9 +291,6 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={cluster.name===''}>
                 <InputLabel>View</InputLabel>
                 <Select value={view} onChange={onChangeView} >
-                {/* { ['namespace','group','pod','container'].map( (value:string) => {
-                    return <MenuItem key={value} value={value}>{value}</MenuItem>
-                })} */}
                     <MenuItem key={'namespace'} value={'namespace'} disabled={isDocker}>namespace</MenuItem>
                     <MenuItem key={'group'} value={'group'} disabled={isDocker}>group</MenuItem>
                     <MenuItem key={'pod'} value={'pod'}>pod</MenuItem>
@@ -302,7 +318,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 { allGroups && allGroups.map( (value) => 
                     <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
                         <Checkbox checked={groups.includes (value)} />
-                        {value.startsWith('replica')? <KIconReplicaSet/>:value.startsWith('daemon')?<KIconDaemonSet/>:<KIconStatefulSet/>}&nbsp;{value.split('+')[1]}
+                        {value.startsWith('replica')? <KIconReplicaSet/>: value.startsWith('daemon')?<KIconDaemonSet/>: value.startsWith('deployment')?<KIconDeployment/>:<KIconStatefulSet/>}&nbsp;{value.split('+')[1]}
                     </MenuItem>
                 )}
                 </Select>

@@ -9,7 +9,7 @@ metadata:
   name: kwirth.users
   namespace: mykwirth
 data:
-  admin: 'eyJpZCI6ImFkbWluIiwicGFzc3dvcmQiOiJwYXNzd29yZCIsIm5hbWUiOiJOaWNrbGF1cyBXaXJ0aCIsInJvbGVzIjpbImFkbWluIl0sInNjb3BlIjoiY2x1c3RlciIsIm5hbWVzcGFjZSI6IiIsImdyb3VwIjoiIiwicG9kIjoiIiwiY29udGFpbmVyIjoiIn0='
+  admin: 'eyJpZCI6ImFkbWluIiwibmFtZSI6Ik5pY2tsYXVzIFdpcnRoIiwicGFzc3dvcmQiOiJwYXNzd29yZCIsInJlc291cmNlcyI6ImNsdXN0ZXI6Ojo6In0='
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -66,6 +66,8 @@ spec:
           env:
             - name: KWIRTH_ROOTPATH
               value: '/kwirth'
+            - name: KWIRTH_MASTERKEY
+              value: 'Kwirth4Ever'
           ports:
             - name: kwirth
               containerPort: 3883
@@ -75,5 +77,5 @@ spec:
               cpu: '1'
               memory: 2Gi
             requests:
-              cpu: 500m
-              memory: 1Gi
+              cpu: 0m
+              memory: 256Mi

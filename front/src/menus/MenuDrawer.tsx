@@ -2,6 +2,7 @@ import React from 'react';
 import { Divider, MenuItem, MenuList } from "@mui/material"
 import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, Settings } from '@mui/icons-material';
 import { User } from '../model/User';
+import { parseResources } from '@jfvilas/kwirth-common';
 
 enum MenuDrawerOption {
     NewBoard,
@@ -24,13 +25,18 @@ interface IProps {
     optionSelected: (opt:MenuDrawerOption) => void
     uploadSelected: (a:React.ChangeEvent<HTMLInputElement>) => void
     selectedClusterName?: string
-    user?: User
+    user: User
   }
   
 const MenuDrawer: React.FC<IProps> = (props:IProps) => {
 
     const optionSelected = (opt:MenuDrawerOption) => {
         props.optionSelected(opt);
+    }
+
+    const hasClusterScope = () => {
+        let resources = parseResources(props.user.accessKey.resources)
+        return resources.some(r => r.scopes.split(',').includes('cluster'))
     }
 
     const menu=(
@@ -46,7 +52,7 @@ const MenuDrawer: React.FC<IProps> = (props:IProps) => {
             <MenuItem key='settingsu' onClick={() => optionSelected(MenuDrawerOption.SettingsUser)}><Settings/>&nbsp;User settings</MenuItem>
             <MenuItem key='settingsc' onClick={() => optionSelected(MenuDrawerOption.SettingsCluster)} disabled={props.selectedClusterName===undefined}><Settings/>&nbsp;Cluster Settings</MenuItem>
             <Divider/>
-            { props.user?.scope==='cluster' && 
+            { hasClusterScope() && 
                 <div>
                     <MenuItem key='mc' onClick={() => optionSelected(MenuDrawerOption.ManageCluster)}><Edit/>&nbsp;Manage cluster list</MenuItem>
                     <MenuItem key='asec' onClick={() => optionSelected(MenuDrawerOption.ApiSecurity)}><Key/>&nbsp;API Security</MenuItem>

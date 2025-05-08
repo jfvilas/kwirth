@@ -1,4 +1,4 @@
-import Guid from 'guid';
+import { v4 as uuid } from 'uuid'
 import { MetricDescription } from './MetricDescription';
 import { KwirthData } from '@jfvilas/kwirth-common';
 
@@ -16,6 +16,6 @@ export class Cluster {
     public channels: string[] = []
     
     constructor () {
-        this.id=Guid.create().toString()
+        this.id = uuid()
     }
 }

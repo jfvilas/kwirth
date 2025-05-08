@@ -17,15 +17,18 @@ export declare enum InstanceConfigViewEnum {
 }
 export declare enum InstanceConfigScopeEnum {
     NONE = "none",
-    FILTER = "filter",
-    VIEW = "view",
-    RESTART = "restart",
     API = "api",
     CLUSTER = "cluster",
+    FILTER = "filter",
+    VIEW = "view",
     SNAPSHOT = "snapshot",
     STREAM = "stream",
     CREATE = "create",
-    SUBSCRIBE = "subscribe"
+    SUBSCRIBE = "subscribe",
+    GET = "get",
+    EXECUTE = "execute",
+    SHELL = "shell",
+    RESTART = "restart"
 }
 export interface InstanceConfig extends InstanceMessage {
     objects: InstanceConfigObjectEnum;

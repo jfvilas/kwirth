@@ -1,6 +1,6 @@
 import express, { Request, Response} from 'express'
 import Semaphore from 'ts-semaphore'
-import { validKey } from '../tools/AuthorizationManagement'
+import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
 import { IConfigMaps } from '../tools/IConfigMap'
 
@@ -18,7 +18,7 @@ export class StoreApi {
         // get groups
         this.route.route('/:user')
             .all( async (req:Request,res:Response, next) => {
-                if (! (await validKey(req,res, apiKeyApi))) return
+                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
                 next()
             })
             .get(async (req:Request, res:Response) => {
@@ -44,7 +44,7 @@ export class StoreApi {
         // if parameter full is present we return an array containing all the objects
         this.route.route('/:user/:group')
             .all( async (req:Request,res:Response, next) => {
-                if (! (await validKey(req,res,apiKeyApi))) return
+                if (! (await AuthorizationManagement.validKey(req,res,apiKeyApi))) return
                 next()
             })
             .get(async (req:Request, res:Response) => {
@@ -76,7 +76,7 @@ export class StoreApi {
         // get an object
         this.route.route('/:user/:group/:key')
             .all( async (req:Request,res:Response, next) => {
-                if (! (await validKey(req,res, apiKeyApi))) return
+                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {

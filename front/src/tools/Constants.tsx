@@ -1,4 +1,4 @@
-let OPSWELCOMEMESSAGE:string[] = [
+const OPSWELCOMEMESSAGE:string[] = [
     'Welcome to OpsChannel frontend interface. This is a command-like interface where you can launch several commands:',
     ' ',
     'HELP       to get help on commands',

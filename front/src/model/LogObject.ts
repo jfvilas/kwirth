@@ -19,5 +19,6 @@ export class LogObject {
     public timestamp: boolean = false
     public follow: boolean = true
     public fromStart: boolean = false
+    public startDiagnostics: boolean = false
     public backgroundNotification: boolean = true
 }

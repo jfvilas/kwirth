@@ -3,4 +3,5 @@ export interface ApiKey {
     accessKey: AccessKey;
     description: string;
     expire: number;
+    days: number;
 }

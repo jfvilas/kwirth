@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent, ReactElement } from 'react';
-import TerminalOutput from './TerminalOutput';
+//import TerminalOutput from './TerminalOutput';
 import './style.css';
   
 export enum ColorMode {
@@ -24,7 +24,7 @@ const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, 
     const scrollIntoViewRef = useRef<HTMLDivElement>(null)
   
     const updateCurrentLineInput = (event: ChangeEvent<HTMLInputElement>) => {
-      setCurrentLineInput(event.target.value)
+        setCurrentLineInput(event.target.value)
     }
   
     // Calculates the total width in pixels of the characters to the right of the cursor.
@@ -157,4 +157,4 @@ const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, 
     )
 }
   
-export { Terminal, TerminalOutput }
+export { Terminal }

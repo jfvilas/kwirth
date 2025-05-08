@@ -1,12 +1,9 @@
+import { AccessKey } from "@jfvilas/kwirth-common"
+
 class User {
     public id: string=''
     public name: string=''
-    public password: string=''
-    public scope: string=''
-    public namespace: string=''
-    public group: string=''
-    public pod: string=''
-    public container: string=''
+    public accessKey: AccessKey = new AccessKey()
 }
 
 export { User }

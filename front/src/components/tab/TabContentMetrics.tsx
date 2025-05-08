@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ReactJSXElement } from '@emotion/react/types/jsx-namespace'
+//import { ReactJSXElement } from '@emotion/react/types/jsx-namespace'
 import { MetricsObject } from "../../model/MetricsObject"
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { Alert, Button, Stack, Typography } from "@mui/material"
@@ -77,8 +77,8 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
     }
 
     const addChart = (dataMetrics: MetricsObject, metric:string, names:string[], series:ISample[][], colour:string) => {
-        var result: ReactJSXElement
-        var mergedSeries = mergeSeries(names, series)
+        let result
+        let mergedSeries = mergeSeries(names, series)
 
         const renderLabel = (data:any) => {
             var values:any[] = series.map (s => s[data.index])
@@ -224,7 +224,7 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
             }   
         }
 
-        let allCharts:ReactJSXElement[] = []
+        let allCharts = []
         if (dataMetrics.merge) {
             var assetNames=Array.from(data.keys())
             var firstAsset=assetNames[0]

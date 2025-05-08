@@ -7,7 +7,7 @@ import { User } from '../model/User'
 import { addPostAuthorization } from '../tools/AuthorizationManagement'
 
 interface IProps {
-      onClose:(user:User|undefined, accessKey:string) => void
+      onClose:(user:User|undefined, accessKeyStr:string) => void
 }
 
 const Login: React.FC<IProps> = (props:IProps) => {
@@ -81,6 +81,12 @@ const Login: React.FC<IProps> = (props:IProps) => {
                         break
                     case 401:
                         setMsgBox(MsgBoxOkError('Login',`You have entered invalid credentials.`, setMsgBox))
+                        break
+                    case 403:
+                        setMsgBox(MsgBoxOkError('Login',`Acces has been denied.`, setMsgBox))
+                        break
+                    default:
+                        setMsgBox(MsgBoxOkError('Login',`Unknown error.`, setMsgBox))
                         break
                 }
             }

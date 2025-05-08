@@ -12,10 +12,10 @@ import { Cluster } from './model/Cluster'
 import RenameTab from './components/RenameTab'
 import { SaveBoard } from './components/board/SaveBoard'
 import { SelectBoard }  from './components/board/SelectBoard'
-import { ManageApiSecurity } from './components/ManageApiSecurity'
+import { ManageApiSecurity } from './components/security/ManageApiSecurity'
 import { Login } from './components/Login'
 import { ManageClusters } from './components/ManageClusters'
-import { ManageUserSecurity } from './components/ManageUserSecurity'
+import { ManageUserSecurity } from './components/security/ManageUserSecurity'
 import { ResourceSelector, IResourceSelected } from './components/ResourceSelector'
 import { TabContent } from './components/tab/TabContent'
 import { SettingsUser } from './components/settings/SettingsUser'
@@ -27,7 +27,7 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, MetricsConfigModeEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, LogConfig, AlertConfig, MetricsConfig, OpsConfig, OpsCommandEnum, OpsMessageResponse } from '@jfvilas/kwirth-common'
+import { KwirthData, MetricsConfigModeEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, LogConfig, AlertConfig, MetricsConfig, OpsConfig, OpsCommandEnum, OpsMessageResponse, parseResources } from '@jfvilas/kwirth-common'
 import { ITabObject } from './model/ITabObject'
 import { MetricDescription } from './model/MetricDescription'
 
@@ -66,8 +66,8 @@ const App: React.FC = () => {
     const [selectedTabName, setSelectedTabName] = useState<string>()
     const selectedTabRef = useRef(selectedTabName)
     selectedTabRef.current=selectedTabName
-    var selectedTab = tabs.find(t => t.name===selectedTabName)
-    var selectedTabIndex = tabs.findIndex(t => t.name===selectedTabName)
+    let selectedTab = tabs.find(t => t.name===selectedTabName)
+    let selectedTabIndex = tabs.findIndex(t => t.name===selectedTabName)
 
     const [refreshTabContent, setRefreshTabContent] = useState(0)
 
@@ -309,6 +309,9 @@ const App: React.FC = () => {
             case InstanceMessageChannelEnum.OPS:
                 let opsObject = new OpsObject()
                 newTab.channelObject.data = opsObject
+                opsObject.messages= []
+                opsObject.shell = undefined
+                opsObject.shells = []
                 break
             default:
                 console.log(`Error, invalid channel: `, selection.channel)
@@ -416,8 +419,18 @@ const App: React.FC = () => {
 
         switch (logMessage.type) {
             case InstanceMessageTypeEnum.DATA:
-                logObject.messages.push(logMessage)
-                if (logObject.messages.length > logObject.maxMessages) logObject.messages.splice(0, logObject.messages.length - logObject.maxMessages)
+                if (logObject.startDiagnostics) {
+                    if (logObject.messages.length < logObject.maxMessages) {
+                        logObject.messages.push(logMessage)
+                    }
+                    else {
+                        stopChannel(tab)
+                    }
+                }
+                else {
+                    logObject.messages.push(logMessage)
+                    if (logObject.messages.length > logObject.maxMessages) logObject.messages.splice(0, logObject.messages.length - logObject.maxMessages)
+                }
 
                 // if current log is displayed (focused), add message to the screen
                 if (selectedTabRef.current === tab.name) {
@@ -524,7 +537,14 @@ const App: React.FC = () => {
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
-                    tab.channelObject.instance = instanceMessage.instance
+                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                    if (signalMessage.level === SignalMessageLevelEnum.INFO) {
+                        tab.channelObject.instance = instanceMessage.instance
+                    }
+                    else {
+                        metricsObject.errors.push( { severity: (signalMessage.level as string) as AlertSeverityEnum, text: signalMessage.text })
+                        setRefreshTabContent(Math.random())
+                    }
                 }
                 else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
                     let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
@@ -546,12 +566,12 @@ const App: React.FC = () => {
 
     function cleanANSI(text: string): string {
         const regexAnsi = /\x1b\[[0-9;]*[mKHVfJrcegH]|\x1b\[\d*n/g;
-        return text.replace(regexAnsi, '') // replace all empty string matches
+        return text.replace(regexAnsi, '') // replace all matches with empty strings
     }
 
     const processOpsMessage = (wsEvent:any) => {
-        var opsMessage = JSON.parse(wsEvent.data) as OpsMessageResponse
-        var tab = tabs.find(tab => tab.ws !== null && tab.ws===wsEvent.target)
+        let opsMessage = JSON.parse(wsEvent.data) as OpsMessageResponse
+        let tab = tabs.find(tab => tab.ws !== null && tab.ws===wsEvent.target)
         if (!tab || !tab.channelObject) return
 
         let opsObject = tab.channelObject.data as OpsObject
@@ -587,7 +607,7 @@ const App: React.FC = () => {
                         }
                 }
                 else {
-                    let shell = opsObject.shells.find (s => s.id===opsMessage.id)
+                    let shell = opsObject.shells.find (s => s.id === opsMessage.id)
                     if (shell) {
                         shell.lines.push(cleanANSI(opsMessage.data))
                         if (opsObject.shell) setRefreshTabContent(Math.random())  //+++ and visible shell is destinatiopn shell
@@ -740,7 +760,7 @@ const App: React.FC = () => {
                 ws.onopen = (event) => reconnectedSocket(event, selfId)
             }
             catch  {}
-        }, 10000, cluster!.url, tab)
+        }, 10000, cluster.url, tab)
     }
     
     const startChannel = (tab:ITabObject) => {
@@ -782,12 +802,24 @@ const App: React.FC = () => {
                         setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at log configuration ${tab.channelObject.clusterName} does not exist.`, setMsgBox))
                         return
                     }
-                    let logConfig:LogConfig = {
-                        timestamp: logObject.timestamp,
-                        previous: logObject.previous,
-                        maxMessages: logObject.maxMessages,
-                        fromStart: logObject.fromStart
+                    let logConfig:LogConfig
+                    if (logObject.startDiagnostics) {
+                        logConfig = {
+                            timestamp: true,
+                            previous: false,
+                            maxMessages: 5000,
+                            fromStart: true
+                        }
                     }
+                    else {
+                        logConfig = {
+                            timestamp: logObject.timestamp,
+                            previous: logObject.previous,
+                            maxMessages: logObject.maxMessages,
+                            fromStart: logObject.fromStart
+                        }
+                    }
+                    instanceConfig.scope = InstanceConfigScopeEnum.VIEW
                     instanceConfig.data = logConfig
                     break
                 case InstanceMessageChannelEnum.ALERT:
@@ -798,6 +830,7 @@ const App: React.FC = () => {
                         regexWarning: alertObject.regexWarning,
                         regexError: alertObject.regexError
                     }
+                    instanceConfig.scope = InstanceConfigScopeEnum.VIEW
                     instanceConfig.data = alertConfig
                     break
                 case InstanceMessageChannelEnum.METRICS:
@@ -810,15 +843,21 @@ const App: React.FC = () => {
                         interval: metricsObject.interval,
                         metrics: metricsObject.metrics,
                     }
+                    instanceConfig.scope = InstanceConfigScopeEnum.STREAM
                     instanceConfig.data = metricsConfig
                     break
                 case InstanceMessageChannelEnum.OPS:
-                    let dataOps = tab.channelObject.data as OpsObject
-                    dataOps.accessKey = cluster.accessString
-                    dataOps.messages = OPSWELCOMEMESSAGE
-                    dataOps.shell = undefined
-                    dataOps.shells = []
-                    let opsConfig:OpsConfig = {}
+                    console.log('tab.name', tab.name)
+                    tab.channelObject.data = new OpsObject()
+                    let opsObject = tab.channelObject.data as OpsObject
+                    opsObject.tempinstance = Math.random().toString()
+                    opsObject.accessKeyString = cluster.accessString
+                    opsObject.messages.push(...OPSWELCOMEMESSAGE)
+                    opsObject.shell = undefined
+                    opsObject.shells = []
+                    let opsConfig:OpsConfig = {
+                    }
+                    instanceConfig.scope = InstanceConfigScopeEnum.GET // we ask for minimum scope
                     instanceConfig.data = opsConfig
                     break
                 default:
@@ -1303,7 +1342,7 @@ const App: React.FC = () => {
         startChannel(tab)
     }
 
-    const onSetupLogClosed = (maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean) => {
+    const onSetupLogClosed = (maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean, startDiagnostics:boolean) => {
         setShowSetupLog(false)       
         setAnchorMenuTab(null)
         if (maxMessages === 0) return
@@ -1312,6 +1351,7 @@ const App: React.FC = () => {
         if (!tab || !tab.channelObject) return
 
         let logObject = tab.channelObject.data as LogObject
+        logObject.startDiagnostics = startDiagnostics
         logObject.maxMessages = maxMessages
         logObject.fromStart = fromStart
         logObject.previous = previous
@@ -1374,11 +1414,11 @@ const App: React.FC = () => {
         setClusters(cc)
     }
 
-    const onLoginClosed = (user:User|undefined, accessKey:string) => {
+    const onLoginClosed = (user:User|undefined) => {
         if (user) {
             setLogged(true)
             setUser(user)
-            setAccessString(accessKey)
+            setAccessString(user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources)
             setCurrentBoardName('untitled')
             setCurrentBoardDescription('No description yet')
             clearTabs()
@@ -1387,7 +1427,7 @@ const App: React.FC = () => {
 
     if (!logged) return (<>
         <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
-            <SessionContext.Provider value={{ user, accessKey: accessString, logged, backendUrl }}>
+            <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
                 <Login onClose={onLoginClosed}></Login>
             </SessionContext.Provider>
         </div>
@@ -1407,7 +1447,7 @@ const App: React.FC = () => {
     }
 
     return (<>
-        <SessionContext.Provider value={{ user, accessKey: accessString, logged, backendUrl }}>
+        <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
             <AppBar position='sticky' elevation={0} sx={{ zIndex: 99, height:'64px' }}>
                 <Toolbar>
                     <IconButton size='large' edge='start' color='inherit' sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
@@ -1415,7 +1455,7 @@ const App: React.FC = () => {
                     <Tooltip title={<div style={{textAlign:'center'}}>{currentBoardName}<br/><br/>{currentBoardDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
                         <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentBoardName}</Typography>
                     </Tooltip>
-                    <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user?.scope}]</div>} sx={{ mr:2 }} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -6]}}]}}}>
+                    <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{parseResources(user!.accessKey.resources).map(r=>r.scopes).join(',')}]</div>} sx={{ mr:2 }} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -6]}}]}}}>
                         <Person/>
                     </Tooltip>
                 </Toolbar>
@@ -1423,7 +1463,7 @@ const App: React.FC = () => {
 
             <Drawer sx={{ flexShrink: 0, '& .MuiDrawer-paper': {mt: '64px'} }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
                 <Stack direction={'column'}>
-                    <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} selectedClusterName={selectedClusterName} user={user}/>
+                    <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} selectedClusterName={selectedClusterName} user={user||new User()}/>
                     <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>
                 </Stack>
             </Drawer>
@@ -1433,7 +1473,7 @@ const App: React.FC = () => {
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
                     <Tabs value={selectedTabName} onChange={onChangeTab} variant="scrollable" scrollButtons="auto" sx={{ml:1}}>
                         { tabs.length>0 && tabs.map(tab => {
-                            if (tab===selectedTab) {
+                            if (tab === selectedTab) {
                                 return <Tab key={tab.name} label={formatTabName(tab)} value={tab.name} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1, backgroundColor: (highlightedTabs.includes(tab)?'pink':pausedTabs.includes(tab)?'#cccccc':'')}}/>
                             }
                             else {
@@ -1446,7 +1486,7 @@ const App: React.FC = () => {
                 </Stack>
 
                 { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
-                <TabContent lastLineRef={lastLineRef} channel={selectedTab?.channelId} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent} webSocket={selectedTab?.ws}/>
+                <TabContent lastLineRef={lastLineRef} channel={tabs.find(t => t.name===selectedTabName)?.channelId} channelObject={tabs.find(t => t.name===selectedTabName)?.channelObject} refreshTabContent={refreshTabContent} webSocket={tabs.find(t => t.name===selectedTabName)?.ws}/>
             </Box>
 
             { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }

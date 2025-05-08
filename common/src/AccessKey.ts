@@ -1,4 +1,4 @@
-import Guid from 'guid'
+import { v4 as uuid } from 'uuid'
 
 /*
     Access key format is:
@@ -6,7 +6,7 @@ import Guid from 'guid'
         id|type|resource
     
     where:
-        id: is a GUID
+        id: is a UUID
         type: is 'volatile', 'permanent' (it is persisted when created)  or 'bearer:....'
             in case of a bearer accessKey, the type contains the expire for the key, that is, for example:
                bearer:
@@ -15,27 +15,27 @@ import Guid from 'guid'
 class AccessKey {
     public id:string=''
     public type:string='volatile'
-    public resource:string=''
+    public resources:string=''
 }
 
-function accessKeyCreate(type:string, resource:string) : AccessKey {
-    var accessKey=new AccessKey()
-    accessKey.id=Guid.create().toString()
-    accessKey.type=type
-    accessKey.resource=resource
+function accessKeyCreate(type:string, resources:string) : AccessKey {
+    let accessKey = new AccessKey()
+    accessKey.id = uuid()
+    accessKey.type = type
+    accessKey.resources = resources
     return accessKey
 }
 
-function accessKeyBuild(id:string, type:string, resource:string) : AccessKey {
-    var accessKey=new AccessKey()
-    accessKey.id=id
-    accessKey.type=type
-    accessKey.resource=resource
+function accessKeyBuild(id:string, type:string, resources:string) : AccessKey {
+    let accessKey = new AccessKey()
+    accessKey.id = id
+    accessKey.type = type
+    accessKey.resources = resources
     return accessKey
 }
 
 function accessKeySerialize (accessKey:AccessKey) : string {
-    return `${accessKey.id}|${accessKey.type}|${accessKey.resource}`
+    return `${accessKey.id}|${accessKey.type}|${accessKey.resources}`
 }
 
 function accessKeyDeserialize (key:string) : AccessKey {
@@ -46,16 +46,16 @@ function accessKeyDeserialize (key:string) : AccessKey {
 function parseResource (key:string) : ResourceIdentifier {
     var parts=key.split(':')
     return {
-        scope:parts[0],
-        namespace:parts[1],
-        set:parts[2],
-        pod:parts[3],
-        container:parts[4]
+        scopes:parts[0],
+        namespaces:parts[1],
+        groups:parts[2],
+        pods:parts[3],
+        containers:parts[4]
     }
 }
 
 function parseResources (key:string) : ResourceIdentifier[] {
-    var ress=key.split(',')
+    var ress=key.split(';')
     var result:ResourceIdentifier[]=[]
     for (var res of ress) {
         result.push(parseResource(res))
@@ -63,8 +63,8 @@ function parseResources (key:string) : ResourceIdentifier[] {
     return result
 }
 
-function buildResource (scope:string, namespace:string, groupType:string, groupName:string, pod:string, container:string) : string {
-    return `${scope}:${namespace}:${groupType}+${groupName}:${pod}:${container}`
+function buildResource (scopes:string[], namespaces:string[], groups:string[], pods:string[], containers:string[]) : string {
+    return `${scopes.join(',')}:${namespaces.join(',')}:${groups.join(',')}:${pods.join(',')}:${containers.join(',')}`
 }
 
 /*
@@ -125,11 +125,11 @@ function buildResource (scope:string, namespace:string, groupType:string, groupN
 */
 
 interface ResourceIdentifier {
-    scope:string,
-    namespace:string,
-    set:string,
-    pod:string,
-    container:string
+    scopes:string,
+    namespaces:string,
+    groups:string,
+    pods:string,
+    containers:string
 }
 
 export { accessKeyBuild, accessKeyCreate, accessKeyDeserialize, accessKeySerialize, AccessKey, parseResource, parseResources, ResourceIdentifier, buildResource }

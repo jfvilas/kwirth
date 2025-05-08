@@ -1,9 +1,7 @@
 import express, { Request, Response} from 'express'
 import { AppsV1Api, V1DeploymentList, V1PodList } from '@kubernetes/client-node'
 import { CoreV1Api } from '@kubernetes/client-node'
-import { validAuth, validKey } from '../tools/AuthorizationManagement'
-import { restartPod, restartGroup } from '../tools/KubernetesOperations'
-import { InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
+import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import { IncomingMessage } from 'http'
 import { ApiKeyApi } from './ApiKeyApi'
 import { IChannel } from '../channels/IChannel'
@@ -21,7 +19,7 @@ export class ManageClusterApi {
 
         this.route.route('/find')
             .all( async (req:Request,res:Response, next) => {
-                if (await !validKey(req, res, apiKeyApi)) return
+                if (await !AuthorizationManagement.validKey(req, res, apiKeyApi)) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -99,41 +97,41 @@ export class ManageClusterApi {
                 }
             })
 
-        this.route.route('/restartdeployment/:namespace/:deployment')
-            .all( async (req:Request,res:Response, next) => {
-                if (await !validKey(req, res, apiKeyApi)) return
-                next()
-            })
-            .post( async (req:Request, res:Response) => {
-                // +++ we must segregate restarting channel from logging channel, and use correct channel
-                if (!validAuth(req,res, this.channels, 'restart', InstanceMessageChannelEnum.LOG, req.params.namespace,req.params.deployment,'','')) return
-                try {
-                    restartGroup(this.coreApi, this.appsApi, req.params.namespace, req.params.deployment)
-                    res.status(200).json()
-                }
-                catch (err) {
-                    res.status(200).json([])
-                    console.log(err)
-                }
-            })
+        // this.route.route('/restartdeployment/:namespace/:deployment')
+        //     .all( async (req:Request,res:Response, next) => {
+        //         if (await !validKey(req, res, apiKeyApi)) return
+        //         next()
+        //     })
+        //     .post( async (req:Request, res:Response) => {
+        //         // +++ we must segregate restarting channel from logging channel, and use correct channel
+        //         if (!validAuth(req,res, this.channels, 'restart', InstanceMessageChannelEnum.LOG, req.params.namespace,req.params.deployment,'','')) return
+        //         try {
+        //             restartGroup(this.coreApi, this.appsApi, req.params.namespace, req.params.deployment)
+        //             res.status(200).json()
+        //         }
+        //         catch (err) {
+        //             res.status(200).json([])
+        //             console.log(err)
+        //         }
+        //     })
 
-        this.route.route('/restartpod/:namespace/:podName')
-            .all( async (req:Request,res:Response, next) => {
-                if (await !validKey(req, res, apiKeyApi)) return
-                next()
-            })
-            .post( async (req:Request, res:Response) => {
-                if (!validAuth(req, res, channels, 'restart', InstanceMessageChannelEnum.LOG, req.params.namespace,'',req.params.podName,'')) return
-                try {
-                    console.log(`Restart pod ${req.params.podName}`)
-                    console.log(req.headers)
-                    restartPod(coreApi, req.params.namespace, req.params.podName)
-                    res.status(200).json()
-                }
-                catch (err) {
-                    res.status(200).json([])
-                    console.log(err)
-                }
-            })
+        // this.route.route('/restartpod/:namespace/:podName')
+        //     .all( async (req:Request,res:Response, next) => {
+        //         if (await !validKey(req, res, apiKeyApi)) return
+        //         next()
+        //     })
+        //     .post( async (req:Request, res:Response) => {
+        //         if (!validAuth(req, res, channels, 'restart', InstanceMessageChannelEnum.LOG, req.params.namespace,'',req.params.podName,'')) return
+        //         try {
+        //             console.log(`Restart pod ${req.params.podName}`)
+        //             console.log(req.headers)
+        //             restartPod(coreApi, req.params.namespace, req.params.podName)
+        //             res.status(200).json()
+        //         }
+        //         catch (err) {
+        //             res.status(200).json([])
+        //             console.log(err)
+        //         }
+        //     })
     }
 }

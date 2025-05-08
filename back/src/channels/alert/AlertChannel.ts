@@ -316,7 +316,7 @@ class AlertChannel implements IChannel {
     }
 
     getChannelScopeLevel(scope: string): number {
-        return ['','subcribe','create','cluster'].indexOf(scope)
+        return ['','view','create','cluster'].indexOf(scope)
     }
 
     pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {

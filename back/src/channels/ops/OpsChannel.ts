@@ -1,4 +1,4 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, OpsMessage, OpsMessageResponse, OpsCommandEnum, RouteMessage, RouteMessageResponse } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, OpsMessage, OpsMessageResponse, OpsCommandEnum, RouteMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum } from '@jfvilas/kwirth-common';
 import WebSocket from 'ws'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { ChannelData, IChannel, SourceEnum } from '../IChannel';
@@ -21,6 +21,7 @@ export interface IAsset {
 
 export interface IInstance {
     instanceId: string
+    accessKey: AccessKey
     assets: IAsset[]
 }
 
@@ -151,16 +152,81 @@ class OpsChannel implements IChannel {
         }
     }
 
-    async executeRoutedCommand (instance:IInstance, opsMessage:OpsMessage) : Promise<OpsMessageResponse> {
+    async executeImmediateCommand (instance:IInstance, opsMessage:OpsMessage) : Promise<OpsMessageResponse> {
         switch (opsMessage.command) {
             case OpsCommandEnum.GET:
-            case OpsCommandEnum.DESCRIBE:
-                return await execCommandGetDescribe(this.clusterInfo, instance, opsMessage)
+            case OpsCommandEnum.DESCRIBE: {
+                    let canPerform = this.checkScopes(instance, InstanceConfigScopeEnum.GET)
+                    if (canPerform) {
+                        return await execCommandGetDescribe(this.clusterInfo, instance, opsMessage)
+                    }
+                    else {
+                        let execResponse: OpsMessageResponse = {
+                            action: opsMessage.action,
+                            flow: InstanceMessageFlowEnum.RESPONSE,
+                            type: InstanceMessageTypeEnum.SIGNAL,
+                            channel: opsMessage.channel,
+                            instance: opsMessage.instance,
+                            command: opsMessage.command,
+                            id: opsMessage.id,
+                            namespace: opsMessage.namespace,
+                            group: opsMessage.group,
+                            pod: opsMessage.pod,
+                            container: opsMessage.container,
+                            data: `Innsufficient scope`,
+                            msgtype: 'opsmessageresponse'
+                        }
+                        return execResponse
+                    }
+                }
             case OpsCommandEnum.RESTARTPOD:
             case OpsCommandEnum.RESTARTNS:
-                return await execCommandRestart(this.clusterInfo, instance, opsMessage)
-            case OpsCommandEnum.DELETE:
-                return await execCommandDelete(this.clusterInfo, instance, opsMessage)
+                let canPerform = this.checkScopes(instance, InstanceConfigScopeEnum.RESTART)
+                if (canPerform) {
+                    return await execCommandRestart(this.clusterInfo, instance, opsMessage)
+                }
+                else {
+                    let execResponse: OpsMessageResponse = {
+                        action: opsMessage.action,
+                        flow: InstanceMessageFlowEnum.RESPONSE,
+                        type: InstanceMessageTypeEnum.SIGNAL,
+                        channel: opsMessage.channel,
+                        instance: opsMessage.instance,
+                        command: opsMessage.command,
+                        id: opsMessage.id,
+                        namespace: opsMessage.namespace,
+                        group: opsMessage.group,
+                        pod: opsMessage.pod,
+                        container: opsMessage.container,
+                        data: `Innsufficient scope`,
+                        msgtype: 'opsmessageresponse'
+                    }
+                    return execResponse
+                }
+            case OpsCommandEnum.DELETE: {
+                    let canPerform = this.checkScopes(instance, InstanceConfigScopeEnum.RESTART)
+                    if (canPerform) {
+                        return await execCommandDelete(this.clusterInfo, instance, opsMessage)
+                    }
+                    else {
+                        let execResponse: OpsMessageResponse = {
+                            action: opsMessage.action,
+                            flow: InstanceMessageFlowEnum.RESPONSE,
+                            type: InstanceMessageTypeEnum.SIGNAL,
+                            channel: opsMessage.channel,
+                            instance: opsMessage.instance,
+                            command: opsMessage.command,
+                            id: opsMessage.id,
+                            namespace: opsMessage.namespace,
+                            group: opsMessage.group,
+                            pod: opsMessage.pod,
+                            container: opsMessage.container,
+                            data: `Innsufficient scope`,
+                            msgtype: 'opsmessageresponse'
+                        }
+                        return execResponse    
+                    }
+                }
             default:
                 let execResponse: OpsMessageResponse = {
                     action: opsMessage.action,
@@ -179,6 +245,13 @@ class OpsChannel implements IChannel {
                 }
                 return execResponse
         }
+    }
+
+    checkScopes = (instance:IInstance, scope: InstanceConfigScopeEnum) => {
+        let resources = parseResources (instance.accessKey.resources)
+        let requiredLevel = this.getChannelScopeLevel(scope)
+        let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))
+        return canPerform
     }
 
     async executeCommand (webSocket:WebSocket, instance:IInstance, opsMessage:OpsMessage) : Promise<OpsMessageResponse | undefined> {
@@ -225,20 +298,32 @@ class OpsChannel implements IChannel {
                 }
                 execResponse.type = InstanceMessageTypeEnum.DATA
                 break
-            case OpsCommandEnum.EXECUTE:
-                if (opsMessage.namespace==='' || opsMessage.pod==='' || opsMessage.container==='' || !opsMessage.namespace || !opsMessage.pod || !opsMessage.container) {
-                    execResponse.data = `Namespace, pod and container must be specified (format 'ns/pod/container')`
-                    return execResponse
+            case OpsCommandEnum.EXECUTE: {
+                    let canPerform = this.checkScopes(instance, InstanceConfigScopeEnum.SHELL)
+                    if (!canPerform) {
+                        execResponse.data = `Insuffcient scope for EXECUTE`
+                        return execResponse
+                    }
+                    if (opsMessage.namespace==='' || opsMessage.pod==='' || opsMessage.container==='' || !opsMessage.namespace || !opsMessage.pod || !opsMessage.container) {
+                        execResponse.data = `Namespace, pod and container must be specified (format 'ns/pod/container')`
+                        return execResponse
+                    }
+                    let asset = instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod && a.containerName === opsMessage.container)
+                    if (!asset) {
+                        execResponse.data = 'Asset not found or not autorized'
+                        return execResponse
+                    }
+                    this.executeLinuxCommand(webSocket, instance, asset.podNamespace, asset.podName, asset.containerName, opsMessage.id, opsMessage.params!.join(' '))
+                    execResponse.type = InstanceMessageTypeEnum.DATA
+                    break
                 }
-                let asset = instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod && a.containerName === opsMessage.container)
-                if (!asset) {
-                    execResponse.data = 'Asset not found or not autorized'
-                    return execResponse
-                }
-                this.executeLinuxCommand(webSocket, instance, asset.podNamespace, asset.podName, asset.containerName, opsMessage.id, opsMessage.params!.join(' '))
-                execResponse.type = InstanceMessageTypeEnum.DATA
-                break
             case OpsCommandEnum.SHELL: {
+                    let canPerform = this.checkScopes(instance, InstanceConfigScopeEnum.SHELL)
+                    if (!canPerform) {
+                        execResponse.data = 'Insufficent scope to SHELL'
+                        return execResponse
+                    }
+
                     if (opsMessage.namespace==='' || opsMessage.pod==='' || opsMessage.container==='' || !opsMessage.namespace || !opsMessage.pod || !opsMessage.container) {
                         execResponse.data = `Namespace, pod and container must be specified (format 'ns/pod/container')`
                         return execResponse
@@ -287,6 +372,12 @@ class OpsChannel implements IChannel {
                 }
                 break
             case OpsCommandEnum.RESTART: {
+                    let canPerform = this.checkScopes(instance, InstanceConfigScopeEnum.RESTART)
+                    if (!canPerform) {
+                        execResponse.data = 'Insufficient scope to RESTART CONTAINER'
+                        return execResponse
+                    }
+
                     if (opsMessage.namespace==='' || opsMessage.pod==='' || opsMessage.container==='' || !opsMessage.namespace || !opsMessage.pod || !opsMessage.container) {
                         execResponse.data = `Namespace, pod and container must be specified (format 'ns/pod/container')`
                         return execResponse
@@ -296,6 +387,7 @@ class OpsChannel implements IChannel {
                         execResponse.data = 'Asset not found or not autorized'
                         return execResponse
                     }
+
                     try {
                         this.executeLinuxCommand(webSocket, instance, asset.podNamespace, asset.podName, asset.containerName, opsMessage.id, '/usr/sbin/killall5')
                         this.sendDataMessage(webSocket, instance.instanceId, `Container ${asset.podNamespace}/${asset.podName}/${asset.containerName} restarted`)
@@ -306,7 +398,6 @@ class OpsChannel implements IChannel {
                     execResponse.type = InstanceMessageTypeEnum.DATA
                 }
                 break
-
             case OpsCommandEnum.RESTARTALL:
                 for (let asset of instance.assets) {
                     try {
@@ -321,11 +412,22 @@ class OpsChannel implements IChannel {
 
             case OpsCommandEnum.RESTARTPOD:
             case OpsCommandEnum.RESTARTNS:
+                let canPerform = this.checkScopes(instance, InstanceConfigScopeEnum.RESTART)
+                if (!canPerform) {
+                    execResponse.data = 'Insufficient scope to RESTART'
+                    return execResponse
+                }
                 execResponse = await execCommandRestart(this.clusterInfo, instance, opsMessage)
                 break
 
-            case OpsCommandEnum.DELETE:
-                execResponse = await execCommandDelete(this.clusterInfo, instance, opsMessage)
+            case OpsCommandEnum.DELETE: {
+                    let canPerform = this.checkScopes(instance, InstanceConfigScopeEnum.RESTART)
+                    if (!canPerform) {
+                        execResponse.data = 'Insufficient scope to DELETE'
+                        return execResponse
+                    }
+                    execResponse = await execCommandDelete(this.clusterInfo, instance, opsMessage)
+                }
                 break
             default:
                 execResponse.data = `Invalid command '${opsMessage.command}'. Valid commands are: ${Object.keys(OpsCommandEnum)}`
@@ -344,6 +446,7 @@ class OpsChannel implements IChannel {
         if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
             let opsMessage = instanceMessage as OpsMessage
             let instance:IInstance = {
+                accessKey: new AccessKey(), // +++ review
                 instanceId: opsMessage.instance,
                 assets: [ {
                     podNamespace: opsMessage.namespace,
@@ -385,10 +488,11 @@ class OpsChannel implements IChannel {
     }
 
     async processImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
-        console.log('Route request received')
+        console.log('Immediate request received')
         let opsMessage = instanceMessage as OpsMessage
 
         let instance:IInstance = {
+            accessKey: new AccessKey(), // +++ review
             instanceId: opsMessage.instance,
             assets: [ {
                 podNamespace: opsMessage.namespace,
@@ -403,7 +507,7 @@ class OpsChannel implements IChannel {
             } ]
         }
 
-        let resp = await this.executeRoutedCommand(instance, opsMessage)
+        let resp = await this.executeImmediateCommand(instance, opsMessage)
 
         let routeMessageResponse:RouteMessageResponse = {
             msgtype: 'routemessageresponse',
@@ -430,6 +534,7 @@ class OpsChannel implements IChannel {
         let instance = instances.find(i => i.instanceId === instanceConfig.instance)
         if (!instance) {
             instance = {
+                accessKey: accessKeyDeserialize(instanceConfig.accessKey),
                 instanceId: instanceConfig.instance,
                 assets: []
             }

@@ -4,36 +4,10 @@ import { LogConfig } from "./LogConfig"
 import { MetricsConfig } from "./MetricsConfig"
 import { OpsConfig } from "./OpsConfig"
 
-// export enum InstanceConfigChannelEnum {
-//     NONE = 'none',
-//     LOG = 'log',
-//     METRICS = 'metrics',
-//     AUDIT = 'audit',
-//     ALARM = 'alarm',
-//     ALERT = 'alert'
-// }
-
-// export enum InstanceConfigActionEnum {
-//     NONE = 'none',
-//     START = 'start',
-//     STOP = 'stop',
-//     PAUSE = 'pause',
-//     CONTINUE = 'continue',
-//     MODIFY = 'modify',
-//     PING = 'ping',
-//     RECONNECT = 'reconnect'
-// }
-
 export enum InstanceConfigObjectEnum {
     PODS = 'pods',
     EVENTS = 'events'
 }
-
-// export enum InstanceConfigFlowEnum {
-//     REQUEST = 'request',
-//     RESPONSE = 'response',
-//     UNSOLICITED = 'unsolicited'
-// }
 
 export enum InstanceConfigViewEnum {
     NONE = 'none',
@@ -46,13 +20,12 @@ export enum InstanceConfigViewEnum {
 
 export enum InstanceConfigScopeEnum {
     NONE='none',
+    API = 'api',
+    CLUSTER = 'cluster',
 
     // LOG
     FILTER = 'filter',
     VIEW = 'view',
-    RESTART = 'restart',
-    API = 'api',
-    CLUSTER = 'cluster',
 
     // METRICS
     SNAPSHOT = 'snapshot',
@@ -61,6 +34,12 @@ export enum InstanceConfigScopeEnum {
     // ALARM
     CREATE = 'create',
     SUBSCRIBE = 'subscribe',
+
+    // OPS
+    GET = 'get',
+    EXECUTE = 'execute',
+    SHELL = 'shell',
+    RESTART = 'restart'
 }
 
 export interface InstanceConfig extends InstanceMessage{

@@ -21,28 +21,28 @@ class AccessKey {
     constructor() {
         this.id = '';
         this.type = 'volatile';
-        this.resource = '';
+        this.resources = '';
     }
 }
 exports.AccessKey = AccessKey;
-function accessKeyCreate(type, resource) {
-    var accessKey = new AccessKey();
+function accessKeyCreate(type, resources) {
+    let accessKey = new AccessKey();
     accessKey.id = guid_1.default.create().toString();
     accessKey.type = type;
-    accessKey.resource = resource;
+    accessKey.resources = resources;
     return accessKey;
 }
 exports.accessKeyCreate = accessKeyCreate;
-function accessKeyBuild(id, type, resource) {
-    var accessKey = new AccessKey();
+function accessKeyBuild(id, type, resources) {
+    let accessKey = new AccessKey();
     accessKey.id = id;
     accessKey.type = type;
-    accessKey.resource = resource;
+    accessKey.resources = resources;
     return accessKey;
 }
 exports.accessKeyBuild = accessKeyBuild;
 function accessKeySerialize(accessKey) {
-    return `${accessKey.id}|${accessKey.type}|${accessKey.resource}`;
+    return `${accessKey.id}|${accessKey.type}|${accessKey.resources}`;
 }
 exports.accessKeySerialize = accessKeySerialize;
 function accessKeyDeserialize(key) {
@@ -53,16 +53,16 @@ exports.accessKeyDeserialize = accessKeyDeserialize;
 function parseResource(key) {
     var parts = key.split(':');
     return {
-        scope: parts[0],
-        namespace: parts[1],
-        set: parts[2],
-        pod: parts[3],
-        container: parts[4]
+        scopes: parts[0],
+        namespaces: parts[1],
+        groups: parts[2],
+        pods: parts[3],
+        containers: parts[4]
     };
 }
 exports.parseResource = parseResource;
 function parseResources(key) {
-    var ress = key.split(',');
+    var ress = key.split(';');
     var result = [];
     for (var res of ress) {
         result.push(parseResource(res));
@@ -70,7 +70,7 @@ function parseResources(key) {
     return result;
 }
 exports.parseResources = parseResources;
-function buildResource(scope, namespace, groupType, groupName, pod, container) {
-    return `${scope}:${namespace}:${groupType}+${groupName}:${pod}:${container}`;
+function buildResource(scopes, namespaces, groups, pods, containers) {
+    return `${scopes.join(',')}:${namespaces.join(',')}:${groups.join(',')}:${pods.join(',')}:${containers.join(',')}`;
 }
 exports.buildResource = buildResource;

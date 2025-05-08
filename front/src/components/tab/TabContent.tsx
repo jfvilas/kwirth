@@ -15,7 +15,7 @@ interface IProps {
 }
 
 const TabContent: React.FC<IProps> = (props:IProps) => {
-    
+
     return (<>
             {/* show log lines */}
             { props.channelObject && props.channel === InstanceMessageChannelEnum.LOG && props.channelObject.data &&

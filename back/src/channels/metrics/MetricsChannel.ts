@@ -1,4 +1,4 @@
-import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum, RouteMessageResponse } from '@jfvilas/kwirth-common'
+import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum, RouteMessageResponse, InstanceConfigScopeEnum, parseResources, AccessKey, accessKeyDeserialize } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { AssetData } from '../../tools/Metrics'
 import WebSocket from 'ws'
@@ -28,14 +28,6 @@ class MetricsChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
-        return false
-    }
-
-    async processImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
-        return undefined
-    }
-
     getChannelData(): ChannelData {
         return {
             id: 'metrics',
@@ -49,16 +41,24 @@ class MetricsChannel implements IChannel {
         }
     }
 
+    getChannelScopeLevel(scope: string): number {
+        return ['','snapshot','stream','cluster'].indexOf(scope)
+    }
+
+    async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+        return false
+    }
+
+    async processImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
+        return undefined
+    }
+
     containsInstance(instanceId: string): boolean {
         for (var socket of this.websocketMetrics) {
             var exists = socket.instances.find(i => i.instanceId === instanceId)
             if (exists) return true
         }
         return false
-    }
-
-    getChannelScopeLevel(scope: string): number {
-        return ['','subcribe','create','cluster'].indexOf(scope)
     }
 
     getAssetMetrics = (instanceConfig:InstanceConfig, assets:AssetData[], usePrevMetricSet:boolean): AssetMetrics => {
@@ -346,75 +346,107 @@ class MetricsChannel implements IChannel {
         webSocket.send(JSON.stringify(signalMessage))
     }
 
+    checkScopes = (instanceConfig:InstanceConfig, scope: InstanceConfigScopeEnum) => {
+        let resources = parseResources (instanceConfig.accessKey)
+        let requiredLevel = this.getChannelScopeLevel(scope)
+        let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))
+        return canPerform
+    }
+
     async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             const podResponse = await this.clusterInfo.coreApi.readNamespacedPod(podName, podNamespace)
             const owner = podResponse.body.metadata?.ownerReferences![0]!
-            const gtype = owner.kind.toLocaleLowerCase().replace('set','')  // gtype is 'replica', 'stateful' or 'daemon'
+            const gtype = owner.kind.toLocaleLowerCase()  // deployment, replicaset, daemonset or statefulset
             const podGroup = gtype+'+'+owner.name
             const podNode = podResponse.body.spec?.nodeName
             
             switch ((instanceConfig.data as MetricsConfig).mode) {
                 case MetricsConfigModeEnum.SNAPSHOT:
-                    if (podNode) {
-                        console.log(`Send snapshot metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
-
-                        let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
-                        if (!socket) {
-                            console.log('No socket found for startInstance snapshot')
+                    {
+                        let canPerform = this.checkScopes(instanceConfig, InstanceConfigScopeEnum.SNAPSHOT)
+                        if (!canPerform) {
+                            console.log('Insufficeint scope for SNAPSHOT')
+                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Insufficeint scope for SNAPSHOT', instanceConfig) 
                             return
                         }
-                        let instances = socket.instances
-                        let instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
-                        if (instance)
-                            this.sendMetricsDataInstance(webSocket, instanceConfig.instance)
-                        else
-                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig) 
+                        if (podNode) {
+                            console.log(`Send snapshot metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
+
+                            let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
+                            if (!socket) {
+                                console.log('No socket found for startInstance snapshot')
+                                return
+                            }
+                            let instances = socket.instances
+                            let instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
+                            if (instance)
+                                this.sendMetricsDataInstance(webSocket, instanceConfig.instance)
+                            else
+                                this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig) 
+                        }
                     }
                     break
                 case MetricsConfigModeEnum.STREAM:
-                    if (podNode) {
-                        console.log(`Start pod metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
-                        let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
-                        if (socket) {
-                            let instances = socket.instances
-                            let instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
-                            if (!instance) {
-                                // new instance for an existing websocket
-                                let interval=((instanceConfig.data as MetricsConfig).interval? (instanceConfig.data as MetricsConfig).interval:60)*1000
-                                let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
-                                instances?.push( {
-                                    instanceId:instanceConfig.instance,
-                                    working:false,
-                                    paused:false,
-                                    timeout,
-                                    interval,
-                                    assets:[{podNode, podNamespace, podGroup, podName, containerName}],
-                                    instanceConfig: instanceConfig
-                                })
-                                return
-                            }
-                            
-                            if (instanceConfig.view === InstanceConfigViewEnum.CONTAINER) {
-                                instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
+                    {
+                        let canPerform = this.checkScopes(instanceConfig, InstanceConfigScopeEnum.SNAPSHOT)
+                        if (!canPerform) {
+                            console.log('Insufficeint scope for STREAM')
+                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Insufficeint scope for STREAM', instanceConfig) 
+                            return
+                        }
+
+                        if (podNode) {
+                            console.log(`Start pod metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
+                            let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
+                            if (socket) {
+                                let instances = socket.instances
+                                let instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
+                                if (!instance) {
+                                    // new instance for an existing websocket
+                                    let interval=((instanceConfig.data as MetricsConfig).interval? (instanceConfig.data as MetricsConfig).interval:60)*1000
+                                    let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
+                                    instances?.push( {
+                                        instanceId: instanceConfig.instance,
+                                        working:false,
+                                        paused:false,
+                                        timeout,
+                                        interval,
+                                        assets:[{podNode, podNamespace, podGroup, podName, containerName}],
+                                        instanceConfig: instanceConfig
+                                    })
+                                    return
+                                }
+                                
+                                if (instanceConfig.view === InstanceConfigViewEnum.CONTAINER) {
+                                    instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
+                                }
+                                else {
+                                    if (!instance.assets.find(asset => asset.podName === podName && asset.containerName === containerName)) {
+                                        instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})                            
+                                    }
+                                }
                             }
                             else {
-                                if (!instance.assets.find(asset => asset.podName === podName && asset.containerName === containerName)) {
-                                    instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})                            
-                                }
+                                this.websocketMetrics.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+                                let interval = ((instanceConfig.data as MetricsConfig).interval? (instanceConfig.data as MetricsConfig).interval:60)*1000
+                                let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
+
+                                let instances = this.websocketMetrics.find(entry => entry.ws === webSocket)?.instances
+                                instances?.push({
+                                    instanceId:instanceConfig.instance, 
+                                    working:false, 
+                                    paused:false, 
+                                    timeout, 
+                                    assets:[{podNode, podNamespace, podGroup, podName, containerName}], 
+                                    instanceConfig: instanceConfig, 
+                                    interval
+                                })
                             }
                         }
                         else {
-                            this.websocketMetrics.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-                            let interval = ((instanceConfig.data as MetricsConfig).interval? (instanceConfig.data as MetricsConfig).interval:60)*1000
-                            let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance), interval)
-
-                            let instances = this.websocketMetrics.find(entry => entry.ws === webSocket)?.instances
-                            instances?.push({instanceId:instanceConfig.instance, working:false, paused:false, timeout, assets:[{podNode, podNamespace, podGroup, podName, containerName}], instanceConfig: instanceConfig, interval})
+                            console.log(`Cannot determine node for ${podNamespace}/${podName}}, will not be added`)
                         }
-                    }
-                    else {
-                        console.log(`Cannot determine node for ${podNamespace}/${podName}}, will not be added`)
                     }
                     break
                 default:
@@ -538,7 +570,6 @@ class MetricsChannel implements IChannel {
             var exists = entry.instances.find(i => i.instanceId === instanceId)
             if (exists) {
                 entry.ws = newWebSocket
-                console.log('starting')
                 for (var instance of entry.instances) {
                     console.log('update', instance.instanceId)
                     console.log('interval', instance.interval, (instance.instanceConfig.data as MetricsConfig).interval)

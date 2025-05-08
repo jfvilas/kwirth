@@ -250,12 +250,13 @@ class LogChannel implements IChannel {
                 }
             })
     
+            let logConfig = instanceConfig.data as LogConfig
             let streamConfig = { 
-                follow: true, 
+                follow: true,   // +++ review if follow must be set according to client request
                 pretty: false,
-                timestamps: (instanceConfig.data as LogConfig).timestamp,
-                previous: Boolean((instanceConfig.data as LogConfig).previous),
-                ...((instanceConfig.data as LogConfig).fromStart? {} : {sinceSeconds:1800})
+                timestamps: logConfig.timestamp,
+                previous: Boolean(logConfig.previous),
+                ...(logConfig.fromStart? {} : {sinceSeconds:1800})
             }
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, asset.passThroughStream, streamConfig)
         }
@@ -290,6 +291,7 @@ class LogChannel implements IChannel {
     }
 
     getChannelScopeLevel(scope: string): number {
+        console.log(scope)
         return ['', 'filter', 'view', 'cluster'].indexOf(scope)
     }
 

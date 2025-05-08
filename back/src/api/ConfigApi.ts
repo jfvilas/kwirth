@@ -1,26 +1,27 @@
 import express, { Request, Response} from 'express'
 import { CoreV1Api, AppsV1Api } from '@kubernetes/client-node'
-import { ClusterTypeEnum, KwirthData } from '@jfvilas/kwirth-common'
-import { validKey } from '../tools/AuthorizationManagement'
+import { AccessKey, ClusterTypeEnum, KwirthData, parseResources } from '@jfvilas/kwirth-common'
 import { ApiKeyApi } from './ApiKeyApi'
 import { ClusterInfo } from '../model/ClusterInfo'
 import Docker from 'dockerode'
 import { IChannel } from '../channels/IChannel'
+import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 
 export class ConfigApi {
     public route = express.Router()
     dockerApi : Docker
     coreApi: CoreV1Api
-    appsV1Api: AppsV1Api
+    appsApi: AppsV1Api
     kwirthData: KwirthData
     clusterInfo: ClusterInfo
 
     setDockerApi = (dockerApi:Docker) => {
         this.dockerApi = dockerApi
     }
+
     constructor (coreApi:CoreV1Api, appsV1Api:AppsV1Api, apiKeyApi: ApiKeyApi, kwirthData:KwirthData, clusterInfo:ClusterInfo, channels:Map<string,IChannel>) {
         this.coreApi = coreApi
-        this.appsV1Api = appsV1Api
+        this.appsApi = appsV1Api
         this.kwirthData = kwirthData
         this.clusterInfo = clusterInfo
         this.dockerApi = new Docker()
@@ -32,7 +33,7 @@ export class ConfigApi {
                     res.status(200).json(this.kwirthData)
                 }
                 catch (err) {
-                    res.status(200).json([])
+                    res.status(500).json([])
                     console.log(err)
                 }
             })
@@ -53,7 +54,7 @@ export class ConfigApi {
         // returns cluster information of the k8 cluster which this kwirth is connected to or running inside
         this.route.route('/cluster')
             .all( async (req:Request,res:Response, next) => {
-                if (! (await validKey(req,res, apiKeyApi))) return
+                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -62,7 +63,7 @@ export class ConfigApi {
                     res.status(200).json(cluster)
                 }
                 catch (err) {
-                    res.status(200).json([])
+                    res.status(500).json([])
                     console.log(err)
                 }
             })
@@ -70,7 +71,7 @@ export class ConfigApi {
         // get all namespaces
         this.route.route('/namespace')
             .all( async (req:Request,res:Response, next) => {
-                if (! (await validKey(req,res, apiKeyApi))) return
+                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -79,12 +80,18 @@ export class ConfigApi {
                 }
                 else {
                     try {
-                        var response = await this.coreApi.listNamespace()
-                        var namespaces = response.body.items.map (n => n?.metadata?.name)
-                        res.status(200).json(namespaces)
+                        let accessKey = await AuthorizationManagement.getKey(req,res, apiKeyApi)
+                        if (accessKey) {
+                            let list = await AuthorizationManagement.getAllowedNamespaces(this.coreApi, accessKey)
+                            res.status(200).json(list)
+                        }
+                        else {
+                            res.status(403).json([])
+                            return
+                        }
                     }
                     catch (err) {
-                        res.status(200).json([])
+                        res.status(500).json([])
                         console.log(err)
                     }
                 }
@@ -93,22 +100,23 @@ export class ConfigApi {
         // get all deployments in a namespace
         this.route.route('/:namespace/groups')
             .all( async (req:Request, res:Response, next) => {
-                if (! (await validKey(req,res, apiKeyApi))) return
+                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    var list:any[] = []
-                    var respReplica = await this.appsV1Api.listNamespacedReplicaSet(req.params.namespace)
-                    list.push (...respReplica.body.items.filter(r => r.status?.replicas!>0).map (n => { return { name:n?.metadata?.name, type:'replica' }}))
-                    var respStateful = await this.appsV1Api.listNamespacedStatefulSet(req.params.namespace)
-                    list.push (...respStateful.body.items.filter(r => r.status?.replicas!>0).map (n => { return { name:n?.metadata?.name, type:'stateful' }}))
-                    var respDaemon = await this.appsV1Api.listNamespacedDaemonSet(req.params.namespace)
-                    list.push (...respDaemon.body.items.map (n => { return { name:n?.metadata?.name, type:'daemon' }}))
-                    res.status(200).json(list)
+                    let accessKey = await AuthorizationManagement.getKey(req,res, apiKeyApi)
+                    if (accessKey) {
+                        let result = await AuthorizationManagement.getAllowedGroups(this.appsApi, req.params.namespace, accessKey)
+                        res.status(200).json(result)
+                    }
+                    else {
+                        res.status(403).json([])
+                        return
+                    }
                 }
                 catch (err) {
-                    res.status(200).json([])
+                    res.status(500).json([])
                     console.log(err)
                 }
             })
@@ -116,23 +124,31 @@ export class ConfigApi {
         // get all pods in a namespace in a group
         this.route.route('/:namespace/:group/pods')
             .all( async (req:Request,res:Response, next) => {
-                if (! (await validKey(req,res, apiKeyApi))) return
+                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    let pods:(string|undefined)[] = []
+                    let result:string[]=[]
+
                     if (this.kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
-                        pods = await this.clusterInfo.dockerTools.getAllPodNames()
+                        result = await this.clusterInfo.dockerTools.getAllPodNames()
                     }
                     else {
-                        var response= await this.coreApi.listNamespacedPod(req.params.namespace)
-                        pods = response.body.items.filter (n => n?.metadata?.ownerReferences![0].name===req.params.group).filter(p => p.status?.phase?.toLowerCase()==='running').map(n => n?.metadata?.name)                            
+                        let accessKey = await AuthorizationManagement.getKey(req,res, apiKeyApi)
+                        if (accessKey) {
+                            result = await AuthorizationManagement.getPodsFromGroup(this.coreApi, this.appsApi, req.params.namespace, req.query.type as string, req.params.group, accessKey)
+                        }
+                        else {
+                            res.status(403).json([])
+                            return
+                        }
                     }
-                    res.status(200).json(pods)
+                    result = [...new Set(result)]
+                    res.status(200).json(result)
                 }
                 catch (err) {
-                    res.status(200).json([])
+                    res.status(500).json([])
                     console.log(err)
                 }
             })
@@ -140,7 +156,7 @@ export class ConfigApi {
         // returns an array containing all the containers running inside a pod
         this.route.route('/:namespace/:pod/containers')
             .all( async (req:Request,res:Response, next) => {
-                if (! (await validKey(req,res, apiKeyApi))) return
+                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -150,17 +166,18 @@ export class ConfigApi {
                 }
                 else {
                     try {
-                        var response= await this.coreApi.listNamespacedPod(req.params.namespace)
-                        var searchPod = response.body.items.filter (p => p?.metadata?.name===req.params.pod)
-                        if (searchPod.length===0) {
-                            res.status(200).json([])
+                        let accessKey = await AuthorizationManagement.getKey(req, res, apiKeyApi)
+                        if (accessKey) {
+                            let result = await AuthorizationManagement.getAllowedContainers(this.coreApi, accessKey, req.params.namespace, req.params.pod, )
+                            res.status(200).json(result)
+                        }
+                        else {
+                            res.status(403).json([])
                             return
                         }
-                        var conts = searchPod[0].spec?.containers.map(c => c.name)
-                        res.status(200).json(conts)
                     }
                     catch (err) {
-                        res.status(200).json([])
+                        res.status(500).json([])
                         console.log(err)
                     }
                 }

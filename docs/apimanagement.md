@@ -48,7 +48,7 @@ This is the API key you should configure in your client (Kubelog, KwirthLog or w
 The union of key type (permanent, volatile or bearer), the scope (view, snapshot, restart...), zero or more namespaces, zero or more groups (including its type and name), zero or ore pods and zero or more container names *is what we call an **ACCESS KEY***.
 
 When we talk about Access Keys we need to explain its content deeply. This is what an Access Key contains:
-  - An unique Id (a GUID) indditifying the access key uniquely.
+  - An unique Id (a UUID) indditifying the access key uniquely.
   - A type of key (permanent, volatile or bearer)
   - A scope and a set of one or more resoure identifiers:
     - **Scope** points to the kind of actions the access key holder can perform: view logs, restart pods, manage apis, receive metrics...

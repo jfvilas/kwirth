@@ -46,39 +46,41 @@ export const pauseDeployment = async (appsApi:AppsV1Api, namespace:string, deplo
  * @returns an object iwth the list of pods and the labelSelector used
  */
 export const getPodsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, group:string) => {
-    var response:any
-    var groupName, groupType
-    var emptyResult = { pods:[],labelSelector:'' }
+    let response:any
+    let groupName, groupType
+    let emptyResult = { pods:[],labelSelector:'' };
 
-    if (group.includes('+'))
-        [groupType, groupName]=group.split('+')
-    else
-        [groupType, groupName]=['deployment', group]
+    // +++
+    // if (group.includes('+'))
+    //     [groupType, groupName]=group.split('+')
+    // else
+    //     [groupType, groupName]=['deployment', group]
+    [groupType, groupName] = group.split('+')
 
     try {
         switch (groupType) {
-            case'deployment': {
+            case 'deployment': {
                     let x = await appsApi.listNamespacedDeployment(namespace)
                     let names = x.body.items.map (rs => rs.metadata?.name)
                     if (!names.includes(groupName)) return emptyResult
                     response = await appsApi.readNamespacedDeployment(groupName, namespace)
                 }
                 break
-            case'replica': {
+            case'replicaset': {
                     let x = await appsApi.listNamespacedReplicaSet(namespace)
                     let names = x.body.items.map (rs => rs.metadata?.name)
                     if (!names.includes(groupName)) return emptyResult
                     response = await appsApi.readNamespacedReplicaSet(groupName, namespace)
                 }
                 break
-            case'daemon': {
+            case'daemonset': {
                     let x = await appsApi.listNamespacedDaemonSet(namespace)
                     let names = x.body.items.map (rs => rs.metadata?.name)
                     if (!names.includes(groupName)) return emptyResult
                     response = await appsApi.readNamespacedDaemonSet(groupName, namespace)
                 }
                 break
-            case'stateful': {
+            case'statefulset': {
                     let x = await appsApi.listNamespacedStatefulSet(namespace)
                     let names = x.body.items.map (rs => rs.metadata?.name)
                     if (!names.includes(groupName)) return emptyResult
