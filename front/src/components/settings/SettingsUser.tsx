@@ -11,7 +11,8 @@ interface IProps {
 const SettingsUser: React.FC<IProps> = (props:IProps) => {
     if (!props.settings) props.settings = new Settings()
     const [value, setValue] = React.useState('log')
-    const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages)    
+    const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages||5000)
+    const [logMaxPerPodMessages, setLogMaxPerPodMessages] = useState(props.settings.logMaxPerPodMessages||1000)    
     const [logFromStart, setLogFromStart] = useState(props.settings.logFromStart)
     const [logPrevious, setLogPrevious] = useState(props.settings.logPrevious)
     const [logTimestamp, setLogTimestamp] = useState(props.settings.logTimestamp)
@@ -33,6 +34,7 @@ const SettingsUser: React.FC<IProps> = (props:IProps) => {
     const closeOk = () =>{
         var newSettings=new Settings()
         newSettings.logMaxMessages = logMaxMessages
+        newSettings.logMaxPerPodMessages = logMaxPerPodMessages
         newSettings.logFromStart = logFromStart
         newSettings.logPrevious = logPrevious
         newSettings.logTimestamp = logTimestamp
@@ -64,19 +66,25 @@ const SettingsUser: React.FC<IProps> = (props:IProps) => {
                 </Tabs>
 
                 <div hidden={value!=='log'}>
-                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <TextField value={logMaxMessages} onChange={(e) => setLogMaxMessages(+e.target.value)} variant='standard'label='Max messages' SelectProps={{native: true}} type='number'></TextField>
-                        <Stack direction='row' alignItems={'baseline'}>
-                            <Switch checked={logFromStart} onChange={(e) => setLogFromStart(e.target.checked)}/><Typography>Get messages from container start time</Typography>
+                    <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column' }}>                        
+                        <Stack direction={'row'} spacing={1}>
+                            <TextField value={logMaxMessages} onChange={(e) => setLogMaxMessages(+e.target.value)} variant='standard'label='Max messages' SelectProps={{native: true}} type='number' fullWidth/>
+                            <TextField value={logMaxPerPodMessages} onChange={(e) => setLogMaxPerPodMessages(+e.target.value)} variant='standard'label='Max per Pod messages' SelectProps={{native: true}} type='number' fullWidth/>
                         </Stack>
-                        <Stack direction='row' alignItems={'baseline'}>
-                            <Switch checked={false} disabled={true} onChange={(e) => setLogPrevious(e.target.checked)}/><Typography>Get messages of previous container</Typography>
-                        </Stack>
-                        <Stack direction='row' alignItems={'baseline'}>
-                            <Switch checked={logTimestamp} onChange={(e) => setLogTimestamp(e.target.checked)}/><Typography>Add timestamp to messages</Typography>
-                        </Stack>
-                        <Stack direction='row' alignItems={'baseline'}>
-                            <Switch checked={logFollow} onChange={(e) => setLogFollow(e.target.checked)}/><Typography>Follow new messages</Typography>
+
+                        <Stack spacing={0}>
+                            <Stack direction='row' alignItems={'baseline'}>
+                                <Switch checked={logFromStart} onChange={(e) => setLogFromStart(e.target.checked)}/><Typography>Get messages from container start time</Typography>
+                            </Stack>
+                            <Stack direction='row' alignItems={'baseline'}>
+                                <Switch checked={false} disabled={true} onChange={(e) => setLogPrevious(e.target.checked)}/><Typography>Get messages of previous container</Typography>
+                            </Stack>
+                            <Stack direction='row' alignItems={'baseline'}>
+                                <Switch checked={logTimestamp} onChange={(e) => setLogTimestamp(e.target.checked)}/><Typography>Add timestamp to messages</Typography>
+                            </Stack>
+                            <Stack direction='row' alignItems={'baseline'}>
+                                <Switch checked={logFollow} onChange={(e) => setLogFollow(e.target.checked)}/><Typography>Follow new messages</Typography>
+                            </Stack>
                         </Stack>
                     </Stack>
                 </div>
@@ -109,9 +117,6 @@ const SettingsUser: React.FC<IProps> = (props:IProps) => {
                             </FormControl>
                         </Stack>
 
-                        <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={(e) => setMetricsAggregate(e.target.checked)}/>} label='Aggregate resource metrics (when multiple objects)' />
-                        <FormControlLabel control={<Checkbox checked={metricsMerge} onChange={(e) => setMetricsMerge(e.target.checked)}/>} label='Merge resource metrics (when multiple objects)' />
-                        <FormControlLabel control={<Checkbox checked={metricsStack} onChange={(e) => setMetricsStack(e.target.checked)}/>} label='Stack resource metrics (when multiple objects)' />
                         <Stack spacing={1} direction={'row'}>
                             <FormControl variant='standard' sx={{width:'33%'}}>
                                 <InputLabel>Depth</InputLabel>
@@ -135,6 +140,12 @@ const SettingsUser: React.FC<IProps> = (props:IProps) => {
                             </FormControl>
 
                             <TextField value={metricsInterval} onChange={(e) => setMetricsInterval(+e.target.value)} sx={{width:'33%'}} variant='standard' label='Interval' type='number' ></TextField>
+                        </Stack>
+
+                        <Stack spacing={0}>
+                            <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={(e) => setMetricsAggregate(e.target.checked)}/>} label='Aggregate resource metrics (when multiple objects)' />
+                            <FormControlLabel control={<Checkbox checked={metricsMerge} onChange={(e) => setMetricsMerge(e.target.checked)}/>} label='Merge resource metrics (when multiple objects)' />
+                            <FormControlLabel control={<Checkbox checked={metricsStack} onChange={(e) => setMetricsStack(e.target.checked)}/>} label='Stack resource metrics (when multiple objects)' />
                         </Stack>
                     </Stack>
                 </div>

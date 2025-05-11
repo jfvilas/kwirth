@@ -31,7 +31,7 @@ import { KwirthData, MetricsConfigModeEnum, InstanceMessage, versionGreatThan, I
 import { ITabObject } from './model/ITabObject'
 import { MetricDescription } from './model/MetricDescription'
 
-import { ILogMessage, LogObject } from './model/LogObject'
+import { ILogLine, ILogMessage, LogObject } from './model/LogObject'
 import { AlertObject, AlertSeverityEnum, IAlertMessage } from './model/AlertObject'
 import { IMetricsMessage, MetricsObject } from './model/MetricsObject'
 
@@ -109,15 +109,11 @@ const App: React.FC = () => {
     const [showSetupMetrics, setShowSetupMetrics]=useState<boolean>(false)
 
     useEffect ( () => {
-        //+++ when a board is loaded all messages are received: alarms should not be in effect until everything is received
-        //+++ plan to use metrics channel for alarming based on resource usage (cpu > 80, freemem<10,....)
-        //+++ add options to asterisk log lines containing a specific text (like 'password', 'pw', etc...)
-
         if (logged) {
             if (clustersRef.current.length===0) getClusters()
             if (!settingsRef.current) readSettings()
         }
-    })
+    },[logged])
 
     useEffect ( () => {
         if (logged) {
@@ -147,7 +143,7 @@ const App: React.FC = () => {
         srcCluster.enabled = true
         response = await fetch(`${backendUrl}/config/version`, addGetAuthorization(accessString))
         srcCluster.kwirthData = await response.json() as KwirthData
-        if (versionGreatThan(srcCluster.kwirthData.version,srcCluster.kwirthData.lastVersion)) {
+        if (versionGreatThan(srcCluster.kwirthData.version, srcCluster.kwirthData.lastVersion)) {
             setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
         }
 
@@ -155,22 +151,20 @@ const App: React.FC = () => {
         let clusterList:Cluster[]=[]
         response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString))
         if (response.status===200) {
-            clusterList=JSON.parse (await response.json())
-            clusterList=clusterList.filter (c => c.name !== srcCluster.name)
+            clusterList = JSON.parse (await response.json())
+            clusterList = clusterList.filter (c => c.name !== srcCluster.name)
         }
-
         clusterList.push(srcCluster)
-        setClusters(clusterList)
-
-        for (let cluster of clusterList) {
+        for (let cluster of clusterList)
             setClusterStatus(cluster)
-        }
+        setClusters(clusterList)
     }
 
     const setClusterStatus = async (cluster:Cluster): Promise<void> => {
         if (await readClusterInfo(cluster)) {
             cluster.enabled = true
-            await readClusterChannels(cluster)
+            //await readClusterChannels(cluster)
+            console.log(cluster)
             if (cluster.channels.includes('metrics')) {
                 await getMetricsNames(cluster)
                 let data = await (await fetch (`${cluster.url}/metrics/config`, addGetAuthorization(cluster.accessString))).json()
@@ -197,16 +191,16 @@ const App: React.FC = () => {
         return false
     }
 
-    const readClusterChannels = async (cluster: Cluster) => {
-        let resp=await fetch (`${cluster.url}/config/channel`, addGetAuthorization(cluster.accessString))
-        if (resp.status===200) {
-            let json=await resp.json()
-            if (json) cluster.channels = json
-        }
-        else {
-            cluster.channels = []
-        }
-    }
+    // const readClusterChannels = async (cluster: Cluster) => {
+    //     let resp=await fetch (`${cluster.url}/config/channel`, addGetAuthorization(cluster.accessString))
+    //     if (resp.status===200) {
+    //         let json=await resp.json()
+    //         if (json) cluster.channels = json
+    //     }
+    //     else {
+    //         cluster.channels = []
+    //     }
+    // }
 
     const readSettings = async () => {
         let resp = await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString))
@@ -410,6 +404,10 @@ const App: React.FC = () => {
     }
 
     const processLogMessage = (wsEvent:any) => {
+        const getMsgEpoch = (lmsg:ILogLine) =>{
+            return (new Date(lmsg.text.split(' ')[0])).getTime()
+        }
+
         // find the tab which this web socket belongs to, and add the new message
         let tab = tabs.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
@@ -419,33 +417,81 @@ const App: React.FC = () => {
 
         switch (logMessage.type) {
             case InstanceMessageTypeEnum.DATA:
-                if (logObject.startDiagnostics) {
-                    if (logObject.messages.length < logObject.maxMessages) {
-                        logObject.messages.push(logMessage)
-                    }
-                    else {
-                        stopChannel(tab)
-                    }
+                let cname = logMessage.namespace+'/'+logMessage.pod+'/'+logMessage.container
+                let text = logMessage.text
+                if (logObject.buffers.get(cname)) {
+                    text = logObject.buffers.get(cname) + text
+                    logObject.buffers.set(cname,'')
                 }
-                else {
-                    logObject.messages.push(logMessage)
-                    if (logObject.messages.length > logObject.maxMessages) logObject.messages.splice(0, logObject.messages.length - logObject.maxMessages)
+                if (!text.endsWith('\n')) {
+                    let i = text.lastIndexOf('\n')
+                    let next = text.substring(i)
+                    logObject.buffers.set(cname, next)
+                    text = text.substring(0,i)
                 }
 
-                // if current log is displayed (focused), add message to the screen
-                if (selectedTabRef.current === tab.name) {
-                    if (!tab.channelPaused) {
-                        setRefreshTabContent(Math.random())
-                        if (logObject.follow && lastLineRef.current) {
-                            (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
+                for (let line of text.split('\n')) {
+                    if (line.trim() === '') continue
+
+                    let logLine:ILogLine = {
+                        text: line,
+                        namespace: logMessage.namespace,
+                        pod: logMessage.pod,
+                        container: logMessage.container,
+                        type: logMessage.type
+                    }
+
+                    if (logObject.startDiagnostics) {
+                        if (logObject.messages.length < logObject.maxMessages) {
+                            let cnt = logObject.counters.get(cname)
+                            if (!cnt) {
+                                logObject.counters.set(cname,0)
+                                cnt = 0
+                            }
+                            if (cnt < logObject.maxPerPodMessages) {
+                                switch (logObject.sortOrder) {
+                                    case 'pod':
+                                        let podIndex = logObject.messages.findLastIndex(m => m.container===logLine.container && m.pod===logLine.pod && m.namespace===logLine.namespace)
+                                        logObject.messages.splice(podIndex+1,0,logLine)
+                                        break
+                                    case 'time':
+                                        let timeIndex = logObject.messages.findLastIndex(m => getMsgEpoch(m) < getMsgEpoch(logLine))
+                                        logObject.messages.splice(timeIndex+1,0,logLine)
+                                        break
+                                    default:
+                                        logObject.messages.push(logLine)
+                                        break
+                                }
+                                logObject.counters.set(cname, ++cnt)
+                            }
+                            if ([...logObject.counters.values()].reduce((prev,acc) => {return prev+acc}, 0) > logObject.maxMessages) {
+                                stopChannel(tab)
+                            }
+                        }
+                        else {
+                            if (tab.channelStarted) stopChannel(tab)
                         }
                     }
-                }
-                else {
-                    // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-                    if (logObject.backgroundNotification && !tab.channelPaused) {
-                        tab.channelPending = true
-                        setHighlightedTabs((prev)=> [...prev, tab!])
+                    else {
+                        logObject.messages.push(logLine)
+                        if (logObject.messages.length > logObject.maxMessages) logObject.messages.splice(0, logObject.messages.length - logObject.maxMessages)
+                    }
+
+                    // if current log is displayed (focused), add message to the screen
+                    if (selectedTabRef.current === tab.name) {
+                        if (!tab.channelPaused) {
+                            setRefreshTabContent(Math.random())
+                            if (logObject.follow && lastLineRef.current) {
+                                (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
+                            }
+                        }
+                    }
+                    else {
+                        // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
+                        if (logObject.backgroundNotification && !tab.channelPaused) {
+                            tab.channelPending = true
+                            setHighlightedTabs((prev)=> [...prev, tab!])
+                        }
                     }
                 }
                 break
@@ -457,16 +503,11 @@ const App: React.FC = () => {
                 else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
                     let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
                     logObject.messages.push({
-                        msgtype: 'logmessage',
                         text: signalMessage.text,
                         namespace: '',
                         pod: '',
                         container: '',
-                        action: InstanceMessageActionEnum.NONE,
-                        flow: InstanceMessageFlowEnum.UNSOLICITED,
-                        type: InstanceMessageTypeEnum.DATA,
-                        channel: InstanceMessageChannelEnum.LOG,
-                        instance: signalMessage.instance
+                        type: InstanceMessageTypeEnum.DATA
                     })
                 }
                 else {
@@ -719,16 +760,11 @@ const App: React.FC = () => {
             case InstanceMessageChannelEnum.LOG:
                 let logObject = tab.channelObject.data as LogObject
                 logObject.messages.push({
-                    action: InstanceMessageActionEnum.NONE,
-                    flow: InstanceMessageFlowEnum.UNSOLICITED,
-                    channel: InstanceMessageChannelEnum.LOG,
                     type: InstanceMessageTypeEnum.DATA,
-                    instance: '',
                     text: '*** Lost connection ***',
                     namespace: '',
                     pod: '',
-                    container: '',
-                    msgtype: 'logmessage'
+                    container: ''
                 })
                 break
             case InstanceMessageChannelEnum.ALERT:
@@ -902,16 +938,11 @@ const App: React.FC = () => {
             case InstanceMessageChannelEnum.LOG:
                 let logObject = tab.channelObject.data as LogObject
                 logObject.messages.push({
-                    action: InstanceMessageActionEnum.NONE,
-                    flow: InstanceMessageFlowEnum.UNSOLICITED,
                     text: '=========================================================================',
-                    channel: InstanceMessageChannelEnum.LOG,
                     type: InstanceMessageTypeEnum.DATA,
-                    instance: '',
                     namespace: '',
                     pod: '',
-                    container: '',
-                    msgtype: 'logmessage'
+                    container: ''
                 }) 
                 setRefreshTabContent(Math.random())
                 break
@@ -1342,7 +1373,7 @@ const App: React.FC = () => {
         startChannel(tab)
     }
 
-    const onSetupLogClosed = (maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean, startDiagnostics:boolean) => {
+    const onSetupLogClosed = (maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean, startDiagnostics:boolean, maxPerPodMessages:number, sortOrder:string) => {
         setShowSetupLog(false)       
         setAnchorMenuTab(null)
         if (maxMessages === 0) return
@@ -1352,12 +1383,15 @@ const App: React.FC = () => {
 
         let logObject = tab.channelObject.data as LogObject
         logObject.startDiagnostics = startDiagnostics
-        logObject.maxMessages = maxMessages
         logObject.fromStart = fromStart
         logObject.previous = previous
         logObject.timestamp = timestamp
         logObject.follow = follow
         logObject.messages = []
+        logObject.maxMessages = maxMessages
+        logObject.maxPerPodMessages = maxPerPodMessages
+        logObject.counters = new Map()
+        logObject.sortOrder = sortOrder
         startChannel(tab)
     }
 

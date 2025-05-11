@@ -15,7 +15,7 @@ export class UserApi {
 
       this.route.route('/')
         .all( async (req:Request,res:Response, next) => {
-            if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
+            if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
             next()
         })
         .get( (req:Request,res:Response) => {
@@ -47,7 +47,7 @@ export class UserApi {
 
       this.route.route('/:user')
         .all( async (req:Request,res:Response, next) => {
-            if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
+            if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
             next()
         })
         .get( (req:Request,res:Response) => {

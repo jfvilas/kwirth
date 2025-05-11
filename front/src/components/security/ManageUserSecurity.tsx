@@ -13,7 +13,7 @@ interface IProps {
 
 const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
     const {accessString, backendUrl} = useContext(SessionContext) as SessionContextType
-    const [users, setUsers] = useState<string[]>()
+    const [users, setUsers] = useState<string[]>([])
     const [selectedUser, setSelectedUser] = useState<User|undefined>(undefined)
     const [msgBox, setMsgBox] = useState(<></>)
 
@@ -23,9 +23,9 @@ const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
     const [allResources, setAllResources] = useState<string[]>([])
    
     const getUsers = async () => {
-        var response = await fetch(`${backendUrl}/user`, addGetAuthorization(accessString))
-        var data = await response.json()
-        setUsers(data)
+        let response = await fetch(`${backendUrl}/user`, addGetAuthorization(accessString))
+        let userList:string[] = await response.json()
+        setUsers(userList)
     }
 
     useEffect( () => {
@@ -34,11 +34,11 @@ const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
 
     const onClickUser = async (id:string) => {
         setId(id)
-        let data = await (await fetch(`${backendUrl}/user/${id}`, addGetAuthorization(accessString))).json()
-        setSelectedUser(data)
-        setName(data.name||'')
-        setPassword(data.password||'')
-        setAllResources(data.resources.split(';'))
+        let user:User = (await (await fetch(`${backendUrl}/user/${id}`, addGetAuthorization(accessString))).json())
+        setSelectedUser(user)
+        setName(user.name||'')
+        setPassword(user.password||'')
+        setAllResources(user.resources.split(';'))
     }
 
     const onClickCopyPassword = () => {
@@ -46,14 +46,13 @@ const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
     }
 
     const onClickSave= async () => {
-        var user = { id, name, password, resources: allResources.join(';') }
-        var payload = JSON.stringify(user)
+        let user = { id, name, password, resources: allResources.join(';') }
+        let payload = JSON.stringify(user)
         if (selectedUser !== undefined) {
             await fetch(`${backendUrl}/user/${user.id}`, addPutAuthorization(accessString, payload))
         }
         else {
             await fetch(`${backendUrl}/user`, addPostAuthorization(accessString, payload))
-            setSelectedUser(undefined)
         }
         setSelectedUser(undefined)
         setId('')
@@ -96,7 +95,7 @@ const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
             <DialogTitle>User management</DialogTitle>
             <DialogContent>
                 <Stack sx={{ display: 'flex', flexDirection: 'row' }}>
-                    <List sx={{flexGrow:1, mr:2, width:'30vh' }}>
+                    <List sx={{flexGrow:1, mr:3, width:'30vh' }}>
                         { users?.map(u => 
                         <ListItemButton key={u} onClick={() => onClickUser(u)} style={{backgroundColor:(u===selectedUser?.id?'lightgray':'')}}>
                             <ListItem>{u}</ListItem>
@@ -104,19 +103,14 @@ const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
                         )}
                     </List>
                     
-                    <Stack sx={{width:'70vh'}} spacing={1}>
-                        <Box sx={{ flex: 1, display: 'flex', alignItems: 'start', paddingLeft: '16px'}} >
+                    <Stack spacing={1} style={{width:'100%'}}>
+                        <Stack spacing={1} direction={'row'}>
+                            <TextField value={id} onChange={(e) => setId(e.target.value)} variant='standard' fullWidth label='Id'></TextField>
+                            <TextField value={name} onChange={(e) => setName(e.target.value)} variant='standard' fullWidth label='Name'></TextField>
+                            <TextField value={password} onChange={(e) => setPassword(e.target.value)} variant='standard' fullWidth label='Password'></TextField>
+                        </Stack>
 
-                            <Stack spacing={1} style={{width:'100%'}}>
-                                <Stack spacing={1} direction={'row'}>
-                                    <TextField value={id} onChange={(e) => setId(e.target.value)} variant='standard' fullWidth label='Id'></TextField>
-                                    <TextField value={name} onChange={(e) => setName(e.target.value)} variant='standard' fullWidth label='Name'></TextField>
-                                    <TextField value={password} onChange={(e) => setPassword(e.target.value)} variant='standard' fullWidth label='Password'></TextField>
-                                </Stack>
-
-                                <ResourceEditor resources={allResources} onUpdate={(r) => setAllResources(r)}/>
-                            </Stack>
-                        </Box>
+                        <ResourceEditor resources={allResources} onUpdate={(r) => setAllResources(r)}/>
                     </Stack>
                 </Stack>
             </DialogContent>

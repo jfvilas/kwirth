@@ -47,9 +47,10 @@ export async function execCommandGetDescribe(clusterInfo: ClusterInfo, instance:
             let cont = presp.body.spec?.containers.find(c => c.name === opsMessage.container)
             if (cont) {
                 if (opsMessage.command === OpsCommandEnum.GET)
-                    execResponse.data = { name: cont.name, image: cont.image }
-                else
-                    execResponse.data = cont
+                    execResponse.data =  JSON.stringify({ name: cont.name, image: cont.image }, null, 2)
+                else {
+                    execResponse.data = JSON.stringify(cont,null,2)
+                }
                 execResponse.type = InstanceMessageTypeEnum.DATA
             }
             else {

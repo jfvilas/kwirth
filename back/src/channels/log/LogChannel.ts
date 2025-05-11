@@ -1,26 +1,26 @@
 import { LogMessage, InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, LogConfig, RouteMessageResponse } from '@jfvilas/kwirth-common';
-import WebSocket from 'ws'
 import * as stream from 'stream'
-import { PassThrough } from 'stream'
+import { PassThrough, pipeline } from 'stream'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { ChannelData, IChannel, SourceEnum } from '../IChannel';
+import Semaphore from 'ts-semaphore'
 
 interface IAsset {
-    podNamespace:string,
-    podName:string,
-    containerName:string,
-    passThroughStream?:PassThrough,
-    readableStream?: NodeJS.ReadableStream,
-    buffer: string
+    podNamespace:string
+    podName:string
+    containerName:string
+    passThroughStream?:PassThrough
+    readableStream?: NodeJS.ReadableStream
+    msg:LogMessage   // we use this for avoiding allocating a LogMessage object for each message sent in the passthrough stream (memory optimization)
 }        
 
 interface IInstance {
-    instanceId:string, 
-    assets: IAsset[]
-    timestamps: boolean,
-    previous:boolean,
-    //tailLines:number,
+    instanceId:string
+    timestamps: boolean
+    previous:boolean
     paused:boolean
+    isSending:boolean
+    assets: IAsset[]
 }
 
 class LogChannel implements IChannel {
@@ -40,10 +40,6 @@ class LogChannel implements IChannel {
         return false
     }
     
-    async processImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
-        return undefined
-    }
-
     getChannelData(): ChannelData {
         return {
             id: 'log',
@@ -66,7 +62,7 @@ class LogChannel implements IChannel {
     }
 
     sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
-        var resp:InstanceConfigResponse = {
+        let resp:InstanceConfigResponse = {
             action,
             flow,
             channel,
@@ -78,7 +74,7 @@ class LogChannel implements IChannel {
     }
 
     sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
-        var signalMessage:SignalMessage = {
+        let signalMessage:SignalMessage = {
             action: InstanceMessageActionEnum.NONE,
             flow: InstanceMessageFlowEnum.RESPONSE,
             level,
@@ -90,67 +86,26 @@ class LogChannel implements IChannel {
         webSocket.send(JSON.stringify(signalMessage))
     }
 
-    sendLogLines = (webSocket:WebSocket, instanceId:string,  asset: IAsset, text:string, stripHeader:boolean): boolean => {
-        let socket = this.websocketLog.find(entry => entry.ws === webSocket)
-
-        if (!socket) {
-            console.log('No socket found for sendLogLines')
-            // perform cleaning
-            return false
-        }
-        let instances = socket.instances
-
-        if (!instances) {
-            console.log('No instances found for sendLogLines')
-            // perform cleaning
-            return false
-        }
-        var instance = instances.find (i => i.instanceId === instanceId)
-        if (!instance) {
-            console.log(`No instance found for sendLogLines instance ${instanceId}`)
-            return false
-        }
-
-        if (instance.paused) return true
-
-        const logLines = text.split('\n')
-        var logMessage:LogMessage = {
-            action: InstanceMessageActionEnum.NONE,
-            flow: InstanceMessageFlowEnum.UNSOLICITED,
-            namespace: asset.podNamespace,
-            instance: instanceId,
-            type: InstanceMessageTypeEnum.DATA,
-            pod: asset.podName,
-            container: asset.containerName,
-            channel: InstanceMessageChannelEnum.LOG,
-            text: '',
-            msgtype: 'logmessage'
-        }
-        for (var line of logLines) {
-            if (line.trim() !== '') {
-                if (stripHeader && line.length>=8) line=line.substring(8)
-                logMessage.text=line
-                webSocket.send(JSON.stringify(logMessage))   
+    sendBatch = async (webSocket:WebSocket, asset:IAsset, text:string): Promise<void> => {
+        try {
+            if (webSocket.bufferedAmount === 0) {
+                asset.msg.text = text
+                webSocket.send(JSON.stringify(asset.msg))
+            } 
+            else {
+                asset.passThroughStream!.pause()
+                const interval = setInterval(() => {
+                    if (webSocket.bufferedAmount === 0) {
+                        clearInterval(interval)
+                        asset.passThroughStream!.resume()
+                        asset.msg.text = text
+                        webSocket.send(JSON.stringify(asset.msg)) // volver a intentar
+                    }
+                }, 100)
             }
         }
-        return true
-    }
-
-    sendBlock (webSocket: WebSocket, instanceId: string, asset: IAsset, text:string, stripHeader:boolean)  {
-        if (asset.buffer!=='') {
-            // if we have some text from a previous incompleted chunk, we prepend it now
-            text = asset.buffer + text
-            asset.buffer = ''
-        }
-        if (!text.endsWith('\n')) {
-            // it's an incomplete chunk, we cut on the last complete line and store the rest of data for prepending it to next chunk
-            var i=text.lastIndexOf('\n')
-            var next=text.substring(i)
-            asset.buffer = next
-            text = text.substring(0,i)
-        }
-        if (! this.sendLogLines(webSocket, instanceId, asset, text, stripHeader)) {
-            // we do nothing, cause if there is an error maybe client reconnects later
+        catch (err) {
+            console.log('sendBatch error for', asset.podNamespace, asset.podName, asset.containerName, err)
         }
     }
 
@@ -175,8 +130,9 @@ class LogChannel implements IChannel {
                     instanceId: instanceConfig.instance, 
                     timestamps: (instanceConfig.data as LogConfig).timestamp,
                     previous: false,
-                    paused:false,
-                    assets:[]
+                    paused: false,
+                    assets: [],
+                    isSending: false
                 })
                 instance = socket?.instances[len-1]
             }
@@ -185,7 +141,18 @@ class LogChannel implements IChannel {
                 podNamespace,
                 podName,
                 containerName,
-                buffer: ''
+                msg: {
+                    action: InstanceMessageActionEnum.NONE,
+                    flow: InstanceMessageFlowEnum.UNSOLICITED,
+                    namespace: podNamespace,
+                    instance: instance.instanceId,
+                    type: InstanceMessageTypeEnum.DATA,
+                    pod: podName,
+                    container: containerName,
+                    channel: InstanceMessageChannelEnum.LOG,
+                    text: '',
+                    msgtype: 'logmessage'
+                }
             }
             let container = this.clusterInfo.dockerApi.getContainer(id)
             asset.readableStream =  await container.logs({
@@ -195,12 +162,9 @@ class LogChannel implements IChannel {
                 timestamps: (instanceConfig.data as LogConfig).timestamp as boolean,
                 ...((instanceConfig.data as LogConfig).fromStart? {} : {since: Date.now()-1800})
             })
-            asset.readableStream.on('data', chunk => {
-                var text:string=chunk.toString('utf8')
-                this.sendBlock(webSocket, instanceConfig.instance, asset, text, true)
-                if (global.gc) global.gc()
-            })
 
+            asset.readableStream.setEncoding('utf8')
+            asset.readableStream.on('data', async chunk => this.sendBatch(webSocket, asset, chunk) )
             instance.assets.push( asset )
         }
         catch (err:any) {
@@ -225,34 +189,100 @@ class LogChannel implements IChannel {
                     timestamps: (instanceConfig.data as LogConfig).timestamp,
                     previous: false,
                     paused:false,
-                    assets:[]
+                    assets:[],
+                    isSending: false
                 })
                 instance = socket?.instances[len-1]
             }
             
             const logStream:PassThrough = new stream.PassThrough()
-            let asset = {
+            let asset:IAsset = {
                 podNamespace,
                 podName,
                 containerName,
                 passThroughStream: logStream,
-                buffer: ''
+                msg: {
+                    action: InstanceMessageActionEnum.NONE,
+                    flow: InstanceMessageFlowEnum.UNSOLICITED,
+                    namespace: podNamespace,
+                    instance: instance.instanceId,
+                    type: InstanceMessageTypeEnum.DATA,
+                    pod: podName,
+                    container: containerName,
+                    channel: InstanceMessageChannelEnum.LOG,
+                    text: '',
+                    msgtype: 'logmessage'
+                }
             }
-            instance.assets.push( asset )
+            instance.assets.push(asset)
 
-            asset.passThroughStream.on('data', (chunk) => {
-                try {
-                    var text:string=chunk.toString('utf8')
-                    this.sendBlock(webSocket, instanceConfig.instance, asset, text, false)
-                }
-                catch (err) {
-                    console.log(err)
-                }
-            })
-    
+            if (!asset.passThroughStream) {
+                this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Passthrough could not be established', instanceConfig)
+                return
+            }
+
+            asset.passThroughStream.setEncoding('utf8')
+
+            // pipeline(
+            //     asset.passThroughStream, // source data
+            //     async function* (source: AsyncIterable<Buffer>) {  // asynchronous generator
+            //         for await (const chunk of source) {
+            //             asset.msg.text = chunk as any
+            //             webSocket.send(JSON.stringify(asset.msg))
+            //             await new Promise(resolve => setTimeout(resolve, 10 * instance.assets.length))
+            //         }
+            //     },
+            //     (err: Error | null) => {
+            //         if (err) {
+            //             console.error('Pipeline error:', err)
+            //         }
+            //         else {
+            //             console.log('Pipeline ended.')
+            //         }
+            //     }
+            // )
+
+            // asset.passThroughStream.on('data', async (chunk) => {
+            //     while (webSocket.bufferedAmount > 10000 * instance.assets.length ) {
+            //         console.log('pause', webSocket.bufferedAmount)
+            //         asset.passThroughStream!.pause()
+            //         while (webSocket.bufferedAmount > 0) {
+            //             await new Promise(resolve => setTimeout(resolve, 100))
+            //         }
+            //         asset.passThroughStream!.resume()
+            //         console.log('resume', webSocket.bufferedAmount)
+            //     }
+            //     asset.msg.text = chunk
+            //     webSocket.send(JSON.stringify(asset.msg))
+            // })    
+
+            // asset.passThroughStream.on('data', async (chunk) => {
+            //     asset.passThroughStream!.pause()
+            //     asset.msg.text = chunk
+            //     webSocket.send(JSON.stringify(asset.msg), () => { asset.passThroughStream!.resume() })
+            // })    
+
+            asset.passThroughStream.on('data', async (chunk) => this.sendBatch(webSocket, asset, chunk) )
+            
+            // asset.passThroughStream.on('data', async (chunk) => {
+            //     if (instance.isSending) {
+            //         asset.passThroughStream!.pause()
+            //         asset.msg.text = chunk
+            //         webSocket.send(JSON.stringify(asset.msg))
+            //         await new Promise(resolve => setTimeout(resolve, 10 * instance.assets.length))
+            //         asset.passThroughStream!.resume()
+            //     }
+            //     else {
+            //         instance.isSending = true
+            //         asset.msg.text = chunk
+            //         webSocket.send(JSON.stringify(asset.msg))
+            //         await new Promise(resolve => setTimeout(resolve, 10 * instance.assets.length))
+            //         instance.isSending = false
+            //     }
+            // })    
             let logConfig = instanceConfig.data as LogConfig
             let streamConfig = { 
-                follow: true,   // +++ review if follow must be set according to client request
+                follow: true,
                 pretty: false,
                 timestamps: logConfig.timestamp,
                 previous: Boolean(logConfig.previous),
@@ -267,8 +297,6 @@ class LogChannel implements IChannel {
     }
 
     async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
-        console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
-
         if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
             this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName)
         }
@@ -291,12 +319,11 @@ class LogChannel implements IChannel {
     }
 
     getChannelScopeLevel(scope: string): number {
-        console.log(scope)
         return ['', 'filter', 'view', 'cluster'].indexOf(scope)
     }
 
     pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
-        var socket = this.websocketLog.find(s => s.ws === webSocket)
+        let socket = this.websocketLog.find(s => s.ws === webSocket)
         if (!socket) {
             console.log('No socket found for pci')
             return
@@ -326,12 +353,12 @@ class LogChannel implements IChannel {
     removeInstance(webSocket: WebSocket, instanceId: string): void {
         let socket = this.websocketLog.find(s => s.ws === webSocket)
         if (socket) {
-            var instances = socket.instances
+            let instances = socket.instances
             if (instances) {
                 let pos = instances.findIndex(t => t.instanceId === instanceId)
                 if (pos>=0) {
                     let instance = instances[pos]
-                    for (var asset of instance.assets) {
+                    for (let asset of instance.assets) {
                         if (asset.passThroughStream)
                             asset.passThroughStream.removeAllListeners()
                         else
@@ -384,43 +411,23 @@ class LogChannel implements IChannel {
 
     updateConnection(newWebSocket: WebSocket, instanceId: string): boolean {
         for (let entry of this.websocketLog) {
-            var exists = entry.instances.find(i => i.instanceId === instanceId)
+            let exists = entry.instances.find(i => i.instanceId === instanceId)
             if (exists) {
                 entry.ws = newWebSocket
-                for (var instance of entry.instances) {
+                for (let instance of entry.instances) {
                     if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
                         for (let asset of instance.assets) {
                             if (asset.readableStream) {
                                 asset.readableStream.removeAllListeners('data')
-                                asset.readableStream.on('data', (chunk:any) => {
-                                    try {
-                                        var text:string=chunk.toString('utf8')
-                                        this.sendBlock(newWebSocket, instance.instanceId, asset, text, false)
-                                    }
-                                    catch (err) {
-                                        console.log(err)
-                                    }
-                                })    
+                                asset.readableStream.on('data', (chunk:any) => this.sendBatch(newWebSocket, asset, chunk) )
                             }        
                         }
                     }
                     else if (this.clusterInfo.type === ClusterTypeEnum.KUBERNETES) {
-                        console.log('instancefound')
                         for (let asset of instance.assets) {
-                            console.log(`found ${asset.podNamespace}/${asset.podName}/${asset.containerName}`)
                             if (asset.passThroughStream) {
-                                console.log(`found stream ${asset.podNamespace}/${asset.podName}/${asset.containerName}`)
-
                                 asset.passThroughStream.removeAllListeners('data')
-                                asset.passThroughStream.on('data', (chunk:any) => {
-                                    try {
-                                        var text:string=chunk.toString('utf8')
-                                        this.sendBlock(newWebSocket, instance.instanceId, asset, text, false)
-                                    }
-                                    catch (err) {
-                                        console.log(err)
-                                    }
-                                })
+                                asset.passThroughStream.on('data', (chunk:any) => this.sendBatch(newWebSocket, asset, chunk) )
                             }
                         }
                     }
@@ -430,7 +437,6 @@ class LogChannel implements IChannel {
         }
         return false
     }
-
 }
 
 export { LogChannel }

@@ -1,6 +1,6 @@
-import { InstanceConfigViewEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, LogMessage, OpsCommandEnum, OpsMessage, RouteMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, LogMessage, OpsCommandEnum, OpsMessage, RouteMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { IChannelObject } from '../../model/ITabObject'
-import { LogObject } from '../../model/LogObject'
+import { ILogLine, LogObject } from '../../model/LogObject'
 import { Button, TextField } from '@mui/material'
 import { useState } from 'react'
 
@@ -11,30 +11,29 @@ interface IProps {
 }
 
 const TabContentLog: React.FC<IProps> = (props:IProps) => {
-    const [input, setInput] = useState('')
+    // const [input, setInput] = useState('')
     let logObject = props.channelObject.data as LogObject
 
     if (!props.channelObject.data || !props.channelObject.data) return <pre></pre>
 
-    const formatLogLine = (imessage:InstanceMessage|null) => {
+    const formatLogLine = (imessage:ILogLine) => {
         if (!imessage) return null
 
         let logMessage = imessage as LogMessage
         if (logMessage.type === InstanceMessageTypeEnum.DATA) {
-            var txt = logMessage.text
+            let txt = logMessage.text
             if (props.channelObject.view === InstanceConfigViewEnum.NAMESPACE) {
-                var preLength = logMessage.pod!.length+1
-                var preBlanks = ' '.repeat(preLength)
+                let preLength = logMessage.pod.length+1
+                let preBlanks = ' '.repeat(preLength)
                 txt=txt.replaceAll('\n','\n'+preBlanks).trimEnd()
             }
 
-            var prefix = ''
+            let prefix = ''
             if (props.channelObject.view === InstanceConfigViewEnum.CONTAINER && props.channelObject.container.includes(',')) prefix = logMessage.container || ''
             if (props.channelObject.view === InstanceConfigViewEnum.POD) prefix = logMessage.container || ''
             if (props.channelObject.view === InstanceConfigViewEnum.GROUP) prefix = logMessage.pod || ''
-            if (props.channelObject.view === InstanceConfigViewEnum.NAMESPACE) {
+            if (props.channelObject.view === InstanceConfigViewEnum.NAMESPACE)
                 return <><span style={{color:'blue'}}>{logMessage.pod+' '}</span>{txt}</>
-            }
             else
                 return <><span style={{color:'blue'}}>{prefix+' '}</span>{txt}</>
         }
@@ -58,45 +57,43 @@ const TabContentLog: React.FC<IProps> = (props:IProps) => {
         (props.lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
     }
 
-    const send = () => {
-        // route commnad
-        let om:OpsMessage = {
-            msgtype: 'opsmessage',
-            action: InstanceMessageActionEnum.COMMAND,
-            flow: InstanceMessageFlowEnum.IMMEDIATE,
-            type: InstanceMessageTypeEnum.DATA,
-            channel: InstanceMessageChannelEnum.OPS,
-            instance: '',
-            id: '1',
-            accessKey: logObject.accessKey,
-            command: OpsCommandEnum.RESTARTPOD,
-            namespace: props.channelObject.namespace,
-            group: props.channelObject.group,
-            pod: props.channelObject.pod,
-            container: props.channelObject.container
-        }
-        let rm: RouteMessage = {
-            msgtype: 'routemessage',
-            accessKey: logObject.accessKey,
-            destChannel: InstanceMessageChannelEnum.OPS,
-            action: InstanceMessageActionEnum.ROUTE,
-            flow: InstanceMessageFlowEnum.IMMEDIATE,
-            type: InstanceMessageTypeEnum.SIGNAL,
-            channel: InstanceMessageChannelEnum.LOG,
-            instance: props.channelObject.instance,
-            data: om
-        }
-        console.log(rm)
-        props.webSocket?.send(JSON.stringify(rm))
-    }
+    // const routeCommand = () => {
+    //     let om:OpsMessage = {
+    //         msgtype: 'opsmessage',
+    //         action: InstanceMessageActionEnum.COMMAND,
+    //         flow: InstanceMessageFlowEnum.IMMEDIATE,
+    //         type: InstanceMessageTypeEnum.DATA,
+    //         channel: InstanceMessageChannelEnum.OPS,
+    //         instance: '',
+    //         id: '1',
+    //         accessKey: logObject.accessKey,
+    //         command: OpsCommandEnum.RESTARTPOD,
+    //         namespace: props.channelObject.namespace,
+    //         group: props.channelObject.group,
+    //         pod: props.channelObject.pod,
+    //         container: props.channelObject.container
+    //     }
+    //     let rm: RouteMessage = {
+    //         msgtype: 'routemessage',
+    //         accessKey: logObject.accessKey,
+    //         destChannel: InstanceMessageChannelEnum.OPS,
+    //         action: InstanceMessageActionEnum.ROUTE,
+    //         flow: InstanceMessageFlowEnum.IMMEDIATE,
+    //         type: InstanceMessageTypeEnum.SIGNAL,
+    //         channel: InstanceMessageChannelEnum.LOG,
+    //         instance: props.channelObject.instance,
+    //         data: om
+    //     }
+    //     props.webSocket?.send(JSON.stringify(rm))
+    // }
 
     return <>
         <pre> {
             logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })
         }
         </pre>
-        <TextField value={input} onChange={(e) => setInput(e.target.value)}></TextField>
-        <Button onClick={send}>SEND</Button>
+        {/* <TextField value={input} onChange={(e) => setInput(e.target.value)}></TextField>
+        <Button onClick={send}>SEND</Button> */}
         <br/>
         <span ref={props.lastLineRef}></span>
     </>

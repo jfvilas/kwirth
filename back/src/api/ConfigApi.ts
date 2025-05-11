@@ -37,20 +37,7 @@ export class ConfigApi {
                     console.log(err)
                 }
             })
-
-        // return an array containing the list of channels (its names) supported by this kwirth instance
-        this.route.route('/channel')
-            .get( async (req:Request, res:Response) => {
-                try {
-                    var chList:string[] =  [...Array.from(channels.keys())]
-                    res.status(200).json(chList)
-                }
-                catch (err) {
-                    res.status(500).json([])
-                    console.log(err)
-                }
-            })
-        
+       
         // returns cluster information of the k8 cluster which this kwirth is connected to or running inside
         this.route.route('/cluster')
             .all( async (req:Request,res:Response, next) => {
@@ -59,7 +46,8 @@ export class ConfigApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    var cluster={ name:kwirthData.clusterName, inCluster:kwirthData.inCluster, metricsInterval: this.clusterInfo.metricsInterval }
+                    let chList:string[] =  [...Array.from(channels.keys())]
+                    let cluster={ name:kwirthData.clusterName, inCluster:kwirthData.inCluster, metricsInterval: this.clusterInfo.metricsInterval, channels: chList }
                     res.status(200).json(cluster)
                 }
                 catch (err) {
@@ -137,7 +125,7 @@ export class ConfigApi {
                     else {
                         let accessKey = await AuthorizationManagement.getKey(req,res, apiKeyApi)
                         if (accessKey) {
-                            result = await AuthorizationManagement.getPodsFromGroup(this.coreApi, this.appsApi, req.params.namespace, req.query.type as string, req.params.group, accessKey)
+                            result = await AuthorizationManagement.getAllowedPods(this.coreApi, this.appsApi, req.params.namespace, req.params.group, accessKey)
                         }
                         else {
                             res.status(403).json([])

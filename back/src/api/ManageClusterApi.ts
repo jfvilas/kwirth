@@ -97,41 +97,5 @@ export class ManageClusterApi {
                 }
             })
 
-        // this.route.route('/restartdeployment/:namespace/:deployment')
-        //     .all( async (req:Request,res:Response, next) => {
-        //         if (await !validKey(req, res, apiKeyApi)) return
-        //         next()
-        //     })
-        //     .post( async (req:Request, res:Response) => {
-        //         // +++ we must segregate restarting channel from logging channel, and use correct channel
-        //         if (!validAuth(req,res, this.channels, 'restart', InstanceMessageChannelEnum.LOG, req.params.namespace,req.params.deployment,'','')) return
-        //         try {
-        //             restartGroup(this.coreApi, this.appsApi, req.params.namespace, req.params.deployment)
-        //             res.status(200).json()
-        //         }
-        //         catch (err) {
-        //             res.status(200).json([])
-        //             console.log(err)
-        //         }
-        //     })
-
-        // this.route.route('/restartpod/:namespace/:podName')
-        //     .all( async (req:Request,res:Response, next) => {
-        //         if (await !validKey(req, res, apiKeyApi)) return
-        //         next()
-        //     })
-        //     .post( async (req:Request, res:Response) => {
-        //         if (!validAuth(req, res, channels, 'restart', InstanceMessageChannelEnum.LOG, req.params.namespace,'',req.params.podName,'')) return
-        //         try {
-        //             console.log(`Restart pod ${req.params.podName}`)
-        //             console.log(req.headers)
-        //             restartPod(coreApi, req.params.namespace, req.params.podName)
-        //             res.status(200).json()
-        //         }
-        //         catch (err) {
-        //             res.status(200).json([])
-        //             console.log(err)
-        //         }
-        //     })
     }
 }

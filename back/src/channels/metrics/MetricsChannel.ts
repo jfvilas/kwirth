@@ -1,7 +1,6 @@
-import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum, RouteMessageResponse, InstanceConfigScopeEnum, parseResources, AccessKey, accessKeyDeserialize } from '@jfvilas/kwirth-common'
+import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { AssetData } from '../../tools/Metrics'
-import WebSocket from 'ws'
 import { ChannelData, IChannel, SourceEnum } from '../IChannel'
 
 interface IInstance {
@@ -47,10 +46,6 @@ class MetricsChannel implements IChannel {
 
     async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
         return false
-    }
-
-    async processImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
-        return undefined
     }
 
     containsInstance(instanceId: string): boolean {
@@ -356,9 +351,14 @@ class MetricsChannel implements IChannel {
     async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             const podResponse = await this.clusterInfo.coreApi.readNamespacedPod(podName, podNamespace)
-            const owner = podResponse.body.metadata?.ownerReferences![0]!
+            const owner = podResponse.body.metadata?.ownerReferences?.find(or => or.controller)
+            if (!owner) {
+                console.log('No owner found')
+                this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `No owner found for starting instance ${instanceConfig.instance}`, instanceConfig)
+                return
+            }
             const gtype = owner.kind.toLocaleLowerCase()  // deployment, replicaset, daemonset or statefulset
-            const podGroup = gtype+'+'+owner.name
+            const podGroup = gtype + '+' + owner.name
             const podNode = podResponse.body.spec?.nodeName
             
             switch ((instanceConfig.data as MetricsConfig).mode) {
@@ -538,21 +538,6 @@ class MetricsChannel implements IChannel {
         return Boolean (this.websocketMetrics.find(s => s.ws === webSocket))
     }
 
-    removeConnection(webSocket: WebSocket): void {
-        let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
-        if (socket) {
-            let instances = socket.instances
-            if (instances) {
-                for (var i=0;i<instances.length;i++) {
-                    console.log(`Interval for instance ${instances[i].instanceId} has been removed`)
-                    this.removeInstance(webSocket, instances[i].instanceId)
-                }
-            }
-            var pos = this.websocketMetrics.findIndex(s => s.ws === webSocket)
-            this.websocketMetrics.splice(pos,1)
-        }
-    }
-
     refreshConnection(webSocket: WebSocket): boolean {
         let socket = this.websocketMetrics.find(s => s.ws === webSocket)
         if (socket) {
@@ -580,6 +565,21 @@ class MetricsChannel implements IChannel {
             }
         }
         return false
+    }
+
+    removeConnection(webSocket: WebSocket): void {
+        let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
+        if (socket) {
+            let instances = socket.instances
+            if (instances) {
+                for (var i=0;i<instances.length;i++) {
+                    console.log(`Interval for instance ${instances[i].instanceId} has been removed`)
+                    this.removeInstance(webSocket, instances[i].instanceId)
+                }
+            }
+            var pos = this.websocketMetrics.findIndex(s => s.ws === webSocket)
+            this.websocketMetrics.splice(pos,1)
+        }
     }
 
 }

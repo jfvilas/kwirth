@@ -1,7 +1,8 @@
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
 class Settings {
-    public logMaxMessages: number = 1000
+    public logMaxMessages: number = 5000
+    public logMaxPerPodMessages: number = 500
     public logFromStart: boolean = false
     public logPrevious: boolean = false
     public logTimestamp: boolean = false

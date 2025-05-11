@@ -92,7 +92,7 @@ export class MetricsTools {
 
             if ('machine_scrape_error container_scrape_error'.includes(mname)) {
                 // we ignore scraping metrics
-                // +++ implement a general messaging system for the user, for sending kwirth-scope signaling
+                // +++ send errors to the user
                 continue
             }
 
@@ -373,7 +373,7 @@ export class MetricsTools {
             return
         }
 
-        if (global.gc) global.gc()
+        //if (global.gc) global.gc()
         this.loadingClusterMetrics = true
 
         try {

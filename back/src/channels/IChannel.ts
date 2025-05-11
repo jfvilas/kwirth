@@ -1,5 +1,4 @@
 import { InstanceConfig, InstanceMessage, InstanceMessageActionEnum, RouteMessageResponse } from '@jfvilas/kwirth-common'
-import WebSocket from 'ws'
 
 enum SourceEnum {
     DOCKER = 'docker',
@@ -29,7 +28,6 @@ interface IChannel {
     removeInstance (webSocket:WebSocket, instanceId:string) : void
 
     processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage, podNamespace?:string, podName?:string, containerName?:string) : Promise<boolean>
-    processImmediateCommand (instanceMessage:InstanceMessage) : Promise<any>
 
     containsConnection (webSocket:WebSocket) : boolean
     removeConnection (webSocket:WebSocket) : void

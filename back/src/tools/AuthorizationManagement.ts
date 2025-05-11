@@ -1,11 +1,10 @@
 import { ApiKeyApi } from '../api/ApiKeyApi'
-import { AccessKey, accessKeyDeserialize, accessKeySerialize, InstanceConfig, InstanceMessageChannelEnum, parseResource, parseResources } from '@jfvilas/kwirth-common'
+import { AccessKey, accessKeyDeserialize, accessKeySerialize, InstanceConfig, parseResource, parseResources } from '@jfvilas/kwirth-common'
 import { ApiKey } from '@jfvilas/kwirth-common'
 import * as crypto from 'crypto'
 import { IChannel } from '../channels/IChannel'
 import { Request, Response } from 'express'
 import { AppsV1Api, CoreV1Api, V1Pod } from '@kubernetes/client-node'
-import { access } from 'fs'
 
 export class AuthorizationManagement {
     public static cleanApiKeys = (apiKeys:ApiKey[]) => {
@@ -179,8 +178,6 @@ export class AuthorizationManagement {
         let result:string[] = []
 
         let allowedNamespaces = await this.getAllowedNamespaces(coreApi, accessKey)
-        console.log('allowedNamespaces', allowedNamespaces)
-        console.log('requestedNamespaces', requestedNamespaces)
         if (requestedNamespaces.length === 0 || (requestedNamespaces.length === 1 && requestedNamespaces[0]==='')) {
             result.push(...allowedNamespaces)
         }
@@ -224,12 +221,15 @@ export class AuthorizationManagement {
     
         for (let gtype of ['deployment','replicaset','daemonset','statefulset']) {
             let glist = await AuthorizationManagement.getGroupNames(appsApi, namespace, gtype)
-    
+
             // we prune glist according to resources and namespaces
             for (let resource of resources) {
                 if (resource.groups !== '' && AuthorizationManagement.getValidValues([namespace], resource.namespaces.split(',')).length>0) {
-                    let regexes = resource.groups.split(',').filter(g => g.startsWith(gtype)).map(g => g.split('+')[1])
-                    glist = [ ...new Set(AuthorizationManagement.getValidValues(glist, regexes)) ]
+                    let resGroups = resource.groups.split(',').filter(g => g.startsWith(gtype+'+'))
+                    if (resGroups.length!==0) {
+                        let regexes = resGroups.map(g => g.split('+')[1])
+                        glist = [ ...new Set(AuthorizationManagement.getValidValues(glist, regexes)) ]
+                    }
                 }
             }
             result.push (...glist.map (gname => { return { name:gname, type:gtype}}))
@@ -248,8 +248,6 @@ export class AuthorizationManagement {
             allowedGroups.push(...y)
         }
 
-        console.log('allowedGroups', allowedGroups)
-        console.log('requestedGroups', requestedGroups)
         if (requestedGroups.length === 0 || (requestedGroups.length === 1 && requestedGroups[0]==='')) {
             result.push(...allowedGroups)
         }
@@ -261,6 +259,16 @@ export class AuthorizationManagement {
         return result
     }
     
+    static readReplicaSet = async (appsApi: AppsV1Api, namespace:string, name:string) => {
+        try {
+            let rs = (await appsApi.readNamespacedReplicaSet(name, namespace)).body
+            return rs
+        }
+        catch (err) {
+            return undefined
+        }
+    }
+
     public static getPodsFromGroup = async (coreApi: CoreV1Api, appsApi: AppsV1Api, namespace:string, gtype:string, gname:string, accessKey:AccessKey): Promise<string[]> => {
         let pods:V1Pod[] = []
         let result:string[]=[]
@@ -269,16 +277,18 @@ export class AuthorizationManagement {
         let response= await coreApi.listNamespacedPod(namespace)
         if (gtype === 'deployment') {
             for (let pod of response.body.items) {
-                let owner = pod.metadata?.ownerReferences?.[0]
-                if (owner) {
-                    let rs = (await appsApi.readNamespacedReplicaSet(owner.name, namespace)).body
-                    const rsOwner = rs.metadata?.ownerReferences?.[0]
-                    if (rsOwner && rsOwner.kind === 'Deployment' && rsOwner.name === gname) pods.push(pod)
-                }
+                let controllerName = await this.getPodControllerName(appsApi, pod, true)
+                if (controllerName === gname || pod.metadata?.name?.startsWith(gname)) pods.push(pod)
             }
         }
         else {
-            pods = response.body.items.filter (n => n?.metadata?.ownerReferences![0].name===gname).filter(p => p.status?.phase?.toLowerCase()==='running')
+            // we find for pod whose controller is gname
+            let filteredPods = response.body.items.filter (pod => {
+                let podController  = pod?.metadata?.ownerReferences?.find(cont => cont.controller)
+                if (podController && podController.name===gname) return pod
+            })
+            // we then filter for running pods
+            filteredPods = filteredPods.filter(p => p.status?.phase?.toLowerCase()==='running')
         }
     
         for (let pod of pods) {
@@ -293,7 +303,74 @@ export class AuthorizationManagement {
         return result
     }
     
-    private static getAllowedPods = async (coreApi: CoreV1Api, namespace:string, accessKey:AccessKey): Promise<string[]> => {
+    public static getPodLabelSelectorsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, gTypeName:string) => {
+        let response:any
+        let groupName, groupType
+        let emptyResult = { pods:[],labelSelector:'' };
+        [groupType, groupName] = gTypeName.toLowerCase().split('+')
+    
+        try {
+            switch (groupType) {
+                case 'deployment': {
+                        let x = await appsApi.listNamespacedDeployment(namespace)
+                        let names = x.body.items.map (rs => rs.metadata?.name)
+                        if (!names.includes(groupName)) return emptyResult
+                        response = await appsApi.readNamespacedDeployment(groupName, namespace)
+                    }
+                    break
+                case'replicaset': {
+                        let x = await appsApi.listNamespacedReplicaSet(namespace)
+                        let names = x.body.items.map (rs => rs.metadata?.name)
+                        if (!names.includes(groupName)) return emptyResult
+                        response = await appsApi.readNamespacedReplicaSet(groupName, namespace)
+                    }
+                    break
+                case'daemonset': {
+                        let x = await appsApi.listNamespacedDaemonSet(namespace)
+                        let names = x.body.items.map (rs => rs.metadata?.name)
+                        if (!names.includes(groupName)) return emptyResult
+                        response = await appsApi.readNamespacedDaemonSet(groupName, namespace)
+                    }
+                    break
+                case'statefulset': {
+                        let x = await appsApi.listNamespacedStatefulSet(namespace)
+                        let names = x.body.items.map (rs => rs.metadata?.name)
+                        if (!names.includes(groupName)) return emptyResult
+                        response = await appsApi.readNamespacedStatefulSet(groupName, namespace)
+                    }
+                    break
+            }    
+        }
+        catch (error) {
+            console.log('Error reading namespaced group: ', error)
+            return emptyResult
+        }
+    
+        const matchLabels = response.body.spec?.selector.matchLabels
+        const labelSelector = Object.entries(matchLabels || {}).map(([key, value]) => `${key}=${value}`).join(',')
+        const pods = (await coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)).body.items
+        return  { pods, labelSelector }
+    }
+
+    // gets controller name including (or not) deployment (aside form replica, daemon and stateful)
+    static getPodControllerName = async (appsApi:AppsV1Api, pod:V1Pod, includeDeployment:boolean): Promise<string|undefined> => {
+        if (!pod || !pod.metadata || !pod.metadata.namespace || !pod.metadata.ownerReferences) return
+        let controller = pod.metadata.ownerReferences.find(or => or.controller)
+        if (controller) {
+            if (!includeDeployment || controller.kind !== 'ReplicaSet') return controller.name
+
+            let rs = await AuthorizationManagement.readReplicaSet(appsApi, pod.metadata.namespace, controller.name)
+            if (rs?.metadata?.ownerReferences) {
+                let rsController = rs.metadata?.ownerReferences.find(rsor => rsor.controller)
+                if (rsController && rsController.kind === 'Deployment') return rsController.name
+            }
+            else {
+                return controller.name
+            }
+        }
+    }
+
+    public static getAllowedPods = async (coreApi: CoreV1Api, appsApi:AppsV1Api, namespace:string, group:string, accessKey:AccessKey): Promise<string[]> => {
         let pods:V1Pod[] = []
         let result:string[]=[]
     
@@ -302,10 +379,22 @@ export class AuthorizationManagement {
         pods = response.body.items
     
         for (let pod of pods) {
-            for (let resid of resources) {
-                // for each resourceid, we first check if namespace is right (namespace of resource must match with pod namespace ofr th eresource to be usable)
-                if (AuthorizationManagement.getValidValues([pod.metadata!.namespace!], resid.namespaces.split(',')).length>0) {
-                    result.push(pod.metadata?.name!)
+            for (let resource of resources) {
+                if (!pod.metadata?.name || !pod.metadata.namespace) continue
+
+                if (AuthorizationManagement.getValidValues([pod.metadata.namespace], resource.namespaces.split(',')).length>0) {
+                    let validPodNames = AuthorizationManagement.getValidValues([pod.metadata.name], resource.pods.split(','))
+                    if (validPodNames.includes(pod.metadata.name)) {
+                        if (group==='') {
+                            result.push(pod.metadata.name)
+                        }
+                        else {
+                            if (pod.metadata.ownerReferences) {
+                                let controllerName = await this.getPodControllerName(appsApi, pod, true)
+                                if (controllerName === group || pod.metadata.name.startsWith(group)) result.push(pod.metadata.name)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -313,16 +402,14 @@ export class AuthorizationManagement {
         return result
     }
     
-    public static getValidPods = async (coreApi: CoreV1Api, namespaces:string[], accessKey:AccessKey, requestedPods:string[]): Promise<string[]> => {
+    public static getValidPods = async (coreApi: CoreV1Api, appsApi:AppsV1Api, namespaces:string[], accessKey:AccessKey, requestedPods:string[]): Promise<string[]> => {
         let result:string[]=[]
         let allowedPods = []
 
         for (let ns of namespaces) {
-            allowedPods.push (...await this.getAllowedPods(coreApi, ns, accessKey))
+            allowedPods.push (...await this.getAllowedPods(coreApi, appsApi, ns, '', accessKey))
         }
 
-        console.log('allowedPods', allowedPods)
-        console.log('requestedPods', requestedPods)
         if (requestedPods.length === 0 || (requestedPods.length === 1 && requestedPods[0]==='')) {
             result.push(...allowedPods)
         }
@@ -357,17 +444,11 @@ export class AuthorizationManagement {
         let result:string[] = []    
         let resources = parseResources(accessKey!.resources)
 
-        console.log('cont ****************')
         let x = (await coreApi.readNamespacedPod(pod, namespace)).body
         if (!x.spec) return result
     
-
-        console.log('namespace',namespace)
-        console.log('pod',pod)
         for (let cont of x.spec.containers) {
             for (let resid of resources) {
-                console.log('contname', cont.name)
-                console.log('resid.containers.split',resid.containers.split(','))
                 // we check if the resource is applicable to the container we are evaluating (namespace and pod of the resource must match)
                 if (AuthorizationManagement.getValidValues([x.metadata!.namespace!], resid.namespaces.split(',')).length>0) {
                     if (AuthorizationManagement.getValidValues([x.metadata!.name!], resid.pods.split(',')).length>0) {
@@ -377,7 +458,6 @@ export class AuthorizationManagement {
                 }
             }
         }
-        console.log('allcont', result)
         result = [...new Set(result)]
         return result
     }
@@ -386,7 +466,6 @@ export class AuthorizationManagement {
         let result:string[] = []
         let allowedContainers = []
 
-        console.log('requestedContainers', requestedContainers)
         for (let ns of namespaces) {
             let pods = (await coreApi.listNamespacedPod(ns)).body.items
             for (let pod of pods) {
@@ -394,8 +473,6 @@ export class AuthorizationManagement {
                 allowedContainers.push(...x.map(c => pod.metadata?.name+ '+' + c))
             }
         }
-        console.log('allowedcon', allowedContainers)
-        console.log('reqdcon', requestedContainers)
 
         if (requestedContainers.length === 0 || (requestedContainers.length === 1 && requestedContainers[0]==='')) {
             result.push(...allowedContainers)
@@ -404,10 +481,7 @@ export class AuthorizationManagement {
             let x = this.getValidValues(allowedContainers, requestedContainers.map(g => '^'+g.replaceAll('+','\\+')+'$'))
             result.push(...x)
         }
-        console.log('result', result)
         result = [...new Set(result)]
         return result
     }
-
 }
-

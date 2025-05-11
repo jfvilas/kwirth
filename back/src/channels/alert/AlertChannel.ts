@@ -1,5 +1,4 @@
 import { InstanceConfig, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, AlertSeverityEnum, AlertMessage, InstanceMessage, AlertConfig, RouteMessageResponse } from '@jfvilas/kwirth-common';
-import WebSocket from 'ws'
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../../model/ClusterInfo'
@@ -26,22 +25,14 @@ interface IInstance {
 
 class AlertChannel implements IChannel {    
     clusterInfo : ClusterInfo
-    websocketAlert: {
-        ws:WebSocket,
+    webSocketAlert: {
+        ws: WebSocket,
         lastRefresh: number,
         instances: IInstance[] 
     }[] = []
 
     constructor (clusterInfo:ClusterInfo) {
         this.clusterInfo = clusterInfo
-    }
-
-    async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
-        return false
-    }
-
-    async processImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
-        return undefined
     }
 
     getChannelData(): ChannelData {
@@ -57,8 +48,12 @@ class AlertChannel implements IChannel {
         }
     }
 
+    getChannelScopeLevel(scope: string): number {
+        return ['','view','create','cluster'].indexOf(scope)
+    }
+
     containsInstance(instanceId: string): boolean {
-        for (let socket of this.websocketAlert) {
+        for (let socket of this.webSocketAlert) {
             let exists = socket.instances.find(i => i.instanceId === instanceId)
             if (exists) return true
         }
@@ -120,7 +115,7 @@ class AlertChannel implements IChannel {
     }
 
     sendAlertLines = (webSocket:WebSocket, instanceId:string, asset:IAsset, text:string): boolean => {
-        var socket = this.websocketAlert.find(s => s.ws === webSocket)
+        var socket = this.webSocketAlert.find(s => s.ws === webSocket)
         if (!socket) {
             return false
         }
@@ -175,10 +170,10 @@ class AlertChannel implements IChannel {
                 return
             }
                              
-            let socket = this.websocketAlert.find(s => s.ws === webSocket)
+            let socket = this.webSocketAlert.find(s => s.ws === webSocket)
             if (!socket) {
-                let len = this.websocketAlert.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-                socket = this.websocketAlert[len-1]
+                let len = this.webSocketAlert.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+                socket = this.webSocketAlert[len-1]
             }
 
             let instances = socket.instances
@@ -212,7 +207,7 @@ class AlertChannel implements IChannel {
             asset.readableStream.on('data', chunk => {
                 var text:string=chunk.toString('utf8')
                 this.sendBlock(webSocket, instanceConfig.instance, asset, text)
-                if (global.gc) global.gc()
+                //if (global.gc) global.gc()
             })
         }
         catch (err:any) {
@@ -223,10 +218,10 @@ class AlertChannel implements IChannel {
 
     async startKubernetesStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string, regExps:Map<AlertSeverityEnum, RegExp[]>): Promise<void> {
         try {
-            let socket = this.websocketAlert.find(s => s.ws === webSocket)
+            let socket = this.webSocketAlert.find(s => s.ws === webSocket)
             if (!socket) {
-                let len = this.websocketAlert.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-                socket = this.websocketAlert[len-1]
+                let len = this.webSocketAlert.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+                socket = this.webSocketAlert[len-1]
             }
 
             let instances = socket.instances
@@ -253,7 +248,7 @@ class AlertChannel implements IChannel {
             asset.passThroughStream.on('data', chunk => {
                 var text:string=chunk.toString('utf8')
                 this.sendBlock(webSocket, instanceConfig.instance, asset, text)
-                if (global.gc) global.gc()
+                //if (global.gc) global.gc()
             })
 
             let streamConfig = { 
@@ -272,8 +267,6 @@ class AlertChannel implements IChannel {
     }
 
     async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
-        console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
-
         let regexes: Map<AlertSeverityEnum, RegExp[]> = new Map()
 
         let regExps: RegExp[] = []
@@ -302,25 +295,8 @@ class AlertChannel implements IChannel {
         }
     }
 
-    stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
-        let socket = this.websocketAlert.find(s => s.ws === webSocket)
-        if (!socket) return
-
-        if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
-            this.removeInstance(webSocket, instanceConfig.instance)
-            this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.ALERT, instanceConfig, 'Log instance stopped')
-        }
-        else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
-        }
-    }
-
-    getChannelScopeLevel(scope: string): number {
-        return ['','view','create','cluster'].indexOf(scope)
-    }
-
     pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
-        var socket = this.websocketAlert.find(s => s.ws === webSocket)
+        var socket = this.webSocketAlert.find(s => s.ws === webSocket)
         if (!socket) {
             console.log('No socket found for pci')
             return
@@ -347,8 +323,21 @@ class AlertChannel implements IChannel {
 
     }
 
+    stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
+        let socket = this.webSocketAlert.find(s => s.ws === webSocket)
+        if (!socket) return
+
+        if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
+            this.removeInstance(webSocket, instanceConfig.instance)
+            this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.ALERT, instanceConfig, 'Log instance stopped')
+        }
+        else {
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
+        }
+    }
+
     removeInstance(webSocket: WebSocket, instanceId: string): void {
-        let socket = this.websocketAlert.find(s => s.ws === webSocket)
+        let socket = this.webSocketAlert.find(s => s.ws === webSocket)
         if (socket) {
             var instances = socket.instances
             if (instances) {
@@ -376,18 +365,22 @@ class AlertChannel implements IChannel {
         }
     }
 
+    async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+        return false
+    }
+
     containsConnection (webSocket:WebSocket) : boolean {
-        return Boolean (this.websocketAlert.find(s => s.ws === webSocket))
+        return Boolean (this.webSocketAlert.find(s => s.ws === webSocket))
     }
 
     removeConnection(webSocket: WebSocket): void {
-        let socket = this.websocketAlert.find(s => s.ws === webSocket)
+        let socket = this.webSocketAlert.find(s => s.ws === webSocket)
         if (socket) {
             for (let instance of socket.instances) {
                 this.removeInstance (webSocket, instance.instanceId)
             }
-            let pos = this.websocketAlert.findIndex(s => s.ws === webSocket)
-            this.websocketAlert.splice(pos,1)
+            let pos = this.webSocketAlert.findIndex(s => s.ws === webSocket)
+            this.webSocketAlert.splice(pos,1)
         }
         else {
             console.log('WebSocket not found on alerts for remove')
@@ -395,7 +388,7 @@ class AlertChannel implements IChannel {
     }
 
     refreshConnection(webSocket: WebSocket): boolean {
-        let socket = this.websocketAlert.find(s => s.ws === webSocket)
+        let socket = this.webSocketAlert.find(s => s.ws === webSocket)
         if (socket) {
             socket.lastRefresh = Date.now()
             return true
@@ -407,7 +400,7 @@ class AlertChannel implements IChannel {
     }
 
     updateConnection(newWebSocket: WebSocket, instanceId: string): boolean {
-        for (let entry of this.websocketAlert) {
+        for (let entry of this.webSocketAlert) {
             var exists = entry.instances.find(i => i.instanceId === instanceId)
             if (exists) {
                 entry.ws = newWebSocket

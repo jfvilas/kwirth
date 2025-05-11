@@ -96,7 +96,7 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
     return (
         <Stack spacing={1} style={{width:'100%'}}>
             <FormControl variant='standard'>
-                <InputLabel>Resources</InputLabel>
+                <InputLabel>Resource List</InputLabel>
                 <Select value={selectedResource} onChange={onChangeResource}>
                     { allResources.map ((resource,index) => {
                         if (selectedResource === resource || (!selectedResource && index === 0)) {
@@ -108,7 +108,7 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <Stack direction={'column'} spacing={1}>
+            <Stack direction={'column'} spacing={1} sx={{paddingLeft:3}}>
                 <FormControl variant='standard'>
                     <InputLabel>Scopes</InputLabel>
                     <Select value={scopes} multiple onChange={onChangeScopes} renderValue={(s) => s.join(',')}>
@@ -121,15 +121,19 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
                         })}
                     </Select>
                 </FormControl>
-                <TextField value={namespace} onChange={(e) => setNamespace(e.target.value)} variant='standard' label='Namespace'></TextField>
+                <TextField value={namespace} onChange={(e) => setNamespace(e.target.value)} variant='standard' label='Namespaces'></TextField>
 
-                <TextField value={deployment} onChange={(e) => setDeployment(e.target.value)} variant='standard' label='Deployment'></TextField>
-                <TextField value={replicaset} onChange={(e) => setReplicaset(e.target.value)} variant='standard' label='ReplicaSet'></TextField>
-                <TextField value={daemonset} onChange={(e) => setDaemonset(e.target.value)} variant='standard' label='DaemonSet'></TextField>
-                <TextField value={statefulset} onChange={(e) => setStatefulset(e.target.value)} variant='standard' label='StatefulSet'></TextField>
+                <Stack direction={'row'} spacing={1}>
+                    <TextField value={deployment} onChange={(e) => setDeployment(e.target.value)} variant='standard' label='Deployments' fullWidth/>
+                    <TextField value={replicaset} onChange={(e) => setReplicaset(e.target.value)} variant='standard' label='ReplicaSets' fullWidth/>
+                </Stack>
+                    <Stack direction={'row'} spacing={1}>
+                    <TextField value={daemonset} onChange={(e) => setDaemonset(e.target.value)} variant='standard' label='DaemonSets' fullWidth/>
+                    <TextField value={statefulset} onChange={(e) => setStatefulset(e.target.value)} variant='standard' label='StatefulSets' fullWidth/>
+                </Stack>
 
-                <TextField value={pod} onChange={(e) => setPod(e.target.value)} variant='standard' label='Pod'></TextField>
-                <TextField value={container} onChange={(e) => setContainer(e.target.value)} variant='standard' label='Container'></TextField>
+                <TextField value={pod} onChange={(e) => setPod(e.target.value)} variant='standard' label='Pods'/>
+                <TextField value={container} onChange={(e) => setContainer(e.target.value)} variant='standard' label='Containers'/>
                 <Stack direction={'row'} spacing={1} alignSelf={'end'}>
                     <Button onClick={newResource} size='small' variant='outlined'>New</Button>
                     <Button onClick={saveResource} size='small' variant='outlined'>Save</Button>
