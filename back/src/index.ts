@@ -883,7 +883,7 @@ const launchKubernetes = async() => {
                     // load channel extensions
                     channels.set('log', new LogChannel(clusterInfo))
                     channels.set('alert', new AlertChannel(clusterInfo))
-                    //+++channels.set('metrics', new MetricsChannel(clusterInfo))
+                    channels.set('metrics', new MetricsChannel(clusterInfo))
                     channels.set('ops', new OpsChannel(clusterInfo))
 
                     let requireMetrics = Array.from(channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)
