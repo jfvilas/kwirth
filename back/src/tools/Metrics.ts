@@ -57,8 +57,7 @@ export class MetricsTools {
 
     // obteians the list of metrics available (its names, types and descriptions)
     public getMetricsList() {
-        var objects = Array.from(this.metricsList.keys()).map ( metricName => { return { metric:metricName, ...this.metricsList.get(metricName)} })
-        return objects
+        return Array.from(this.metricsList.keys()).map ( metricName => { return { metric:metricName, ...this.metricsList.get(metricName)} })
     }
 
     // adds properties to matrics map

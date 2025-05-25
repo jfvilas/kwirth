@@ -1,4 +1,4 @@
-import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources } from '@jfvilas/kwirth-common'
+import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources, accessKeyDeserialize } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { AssetData } from '../../tools/Metrics'
 import { ChannelData, IChannel, SourceEnum } from '../IChannel'
@@ -342,9 +342,12 @@ class MetricsChannel implements IChannel {
     }
 
     checkScopes = (instanceConfig:InstanceConfig, scope: InstanceConfigScopeEnum) => {
-        let resources = parseResources (instanceConfig.accessKey)
+        let resources = parseResources (accessKeyDeserialize(instanceConfig.accessKey).resources)
         let requiredLevel = this.getChannelScopeLevel(scope)
+        console.log('resources',resources)
+        console.log('reqlevl',requiredLevel)
         let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))
+        console.log('canp',canPerform)
         return canPerform
     }
 
@@ -364,10 +367,9 @@ class MetricsChannel implements IChannel {
             switch ((instanceConfig.data as MetricsConfig).mode) {
                 case MetricsConfigModeEnum.SNAPSHOT:
                     {
-                        let canPerform = this.checkScopes(instanceConfig, InstanceConfigScopeEnum.SNAPSHOT)
-                        if (!canPerform) {
-                            console.log('Insufficeint scope for SNAPSHOT')
-                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Insufficeint scope for SNAPSHOT', instanceConfig) 
+                        if (!this.checkScopes(instanceConfig, InstanceConfigScopeEnum.SNAPSHOT)) {
+                            console.log('Insufficient scope for SNAPSHOT')
+                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Insufficient scope for SNAPSHOT', instanceConfig) 
                             return
                         }
                         if (podNode) {
@@ -389,10 +391,11 @@ class MetricsChannel implements IChannel {
                     break
                 case MetricsConfigModeEnum.STREAM:
                     {
-                        let canPerform = this.checkScopes(instanceConfig, InstanceConfigScopeEnum.SNAPSHOT)
-                        if (!canPerform) {
-                            console.log('Insufficeint scope for STREAM')
-                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Insufficeint scope for STREAM', instanceConfig) 
+                        console.log('instanceConfig.scope',instanceConfig.scope)
+                        console.log('instanceConfig.ak',instanceConfig.accessKey)
+                        if (!this.checkScopes(instanceConfig, InstanceConfigScopeEnum.STREAM)) {
+                            console.log('Insufficient scope for STREAM')
+                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Insufficient scope for STREAM', instanceConfig) 
                             return
                         }
 

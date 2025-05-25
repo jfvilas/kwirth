@@ -25,8 +25,10 @@ export class AuthorizationManagement {
             var receivedAccessKey = accessKeyDeserialize(receivedAccessString)
             let computedExpire = 0
             if (receivedAccessKey.type && receivedAccessKey.type.startsWith('bearer:')) {
-                if (!AuthorizationManagement.validBearerKey(apiKeyApi.masterKey, receivedAccessKey))
-                    console.log('Hashes do not match')            
+                if (!AuthorizationManagement.validBearerKey(apiKeyApi.masterKey, receivedAccessKey)) {
+                    console.log('Hashes do not match validating key')
+                    return false
+                }
                 else
                     computedExpire = +receivedAccessKey.type.split(':')[1]
             }
@@ -67,8 +69,10 @@ export class AuthorizationManagement {
             var receivedAccessKey = accessKeyDeserialize(receivedAccessString)
             let computedExpire = 0
             if (receivedAccessKey.type && receivedAccessKey.type.startsWith('bearer:')) {
-                if (!AuthorizationManagement.validBearerKey(apiKeyApi.masterKey, receivedAccessKey))
-                    console.log('Hashes do not match')            
+                if (!AuthorizationManagement.validBearerKey(apiKeyApi.masterKey, receivedAccessKey)) {
+                    console.log('Hashes do not match getting key')
+                    return undefined
+                }
                 else
                     computedExpire = +receivedAccessKey.type.split(':')[1]
             }

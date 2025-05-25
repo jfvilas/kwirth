@@ -548,30 +548,6 @@ const processPing = (webSocket:WebSocket, instanceMessage:InstanceMessage): void
     sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.PING, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Socket has not been found')
 }
 
-// const processChannelCommand = async (webSocket: WebSocket, instanceMessage: InstanceMessage, podNamespace?:string, podName?:string, containerName?:string): Promise<void> => {
-//     let channel = channels.get(instanceMessage.channel)
-//     if (channel) {
-//         let instance = channel.containsInstance(instanceMessage.instance)
-//         if (instance) {
-//             channel.processCommand(webSocket, instanceMessage, podNamespace, podName, containerName)
-//         }
-//         else {
-//             // we have no instance, may be an IMMED command
-//             if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
-//                 console.log(`Process IMMEDIATE command`)
-//                 channel.processCommand(webSocket, instanceMessage, podNamespace, podName, containerName)
-//             }
-//             else {
-//                 console.log(`Instance '${instanceMessage.instance}' not found`)
-//                 sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for command')
-//             }
-//         }   
-//     }
-//     else {
-//         console.log(`Channel not found`)
-//         sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Socket has not been found')
-//     }
-// }
 const processChannelCommand = async (webSocket: WebSocket, instanceMessage: InstanceMessage, podNamespace?:string, podName?:string, containerName?:string): Promise<void> => {
     let channel = channels.get(instanceMessage.channel)
     if (channel) {
@@ -613,8 +589,8 @@ const processChannelRoute = async (webSocket: WebSocket, instanceMessage: Instan
             }
         }
         else {
-            console.log(`Instance '${instanceMessage.instance}' not found onf channel ${channel.getChannelData().id}`)
-            sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found fro routing')
+            console.log(`Instance '${instanceMessage.instance}' not found on channel ${channel.getChannelData().id}`)
+            sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for routing')
         }   
     }
     else {

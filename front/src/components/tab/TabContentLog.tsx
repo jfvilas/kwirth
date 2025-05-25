@@ -1,8 +1,8 @@
-import { InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, LogMessage, OpsCommandEnum, OpsMessage, RouteMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { InstanceConfigViewEnum, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { IChannelObject } from '../../model/ITabObject'
 import { ILogLine, LogObject } from '../../model/LogObject'
-import { Button, TextField } from '@mui/material'
-import { useState } from 'react'
+// import { Button, TextField } from '@mui/material'
+// import { useState } from 'react'
 
 interface IProps {
     webSocket?: WebSocket
@@ -16,24 +16,23 @@ const TabContentLog: React.FC<IProps> = (props:IProps) => {
 
     if (!props.channelObject.data || !props.channelObject.data) return <pre></pre>
 
-    const formatLogLine = (imessage:ILogLine) => {
+    const formatLogLine = (imessage:ILogLine|null) => {
         if (!imessage) return null
 
         let logMessage = imessage as LogMessage
         if (logMessage.type === InstanceMessageTypeEnum.DATA) {
-            let txt = logMessage.text
+            var txt = logMessage.text
             if (props.channelObject.view === InstanceConfigViewEnum.NAMESPACE) {
-                let preLength = logMessage.pod.length+1
-                let preBlanks = ' '.repeat(preLength)
-                txt=txt.replaceAll('\n','\n'+preBlanks).trimEnd()
+                let preLength = logMessage.pod!.length+1
+                txt=txt.replaceAll('\n','\n' + ' '.repeat(preLength) ).trimEnd()
             }
 
             let prefix = ''
-            if (props.channelObject.view === InstanceConfigViewEnum.CONTAINER && props.channelObject.container.includes(',')) prefix = logMessage.container || ''
             if (props.channelObject.view === InstanceConfigViewEnum.POD) prefix = logMessage.container || ''
-            if (props.channelObject.view === InstanceConfigViewEnum.GROUP) prefix = logMessage.pod || ''
-            if (props.channelObject.view === InstanceConfigViewEnum.NAMESPACE)
-                return <><span style={{color:'blue'}}>{logMessage.pod+' '}</span>{txt}</>
+            if (props.channelObject.view === InstanceConfigViewEnum.GROUP) prefix = logMessage.pod + '/'+logMessage.container || ''
+            if (props.channelObject.view === InstanceConfigViewEnum.NAMESPACE) {
+                return <><span style={{color:'blue'}}>{logMessage.pod + '/' + logMessage.container + ' '}</span>{txt}</>
+            }
             else
                 return <><span style={{color:'blue'}}>{prefix+' '}</span>{txt}</>
         }

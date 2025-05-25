@@ -1,17 +1,14 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildResource = exports.parseResources = exports.parseResource = exports.AccessKey = exports.accessKeySerialize = exports.accessKeyDeserialize = exports.accessKeyCreate = exports.accessKeyBuild = void 0;
-const guid_1 = __importDefault(require("guid"));
+const uuid_1 = require("uuid");
 /*
     Access key format is:
 
         id|type|resource
     
     where:
-        id: is a GUID
+        id: is a UUID
         type: is 'volatile', 'permanent' (it is persisted when created)  or 'bearer:....'
             in case of a bearer accessKey, the type contains the expire for the key, that is, for example:
                bearer:
@@ -27,7 +24,7 @@ class AccessKey {
 exports.AccessKey = AccessKey;
 function accessKeyCreate(type, resources) {
     let accessKey = new AccessKey();
-    accessKey.id = guid_1.default.create().toString();
+    accessKey.id = (0, uuid_1.v4)();
     accessKey.type = type;
     accessKey.resources = resources;
     return accessKey;
@@ -62,8 +59,10 @@ function parseResource(key) {
 }
 exports.parseResource = parseResource;
 function parseResources(key) {
-    var ress = key.split(';');
-    var result = [];
+    if (!key)
+        return [];
+    let ress = key.split(';');
+    let result = [];
     for (var res of ress) {
         result.push(parseResource(res));
     }

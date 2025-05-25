@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react'
 import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, List, ListItemButton, MenuItem, Select, Stack, TextField, Typography} from '@mui/material'
-import { ApiKey } from '@jfvilas/kwirth-common'
 import { MsgBoxButtons, MsgBoxYesNo } from '../../tools/MsgBox'
 import { SessionContext, SessionContextType } from '../../model/SessionContext'
-import { AccessKey, accessKeySerialize } from '@jfvilas/kwirth-common'
+import { AccessKey, accessKeySerialize, ApiKey } from '@jfvilas/kwirth-common'
 import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addPutAuthorization } from '../../tools/AuthorizationManagement'
 import { ResourceEditor } from './ResourceEditor'
 import { v4 as uuidv4 } from 'uuid'
@@ -66,7 +65,7 @@ const ManageApiSecurity: React.FC<IProps> = (props:IProps) => {
             await fetch(`${backendUrl}/key`, addPostAuthorization(accessString, payload))
         }
         setDescrition('')
-        setDays(1)
+        setDays(30)
         setAllResources([])
         await getKeys()
     }

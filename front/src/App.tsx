@@ -41,6 +41,7 @@ import { SetupMetrics } from './components/channels/SetupMetrics'
 import { IBoard } from './model/IBoard'
 import { OpsObject } from './model/OpsObject'
 import { OPSWELCOMEMESSAGE } from './tools/Constants'
+import { FirstTimeLogin } from './components/FirstTimeLogin'
 
 const App: React.FC = () => {
 
@@ -51,6 +52,7 @@ const App: React.FC = () => {
 
     const [user, setUser] = useState<User>()
     const [logged,setLogged]=useState(false)
+    const [firstLogin,setFirstLogin]=useState(false)
     const [accessString,setAccessString]=useState('')
     const [msgBox, setMsgBox] =useState(<></>)
 
@@ -417,16 +419,16 @@ const App: React.FC = () => {
 
         switch (logMessage.type) {
             case InstanceMessageTypeEnum.DATA:
-                let cname = logMessage.namespace+'/'+logMessage.pod+'/'+logMessage.container
+                let bname = logMessage.namespace+'/'+logMessage.pod+'/'+logMessage.container
                 let text = logMessage.text
-                if (logObject.buffers.get(cname)) {
-                    text = logObject.buffers.get(cname) + text
-                    logObject.buffers.set(cname,'')
+                if (logObject.buffers.get(bname)) {
+                    text = logObject.buffers.get(bname) + text
+                    logObject.buffers.set(bname,'')
                 }
                 if (!text.endsWith('\n')) {
                     let i = text.lastIndexOf('\n')
                     let next = text.substring(i)
-                    logObject.buffers.set(cname, next)
+                    logObject.buffers.set(bname, next)
                     text = text.substring(0,i)
                 }
 
@@ -443,9 +445,9 @@ const App: React.FC = () => {
 
                     if (logObject.startDiagnostics) {
                         if (logObject.messages.length < logObject.maxMessages) {
-                            let cnt = logObject.counters.get(cname)
+                            let cnt = logObject.counters.get(bname)
                             if (!cnt) {
-                                logObject.counters.set(cname,0)
+                                logObject.counters.set(bname,0)
                                 cnt = 0
                             }
                             if (cnt < logObject.maxPerPodMessages) {
@@ -462,7 +464,7 @@ const App: React.FC = () => {
                                         logObject.messages.push(logLine)
                                         break
                                 }
-                                logObject.counters.set(cname, ++cnt)
+                                logObject.counters.set(bname, ++cnt)
                             }
                             if ([...logObject.counters.values()].reduce((prev,acc) => {return prev+acc}, 0) > logObject.maxMessages) {
                                 stopChannel(tab)
@@ -1163,7 +1165,7 @@ const App: React.FC = () => {
         setShowSelectBoard(false)
         if (name) {
             if (action === 'delete') {
-                setMsgBox(MsgBoxYesNo('Delete board',`Are you sure you want to delete board ${name} (you cannot undo this action)?`,setMsgBox, (button) => {
+                setMsgBox(MsgBoxYesNo('Delete board',`Are you sure you want to delete board ${name} (you cannot undo this action)?`, setMsgBox, (button) => {
                     if (button===MsgBoxButtons.Yes) {
                         fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addDeleteAuthorization(accessString))
                         if (name === currentBoardName) {
@@ -1420,23 +1422,6 @@ const App: React.FC = () => {
         setSelectedTabName(newname)
     }
 
-    // const pickList = (title:string, message:string, values:string[], onClose:(a:string) => void ) =>{
-    //     var plc:PickListConfig=new PickListConfig()
-    //     plc.title=title
-    //     plc.message=message
-    //     plc.values=values
-    //     plc.originOnClose=onClose
-    //     plc.onClose=pickListClosed
-    //     setPickListConfig(plc)
-    //     setShowPickList(true)
-    // }
-
-    // const pickListClosed = (a:string|null) => {
-    //     setShowPickList(false)
-    //     if (a!==null) pickListConfigRef?.current?.originOnClose(a)
-    //     setPickListConfig(null)
-    // }
-
     const onManageClustersClosed = (cc:Cluster[]) => {
         setShowManageClusters(false)
         let otherClusters = cc.filter (c => !c.source)
@@ -1448,9 +1433,10 @@ const App: React.FC = () => {
         setClusters(cc)
     }
 
-    const onLoginClosed = (user:User|undefined) => {
+    const onLoginClose = (user:User|undefined, firstTime:boolean) => {
         if (user) {
             setLogged(true)
+            setFirstLogin(firstTime)
             setUser(user)
             setAccessString(user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources)
             setCurrentBoardName('untitled')
@@ -1459,10 +1445,15 @@ const App: React.FC = () => {
         }
     }
 
+    const onFirstTimeLoginClose = (exit:boolean) => {
+        setFirstLogin(false)
+        if (exit) setLogged(false)
+    }
+
     if (!logged) return (<>
         <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
             <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
-                <Login onClose={onLoginClosed}></Login>
+                <Login onClose={onLoginClose}></Login>
             </SessionContext.Provider>
         </div>
     </>)
@@ -1489,7 +1480,7 @@ const App: React.FC = () => {
                     <Tooltip title={<div style={{textAlign:'center'}}>{currentBoardName}<br/><br/>{currentBoardDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
                         <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentBoardName}</Typography>
                     </Tooltip>
-                    <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{parseResources(user!.accessKey.resources).map(r=>r.scopes).join(',')}]</div>} sx={{ mr:2 }} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -6]}}]}}}>
+                    <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user && parseResources(user.accessKey.resources).map(r=>r.scopes).join(',')}]</div>} sx={{ mr:2 }} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -6]}}]}}}>
                         <Person/>
                     </Tooltip>
                 </Toolbar>
@@ -1537,7 +1528,8 @@ const App: React.FC = () => {
             { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settings} /> }
             { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.metricsInterval} /> }
             { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
-            {/* { pickListConfig!==null && <PickList config={pickListConfig}/> } */}
+            { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
+
             { msgBox }
         </SessionContext.Provider>
     </>)

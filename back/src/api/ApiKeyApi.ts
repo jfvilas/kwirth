@@ -67,30 +67,35 @@ export class ApiKeyApi {
                         filter:pro:replica+rs1:pod1,pod2:  // scope 'filter', pods 'pod1' and 'pod2' on replicaset 'rs1' on namespace 'pro'
                     */
                     let description=req.body.description
-                    let expire=req.body.expire  // an epoch
-                    let days=req.body.days  // a number
+                    let expire:number = req.body.expire  // an epoch
+                    let days:number = req.body.days || (expire-Date.now())
                     let accessKey:AccessKey = req.body.accessKey as AccessKey
                     let apiKey:ApiKey={ accessKey, description, expire, days }
 
-                    if (accessKey.type==='permanent') {
-                        let storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[]
-                        storedKeys = AuthorizationManagement.cleanApiKeys(storedKeys)
-                        storedKeys.push(apiKey)
-                        await configMaps.write('kwirth.keys',storedKeys)
-                        ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type==='volatile'), ...storedKeys]
-                    }
-                    else if (accessKey.type==='volatile') {
-                        ApiKeyApi.apiKeys.push(apiKey)
+                    if (accessKey.type) {
+                        if (accessKey.type==='permanent') {
+                            let storedKeys=await configMaps.read('kwirth.keys',[]) as ApiKey[]
+                            storedKeys = AuthorizationManagement.cleanApiKeys(storedKeys)
+                            storedKeys.push(apiKey)
+                            await configMaps.write('kwirth.keys',storedKeys)
+                            ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type==='volatile'), ...storedKeys]
+                        }
+                        else if (accessKey.type==='volatile') {
+                            ApiKeyApi.apiKeys.push(apiKey)
+                        }
+                        else {
+                            // bearer
+                            let input = masterKey + '|' + accessKey.resources + '|' + expire
+                            let hash = crypto.createHash('md5').update(input).digest('hex')
+                            accessKey.type = 'bearer:' + expire 
+                            apiKey.accessKey = accessKeyBuild(hash, accessKey.type, accessKey.resources)
+                        }
+                        res.status(200).json(apiKey)
                     }
                     else {
-                        // bearer
-                        let input = masterKey + '|' + accessKey.resources + '|' + expire
-                        let hash = crypto.createHash('md5').update(input).digest('hex')
-                        accessKey.type = 'bearer:' + expire 
-                        apiKey.accessKey = accessKeyBuild(hash, accessKey.type, accessKey.resources)
+                        res.status(500).json({})
+                        console.log('No accessKey type present')
                     }
-
-                    res.status(200).json(apiKey)
                 }
                 catch (err) {
                     res.status(500).json({})

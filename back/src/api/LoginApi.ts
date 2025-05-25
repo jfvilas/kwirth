@@ -106,7 +106,7 @@ export class LoginApi {
             expire: Date.now() + 24*60*60*1000,  // 24h
             days: 1
         }
-        var storedKeys = await this.configMaps.read('kwirth.keys', [])
+        let storedKeys = await this.configMaps.read('kwirth.keys', [])
         storedKeys = AuthorizationManagement.cleanApiKeys(storedKeys)
         storedKeys.push(apiKey)
         this.configMaps.write('kwirth.keys', storedKeys )

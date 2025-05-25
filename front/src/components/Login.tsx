@@ -2,12 +2,11 @@ import React, { useState, useContext } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material'
 import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox'
 import { SessionContext, SessionContextType } from '../model/SessionContext'
-import { accessKeySerialize, accessKeyBuild } from '@jfvilas/kwirth-common'
 import { User } from '../model/User'
 import { addPostAuthorization } from '../tools/AuthorizationManagement'
 
 interface IProps {
-      onClose:(user:User|undefined, accessKeyStr:string) => void
+      onClose:(user:User|undefined, firstTime:boolean) => void
 }
 
 const Login: React.FC<IProps> = (props:IProps) => {
@@ -15,6 +14,7 @@ const Login: React.FC<IProps> = (props:IProps) => {
     const [msgBox, setMsgBox] = useState(<></>)
     const [user, setUser] = useState('')
     const [changingPassword, setChangingPassword] = useState(false)
+    const [firstTime, setFirstTime] = useState(false)
     const [password, setPassword] = useState('')
     const [newPassword1, setNewPassword1] = useState('')
     const [newPassword2, setNewPassword2] = useState('')
@@ -43,8 +43,7 @@ const Login: React.FC<IProps> = (props:IProps) => {
 
     const loginOk = (jsonResult:any) => {
         var receivedUser:User = jsonResult as User
-        var accessKey = accessKeyBuild(jsonResult.accessKey.id, jsonResult.accessKey.type, jsonResult.accessKey.resource)
-        props.onClose(receivedUser, accessKeySerialize(accessKey))
+        props.onClose(receivedUser, firstTime)
     }
 
     const onClickOk = async () => {
@@ -75,6 +74,7 @@ const Login: React.FC<IProps> = (props:IProps) => {
                         loginOk(await result.json())
                         break
                     case 201:
+                        if (user==='admin' && password==='password') setFirstTime(true)
                         setNewPassword1('')
                         setNewPassword2('')
                         setChangingPassword(true)
@@ -103,7 +103,7 @@ const Login: React.FC<IProps> = (props:IProps) => {
             setPassword('')
         }
         else {
-            props.onClose(undefined,'')
+            props.onClose(undefined, false)
         }
     }
 

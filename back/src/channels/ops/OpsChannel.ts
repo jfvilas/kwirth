@@ -299,6 +299,8 @@ class OpsChannel implements IChannel {
 
     private async executeImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
         console.log('Immediate request received')
+        // +++ an immediate commadn can be of any type not just opsmessage
+        // we need to decide how to handle messaging on responses: routeresponse.data = opsresponse??
         let opsMessage = instanceMessage as OpsMessage
 
         // we create a dummy instance for executnig command, and we add the asset erefrenced int hte immediate command
@@ -340,7 +342,7 @@ class OpsChannel implements IChannel {
                 if (this.checkScopes(instance, InstanceConfigScopeEnum.GET))
                     resp = await execCommandGetDescribe(this.clusterInfo, instance, opsMessage)
                 else
-                    resp.data = `Insufficient scope`
+                    resp.data = `Insufficient scope for DESCRIBE`
                 break
             case OpsCommandEnum.RESTARTPOD:
             case OpsCommandEnum.RESTARTNS:
@@ -353,21 +355,21 @@ class OpsChannel implements IChannel {
                 if (this.checkScopes(instance, InstanceConfigScopeEnum.RESTART))
                     resp = await execCommandDelete(this.clusterInfo, instance, opsMessage)
                 else
-                    resp.data = `Insufficient scope`
+                    resp.data = `Insufficient scope for DELETE`
                 break
             default:
                 resp.data = `Invalid command for route: '${opsMessage.command}'`
                 break
-        }        
+        }
 
         let routeMessageResponse:RouteMessageResponse = {
             msgtype: 'routemessageresponse',
             action: InstanceMessageActionEnum.ROUTE,
             flow: InstanceMessageFlowEnum.RESPONSE,
-            type: InstanceMessageTypeEnum.DATA,
+            type: InstanceMessageTypeEnum.SIGNAL,
             channel: InstanceMessageChannelEnum.OPS,
             instance: instanceMessage.instance,
-            data: resp.data
+            data: resp
         }
         return routeMessageResponse
     }

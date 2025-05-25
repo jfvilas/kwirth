@@ -55,8 +55,9 @@ function parseResource (key:string) : ResourceIdentifier {
 }
 
 function parseResources (key:string) : ResourceIdentifier[] {
-    var ress=key.split(';')
-    var result:ResourceIdentifier[]=[]
+    if (!key) return []
+    let ress=key.split(';')
+    let result:ResourceIdentifier[] = []
     for (var res of ress) {
         result.push(parseResource(res))
     }

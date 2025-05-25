@@ -17,7 +17,8 @@ export class MetricsApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    var json = this.clusterInfo.metrics.getMetricsList()
+                    let json = this.clusterInfo.metrics.getMetricsList()
+                    console.log(json)
                     res.status(200).json(json)
                 }
                 catch (err) {
@@ -53,7 +54,7 @@ export class MetricsApi {
                 }
                 catch (err) {
                     res.status(400).send()
-                    console.log('Error obtaining available metrics list')
+                    console.log('Error dbugging available metrics list')
                     console.log(err)
                 }
             })
