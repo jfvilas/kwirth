@@ -8,6 +8,8 @@ export * from './MetricsMessage';
 export * from './MetricsConfig';
 export * from './OpsMessage';
 export * from './OpsConfig';
+export * from './TrivyMessage';
+export * from './TrivyConfig';
 export * from './RouteMessage';
 export * from './SignalMessage';
 export * from './ApiKey';

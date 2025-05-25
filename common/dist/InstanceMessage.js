@@ -9,6 +9,7 @@ var InstanceMessageChannelEnum;
     InstanceMessageChannelEnum["AUDIT"] = "audit";
     InstanceMessageChannelEnum["OPS"] = "ops";
     InstanceMessageChannelEnum["ALERT"] = "alert";
+    InstanceMessageChannelEnum["TRIVY"] = "trivy";
 })(InstanceMessageChannelEnum || (exports.InstanceMessageChannelEnum = InstanceMessageChannelEnum = {}));
 var InstanceMessageTypeEnum;
 (function (InstanceMessageTypeEnum) {

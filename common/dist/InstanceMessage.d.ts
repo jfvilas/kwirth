@@ -4,7 +4,8 @@ export declare enum InstanceMessageChannelEnum {
     METRICS = "metrics",
     AUDIT = "audit",
     OPS = "ops",
-    ALERT = "alert"
+    ALERT = "alert",
+    TRIVY = "trivy"
 }
 export declare enum InstanceMessageTypeEnum {
     DATA = "data",

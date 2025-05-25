@@ -37,6 +37,7 @@ import { DockerConfigMaps } from './tools/DockerConfigMaps'
 import { DockerTools } from './tools/KwirthApi'
 import { OpsChannel } from './channels/ops/OpsChannel'
 import { IChannel } from './channels/IChannel'
+import { TrivyChannel } from './channels/trivy/TrivyChannel'
 
 const v8 = require('node:v8')
 const http = require('http')
@@ -861,6 +862,7 @@ const launchKubernetes = async() => {
                     channels.set('alert', new AlertChannel(clusterInfo))
                     channels.set('metrics', new MetricsChannel(clusterInfo))
                     channels.set('ops', new OpsChannel(clusterInfo))
+                    channels.set('trivy', new TrivyChannel(clusterInfo))
 
                     let requireMetrics = Array.from(channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)
                     console.log('Metrics required: ', requireMetrics)
