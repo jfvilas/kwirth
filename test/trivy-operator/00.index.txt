@@ -1,0 +1,17 @@
+0. Install
+
+    kubectl apply -f https://raw.githubusercontent.com/aquasecurity/trivy-operator/v0.26.1/deploy/static/trivy-operator.yaml
+
+1. Get all trivy reports
+    kubectl get crd | findstr aquasecurity.github.io
+
+2. Get vulns
+
+    VULNS
+    cluster
+            kubectl describe clustervuln
+    workload
+        kubectl get vulnerabilityreports -o wide --all-namespaces
+        kubectl get vulnerabilityreports -o wide -n default
+
+3. Configure for Kwirth

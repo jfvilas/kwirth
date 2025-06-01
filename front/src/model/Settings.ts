@@ -20,6 +20,11 @@ class Settings {
     
     public alertMaxAlerts: number = 25
 
+    public trivyMaxCritical: number = 1
+    public trivyMaxHigh: number = 2
+    public trivyMaxMedium: number = 5
+    public trivyMaxLow: number = -1
+
     public keepAliveInterval: number = 60
 }
 

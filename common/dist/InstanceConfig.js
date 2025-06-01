@@ -34,4 +34,7 @@ var InstanceConfigScopeEnum;
     InstanceConfigScopeEnum["EXECUTE"] = "execute";
     InstanceConfigScopeEnum["SHELL"] = "shell";
     InstanceConfigScopeEnum["RESTART"] = "restart";
+    // TRIVY
+    InstanceConfigScopeEnum["WORKLOAD"] = "workload";
+    InstanceConfigScopeEnum["KUBERNETES"] = "kubernetes";
 })(InstanceConfigScopeEnum || (exports.InstanceConfigScopeEnum = InstanceConfigScopeEnum = {}));

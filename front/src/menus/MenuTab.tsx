@@ -31,7 +31,7 @@ interface IProps {
 const MenuTab: React.FC<IProps> = (props:IProps) => {
     const [subMenuTabOpen, setSubmenuTabOpen] = React.useState(false)
 
-    const menuTabs=(
+    return (
         <Menu id='menu-logs' anchorEl={props.anchorMenuTab} open={Boolean(props.anchorMenuTab)} onClose={props.onClose}>
             <MenuList dense sx={{width:'40vh'}}>
                 {/* <MenuItem key='fa' onClick={() => props.optionSelected(MenuTabOption.AlarmCreate)} sx={{ml:3}} disabled={true}>Convert filter to alarm...</MenuItem>
@@ -56,13 +56,11 @@ const MenuTab: React.FC<IProps> = (props:IProps) => {
 
                 {/* <MenuItem key='submanage' onClick={submenuManageClick} sx={{ml:3}}>Manage<Typography sx={{flexGrow:1}}></Typography>{subMenuManageOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
                 <Collapse in={subMenuManageOpen} timeout="auto" unmountOnExit sx={{ml:5}}>
-                    <MenuItem key='manstart' onClick={() => props.optionSelected(MenuTabOption.TabManageRestart)} disabled={user?.scope==='view' || (props.selectedTab?.logObject?.view!=='group' && props.selectedTab?.logObject?.view!=='pod')}><RestartAlt/>&nbsp;Restart</MenuItem>
+                    <MenuItem key='manstart' onClick={() => props.optionSelected(MenuTabOption.TabManageRestart)} disabled={user?.scope==='view' || (props.selectedTab?.logObject?.view!==InstanceConfigViewEnum.GROUP && props.selectedTab?.logObject?.view!=='pod')}><RestartAlt/>&nbsp;Restart</MenuItem>
                 </Collapse> */}
             </MenuList>
         </Menu>
     )
-    
-    return menuTabs
 }
 
 export { MenuTab, MenuTabOption }

@@ -14,7 +14,7 @@ import IconKubernetesBlank from'../icons/svg/k8s-blank.svg'
 import IconKubernetes from'../icons/svg/k8s.svg'
 import IconDocker from'../icons/svg/docker-mark-blue.svg'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
-import { ClusterTypeEnum, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
+import { ClusterTypeEnum, InstanceConfigViewEnum, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
 
 const KIconDaemonSet = () => <img src={IconDaemonSet} alt='ds' height={'16px'}/>
 const KIconReplicaSet = () => <img src={IconReplicaSet} alt='rs' height={'16px'}/>
@@ -206,7 +206,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         setPods([])
         setAllContainers([])
         setContainers([])
-        if (view!=='group') loadAllPods(namespaces,groups)
+        if (view!==InstanceConfigViewEnum.GROUP) loadAllPods(namespaces,groups)
     }
 
     const onChangePod= (event: SelectChangeEvent<typeof pods>) => {
@@ -238,13 +238,13 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             suggestedName: ''
         }
 
-        if (view==='namespace')
+        if (view===InstanceConfigViewEnum.NAMESPACE)
             selection.suggestedName=namespaces.join('+')
-        else if (view==='group')
+        else if (view===InstanceConfigViewEnum.GROUP)
             selection.suggestedName=namespaces.join('+')+'-'+groups.join('+')
-        else if (view==='pod')
+        else if (view===InstanceConfigViewEnum.POD)
             selection.suggestedName=namespaces.join('+')+'-'+pods.join('+')
-        else if (view==='container')
+        else if (view===InstanceConfigViewEnum.CONTAINER)
             selection.suggestedName=namespaces.join('+')+'-'+pods.join('+')+'-'+containers.join(',')
         props.onAdd(selection)
     }
@@ -254,11 +254,11 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         if (channel === InstanceMessageChannelEnum.NONE) return false
         if (view==='') return false
         if (namespaces.length === 0) return false
-        if (view==='namespace') return true
+        if (view===InstanceConfigViewEnum.NAMESPACE) return true
         if (groups.length === 0) return false
-        if (view==='group') return true
+        if (view===InstanceConfigViewEnum.GROUP) return true
         if (pods.length === 0) return false
-        if (view==='pod') return true
+        if (view===InstanceConfigViewEnum.POD) return true
         if (containers.length === 0) return false
         return true
     }
@@ -291,10 +291,10 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={cluster.name===''}>
                 <InputLabel>View</InputLabel>
                 <Select value={view} onChange={onChangeView} >
-                    <MenuItem key={'namespace'} value={'namespace'} disabled={isDocker}>namespace</MenuItem>
-                    <MenuItem key={'group'} value={'group'} disabled={isDocker}>group</MenuItem>
-                    <MenuItem key={'pod'} value={'pod'}>pod</MenuItem>
-                    <MenuItem key={'container'} value={'container'}>container</MenuItem>
+                    <MenuItem key={InstanceConfigViewEnum.NAMESPACE} value={InstanceConfigViewEnum.NAMESPACE} disabled={isDocker}>namespace</MenuItem>
+                    <MenuItem key={InstanceConfigViewEnum.GROUP} value={InstanceConfigViewEnum.GROUP} disabled={isDocker}>group</MenuItem>
+                    <MenuItem key={InstanceConfigViewEnum.POD} value={InstanceConfigViewEnum.POD}>pod</MenuItem>
+                    <MenuItem key={InstanceConfigViewEnum.CONTAINER} value={InstanceConfigViewEnum.CONTAINER}>container</MenuItem>
                 </Select>
             </FormControl>
 
@@ -324,7 +324,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={(!isDocker && (groups.length === 0 || view==='namespace' || view==='group')) || (isDocker && (view ==='namespace' || namespaces.length === 0))}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={(!isDocker && (groups.length === 0 || view===InstanceConfigViewEnum.NAMESPACE || view===InstanceConfigViewEnum.GROUP)) || (isDocker && (view ==='namespace' || namespaces.length === 0))}>
                 <InputLabel >Pod</InputLabel>
                 <Select value={pods} onChange={onChangePod} multiple renderValue={(selected) => selected.join(', ')}>
                 { allPods && allPods.map( (value:string) =>
@@ -336,7 +336,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={pods.length === 0 || view==='namespace' || view==='group' || view==='pod'}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={pods.length === 0 || view===InstanceConfigViewEnum.NAMESPACE || view===InstanceConfigViewEnum.GROUP || view===InstanceConfigViewEnum.POD}>
                 <InputLabel >Container</InputLabel>
                 <Select value={containers} onChange={onChangeContainer} multiple renderValue={(selected) => selected.join(', ')}>
                 { allContainers && allContainers.map( (value:string) => 

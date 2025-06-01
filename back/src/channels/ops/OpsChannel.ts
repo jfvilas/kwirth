@@ -64,7 +64,6 @@ class OpsChannel implements IChannel {
     }
 
     async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
-        console.log('instanceMessage.flow',instanceMessage.flow)
         if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
             let resp = await this.executeImmediateCommand(instanceMessage)
             if (resp) webSocket.send(JSON.stringify(resp))

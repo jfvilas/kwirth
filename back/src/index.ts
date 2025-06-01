@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod } from '@kubernetes/client-node'
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -18,7 +18,6 @@ import { ManageKwirthApi } from './api/ManageKwirthApi'
 import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, KwirthData, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessage, RouteMessage, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { AuthorizationManagement } from './tools/AuthorizationManagement'
-//import { getPodsFromGroup } from './tools/KubernetesOperations'
 
 import express, { Request, Response} from 'express'
 import { ClusterInfo } from './model/ClusterInfo'
@@ -53,6 +52,7 @@ const kubeConfig = new KubeConfig()
 kubeConfig.loadFromDefault()
 const coreApi = kubeConfig.makeApiClient(CoreV1Api)
 const appsApi = kubeConfig.makeApiClient(AppsV1Api)
+const crdApi = kubeConfig.makeApiClient(CustomObjectsApi)
 const execApi = new Exec(kubeConfig)
 const logApi = new Log(kubeConfig)
 var dockerApi: Docker = new Docker()
@@ -207,7 +207,7 @@ const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:Inst
                     addObject(webSocket, instanceConfig, podNamespace, podName, containerName)
                     break
                 case InstanceConfigViewEnum.GROUP:
-                    console.log('Group event')
+                    console.log('Kin event')
                     let [_groupType, groupName] = instanceConfig.group.split('+')
                     // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
                     if (podName.startsWith(groupName)) {  
@@ -428,13 +428,13 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
     
     instanceConfig.instance = uuid()
     switch (instanceConfig.view) {
-        case 'namespace':
+        case InstanceConfigViewEnum.NAMESPACE:
             for (let ns of validNamespaces) {
                 watchPods(`/api/v1/namespaces/${ns}/${instanceConfig.objects}`, {}, webSocket, instanceConfig)
             }
             sendInstanceConfigSignalMessage(webSocket,InstanceMessageActionEnum.START, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
-        case 'group':
+        case InstanceConfigViewEnum.GROUP:
             for (let namespace of validNamespaces) {
                 for (let gTypeName of instanceConfig.group.split(',')) {
                     let groupPods = await AuthorizationManagement.getPodLabelSelectorsFromGroup(coreApi, appsApi, namespace, gTypeName)
@@ -449,7 +449,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
             }
             sendInstanceConfigSignalMessage(webSocket,InstanceMessageActionEnum.START, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
-        case 'pod':
+        case InstanceConfigViewEnum.POD:
             for (let podName of instanceConfig.pod.split(',')) {
                 let validPod = requestedValidatedPods.find(p => p.metadata?.name === podName)
                 if (validPod) {
@@ -474,7 +474,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
             }
             sendInstanceConfigSignalMessage(webSocket,InstanceMessageActionEnum.START, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
             break
-        case 'container':
+        case InstanceConfigViewEnum.CONTAINER:
             for (let container of instanceConfig.container.split(',')) {
                 let [podName, containerName] = container.split('+')
                 let validPod = requestedValidatedPods.find(p => p.metadata?.name === podName)
@@ -820,6 +820,7 @@ const initKubernetesCluster = async (token:string, loadMetrics:boolean) : Promis
     clusterInfo.appsApi = appsApi
     clusterInfo.execApi = execApi
     clusterInfo.logApi = logApi
+    clusterInfo.crdApi = crdApi
     clusterInfo.dockerTools = new DockerTools(clusterInfo)
 
     await clusterInfo.loadKubernetesClusterName()
@@ -860,7 +861,7 @@ const launchKubernetes = async() => {
                     // load channel extensions
                     channels.set('log', new LogChannel(clusterInfo))
                     channels.set('alert', new AlertChannel(clusterInfo))
-                    channels.set('metrics', new MetricsChannel(clusterInfo))
+                    //+++channels.set('metrics', new MetricsChannel(clusterInfo))
                     channels.set('ops', new OpsChannel(clusterInfo))
                     channels.set('trivy', new TrivyChannel(clusterInfo))
 
@@ -869,7 +870,6 @@ const launchKubernetes = async() => {
 
                     await initKubernetesCluster(token, requireMetrics)
                     clusterInfo.type = kwirthData.clusterType
-
 
                     console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
                     console.log(`Detected own namespace: ${kwirthData.namespace}`)

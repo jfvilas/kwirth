@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, MenuItem, Select, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
+import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, MenuItem, Radio, RadioGroup, Select, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
 import { Settings } from '../../model/Settings'
 import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
@@ -12,7 +12,7 @@ const SettingsUser: React.FC<IProps> = (props:IProps) => {
     if (!props.settings) props.settings = new Settings()
     const [value, setValue] = React.useState('log')
     const [logMaxMessages, setLogMaxMessages] = useState(props.settings.logMaxMessages||5000)
-    const [logMaxPerPodMessages, setLogMaxPerPodMessages] = useState(props.settings.logMaxPerPodMessages||1000)    
+    const [logMaxPerPodMessages, setLogMaxPerPodMessages] = useState(props.settings.logMaxPerPodMessages||1000)
     const [logFromStart, setLogFromStart] = useState(props.settings.logFromStart)
     const [logPrevious, setLogPrevious] = useState(props.settings.logPrevious)
     const [logTimestamp, setLogTimestamp] = useState(props.settings.logTimestamp)
@@ -28,6 +28,11 @@ const SettingsUser: React.FC<IProps> = (props:IProps) => {
     const [metricsMerge, setMetricsMerge] = useState(props.settings.metricsMerge)
     const [metricsStack, setMetricsStack] = useState(props.settings.metricsStack)
     const [metricsChart, setMetricsChart] = useState(props.settings.metricsChart)
+
+    const [maxCritical, setMaxCritical] = useState(props.settings.trivyMaxCritical||2)
+    const [maxHigh, setMaxHigh] = useState(props.settings.trivyMaxHigh||4)
+    const [maxMedium, setMaxMedium] = useState(props.settings.trivyMaxMedium||-1)
+    const [maxLow, setMaxLow] = useState(props.settings.trivyMaxLow||-1)
 
     const [keepAliveInterval, setKeepAliveInterval] = useState(props.settings.keepAliveInterval)
 
@@ -47,6 +52,12 @@ const SettingsUser: React.FC<IProps> = (props:IProps) => {
         newSettings.metricsChart = metricsChart
         newSettings.metricsMerge = metricsMerge
         newSettings.metricsStack = metricsStack
+
+        newSettings.trivyMaxCritical = maxCritical
+        newSettings.trivyMaxHigh = maxHigh
+        newSettings.trivyMaxMedium = maxMedium
+        newSettings.trivyMaxLow = maxLow
+
         newSettings.keepAliveInterval = keepAliveInterval
         props.onClose(newSettings)
     }
@@ -54,7 +65,7 @@ const SettingsUser: React.FC<IProps> = (props:IProps) => {
     return (<>
         <Dialog open={true}>
             <DialogTitle>Settings</DialogTitle>
-            <DialogContent sx={{height:'42vh'}}>
+            <DialogContent sx={{height:'45vh'}}>
                 <Typography>
                     This settings establish the default settings to use when you start a new instance.
                 </Typography>
@@ -62,6 +73,7 @@ const SettingsUser: React.FC<IProps> = (props:IProps) => {
                     <Tab key='log' label='Log' value='log' />
                     <Tab key='alert' label='Alert' value='alert' />
                     <Tab key='metrics' label='Metrics' value='metrics' />
+                    <Tab key='trivy' label='Trivy' value='trivy' />
                     <Tab key='kwirth' label='Kwirth' value='kwirth' />
                 </Tabs>
 
@@ -146,6 +158,62 @@ const SettingsUser: React.FC<IProps> = (props:IProps) => {
                             <FormControlLabel control={<Checkbox checked={metricsAggregate} onChange={(e) => setMetricsAggregate(e.target.checked)}/>} label='Aggregate resource metrics (when multiple objects)' />
                             <FormControlLabel control={<Checkbox checked={metricsMerge} onChange={(e) => setMetricsMerge(e.target.checked)}/>} label='Merge resource metrics (when multiple objects)' />
                             <FormControlLabel control={<Checkbox checked={metricsStack} onChange={(e) => setMetricsStack(e.target.checked)}/>} label='Stack resource metrics (when multiple objects)' />
+                        </Stack>
+                    </Stack>
+                </div>
+
+                <div hidden={value!=='trivy'}>
+                    <Stack spacing={2} direction={'column'} sx={{ mt:'16px' }}>
+                        <Typography>Set maximum accept number of issues</Typography>
+                        <Stack direction={'row'}>
+                            <RadioGroup defaultValue={'none'} value={maxCritical} onChange={(event) => setMaxCritical(+event.target.value)}>
+                            <Stack spacing={-1}>
+                                <Typography fontWeight={800}>Critical</Typography>
+                                <Typography><Radio value='0'/>0</Typography>
+                                <Typography><Radio value='1'/>1</Typography>
+                                <Typography><Radio value='2'/>2</Typography>
+                                <Typography><Radio value='3'/>3</Typography>
+                                <Typography><Radio value='4'/>4</Typography>
+                                <Typography><Radio value='5'/>5</Typography>
+                                <Typography><Radio value='-1'/>Ignore</Typography>
+                            </Stack>
+                            </RadioGroup>
+                            <RadioGroup defaultValue={'none'} value={maxHigh} onChange={(event) => setMaxHigh(+event.target.value)}>
+                            <Stack spacing={-1}>
+                                <Typography fontWeight={800}>High</Typography>
+                                <Typography><Radio value='0'/>0</Typography>
+                                <Typography><Radio value='1'/>1</Typography>
+                                <Typography><Radio value='2'/>2</Typography>
+                                <Typography><Radio value='3'/>3</Typography>
+                                <Typography><Radio value='4'/>4</Typography>
+                                <Typography><Radio value='5'/>5</Typography>
+                                <Typography><Radio value='-1'/>Ignore</Typography>
+                            </Stack>
+                            </RadioGroup>
+                            <RadioGroup defaultValue={'none'} value={maxMedium} onChange={(event) => setMaxMedium(+event.target.value)}>
+                            <Stack spacing={-1}>
+                                <Typography fontWeight={800}>Medium</Typography>
+                                <Typography><Radio value='0'/>0</Typography>
+                                <Typography><Radio value='1'/>1</Typography>
+                                <Typography><Radio value='2'/>2</Typography>
+                                <Typography><Radio value='3'/>3</Typography>
+                                <Typography><Radio value='4'/>4</Typography>
+                                <Typography><Radio value='5'/>5</Typography>
+                                <Typography><Radio value='-1'/>Ignore</Typography>
+                            </Stack>
+                            </RadioGroup>
+                            <RadioGroup defaultValue={'none'} value={maxLow} onChange={(event) => setMaxLow(+event.target.value)}>
+                            <Stack spacing={-1}>
+                                <Typography fontWeight={800}>Low</Typography>
+                                <Typography><Radio value='0'/>0</Typography>
+                                <Typography><Radio value='1'/>1</Typography>
+                                <Typography><Radio value='2'/>2</Typography>
+                                <Typography><Radio value='3'/>3</Typography>
+                                <Typography><Radio value='4'/>4</Typography>
+                                <Typography><Radio value='5'/>5</Typography>
+                                <Typography><Radio value='-1'/>Ignore</Typography>
+                            </Stack>
+                            </RadioGroup>
                         </Stack>
                     </Stack>
                 </div>

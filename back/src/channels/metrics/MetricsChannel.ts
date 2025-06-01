@@ -185,13 +185,13 @@ class MetricsChannel implements IChannel {
 
     getAssetMetricName = (instanceConfig:InstanceConfig, assets:AssetData[]): string => {
         switch (instanceConfig.view) {
-            case 'namespace':
+            case InstanceConfigViewEnum.NAMESPACE:
                 return [...new Set (assets.map (a => a.podNamespace))].join(',')
-            case 'group':
+            case InstanceConfigViewEnum.GROUP:
                 return [...new Set (assets.map (a => a.podGroup))].join(',')
-            case 'pod':
+            case InstanceConfigViewEnum.POD:
                 return [...new Set (assets.map (a => a.podName))].join(',')
-            case 'container':
+            case InstanceConfigViewEnum.CONTAINER:
                 return [...new Set (assets.map (a => a.podName+'['+a.containerName+']'))].join(',')
             default:
                 return 'unnamedView'

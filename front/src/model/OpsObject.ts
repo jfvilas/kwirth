@@ -8,7 +8,6 @@ export interface IShell {
 }
 
 export class OpsObject {
-    public tempinstance:string=''
     public accessKeyString: string = ''
     public messages: string[] = []
     public shells: IShell[] = []

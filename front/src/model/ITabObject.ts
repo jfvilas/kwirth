@@ -3,6 +3,7 @@ import { AlertObject } from "./AlertObject"
 import { LogObject } from "./LogObject"
 import { MetricsObject } from "./MetricsObject"
 import { OpsObject } from "./OpsObject"
+import { TrivyObject } from "./TrivyObject"
 
 interface IChannelObject {
     clusterName: string
@@ -12,7 +13,7 @@ interface IChannelObject {
     pod: string
     container: string
     instance: string
-    data: LogObject | MetricsObject | AlertObject | OpsObject | undefined
+    data: LogObject | MetricsObject | AlertObject | OpsObject | TrivyObject | undefined
 }
 
 interface ITabObject {

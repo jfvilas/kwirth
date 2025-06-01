@@ -23,11 +23,11 @@ export interface OpsMessage extends InstanceMessage {
     id: string
     accessKey: string
     instance: string
-    command: OpsCommandEnum
     namespace: string
     group: string
     pod:string
     container: string
+    command: OpsCommandEnum
     params?: string[]
 }
 

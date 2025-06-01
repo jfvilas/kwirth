@@ -28,7 +28,9 @@ export declare enum InstanceConfigScopeEnum {
     GET = "get",
     EXECUTE = "execute",
     SHELL = "shell",
-    RESTART = "restart"
+    RESTART = "restart",
+    WORKLOAD = "workload",
+    KUBERNETES = "kubernetes"
 }
 export interface InstanceConfig extends InstanceMessage {
     objects: InstanceConfigObjectEnum;

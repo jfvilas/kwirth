@@ -39,7 +39,11 @@ export enum InstanceConfigScopeEnum {
     GET = 'get',
     EXECUTE = 'execute',
     SHELL = 'shell',
-    RESTART = 'restart'
+    RESTART = 'restart',
+
+    // TRIVY
+    WORKLOAD = "workload",
+    KUBERNETES = "kubernetes"
 }
 
 export interface InstanceConfig extends InstanceMessage{
