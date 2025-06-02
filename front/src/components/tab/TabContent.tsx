@@ -1,12 +1,11 @@
 import { Box } from '@mui/material'
-import { TabContentLog } from './TabContentLog'
-import { TabContentAlert } from './TabContentAlert'
-import { TabContentMetrics } from './TabContentMetrics'
+import { TabContentLog } from './log/TabContentLog'
+import { TabContentAlert } from './alert/TabContentAlert'
+import { TabContentMetrics } from './metrics/TabContentMetrics'
 import { IChannelObject } from '../../model/ITabObject'
 import { InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
-import { TabContentOps } from './TabContentOps'
+import { TabContentOps } from './ops/TabContentOps'
 import { TabContentTrivy } from './trivy/TabContentTrivy'
-import { useEffect, useRef, useState } from 'react'
 
 interface IProps {
     channel?: InstanceMessageChannelEnum

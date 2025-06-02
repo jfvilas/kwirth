@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { IChannelObject } from '../../model/ITabObject'
+import { IChannelObject } from '../../../model/ITabObject'
 import { Box, Button, Stack, TextField } from '@mui/material'
-import { OpsObject } from '../../model/OpsObject'
+import { OpsObject } from '../../../model/OpsObject'
 import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, OpsCommandEnum, OpsMessage } from '@jfvilas/kwirth-common'
 import { v4 as uuidv4 } from 'uuid'
-import { Terminal, ColorMode } from '../terminal/Terminal'
-import { SelectTerminal } from '../terminal/SelectTerminal'
+import { Terminal, ColorMode } from '../../terminal/Terminal'
+import { SelectTerminal } from '../../terminal/SelectTerminal'
 
 interface IProps {
     webSocket?: WebSocket

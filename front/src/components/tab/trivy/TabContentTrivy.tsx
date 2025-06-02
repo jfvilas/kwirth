@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { IChannelObject } from '../../../model/ITabObject'
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Menu, MenuItem, MenuList, Slider, Stack, Typography } from '@mui/material'
+import { Box, Button, Grid, Menu, MenuItem, MenuList, Slider, Stack, Typography } from '@mui/material'
 import { TrivyObject } from '../../../model/TrivyObject'
-import { TabContentTrivyAsset, TabContentTrivyVuln } from './TabContentTrivyAsset'
+import { TabContentTrivyAsset } from './TabContentTrivyAsset'
 import { Check as CheckIcon } from '@mui/icons-material'
 import { assetScore } from './TrivyCommon'
+import { TabContentTrivyAssetDetails } from './TabContentTrivyAssetDetails'
 
 interface IProps {
     webSocket?: WebSocket
@@ -47,28 +48,7 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
 
     const showDetails = (asset:any) => {
         return (
-            <Dialog open={true}  sx={{height:'80%'}}>
-                <DialogTitle>
-                    {`${asset.namespace}/${asset.name}/${asset.container}`}
-                </DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        <Stack direction='column'>
-                            <Typography><b>Summary:</b> {`Critical: ${asset.report.summary.criticalCount}  High: ${asset.report.summary.highCount}  Medium: ${asset.report.summary.mediumCount}  Low: ${asset.report.summary.lowCount} (`}<b>KwirthScore:</b> {`${assetScore(asset, trivyObject).toFixed(2)}%)`}</Typography>
-                            <Typography><b>Image:</b> {`${asset.report.registry.server}/${asset.report.artifact.repository}:${asset.report.artifact.tag}`}</Typography>
-                            <Typography><b>OS:</b> {`${asset.report.os.family}/${asset.report.os.name}`}</Typography>
-                            <Typography sx={{mt:0.5}}><b>Scanner:</b> {`${asset.report.scanner.name} ${asset.report.scanner.version}  (${asset.report.scanner.vendor})`}</Typography>
-                            <Typography><b>Scan date:</b> {`${asset.report.updateTimestamp}`}</Typography>
-                            <Stack sx={{mt:0.5}}>
-                                {(asset.report.vulnerabilities as any[]).map(v => <TabContentTrivyVuln vuln={v}/>)}
-                            </Stack>
-                        </Stack>
-                    </DialogContentText>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setSelectedAsset(undefined)}>ok</Button>
-                </DialogActions>
-            </Dialog>
+            <TabContentTrivyAssetDetails asset={asset} trivyObject={trivyObject} onClose={() => setSelectedAsset(undefined)}/>
         )
     }
 
@@ -148,8 +128,8 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
                 </Grid>
             } 
         </Box>
-        { selectedAsset!==undefined && showDetails(selectedAsset) }
         { anchorMenu && orderMenu }
+        { selectedAsset!==undefined && showDetails(selectedAsset) }
     </>)
 }
 export { TabContentTrivy }

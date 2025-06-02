@@ -1,9 +1,9 @@
 import { useState } from "react"
 //import { ReactJSXElement } from '@emotion/react/types/jsx-namespace'
-import { MetricsObject } from "../../model/MetricsObject"
+import { MetricsObject } from "../../../model/MetricsObject"
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { Alert, Button, Stack, Typography } from "@mui/material"
-import { IChannelObject } from "../../model/ITabObject"
+import { IChannelObject } from "../../../model/ITabObject"
 
 interface IProps {
     channelObject:IChannelObject

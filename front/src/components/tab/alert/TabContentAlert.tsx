@@ -1,5 +1,5 @@
-import { AlertObject } from '../../model/AlertObject'
-import { IChannelObject } from '../../model/ITabObject'
+import { AlertObject } from '../../../model/AlertObject'
+import { IChannelObject } from '../../../model/ITabObject'
 
 interface IProps {
     channelObject: IChannelObject

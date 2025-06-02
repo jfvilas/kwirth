@@ -20,4 +20,14 @@ const assetScoreColor = (asset:any, trivyObject:TrivyObject) => {
     return red[500]
 }
 
-export { assetScore, assetScoreColor }
+const assetAvatarColor = (os:string) => {
+    if (!os) return red[500]
+    const index = os.charCodeAt(0) - 65
+    const hue = Math.round((index / 26) * 360)
+    const saturation = 70
+    const lightness = 50
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;        
+}
+
+
+export { assetScore, assetScoreColor, assetAvatarColor }

@@ -1,18 +1,7 @@
 import { Avatar, Box, Card, CardContent, CardHeader, CardMedia, IconButton, Stack, Typography } from '@mui/material'
-import { red } from '@mui/material/colors'
 import { TrivyObject } from '../../../model/TrivyObject'
 import { Visibility as VisibilityIcon } from '@mui/icons-material'
-import { assetScore, assetScoreColor } from './TrivyCommon'
-
-interface IVProps {
-    vuln: any
-}
-
-const TabContentTrivyVuln: React.FC<IVProps> = (props:IVProps) => {
-    return <>
-        <Typography>Vuln: {`${props.vuln.title}`}</Typography>
-    </>
-}
+import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
 
 interface IProps {
     asset: any
@@ -52,19 +41,10 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
             </Box>
     )}
 
-    const getAvatarColor = (os:string) => {
-        if (!os) return red[500]
-        const index = os.charCodeAt(0) - 65
-        const hue = Math.round((index / 26) * 360)
-        const saturation = 70
-        const lightness = 50
-        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;        
-    }
-
     if (props.view === 'card') return (
         <Card sx={{width:'100%', height:'380px'}}>
             <CardHeader
-                avatar={<Avatar sx={{ bgcolor: getAvatarColor(report.os.family) }} aria-label="recipe">{report.os.family.substring(0,1).toUpperCase()}</Avatar>}
+                avatar={<Avatar sx={{ bgcolor: assetAvatarColor(report.os.family) }} aria-label="recipe">{report.os.family.substring(0,1).toUpperCase()}</Avatar>}
                 action={<IconButton onClick={() => props.onDetails(props.asset)}><VisibilityIcon /></IconButton>}
                 title={`${props.asset.name}/${props.asset.container}`}
                 subheader={`${report.updateTimestamp}`}
@@ -91,7 +71,7 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
         <Card sx={{width:'100%'}}>
             <Stack direction={'row'}>
                 <CardHeader sx={{width:'50%'}}
-                    avatar={<Avatar sx={{ bgcolor: getAvatarColor(report.os.family) }} aria-label="recipe">{report.os.family.substring(0,1).toUpperCase()}</Avatar>}
+                    avatar={<Avatar sx={{ bgcolor: assetAvatarColor(report.os.family) }} aria-label="recipe">{report.os.family.substring(0,1).toUpperCase()}</Avatar>}
                     title={`${props.asset.name}/${props.asset.container}`}
                     subheader={`${report.updateTimestamp}`}
                 />
@@ -112,4 +92,4 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
     return <></>
 }
 
-export { TabContentTrivyAsset, TabContentTrivyVuln }
+export { TabContentTrivyAsset }

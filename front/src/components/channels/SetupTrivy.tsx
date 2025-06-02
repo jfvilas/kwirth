@@ -20,12 +20,12 @@ const SetupTrivy: React.FC<IProps> = (props:IProps) => {
     }
 
     return (<>
-        <Dialog open={true} maxWidth={false} sx={{'& .MuiDialog-paper': { width: '50vw', maxWidth: '60vw', height:'60vh', maxHeight:'40vw' } }}>
-            <DialogTitle>Configure Trivy channel for {props.channelObject?.view}</DialogTitle>
+        <Dialog open={true} maxWidth={false} sx={{'& .MuiDialog-paper': { width: '30vw', maxWidth: '40vw', height:'48vh', maxHeight:'48vh' } }}>
+            <DialogTitle>Configure Trivy channel</DialogTitle>
             <DialogContent >
                 <Stack spacing={2} direction={'column'} sx={{ mt:'16px' }}>
-                    <Typography>Set maximum accept number of issues</Typography>
-                    <Stack direction={'row'}>
+                    <Typography>Set maximum number of accepted issues on each category:</Typography>
+                    <Stack direction={'row'} spacing={4}>
                         <RadioGroup defaultValue={'none'} value={maxCritical} onChange={(event) => setMaxCritical(+event.target.value)}>
                         <Stack spacing={-1}>
                             <Typography fontWeight={800}>Critical</Typography>
