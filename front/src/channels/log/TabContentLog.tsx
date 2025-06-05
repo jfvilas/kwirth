@@ -1,6 +1,6 @@
 import { InstanceConfigViewEnum, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
-import { IChannelObject } from '../../../model/ITabObject'
-import { ILogLine, LogObject } from '../../../model/LogObject'
+import { IChannelObject } from '../../model/ITabObject'
+import { ILogLine, LogObject } from './LogObject'
 import { Box } from '@mui/material'
 // import { Button, TextField } from '@mui/material'
 // import { useState } from 'react'

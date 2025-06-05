@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid'
-import { MetricDescription } from './MetricDescription';
+import { MetricDescription } from '../channels/metrics/MetricDescription';
 import { KwirthData } from '@jfvilas/kwirth-common';
 
 export class Cluster {

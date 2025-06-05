@@ -1,12 +1,12 @@
 import { Avatar, Box, Card, CardContent, CardHeader, CardMedia, IconButton, Menu, MenuItem, MenuList, Stack, Typography } from '@mui/material'
-import { TrivyObject } from '../../../model/TrivyObject'
+import { TrivyObject } from './TrivyObject'
 import { MoreVert as MoreVertIcon } from '@mui/icons-material'
 import { Visibility as VisibilityIcon } from '@mui/icons-material'
 import { Replay as ReplayIcon } from '@mui/icons-material'
 import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
 import { useState } from 'react'
 import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, TrivyCommandEnum, TrivyMessage } from '@jfvilas/kwirth-common'
-import { IChannelObject } from '../../../model/ITabObject'
+import { IChannelObject } from '../../model/ITabObject'
 
 interface IProps {
     webSocket: WebSocket

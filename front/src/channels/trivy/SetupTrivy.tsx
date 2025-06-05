@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Radio, RadioGroup, Stack, Typography } from '@mui/material'
 import { IChannelObject } from '../../model/ITabObject'
-import { TrivyObject } from '../../model/TrivyObject'
+import { TrivyObject } from './TrivyObject'
 
 interface IProps {
     onClose:(maxCritical:number, maxHigh:number, maxMedium:number, maxLow:number) => void

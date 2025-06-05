@@ -1,5 +1,5 @@
-import { MetricsConfigModeEnum, InstanceMessage } from "@jfvilas/kwirth-common";
-import { AlertSeverityEnum } from "./AlertObject";
+import { MetricsConfigModeEnum, InstanceMessage } from "@jfvilas/kwirth-common"
+import { AlertSeverityEnum } from "../alert/AlertObject"  //+++ remove
 
 export interface AssetMetrics {
     assetName: string

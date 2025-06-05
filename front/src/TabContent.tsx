@@ -1,11 +1,10 @@
-import { Box } from '@mui/material'
-import { TabContentLog } from './log/TabContentLog'
-import { TabContentAlert } from './alert/TabContentAlert'
-import { TabContentMetrics } from './metrics/TabContentMetrics'
-import { IChannelObject } from '../../model/ITabObject'
+import { TabContentLog } from './channels/log/TabContentLog'
+import { TabContentAlert } from './channels/alert/TabContentAlert'
+import { TabContentMetrics } from './channels/metrics/TabContentMetrics'
+import { IChannelObject } from './model/ITabObject'
 import { InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
-import { TabContentOps } from './ops/TabContentOps'
-import { TabContentTrivy } from './trivy/TabContentTrivy'
+import { TabContentOps } from './channels/ops/TabContentOps'
+import { TabContentTrivy } from './channels/trivy/TabContentTrivy'
 
 interface IProps {
     channel?: InstanceMessageChannelEnum

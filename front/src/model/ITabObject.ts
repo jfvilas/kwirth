@@ -1,9 +1,9 @@
 import { InstanceConfigViewEnum, InstanceMessageChannelEnum } from "@jfvilas/kwirth-common"
-import { AlertObject } from "./AlertObject"
-import { LogObject } from "./LogObject"
-import { MetricsObject } from "./MetricsObject"
-import { OpsObject } from "./OpsObject"
-import { TrivyObject } from "./TrivyObject"
+import { AlertObject } from "../channels/alert/AlertObject"
+import { LogObject } from "../channels/log/LogObject"
+import { MetricsObject } from "../channels/metrics/MetricsObject"
+import { OpsObject } from "../channels/ops/OpsObject"
+import { TrivyObject } from "../channels/trivy/TrivyObject"
 
 interface IChannelObject {
     clusterName: string

@@ -1,5 +1,5 @@
 import { green, red, yellow } from "@mui/material/colors"
-import { TrivyObject } from "../../../model/TrivyObject"
+import { TrivyObject } from "./TrivyObject"
 
 const assetScore = (asset:any, trivyObject:TrivyObject) => {
     let maxScore = (trivyObject.maxCritical>=0? trivyObject.maxCritical*4:0) +

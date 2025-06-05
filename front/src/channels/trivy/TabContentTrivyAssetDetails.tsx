@@ -1,5 +1,5 @@
 import { Avatar, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
-import { TrivyObject } from '../../../model/TrivyObject'
+import { TrivyObject } from './TrivyObject'
 import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
 import { TabContentTrivyAssetVulns } from './TabContentTrivyAssetVuln'
 

@@ -1,5 +1,5 @@
 import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography, List, ListItemButton, ListItem } from '@mui/material'
-import { IShell } from '../../model/OpsObject'
+import { IShell } from '../OpsObject'
 import { useEffect, useState } from 'react'
 
 interface IProps {

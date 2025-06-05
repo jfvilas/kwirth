@@ -1,6 +1,6 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField } from '@mui/material'
-import { AlertObject } from '../../model/AlertObject'
+import { AlertObject } from './AlertObject'
 import { IChannelObject } from '../../model/ITabObject'
 
 interface IProps {
