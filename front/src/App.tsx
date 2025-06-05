@@ -168,8 +168,6 @@ const App: React.FC = () => {
     const setClusterStatus = async (cluster:Cluster): Promise<void> => {
         if (await readClusterInfo(cluster)) {
             cluster.enabled = true
-            //await readClusterChannels(cluster)
-            console.log(cluster)
             if (cluster.channels.includes('metrics')) {
                 await getMetricsNames(cluster)
                 let data = await (await fetch (`${cluster.url}/metrics/config`, addGetAuthorization(cluster.accessString))).json()
@@ -697,17 +695,43 @@ const App: React.FC = () => {
     }
 
     const processTrivyMessage = (wsEvent:any) => {
-        let tmr = JSON.parse(wsEvent.data) as TrivyMessageResponse
+        let trivyMessageResponse = JSON.parse(wsEvent.data) as TrivyMessageResponse
         let tab = tabs.find(tab => tab.ws !== null && tab.ws===wsEvent.target)
         if (!tab || !tab.channelObject) return
 
-        let trivyObject = tab.channelObject.data as TrivyObject
-        switch (tmr.type) {
+        switch (trivyMessageResponse.type) {
             case InstanceMessageTypeEnum.DATA:
-                if (tmr.flow === InstanceMessageFlowEnum.RESPONSE && tmr.action === InstanceMessageActionEnum.COMMAND) {
-                    console.log('trivyMessage', tmr)
+                if (trivyMessageResponse.flow === InstanceMessageFlowEnum.RESPONSE && trivyMessageResponse.action === InstanceMessageActionEnum.COMMAND) {
+                    if (trivyMessageResponse.data) {
+                        setRefreshTabContent(Math.random())
+                        let trivyObject = tab.channelObject.data as TrivyObject
+                        trivyObject.score = trivyMessageResponse.data.score
+                    }
+                }
+                else if (trivyMessageResponse.flow === InstanceMessageFlowEnum.UNSOLICITED) {
+                    let trivyObject = tab.channelObject.data as TrivyObject
+                    console.log()
+                    let asset = trivyMessageResponse.data
+                    switch (trivyMessageResponse.msgsubtype) {
+                        case 'score':
+                            console.log('newscore',trivyMessageResponse.data.score)
+                            trivyObject.score = trivyMessageResponse.data.score
+                            break
+                        case 'add':
+                            trivyObject.known.push(asset)
+                            break
+                        case 'update':
+                        case 'delete':
+                            console.log(trivyObject.known)
+                            console.log(asset)
+                            trivyObject.known = (trivyObject.known as any[]).filter(a => a.namespace !== asset.namespace || a.name !== asset.name || a.container !== asset.container)
+                            if (trivyMessageResponse.msgsubtype==='update') trivyObject.known.push(asset)
+                            break
+                        default:
+                            console.log('Invalid msgsubtype: ', trivyMessageResponse.msgsubtype)
+                    }
+                    trivyObject.known = [...trivyObject.known]
                     setRefreshTabContent(Math.random())
-                    trivyObject.score = tmr.data
                 }
                 break
             case InstanceMessageTypeEnum.SIGNAL:
@@ -717,16 +741,18 @@ const App: React.FC = () => {
                     trivyRequestScore(tab)
                 }
                 else {
-                    console.log('wsEvent.data on trivy')
-                    console.log(wsEvent.data)                    
+                    if (signalMessage.level!== SignalMessageLevelEnum.INFO) {
+                        console.log('SIGNAL RECEIVED')
+                        console.log(wsEvent.data)
+                    }
                 }
                 break
             default:
-                console.log(`Invalid message type ${tmr.type}`)
+                console.log(`Invalid message type ${trivyMessageResponse.type}`)
                 break
         }
     }
-        
+    
     const trivyRequestScore = (tab:ITabObject) => {
         let triviMessage: TrivyMessage = {
             msgtype: 'trivymessage',
@@ -954,6 +980,10 @@ const App: React.FC = () => {
                     break
                 case InstanceMessageChannelEnum.TRIVY:
                     let trivyObject = tab.channelObject.data as TrivyObject
+                    trivyObject.accessKeyString = cluster.accessString
+                    trivyObject.score = 0
+                    trivyObject.known = []
+                    trivyObject.unknown = []
                     let trivyConfig:TrivyConfig = {
                         maxCritical: trivyObject.maxCritical,
                         maxHigh: trivyObject.maxHigh,
@@ -1032,6 +1062,8 @@ const App: React.FC = () => {
                 setRefreshTabContent(Math.random())
                 break
             case InstanceMessageChannelEnum.TRIVY:
+                let dataTrivy = tab.channelObject.data as TrivyObject
+                setRefreshTabContent(Math.random())
                 break
         }
         if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
@@ -1354,6 +1386,14 @@ const App: React.FC = () => {
                     }
                 }))
                 break
+            case MenuDrawerOption.InstallTrivy:
+                let result = await (await fetch (`${backendUrl}/config/trivy?action=install`, addGetAuthorization(accessString))).text()
+                console.log(result)
+                break
+            case MenuDrawerOption.RemoveTrivy:
+                let result2 = await (await fetch (`${backendUrl}/config/trivy?action=remove`, addGetAuthorization(accessString))).text()
+                console.log(result2)
+                break
             case MenuDrawerOption.Exit:
                 setLogged(false)
                 break
@@ -1455,7 +1495,6 @@ const App: React.FC = () => {
     const onSetupTrivyClosed = (maxCritical:number, maxHigh:number, maxMedium:number, maxLow:number) => {
         setShowSetupTrivy(false)
         setAnchorMenuTab(null)
-        console.log(maxCritical, maxHigh, maxMedium, maxLow)
 
         if (maxCritical<0 && maxHigh<0 && maxMedium<0 && maxLow<0) return
 

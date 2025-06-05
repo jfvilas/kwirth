@@ -20,11 +20,11 @@ const TabContentTrivyAssetDetails: React.FC<IProps> = (props:IProps) => {
                 <Table sx={{ minWidth: '100%' }} size='small'>
                     <TableHead>
                         <TableRow>
-                            <TableCell align='center'>KwirthScore</TableCell>
-                            <TableCell align='center'>Critical</TableCell>
-                            <TableCell align='center'>High</TableCell>
-                            <TableCell align='center'>Medium</TableCell>
-                            <TableCell align='center'>Low</TableCell>
+                            <TableCell align='center'><b>KwirthScore</b></TableCell>
+                            <TableCell align='center'><b>Critical</b></TableCell>
+                            <TableCell align='center'><b>High</b></TableCell>
+                            <TableCell align='center'><b>Medium</b></TableCell>
+                            <TableCell align='center'><b>Low</b></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -40,7 +40,7 @@ const TabContentTrivyAssetDetails: React.FC<IProps> = (props:IProps) => {
             </TableContainer>            
         )
     }
-    let levels=['CRITICAL','HIGH','MEDIUM','LOW']
+    let levels = ['CRITICAL','HIGH','MEDIUM','LOW']
     let vulns:any[] = (asset.report.vulnerabilities as any[]).sort((a,b) => levels.indexOf(a.severity)-levels.indexOf(b.severity))
 
     return (

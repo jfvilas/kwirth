@@ -101,7 +101,7 @@ export class LoginApi {
     createApiKey = async (req:Request, user:User) : Promise<ApiKey> => {
         let ip = (req as any).clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress
         let apiKey:ApiKey = {
-            accessKey: accessKeyCreate('permanent', user.resources),
+            accessKey: accessKeyCreate('permanent', 'cluster:::::'),
             description: `Login user '${user.id}' from ${ip}`,
             expire: Date.now() + 24*60*60*1000,  // 24h
             days: 1

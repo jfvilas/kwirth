@@ -1,12 +1,17 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, TrivyMessage, TrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, TrivyCommandEnum, TrivyConfig } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, TrivyMessage, TrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, TrivyCommandEnum, TrivyConfig } from '@jfvilas/kwirth-common';
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { ChannelData, IChannel, SourceEnum } from '../IChannel';
-import { AuthorizationManagement } from '../../tools/AuthorizationManagement';
+import { KubernetesObject, makeInformer } from '@kubernetes/client-node';
+
+const TRIVY_API_VERSION = 'v1alpha1'
+const TRIVY_API_GROUP = 'aquasecurity.github.io'
+const TRIVY_API_PLURAL = 'vulnerabilityreports'
 
 export interface IAsset {
     podNamespace: string
     podName: string
     containerName: string
+    informer: any
 }
 
 export interface IInstance {
@@ -19,7 +24,7 @@ export interface IInstance {
     maxLow:number
 }
 
-class TrivyChannel implements IChannel {    
+class TrivyChannel implements IChannel {
     clusterInfo : ClusterInfo
     webSocketTrivy: {
         ws:WebSocket,
@@ -34,7 +39,6 @@ class TrivyChannel implements IChannel {
     getChannelData = (): ChannelData => {
         return {
             id: 'trivy',
-            immediatable: false,
             routable: false,
             pauseable: false,
             modifyable: false,
@@ -76,85 +80,201 @@ class TrivyChannel implements IChannel {
         }
     }
 
+    scoreAsset = async (instance:IInstance, asset:IAsset): Promise<{ score: number; known: any; unknown: any; }> => {
+        let known:any, unknown:any
+        let score = 0
+        try {
+            let pod = (await this.clusterInfo.coreApi.readNamespacedPod(asset.podName, asset.podNamespace)).body
+            let ctrl = pod.metadata?.ownerReferences?.find(or => or.controller)
+            let kind = ctrl?.kind.toLowerCase()
+            let crdName = `${kind}-${ctrl?.name}-${asset.containerName}`
+            let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject(TRIVY_API_GROUP,TRIVY_API_VERSION, asset.podNamespace, TRIVY_API_PLURAL, crdName)
+            if (crdObject.response.statusCode === 200) {
+                console.log('Got report for', crdName)
+                let summary = (crdObject.body as any).report.summary
+                score += (instance.maxCritical>=0? summary.criticalCount*4 : 0) +
+                    (instance.maxHigh>=0? summary.highCount*4 : 0) +
+                    (instance.maxMedium>=0? summary.mediumCount*4 : 0) +
+                    (instance.maxLow>=0? summary.lowCount*4 : 0)
+                known = {
+                    name: asset.podName,
+                    namespace: asset.podNamespace,
+                    container: asset.containerName,
+                    report: (crdObject.body as any).report
+                }
+            }
+            else {
+                console.log(`VulnReport not found for ${crdName} (${crdObject.response.statusCode}-${crdObject.response.statusMessage})`)
+                unknown = {
+                    name: asset.podName,
+                    namespace: asset.podNamespace,
+                    container: asset.containerName,
+                    statusCode: crdObject.response.statusCode,
+                    statusMessage: crdObject.response.statusMessage
+                }
+            }
+        }
+        catch (err){
+            unknown = {
+                name: asset.podName,
+                namespace: asset.podNamespace,
+                container: asset.containerName,
+                statusCode: 999,
+                statusMessage: err
+            }
+            console.log('err', err)
+        }
+        return {
+            score,
+            known,
+            unknown
+        }
+    }
+
+    private calculateScore = async (instance: IInstance) => {
+        let score = 0
+        let unknown:any[] = []
+        let known:any[] = []
+        let maxScore = (instance.maxCritical>=0? instance.maxCritical*4 : 0) +
+            (instance.maxHigh>=0? instance.maxHigh*4 : 0) +
+            (instance.maxMedium>=0? instance.maxMedium*4 : 0) +
+            (instance.maxLow>=0? instance.maxLow*4 : 0)
+        let totalMaxScore = instance.assets.length * maxScore
+
+        for (let asset of instance.assets) {
+            let result = await this.scoreAsset(instance, asset)
+            score += result.score
+            if (result.known) known.push(result.known)
+            if (result.unknown) unknown.push(result.unknown)
+        }
+        score = (1.0 - (score / totalMaxScore)) * 100.0
+        return score
+    }
+
     executeCommand = async (instanceMessage: TrivyMessage, instance:IInstance): Promise<TrivyMessageResponse>=> {
         let resp:TrivyMessageResponse = {
             msgtype: 'trivymessageresponse',
             id: '',
-            namespace: '',
-            group: '',
-            pod: '',
-            container: '',
+            namespace: instanceMessage.namespace,
+            group: instanceMessage.group,
+            pod: instanceMessage.pod,
+            container: instanceMessage.container,
             action: instanceMessage.action,
             flow: InstanceMessageFlowEnum.RESPONSE,
             type: InstanceMessageTypeEnum.DATA,
             channel: instanceMessage.channel,
             instance: instanceMessage.instance,
-            data: {}
+            data: undefined
         }
 
         switch (instanceMessage.command) {
             case TrivyCommandEnum.SCORE:
-                let score = 0
-                let unknown:any[] = []
-                let known:any[] = []
-
-                let maxScore = (instance.maxCritical>=0?instance.maxCritical*4:0) +
-                    (instance.maxHigh>=0?instance.maxHigh*4:0) +
-                    (instance.maxMedium>=0?instance.maxMedium*4:0) +
-                    (instance.maxLow>=0?instance.maxLow*4:0)
-
-                console.log('instance',instance)
-                for (let asset of instance.assets) {
+                if (!this.checkScopes(instance, InstanceConfigScopeEnum.WORKLOAD)) {
+                    resp.data = `Insufficient scope for WORKLOAD`
+                    return resp
+                }
+                let score = await this.calculateScore(instance)
+                resp.data = { score }
+                break
+            case TrivyCommandEnum.RESCAN:
+                let pod = (await this.clusterInfo.coreApi.readNamespacedPod(instanceMessage.pod, instanceMessage.namespace)).body
+                let ctrl = pod.metadata?.ownerReferences?.find(or => or.controller)
+                let kind = ctrl?.kind.toLowerCase()
+                let crdName = `${kind}-${ctrl?.name}-${instanceMessage.container}`
+                let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject(TRIVY_API_GROUP,TRIVY_API_VERSION, instanceMessage.namespace, TRIVY_API_PLURAL, crdName)
+                if (crdObject.response.statusCode === 200) {
                     try {
-                        let pod = (await this.clusterInfo.coreApi.readNamespacedPod(asset.podName, asset.podNamespace)).body
-                        let ctrl = pod.metadata?.ownerReferences?.find(or => or.controller)
-                        let kind = ctrl?.kind.toLowerCase()
-                        let crdName = `${kind}-${ctrl?.name}-${asset.containerName}`
-                        let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject('aquasecurity.github.io','v1alpha1',asset.podNamespace, 'vulnerabilityreports',crdName)
-                        if (crdObject.response.statusCode === 200) {
-                            console.log('got report for', crdName)
-                            let summary = (crdObject.body as any).report.summary
-                            console.log(summary)
-                            score += (instance.maxCritical>=0?summary.criticalCount*4:0) +
-                                (instance.maxHigh>=0?summary.highCount*4:0) +
-                                (instance.maxMedium>=0?summary.mediumCount*4:0) +
-                                (instance.maxLow>=0?summary.lowCount*4:0)
-                            known.push({
-                                name: asset.podName,
-                                namespace: asset.podNamespace,
-                                container: asset.containerName,
-                                report: (crdObject.body as any).report
-                            })
-                        }
-                        else {
-                            console.log('vulnreport notfound')
-                            unknown.push({
-                                name: asset.podName,
-                                namespace: asset.podNamespace,
-                                container: asset.containerName
-                            })
-                        }
+                        await this.clusterInfo.crdApi.deleteNamespacedCustomObject(TRIVY_API_GROUP, TRIVY_API_VERSION, instanceMessage.namespace, TRIVY_API_PLURAL, crdName)
                     }
-                    catch (err){
-                        unknown.push({
-                            name: asset.podName,
-                            namespace: asset.podNamespace,
-                            container: asset.containerName
-                        })
-                        console.log('err')
+                    catch (err) {
                         console.log(err)
+                        resp.data = `Error removing vulnerability report`
+                        return resp
                     }
                 }
-                let totalmaxscore = instance.assets.length * maxScore
-                let value = (1.0 - (score / totalmaxscore)) * 100.0
-                console.log(maxScore, instance.assets.length, score, totalmaxscore, value)
-                resp.data.score = value
-                resp.data.unknown = unknown
-                resp.data.known = known
-                console.log(`score:`, resp.data)
-                break            
+                else {
+                    resp.data = `Vulnerabilty report does not exist`
+                    return resp
+                }
+                break
+            default:
+                console.log('Invalid command received:', instanceMessage.command)
         }
         return resp
+    }
+
+    private processEvent = async (webSocket:WebSocket, instance:IInstance, event:string, obj:any, asset:any) => {
+        if (obj.metadata.labels['trivy-operator.resource.namespace'] === asset.podNamespace &&
+            asset.podName.startsWith(obj.metadata.labels['trivy-operator.resource.name']) &&
+            obj.metadata.labels['trivy-operator.container.name']  === asset.containerName) {
+            let payload:TrivyMessageResponse = {
+                msgtype: 'trivymessageresponse',
+                msgsubtype: event,
+                id: '',
+                namespace: asset.podNamespace,
+                group: '',
+                pod: asset.podName,
+                container: asset.containerName,
+                action: InstanceMessageActionEnum.NONE,
+                flow: InstanceMessageFlowEnum.UNSOLICITED,
+                type: InstanceMessageTypeEnum.DATA,
+                channel: InstanceMessageChannelEnum.TRIVY,
+                instance: instance.instanceId
+            }
+            if (event==='add' || event==='update') {
+                let result = await this.scoreAsset(instance, asset)
+                if (result.known) {
+                    payload.data = result.known
+                    webSocket.send(JSON.stringify(payload))
+                }                    
+            }
+            else {
+                payload.data = asset
+                webSocket.send(JSON.stringify(payload))
+            }
+
+            let score = await this.calculateScore(instance)
+            let scoreResp:TrivyMessageResponse = {
+                msgtype: 'trivymessageresponse',
+                msgsubtype: 'score',
+                id: '',
+                namespace: '',
+                group: '',
+                pod: '',
+                container: '',
+                action: InstanceMessageActionEnum.NONE,
+                flow: InstanceMessageFlowEnum.UNSOLICITED,
+                type: InstanceMessageTypeEnum.DATA,
+                channel: InstanceMessageChannelEnum.TRIVY,
+                instance: instance.instanceId,
+                data: { score }
+            }
+            webSocket.send(JSON.stringify(scoreResp))
+        }
+    }
+
+    createInformer = (webSocket:WebSocket, instance:IInstance, asset:IAsset) => {
+        const plural = 'vulnerabilityreports'
+        const path = `/apis/${TRIVY_API_GROUP}/${TRIVY_API_VERSION}/namespaces/${asset.podNamespace}/${plural}`
+
+
+        const listFn = () =>
+            this.clusterInfo.crdApi.listNamespacedCustomObject(TRIVY_API_GROUP, TRIVY_API_VERSION, asset.podNamespace, plural).then((res) => {
+                    const typedBody = res.body as { items:KubernetesObject[] }
+                    return {
+                        response: res.response,
+                        body: typedBody,
+                    }
+            })
+        const informer = makeInformer(this.clusterInfo.kubeConfig, path, listFn )
+        informer.on('add', (obj:any) => this.processEvent(webSocket, instance, 'add', obj, asset))
+        informer.on('update', (obj:any) => this.processEvent(webSocket, instance, 'update', obj, asset))
+        informer.on('delete', (obj:any) => this.processEvent(webSocket, instance, 'delete', obj, asset))
+        informer.on('error', (err:any) => {
+            console.error('Error in informer:', err)
+            setTimeout(() => { informer.start(); console.log('informer restarterd')}, 5000)
+        })
+        return informer
     }
 
     startInstance = async (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
@@ -173,10 +293,10 @@ class TrivyChannel implements IChannel {
                 accessKey: accessKeyDeserialize(instanceConfig.accessKey),
                 instanceId: instanceConfig.instance,
                 assets: [],
-                maxCritical:0,
-                maxHigh:0,
-                maxMedium:0,
-                maxLow:0
+                maxCritical: 0,
+                maxHigh: 0,
+                maxMedium: 0,
+                maxLow: 0,
             }
             instances.push(instance)
         }
@@ -188,8 +308,11 @@ class TrivyChannel implements IChannel {
         let asset:IAsset = {
             podNamespace,
             podName,
-            containerName
+            containerName,
+            informer: undefined
         }
+        asset.informer = this.createInformer(webSocket, instance, asset)
+        asset.informer.start()
         instance.assets.push(asset)
     }
 
@@ -223,6 +346,7 @@ class TrivyChannel implements IChannel {
                 if (pos>=0) {
                     let instance = instances[pos]
                     for (let asset of instance.assets) {
+                        asset.informer.stop()
                     }
                     instances.splice(pos,1)
                 }
@@ -285,36 +409,6 @@ class TrivyChannel implements IChannel {
             type: InstanceMessageTypeEnum.SIGNAL,
             text,
             level
-        }
-        ws.send(JSON.stringify(resp))
-    }
-
-    private sendDataMessage = (ws:WebSocket, instanceId:string, text:string): void => {
-        var resp: InstanceConfigResponse = {
-            action: InstanceMessageActionEnum.NONE,
-            flow: InstanceMessageFlowEnum.UNSOLICITED,
-            channel: InstanceMessageChannelEnum.TRIVY,
-            instance: instanceId,
-            type: InstanceMessageTypeEnum.DATA,
-            text
-        }
-        ws.send(JSON.stringify(resp))
-    }
-
-    private sendSecurityResponse = (ws:WebSocket, instance:IInstance, asset:IAsset, id:string, text:string): void => {
-        var resp: TrivyMessageResponse = {
-            action: InstanceMessageActionEnum.NONE,
-            flow: InstanceMessageFlowEnum.UNSOLICITED,
-            channel: InstanceMessageChannelEnum.TRIVY,
-            instance: instance.instanceId,
-            type: InstanceMessageTypeEnum.DATA,
-            id,
-            namespace: asset.podNamespace,
-            group: '',
-            pod: asset.podName,
-            container: asset.containerName,
-            data: text,
-            msgtype: 'trivymessageresponse'
         }
         ws.send(JSON.stringify(resp))
     }

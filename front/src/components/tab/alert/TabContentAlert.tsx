@@ -1,3 +1,4 @@
+import { Box } from '@mui/material'
 import { AlertObject } from '../../../model/AlertObject'
 import { IChannelObject } from '../../../model/ITabObject'
 
@@ -26,6 +27,10 @@ const TabContentAlert: React.FC<IProps> = (props:IProps) => {
         }</pre>)
     }
 
-    return formatAlert()
+    return (
+        <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
+            { formatAlert() }
+        </Box>
+    )
 }
 export { TabContentAlert }

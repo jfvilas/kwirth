@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi } from '@kubernetes/client-node'
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, KubernetesObject } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -15,7 +15,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import { WebSocketServer } from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, KwirthData, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessage, RouteMessage, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, KwirthData, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessage, RouteMessage } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { AuthorizationManagement } from './tools/AuthorizationManagement'
 
@@ -35,8 +35,8 @@ import { DockerSecrets } from './tools/DockerSecrets'
 import { DockerConfigMaps } from './tools/DockerConfigMaps'
 import { DockerTools } from './tools/KwirthApi'
 import { OpsChannel } from './channels/ops/OpsChannel'
-import { IChannel } from './channels/IChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
+import { IChannel } from './channels/IChannel'
 
 const v8 = require('node:v8')
 const http = require('http')
@@ -53,18 +53,30 @@ kubeConfig.loadFromDefault()
 const coreApi = kubeConfig.makeApiClient(CoreV1Api)
 const appsApi = kubeConfig.makeApiClient(AppsV1Api)
 const crdApi = kubeConfig.makeApiClient(CustomObjectsApi)
+const rbacApi = kubeConfig.makeApiClient(RbacAuthorizationV1Api)
+const extensionApi = kubeConfig.makeApiClient(ApiextensionsV1Api)
 const execApi = new Exec(kubeConfig)
 const logApi = new Log(kubeConfig)
 var dockerApi: Docker = new Docker()
 var kwirthData: KwirthData
 var clusterInfo: ClusterInfo = new ClusterInfo()
 
+const group = 'mygroup.example.com';
+const version = 'v1';
+const namespace = 'default';
+const plural = 'myresources';
+const path = `/apis/${group}/${version}/namespaces/${namespace}/${plural}`;
 
 var saToken: ServiceAccountToken
 var secrets: ISecrets
 var configMaps: IConfigMaps
-const rootPath = process.env.KWIRTH_ROOTPATH || ''
-const masterKey = process.env.KWIRTH_MASTERKEY || 'Kwirth4Ever'
+const rootPath = process.env.KWIRTH_ROOTPATH || process.env.ROOTPATH || ''
+const masterKey = process.env.KWIRTH_MASTERKEY || process.env.MASTERKEY || 'Kwirth4Ever'
+const channelLogEnabled = Boolean(process.env.CHANNEL_LOG) || true
+const channelMetricsEnabled = Boolean(process.env.CHANNEL_METRICS) || true
+const channelAlertEnabled = Boolean(process.env.CHANNEL_ALERT) || true
+const channelOpsEnabled = Boolean(process.env.CHANNEL_OPS) || true
+const channelTrivyEnabled = Boolean(process.env.CHANNEL_TRIVY) || true
 
 // discover where we are running in: docker, kubernetes...
 const getExecutionEnvironment = async ():Promise<string> => {
@@ -180,7 +192,7 @@ const addObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamesp
     }
 }
 
-const modifyObject = async (_eventType:string, _podNamespace:string, _podName:string, _containerName:string, _webSocket:WebSocket, instanceConfig:InstanceConfig) => {
+const modifyObject = async (_webSocket:WebSocket, _eventType:string, _podNamespace:string, _podName:string, _containerName:string, instanceConfig:InstanceConfig) => {
     if(channels.has(instanceConfig.channel)) {
     }
     else {
@@ -188,7 +200,7 @@ const modifyObject = async (_eventType:string, _podNamespace:string, _podName:st
     }
 }
 
-const deleteObject = async (_eventType:string, _podNamespace:string, _podName:string, _containerName:string, _webSocket:WebSocket, instanceConfig:InstanceConfig) => {
+const deleteObject = async (_webSocket:WebSocket, _eventType:string, _podNamespace:string, _podName:string, _containerName:string, instanceConfig:InstanceConfig) => {
     if(channels.has(instanceConfig.channel)) {
     }
     else {
@@ -207,7 +219,7 @@ const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:Inst
                     addObject(webSocket, instanceConfig, podNamespace, podName, containerName)
                     break
                 case InstanceConfigViewEnum.GROUP:
-                    console.log('Kin event')
+                    console.log('Group event')
                     let [_groupType, groupName] = instanceConfig.group.split('+')
                     // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
                     if (podName.startsWith(groupName)) {  
@@ -246,19 +258,19 @@ const processEvent = (eventType:string, webSocket:WebSocket, instanceConfig:Inst
         }
     }
     else if (eventType === 'MODIFIED') {
-        console.log('eventy',eventType)
-        deleteObject(eventType, podNamespace, podName, '', webSocket, instanceConfig)
+        console.log('eventype',eventType)
+        modifyObject(webSocket, eventType, podNamespace, podName, '', instanceConfig)
         sendChannelSignalAsset(webSocket, SignalMessageLevelEnum.INFO, `Pod MODIFIED: ${podNamespace}/${podName}`, instanceConfig, podNamespace, podName, '')
     }
     else if (eventType === 'DELETED') {
-        modifyObject(eventType, podNamespace, podName, '', webSocket, instanceConfig)
+        console.log('eventype',eventType)
+        deleteObject(webSocket, eventType, podNamespace, podName, '', instanceConfig)
         sendChannelSignalAsset(webSocket, SignalMessageLevelEnum.INFO, `Pod DELETED: ${podNamespace}/${podName}`, instanceConfig, podNamespace, podName, '')
     }
     else {
         console.log(`Pod ${eventType} is unmanaged`)
         sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Received unmanaged event (${eventType}): ${podNamespace}/${podName}`, instanceConfig)
     }
-
 }
 
 const watchDockerPods = async (_apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:InstanceConfig) => {
@@ -581,8 +593,13 @@ const processChannelRoute = async (webSocket: WebSocket, instanceMessage: Instan
         if (instance) {
             let routeMessage = instanceMessage as RouteMessage
             if (channels.has(routeMessage.destChannel)) {
-                console.log(`Routing message to channel ${routeMessage.destChannel}`)
-                processClientMessage (webSocket, JSON.stringify(routeMessage.data))
+                if (channels.get(routeMessage.destChannel)?.getChannelData().routable) {
+                    console.log(`Routing message to channel ${routeMessage.destChannel}`)
+                    processClientMessage (webSocket, JSON.stringify(routeMessage.data))
+                }
+                else {
+                    console.log(`Dest channel (${routeMessage.destChannel}) for 'route' command doesn't support routing`)
+                }
             }
             else {
                 console.log(`Dest channel '${routeMessage.destChannel}' does not exist for instance '${instanceMessage.instance}'`)
@@ -777,7 +794,7 @@ const runKubernetes = async () => {
     // serve config API
     let ka:ApiKeyApi = new ApiKeyApi(configMaps, masterKey)
     app.use(`${rootPath}/key`, ka.route)
-    let va:ConfigApi = new ConfigApi(coreApi, appsApi, ka, kwirthData, clusterInfo, channels)
+    let va:ConfigApi = new ConfigApi(ka, kwirthData, clusterInfo, channels)
     app.use(`${rootPath}/config`, va.route)
     let sa:StoreApi = new StoreApi(configMaps, ka)
     app.use(`${rootPath}/store`, sa.route)
@@ -816,11 +833,14 @@ const runKubernetes = async () => {
 const initKubernetesCluster = async (token:string, loadMetrics:boolean) : Promise<void> => {
     // initialize cluster
     clusterInfo.token = token
+    clusterInfo.kubeConfig = kubeConfig
     clusterInfo.coreApi = coreApi
     clusterInfo.appsApi = appsApi
     clusterInfo.execApi = execApi
     clusterInfo.logApi = logApi
     clusterInfo.crdApi = crdApi
+    clusterInfo.rbacApi = rbacApi
+    clusterInfo.extensionApi = extensionApi
     clusterInfo.dockerTools = new DockerTools(clusterInfo)
 
     await clusterInfo.loadKubernetesClusterName()
@@ -859,19 +879,20 @@ const launchKubernetes = async() => {
                     console.log('SA token obtained succesfully')
 
                     // load channel extensions
-                    channels.set('log', new LogChannel(clusterInfo))
-                    channels.set('alert', new AlertChannel(clusterInfo))
-                    //+++channels.set('metrics', new MetricsChannel(clusterInfo))
-                    channels.set('ops', new OpsChannel(clusterInfo))
-                    channels.set('trivy', new TrivyChannel(clusterInfo))
+                    if (channelLogEnabled) channels.set('log', new LogChannel(clusterInfo))
+                    if (channelAlertEnabled) channels.set('alert', new AlertChannel(clusterInfo))
+                    //+++if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
+                    if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
+                    if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
 
+                    // Detect if any channel requires metrics
                     let requireMetrics = Array.from(channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)
                     console.log('Metrics required: ', requireMetrics)
 
                     await initKubernetesCluster(token, requireMetrics)
                     clusterInfo.type = kwirthData.clusterType
 
-                    console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
+                    console.log(`Enabled channels for this (kubernetes) run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
                     console.log(`Detected own namespace: ${kwirthData.namespace}`)
                     if (kwirthData.deployment !== '')
                         console.log(`Detected own deployment: ${kwirthData.deployment}`)
@@ -910,7 +931,7 @@ const runDocker = async () => {
     // serve config API
     let ka:ApiKeyApi = new ApiKeyApi(configMaps, masterKey)
     app.use(`${rootPath}/key`, ka.route)
-    let ca:ConfigApi = new ConfigApi(coreApi, appsApi, ka, kwirthData, clusterInfo, channels)
+    let ca:ConfigApi = new ConfigApi(ka, kwirthData, clusterInfo, channels)
     ca.setDockerApi(dockerApi)
     app.use(`${rootPath}/config`, ca.route)
     let sa:StoreApi = new StoreApi(configMaps, ka)
@@ -969,7 +990,7 @@ const launchDocker = async() => {
     let logChannel = new LogChannel(clusterInfo)
     channels.set('log', logChannel)
 
-    console.log(`Enabled channels for this run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
+    console.log(`Enabled channels for this (docker) run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
     runDocker()
 }
 

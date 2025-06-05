@@ -8,7 +8,7 @@ import { assetScore } from './TrivyCommon'
 import { TabContentTrivyAssetDetails } from './TabContentTrivyAssetDetails'
 
 interface IProps {
-    webSocket?: WebSocket
+    webSocket: WebSocket
     channelObject: IChannelObject
 }
 
@@ -26,12 +26,11 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
     const [maxScore, setMaxScore] = useState<number>(0)
     const [minScore, setMinScore] = useState<number>(0)
 
+    console.log('refreshscore', trivyObject.score)
     useEffect(() => {
-        if (!trivyObject.score?.known) return
-        
         let min = Number.MAX_VALUE
         let max = Number.MIN_VALUE
-        for (let asset of trivyObject.score.known) {
+        for (let asset of trivyObject.known) {
             let score = assetScore(asset, trivyObject)
             if (score<min) min=score
             if (score>max) max=score
@@ -40,22 +39,20 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
         setMaxScore(max)
         setFilterScore(min)
         orderBy(order)
-    }, [trivyObject.score?.known])
+    }, [trivyObject.known, trivyObject.score])
 
     useEffect(() => {
         if (trivyBoxRef.current) setTrivyBoxTop(trivyBoxRef.current.getBoundingClientRect().top)
-    }, [])
+    })
 
     const showDetails = (asset:any) => {
-        return (
-            <TabContentTrivyAssetDetails asset={asset} trivyObject={trivyObject} onClose={() => setSelectedAsset(undefined)}/>
-        )
+        return <TabContentTrivyAssetDetails asset={asset} trivyObject={trivyObject} onClose={() => setSelectedAsset(undefined)}/>
     }
 
     const orderBy = (orderName:string) => {
         setAnchorMenu(null)
 
-        let known = trivyObject.score.known as any[]
+        let known = trivyObject.known as any[]
         switch(orderName) {
             case 'scd':
                 known.sort((a,b) => new Date(b.report.updateTimestamp).getTime() - new Date(a.report.updateTimestamp).getTime())
@@ -71,7 +68,7 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
                 break
 
         }
-        trivyObject.score.known = known
+        trivyObject.known = known
         setOrder(orderName)
         setRefresh(Math.random())
     }
@@ -91,45 +88,53 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
         setFilterScore(v as number)
     }
 
-    return ( trivyObject.score?.score && <>
-        <Stack direction={'row'} sx={{overflow:'hidden'}}>
-            <Typography sx={{ml:2,mr:2}}><b>KwirthScore: </b>{(trivyObject.score?.score as number)?.toPrecision(4)}%</Typography>
-            <Typography sx={{flex:1}}></Typography>
-            <Typography>Filter score</Typography>
-            <Slider max={maxScore} min={minScore} onChange={handleFilter} size='small' sx={{width:'10%', ml:2}}/>
-            <Typography sx={{width:'5%', ml:2}}>{filterScore?.toFixed(0)}</Typography>
-            <Button onClick={(event) => setAnchorMenu(event.currentTarget)}>Order</Button>
-            <Button onClick={() => setShowMode('list')}>List</Button>
-            <Button onClick={() => setShowMode('card')}>Card</Button>
-        </Stack>
+    const removeAsset = (asset:any) => {
+        trivyObject.known = (trivyObject.known as any[]).filter(a => a.namespace!==asset.namespace || a.name!==asset.name || a.container!==asset.container)
+        setRefresh(Math.random())
+    }
 
-        <Box ref={trivyBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${trivyBoxTop}px - 25px)`}}>
-            { showMode==='card' && trivyObject.score?.known && 
-                <Grid container sx={{ml:1,mr:1}}>
-                    {(trivyObject.score.known as any[]).filter(asset => assetScore(asset,trivyObject)>=filterScore).map( (asset,index) => {
-                        return (
-                            <Grid xs={12} sm={6} md={4} lg={3} key={index} sx={{margin:1}}>
-                                <TabContentTrivyAsset asset={asset} trivyObject={trivyObject} onDetails={() => setSelectedAsset(asset)} view={'card'}/>
-                            </Grid>
-                        )
-                    })}
-                </Grid>
-            }
+    console.log('trivyObject.known',trivyObject.known)
+    return (
+        <Box sx={{ ml:1, mr:1, display:'flex', flexDirection: 'column'}}>
+            <Stack direction={'row'} sx={{overflow:'hidden'}}>
+                <Typography sx={{ml:2,mr:2}}><b>KwirthScore: </b>{trivyObject.score.toPrecision(4)}%</Typography>
+                <Typography sx={{flex:1}}></Typography>
+                <Typography>Filter score</Typography>
+                <Slider max={maxScore} min={minScore} value={filterScore} onChange={handleFilter} size='small' sx={{width:'10%', ml:2}}/>
+                <Typography sx={{width:'5%', ml:2}}>{filterScore?.toFixed(0)}</Typography>
+                <Button onClick={(event) => setAnchorMenu(event.currentTarget)}>Order</Button>
+                <Button onClick={() => setShowMode('list')}>List</Button>
+                <Button onClick={() => setShowMode('card')}>Card</Button>
+            </Stack>
 
-            { showMode==='list' && 
-                <Grid container sx={{ml:1,mr:1}}>
-                    {(trivyObject.score.known as any[]).filter(asset => assetScore(asset,trivyObject)>=filterScore).map( (asset,index) => {
-                        return (
-                            <Grid key={index} sx={{margin:1, width:'100%'}}>
-                                <TabContentTrivyAsset asset={asset} trivyObject={trivyObject} onDetails={() => setSelectedAsset(asset)} view='list'/>
-                            </Grid>
-                        )
-                    })}
-                </Grid>
-            } 
+            <Box ref={trivyBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${trivyBoxTop}px - 25px)`}}>
+                { showMode==='card' && trivyObject.known && 
+                    <Grid container sx={{ml:1,mr:1}}>
+                        {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyObject)>=filterScore).map( (asset,index) => {
+                            return (
+                                <Grid xs={12} sm={6} md={4} lg={3} key={index} sx={{margin:1}}>
+                                    <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view={'card'} webSocket={props.webSocket}/>
+                                </Grid>
+                            )
+                        })}
+                    </Grid>
+                }
+
+                { showMode==='list' && 
+                    <Grid container sx={{ml:1,mr:1}}>
+                        {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyObject)>=filterScore).map( (asset,index) => {
+                            return (
+                                <Grid key={index} sx={{margin:1, width:'100%'}}>
+                                    <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view='list' webSocket={props.webSocket}/>
+                                </Grid>
+                            )
+                        })}
+                    </Grid>
+                } 
+            </Box>
+            { anchorMenu && orderMenu }
+            { selectedAsset!==undefined && showDetails(selectedAsset) }
         </Box>
-        { anchorMenu && orderMenu }
-        { selectedAsset!==undefined && showDetails(selectedAsset) }
-    </>)
+    )
 }
 export { TabContentTrivy }

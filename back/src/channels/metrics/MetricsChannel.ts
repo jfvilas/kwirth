@@ -30,7 +30,6 @@ class MetricsChannel implements IChannel {
     getChannelData(): ChannelData {
         return {
             id: 'metrics',
-            immediatable: false,
             routable: false,
             pauseable: true,
             modifyable: true,

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Divider, MenuItem, MenuList } from "@mui/material"
-import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, Settings } from '@mui/icons-material';
+import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, Settings, RemoveFromQueue } from '@mui/icons-material';
+
 import { User } from '../model/User';
 import { parseResources } from '@jfvilas/kwirth-common';
 
@@ -17,6 +18,8 @@ enum MenuDrawerOption {
     ManageCluster,
     UserSecurity,
     UpdateKwirth,
+    InstallTrivy,
+    RemoveTrivy,
     ApiSecurity,
     Exit
 }
@@ -60,6 +63,8 @@ const MenuDrawer: React.FC<IProps> = (props:IProps) => {
                     <MenuItem key='usec' onClick={() => optionSelected(MenuDrawerOption.UserSecurity)}><Person />&nbsp;User security</MenuItem>
                     <Divider/>
                     <MenuItem key='ukwirth' onClick={() => optionSelected(MenuDrawerOption.UpdateKwirth)}><BrowserUpdated />&nbsp;Update Kwirth</MenuItem>
+                    <MenuItem key='itrivy' onClick={() => optionSelected(MenuDrawerOption.InstallTrivy)}><BrowserUpdated />&nbsp;Install Trivy</MenuItem>
+                    <MenuItem key='rtrivy' onClick={() => optionSelected(MenuDrawerOption.RemoveTrivy)}><RemoveFromQueue />&nbsp;Remove Trivy</MenuItem>
                     <Divider/>
                 </div>
             }

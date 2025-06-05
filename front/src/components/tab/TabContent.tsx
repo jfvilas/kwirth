@@ -19,23 +19,17 @@ const TabContent: React.FC<IProps> = (props:IProps) => {
     return (<>
             {/* show log lines */}
             { props.channelObject && props.channel === InstanceMessageChannelEnum.LOG && props.channelObject.data &&
-                <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
-                    <TabContentLog channelObject={props.channelObject} lastLineRef={props.lastLineRef} webSocket={props.webSocket}/>
-                </Box>
-                }
+                <TabContentLog channelObject={props.channelObject} lastLineRef={props.lastLineRef} webSocket={props.webSocket}/>
+            }
 
             {/* show alerts */}
             { props.channelObject && props.channel === InstanceMessageChannelEnum.ALERT && props.channelObject.data && 
-                <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
-                    <TabContentAlert channelObject={props.channelObject} lastLineRef={props.lastLineRef}/>
-                </Box>
+                <TabContentAlert channelObject={props.channelObject} lastLineRef={props.lastLineRef}/>
             }
 
             {/* show metrics */}
             { props.channelObject && props.channel === InstanceMessageChannelEnum.METRICS && props.channelObject.data && 
-                <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
-                    <TabContentMetrics channelObject={props.channelObject} />
-                </Box>
+                <TabContentMetrics channelObject={props.channelObject}/>
             }
 
             {/* show ops */}
@@ -45,9 +39,7 @@ const TabContent: React.FC<IProps> = (props:IProps) => {
 
             {/* show trivy */}
             { props.channelObject && props.channel === InstanceMessageChannelEnum.TRIVY && props.channelObject.data &&
-                <Box sx={{ ml:1, mr:1, display:'flex', flexDirection: 'column'}}>
-                    <TabContentTrivy channelObject={props.channelObject} webSocket={props.webSocket}/>
-                </Box>
+                <TabContentTrivy channelObject={props.channelObject} webSocket={props.webSocket!}/>
 
             }
     </>)

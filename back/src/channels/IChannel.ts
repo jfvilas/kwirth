@@ -7,13 +7,12 @@ enum SourceEnum {
 
 type ChannelData = {
     id: string
-    immediatable: boolean
-    routable: boolean
-    pauseable: boolean
-    modifyable: boolean
-    reconnectable: boolean
-    sources: SourceEnum[]
-    metrics: boolean
+    routable: boolean  // instance can receive routed commands
+    pauseable: boolean  // instance can be paused
+    modifyable: boolean  // instance can be modified
+    reconnectable: boolean  // instance supports client reconnect requests
+    sources: SourceEnum[]  // array of sources (kubernetes, docker...)
+    metrics: boolean  // this channel requires metrics
 }
 
 interface IChannel {

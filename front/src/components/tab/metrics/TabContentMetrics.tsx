@@ -1,13 +1,14 @@
 import { useState } from "react"
-//import { ReactJSXElement } from '@emotion/react/types/jsx-namespace'
 import { MetricsObject } from "../../../model/MetricsObject"
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
-import { Alert, Button, Stack, Typography } from "@mui/material"
+import { Alert, Box, Button, Stack, Typography } from "@mui/material"
 import { IChannelObject } from "../../../model/ITabObject"
 
 interface IProps {
-    channelObject:IChannelObject
+    webSocket?: WebSocket
+    channelObject: IChannelObject
 }
+
 interface ISample {
     timestamp:string
     value:number
@@ -276,6 +277,11 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
         }
     }
 
-    return formatMetrics()
+    return (
+        <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
+            {formatMetrics()}
+        </Box>
+    )
+
 }
 export { TabContentMetrics }

@@ -1,7 +1,8 @@
 import { InstanceMessage } from "./InstanceMessage"
 
 export enum TrivyCommandEnum {
-    SCORE = 'score'
+    SCORE = 'score',
+    RESCAN = 'rescan'
 }
 
 export interface TrivyMessage extends InstanceMessage {
@@ -24,5 +25,6 @@ export interface TrivyMessageResponse extends InstanceMessage {
     group: string
     pod: string
     container: string
+    msgsubtype?: string
     data?: any
 }

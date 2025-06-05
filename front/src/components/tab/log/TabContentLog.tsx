@@ -1,6 +1,7 @@
 import { InstanceConfigViewEnum, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { IChannelObject } from '../../../model/ITabObject'
 import { ILogLine, LogObject } from '../../../model/LogObject'
+import { Box } from '@mui/material'
 // import { Button, TextField } from '@mui/material'
 // import { useState } from 'react'
 
@@ -86,15 +87,17 @@ const TabContentLog: React.FC<IProps> = (props:IProps) => {
     //     props.webSocket?.send(JSON.stringify(rm))
     // }
 
-    return <>
-        <pre> {
-            logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })
-        }
-        </pre>
-        {/* <TextField value={input} onChange={(e) => setInput(e.target.value)}></TextField>
-        <Button onClick={send}>SEND</Button> */}
-        <br/>
-        <span ref={props.lastLineRef}></span>
-    </>
+    return (        
+        <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
+            <pre> {
+                logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })
+            }
+            </pre>
+            {/* <TextField value={input} onChange={(e) => setInput(e.target.value)}></TextField>
+            <Button onClick={send}>SEND</Button> */}
+            <br/>
+            <span ref={props.lastLineRef}></span>
+        </Box>
+    )
 }
 export { TabContentLog }

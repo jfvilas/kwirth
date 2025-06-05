@@ -1,4 +1,4 @@
-import { AppsV1Api, CoreV1Api, CustomObjectsApi, Exec, Log, V1Node } from "@kubernetes/client-node";
+import { ApiextensionsV1Api, AppsV1Api, CoreV1Api, CustomObjectsApi, Exec, KubeConfig, Log, RbacAuthorizationV1Api, V1Node } from "@kubernetes/client-node";
 import { MetricsTools } from "../tools/Metrics";
 import { ClusterTypeEnum } from "@jfvilas/kwirth-common";
 import Docker from 'dockerode'
@@ -22,11 +22,14 @@ export class ClusterInfo {
     public nodes: Map<string, NodeInfo> = new Map()
     public dockerTools!: DockerTools
     public dockerApi!: Docker
+    public kubeConfig!: KubeConfig
     public coreApi!: CoreV1Api
     public appsApi!: AppsV1Api
     public execApi!: Exec
     public logApi!: Log
     public crdApi!: CustomObjectsApi
+    public rbacApi!: RbacAuthorizationV1Api
+    public extensionApi!: ApiextensionsV1Api
     public token: string = ''
     public metrics!: MetricsTools;
     public metricsInterval: number = 60

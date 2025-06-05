@@ -40,7 +40,6 @@ class OpsChannel implements IChannel {
     getChannelData(): ChannelData {
         return {
             id: 'ops',
-            immediatable: true,
             routable: true,
             pauseable: false,
             modifyable: false,
@@ -298,7 +297,7 @@ class OpsChannel implements IChannel {
 
     private async executeImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
         console.log('Immediate request received')
-        // +++ an immediate commadn can be of any type not just opsmessage
+        // +++ an immediate command can be of any type not just opsmessage
         // we need to decide how to handle messaging on responses: routeresponse.data = opsresponse??
         let opsMessage = instanceMessage as OpsMessage
 
@@ -341,7 +340,7 @@ class OpsChannel implements IChannel {
                 if (this.checkScopes(instance, InstanceConfigScopeEnum.GET))
                     resp = await execCommandGetDescribe(this.clusterInfo, instance, opsMessage)
                 else
-                    resp.data = `Insufficient scope for DESCRIBE`
+                    resp.data = `Insufficient scope for GET`
                 break
             case OpsCommandEnum.RESTARTPOD:
             case OpsCommandEnum.RESTARTNS:
@@ -354,7 +353,7 @@ class OpsChannel implements IChannel {
                 if (this.checkScopes(instance, InstanceConfigScopeEnum.RESTART))
                     resp = await execCommandDelete(this.clusterInfo, instance, opsMessage)
                 else
-                    resp.data = `Insufficient scope for DELETE`
+                    resp.data = `Insufficient scope for RESTART`
                 break
             default:
                 resp.data = `Invalid command for route: '${opsMessage.command}'`

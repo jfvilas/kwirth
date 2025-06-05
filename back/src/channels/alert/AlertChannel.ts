@@ -38,7 +38,6 @@ class AlertChannel implements IChannel {
     getChannelData(): ChannelData {
         return {
             id: 'alert',
-            immediatable: false,
             routable: false,
             pauseable: true,
             modifyable: false,

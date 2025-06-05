@@ -1,5 +1,6 @@
 #FROM node:20-alpine
-FROM node:slim
+#FROM node:slim
+FROM node:24-alpine3.22
 
 WORKDIR /usr/kwirth
 

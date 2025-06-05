@@ -60,8 +60,10 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
                     setCommand('')
                     setSelectedCommandIndex(0)
                 }
-                event.preventDefault()
-                event.stopPropagation()
+                if (event.preventDefault) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
                 break
             default:
                 if (key.startsWith('F') && key.length>1) {
