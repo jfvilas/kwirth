@@ -23,7 +23,6 @@ export class AlertChannel implements IChannel {
 
     processChannelMessage(channelObject:IChannelObject, wsEvent: any): IChannelMessageAction {
         let refresh = IChannelMessageAction.NONE
-        console.log('processChannelMessage')
         var msg = JSON.parse(wsEvent.data) as IAlertMessage
         let alertObject = channelObject.uiData as AlertObject
         let alertConfig = channelObject.uiConfig as AlertUiConfig

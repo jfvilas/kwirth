@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 // material & icons
 import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Menu, Person, BarChart, Terminal, Subject } from '@mui/icons-material'
+import { Settings as SettingsIcon, Menu, Person, BarChart, Terminal } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
@@ -27,11 +27,8 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, MetricsConfigModeEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, LogConfig, MetricsConfig, OpsConfig, OpsCommandEnum, OpsMessageResponse, parseResources, TrivyConfig, TrivyMessageResponse, TrivyMessage, TrivyCommandEnum } from '@jfvilas/kwirth-common'
+import { KwirthData, MetricsConfigModeEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, MetricsConfig, OpsConfig, OpsCommandEnum, OpsMessageResponse, parseResources, TrivyConfig, TrivyMessageResponse, TrivyMessage, TrivyCommandEnum } from '@jfvilas/kwirth-common'
 import { ITabObject } from './model/ITabObject'
-
-import { ILogLine, ILogMessage, LogObject } from './channels/log/LogObject'
-import { SetupLog } from './channels/log/SetupLog'
 
 import { IMetricsMessage, MetricsEventSeverityEnum, MetricsObject } from './channels/metrics/MetricsObject'
 import { MetricDescription } from './channels/metrics/MetricDescription'
@@ -49,6 +46,7 @@ import { AlertChannel } from './channels/alert/AlertChannel'
 import { IBoard } from './model/IBoard'
 import { FirstTimeLogin } from './components/FirstTimeLogin'
 import { ChannelConstructor, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
+import { LogChannel } from './channels/log/LogChannel'
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883'
@@ -81,9 +79,6 @@ const App: React.FC = () => {
 
     const [refreshTabContent, setRefreshTabContent] = useState(0)
 
-    // message list management
-    const lastLineRef = useRef(null)
-
     // general
     const [settings, setSettings] = useState<Settings>()
     const settingsRef = useRef(settings)
@@ -114,21 +109,20 @@ const App: React.FC = () => {
     const [showSettingsUser, setShowSettingsUser]=useState<boolean>(false)
     const [showSettingsCluster, setShowSettingsCluster]=useState<boolean>(false)
     const [initialMessage, setInitialMessage]=useState<string>('')
-    const [showSetupLog, setShowSetupLog]=useState<boolean>(false)
     const [showSetupMetrics, setShowSetupMetrics]=useState<boolean>(false)
     const [showSetupTrivy, setShowSetupTrivy]=useState<boolean>(false)
-
-
-    useEffect( () => {
-        // only firt time
-        frontChannels.set('echo', EchoChannel)
-        frontChannels.set('alert', AlertChannel)
-    })
 
     const createChannelInstance = (type: string): IChannel | null => {
         const channelClass = frontChannels.get(type)
         return channelClass ? new channelClass() : null
     }
+
+    useEffect( () => {
+        // only firt time
+        frontChannels.set('log', LogChannel)
+        frontChannels.set('echo', EchoChannel)
+        frontChannels.set('alert', AlertChannel)
+    })
 
     useEffect ( () => {
         // only when user logs on / off
@@ -240,7 +234,7 @@ const App: React.FC = () => {
         if (cluster) {
             setSelectedClusterName(clusterName)
             let usableChannels = [...cluster.channels]
-            usableChannels = usableChannels.filter(c => c === InstanceMessageChannelEnum.LOG || c === InstanceMessageChannelEnum.METRICS ||c === InstanceMessageChannelEnum.OPS || c === InstanceMessageChannelEnum.TRIVY || Array.from(frontChannels.keys()).includes(c))
+            usableChannels = usableChannels.filter(c => c === InstanceMessageChannelEnum.METRICS ||c === InstanceMessageChannelEnum.OPS || c === InstanceMessageChannelEnum.TRIVY || Array.from(frontChannels.keys()).includes(c))
             console.log('usableChannels',usableChannels)
             setChannels(usableChannels)
         }
@@ -288,14 +282,6 @@ const App: React.FC = () => {
         }
 
         switch(selection.channel) {
-            case InstanceMessageChannelEnum.LOG:
-                let logObject = new LogObject()
-                logObject.follow = settingsRef.current?.logFollow || true
-                logObject.maxMessages = settingsRef.current?.logMaxMessages || 1000
-                logObject.previous = settingsRef.current?.logPrevious || false
-                logObject.timestamp = settingsRef.current?.logTimestamp || true
-                newTab.channelObject.uiData = logObject
-                break
             case InstanceMessageChannelEnum.METRICS:
                 let metricsObject = new MetricsObject()
                 metricsObject.interval = settingsRef.current?.metricsInterval || 60
@@ -393,9 +379,6 @@ const App: React.FC = () => {
             case InstanceMessageChannelEnum.NONE:
                 // we receive keepalive responses through this channel
                 break
-            case InstanceMessageChannelEnum.LOG:
-                processLogMessage(wsEvent)
-                break
             case InstanceMessageChannelEnum.METRICS:
                 processMetricsMessage(wsEvent)
                 break
@@ -437,124 +420,6 @@ const App: React.FC = () => {
         catch (err) {
             console.log('Error obtaining metrics list')
             console.log(err)
-        }
-    }
-
-    const processLogMessage = (wsEvent:any) => {
-        const getMsgEpoch = (lmsg:ILogLine) =>{
-            return (new Date(lmsg.text.split(' ')[0])).getTime()
-        }
-
-        // find the tab which this web socket belongs to, and add the new message
-        let tab = tabs.find(tab => tab.ws === wsEvent.target)
-        if (!tab || !tab.channelObject) return
-
-        let logMessage = JSON.parse(wsEvent.data) as ILogMessage
-        let logObject = tab.channelObject.uiData as LogObject
-
-        switch (logMessage.type) {
-            case InstanceMessageTypeEnum.DATA:
-                let bname = logMessage.namespace+'/'+logMessage.pod+'/'+logMessage.container
-                let text = logMessage.text
-                if (logObject.buffers.get(bname)) {
-                    text = logObject.buffers.get(bname) + text
-                    logObject.buffers.set(bname,'')
-                }
-                if (!text.endsWith('\n')) {
-                    let i = text.lastIndexOf('\n')
-                    let next = text.substring(i)
-                    logObject.buffers.set(bname, next)
-                    text = text.substring(0,i)
-                }
-
-                for (let line of text.split('\n')) {
-                    if (line.trim() === '') continue
-
-                    let logLine:ILogLine = {
-                        text: line,
-                        namespace: logMessage.namespace,
-                        pod: logMessage.pod,
-                        container: logMessage.container,
-                        type: logMessage.type
-                    }
-
-                    if (logObject.startDiagnostics) {
-                        if (logObject.messages.length < logObject.maxMessages) {
-                            let cnt = logObject.counters.get(bname)
-                            if (!cnt) {
-                                logObject.counters.set(bname,0)
-                                cnt = 0
-                            }
-                            if (cnt < logObject.maxPerPodMessages) {
-                                switch (logObject.sortOrder) {
-                                    case 'pod':
-                                        let podIndex = logObject.messages.findLastIndex(m => m.container===logLine.container && m.pod===logLine.pod && m.namespace===logLine.namespace)
-                                        logObject.messages.splice(podIndex+1,0,logLine)
-                                        break
-                                    case 'time':
-                                        let timeIndex = logObject.messages.findLastIndex(m => getMsgEpoch(m) < getMsgEpoch(logLine))
-                                        logObject.messages.splice(timeIndex+1,0,logLine)
-                                        break
-                                    default:
-                                        logObject.messages.push(logLine)
-                                        break
-                                }
-                                logObject.counters.set(bname, ++cnt)
-                            }
-                            if ([...logObject.counters.values()].reduce((prev,acc) => {return prev+acc}, 0) > logObject.maxMessages) {
-                                stopChannel(tab)
-                            }
-                        }
-                        else {
-                            if (tab.channelStarted) stopChannel(tab)
-                        }
-                    }
-                    else {
-                        logObject.messages.push(logLine)
-                        if (logObject.messages.length > logObject.maxMessages) logObject.messages.splice(0, logObject.messages.length - logObject.maxMessages)
-                    }
-
-                    // if current log is displayed (focused), add message to the screen
-                    if (selectedTabRefName.current === tab.name) {
-                        if (!tab.channelPaused) {
-                            setRefreshTabContent(Math.random())
-                            if (logObject.follow && lastLineRef.current) {
-                                (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
-                            }
-                        }
-                    }
-                    else {
-                        // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-                        if (logObject.backgroundNotification && !tab.channelPaused) {
-                            tab.channelPending = true
-                            setPendingTabs((prev)=> [...prev, tab!])
-                        }
-                    }
-                }
-                break
-            case InstanceMessageTypeEnum.SIGNAL:
-                let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
-                if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
-                    tab.channelObject.instanceId = instanceMessage.instance
-                }
-                else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
-                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                    logObject.messages.push({
-                        text: signalMessage.text,
-                        namespace: '',
-                        pod: '',
-                        container: '',
-                        type: InstanceMessageTypeEnum.DATA
-                    })
-                }
-                else {
-                    logObject.messages.push(logMessage)
-                    setRefreshTabContent(Math.random())
-                }
-                break
-            default:
-                console.log(`Invalid message type`, logMessage)
-                break
         }
     }
 
@@ -768,9 +633,6 @@ const App: React.FC = () => {
 
     const onClickChannelStart = () => {
         switch (selectedTab?.channelId) {
-            case InstanceMessageChannelEnum.LOG:
-                setShowSetupLog(true)
-                break
             case InstanceMessageChannelEnum.METRICS:
                 setShowSetupMetrics(true)
                 break
@@ -837,16 +699,6 @@ const App: React.FC = () => {
         if (!cluster) return
 
         switch (tab.channelId) {
-            case InstanceMessageChannelEnum.LOG:
-                let logObject = tab.channelObject.uiData as LogObject
-                logObject.messages.push({
-                    type: InstanceMessageTypeEnum.DATA,
-                    text: '*** Lost connection ***',
-                    namespace: '',
-                    pod: '',
-                    container: ''
-                })
-                break
             case InstanceMessageChannelEnum.METRICS:
                 let metricsObject = tab.channelObject.uiData as MetricsObject
                 metricsObject.events.push( { severity: MetricsEventSeverityEnum.INFO, text: '*** Lost connection ***' })
@@ -910,33 +762,6 @@ const App: React.FC = () => {
                 type: InstanceMessageTypeEnum.SIGNAL
             }
             switch (tab.channelId) {
-                case InstanceMessageChannelEnum.LOG:
-                    let logObject = tab.channelObject.uiData as LogObject
-                    logObject.accessKey = cluster.accessString
-                    if (!cluster) {
-                        setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at log configuration ${tab.channelObject.clusterName} does not exist.`, setMsgBox))
-                        return
-                    }
-                    let logConfig:LogConfig
-                    if (logObject.startDiagnostics) {
-                        logConfig = {
-                            timestamp: true,
-                            previous: false,
-                            maxMessages: 5000,
-                            fromStart: true
-                        }
-                    }
-                    else {
-                        logConfig = {
-                            timestamp: logObject.timestamp,
-                            previous: logObject.previous,
-                            maxMessages: logObject.maxMessages,
-                            fromStart: logObject.fromStart
-                        }
-                    }
-                    instanceConfig.scope = InstanceConfigScopeEnum.VIEW
-                    instanceConfig.data = logConfig
-                    break
                 case InstanceMessageChannelEnum.METRICS:
                     let metricsObject = tab.channelObject.uiData as MetricsObject
                     metricsObject.events = []
@@ -1022,17 +847,6 @@ const App: React.FC = () => {
             type: InstanceMessageTypeEnum.SIGNAL
         }
         switch (tab.channelId) {
-            case InstanceMessageChannelEnum.LOG:
-                let logObject = tab.channelObject.uiData as LogObject
-                logObject.messages.push({
-                    text: '=========================================================================',
-                    type: InstanceMessageTypeEnum.DATA,
-                    namespace: '',
-                    pod: '',
-                    container: ''
-                }) 
-                setRefreshTabContent(Math.random())
-                break
             case InstanceMessageChannelEnum.METRICS:
                 break
             case InstanceMessageChannelEnum.OPS:
@@ -1206,9 +1020,6 @@ const App: React.FC = () => {
                 channelPending: false
             }
             switch(tab.channelId) {
-                case InstanceMessageChannelEnum.LOG:
-                    (newTab.channelObject.uiData as LogObject).messages=[]
-                    break
                 case InstanceMessageChannelEnum.METRICS:
                     (newTab.channelObject.uiData as MetricsObject).assetMetricsValues = []
                     break
@@ -1469,28 +1280,6 @@ const App: React.FC = () => {
         startChannel(tab)
     }
 
-    const onSetupLogClosed = (maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean, startDiagnostics:boolean, maxPerPodMessages:number, sortOrder:string) => {
-        setShowSetupLog(false)       
-        setAnchorMenuTab(null)
-        if (maxMessages === 0) return
-
-        var tab = tabs.find(t => t.name === selectedTabRefName.current)
-        if (!tab || !tab.channelObject) return
-
-        let logObject = tab.channelObject.uiData as LogObject
-        logObject.startDiagnostics = startDiagnostics
-        logObject.fromStart = fromStart
-        logObject.previous = previous
-        logObject.timestamp = timestamp
-        logObject.follow = follow
-        logObject.messages = []
-        logObject.maxMessages = maxMessages
-        logObject.maxPerPodMessages = maxPerPodMessages
-        logObject.counters = new Map()
-        logObject.sortOrder = sortOrder
-        startChannel(tab)
-    }
-
     const onSetupTrivyClosed = (maxCritical:number, maxHigh:number, maxMedium:number, maxLow:number) => {
         setShowSetupTrivy(false)
         setAnchorMenuTab(null)
@@ -1573,8 +1362,7 @@ const App: React.FC = () => {
         if (!tab.name) return <>undefined</>
 
         let icon = <Box sx={{minWidth:'24px'}}/>
-        if (tab.channelId === InstanceMessageChannelEnum.LOG) icon = <Subject sx={{mr:1}}/>
-        else if (tab.channelId === InstanceMessageChannelEnum.METRICS) icon = <BarChart sx={{mr:2}}/>
+        if (tab.channelId === InstanceMessageChannelEnum.METRICS) icon = <BarChart sx={{mr:2}}/>
         else if (tab.channelId === InstanceMessageChannelEnum.OPS) icon = <Terminal sx={{mr:1}}/>
         else {
             if (tab.channel) {
@@ -1626,7 +1414,7 @@ const App: React.FC = () => {
                 </Stack>
 
                 { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
-                <TabContent channel={selectedTab?.channel} lastLineRef={lastLineRef} webSocket={selectedTab?.ws} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent} />
+                <TabContent channel={selectedTab?.channel} webSocket={selectedTab?.ws} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent} />
             </Box>
 
             { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }
@@ -1636,21 +1424,9 @@ const App: React.FC = () => {
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
 
-            { showSetupLog && <SetupLog onClose={onSetupLogClosed} channelObject={selectedTab?.channelObject} /> }
             { showSetupMetrics && clusters && <SetupMetrics onClose={onSetupMetricsClosed} channelObject={selectedTab?.channelObject} metrics={clusters.find(c => c.name === selectedTab!.channelObject.clusterName)?.metricsList!} /> }
             { showSetupTrivy && <SetupTrivy onClose={onSetupTrivyClosed} channelObject={selectedTab?.channelObject} /> }
             { showChannelSetup() }
-            {/* { tabs.map(t => t.channel).filter(ch => ch && ch.getSetupVisibility()).map( (channel, index) => {
-                console.log('ind', index)
-                // this ficticious component is used to overcome this react message: 'Rendered more hooks than during the previous render.'
-                const SetupDialog = channel!.SetupDialog
-                let props:ISetupProps = {
-                    channel: channel!,
-                    onChannelSetupClosed: onChannelSetupClosed,
-                    channelObject: selectedTab?.channelObject
-                }
-                return <SetupDialog key={index} {...props} />
-            })} */}
 
             { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settings} /> }
             { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.metricsInterval} /> }

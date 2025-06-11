@@ -6,7 +6,8 @@ import { TrivyObject } from "./trivy/TrivyObject"
 
 enum IChannelMessageAction {
     NONE,
-    REFRESH
+    REFRESH,
+    STOP
 }
 
 interface ISetupProps {

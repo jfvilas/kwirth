@@ -1,23 +1,23 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormLabel, Radio, RadioGroup, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
-import { LogObject } from './LogObject'
-import { IChannelObject } from '../IChannel'
+import { ISetupProps } from '../IChannel'
+import { Subject } from '@mui/icons-material'
+import { ILogInstanceConfig, ILogUiConfig } from './LogConfig'
 
-interface IProps {
-    onClose:(maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean, startDiagnostics:boolean, maxPerPodMessages:number, sortOrder:string) => void
-    channelObject?: IChannelObject
-}
+const LogIcon = <Subject />
 
-const SetupLog: React.FC<IProps> = (props:IProps) => {
-    var dataLog = props.channelObject?.uiData as LogObject
-    const [selectedTab, setSelectedTab] = useState(dataLog.startDiagnostics?'sd':'log')
-    const [maxMessages, setMaxMessages] = useState(dataLog.maxMessages||5000)
-    const [maxPerPodMessages, setMaxPerPodMessages] = useState(dataLog.maxPerPodMessages||1000)
-    const [previous, setPrevious] = useState(dataLog.previous)
-    const [timestamp, setTimestamp] = useState(dataLog.timestamp)
-    const [follow, setFollow] = useState(dataLog.follow)
-    const [fromStart, setFromStart] = useState(dataLog.fromStart)
-    const [sortOrder, setSortOrder] = useState(dataLog.sortOrder)
+const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
+    let logUiConfig:ILogUiConfig = props.channelObject?.uiConfig
+    let logInstanceConfig:ILogInstanceConfig = props.channelObject?.instanceConfig
+
+    const [selectedTab, setSelectedTab] = useState(logUiConfig.startDiagnostics?'sd':'log')
+    const [maxMessages, setMaxMessages] = useState(logUiConfig.maxMessages||5000)
+    const [maxPerPodMessages, setMaxPerPodMessages] = useState(logUiConfig.maxPerPodMessages||1000)
+    const [previous, setPrevious] = useState(logInstanceConfig.previous)
+    const [timestamp, setTimestamp] = useState(logInstanceConfig.timestamp)
+    const [follow, setFollow] = useState(logUiConfig.follow)
+    const [fromStart, setFromStart] = useState(logInstanceConfig.fromStart)
+    const [sortOrder, setSortOrder] = useState(logUiConfig.sortOrder)
 
     const onChangeMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
         setMaxMessages(+event.target.value)
@@ -43,11 +43,16 @@ const SetupLog: React.FC<IProps> = (props:IProps) => {
         setFollow(event.target.checked)
     }
 
-    const onClose = () => {
-        if (selectedTab==='sd')
-            props.onClose(2000, false, true, false, true, true, maxPerPodMessages, sortOrder)
-        else
-            props.onClose(maxMessages, previous, timestamp, follow, fromStart, false, maxPerPodMessages, '')
+    const ok = () => {
+        logUiConfig.follow = follow
+        logUiConfig.maxMessages = maxMessages
+        logUiConfig.maxPerPodMessages = maxPerPodMessages
+        logUiConfig.sortOrder = sortOrder
+        logUiConfig.startDiagnostics = (selectedTab === 'sd')
+        logInstanceConfig.previous  = previous
+        logInstanceConfig.timestamp = timestamp
+        logInstanceConfig.fromStart = fromStart
+        props.onChannelSetupClosed(props.channel, true)
     }
 
     return (
@@ -97,11 +102,11 @@ const SetupLog: React.FC<IProps> = (props:IProps) => {
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button onClick={onClose}>OK</Button>
-                <Button onClick={() => props.onClose(0,false,false,false, false, false,0,'')}>CANCEL</Button>
+                <Button onClick={ok}>OK</Button>
+                <Button onClick={() => props.onChannelSetupClosed(props.channel, false)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     )
 }
 
-export { SetupLog }
+export { LogSetup, LogIcon }

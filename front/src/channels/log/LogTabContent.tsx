@@ -1,17 +1,17 @@
 import { InstanceConfigViewEnum, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { ILogLine, LogObject } from './LogObject'
 import { Box } from '@mui/material'
-import { IChannelObject } from '../IChannel'
+import { IChannelObject, IContentProps } from '../IChannel'
 // import { Button, TextField } from '@mui/material'
 // import { useState } from 'react'
 
-interface IProps {
-    webSocket?: WebSocket
-    channelObject: IChannelObject
-    lastLineRef: React.MutableRefObject<null>
-}
+// interface IProps {
+//     webSocket?: WebSocket
+//     channelObject: IChannelObject
+//     lastLineRef: React.MutableRefObject<null>
+// }
 
-const TabContentLog: React.FC<IProps> = (props:IProps) => {
+const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     // const [input, setInput] = useState('')
     let logObject = props.channelObject.uiData as LogObject
 
@@ -53,9 +53,9 @@ const TabContentLog: React.FC<IProps> = (props:IProps) => {
         }
     }
 
-    if (logObject.follow && props.lastLineRef.current) {
-        (props.lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
-    }
+    // +++ if (logObject.follow && props.lastLineRef.current) {
+    //     (props.lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
+    // }
 
     // const routeCommand = () => {
     //     let om:OpsMessage = {
@@ -96,8 +96,8 @@ const TabContentLog: React.FC<IProps> = (props:IProps) => {
             {/* <TextField value={input} onChange={(e) => setInput(e.target.value)}></TextField>
             <Button onClick={send}>SEND</Button> */}
             <br/>
-            <span ref={props.lastLineRef}></span>
+            {/* +++ <span ref={props.lastLineRef}></span> */}
         </Box>
     )
 }
-export { TabContentLog }
+export { LogTabContent }

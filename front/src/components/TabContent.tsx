@@ -1,4 +1,4 @@
-import { TabContentLog } from '../channels/log/TabContentLog'
+//import { TabContentLog } from '../channels/log/TabContentLog'
 import { TabContentMetrics } from '../channels/metrics/TabContentMetrics'
 import { InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
 import { TabContentOps } from '../channels/ops/TabContentOps'
@@ -8,11 +8,10 @@ import { IChannel, IChannelObject, IContentProps } from '../channels/IChannel'
 interface IProps {
     channel?:IChannel
     channelId?: InstanceMessageChannelEnum
-    lastLineRef: React.MutableRefObject<null>
+    //lastLineRef: React.MutableRefObject<null>
     channelObject?: IChannelObject
     refreshTabContent?: number
     webSocket?: WebSocket
-    //xfrontChannels: Map<string, ChannelConstructor>
 }
 
 const TabContent: React.FC<IProps> = (props:IProps) => {
@@ -27,11 +26,6 @@ const TabContent: React.FC<IProps> = (props:IProps) => {
     }
 
     return (<>
-        {/* show log lines */}
-        { props.channelObject && props.channelId === InstanceMessageChannelEnum.LOG && props.channelObject.uiData &&
-            <TabContentLog channelObject={props.channelObject} lastLineRef={props.lastLineRef} webSocket={props.webSocket}/>
-        }
-
         {/* show metrics */}
         { props.channelObject && props.channelId === InstanceMessageChannelEnum.METRICS && props.channelObject.uiData && 
             <TabContentMetrics channelObject={props.channelObject}/>
