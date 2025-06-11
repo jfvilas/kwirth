@@ -1,5 +1,10 @@
 import { MetricsConfigModeEnum, InstanceMessage } from "@jfvilas/kwirth-common"
-import { AlertSeverityEnum } from "../alert/AlertObject"  //+++ remove
+
+export enum MetricsEventSeverityEnum {
+    INFO = 'info',
+    WARNING = 'warning',
+    ERROR = 'error'
+}
 
 export interface AssetMetrics {
     assetName: string
@@ -26,5 +31,5 @@ export class MetricsObject {
     public merge: boolean = false
     public stack: boolean = false
     public chart: string = 'line'
-    public errors: { severity:AlertSeverityEnum, text:string }[] = []
+    public events: { severity:MetricsEventSeverityEnum, text:string }[] = []
 }

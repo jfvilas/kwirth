@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { IChannelObject } from '../../model/ITabObject'
 import { Box, Button, Grid, Menu, MenuItem, MenuList, Slider, Stack, Typography } from '@mui/material'
 import { TrivyObject } from './TrivyObject'
 import { TabContentTrivyAsset } from './TabContentTrivyAsset'
 import { Check as CheckIcon } from '@mui/icons-material'
 import { assetScore } from './TrivyCommon'
 import { TabContentTrivyAssetDetails } from './TabContentTrivyAssetDetails'
+import { IChannelObject } from '../IChannel'
 
 interface IProps {
     webSocket: WebSocket
@@ -13,7 +13,7 @@ interface IProps {
 }
 
 const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
-    let trivyObject = props.channelObject.data as TrivyObject
+    let trivyObject = props.channelObject.uiData as TrivyObject
     const trivyBoxRef = useRef<HTMLDivElement | null>(null)
     const [trivyBoxTop, setTrivyBoxTop] = useState(0)
     

@@ -355,7 +355,8 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 <InputLabel >Channel</InputLabel>
                 <Select value={props.channels.length>0?channel:''} onChange={onChangeChannel}> 
                     {
-                        cluster.channels? cluster.channels.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>) : props.channels?.map(c => <MenuItem key={c} value={c}>{c}</MenuItem> )
+                        //cluster.channels? cluster.channels.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>) : props.channels?.map(c => <MenuItem key={c} value={c}>{c}</MenuItem> )
+                        props.channels.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)
                     }
                 </Select>
             </FormControl>

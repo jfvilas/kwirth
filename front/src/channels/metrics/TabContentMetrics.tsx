@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { MetricsObject } from './MetricsObject'
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { Alert, Box, Button, Stack, Typography } from '@mui/material'
-import { IChannelObject } from '../../model/ITabObject'
+import { IChannelObject } from '../IChannel'
 
 interface IProps {
     webSocket?: WebSocket
@@ -196,17 +196,17 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
     }
 
     const formatMetricsError = (dataMetrics:MetricsObject) => {
-        if (!dataMetrics.errors || dataMetrics.errors.length === 0) return <></>
+        if (!dataMetrics.events || dataMetrics.events.length === 0) return <></>
 
         return <>
-            {dataMetrics.errors.map((e,index) => { 
-                return <Alert severity={e.severity} action={<Button onClick={() => { dataMetrics.errors.splice(index,1); setRefresh(!refresh)} }>Remove</Button>}>{e.text}</Alert>
+            {dataMetrics.events.map((event,index) => { 
+                return <Alert severity={event.severity} action={<Button onClick={() => { dataMetrics.events.splice(index,1); setRefresh(!refresh)} }>Remove</Button>}>{event.text}</Alert>
             })}
         </>
     }
 
     const formatMetrics = () => {
-        let dataMetrics = props.channelObject.data as MetricsObject
+        let dataMetrics = props.channelObject.uiData as MetricsObject
         if (!dataMetrics.metrics || dataMetrics.assetMetricsValues.length === 0) {
             return <>{formatMetricsError(dataMetrics)}</>
         }

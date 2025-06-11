@@ -26,10 +26,5 @@ export interface FiredAlert {
 }
 
 export class AlertObject {
-    public name?: string
-    public regexInfo: string[] = []
-    public regexWarning: string[] = []
-    public regexError: string[] = []
     public firedAlerts: FiredAlert[] = []
-    public maxAlerts: number = 15
 }

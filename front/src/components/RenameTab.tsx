@@ -29,7 +29,7 @@ const RenameTab: React.FC<IProps> = (props:IProps) => {
                 <Button onClick={() => props.onClose(undefined)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
-    </>);
-};
+    </>)
+}
 
-export default RenameTab
+export { RenameTab }

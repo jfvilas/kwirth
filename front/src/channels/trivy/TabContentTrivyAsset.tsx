@@ -6,7 +6,7 @@ import { Replay as ReplayIcon } from '@mui/icons-material'
 import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
 import { useState } from 'react'
 import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, TrivyCommandEnum, TrivyMessage } from '@jfvilas/kwirth-common'
-import { IChannelObject } from '../../model/ITabObject'
+import { IChannelObject } from '../IChannel'
 
 interface IProps {
     webSocket: WebSocket
@@ -19,7 +19,7 @@ interface IProps {
 
 const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
     let report = props.asset.report
-    let trivyObject = props.channelObject.data as TrivyObject
+    let trivyObject = props.channelObject.uiData as TrivyObject
     const [anchorMenu, setAnchorMenu] = useState<HTMLElement|null>(null)
 
     const simpleBarChart = (c:number, h:number, m:number, l:number) => {
@@ -54,7 +54,7 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
             msgtype: 'trivymessage',
             id: '1',
             accessKey: trivyObject.accessKeyString,
-            instance: props.channelObject.instance,
+            instance: props.channelObject.instanceId,
             namespace: asset.namespace,
             group: '',
             pod: asset.name,

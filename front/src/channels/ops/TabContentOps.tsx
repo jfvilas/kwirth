@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { IChannelObject } from '../../model/ITabObject'
 import { Box, Button, Stack, TextField } from '@mui/material'
 import { OpsObject } from './OpsObject'
 import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, OpsCommandEnum, OpsMessage } from '@jfvilas/kwirth-common'
 import { v4 as uuidv4 } from 'uuid'
 import { Terminal, ColorMode } from './terminal/Terminal'
 import { SelectTerminal } from './terminal/SelectTerminal'
+import { IChannelObject } from '../IChannel'
 
 interface IProps {
     webSocket?: WebSocket
@@ -20,7 +20,7 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
     const [refresh, setRefresh] = useState(0)
     const [showSelector, setShowSelector] = useState(false)
     const commandRef = useRef<HTMLInputElement>()
-    let opsObject = props.channelObject.data as OpsObject
+    let opsObject = props.channelObject.uiData as OpsObject
 
     useEffect(() => {
         if (!opsObject.shell) commandRef.current?.focus()
@@ -113,7 +113,7 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
             channel: InstanceMessageChannelEnum.OPS,
             type: InstanceMessageTypeEnum.DATA,
             accessKey: opsObject.accessKeyString,
-            instance: props.channelObject.instance,
+            instance: props.channelObject.instanceId,
             id: uuidv4(),
             command: cmd,
             namespace: namespace,
@@ -128,7 +128,7 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
     }
 
     const formatConsole = () => {
-        if (!props.channelObject.data || !props.channelObject.data) return <></>
+        if (!props.channelObject.uiData || !props.channelObject.uiData) return <></>
         if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
 
         return <pre>
@@ -201,7 +201,7 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
             type: InstanceMessageTypeEnum.DATA,
             command: OpsCommandEnum.INPUT,
             accessKey: opsObject.accessKeyString,
-            instance: props.channelObject.instance,
+            instance: props.channelObject.instanceId,
             id: opsObject.shell? opsObject.shell.id : '',
             namespace: opsObject.shell? opsObject.shell.namespace : '',
             group: '',

@@ -1,7 +1,7 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormLabel, Radio, RadioGroup, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
-import { IChannelObject } from '../../model/ITabObject'
 import { LogObject } from './LogObject'
+import { IChannelObject } from '../IChannel'
 
 interface IProps {
     onClose:(maxMessages:number, previous:boolean, timestamp:boolean, follow:boolean, fromStart:boolean, startDiagnostics:boolean, maxPerPodMessages:number, sortOrder:string) => void
@@ -9,7 +9,7 @@ interface IProps {
 }
 
 const SetupLog: React.FC<IProps> = (props:IProps) => {
-    var dataLog = props.channelObject?.data as LogObject
+    var dataLog = props.channelObject?.uiData as LogObject
     const [selectedTab, setSelectedTab] = useState(dataLog.startDiagnostics?'sd':'log')
     const [maxMessages, setMaxMessages] = useState(dataLog.maxMessages||5000)
     const [maxPerPodMessages, setMaxPerPodMessages] = useState(dataLog.maxPerPodMessages||1000)

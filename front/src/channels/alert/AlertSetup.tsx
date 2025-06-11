@@ -1,23 +1,22 @@
 import React, { useState, ChangeEvent } from 'react'
 import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField } from '@mui/material'
-import { AlertObject } from './AlertObject'
-import { IChannelObject } from '../../model/ITabObject'
+import { ISetupProps } from '../IChannel'
+import { IAlertInstanceConfig, IAlertUiConfig } from './AlertConfig'
+import { Warning } from '@mui/icons-material'
 
-interface IProps {
-    onClose:(regexInfo:string[], regexWarning:string[], regexError:string[], maxAlerts:number) => void
-    channelObject?: IChannelObject
-}
+const AlertIcon = <Warning />
 
-const SetupAlert: React.FC<IProps> = (props:IProps) => {
-    var dataAlert = props.channelObject?.data as AlertObject
+const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
+    let alertUiConfig:IAlertUiConfig = props.channelObject?.uiConfig
+    let alertInstanceConfig:IAlertInstanceConfig = props.channelObject?.instanceConfig
     
     const [info, setInfo] = useState('')
     const [warning, setWarning] = useState('')
     const [error, setError] = useState('')
-    const [regexInfo, setRegexInfo] = useState(dataAlert.regexInfo)
-    const [regexWarning, setRegexWarning] = useState(dataAlert.regexWarning)
-    const [regexError, setRegexError] = useState(dataAlert.regexError)
-    const [maxAlerts, setMaxAlerts] = useState(dataAlert.maxAlerts)
+    const [regexInfo, setRegexInfo] = useState(alertInstanceConfig.regexInfo)
+    const [regexWarning, setRegexWarning] = useState(alertInstanceConfig.regexWarning)
+    const [regexError, setRegexError] = useState(alertInstanceConfig.regexError)
+    const [maxAlerts, setMaxAlerts] = useState(alertUiConfig.maxAlerts)
 
     const onChangeRegexInfo = (event:ChangeEvent<HTMLInputElement>) => {
         setInfo(event.target.value)
@@ -68,6 +67,14 @@ const SetupAlert: React.FC<IProps> = (props:IProps) => {
         setMaxAlerts(+event.target.value)
     }
 
+    const ok = () => {
+        alertUiConfig.maxAlerts = maxAlerts
+        alertInstanceConfig.regexInfo = regexInfo
+        alertInstanceConfig.regexWarning = regexWarning
+        alertInstanceConfig.regexError = regexError
+        props.onChannelSetupClosed(props.channel, true)
+    }
+
     return (<>
         <Dialog open={true}>
             <DialogTitle>Create alert</DialogTitle>
@@ -113,11 +120,11 @@ const SetupAlert: React.FC<IProps> = (props:IProps) => {
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button onClick={() => props.onClose(regexInfo,regexWarning,regexError,maxAlerts)} disabled={regexInfo.length===0 && regexWarning.length===0 && regexError.length===0}>OK</Button>
-                <Button onClick={() => props.onClose([],[],[],0)}>CANCEL</Button>
+                <Button onClick={ok} disabled={regexInfo.length===0 && regexWarning.length===0 && regexError.length===0}>OK</Button>
+                <Button onClick={() => props.onChannelSetupClosed(props.channel, false)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)
 }
 
-export { SetupAlert }
+export { AlertSetup, AlertIcon }

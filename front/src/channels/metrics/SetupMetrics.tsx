@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, Stack, TextField, Tooltip, Typography} from '@mui/material'
-import { MetricsConfigModeEnum, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { MetricDescription } from './MetricDescription'
 import { MetricsObject } from './MetricsObject'
-import { IChannelObject } from '../../model/ITabObject'
+import { MetricsConfigModeEnum, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
+import { IChannelObject } from '../IChannel'
 
 interface IProps {
     onClose:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number, aggregate:boolean, merge:boolean, stack:boolean, chart:string) => void
@@ -12,7 +12,7 @@ interface IProps {
 }
 
 const SetupMetrics: React.FC<IProps> = (props:IProps) => {
-    var dataMetrics = props.channelObject?.data as MetricsObject
+    var dataMetrics = props.channelObject?.uiData as MetricsObject
     const [metrics, setMetrics] = React.useState<string[]>(dataMetrics.metrics)
     const [metricsMode, setMetricsMode] = useState(dataMetrics.mode)
     const [metricsDepth, setMetricsDepth] = useState(dataMetrics.depth)

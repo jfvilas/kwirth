@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Radio, RadioGroup, Stack, Typography } from '@mui/material'
-import { IChannelObject } from '../../model/ITabObject'
 import { TrivyObject } from './TrivyObject'
+import { IChannelObject } from '../IChannel'
 
 interface IProps {
     onClose:(maxCritical:number, maxHigh:number, maxMedium:number, maxLow:number) => void
@@ -9,7 +9,7 @@ interface IProps {
 }
 
 const SetupTrivy: React.FC<IProps> = (props:IProps) => {
-    const dataTrivy = props.channelObject?.data as TrivyObject
+    const dataTrivy = props.channelObject?.uiData as TrivyObject
     const [maxCritical, setMaxCritical] = useState(dataTrivy.maxCritical)
     const [maxHigh, setMaxHigh] = useState(dataTrivy.maxHigh)
     const [maxMedium, setMaxMedium] = useState(dataTrivy.maxMedium)

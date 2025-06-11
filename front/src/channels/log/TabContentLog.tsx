@@ -1,7 +1,7 @@
 import { InstanceConfigViewEnum, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
-import { IChannelObject } from '../../model/ITabObject'
 import { ILogLine, LogObject } from './LogObject'
 import { Box } from '@mui/material'
+import { IChannelObject } from '../IChannel'
 // import { Button, TextField } from '@mui/material'
 // import { useState } from 'react'
 
@@ -13,9 +13,9 @@ interface IProps {
 
 const TabContentLog: React.FC<IProps> = (props:IProps) => {
     // const [input, setInput] = useState('')
-    let logObject = props.channelObject.data as LogObject
+    let logObject = props.channelObject.uiData as LogObject
 
-    if (!props.channelObject.data || !props.channelObject.data) return <pre></pre>
+    if (!props.channelObject.uiData || !props.channelObject.uiData) return <pre></pre>
 
     const formatLogLine = (imessage:ILogLine|null) => {
         if (!imessage) return null

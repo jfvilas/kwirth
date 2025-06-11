@@ -55,15 +55,22 @@ const ManageClusters: React.FC<IProps> = (props:IProps) => {
             let data = await response.json()
             kwirthOk = true
 
+            
             // connected, test api key
+            let channels:string[] = []
             response = await fetch(`${url}/config/cluster`, addGetAuthorization(accessKey))
-            if (response.status === 200) apiKeyOk = true
+            if (response.status === 200) {
+                apiKeyOk = true
+                channels = (await response.json()).channels
+            }
 
             let status = JSON.stringify(data).replaceAll(',',',<br/>')
-            status = status.replaceAll('{','').replaceAll('}','')
+            if (status) {
+                status = status.replaceAll('{','').replaceAll('}','').replaceAll(':',':  ').replaceAll('"','')
+            }
 
             if (kwirthOk && apiKeyOk) {
-                setMsgBox(MsgBoxOk('Test cluster',`Connection to cluster and API key have been <font color=green>succesfully tested</font>. This is cluster data: <br/><br/>${status}`, setMsgBox))
+                setMsgBox(MsgBoxOk('Test cluster',`Connection to cluster and API key have been <font color=green>succesfully tested</font>. This is cluster data: <br/><br/>${status}<br/><br/>And these are supported channels: <br/><b>${channels.join('<br/>')}</b>`, setMsgBox))
             }
             else {
                 if (kwirthOk) {

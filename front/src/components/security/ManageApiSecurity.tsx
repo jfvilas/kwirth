@@ -4,7 +4,7 @@ import { MsgBoxButtons, MsgBoxYesNo } from '../../tools/MsgBox'
 import { SessionContext, SessionContextType } from '../../model/SessionContext'
 import { AccessKey, accessKeySerialize, ApiKey } from '@jfvilas/kwirth-common'
 import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addPutAuthorization } from '../../tools/AuthorizationManagement'
-import { ResourceEditor } from './ResourceEditor'
+import { ResourceEditor } from '../ResourceEditor'
 import { v4 as uuidv4 } from 'uuid'
 const copy = require('clipboard-copy')
 
