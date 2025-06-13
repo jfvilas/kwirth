@@ -12,6 +12,10 @@ export class LogChannel implements IChannel {
     SetupDialog: FC<ISetupProps> = LogSetup
     TabContent: FC<IContentProps> = LogTabContent
     
+    requiresMetrics() { return false }
+    requiresAccessString() { return false }
+    requiresWebSocket() { return false }
+
     getScope() { return InstanceConfigScopeEnum.VIEW }
     getChannelId(): string { return 'log' }
     getChannelIcon(): JSX.Element { return LogIcon }

@@ -1,19 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Button, Grid, Menu, MenuItem, MenuList, Slider, Stack, Typography } from '@mui/material'
-import { TrivyObject } from './TrivyObject'
-import { TabContentTrivyAsset } from './TabContentTrivyAsset'
+import { TabContentTrivyAsset } from './TrivyTabContentAsset'
 import { Check as CheckIcon } from '@mui/icons-material'
 import { assetScore } from './TrivyCommon'
-import { TabContentTrivyAssetDetails } from './TabContentTrivyAssetDetails'
-import { IChannelObject } from '../IChannel'
+import { TabContentTrivyAssetDetails } from './TrivyTabContentAssetDetails'
+import { IContentProps } from '../IChannel'
+import { ITrivyInstanceConfig } from './TrivyConfig'
+import { ITrivyObject } from './TrivyObject'
 
-interface IProps {
-    webSocket: WebSocket
-    channelObject: IChannelObject
-}
-
-const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
-    let trivyObject = props.channelObject.uiData as TrivyObject
+const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
+    let trivyObject:ITrivyObject = props.channelObject.uiData
+    let trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig
     const trivyBoxRef = useRef<HTMLDivElement | null>(null)
     const [trivyBoxTop, setTrivyBoxTop] = useState(0)
     
@@ -31,7 +28,7 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
         let min = Number.MAX_VALUE
         let max = Number.MIN_VALUE
         for (let asset of trivyObject.known) {
-            let score = assetScore(asset, trivyObject)
+            let score = assetScore(asset, trivyInstanceConfig)
             if (score<min) min=score
             if (score>max) max=score
         }
@@ -46,7 +43,7 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
     })
 
     const showDetails = (asset:any) => {
-        return <TabContentTrivyAssetDetails asset={asset} trivyObject={trivyObject} onClose={() => setSelectedAsset(undefined)}/>
+        return <TabContentTrivyAssetDetails asset={asset} trivyInstanceConfig={trivyInstanceConfig} onClose={() => setSelectedAsset(undefined)}/>
     }
 
     const orderBy = (orderName:string) => {
@@ -61,10 +58,10 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
                 known.sort((a,b) => new Date(a.report.updateTimestamp).getTime() - new Date(b.report.updateTimestamp).getTime())
                 break
             case 'sd':
-                known.sort((a,b) => assetScore(b, trivyObject) - assetScore(a, trivyObject))
+                known.sort((a,b) => assetScore(b, trivyInstanceConfig) - assetScore(a, trivyInstanceConfig))
                 break
             case 'sa':
-                known.sort((a,b) => assetScore(a, trivyObject) - assetScore(b, trivyObject))
+                known.sort((a,b) => assetScore(a, trivyInstanceConfig) - assetScore(b, trivyInstanceConfig))
                 break
 
         }
@@ -110,10 +107,10 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
             <Box ref={trivyBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${trivyBoxTop}px - 25px)`}}>
                 { showMode==='card' && trivyObject.known && 
                     <Grid container sx={{ml:1,mr:1}}>
-                        {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyObject)>=filterScore).map( (asset,index) => {
+                        {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
                             return (
                                 <Grid xs={12} sm={6} md={4} lg={3} key={index} sx={{margin:1}}>
-                                    <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view={'card'} webSocket={props.webSocket}/>
+                                    <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view={'card'} webSocket={props.webSocket!}/>
                                 </Grid>
                             )
                         })}
@@ -122,10 +119,10 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
 
                 { showMode==='list' && 
                     <Grid container sx={{ml:1,mr:1}}>
-                        {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyObject)>=filterScore).map( (asset,index) => {
+                        {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
                             return (
                                 <Grid key={index} sx={{margin:1, width:'100%'}}>
-                                    <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view='list' webSocket={props.webSocket}/>
+                                    <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view='list' webSocket={props.webSocket!}/>
                                 </Grid>
                             )
                         })}
@@ -137,4 +134,4 @@ const TabContentTrivy: React.FC<IProps> = (props:IProps) => {
         </Box>
     )
 }
-export { TabContentTrivy }
+export { TrivyTabContent }

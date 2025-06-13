@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 // material & icons
 import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Menu, Person, BarChart, Terminal } from '@mui/icons-material'
+import { Settings as SettingsIcon, Menu, Person, Terminal } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
@@ -27,15 +27,8 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, MetricsConfigModeEnum, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, MetricsConfig, OpsConfig, OpsCommandEnum, OpsMessageResponse, parseResources, TrivyConfig, TrivyMessageResponse, TrivyMessage, TrivyCommandEnum } from '@jfvilas/kwirth-common'
+import { KwirthData, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, OpsConfig, OpsCommandEnum, OpsMessageResponse, parseResources } from '@jfvilas/kwirth-common'
 import { ITabObject } from './model/ITabObject'
-
-import { IMetricsMessage, MetricsEventSeverityEnum, MetricsObject } from './channels/metrics/MetricsObject'
-import { MetricDescription } from './channels/metrics/MetricDescription'
-import { SetupMetrics } from './channels/metrics/SetupMetrics'
-
-import { SetupTrivy } from './channels/trivy/SetupTrivy'
-import { TrivyObject } from './channels/trivy/TrivyObject'
 
 import { OpsObject } from './channels/ops/OpsObject'
 import { OPSWELCOMEMESSAGE } from './tools/Constants'
@@ -47,6 +40,9 @@ import { IBoard } from './model/IBoard'
 import { FirstTimeLogin } from './components/FirstTimeLogin'
 import { ChannelConstructor, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
 import { LogChannel } from './channels/log/LogChannel'
+import { MetricDescription } from './channels/metrics/MetricDescription'
+import { MetricsChannel } from './channels/metrics/MetricsChannel'
+import { TrivyChannel } from './channels/trivy/TrivyChannel'
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883'
@@ -109,8 +105,6 @@ const App: React.FC = () => {
     const [showSettingsUser, setShowSettingsUser]=useState<boolean>(false)
     const [showSettingsCluster, setShowSettingsCluster]=useState<boolean>(false)
     const [initialMessage, setInitialMessage]=useState<string>('')
-    const [showSetupMetrics, setShowSetupMetrics]=useState<boolean>(false)
-    const [showSetupTrivy, setShowSetupTrivy]=useState<boolean>(false)
 
     const createChannelInstance = (type: string): IChannel | null => {
         const channelClass = frontChannels.get(type)
@@ -122,6 +116,8 @@ const App: React.FC = () => {
         frontChannels.set('log', LogChannel)
         frontChannels.set('echo', EchoChannel)
         frontChannels.set('alert', AlertChannel)
+        frontChannels.set('metrics', MetricsChannel)
+        frontChannels.set('trivy', TrivyChannel)
     })
 
     useEffect ( () => {
@@ -176,6 +172,21 @@ const App: React.FC = () => {
         for (let cluster of clusterList)
             setClusterStatus(cluster)
         setClusters(clusterList)
+    }
+
+    const getMetricsNames = async (cluster:Cluster) => {
+        try {
+            console.log(`Receiving metrics for cluster ${cluster.name}`)
+            cluster.metricsList=new Map()
+            var response = await fetch (`${cluster.url}/metrics`, addGetAuthorization(cluster.accessString))
+            var json = await response.json() as MetricDescription[]
+            json.map( jsonMetric => cluster.metricsList.set(jsonMetric.metric, jsonMetric))
+            console.log(`Metrics for cluster ${cluster.name} have been received (${Array.from(cluster.metricsList.keys()).length})`)
+        }
+        catch (err) {
+            console.log('Error obtaining metrics list')
+            console.log(err)
+        }
     }
 
     const setClusterStatus = async (cluster:Cluster): Promise<void> => {
@@ -234,7 +245,7 @@ const App: React.FC = () => {
         if (cluster) {
             setSelectedClusterName(clusterName)
             let usableChannels = [...cluster.channels]
-            usableChannels = usableChannels.filter(c => c === InstanceMessageChannelEnum.METRICS ||c === InstanceMessageChannelEnum.OPS || c === InstanceMessageChannelEnum.TRIVY || Array.from(frontChannels.keys()).includes(c))
+            usableChannels = usableChannels.filter(c => c === InstanceMessageChannelEnum.OPS || Array.from(frontChannels.keys()).includes(c))
             console.log('usableChannels',usableChannels)
             setChannels(usableChannels)
         }
@@ -282,33 +293,12 @@ const App: React.FC = () => {
         }
 
         switch(selection.channel) {
-            case InstanceMessageChannelEnum.METRICS:
-                let metricsObject = new MetricsObject()
-                metricsObject.interval = settingsRef.current?.metricsInterval || 60
-                metricsObject.depth = settingsRef.current?.metricsDepth || 10
-                metricsObject.width = settingsRef.current?.metricsWidth || 2
-                metricsObject.chart = settingsRef.current?.metricsChart || 'line'
-                metricsObject.mode = settingsRef.current?.metricsMode || MetricsConfigModeEnum.STREAM
-                metricsObject.aggregate = settingsRef.current?.metricsAggregate || false
-                metricsObject.merge = settingsRef.current?.metricsMerge || false
-                metricsObject.stack = settingsRef.current?.metricsStack || false
-                metricsObject.metrics = []
-                newTab.channelObject.uiData = metricsObject
-                break
             case InstanceMessageChannelEnum.OPS:
                 let opsObject = new OpsObject()
                 newTab.channelObject.uiData = opsObject
                 opsObject.messages= []
                 opsObject.shell = undefined
                 opsObject.shells = []
-                break
-            case InstanceMessageChannelEnum.TRIVY:
-                let trivyObject = new TrivyObject()
-                newTab.channelObject.uiData = trivyObject
-                trivyObject.maxCritical = settingsRef.current?.trivyMaxCritical || 2
-                trivyObject.maxHigh = settingsRef.current?.trivyMaxHigh || 4
-                trivyObject.maxMedium = settingsRef.current?.trivyMaxMedium || -1
-                trivyObject.maxLow = settingsRef.current?.trivyMaxLow || -1
                 break
             default:
                 if (frontChannels.has(selection.channel)) {
@@ -324,6 +314,7 @@ const App: React.FC = () => {
 
         startSocket(newTab, cluster, () => {
             setKeepAlive(newTab)
+            if (newTab.channel?.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
         })
         setTabs((prev) => [...prev, newTab])
         setSelectedTabName(newTab.name)
@@ -379,14 +370,8 @@ const App: React.FC = () => {
             case InstanceMessageChannelEnum.NONE:
                 // we receive keepalive responses through this channel
                 break
-            case InstanceMessageChannelEnum.METRICS:
-                processMetricsMessage(wsEvent)
-                break
             case InstanceMessageChannelEnum.OPS:
                 processOpsMessage(wsEvent)
-                break
-            case InstanceMessageChannelEnum.TRIVY:
-                processTrivyMessage(wsEvent)
                 break
             default:
                 if (frontChannels.has(instanceMessage.channel)) {
@@ -404,65 +389,6 @@ const App: React.FC = () => {
                 else {
                     console.log('Received invalid channel in message: ', instanceMessage)
                 }
-                break
-        }
-    }
-
-    const getMetricsNames = async (cluster:Cluster) => {
-        try {
-            console.log(`Receiving metrics for cluster ${cluster.name}`)
-            cluster.metricsList=new Map()
-            var response = await fetch (`${cluster.url}/metrics`, addGetAuthorization(cluster.accessString))
-            var json=await response.json() as MetricDescription[]
-            json.map( jsonMetric => cluster.metricsList.set(jsonMetric.metric, jsonMetric))
-            console.log(`Metrics for cluster ${cluster.name} have been received (${Array.from(cluster.metricsList.keys()).length})`)
-        }
-        catch (err) {
-            console.log('Error obtaining metrics list')
-            console.log(err)
-        }
-    }
-
-    const processMetricsMessage = (wsEvent:any) => {
-        var msg = JSON.parse(wsEvent.data) as IMetricsMessage
-        var tab=tabs.find(tab => tab.ws !== null && tab.ws===wsEvent.target)
-        if (!tab || !tab.channelObject) return
-
-        let metricsObject = tab.channelObject.uiData as MetricsObject
-        switch (msg.type) {
-            case InstanceMessageTypeEnum.DATA:
-                metricsObject.assetMetricsValues.push(msg)
-                if (metricsObject.assetMetricsValues.length > metricsObject.depth) {
-                    metricsObject.assetMetricsValues.shift()
-                }
-                if (!tab.channelPaused) setRefreshTabContent(Math.random())
-                break
-            case InstanceMessageTypeEnum.SIGNAL:
-                let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
-                if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
-                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                    if (signalMessage.level === SignalMessageLevelEnum.INFO) {
-                        tab.channelObject.instanceId = instanceMessage.instance
-                    }
-                    else {
-                        metricsObject.events.push( { severity: (signalMessage.level as string) as MetricsEventSeverityEnum, text: signalMessage.text })
-                        setRefreshTabContent(Math.random())
-                    }
-                }
-                else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
-                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                    metricsObject.events.push( { severity: MetricsEventSeverityEnum.INFO, text: signalMessage.text })
-                }
-                else {
-                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                    if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
-                        metricsObject.events.push( { severity: MetricsEventSeverityEnum.ERROR, text: signalMessage.text })
-                        setRefreshTabContent(Math.random())
-                    }
-                }
-                break
-            default:
-                console.log(`Invalid message type ${msg.type}`)
                 break
         }
     }
@@ -553,94 +479,10 @@ const App: React.FC = () => {
         }
     }
 
-    const processTrivyMessage = (wsEvent:any) => {
-        let trivyMessageResponse = JSON.parse(wsEvent.data) as TrivyMessageResponse
-        let tab = tabs.find(tab => tab.ws !== null && tab.ws===wsEvent.target)
-        if (!tab || !tab.channelObject) return
-
-        switch (trivyMessageResponse.type) {
-            case InstanceMessageTypeEnum.DATA:
-                if (trivyMessageResponse.flow === InstanceMessageFlowEnum.RESPONSE && trivyMessageResponse.action === InstanceMessageActionEnum.COMMAND) {
-                    if (trivyMessageResponse.data) {
-                        setRefreshTabContent(Math.random())
-                        let trivyObject = tab.channelObject.uiData as TrivyObject
-                        trivyObject.score = trivyMessageResponse.data.score
-                    }
-                }
-                else if (trivyMessageResponse.flow === InstanceMessageFlowEnum.UNSOLICITED) {
-                    let trivyObject = tab.channelObject.uiData as TrivyObject
-                    console.log()
-                    let asset = trivyMessageResponse.data
-                    switch (trivyMessageResponse.msgsubtype) {
-                        case 'score':
-                            console.log('newscore',trivyMessageResponse.data.score)
-                            trivyObject.score = trivyMessageResponse.data.score
-                            break
-                        case 'add':
-                            trivyObject.known.push(asset)
-                            break
-                        case 'update':
-                        case 'delete':
-                            console.log(trivyObject.known)
-                            console.log(asset)
-                            trivyObject.known = (trivyObject.known as any[]).filter(a => a.namespace !== asset.namespace || a.name !== asset.name || a.container !== asset.container)
-                            if (trivyMessageResponse.msgsubtype==='update') trivyObject.known.push(asset)
-                            break
-                        default:
-                            console.log('Invalid msgsubtype: ', trivyMessageResponse.msgsubtype)
-                    }
-                    trivyObject.known = [...trivyObject.known]
-                    setRefreshTabContent(Math.random())
-                }
-                break
-            case InstanceMessageTypeEnum.SIGNAL:
-                let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
-                    tab.channelObject.instanceId = signalMessage.instance
-                    trivyRequestScore(tab)
-                }
-                else {
-                    if (signalMessage.level!== SignalMessageLevelEnum.INFO) {
-                        console.log('SIGNAL RECEIVED')
-                        console.log(wsEvent.data)
-                    }
-                }
-                break
-            default:
-                console.log(`Invalid message type ${trivyMessageResponse.type}`)
-                break
-        }
-    }
-    
-    const trivyRequestScore = (tab:ITabObject) => {
-        let triviMessage: TrivyMessage = {
-            msgtype: 'trivymessage',
-            id: '1',
-            accessKey: accessString,
-            instance: tab.channelObject.instanceId,
-            namespace: '',
-            group: '',
-            pod: '',
-            container: '',
-            command: TrivyCommandEnum.SCORE,
-            action: InstanceMessageActionEnum.COMMAND,
-            flow: InstanceMessageFlowEnum.REQUEST,
-            type: InstanceMessageTypeEnum.DATA,
-            channel: InstanceMessageChannelEnum.TRIVY
-        }
-        tab.ws?.send(JSON.stringify(triviMessage))
-    }
-
     const onClickChannelStart = () => {
         switch (selectedTab?.channelId) {
-            case InstanceMessageChannelEnum.METRICS:
-                setShowSetupMetrics(true)
-                break
             case InstanceMessageChannelEnum.OPS:
                 startChannel(selectedTab)
-                break
-            case InstanceMessageChannelEnum.TRIVY:
-                setShowSetupTrivy(true)
                 break
             default:
                 if (selectedTab && selectedTab.channel) {
@@ -699,12 +541,7 @@ const App: React.FC = () => {
         if (!cluster) return
 
         switch (tab.channelId) {
-            case InstanceMessageChannelEnum.METRICS:
-                let metricsObject = tab.channelObject.uiData as MetricsObject
-                metricsObject.events.push( { severity: MetricsEventSeverityEnum.INFO, text: '*** Lost connection ***' })
-                break
             case InstanceMessageChannelEnum.OPS:
-            case InstanceMessageChannelEnum.TRIVY:
                 console.log('Reconnect not implemented')
                 break
             default:
@@ -762,19 +599,6 @@ const App: React.FC = () => {
                 type: InstanceMessageTypeEnum.SIGNAL
             }
             switch (tab.channelId) {
-                case InstanceMessageChannelEnum.METRICS:
-                    let metricsObject = tab.channelObject.uiData as MetricsObject
-                    metricsObject.events = []
-                    metricsObject.assetMetricsValues=[]
-                    let metricsConfig:MetricsConfig = {
-                        mode: metricsObject.mode,
-                        aggregate: metricsObject.aggregate,
-                        interval: metricsObject.interval,
-                        metrics: metricsObject.metrics,
-                    }
-                    instanceConfig.scope = InstanceConfigScopeEnum.STREAM
-                    instanceConfig.data = metricsConfig
-                    break
                 case InstanceMessageChannelEnum.OPS:
                     let opsObject = tab.channelObject.uiData as OpsObject
                     opsObject.accessKeyString = cluster.accessString
@@ -785,21 +609,6 @@ const App: React.FC = () => {
                     }
                     instanceConfig.scope = InstanceConfigScopeEnum.GET // we ask for minimum scope
                     instanceConfig.data = opsConfig
-                    break
-                case InstanceMessageChannelEnum.TRIVY:
-                    let trivyObject = tab.channelObject.uiData as TrivyObject
-                    trivyObject.accessKeyString = cluster.accessString
-                    trivyObject.score = 0
-                    trivyObject.known = []
-                    trivyObject.unknown = []
-                    let trivyConfig:TrivyConfig = {
-                        maxCritical: trivyObject.maxCritical,
-                        maxHigh: trivyObject.maxHigh,
-                        maxMedium: trivyObject.maxMedium,
-                        maxLow: trivyObject.maxLow
-                    }
-                    instanceConfig.scope = InstanceConfigScopeEnum.WORKLOAD
-                    instanceConfig.data = trivyConfig
                     break
                 default:
                 if (selectedTab && selectedTab.channel) {
@@ -847,15 +656,9 @@ const App: React.FC = () => {
             type: InstanceMessageTypeEnum.SIGNAL
         }
         switch (tab.channelId) {
-            case InstanceMessageChannelEnum.METRICS:
-                break
             case InstanceMessageChannelEnum.OPS:
                 let dataOps = tab.channelObject.uiData as OpsObject
                 dataOps.messages.push('=========================================================================')
-                setRefreshTabContent(Math.random())
-                break
-            case InstanceMessageChannelEnum.TRIVY:
-                //let dataTrivy = tab.channelObject.data as TrivyObject
                 setRefreshTabContent(Math.random())
                 break
             default:
@@ -1020,12 +823,7 @@ const App: React.FC = () => {
                 channelPending: false
             }
             switch(tab.channelId) {
-                case InstanceMessageChannelEnum.METRICS:
-                    (newTab.channelObject.uiData as MetricsObject).assetMetricsValues = []
-                    break
                 case InstanceMessageChannelEnum.OPS:
-                    break
-                case InstanceMessageChannelEnum.TRIVY:
                     break
                 default:
                     if (selectedTab && selectedTab.channel) {
@@ -1258,45 +1056,6 @@ const App: React.FC = () => {
         }
     }
 
-    const onSetupMetricsClosed = (metrics:string[], mode:MetricsConfigModeEnum, depth:number, width:number, interval:number, aggregate:boolean, merge:boolean, stack:boolean, type:string) => {
-        setShowSetupMetrics(false)
-        setAnchorMenuTab(null)
-        if (metrics.length===0) return
-
-        let tab=tabs.find(t => t.name===selectedTabRefName.current)
-        if (!tab || !tab.channelObject) return
-
-        let metricsObject = tab.channelObject.uiData as MetricsObject
-
-        metricsObject.metrics = metrics
-        metricsObject.mode = mode
-        metricsObject.depth = depth
-        metricsObject.width = width
-        metricsObject.interval = interval
-        metricsObject.aggregate = aggregate
-        metricsObject.merge = merge
-        metricsObject.stack = stack
-        metricsObject.chart = type
-        startChannel(tab)
-    }
-
-    const onSetupTrivyClosed = (maxCritical:number, maxHigh:number, maxMedium:number, maxLow:number) => {
-        setShowSetupTrivy(false)
-        setAnchorMenuTab(null)
-
-        if (maxCritical<0 && maxHigh<0 && maxMedium<0 && maxLow<0) return
-
-        let tab=tabs.find(t => t.name===selectedTabRefName.current)
-        if (!tab || !tab.channelObject) return
-
-        let trivyObject = tab.channelObject.uiData as TrivyObject
-        trivyObject.maxCritical = maxCritical
-        trivyObject.maxHigh = maxHigh
-        trivyObject.maxMedium = maxMedium
-        trivyObject.maxLow = maxLow
-        startChannel(tab)
-    }
-
     const onChannelSetupClosed = (channel:IChannel, start:boolean) => {
         channel.setSetupVisibility(false)
         setRefreshTabContent(Math.random())  // we force rendering because react doesn't detect changes inside one channel inside frontChannels
@@ -1355,6 +1114,16 @@ const App: React.FC = () => {
             onChannelSetupClosed: onChannelSetupClosed,
             channelObject: selectedTab?.channelObject
         }
+        if (props.channelObject) {
+            let cluster = clusters.find(c => c.name===selectedTab?.channelObject.clusterName)
+            if (cluster && selectedTab.channel.requiresMetrics()) {
+                props.channelObject.metricsList = cluster?.metricsList!
+            }
+            if (cluster &&  selectedTab.channel.requiresAccessString()) {
+                let cluster = clusters.find(c => c.name===selectedTab?.channelObject.clusterName)
+                props.channelObject.accessString = cluster?.accessString
+            }
+        }
         return <SetupDialog {...props} />
     }
 
@@ -1362,8 +1131,7 @@ const App: React.FC = () => {
         if (!tab.name) return <>undefined</>
 
         let icon = <Box sx={{minWidth:'24px'}}/>
-        if (tab.channelId === InstanceMessageChannelEnum.METRICS) icon = <BarChart sx={{mr:2}}/>
-        else if (tab.channelId === InstanceMessageChannelEnum.OPS) icon = <Terminal sx={{mr:1}}/>
+        if (tab.channelId === InstanceMessageChannelEnum.OPS) icon = <Terminal sx={{mr:1}}/>
         else {
             if (tab.channel) {
                 icon = tab.channel.getChannelIcon()
@@ -1424,8 +1192,6 @@ const App: React.FC = () => {
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
 
-            { showSetupMetrics && clusters && <SetupMetrics onClose={onSetupMetricsClosed} channelObject={selectedTab?.channelObject} metrics={clusters.find(c => c.name === selectedTab!.channelObject.clusterName)?.metricsList!} /> }
-            { showSetupTrivy && <SetupTrivy onClose={onSetupTrivyClosed} channelObject={selectedTab?.channelObject} /> }
             { showChannelSetup() }
 
             { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settings} /> }

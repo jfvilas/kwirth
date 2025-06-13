@@ -13,6 +13,10 @@ export class EchoChannel implements IChannel {
     SetupDialog: FC<ISetupProps> = EchoSetup
     TabContent: FC<IContentProps> = EchoTabContent
     
+    requiresMetrics() { return false }
+    requiresAccessString() { return false }
+    requiresWebSocket() { return false }
+
     getScope() { return InstanceConfigScopeEnum.NONE}
     getChannelId(): string { return 'echo' }
     getChannelIcon(): JSX.Element { return EchoIcon }

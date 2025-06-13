@@ -1,31 +1,44 @@
 import React, { useState } from 'react'
 import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, Stack, TextField, Tooltip, Typography} from '@mui/material'
-import { MetricDescription } from './MetricDescription'
-import { MetricsObject } from './MetricsObject'
 import { MetricsConfigModeEnum, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
-import { IChannelObject } from '../IChannel'
+import { ISetupProps } from '../IChannel'
+import { BarChart } from '@mui/icons-material'
+import { MetricsInstanceConfig, MetricsUiConfig } from './MetricsConfig'
 
-interface IProps {
-    onClose:(metrics:string[], mode:MetricsConfigModeEnum, depth: number, width:number, interval:number, aggregate:boolean, merge:boolean, stack:boolean, chart:string) => void
-    channelObject?: IChannelObject
-    metrics:Map<string,MetricDescription>
-}
+const MetricsIcon = <BarChart/>
 
-const SetupMetrics: React.FC<IProps> = (props:IProps) => {
-    var dataMetrics = props.channelObject?.uiData as MetricsObject
-    const [metrics, setMetrics] = React.useState<string[]>(dataMetrics.metrics)
-    const [metricsMode, setMetricsMode] = useState(dataMetrics.mode)
-    const [metricsDepth, setMetricsDepth] = useState(dataMetrics.depth)
-    const [metricsWidth, setMetricsWidth] = useState(dataMetrics.width)
-    const [metricsInterval, setMetricsInterval] = useState(dataMetrics.interval)
-    const [assetAggregate, setAssetAggregate] = React.useState(dataMetrics.aggregate)
-    const [assetMerge, setAssetMerge] = React.useState(dataMetrics.merge)
-    const [assetStack, setAssetStack] = React.useState(dataMetrics.stack)
-    const [chart, setChart] = useState(dataMetrics.chart)
+const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
+    let metricsUiConfig:MetricsUiConfig = props.channelObject.uiConfig
+    let metricsInstanceConfig:MetricsInstanceConfig = props.channelObject.instanceConfig
+    let metricsList = props.channelObject.metricsList
+    // if (!metricsList) {
+    //     metricsList = new Map()
+    //     // +++ alert dialog
+    //     return 
+    // }
+
+    const [metrics, setMetrics] = React.useState<string[]>(metricsInstanceConfig.metrics)
+    const [metricsMode, setMetricsMode] = useState(metricsInstanceConfig.mode)
+    const [metricsDepth, setMetricsDepth] = useState(metricsUiConfig.depth)
+    const [metricsWidth, setMetricsWidth] = useState(metricsUiConfig.width)
+    const [metricsInterval, setMetricsInterval] = useState(metricsInstanceConfig.interval)
+    const [assetAggregate, setAssetAggregate] = React.useState(metricsInstanceConfig.aggregate)
+    const [assetMerge, setAssetMerge] = React.useState(metricsUiConfig.merge)
+    const [assetStack, setAssetStack] = React.useState(metricsUiConfig.stack)
+    const [chart, setChart] = useState(metricsUiConfig.chart)
     const [filter, setFilter] = useState('')
 
-    const closeOk = () =>{
-        props.onClose(metrics, metricsMode as MetricsConfigModeEnum, metricsDepth, metricsWidth, metricsInterval, assetAggregate, assetMerge, assetStack, chart)
+    const ok = () =>{
+        metricsInstanceConfig.mode = metricsMode
+        metricsInstanceConfig.interval = metricsInterval
+        metricsInstanceConfig.aggregate = assetAggregate
+        metricsInstanceConfig.metrics = metrics
+        metricsUiConfig.depth = metricsDepth
+        metricsUiConfig.width = metricsWidth
+        metricsUiConfig.merge = assetMerge
+        metricsUiConfig.stack = assetStack
+        metricsUiConfig.chart = chart
+        props.onChannelSetupClosed(props.channel, true)
     }
 
     const metricAddOrRemove = (value:string) => {
@@ -105,12 +118,12 @@ const SetupMetrics: React.FC<IProps> = (props:IProps) => {
                     <Stack direction={'row'} spacing={1} sx={{width:'100%', height:'22vh'}}>
                         <Stack direction={'column'} sx={{width:'70%'}}>
                             <List sx={{ width: '100%', overflowY: 'auto' }}>
-                                {props.metrics && Array.from(props.metrics.keys()).map((value, index) => {
+                                { metricsList && Array.from(metricsList.keys()).map((value, index) => {
                                     if (value.includes(filter) && (value.startsWith('container_') || value.startsWith('kwirth_'))) {
                                         return (
                                             <ListItem key={index} disablePadding>
                                                 <ListItemButton onClick={() => metricAddOrRemove(value)} dense>
-                                                    <Tooltip title={<><Typography fontSize={12}><b>{props.metrics.get(value)?.type}</b></Typography><Typography fontSize={12}>{props.metrics.get(value)?.help}</Typography></>} placement="bottom-start" enterDelay={750}>
+                                                    <Tooltip title={<><Typography fontSize={12}><b>{metricsList && metricsList.get(value)?.type}</b></Typography><Typography fontSize={12}>{metricsList && metricsList.get(value)?.help}</Typography></>} placement="bottom-start" enterDelay={750}>
                                                         <ListItemText primary={value} sx={{color:metrics.includes(value)?'black':'gray'}} />
                                                     </Tooltip>
                                                 </ListItemButton>
@@ -151,11 +164,11 @@ const SetupMetrics: React.FC<IProps> = (props:IProps) => {
 
             </DialogContent>
             <DialogActions>
-                <Button onClick={closeOk} disabled={metrics.length===0}>OK</Button>
-                <Button onClick={() => props.onClose([], MetricsConfigModeEnum.SNAPSHOT, 0, 0, 0, false, false, false, '')}>CANCEL</Button>
+                <Button onClick={ok} disabled={metrics.length===0}>OK</Button>
+                <Button onClick={() => props.onChannelSetupClosed(props.channel, false)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)
 }
 
-export { SetupMetrics }
+export { MetricsSetup, MetricsIcon }

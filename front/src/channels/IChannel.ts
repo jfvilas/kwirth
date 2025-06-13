@@ -1,8 +1,6 @@
 import { InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
-import { LogObject } from "./log/LogObject"
-import { MetricsObject } from "./metrics/MetricsObject"
 import { OpsObject } from "./ops/OpsObject"
-import { TrivyObject } from "./trivy/TrivyObject"
+import { MetricDescription } from "./metrics/MetricDescription"
 
 enum IChannelMessageAction {
     NONE,
@@ -13,7 +11,7 @@ enum IChannelMessageAction {
 interface ISetupProps {
     onChannelSetupClosed: (channel:IChannel, start:boolean) => void
     channel: IChannel
-    channelObject?: IChannelObject
+    channelObject: IChannelObject
 }
 
 interface IContentProps {
@@ -31,7 +29,10 @@ interface IChannelObject {
     instanceId: string
     instanceConfig: any
     uiConfig: any
-    uiData: LogObject | MetricsObject | OpsObject | TrivyObject | undefined | any
+    uiData: OpsObject | undefined | any
+    metricsList?: Map<string, MetricDescription>
+    accessString?: string
+    webSocket?: WebSocket
 }
 
 interface IChannel {
@@ -40,6 +41,9 @@ interface IChannel {
     SetupDialog: React.FC<ISetupProps>
     TabContent: React.FC<IContentProps>
 
+    requiresMetrics():boolean
+    requiresAccessString():boolean
+    requiresWebSocket():boolean
     getScope(): string
     getChannelId(): string
     getChannelIcon(): JSX.Element

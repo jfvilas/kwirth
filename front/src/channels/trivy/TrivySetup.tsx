@@ -1,22 +1,24 @@
 import React, { useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Radio, RadioGroup, Stack, Typography } from '@mui/material'
-import { TrivyObject } from './TrivyObject'
-import { IChannelObject } from '../IChannel'
+import { ISetupProps } from '../IChannel'
+import { ITrivyInstanceConfig } from './TrivyConfig'
+import { VerifiedUser } from '@mui/icons-material'
 
-interface IProps {
-    onClose:(maxCritical:number, maxHigh:number, maxMedium:number, maxLow:number) => void
-    channelObject?: IChannelObject
-}
+const TrivyIcon = <VerifiedUser />
 
-const SetupTrivy: React.FC<IProps> = (props:IProps) => {
-    const dataTrivy = props.channelObject?.uiData as TrivyObject
-    const [maxCritical, setMaxCritical] = useState(dataTrivy.maxCritical)
-    const [maxHigh, setMaxHigh] = useState(dataTrivy.maxHigh)
-    const [maxMedium, setMaxMedium] = useState(dataTrivy.maxMedium)
-    const [maxLow, setMaxLow] = useState(dataTrivy.maxLow)
+const TrivySetup: React.FC<ISetupProps> = (props:ISetupProps) => {
+    const trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig
+    const [maxCritical, setMaxCritical] = useState(trivyInstanceConfig.maxCritical)
+    const [maxHigh, setMaxHigh] = useState(trivyInstanceConfig.maxHigh)
+    const [maxMedium, setMaxMedium] = useState(trivyInstanceConfig.maxMedium)
+    const [maxLow, setMaxLow] = useState(trivyInstanceConfig.maxLow)
 
-    const closeOk = () =>{
-        props.onClose(maxCritical, maxHigh, maxMedium, maxLow)
+    const ok = () =>{
+        trivyInstanceConfig.maxCritical = maxCritical
+        trivyInstanceConfig.maxHigh = maxHigh
+        trivyInstanceConfig.maxMedium = maxMedium
+        trivyInstanceConfig.maxLow = maxLow
+        props.onChannelSetupClosed(props.channel, true)
     }
 
     return (<>
@@ -78,11 +80,11 @@ const SetupTrivy: React.FC<IProps> = (props:IProps) => {
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button onClick={closeOk}>OK</Button>
-                <Button onClick={() => props.onClose(-1,-1,-1,-1)}>CANCEL</Button>
+                <Button onClick={ok}>OK</Button>
+                <Button onClick={() => props.onChannelSetupClosed(props.channel,false)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)
 }
 
-export { SetupTrivy }
+export { TrivySetup, TrivyIcon }

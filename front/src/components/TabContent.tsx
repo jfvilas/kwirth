@@ -1,14 +1,10 @@
-//import { TabContentLog } from '../channels/log/TabContentLog'
-import { TabContentMetrics } from '../channels/metrics/TabContentMetrics'
 import { InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
 import { TabContentOps } from '../channels/ops/TabContentOps'
-import { TabContentTrivy } from '../channels/trivy/TabContentTrivy'
 import { IChannel, IChannelObject, IContentProps } from '../channels/IChannel'
 
 interface IProps {
     channel?:IChannel
     channelId?: InstanceMessageChannelEnum
-    //lastLineRef: React.MutableRefObject<null>
     channelObject?: IChannelObject
     refreshTabContent?: number
     webSocket?: WebSocket
@@ -26,19 +22,9 @@ const TabContent: React.FC<IProps> = (props:IProps) => {
     }
 
     return (<>
-        {/* show metrics */}
-        { props.channelObject && props.channelId === InstanceMessageChannelEnum.METRICS && props.channelObject.uiData && 
-            <TabContentMetrics channelObject={props.channelObject}/>
-        }
-
         {/* show ops */}
         { props.channelObject && props.channelId === InstanceMessageChannelEnum.OPS && props.channelObject.uiData && 
             <TabContentOps channelObject={props.channelObject} webSocket={props.webSocket}/>
-        }
-
-        {/* show trivy */}
-        { props.channelObject && props.channelId === InstanceMessageChannelEnum.TRIVY && props.channelObject.uiData &&
-            <TabContentTrivy channelObject={props.channelObject} webSocket={props.webSocket!}/>
         }
 
         {/* show generic channels */}

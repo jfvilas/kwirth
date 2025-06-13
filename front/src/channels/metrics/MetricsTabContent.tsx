@@ -2,19 +2,19 @@ import { useState } from 'react'
 import { MetricsObject } from './MetricsObject'
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { Alert, Box, Button, Stack, Typography } from '@mui/material'
-import { IChannelObject } from '../IChannel'
-
-interface IProps {
-    webSocket?: WebSocket
-    channelObject: IChannelObject
-}
+import { IContentProps } from '../IChannel'
+import { MetricsUiConfig } from './MetricsConfig'
 
 interface ISample {
     timestamp:string
     value:number
 }
 
-const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
+const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
+    let metricsObject:MetricsObject = props.channelObject.uiData
+    let metricsUiConfig:MetricsUiConfig = props.channelObject.uiConfig
+
+    console.log('render')
     const [refresh, setRefresh] = useState(false)
     const colours = [
         "#6e5bb8", // morado oscuro
@@ -88,7 +88,7 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
         }
         let  height=300
 
-        switch (dataMetrics.chart) {
+        switch (metricsUiConfig.chart) {
             case 'value':
                 height=40+series.length*80
                 result = (
@@ -144,7 +144,7 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
                         <Tooltip />
                         <Legend/>
                         { series.map ((_serie,index) => 
-                            <Area key={index} name={names[index]} type='monotone' {...(dataMetrics.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={`url(#color${series.length===1?colour:colours[index]})`}/> )
+                            <Area key={index} name={names[index]} type='monotone' {...(metricsUiConfig.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={`url(#color${series.length===1?colour:colours[index]})`}/> )
                         }
                     </AreaChart>
                 )
@@ -158,7 +158,7 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
                         <Tooltip/>
                         <Legend/>
                         { series.map ((serie,index) =>
-                            <Bar name={names[index]} {...(dataMetrics.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={series.length===1?colour:colours[index]}>
+                            <Bar name={names[index]} {...(metricsUiConfig.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={series.length===1?colour:colours[index]}>
                                 { index === series.length-1 && series.length > 1 ? <LabelList dataKey={names[index]} position='insideTop' content={ renderLabel }/> : null }
                             </Bar>
                         )}
@@ -182,7 +182,7 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
                 )
                 break
             default:
-                result = <Alert severity='error'>Unsupported chart type '{dataMetrics.chart}'</Alert>
+                result = <Alert severity='error'>Unsupported chart type '{metricsUiConfig.chart}'</Alert>
                 break
         }
         return (
@@ -206,13 +206,15 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
     }
 
     const formatMetrics = () => {
-        let dataMetrics = props.channelObject.uiData as MetricsObject
-        if (!dataMetrics.metrics || dataMetrics.assetMetricsValues.length === 0) {
-            return <>{formatMetricsError(dataMetrics)}</>
+        //let metricsObject:MetricsObject = props.channelObject.uiData
+        //let metricsUiConfig:MetricsUiConfig = props.channelObject.uiConfig
+
+        if (!metricsUiConfig.metricsList || metricsObject.assetMetricsValues.length === 0) {
+            return <>{formatMetricsError(metricsObject)}</>
         }
 
         let data:Map<string, Map<string, ISample[]>> = new Map()
-        for (var assetMetricsValues of dataMetrics.assetMetricsValues) {
+        for (var assetMetricsValues of metricsObject.assetMetricsValues) {
             var ts = new Date(assetMetricsValues.timestamp)
             var timestamp = ts.getHours().toString().padStart(2,'0')+':'+ts.getMinutes().toString().padStart(2,'0')+':'+ts.getSeconds().toString().padStart(2,'0')
             for (var i=0;i<assetMetricsValues.assets.length;i++) {
@@ -226,7 +228,7 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
         }
 
         let allCharts = []
-        if (dataMetrics.merge) {
+        if (metricsUiConfig.merge) {
             var assetNames=Array.from(data.keys())
             var firstAsset=assetNames[0]
             var allMetrics:string[] = Array.from(new Set(data.get(firstAsset)!.keys()))
@@ -235,15 +237,15 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
                 var series = assetNames.map(assetName => {
                     return data.get(assetName)!.get(metric)!
                 })
-                allCharts.push(<>{addChart(dataMetrics, metric, assetNames, series, '')}</>)
+                allCharts.push(<>{addChart(metricsObject, metric, assetNames, series, '')}</>)
             }
 
             let rows = []
-            for (let i = 0; i < allCharts.length; i += dataMetrics.width) {
-                rows.push(allCharts.slice(i, i + dataMetrics.width))
+            for (let i = 0; i < allCharts.length; i += metricsUiConfig.width) {
+                rows.push(allCharts.slice(i, i + metricsUiConfig.width))
             }
             return (<>
-                {formatMetricsError(dataMetrics)}
+                {formatMetricsError(metricsObject)}
                 {rows.map((row, index) => (
                     <div key={index} style={{ display: 'flex', justifyContent: 'space-around' }}>
                         {row}
@@ -255,19 +257,19 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
             let allCharts = Array.from(data.keys()!).map( (asset, index)  =>  {
                 return Array.from(data.get(asset)?.keys()!).map ( metric => {
                     var series = data.get(asset)?.get(metric)!
-                    return (<>{addChart(dataMetrics, metric, [asset], [series], colours[index])}</>)
+                    return (<>{addChart(metricsObject, metric, [asset], [series], colours[index])}</>)
                 })
             })
 
             // convert allCharts (an array of charts) into a series of rows of charts
             let rows = []
             for (var resultAsset of allCharts) {
-                for (let i = 0; i < resultAsset.length; i += dataMetrics.width) {
-                    rows.push(resultAsset.slice(i, i + dataMetrics.width))
+                for (let i = 0; i < resultAsset.length; i += metricsUiConfig.width) {
+                    rows.push(resultAsset.slice(i, i + metricsUiConfig.width))
                 }
             }
             return (<>
-                {formatMetricsError(dataMetrics)}
+                {formatMetricsError(metricsObject)}
                 {rows.map((row, index) => (
                     <div key={index} style={{ display: 'flex', justifyContent: 'space-around' }}>
                         {row}
@@ -284,4 +286,4 @@ const TabContentMetrics: React.FC<IProps> = (props:IProps) => {
     )
 
 }
-export { TabContentMetrics }
+export { MetricsTabContent }

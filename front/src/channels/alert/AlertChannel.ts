@@ -12,6 +12,10 @@ export class AlertChannel implements IChannel {
     SetupDialog: FC<ISetupProps> = AlertSetup
     TabContent: FC<IContentProps> = AlertTabContent
     
+    requiresMetrics() { return false }
+    requiresAccessString() { return false }
+    requiresWebSocket() { return false }
+
     getScope() { return InstanceConfigScopeEnum.VIEW}
     getChannelId(): string { return 'alert' }
     getChannelIcon(): JSX.Element { return AlertIcon }
@@ -22,7 +26,7 @@ export class AlertChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject:IChannelObject, wsEvent: any): IChannelMessageAction {
-        let refresh = IChannelMessageAction.NONE
+        let action = IChannelMessageAction.NONE
         var msg = JSON.parse(wsEvent.data) as IAlertMessage
         let alertObject = channelObject.uiData as AlertObject
         let alertConfig = channelObject.uiConfig as AlertUiConfig
@@ -39,7 +43,7 @@ export class AlertChannel implements IChannel {
                     container: msg.container
                 })
                 if (alertObject.firedAlerts.length > alertConfig.maxAlerts) alertObject.firedAlerts.splice(0, alertObject.firedAlerts.length - alertConfig.maxAlerts)
-                if (!this.paused) refresh = IChannelMessageAction.REFRESH
+                if (!this.paused) action = IChannelMessageAction.REFRESH
                 break
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
@@ -53,14 +57,14 @@ export class AlertChannel implements IChannel {
                         severity: AlertSeverityEnum.INFO,
                         text: signalMessage.text
                     })
-                    refresh = IChannelMessageAction.REFRESH
+                    action = IChannelMessageAction.REFRESH
                 }
                 break
             default:
                 console.log(`Invalid message type ${msg.type}`)
                 break
         }
-        return refresh
+        return action
     }
 
     initChannel(channelObject:IChannelObject): boolean {

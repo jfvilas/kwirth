@@ -1,18 +1,18 @@
-import { Avatar, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
-import { TrivyObject } from './TrivyObject'
+import { Avatar, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
 import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
-import { TabContentTrivyAssetVulns } from './TabContentTrivyAssetVuln'
+import { TabContentTrivyAssetVulns } from './TrivyTabContentAssetVuln'
+import { ITrivyInstanceConfig } from './TrivyConfig'
 
 interface IProps {
     asset: any
-    trivyObject:TrivyObject
+    trivyInstanceConfig: ITrivyInstanceConfig
     onClose: () => void
 }
 
 const TabContentTrivyAssetDetails: React.FC<IProps> = (props:IProps) => {
     let report = props.asset.report
     let asset = props.asset
-    let trivyObject = props.trivyObject
+    let trivyInstanceConfig = props.trivyInstanceConfig
 
     let summary = () => {
         return (
@@ -29,7 +29,7 @@ const TabContentTrivyAssetDetails: React.FC<IProps> = (props:IProps) => {
                     </TableHead>
                     <TableBody>
                         <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                            <TableCell align='center' color={assetScoreColor(asset,trivyObject)}>{assetScore(asset,trivyObject)}</TableCell>
+                            <TableCell align='center' color={assetScoreColor(asset,trivyInstanceConfig)}>{assetScore(asset,trivyInstanceConfig)}</TableCell>
                             <TableCell align='center'>{asset.report.summary.criticalCount}</TableCell>
                             <TableCell align='center'>{asset.report.summary.highCount}</TableCell>
                             <TableCell align='center'>{asset.report.summary.mediumCount}</TableCell>

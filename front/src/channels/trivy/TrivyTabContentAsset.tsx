@@ -1,5 +1,4 @@
 import { Avatar, Box, Card, CardContent, CardHeader, CardMedia, IconButton, Menu, MenuItem, MenuList, Stack, Typography } from '@mui/material'
-import { TrivyObject } from './TrivyObject'
 import { MoreVert as MoreVertIcon } from '@mui/icons-material'
 import { Visibility as VisibilityIcon } from '@mui/icons-material'
 import { Replay as ReplayIcon } from '@mui/icons-material'
@@ -7,6 +6,7 @@ import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
 import { useState } from 'react'
 import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, TrivyCommandEnum, TrivyMessage } from '@jfvilas/kwirth-common'
 import { IChannelObject } from '../IChannel'
+import { ITrivyInstanceConfig } from './TrivyConfig'
 
 interface IProps {
     webSocket: WebSocket
@@ -19,7 +19,7 @@ interface IProps {
 
 const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
     let report = props.asset.report
-    let trivyObject = props.channelObject.uiData as TrivyObject
+    let trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig
     const [anchorMenu, setAnchorMenu] = useState<HTMLElement|null>(null)
 
     const simpleBarChart = (c:number, h:number, m:number, l:number) => {
@@ -32,10 +32,10 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
             return '#388e3c'
         }
         const bars = [
-            { label: `Critical (${c})`, height: Math.min(c*factor,height), color: getColor(c, trivyObject.maxCritical) },
-            { label: `High (${h})`, height: Math.min(h*factor,height), color: getColor(h, trivyObject.maxHigh) },
-            { label: `Medium (${m})`, height: Math.min(m*factor,height), color: getColor(m, trivyObject.maxMedium) },
-            { label: `Low (${l})`, height: Math.min(l*factor,height), color: getColor(l, trivyObject.maxLow) },
+            { label: `Critical (${c})`, height: Math.min(c*factor,height), color: getColor(c, trivyInstanceConfig.maxCritical) },
+            { label: `High (${h})`, height: Math.min(h*factor,height), color: getColor(h, trivyInstanceConfig.maxHigh) },
+            { label: `Medium (${m})`, height: Math.min(m*factor,height), color: getColor(m, trivyInstanceConfig.maxMedium) },
+            { label: `Low (${l})`, height: Math.min(l*factor,height), color: getColor(l, trivyInstanceConfig.maxLow) },
         ]
 
         return (
@@ -53,7 +53,7 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
         let trivyMessage: TrivyMessage = {
             msgtype: 'trivymessage',
             id: '1',
-            accessKey: trivyObject.accessKeyString,
+            accessKey: props.channelObject.accessString!,
             instance: props.channelObject.instanceId,
             namespace: asset.namespace,
             group: '',
@@ -98,7 +98,7 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
                         <Typography fontSize={12}>{`${report.os.family}/${report.os.name}`}</Typography>
                     </Stack>
                     <Stack direction='row' alignItems='center'>
-                        <Typography color={assetScoreColor(props.asset, trivyObject)} fontWeight={700}>{assetScore(props.asset, trivyObject).toFixed(0)}%</Typography>
+                        <Typography color={assetScoreColor(props.asset, trivyInstanceConfig)} fontWeight={700}>{assetScore(props.asset, trivyInstanceConfig).toFixed(0)}%</Typography>
                     </Stack>
                 </Stack>
             </CardContent>
@@ -116,7 +116,7 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
                     subheader={`${report.updateTimestamp}`}
                 />
                 <Stack direction={'row'} alignItems={'center'} sx={{width:'30%'}}>
-                    <Typography color={assetScoreColor(props.asset, trivyObject)}>{assetScore(props.asset, trivyObject).toFixed(2)}%</Typography>
+                    <Typography color={assetScoreColor(props.asset, trivyInstanceConfig)}>{assetScore(props.asset, trivyInstanceConfig).toFixed(2)}%</Typography>
                 </Stack>
                 <Stack direction={'row'} sx={{display:'flex'}} display={'flex'} flexDirection={'row'} width={'100%'} flexGrow={1} alignItems={'center'}>
                     <Stack direction={'column'}>
