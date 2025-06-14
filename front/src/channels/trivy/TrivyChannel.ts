@@ -95,6 +95,7 @@ export class TrivyChannel implements IChannel {
     startChannel(channelObject:IChannelObject): boolean {
         console.log('startChannel')
         channelObject.uiData = new TrivyObject()
+        channelObject.uiData.started=true
         this.paused = false
         return true
     }
@@ -114,6 +115,7 @@ export class TrivyChannel implements IChannel {
     stopChannel(channelObject: IChannelObject): boolean {
         console.log('stopChannel')
         this.paused = false
+        channelObject.uiData.started=false
         return true
     }
 

@@ -1,5 +1,5 @@
 import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, OpsMessage, OpsMessageResponse, OpsCommandEnum, RouteMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum } from '@jfvilas/kwirth-common';
-import { WebSocket as ws } from 'ws'
+import { WebSocket as NonNativeWebSocket } from 'ws'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { ChannelData, IChannel, SourceEnum } from '../IChannel';
 import { Readable, Writable } from 'stream';
@@ -12,7 +12,7 @@ export interface IAsset {
     podName: string
     containerName: string
     inShellMode: boolean
-    shellSocket: ws|undefined
+    shellSocket: NonNativeWebSocket|undefined
     stdin: Readable|undefined
     stdout: Writable|undefined
     stderr: Writable|undefined
@@ -54,11 +54,6 @@ class OpsChannel implements IChannel {
     }
 
     containsInstance(instanceId: string): boolean {
-        // for (let socket of this.websocketOps) {
-        //     let exists = socket.instances.find(i => i.instanceId === instanceId)
-        //     if (exists) return true
-        // }
-        // return false
         return this.webSocketOps.some(socket => socket.instances.find(i => i.instanceId === instanceId))
     }
 
@@ -420,7 +415,7 @@ class OpsChannel implements IChannel {
                 execResponse = await execCommandGetDescribe(this.clusterInfo, instance, opsMessage)
                 break
             case OpsCommandEnum.EXECUTE: {
-                    if (!this.checkScopes(instance, InstanceConfigScopeEnum.SHELL)) {
+                    if (!this.checkScopes(instance, InstanceConfigScopeEnum.EXECUTE)) {
                         execResponse.data = `Insuffcient scope for EXECUTE`
                         return execResponse
                     }
@@ -464,9 +459,6 @@ class OpsChannel implements IChannel {
                         asset.shellSocket.onmessage = (event) => {
                             let text = event.data.toString('utf8').substring(1)
                             this.sendOpsResponse(webSocket, instance, asset, asset.shellId, text)
-                            // for (let line of text.split('\n')) {
-                            //     this.sendOpsResponse(webSocket, instance, asset, line.trimEnd()+'\n')
-                            // }
                         }
                         asset.shellSocket.onclose = (event) => {
                             asset.inShellMode = false

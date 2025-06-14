@@ -158,11 +158,17 @@ export class AuthorizationManagement {
     
     public static getValidValues = (values:string[], regexes:string[]) => {
         let result:string[] = []
-        for (let value of values) {
-            if (regexes.some(r => new RegExp(r).test(value))) result.push(value)
+        try {
+            for (let value of values) {
+                if (regexes.some(r => new RegExp(r).test(value))) result.push(value)
+            }
+            result = [...new Set(result)]
+            return result
         }
-        result = [...new Set(result)]
-        return result
+        catch (err) {
+            console.log('getValidValues error', err)
+            return []
+        }
     }
 
     public static getAllowedNamespaces = async (coreApi:CoreV1Api, accessKey:AccessKey): Promise<string[]> => {

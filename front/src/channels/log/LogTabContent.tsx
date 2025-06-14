@@ -1,18 +1,9 @@
 import { InstanceConfigViewEnum, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { ILogLine, LogObject } from './LogObject'
 import { Box } from '@mui/material'
-import { IChannelObject, IContentProps } from '../IChannel'
-// import { Button, TextField } from '@mui/material'
-// import { useState } from 'react'
-
-// interface IProps {
-//     webSocket?: WebSocket
-//     channelObject: IChannelObject
-//     lastLineRef: React.MutableRefObject<null>
-// }
+import { IContentProps } from '../IChannel'
 
 const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    // const [input, setInput] = useState('')
     let logObject = props.channelObject.uiData as LogObject
 
     if (!props.channelObject.uiData || !props.channelObject.uiData) return <pre></pre>
@@ -53,50 +44,12 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    // +++ if (logObject.follow && props.lastLineRef.current) {
-    //     (props.lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
-    // }
-
-    // const routeCommand = () => {
-    //     let om:OpsMessage = {
-    //         msgtype: 'opsmessage',
-    //         action: InstanceMessageActionEnum.COMMAND,
-    //         flow: InstanceMessageFlowEnum.IMMEDIATE,
-    //         type: InstanceMessageTypeEnum.DATA,
-    //         channel: InstanceMessageChannelEnum.OPS,
-    //         instance: '',
-    //         id: '1',
-    //         accessKey: logObject.accessKey,
-    //         command: OpsCommandEnum.RESTARTPOD,
-    //         namespace: props.channelObject.namespace,
-    //         group: props.channelObject.group,
-    //         pod: props.channelObject.pod,
-    //         container: props.channelObject.container
-    //     }
-    //     let rm: RouteMessage = {
-    //         msgtype: 'routemessage',
-    //         accessKey: logObject.accessKey,
-    //         destChannel: InstanceMessageChannelEnum.OPS,
-    //         action: InstanceMessageActionEnum.ROUTE,
-    //         flow: InstanceMessageFlowEnum.IMMEDIATE,
-    //         type: InstanceMessageTypeEnum.SIGNAL,
-    //         channel: InstanceMessageChannelEnum.LOG,
-    //         instance: props.channelObject.instance,
-    //         data: om
-    //     }
-    //     props.webSocket?.send(JSON.stringify(rm))
-    // }
-
     return (        
         <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
             <pre> {
                 logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })
             }
             </pre>
-            {/* <TextField value={input} onChange={(e) => setInput(e.target.value)}></TextField>
-            <Button onClick={send}>SEND</Button> */}
-            <br/>
-            {/* +++ <span ref={props.lastLineRef}></span> */}
         </Box>
     )
 }

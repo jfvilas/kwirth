@@ -1,5 +1,4 @@
 import { InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
-import { TabContentOps } from '../channels/ops/TabContentOps'
 import { IChannel, IChannelObject, IContentProps } from '../channels/IChannel'
 
 interface IProps {
@@ -21,18 +20,6 @@ const TabContent: React.FC<IProps> = (props:IProps) => {
         return <ChannelTabContent {...cprops}/>
     }
 
-    return (<>
-        {/* show ops */}
-        { props.channelObject && props.channelId === InstanceMessageChannelEnum.OPS && props.channelObject.uiData && 
-            <TabContentOps channelObject={props.channelObject} webSocket={props.webSocket}/>
-        }
-
-        {/* show generic channels */}
-        { 
-            showContent()
-        }
-
-
-    </>)
+    return <>{ showContent() } </>
 }
 export { TabContent }

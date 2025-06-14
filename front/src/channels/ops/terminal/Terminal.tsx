@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent, ReactElement } from 'react';
-//import TerminalOutput from './TerminalOutput';
 import './style.css';
   
 export enum ColorMode {
@@ -16,11 +15,11 @@ export interface Props {
     startingInputValue?: string
     onInput: (prompt:string, input: string) => void
     onKey: (key: string) => void
+    lines: string[]
 }
   
-const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, inputEnabled, startingInputValue = "" }: Props) => {
+const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, inputEnabled, startingInputValue = "", lines }: Props) => {
     const [currentLineInput, setCurrentLineInput] = useState('')
-    const [cursorPos, setCursorPos] = useState(0)
     const scrollIntoViewRef = useRef<HTMLDivElement>(null)
   
     const updateCurrentLineInput = (event: ChangeEvent<HTMLInputElement>) => {
@@ -64,8 +63,8 @@ const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, 
             if (children.length>0 &&  children[children.length-1].props && children[children.length-1].props.children) {
                 prompt = children[children.length-1].props.children
             }
+            lines.pop()
             onInput(prompt, currentLineInput)
-            setCursorPos(0)
             setCurrentLineInput('')
             setTimeout(() => scrollIntoViewRef?.current?.scrollIntoView({ behavior: "auto", block: "nearest" }), 500);
         }
@@ -85,20 +84,15 @@ const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, 
             else if (event.key === 'ArrowUp') {
                 charsToRightOfCursor = currentLineInput.slice(0)
             }
-    
-            const inputWidth = calculateInputWidth(inputElement, charsToRightOfCursor)
-            setCursorPos(inputWidth)
         }
         else if ((event.key === 'c') && event.ctrlKey) {
             event.preventDefault()
-            setCursorPos(0)
             setCurrentLineInput('')
             onKey('^c')
         }
         else if ((event.key === 'd') && event.ctrlKey) {
             event.preventDefault()
             if (currentLineInput==='') {
-                setCursorPos(0)
                 setCurrentLineInput('')
                 onInput('', 'exit')
             }
@@ -137,22 +131,25 @@ const Terminal = ({name, height = "600px", colorMode, onInput, onKey, children, 
             prompt = children[children.length-1].props.children.trim()
             let lines = prompt.split('\n')
             prompt = lines[lines.length-1].trim()
+            let len = children.length
+            if (prompt === children[children.length-1].props.children) len--
             return <>
-                {children.slice(0, children.length-1)}
-                <div className="react-terminal-line react-terminal-input react-terminal-active-input" data-terminal-prompt={ prompt }>{ currentLineInput }<span className="cursor"></span></div>
+                {children.slice(0, len)}
+                <div style={{marginTop:-1}} className="react-terminal-line react-terminal-input react-terminal-active-input" data-terminal-prompt={ prompt }>{ currentLineInput }<span className="cursor"></span></div>
             </>
         }
-        else 
-            return <div className="react-terminal-line react-terminal-input react-terminal-active-input" data-terminal-prompt={ prompt }>{ currentLineInput }<span className="cursor"></span></div>
+        else {
+            return <div className="react-terminal-line react-terminal-input react-terminal-active-input" data-terminal-prompt={ prompt }>{currentLineInput}<span className="cursor"></span></div>
+        }
     }
 
     return (
-        <div className={ classes.join(' ') } data-terminal-name={ name }>
-            <div className="react-terminal" style={ { height } }>
+        <div className={ classes.join(' ') } data-terminal-name={name}>
+            <div className="react-terminal" style={{height}}>
                 {content()}
-                <div ref={ scrollIntoViewRef }></div>
+                <div ref={scrollIntoViewRef}></div>
             </div>
-            <input className="terminal-hidden-input" placeholder="Terminal Hidden Input" value={ currentLineInput } autoFocus={true} onChange={ updateCurrentLineInput } onKeyDown={ handleInputKeyDown }/>
+            <input className="terminal-hidden-input" placeholder="Terminal Hidden Input" value={currentLineInput} autoFocus={true} onChange={updateCurrentLineInput} onKeyDown={handleInputKeyDown}/>
         </div>
     )
 }

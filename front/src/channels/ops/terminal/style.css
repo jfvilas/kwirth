@@ -29,7 +29,7 @@
     color: #1a1e24;
   }
   
-  .react-terminal-window-buttons {
+  /* .react-terminal-window-buttons {
     position: absolute;
     top: 15px;
     left: 15px;
@@ -59,7 +59,7 @@
   
   .react-terminal-window-buttons button.green-btn {
     background: #3ec930;
-  }
+  } */
   
   .react-terminal-wrapper:after {
     content: attr(data-terminal-name);
@@ -89,13 +89,14 @@
   }
   
   .react-terminal-light .react-terminal-line:before {
-    color: #D76D77;
+    /* color: #D76D77; */
+    color: #000000; 
   }
   
-  .react-terminal-input:before {
-    margin-right: 0.75em;
+  /* .react-terminal-input:before {
+    margin-right: 0em;
     content: '$';
-  }
+  } */
   
   .react-terminal-input[data-terminal-prompt]:before {
     content: attr(data-terminal-prompt);

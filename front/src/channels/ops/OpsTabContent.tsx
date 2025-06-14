@@ -1,18 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Button, Stack, TextField } from '@mui/material'
-import { OpsObject } from './OpsObject'
-import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, OpsCommandEnum, OpsMessage } from '@jfvilas/kwirth-common'
+import { IOpsObject, OpsCommandEnum, OpsMessage } from './OpsObject'
+import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
 import { v4 as uuidv4 } from 'uuid'
 import { Terminal, ColorMode } from './terminal/Terminal'
 import { SelectTerminal } from './terminal/SelectTerminal'
-import { IChannelObject } from '../IChannel'
+import { IContentProps } from '../IChannel'
+import { OPSHELPMESSAGE, OPSWELCOMEMESSAGE } from '../../tools/Constants'
 
-interface IProps {
-    webSocket?: WebSocket
-    channelObject: IChannelObject
-}
-
-const TabContentOps: React.FC<IProps> = (props:IProps) => {
+const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
+    let opsObject:IOpsObject = props.channelObject.uiData
     const [command, setCommand] = useState('')
     const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
     const lastLineRef = useRef(null)
@@ -20,7 +17,6 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
     const [refresh, setRefresh] = useState(0)
     const [showSelector, setShowSelector] = useState(false)
     const commandRef = useRef<HTMLInputElement>()
-    let opsObject = props.channelObject.uiData as OpsObject
 
     useEffect(() => {
         if (!opsObject.shell) commandRef.current?.focus()
@@ -55,10 +51,22 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
                 break
             case 'Enter':
                 if (command!=='') {
-                    sendCommand(command)
-                    setCommands((prev) =>  [command, ...prev] )
-                    setCommand('')
-                    setSelectedCommandIndex(0)
+                    switch (command.toLowerCase()) {
+                        case 'clear':
+                            opsObject.messages = []
+                            setCommand('')
+                            break
+                        case 'help':
+                            opsObject.messages.push(...OPSHELPMESSAGE)
+                            setCommand('')
+                            break
+                        default:
+                            sendCommand(command)
+                            setCommands((prev) =>  [command, ...prev] )
+                            setCommand('')
+                            setSelectedCommandIndex(0)
+                            break
+                    }
                 }
                 if (event.preventDefault) {
                     event.preventDefault()
@@ -91,20 +99,23 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
 
         let [namespace,pod,container] = ['','','']
         let params = data.trim().split(' ').map(p => p.trim()).filter(p => p!=='')
-        let cmd = params[0] as OpsCommandEnum
+        let cmd = params[0].toLowerCase() as OpsCommandEnum
         let obj = params[1]
         if (obj && (cmd === OpsCommandEnum.SHELL || cmd === OpsCommandEnum.RESTART || cmd === OpsCommandEnum.RESTARTPOD || cmd === OpsCommandEnum.RESTARTNS || cmd === OpsCommandEnum.GET || cmd === OpsCommandEnum.DESCRIBE || cmd === OpsCommandEnum.EXECUTE)) {
             [namespace,pod,container] = obj.split('/')
-            if (cmd === OpsCommandEnum.EXECUTE) {
-                params = params.slice(2)
-            }
+            if (cmd === OpsCommandEnum.EXECUTE) params = params.slice(2)
         }
         if (cmd === OpsCommandEnum.SHELL) {
             let index = opsObject.shells.findIndex ( s => s.namespace===namespace && s.pod===pod && s.container===container)
             if (index>=0) {
                 opsObject.shell = opsObject.shells[index]
-                setRefresh(Math.random())
-                return
+                if (opsObject.shell.connected) {
+                    setRefresh(Math.random())
+                    return
+                }
+                else {
+
+                }
             }
         }
         let opsMessage:OpsMessage = {
@@ -112,7 +123,7 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
             action: InstanceMessageActionEnum.COMMAND,
             channel: InstanceMessageChannelEnum.OPS,
             type: InstanceMessageTypeEnum.DATA,
-            accessKey: opsObject.accessKeyString,
+            accessKey: props.channelObject.accessString!,
             instance: props.channelObject.instanceId,
             id: uuidv4(),
             command: cmd,
@@ -142,65 +153,24 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
         </pre>
     }
 
-    // const startImmed = (shellInput:string) => {
-    //     if (props.webSocket) {
-    //         let ws = new WebSocket(props.webSocket?.url)
-    //         ws.onopen = (ev) => sendImmed(ev, shellInput)
-    //         ws.onmessage = (ev) => recvImmed(ev)
-    //         ws.onerror = (ev) => console.log('err')
-    //         ws.onclose = (ev) => console.log('close')
-    //     }
-    // }
-
-    // const recvImmed = (event:any) => {
-    //     console.log(event)
-    // }
-
-    // const sendImmed = (event:any, shellInput:string) => {
-    //     let obj = shellInput.split(' ')[1]
-    //     let [ns,p,c] = obj.split('/')
-
-    //     let opsMessage:OpsMessage = {
-    //         flow: InstanceMessageFlowEnum.IMMEDIATE,
-    //         action: InstanceMessageActionEnum.COMMAND,
-    //         channel: InstanceMessageChannelEnum.OPS,
-    //         type: InstanceMessageTypeEnum.DATA,
-    //         command: OpsCommandEnum.EXECUTE,
-    //         accessKey: opsObject.accessKey,
-    //         instance: '',
-    //         id: '1',
-    //         namespace: ns,
-    //         group: '',
-    //         pod: p,
-    //         container: c,
-    //         params: ['ls','/'],
-    //         msgtype: 'opsmessage'
-    //     }
-    //     let payload = JSON.stringify( opsMessage )
-    //     if (props.webSocket) event.target.send(payload)
-    // }
-
     const onShellInput = (prompt:string, shellInput:string) => {        
         if (shellInput ==='clear') {
             if (opsObject.shell) {
-                opsObject.shell.lines=[]
+                opsObject.shell.lines= [ prompt ]
                 setRefresh(Math.random())
             }
             return
         }
 
-        // if (shellInput.toLowerCase().startsWith('immed')) {
-        //     startImmed(shellInput)
-        //     return
-        // }
-
+        if (opsObject.shell) opsObject.shell.pending = prompt
+        
         let opsMessage:OpsMessage = {
             flow: InstanceMessageFlowEnum.REQUEST,
             action: InstanceMessageActionEnum.COMMAND,
             channel: InstanceMessageChannelEnum.OPS,
             type: InstanceMessageTypeEnum.DATA,
             command: OpsCommandEnum.INPUT,
-            accessKey: opsObject.accessKeyString,
+            accessKey: props.channelObject.accessString!,
             instance: props.channelObject.instanceId,
             id: opsObject.shell? opsObject.shell.id : '',
             namespace: opsObject.shell? opsObject.shell.namespace : '',
@@ -249,13 +219,15 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
     const showTerminal = (namespace:string, pod:string, container: string) => {
         let shellIndex = opsObject.shells.findIndex(c => c.namespace === namespace && c.pod === pod && c.container === container)
         if (shellIndex<0 ) return <></>
+
         let shell = opsObject.shells[shellIndex]
-          return (
-            <Terminal name={`${namespace}/${pod}/${container}` + (shellIndex<10? ` (Key F${shellIndex+1})`:'') } colorMode={ColorMode.Light} onInput={onShellInput} onKey={onShellKey} inputEnabled={shell.connected}>
-                {shell.lines.map( (line,index) => <div key={index} className="react-terminal-line">{line}</div>)}
-            </Terminal>
-          )
+        return (
+        <Terminal name={`${namespace}/${pod}/${container}` + (shellIndex<10? ` (Key F${shellIndex+1})`:'') } colorMode={ColorMode.Light} onInput={onShellInput} onKey={onShellKey} inputEnabled={shell.connected} lines={shell.lines}>
+            {shell.lines.map( (line,index) => <div key={index} className='react-terminal-line'>{line}</div>)}
+        </Terminal>
+        )
     }
+    
     const formatSelector = () => {
         let current = -1
         if (opsObject.shell) current = opsObject.shells.indexOf(opsObject.shell)
@@ -273,12 +245,13 @@ const TabContentOps: React.FC<IProps> = (props:IProps) => {
                     {formatConsole()}
                 </Box>
                 <Stack direction={'row'} sx={{width:'100%'}}>
-                    <TextField inputRef={commandRef} value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={onKeyDown} autoComplete='off' variant='standard' fullWidth disabled={opsObject.accessKeyString===''}/>
-                    <Button onClick={() => onKeyDown( { key:'Enter'})} disabled={opsObject.accessKeyString===''}>ENTER</Button>
+                    <TextField inputRef={commandRef} value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={onKeyDown} autoComplete='off' variant='standard' fullWidth disabled={!props.channelObject.accessString}/>
+                    <Button onClick={() => onKeyDown( { key:'Enter'})} disabled={!props.channelObject.accessString}>ENTER</Button>
                 </Stack>
             </>}
         </Stack>
         <br/>
     </>
 }
-export { TabContentOps }
+
+export { OpsTabContent }

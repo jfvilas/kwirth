@@ -1,6 +1,10 @@
 const OPSWELCOMEMESSAGE:string[] = [
     'Welcome to OpsChannel frontend interface. This is a command-like interface where you can launch several commands:',
-    ' ',
+    ' '
+]
+
+const OPSHELPMESSAGE:string[] = [
+    'CLEAR      to clear this command console',
     'HELP       to get help on commands',
     'GET        to get simple information on a specific namespace, pod or container',
     '           samples:    GET default/mypod-1234-abcd/mycontainer   GET default/mypod   GET default',
@@ -13,8 +17,7 @@ const OPSWELCOMEMESSAGE:string[] = [
     'RESTARTPOD You can also restart a specific pod (format: RESTARTPOD ns/pod)',
     'RESTARTNS  Or you can even restart a whoooooole namespace (format: RESTARTNS ns) ',
     'DELETE     You can delete a specific pod (its the same behaviour as RESTARTPOD)',
-    ' ',
     ' '
 ]
 
-export { OPSWELCOMEMESSAGE }
+export { OPSWELCOMEMESSAGE, OPSHELPMESSAGE }

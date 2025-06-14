@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 // material & icons
 import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Menu, Person, Terminal } from '@mui/icons-material'
+import { Settings as SettingsIcon, Menu, Person } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
@@ -27,11 +27,8 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/Msg
 import { Settings } from './model/Settings'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, SignalMessage, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, OpsConfig, OpsCommandEnum, OpsMessageResponse, parseResources } from '@jfvilas/kwirth-common'
+import { KwirthData, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources } from '@jfvilas/kwirth-common'
 import { ITabObject } from './model/ITabObject'
-
-import { OpsObject } from './channels/ops/OpsObject'
-import { OPSWELCOMEMESSAGE } from './tools/Constants'
 
 import { EchoChannel } from './channels/echo/EchoChannel'
 import { AlertChannel } from './channels/alert/AlertChannel'
@@ -43,6 +40,7 @@ import { LogChannel } from './channels/log/LogChannel'
 import { MetricDescription } from './channels/metrics/MetricDescription'
 import { MetricsChannel } from './channels/metrics/MetricsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
+import { OpsChannel } from './channels/ops/OpsChannel'
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883'
@@ -80,9 +78,9 @@ const App: React.FC = () => {
     const settingsRef = useRef(settings)
     settingsRef.current = settings
 
-    const [channels, setChannels] = useState<string[]>([])
-    const channelsRef = useRef(channels)
-    channelsRef.current= channels
+    const [backChannels, setBackChannels] = useState<string[]>([])
+    const backChannelsRef = useRef(backChannels)
+    backChannelsRef.current= backChannels
 
     // menus/navigation
     const [anchorMenuTab, setAnchorMenuTab] = useState<null | HTMLElement>(null)
@@ -118,6 +116,7 @@ const App: React.FC = () => {
         frontChannels.set('alert', AlertChannel)
         frontChannels.set('metrics', MetricsChannel)
         frontChannels.set('trivy', TrivyChannel)
+        frontChannels.set('ops', OpsChannel)
     })
 
     useEffect ( () => {
@@ -245,9 +244,9 @@ const App: React.FC = () => {
         if (cluster) {
             setSelectedClusterName(clusterName)
             let usableChannels = [...cluster.channels]
-            usableChannels = usableChannels.filter(c => c === InstanceMessageChannelEnum.OPS || Array.from(frontChannels.keys()).includes(c))
+            usableChannels = usableChannels.filter(c => Array.from(frontChannels.keys()).includes(c))
             console.log('usableChannels',usableChannels)
-            setChannels(usableChannels)
+            setBackChannels(usableChannels)
         }
     }
 
@@ -293,13 +292,6 @@ const App: React.FC = () => {
         }
 
         switch(selection.channel) {
-            case InstanceMessageChannelEnum.OPS:
-                let opsObject = new OpsObject()
-                newTab.channelObject.uiData = opsObject
-                opsObject.messages= []
-                opsObject.shell = undefined
-                opsObject.shells = []
-                break
             default:
                 if (frontChannels.has(selection.channel)) {
                     newTab.channel = createChannelInstance(selection.channel)!
@@ -361,136 +353,31 @@ const App: React.FC = () => {
             return
         }
 
-        if (instanceMessage.action === InstanceMessageActionEnum.PING) {
-            // nothing to do
-            return
-        }
+        if (instanceMessage.action === InstanceMessageActionEnum.PING || instanceMessage.channel === InstanceMessageChannelEnum.NONE) return
 
-        switch(instanceMessage.channel) {
-            case InstanceMessageChannelEnum.NONE:
-                // we receive keepalive responses through this channel
-                break
-            case InstanceMessageChannelEnum.OPS:
-                processOpsMessage(wsEvent)
-                break
-            default:
-                if (frontChannels.has(instanceMessage.channel)) {
-                    let tab = tabs.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
-                    if (!tab || !tab.channel || !tab.channelObject) return
-                    if (tab.channel.processChannelMessage(tab.channelObject, wsEvent) === IChannelMessageAction.REFRESH) {
-                        if (selectedTabRefName.current === tab.name) {
-                            setRefreshTabContent(Math.random())
-                        }
-                        else {
-                            setPendingTabs((prev)=> [...prev, tab!])
-                        }
-                    }
-                }
-                else {
-                    console.log('Received invalid channel in message: ', instanceMessage)
-                }
-                break
-        }
-    }
-
-    function cleanANSI(text: string): string {
-        const regexAnsi = /\x1b\[[0-9;]*[mKHVfJrcegH]|\x1b\[\d*n/g;
-        return text.replace(regexAnsi, '') // replace all matches with empty strings
-    }
-
-    const processOpsMessage = (wsEvent:any) => {
-        let opsMessage = JSON.parse(wsEvent.data) as OpsMessageResponse
-        let tab = tabs.find(tab => tab.ws !== null && tab.ws===wsEvent.target)
-        if (!tab || !tab.channelObject) return
-
-        let opsObject = tab.channelObject.uiData as OpsObject
-        switch (opsMessage.type) {
-            case InstanceMessageTypeEnum.DATA:
-                if (opsMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
-                    switch (opsMessage.command) {
-                        case OpsCommandEnum.SHELL:
-                            // it's a response for a shell session start, so we add shell session to shells array
-                            let newShell = {
-                                namespace: opsMessage.namespace,
-                                pod: opsMessage.pod,
-                                container: opsMessage.container,
-                                lines: [],
-                                connected: true,
-                                id: opsMessage.id
-                            }
-                            let index = opsObject.shells.findIndex(s => s.connected === false)
-                            if (index>=0)
-                                opsObject.shells[index] = newShell
-                            else
-                                opsObject.shells.push (newShell)
-                            opsObject.shell = opsObject.shells[opsObject.shells.length-1]
-                            setRefreshTabContent(Math.random())
-                            break
-                        default:
-                            if (typeof opsMessage.data !== 'string')
-                                opsObject.messages.push(JSON.stringify(opsMessage.data))
-                            else
-                                opsObject.messages.push(opsMessage.data)
-                                setRefreshTabContent(Math.random())
-                                break
-                        }
-                }
-                else {
-                    let shell = opsObject.shells.find (s => s.id === opsMessage.id)
-                    if (shell) {
-                        shell.lines.push(cleanANSI(opsMessage.data))
-                        if (opsObject.shell) setRefreshTabContent(Math.random())  //+++ and visible shell is destination shell
-                    }
-                    else {
-                        opsObject.messages.push(opsMessage.data)
-                        setRefreshTabContent(Math.random())
-                    }
-                }
-                break
-            case InstanceMessageTypeEnum.SIGNAL:
-                if (opsMessage.flow === InstanceMessageFlowEnum.RESPONSE && opsMessage.action === InstanceMessageActionEnum.COMMAND) {
-                    if (opsMessage.command === OpsCommandEnum.SHELL) {
-                        opsObject.shell = undefined
-                        opsObject.messages.push(`Shell session to ${opsMessage.namespace}/${opsMessage.pod}/${opsMessage.container} ended`)
-                        if (opsMessage.data) opsObject.messages.push(opsMessage.data)
-                        let shell = opsObject.shells.find (c => c.namespace === opsMessage.namespace && c.pod === opsMessage.pod && c.container === opsMessage.container)
-                        if (shell) shell.connected = false
-                    }
-                    else {
-                        opsObject.messages.push(opsMessage.data)
-                    }
-                    setRefreshTabContent(Math.random())
-                    return
-                }
-                let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
-                    tab.channelObject.instanceId = signalMessage.instance
-                    opsObject.messages.push(signalMessage.text)
+        if (frontChannels.has(instanceMessage.channel)) {
+            let tab = tabs.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
+            if (!tab || !tab.channel || !tab.channelObject) return
+            if (tab.channel.processChannelMessage(tab.channelObject, wsEvent) === IChannelMessageAction.REFRESH) {
+                if (selectedTabRefName.current === tab.name) {
                     setRefreshTabContent(Math.random())
                 }
                 else {
-                    console.log('wsEvent.data on ops')
-                    console.log(wsEvent.data)                    
+                    setPendingTabs((prev)=> [...prev, tab!])
                 }
-                break
-            default:
-                console.log(`Invalid message type ${opsMessage.type}`)
-                break
+            }
+        }
+        else {
+            console.log('Received invalid channel in message: ', instanceMessage)
         }
     }
 
     const onClickChannelStart = () => {
-        switch (selectedTab?.channelId) {
-            case InstanceMessageChannelEnum.OPS:
-                startChannel(selectedTab)
-                break
-            default:
-                if (selectedTab && selectedTab.channel) {
-                    selectedTab.channel.setSetupVisibility(true)
-                }
-                else {
-                    console.log(`Unsupported channel ${selectedTab?.channelId}`)
-                }
+        if (selectedTab && selectedTab.channel) {
+            selectedTab.channel.setSetupVisibility(true)
+        }
+        else {
+            console.log(`Unsupported channel ${selectedTab?.channelId}`)
         }
     }
 
@@ -540,21 +427,13 @@ const App: React.FC = () => {
         let cluster = clusters.find(c => c.name === tab!.channelObject!.clusterName)
         if (!cluster) return
 
-        switch (tab.channelId) {
-            case InstanceMessageChannelEnum.OPS:
-                console.log('Reconnect not implemented')
-                break
-            default:
-                if (selectedTab && selectedTab.channel) {
-                    if (selectedTab.channel.socketDisconnected(selectedTab.channelObject)) setRefreshTabContent(Math.random())
-                }
-                else {
-                    console.log('Unsuppported channel on disconnect:', tab.channelId)
-                }
-                break
+        if (selectedTab && selectedTab.channel) {
+            if (selectedTab.channel.socketDisconnected(selectedTab.channelObject)) setRefreshTabContent(Math.random())
+        }
+        else {
+            console.log('Unsuppported channel on disconnect:', tab.channelId)
         }
         setRefreshTabContent(Math.random())
-
 
         let selfId = setInterval( (url, tab) => {
             console.log(`Trying to reconnect using ${url} and ${tab.channelObject.instanceId}`)
@@ -598,32 +477,18 @@ const App: React.FC = () => {
                 container: tab.channelObject.container,
                 type: InstanceMessageTypeEnum.SIGNAL
             }
-            switch (tab.channelId) {
-                case InstanceMessageChannelEnum.OPS:
-                    let opsObject = tab.channelObject.uiData as OpsObject
-                    opsObject.accessKeyString = cluster.accessString
-                    opsObject.messages.push(...OPSWELCOMEMESSAGE)
-                    opsObject.shell = undefined
-                    opsObject.shells = []
-                    let opsConfig:OpsConfig = {
-                    }
-                    instanceConfig.scope = InstanceConfigScopeEnum.GET // we ask for minimum scope
-                    instanceConfig.data = opsConfig
-                    break
-                default:
-                if (selectedTab && selectedTab.channel) {
-                        instanceConfig.scope = selectedTab.channel.getScope()
-                        instanceConfig.data = tab.channelObject.instanceConfig
-                        selectedTab.channel.startChannel(selectedTab.channelObject)
-                    }
-                    else {
-                        console.log('Channel is not supported')
-                    }
-                    break
+            
+            if (selectedTab && selectedTab.channel) {
+                instanceConfig.scope = selectedTab.channel.getScope()
+                instanceConfig.data = tab.channelObject.instanceConfig
+                tab.ws.send(JSON.stringify(instanceConfig))
+                tab.channelStarted = true
+                tab.channelPaused = false
+                selectedTab.channel.startChannel(selectedTab.channelObject)
             }
-            tab.ws.send(JSON.stringify(instanceConfig))
-            tab.channelStarted = true
-            tab.channelPaused = false
+            else {
+                console.log('Channel is not supported')
+            }
         }
         else {
             console.log('Tab web socket is not started')
@@ -655,24 +520,15 @@ const App: React.FC = () => {
             container: '',
             type: InstanceMessageTypeEnum.SIGNAL
         }
-        switch (tab.channelId) {
-            case InstanceMessageChannelEnum.OPS:
-                let dataOps = tab.channelObject.uiData as OpsObject
-                dataOps.messages.push('=========================================================================')
-                setRefreshTabContent(Math.random())
-                break
-            default:
-                if (selectedTab && selectedTab.channel) {
-                    if (selectedTab.channel.stopChannel(selectedTab.channelObject)) setRefreshTabContent(Math.random())
-                }
-                else {
-                    console.log('Channel is not supported on stop:',tab.channelId)
-                }
-                break
+        if (selectedTab && selectedTab.channel) {
+            if (selectedTab.channel.stopChannel(selectedTab.channelObject)) setRefreshTabContent(Math.random())
+            if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
+            tab.channelStarted = false
+            tab.channelPaused = false
         }
-        if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
-        tab.channelStarted = false
-        tab.channelPaused = false
+        else {
+            console.log('Channel is not supported on stop:',tab.channelId)
+        }
     }
 
     const onClickChannelPause = () => {
@@ -710,10 +566,6 @@ const App: React.FC = () => {
         selectedTab.ws.send(JSON.stringify(instanceConfig))
     }
 
-    const stopTab = (tab:ITabObject) => {
-        if (tab.channelObject) stopChannel(tab)
-    }
-
     const onClickTabRemove = () => {
         setAnchorMenuTab(null)
         if (!selectedTab) return
@@ -736,7 +588,7 @@ const App: React.FC = () => {
         if (current>=0 && current<newTabs.length) {
             newTabs[current].channelPending = false
             setPendingTabs (pendingTabs.filter(t => t.channelObject && t.channelPending))
-        setSelectedTabName(newTabs[current].name)
+            setSelectedTabName(newTabs[current].name)
         }
         setTabs(newTabs)
     }
@@ -823,8 +675,6 @@ const App: React.FC = () => {
                 channelPending: false
             }
             switch(tab.channelId) {
-                case InstanceMessageChannelEnum.OPS:
-                    break
                 default:
                     if (selectedTab && selectedTab.channel) {
                         // we only need uiConfig and instanceConfig
@@ -912,7 +762,7 @@ const App: React.FC = () => {
 
     const clearTabs = () => {
         for (var tab of tabs) {
-            stopTab(tab)
+            if (tab.channelObject) stopChannel(tab)
         }
         setTabs([])
     }
@@ -1131,15 +981,10 @@ const App: React.FC = () => {
         if (!tab.name) return <>undefined</>
 
         let icon = <Box sx={{minWidth:'24px'}}/>
-        if (tab.channelId === InstanceMessageChannelEnum.OPS) icon = <Terminal sx={{mr:1}}/>
-        else {
-            if (tab.channel) {
-                icon = tab.channel.getChannelIcon()
-            }
-        }
+        if (tab.channel) icon = tab.channel.getChannelIcon()
         let name = tab.name
         if (name.length>20) name = tab.name.slice(0, 8) + '...' + tab.name.slice(-8)
-        return <>{icon}{name}</>
+        return <>{icon}&nbsp;{name}</>
     }
 
     return (<>
@@ -1165,7 +1010,7 @@ const App: React.FC = () => {
             </Drawer>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
-                <ResourceSelector clusters={clusters} channels={channels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }}/>
+                <ResourceSelector clusters={clusters} channels={backChannels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }}/>
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
                     <Tabs value={selectedTabName} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' sx={{ml:1}}>
                         { tabs.length>0 && tabs.map(tab => {

@@ -13,7 +13,7 @@ interface IProps {
 }
 
 const ManageApiSecurity: React.FC<IProps> = (props:IProps) => {
-    const {accessString: accessString, backendUrl} = useContext(SessionContext) as SessionContextType;
+    const {accessString, backendUrl} = useContext(SessionContext) as SessionContextType;
     const [msgBox, setMsgBox] = useState(<></>)
     const [keys, setKeys] = useState<ApiKey[]>([])
     const [selectedKey, setSelectedKey] = useState<ApiKey>()

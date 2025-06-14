@@ -680,20 +680,25 @@ const processClientMessage = async (webSocket:WebSocket, message:string) => {
     // +++ maybe we can perform this things later when knowing what the action is
     let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resources)
 
-    let validNamespaces = await AuthorizationManagement.getValidNamespaces(coreApi, accessKey, instanceConfig.namespace.split(','))
+    let validNamespaces:string[] = []
+    if (instanceConfig.namespace) validNamespaces = await AuthorizationManagement.getValidNamespaces(coreApi, accessKey, instanceConfig.namespace.split(','))
     console.log('validNamespaces:', validNamespaces)
 
-    let validGroups = await AuthorizationManagement.getValidGroups(appsApi, accessKey, validNamespaces, instanceConfig.group.split(','))
+    let validGroups:string[] = []
+    if (instanceConfig.group) validGroups = await AuthorizationManagement.getValidGroups(appsApi, accessKey, validNamespaces, instanceConfig.group.split(','))
     console.log('validGroups:', validGroups)
 
     let validPodNames:string[] = []
-    if (kwirthData.clusterType === ClusterTypeEnum.DOCKER)
+    if (kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
         validPodNames = await clusterInfo.dockerTools.getAllPodNames()
-    else
-        validPodNames = await AuthorizationManagement.getValidPods(coreApi, appsApi, validNamespaces,accessKey, instanceConfig.pod.split(','))
+    }
+    else {
+        if (instanceConfig.pod) validPodNames = await AuthorizationManagement.getValidPods(coreApi, appsApi, validNamespaces,accessKey, instanceConfig.pod.split(','))
+    }
     console.log('validPods:', validPodNames)
 
-    let validContainers = await  AuthorizationManagement.getValidContainers(coreApi, accessKey, validNamespaces, validPodNames, instanceConfig.container.split(','))
+    let validContainers:string[] = []
+    if (instanceConfig.container) validContainers = await  AuthorizationManagement.getValidContainers(coreApi, accessKey, validNamespaces, validPodNames, instanceConfig.container.split(','))
     console.log('validContainers:', validContainers)
     
     switch (instanceConfig.action) {

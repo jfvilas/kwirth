@@ -1,10 +1,10 @@
 import React, { useState, useContext } from 'react'
 import { SessionContext, SessionContextType } from '../model/SessionContext'
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography} from '@mui/material'
 import { AccessKey, accessKeySerialize, ApiKey } from '@jfvilas/kwirth-common'
 import { addPostAuthorization } from '../tools/AuthorizationManagement'
 import { v4 as uuidv4 } from 'uuid'
-import { MsgBoxButtons, MsgBoxOk } from '../tools/MsgBox'
+import { MsgBoxOk } from '../tools/MsgBox'
 const copy = require('clipboard-copy')
 
 interface IProps {
@@ -12,7 +12,7 @@ interface IProps {
 }
 
 const FirstTimeLogin: React.FC<IProps> = (props:IProps) => {
-    const {accessString: accessString, backendUrl} = useContext(SessionContext) as SessionContextType;
+    const {accessString, backendUrl} = useContext(SessionContext) as SessionContextType;
     const [msgBox, setMsgBox] = useState(<></>)
 
     const onClickYes = async () => {
