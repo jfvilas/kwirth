@@ -1,3 +1,8 @@
+enum LogSortOrderEnum {
+    TIME = 'time',
+    POD = 'pod'
+}
+
 interface ILogUiConfig {
     startDiagnostics: boolean
 
@@ -7,7 +12,7 @@ interface ILogUiConfig {
 
     // for start diagnostics
     maxPerPodMessages: number
-    sortOrder: string
+    sortOrder: LogSortOrderEnum
 }
 
 class LogUiConfig implements ILogUiConfig{
@@ -15,7 +20,7 @@ class LogUiConfig implements ILogUiConfig{
     follow = true
     maxMessages = 5000
     maxPerPodMessages = 1000
-    sortOrder = 'time' // +++ enum
+    sortOrder = LogSortOrderEnum.TIME
 }
 
 interface ILogInstanceConfig {
@@ -31,4 +36,4 @@ class LogInstanceConfig implements ILogInstanceConfig{
 }
 
 export type { ILogUiConfig, ILogInstanceConfig }
-export { LogUiConfig, LogInstanceConfig }
+export { LogUiConfig, LogInstanceConfig, LogSortOrderEnum }

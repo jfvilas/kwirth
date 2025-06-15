@@ -11,11 +11,6 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     let metricsUiConfig:MetricsUiConfig = props.channelObject.uiConfig
     let metricsInstanceConfig:MetricsInstanceConfig = props.channelObject.instanceConfig
     let metricsList = props.channelObject.metricsList
-    // if (!metricsList) {
-    //     metricsList = new Map()
-    //     // +++ alert dialog
-    //     return 
-    // }
 
     const [metrics, setMetrics] = React.useState<string[]>(metricsInstanceConfig.metrics)
     const [metricsMode, setMetricsMode] = useState(metricsInstanceConfig.mode)

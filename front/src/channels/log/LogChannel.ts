@@ -4,7 +4,7 @@ import { InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, In
 import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
 import { LogObject, ILogMessage, ILogLine } from './LogObject'
-import { LogInstanceConfig, LogUiConfig } from './LogConfig'
+import { LogInstanceConfig, LogSortOrderEnum, LogUiConfig } from './LogConfig'
 
 export class LogChannel implements IChannel {
     private setupVisible = false
@@ -72,11 +72,11 @@ export class LogChannel implements IChannel {
                             }
                             if (cnt < logUiConfig.maxPerPodMessages) {
                                 switch (logUiConfig.sortOrder) {
-                                    case 'pod':
+                                    case LogSortOrderEnum.POD:
                                         let podIndex = logObject.messages.findLastIndex(m => m.container===logLine.container && m.pod===logLine.pod && m.namespace===logLine.namespace)
                                         logObject.messages.splice(podIndex+1,0,logLine)
                                         break
-                                    case 'time':
+                                    case LogSortOrderEnum.TIME:
                                         let timeIndex = logObject.messages.findLastIndex(m => getMsgEpoch(m) < getMsgEpoch(logLine))
                                         logObject.messages.splice(timeIndex+1,0,logLine)
                                         break
@@ -87,12 +87,10 @@ export class LogChannel implements IChannel {
                                 logObject.counters.set(bname, ++cnt)
                             }
                             if ([...logObject.counters.values()].reduce((prev,acc) => {return prev+acc}, 0) > logUiConfig.maxMessages) {
-                                //stopChannel(tab)
                                 action = IChannelMessageAction.STOP
                             }
                         }
                         else {
-                            //if (tab.channelStarted) stopChannel(tab) +++
                             action = IChannelMessageAction.STOP
                         }
                     }
@@ -100,23 +98,6 @@ export class LogChannel implements IChannel {
                         logObject.messages.push(logLine)
                         if (logObject.messages.length > logUiConfig.maxMessages) logObject.messages.splice(0, logObject.messages.length - logUiConfig.maxMessages)
                     }
-
-                    // // if current log is displayed (focused), add message to the screen
-                    // if (selectedTabRefName.current === tab.name) {
-                    //     if (!tab.channelPaused) {
-                    //         setRefreshTabContent(Math.random())
-                    //         if (logObject.follow && lastLineRef.current) {
-                    //             (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
-                    //         }
-                    //     }
-                    // }
-                    // else {
-                    //     // the received message is for a log that is no selected, so we highlight the log if background notification is enabled
-                    //     if (logObject.backgroundNotification && !tab.channelPaused) {
-                    //         tab.channelPending = true
-                    //         setPendingTabs((prev)=> [...prev, tab!])
-                    //     }
-                    // }
                 }
                 break
             case InstanceMessageTypeEnum.SIGNAL:
@@ -159,8 +140,6 @@ export class LogChannel implements IChannel {
         this.paused = false;
         channelObject.uiData = new LogObject()
 
-        //logObject.accessKey = cluster.accessString +++
-
         let logInstanceConfig:LogInstanceConfig = channelObject.instanceConfig
         let logConfig:LogInstanceConfig = new LogInstanceConfig()
         if (channelObject.uiConfig.startDiagnostics) {
@@ -177,10 +156,7 @@ export class LogChannel implements IChannel {
                 fromStart: logInstanceConfig.fromStart
             }
         }
-        //channelObject.instanceConfig.scope = InstanceConfigScopeEnum.VIEW +++
         channelObject.instanceConfig = logConfig
-
-
         return true
     }
 

@@ -59,12 +59,13 @@ class OpsChannel implements IChannel {
 
     async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
         if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
+            // immediate commands aretypical  request/repsonse pattern, so we invoke 'executeImmediteCommand' and we send back the response
             let resp = await this.executeImmediateCommand(instanceMessage)
             if (resp) webSocket.send(JSON.stringify(resp))
             return Boolean(resp)
         }
         else {
-        let socket = this.webSocketOps.find(s => s.ws === webSocket)
+            let socket = this.webSocketOps.find(s => s.ws === webSocket)
             if (!socket) {
                 console.log('Socket not found')
                 return false
@@ -292,8 +293,6 @@ class OpsChannel implements IChannel {
 
     private async executeImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
         console.log('Immediate request received')
-        // +++ an immediate command can be of any type not just opsmessage
-        // we need to decide how to handle messaging on responses: routeresponse.data = opsresponse??
         let opsMessage = instanceMessage as OpsMessage
 
         // we create a dummy instance for executnig command, and we add the asset erefrenced int hte immediate command
