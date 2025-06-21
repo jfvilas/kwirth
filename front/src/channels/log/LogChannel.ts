@@ -87,10 +87,12 @@ export class LogChannel implements IChannel {
                                 logObject.counters.set(bname, ++cnt)
                             }
                             if ([...logObject.counters.values()].reduce((prev,acc) => {return prev+acc}, 0) > logUiConfig.maxMessages) {
+                                //+++ 
                                 action = IChannelMessageAction.STOP
                             }
                         }
                         else {
+                            //+++ 
                             action = IChannelMessageAction.STOP
                         }
                     }

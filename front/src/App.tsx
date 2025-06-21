@@ -6,7 +6,7 @@ import { Settings as SettingsIcon, Menu, Person } from '@mui/icons-material'
 
 // model
 import { User } from './model/User'
-import { Cluster } from './model/Cluster'
+import { Cluster, KwirthData } from './model/Cluster'
 
 // components
 import { RenameTab } from './components/RenameTab'
@@ -22,25 +22,25 @@ import { SettingsUser } from './components/settings/SettingsUser'
 import { SettingsCluster } from './components/settings/SettingsCluster'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
-import { VERSION } from './version'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/MsgBox'
 import { Settings } from './model/Settings'
+import { FirstTimeLogin } from './components/FirstTimeLogin'
+import { IBoard } from './model/IBoard'
+
+import { VERSION } from './version'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { KwirthData, InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources } from '@jfvilas/kwirth-common'
+import { InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources } from '@jfvilas/kwirth-common'
 import { ITabObject } from './model/ITabObject'
 
-import { EchoChannel } from './channels/echo/EchoChannel'
-import { AlertChannel } from './channels/alert/AlertChannel'
-
-import { IBoard } from './model/IBoard'
-import { FirstTimeLogin } from './components/FirstTimeLogin'
 import { ChannelConstructor, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
 import { LogChannel } from './channels/log/LogChannel'
-import { MetricDescription } from './channels/metrics/MetricDescription'
+import { EchoChannel } from './channels/echo/EchoChannel'
+import { AlertChannel } from './channels/alert/AlertChannel'
 import { MetricsChannel } from './channels/metrics/MetricsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { OpsChannel } from './channels/ops/OpsChannel'
+import { readClusterInfo } from './tools/Global'
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883'
@@ -78,7 +78,7 @@ const App: React.FC = () => {
     const settingsRef = useRef(settings)
     settingsRef.current = settings
 
-    const [backChannels, setBackChannels] = useState<string[]>([])
+    const [backChannels, setBackChannels] = useState<any[]>([])
     const backChannelsRef = useRef(backChannels)
     backChannelsRef.current= backChannels
 
@@ -110,7 +110,7 @@ const App: React.FC = () => {
     }
 
     useEffect( () => {
-        // only firt time
+        // only first time
         frontChannels.set('log', LogChannel)
         frontChannels.set('echo', EchoChannel)
         frontChannels.set('alert', AlertChannel)
@@ -148,14 +148,14 @@ const App: React.FC = () => {
 
     const getClusters = async () => {
         // get current cluster
-        let response = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString))
-        let srcCluster = await response.json() as Cluster
+        let response = await fetch(`${backendUrl}/config/info`, addGetAuthorization(accessString))
+        let srcCluster = new Cluster()
+        srcCluster.kwirthData = await response.json() as KwirthData
+        srcCluster.name = srcCluster.kwirthData.clusterName
         srcCluster.url = backendUrl
         srcCluster.accessString = accessString
         srcCluster.source = true
         srcCluster.enabled = true
-        response = await fetch(`${backendUrl}/config/version`, addGetAuthorization(accessString))
-        srcCluster.kwirthData = await response.json() as KwirthData
         if (versionGreatThan(srcCluster.kwirthData.version, srcCluster.kwirthData.lastVersion)) {
             setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
         }
@@ -167,54 +167,10 @@ const App: React.FC = () => {
             clusterList = JSON.parse (await response.json())
             clusterList = clusterList.filter (c => c.name !== srcCluster.name)
         }
-        clusterList.push(srcCluster)
         for (let cluster of clusterList)
-            setClusterStatus(cluster)
+            readClusterInfo(cluster).then( () => {setRefreshTabContent(Math.random())})
+        clusterList.push(srcCluster)
         setClusters(clusterList)
-    }
-
-    const getMetricsNames = async (cluster:Cluster) => {
-        try {
-            console.log(`Receiving metrics for cluster ${cluster.name}`)
-            cluster.metricsList=new Map()
-            var response = await fetch (`${cluster.url}/metrics`, addGetAuthorization(cluster.accessString))
-            var json = await response.json() as MetricDescription[]
-            json.map( jsonMetric => cluster.metricsList.set(jsonMetric.metric, jsonMetric))
-            console.log(`Metrics for cluster ${cluster.name} have been received (${Array.from(cluster.metricsList.keys()).length})`)
-        }
-        catch (err) {
-            console.log('Error obtaining metrics list')
-            console.log(err)
-        }
-    }
-
-    const setClusterStatus = async (cluster:Cluster): Promise<void> => {
-        if (await readClusterInfo(cluster)) {
-            cluster.enabled = true
-            if (cluster.channels.includes('metrics')) {
-                await getMetricsNames(cluster)
-                let data = await (await fetch (`${cluster.url}/metrics/config`, addGetAuthorization(cluster.accessString))).json()
-                cluster.metricsInterval = data.metricsInterval
-            }
-        }
-        else {
-            cluster.enabled = false
-        }
-    }
-
-    const readClusterInfo = async (cluster: Cluster): Promise<boolean> => {
-        try {
-            let response = await fetch(`${cluster.url}/config/version`, addGetAuthorization(cluster.accessString))
-            if (response.status===200) {
-                let  json = await response.json()
-                if (json) {
-                    cluster.kwirthData = json
-                    return true
-                }
-            }
-        }
-        catch (error) {}
-        return false
     }
 
     const readSettings = async () => {
@@ -241,10 +197,10 @@ const App: React.FC = () => {
     const onChangeCluster = (clusterName:string) => {
         if (!clusters) return
         let cluster = clusters.find(c => c.name === clusterName)
-        if (cluster) {
+        if (cluster && cluster.kwirthData) {
             setSelectedClusterName(clusterName)
-            let usableChannels = [...cluster.channels]
-            usableChannels = usableChannels.filter(c => Array.from(frontChannels.keys()).includes(c))
+            let usableChannels = [...cluster.kwirthData.channels]
+            usableChannels = usableChannels.filter(c => Array.from(frontChannels.keys()).includes(c.id))
             console.log('usableChannels',usableChannels)
             setBackChannels(usableChannels)
         }
@@ -291,25 +247,21 @@ const App: React.FC = () => {
             channelPending: false
         }
 
-        switch(selection.channel) {
-            default:
-                if (frontChannels.has(selection.channel)) {
-                    newTab.channel = createChannelInstance(selection.channel)!
-                    if (newTab.channel.initChannel(newTab.channelObject)) setRefreshTabContent(Math.random())
-                }
-                else {
-                    console.log(`Error, invalid channel: `, selection.channel)
-                    setMsgBox(MsgBoxOkError('Add resource', 'Channel is not supported', setMsgBox))
-                }
-                break
+        if (frontChannels.has(selection.channel)) {
+            newTab.channel = createChannelInstance(selection.channel)!
+            if (newTab.channel.initChannel(newTab.channelObject)) setRefreshTabContent(Math.random())
+            startSocket(newTab, cluster, () => {
+                setKeepAlive(newTab)
+                if (newTab.channel?.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
+            })
+            setTabs((prev) => [...prev, newTab])
+            setSelectedTabName(newTab.name)
+        }
+        else {
+            console.log(`Error, invalid channel: `, selection.channel)
+            setMsgBox(MsgBoxOkError('Add resource', 'Channel is not supported', setMsgBox))
         }
 
-        startSocket(newTab, cluster, () => {
-            setKeepAlive(newTab)
-            if (newTab.channel?.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
-        })
-        setTabs((prev) => [...prev, newTab])
-        setSelectedTabName(newTab.name)
     }
 
     const setKeepAlive = (tab:ITabObject) => {
@@ -322,10 +274,7 @@ const App: React.FC = () => {
                 type: InstanceMessageTypeEnum.SIGNAL,
                 instance: ''
             }
-
-            if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
-                tab.ws.send(JSON.stringify(instanceConfig))
-            }
+            if (tab.ws && tab.ws.readyState === WebSocket.OPEN) tab.ws.send(JSON.stringify(instanceConfig))
         }, (settings?.keepAliveInterval || 60) * 1000,'')  
     }
 
@@ -352,19 +301,16 @@ const App: React.FC = () => {
             console.log(wsEvent.data)
             return
         }
-
         if (instanceMessage.action === InstanceMessageActionEnum.PING || instanceMessage.channel === InstanceMessageChannelEnum.NONE) return
 
         if (frontChannels.has(instanceMessage.channel)) {
             let tab = tabs.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
             if (!tab || !tab.channel || !tab.channelObject) return
             if (tab.channel.processChannelMessage(tab.channelObject, wsEvent) === IChannelMessageAction.REFRESH) {
-                if (selectedTabRefName.current === tab.name) {
+                if (selectedTabRefName.current === tab.name)
                     setRefreshTabContent(Math.random())
-                }
-                else {
+                else
                     setPendingTabs((prev)=> [...prev, tab!])
-                }
             }
         }
         else {
@@ -373,12 +319,10 @@ const App: React.FC = () => {
     }
 
     const onClickChannelStart = () => {
-        if (selectedTab && selectedTab.channel) {
+        if (selectedTab && selectedTab.channel)
             selectedTab.channel.setSetupVisibility(true)
-        }
-        else {
+        else
             console.log(`Unsupported channel ${selectedTab?.channelId}`)
-        }
     }
 
     const socketReconnect = (wsEvent:any, id:NodeJS.Timer) => {
@@ -415,35 +359,42 @@ const App: React.FC = () => {
     }
 
     const socketDisconnect = (wsEvent:any) => {
-        console.log('Reconnecting...')
+        console.log('Socket disconnected')
         let tab = tabs.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
-        if (tab.ws) {
-            tab.ws.onerror = null
-            tab.ws.onmessage = null
-            tab.ws.onclose = null
-            tab.ws = undefined
-        }
-        let cluster = clusters.find(c => c.name === tab!.channelObject!.clusterName)
-        if (!cluster) return
+        const reconnectable = backChannels.find(c => c.id === tab!.channel?.getChannelId() && c.reconnectable)
+        if (reconnectable) {
+            console.log(`Trying to reconnect...`)
+            if (tab.ws) {
+                tab.ws.onerror = null
+                tab.ws.onmessage = null
+                tab.ws.onclose = null
+                tab.ws = undefined
+            }
+            let cluster = clusters.find(c => c.name === tab!.channelObject!.clusterName)
+            if (!cluster) return
 
-        if (selectedTab && selectedTab.channel) {
-            if (selectedTab.channel.socketDisconnected(selectedTab.channelObject)) setRefreshTabContent(Math.random())
+            if (selectedTab && selectedTab.channel) {
+                if (selectedTab.channel.socketDisconnected(selectedTab.channelObject)) setRefreshTabContent(Math.random())
+            }
+            else {
+                console.log('Unsuppported channel on disconnect:', tab.channelId)
+            }
+            setRefreshTabContent(Math.random())
+
+            let selfId = setInterval( (url, tab) => {
+                console.log(`Trying to reconnect using ${url} and ${tab.channelObject.instanceId}`)
+                try {
+                    let ws = new WebSocket(url)
+                    tab.ws = ws
+                    ws.onopen = (event) => socketReconnect(event, selfId)
+                }
+                catch  {}
+            }, 10000, cluster.url, tab)
         }
         else {
-            console.log('Unsuppported channel on disconnect:', tab.channelId)
+            console.log(`Channel ${tab.channel?.getChannelId()} does not support reconnect.`)
         }
-        setRefreshTabContent(Math.random())
-
-        let selfId = setInterval( (url, tab) => {
-            console.log(`Trying to reconnect using ${url} and ${tab.channelObject.instanceId}`)
-            try {
-                let ws = new WebSocket(url)
-                tab.ws = ws
-                ws.onopen = (event) => socketReconnect(event, selfId)
-            }
-            catch  {}
-        }, 10000, cluster.url, tab)
     }
     
     const startChannel = (tab:ITabObject) => {
@@ -674,19 +625,13 @@ const App: React.FC = () => {
                 channelPaused: false,
                 channelPending: false
             }
-            switch(tab.channelId) {
-                default:
-                    if (selectedTab && selectedTab.channel) {
-                        // we only need uiConfig and instanceConfig
-                        delete newTab.channelObject.uiData
-                    }
-                    else {
-                        console.log('Channel not supported on saveBoard:',tab.channelId)
-                    }
-                    break
-
+            if (selectedTab && selectedTab.channel) {
+                delete newTab.channelObject.uiData  // we only need uiConfig and instanceConfig
+                newTabs.push(newTab)
             }
-            newTabs.push(newTab)
+            else {
+                console.log('Channel not supported on saveBoard:',tab.channelId)
+            }
         }
         let board:IBoard = {
             name,
@@ -898,8 +843,8 @@ const App: React.FC = () => {
         if (!readMetricsInterval) return
         if (readMetricsInterval) {
             var cluster = clusters.find(c => c.name === selectedClusterName)
-            if (cluster)  {
-                cluster.metricsInterval = readMetricsInterval
+            if (cluster && cluster.kwirthData)  {
+                cluster.kwirthData.metricsInterval = readMetricsInterval
                 let payload = JSON.stringify( { metricsInterval: readMetricsInterval } )
                 fetch (`${cluster.url}/metrics/config`, addPostAuthorization(cluster.accessString, payload))
             }
@@ -919,16 +864,13 @@ const App: React.FC = () => {
         selectedTab.name=newname
         setSelectedTabName(newname)
     }
-
-    const onManageClustersClosed = (cc:Cluster[]) => {
+ 
+    const onCloseManageClusters = (cc:Cluster[]) => {
         setShowManageClusters(false)
         let otherClusters = cc.filter (c => !c.source)
         var payload=JSON.stringify(otherClusters)
         fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addPostAuthorization(accessString, payload))
-        for (var c of otherClusters) {
-            setClusterStatus(c)
-        }
-        setClusters(cc)
+        setClusters([...cc])
     }
 
     const onLoginClose = (user:User|undefined, firstTime:boolean) => {
@@ -947,14 +889,6 @@ const App: React.FC = () => {
         setFirstLogin(false)
         if (exit) setLogged(false)
     }
-
-    if (!logged) return (<>
-        <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
-            <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
-                <Login onClose={onLoginClose}></Login>
-            </SessionContext.Provider>
-        </div>
-    </>)
 
     const showChannelSetup = () => {
         if (!selectedTab || !selectedTab.channel || !selectedTab.channel.getSetupVisibility()) return 
@@ -987,7 +921,15 @@ const App: React.FC = () => {
         return <>{icon}&nbsp;{name}</>
     }
 
-    return (<>
+    if (!logged) return (<>
+        <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
+            <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
+                <Login onClose={onLoginClose}></Login>
+            </SessionContext.Provider>
+        </div>
+    </>)
+
+    return (
         <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
             <AppBar position='sticky' elevation={0} sx={{ zIndex: 99, height:'64px' }}>
                 <Toolbar>
@@ -1010,7 +952,7 @@ const App: React.FC = () => {
             </Drawer>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '92vh' }}>
-                <ResourceSelector clusters={clusters} channels={backChannels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }}/>
+                <ResourceSelector clusters={clusters} backChannels={backChannels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }} data-refresh={refreshTabContent}/>
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
                     <Tabs value={selectedTabName} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' sx={{ml:1}}>
                         { tabs.length>0 && tabs.map(tab => {
@@ -1026,27 +968,25 @@ const App: React.FC = () => {
                     <Typography sx={{ flexGrow: 1 }}></Typography>
                 </Stack>
 
-                { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} />}
+                { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab} selectedTabIndex={selectedTabIndex} backChannels={backChannels}/>}
                 <TabContent channel={selectedTab?.channel} webSocket={selectedTab?.ws} channelObject={selectedTab?.channelObject} refreshTabContent={refreshTabContent} />
             </Box>
 
             { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs} oldname={selectedTab?.name}/> }
             { showSaveBoard && <SaveBoard onClose={onSaveBoardClosed} name={currentBoardName} description={currentBoardDescription} values={boards} /> }
             { showSelectBoard && <SelectBoard onSelect={onSelectBoardClosed} values={boards} action={selectBoardAction}/> }
-            { showManageClusters && <ManageClusters onClose={onManageClustersClosed} clusters={clusters}/> }
+            { showManageClusters && <ManageClusters onClose={onCloseManageClusters} clusters={clusters}/> }
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
-
             { showChannelSetup() }
-
             { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settings} /> }
-            { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.metricsInterval} /> }
+            { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.kwirthData?.metricsInterval} /> }
             { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
 
             { msgBox }
         </SessionContext.Provider>
-    </>)
+    )
 }
 
 export default App

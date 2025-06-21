@@ -23,6 +23,8 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const [chart, setChart] = useState(metricsUiConfig.chart)
     const [filter, setFilter] = useState('')
 
+    console.log(props.channelObject)
+
     const ok = () =>{
         metricsInstanceConfig.mode = metricsMode
         metricsInstanceConfig.interval = metricsInterval

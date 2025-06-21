@@ -18,7 +18,6 @@ export class MetricsApi {
             .get( async (req:Request, res:Response) => {
                 try {
                     let json = this.clusterInfo.metrics.getMetricsList()
-                    console.log(json)
                     res.status(200).json(json)
                 }
                 catch (err) {

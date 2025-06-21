@@ -1,6 +1,6 @@
 import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, KubernetesObject } from '@kubernetes/client-node'
 import Docker from 'dockerode'
-import { ConfigApi } from './api/ConfigApi'
+import { ConfigApi, KwirthData } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
 import { KubernetesConfigMaps } from './tools/KubernetesConfigMaps'
 import { VERSION } from './version'
@@ -15,7 +15,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import { WebSocketServer } from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, KwirthData, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessage, RouteMessage } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessage, RouteMessage } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { AuthorizationManagement } from './tools/AuthorizationManagement'
 
@@ -62,17 +62,17 @@ var dockerApi: Docker = new Docker()
 var kwirthData: KwirthData
 var clusterInfo: ClusterInfo = new ClusterInfo()
 
-const group = 'mygroup.example.com';
-const version = 'v1';
-const namespace = 'default';
-const plural = 'myresources';
-const path = `/apis/${group}/${version}/namespaces/${namespace}/${plural}`;
+// const group = 'mygroup.example.com';
+// const version = 'v1';
+// const namespace = 'default';
+// const plural = 'myresources';
+//const path = `/apis/${group}/${version}/namespaces/${namespace}/${plural}`;
 
 var saToken: ServiceAccountToken
 var secrets: ISecrets
 var configMaps: IConfigMaps
-const rootPath = process.env.KWIRTH_ROOTPATH || process.env.ROOTPATH || ''
-const masterKey = process.env.KWIRTH_MASTERKEY || process.env.MASTERKEY || 'Kwirth4Ever'
+const rootPath = process.env.ROOTPATH || ''
+const masterKey = process.env.MASTERKEY || 'Kwirth4Ever'
 const channelLogEnabled = Boolean(process.env.CHANNEL_LOG) || true
 const channelMetricsEnabled = Boolean(process.env.CHANNEL_METRICS) || true
 const channelAlertEnabled = Boolean(process.env.CHANNEL_ALERT) || true
@@ -122,11 +122,11 @@ const getKubernetesData = async ():Promise<KwirthData> => {
     const pod = pods.body.items.find(p => p.metadata?.name === podName)  
     if (pod && pod.metadata?.namespace) {
         let depName = (await AuthorizationManagement.getPodControllerName(appsApi, pod, true)) || ''
-        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES }
+        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:60, channels: [] }
     }
     else {
         // this namespace will be used to access secrets and configmaps
-        return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES }
+        return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:60, channels: [] }
     }
 }
 
@@ -836,7 +836,7 @@ const runKubernetes = async () => {
     })
 }
 
-const initKubernetesCluster = async (token:string, loadMetrics:boolean) : Promise<void> => {
+const initKubernetesCluster = async (token:string, metricsRequired:boolean) : Promise<void> => {
     // initialize cluster
     clusterInfo.token = token
     clusterInfo.kubeConfig = kubeConfig
@@ -859,7 +859,7 @@ const initKubernetesCluster = async (token:string, loadMetrics:boolean) : Promis
     console.log('  Flavour:', clusterInfo.flavour)
     console.log('  Nodes:', clusterInfo.nodes.size)
 
-    if (loadMetrics) {
+    if (metricsRequired) {
         clusterInfo.metrics = new Metrics(clusterInfo)
         clusterInfo.metricsInterval = 60
         await clusterInfo.metrics.startMetrics()
@@ -891,12 +891,15 @@ const launchKubernetes = async() => {
                     if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
                     channels.set('echo', new EchoChannel(clusterInfo))
+                    kwirthData.channels =  Array.from(channels.keys()).map(k => {
+                        return channels.get(k)?.getChannelData()
+                    })
 
                     // Detect if any channel requires metrics
-                    let requireMetrics = Array.from(channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)
-                    console.log('Metrics required: ', requireMetrics)
+                    let metricsRequired = Array.from(channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)
+                    console.log('Metrics required: ', metricsRequired)
 
-                    await initKubernetesCluster(token, requireMetrics)
+                    await initKubernetesCluster(token, metricsRequired)
                     clusterInfo.type = kwirthData.clusterType
 
                     console.log(`Enabled channels for this (kubernetes) run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
@@ -981,7 +984,9 @@ const launchDocker = async() => {
         version: VERSION,
         lastVersion: VERSION,
         clusterName: 'inDocker',
-        clusterType: ClusterTypeEnum.DOCKER
+        clusterType: ClusterTypeEnum.DOCKER,
+        metricsInterval:60,
+        channels: []
     }
     clusterInfo.nodes = new Map()
     clusterInfo.metrics = new Metrics(clusterInfo)

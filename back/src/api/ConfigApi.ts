@@ -1,11 +1,27 @@
 import express, { Request, Response} from 'express'
-import { ClusterTypeEnum, KwirthData } from '@jfvilas/kwirth-common'
 import { ApiKeyApi } from './ApiKeyApi'
 import { ClusterInfo } from '../model/ClusterInfo'
 import { IChannel } from '../channels/IChannel'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import Docker from 'dockerode'
 import { applyAllResources, deleteAllResources } from '../tools/Trivy'
+
+export enum ClusterTypeEnum {
+    KUBERNETES = 'kubernetes',
+    DOCKER = 'docker'
+}
+
+export interface KwirthData {
+    version: string
+    lastVersion: string
+    clusterName: string
+    clusterType: ClusterTypeEnum
+    inCluster: boolean
+    namespace: string
+    deployment: string
+    metricsInterval: number
+    channels: any[]
+}
 
 export class ConfigApi {
     public route = express.Router()
@@ -23,35 +39,16 @@ export class ConfigApi {
         this.dockerApi = new Docker()
 
         // return kwirth version information
-        this.route.route('/version')
+        this.route.route('/info')
             .get( async (req:Request, res:Response) => {
                 try {
                     res.status(200).json(this.kwirthData)
                 }
                 catch (err) {
-                    res.status(500).json([])
+                    res.status(500).json({})
                     console.log(err)
                 }
             })
-
-        // returns cluster information of the k8 cluster which this kwirth is connected to or running inside
-        this.route.route('/cluster')
-            .all( async (req:Request,res:Response, next) => {
-                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
-                next()
-            })
-            .get( async (req:Request, res:Response) => {
-                try {
-                    let chList:string[] =  [...Array.from(channels.keys())]
-                    let cluster={ name:kwirthData.clusterName, inCluster:kwirthData.inCluster, metricsInterval: this.clusterInfo.metricsInterval, channels: chList }
-                    res.status(200).json(cluster)
-                }
-                catch (err) {
-                    res.status(500).json([])
-                    console.log(err)
-                }
-            })
-        
             
         // returns cluster information of the k8 cluster which this kwirth is connected to or running inside
         this.route.route('/trivy')

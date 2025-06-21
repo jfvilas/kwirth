@@ -1,4 +1,5 @@
 enum LogSortOrderEnum {
+    NONE = 'none',
     TIME = 'time',
     POD = 'pod'
 }

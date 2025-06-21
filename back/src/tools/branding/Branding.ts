@@ -11,8 +11,7 @@ export const getLastKwirthVersion = async (kwirthData:KwirthData) : Promise<stri
                 var regex = /^\d+\.\d+\.\d+$/
                 if (regex.test(result.name)) {
                     if (versionGreatThan(result.name, kwirthData.version)) {
-                        console.log(`New version available: ${result.name}`)
-                        //kwirthData.lastVersion=result.name
+                        console.log(`New Kwirth version available: ${result.name}`)
                         return result.name
                     }
                 }

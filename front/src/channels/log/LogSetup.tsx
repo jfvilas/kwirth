@@ -2,7 +2,10 @@ import React, { useState, ChangeEvent } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormLabel, Radio, RadioGroup, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { Subject } from '@mui/icons-material'
-import { ILogInstanceConfig, ILogUiConfig } from './LogConfig'
+import { ILogInstanceConfig, ILogUiConfig, LogSortOrderEnum } from './LogConfig'
+import { DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers'
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment'
+import { Moment } from 'moment'
 
 const LogIcon = <Subject />
 
@@ -18,7 +21,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const [follow, setFollow] = useState(logUiConfig.follow)
     const [fromStart, setFromStart] = useState(logInstanceConfig.fromStart)
     const [sortOrder, setSortOrder] = useState(logUiConfig.sortOrder)
-
+    const [value, setValue] = React.useState<Moment | null>()
     const onChangeMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
         setMaxMessages(+event.target.value)
     }
@@ -71,7 +74,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                             <TextField value={maxPerPodMessages} onChange={onChangeMaxPerPodMessages} variant='standard'label='Max per Pod messages' SelectProps={{native: true}} type='number' fullWidth />
                             <Stack spacing={1}>
                                 <FormLabel >Message sort order:</FormLabel>
-                                <RadioGroup defaultValue={'none'} value={sortOrder} onChange={(event) => setSortOrder(event.target.value)}>
+                                <RadioGroup defaultValue={'none'} value={sortOrder} onChange={(event) => setSortOrder(event.target.value as LogSortOrderEnum)}>
                                     <Stack spacing={-1}>
                                         <Typography><Radio value='none'/>Show messages as they arrive</Typography>
                                         <Typography><Radio value='pod' />Keep together messages from the same pod</Typography>
@@ -98,6 +101,16 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                             <Switch checked={follow} onChange={onChangeFollow}/>
                             <Typography>Follow new messages</Typography>
                         </Stack>
+                        <LocalizationProvider dateAdapter={AdapterMoment}>
+                        <DateTimePicker
+                            renderInput={(props) => <TextField {...props} />}
+                            label="DateTimePicker"
+                            value={value}
+                            onChange={(newValue) => {
+                            setValue(newValue);
+                            }}
+                        />
+                        </LocalizationProvider>                        
                     </div>
                 </Stack>
             </DialogContent>

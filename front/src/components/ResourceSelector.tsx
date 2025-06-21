@@ -41,7 +41,7 @@ interface IProps {
     onAdd: (resource:IResourceSelected) => void
     onChangeCluster: (clusterName:string) => void
     clusters: Cluster[]
-    channels: string[]
+    backChannels: any[]
     sx: SxProps
 }
 
@@ -62,10 +62,11 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     const [pods, setPods] = useState<string[]>([])
     const [allContainers, setAllContainers] = useState<string[]>([])
     const [containers, setContainers] = useState<string[]>([])
-    const [channel, setChannel] = useState(props.channels.length>0? props.channels[0]  as InstanceMessageChannelEnum : InstanceMessageChannelEnum.LOG)
+    const [channel, setChannel] = useState(props.backChannels.length>0? props.backChannels[0]  as InstanceMessageChannelEnum : InstanceMessageChannelEnum.LOG)
     const [msgBox, setMsgBox] = useState(<></>)
 
     let isDocker = cluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER
+    console.log(props.clusters)
 
     const getNamespaces = async (cluster:Cluster) => {
         if (cluster) {
@@ -86,21 +87,6 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         setAllGroups((prev) => [...prev, ...data.map(d => d.type+'+'+d.name)])
         setGroups([])
     }
-
-    // const loadAllPodsOld = async (namespace:string, group:string) => {
-    //     if (isDocker) {
-    //         let [gtype,gname] = group.split('+')
-    //         let response = await fetch(`${cluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(cluster!.accessString))
-    //         let data = await response.json()
-    //         setAllPods((prev) => [...prev, ...data])
-    //     }
-    //     else {
-    //         let [gtype,gname] = group.split('+')
-    //         let response = await fetch(`${cluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(cluster!.accessString))
-    //         let data = await response.json()
-    //         setAllPods((prev) => [...prev, ...data])
-    //     }
-    // }
 
     const loadAllPods = async (namespaces:string[], groups:string[]) => {
         if (isDocker) {
@@ -281,6 +267,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 <InputLabel>Cluster</InputLabel>
                 <Select value={cluster?.name} onChange={onChangeCluster}>
                 { props.clusters?.map( (cluster) => {
+                    console.log(cluster.name, cluster.enabled)
                     return <MenuItem key={cluster.name} value={cluster.name} disabled={!cluster.enabled}>
                         {getIcon(cluster)} &nbsp; {cluster.name}
                     </MenuItem>
@@ -353,11 +340,8 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
 
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={cluster.name === ''}>
                 <InputLabel >Channel</InputLabel>
-                <Select value={props.channels.length>0?channel:''} onChange={onChangeChannel}> 
-                    {
-                        //cluster.channels? cluster.channels.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>) : props.channels?.map(c => <MenuItem key={c} value={c}>{c}</MenuItem> )
-                        props.channels.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)
-                    }
+                <Select value={props.backChannels.length>0?channel:''} onChange={onChangeChannel}> 
+                    { props.backChannels.map(c => <MenuItem key={c.id} value={c.id}>{c.id}</MenuItem>) }
                 </Select>
             </FormControl>
 
@@ -367,5 +351,5 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     </>)
 }
 
-export { ResourceSelector }
 export type { IResourceSelected }
+export { ResourceSelector }

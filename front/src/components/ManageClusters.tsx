@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material'
-import { Cluster } from '../model/Cluster'
+import { Cluster, KwirthData } from '../model/Cluster'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxWaitCancel, MsgBoxYesNo } from '../tools/MsgBox'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
+import { readClusterInfo } from '../tools/Global'
 
 interface IProps {
   onClose:(clusters:Cluster[]) => void
@@ -16,29 +17,36 @@ const ManageClusters: React.FC<IProps> = (props:IProps) => {
     const [url, setUrl] = useState<string>('')
     const [accessKey, setAccessKey] = useState<string>('')
     const [msgBox, setMsgBox] =useState(<></>)
+    const [refresh, setRefresh] = useState(0)
 
     const onClusterSelected = (idSelected:string|null) => {
-        var cluster=clusters?.find(k => k.id===idSelected)
-        setSelectedCluster(cluster)
-        setName(cluster?.name!)
-        setUrl(cluster?.url!)
-        setAccessKey(cluster?.accessString!)
+        let cluster=clusters?.find(k => k.id===idSelected)
+        if (cluster) {
+            setSelectedCluster(cluster)
+            setName(cluster.name)
+            setUrl(cluster.url)
+            setAccessKey(cluster.accessString)
+        }
     }
 
-    const onClickSave= async () => {
+    const onClickSave = async () => {
         if (selectedCluster) {
-            selectedCluster.accessString=accessKey
-            selectedCluster.name=name
-            selectedCluster.url=url
-            clusters.splice(clusters?.findIndex(c => c.id===selectedCluster.id)!,1)
-            clusters?.push(selectedCluster)
+            selectedCluster.accessString = accessKey
+            selectedCluster.name = name
+            selectedCluster.url = url
+            selectedCluster.kwirthData = undefined
+            clusters.splice(clusters.findIndex(c => c.id===selectedCluster.id),1)
+            clusters.push(selectedCluster)
+            readClusterInfo(selectedCluster).then ( () => { setRefresh(Math.random()) })
         }
         else {
-            var c=new Cluster()
-            c.accessString=accessKey
-            c.name=name
-            c.url=url
-            clusters?.push(c)
+            var c = new Cluster()
+            c.accessString = accessKey
+            c.name = name
+            c.url = url
+            c.kwirthData = undefined
+            clusters.push(c)
+            readClusterInfo(c).then ( () => { setRefresh(Math.random()) })
         }
         setName('')
         setUrl('')
@@ -49,28 +57,26 @@ const ManageClusters: React.FC<IProps> = (props:IProps) => {
     const onClickTest= async () => {
         try {
             let kwirthOk = false
-            let apiKeyOk = false
             setMsgBox (MsgBoxWaitCancel('Test cluster','In order to add cluster to your cluster list we must first ensure we can connect with it and, if so, test if Kwirth is available and, if so, if evaluate Kwirth version for knowing if it is suitable for being connected to this Kwirth server.', setMsgBox))
-            let response = await fetch(`${url}/config/version`, addGetAuthorization(accessKey))
-            let data = await response.json()
+            let response = await fetch(`${url}/config/info`, addGetAuthorization(accessKey))
+            let data = await response.json() as KwirthData
             kwirthOk = true
+           
+            let status = `Name: ${data.clusterName}<br/>`
+            status += `Namespace: ${data.namespace}<br/>`
+            status += `Deployment: ${data.deployment}<br/>`
+            status += `inCluster: ${data.inCluster}<br/>`
+            status += `Version: ${data.version}<br/>`
+            status += `Last version: ${data.lastVersion}<br/>`
+            status += `Cluster type: ${data.clusterType}<br/>`
+            status += `Metrics interval: ${data.metricsInterval}`
 
-            
-            // connected, test api key
-            let channels:string[] = []
-            response = await fetch(`${url}/config/cluster`, addGetAuthorization(accessKey))
-            if (response.status === 200) {
-                apiKeyOk = true
-                channels = (await response.json()).channels
-            }
-
-            let status = JSON.stringify(data).replaceAll(',',',<br/>')
-            if (status) {
-                status = status.replaceAll('{','').replaceAll('}','').replaceAll(':',':  ').replaceAll('"','')
-            }
-
-            if (kwirthOk && apiKeyOk) {
-                setMsgBox(MsgBoxOk('Test cluster',`Connection to cluster and API key have been <font color=green>succesfully tested</font>. This is cluster data: <br/><br/>${status}<br/><br/>And these are supported channels: <br/><b>${channels.join('<br/>')}</b>`, setMsgBox))
+            if (kwirthOk) {
+                let suppChannels  = data.channels.map(c => {
+                    let suppSources  = '['+c.sources.join(',')+']'
+                    return `<b>${c.id}</b>: ${c.routable?'route ':''}${c.pauseable?'pause ':''}${c.modifyable?'modify ':''}${c.reconnectable?'reconnect ':''}${c.metrics?'metrics ':''} ${suppSources}`
+                }).join('<br/>')
+                setMsgBox(MsgBoxOk('Test cluster',`Connection to cluster and API key have been <font color=green>succesfully tested</font>. This is cluster data: <br/><br/>${status}<br/><br/>And these are supported channels: <br/>${suppChannels}`, setMsgBox))
             }
             else {
                 if (kwirthOk) {
@@ -110,7 +116,7 @@ const ManageClusters: React.FC<IProps> = (props:IProps) => {
     return (<>
         <Dialog open={true} fullWidth maxWidth='md'>
             <DialogTitle>Manage clusters</DialogTitle>
-            <DialogContent>
+            <DialogContent data-refresh={refresh}>
                 <Stack sx={{ display: 'flex', flexDirection: 'row' }}>
                     <List sx={{flexGrow:1, mr:2, width:'50vh' }}>
                         { clusters?.map(c => 
