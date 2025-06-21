@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { MetricsObject } from './MetricsObject'
+import { MetricsEventSeverityEnum, MetricsObject } from './MetricsObject'
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
-import { Alert, Box, Button, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button, Snackbar, Stack, Typography } from '@mui/material'
 import { IContentProps } from '../IChannel'
 import { MetricsUiConfig } from './MetricsConfig'
 
@@ -14,8 +14,8 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let metricsObject:MetricsObject = props.channelObject.uiData
     let metricsUiConfig:MetricsUiConfig = props.channelObject.uiConfig
 
-    console.log('render')
     const [refresh, setRefresh] = useState(false)
+    const [refreshTabContent, setRefreshTabContent] = useState(0)
     const colours = [
         "#6e5bb8", // morado oscuro
         "#4a9076", // verde oscuro
@@ -195,20 +195,26 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         )
     }
 
+    const handleClose = (reason:string, dataMetrics:MetricsObject, event:{ severity:MetricsEventSeverityEnum, text:string }) => {
+        dataMetrics.events = dataMetrics.events.filter(e => e.severity!==event.severity && e.text!==event.text)
+        setRefreshTabContent(Math.random())
+    }
+
     const formatMetricsError = (dataMetrics:MetricsObject) => {
         if (!dataMetrics.events || dataMetrics.events.length === 0) return <></>
 
         return <>
             {dataMetrics.events.map((event,index) => { 
-                return <Alert severity={event.severity} action={<Button onClick={() => { dataMetrics.events.splice(index,1); setRefresh(!refresh)} }>Remove</Button>}>{event.text}</Alert>
+                return (
+                    <Snackbar open={true} autoHideDuration={3000} onClose={(e, r) => handleClose(r, dataMetrics, event)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+                        <Alert severity={event.severity} action={<Button onClick={() => { dataMetrics.events.splice(index,1); setRefresh(!refresh)} }>Dismiss</Button>} sx={{alignItems:'center'}}>{event.text}</Alert>
+                    </Snackbar>
+                )
             })}
         </>
     }
 
     const formatMetrics = () => {
-        //let metricsObject:MetricsObject = props.channelObject.uiData
-        //let metricsUiConfig:MetricsUiConfig = props.channelObject.uiConfig
-
         if (!metricsUiConfig.metricsList || metricsObject.assetMetricsValues.length === 0) {
             return <>{formatMetricsError(metricsObject)}</>
         }
@@ -280,7 +286,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     return (
-        <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
+        <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }} data-refresh={refreshTabContent}>
             {formatMetrics()}
         </Box>
     )
