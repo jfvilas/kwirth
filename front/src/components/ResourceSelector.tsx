@@ -66,7 +66,6 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     const [msgBox, setMsgBox] = useState(<></>)
 
     let isDocker = cluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER
-    console.log(props.clusters)
 
     const getNamespaces = async (cluster:Cluster) => {
         if (cluster) {
@@ -267,7 +266,6 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 <InputLabel>Cluster</InputLabel>
                 <Select value={cluster?.name} onChange={onChangeCluster}>
                 { props.clusters?.map( (cluster) => {
-                    console.log(cluster.name, cluster.enabled)
                     return <MenuItem key={cluster.name} value={cluster.name} disabled={!cluster.enabled}>
                         {getIcon(cluster)} &nbsp; {cluster.name}
                     </MenuItem>

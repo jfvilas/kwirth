@@ -40,7 +40,8 @@ import { AlertChannel } from './channels/alert/AlertChannel'
 import { MetricsChannel } from './channels/metrics/MetricsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { OpsChannel } from './channels/ops/OpsChannel'
-import { readClusterInfo } from './tools/Global'
+import { getMetricsNames, readClusterInfo } from './tools/Global'
+import { MetricDescription } from './channels/metrics/MetricDescription'
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883'
@@ -156,6 +157,8 @@ const App: React.FC = () => {
         srcCluster.accessString = accessString
         srcCluster.source = true
         srcCluster.enabled = true
+        let srcMetricsRequired = Array.from(srcCluster.kwirthData.channels).reduce( (prev, current) => { return prev || current.metrics}, false)
+        if (srcMetricsRequired) getMetricsNames(srcCluster)
         if (versionGreatThan(srcCluster.kwirthData.version, srcCluster.kwirthData.lastVersion)) {
             setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
         }
@@ -168,7 +171,7 @@ const App: React.FC = () => {
             clusterList = clusterList.filter (c => c.name !== srcCluster.name)
         }
         for (let cluster of clusterList)
-            readClusterInfo(cluster).then( () => {setRefreshTabContent(Math.random())})
+            readClusterInfo(cluster).then( () => { setRefreshTabContent(Math.random()) })
         clusterList.push(srcCluster)
         setClusters(clusterList)
     }
@@ -201,7 +204,7 @@ const App: React.FC = () => {
             setSelectedClusterName(clusterName)
             let usableChannels = [...cluster.kwirthData.channels]
             usableChannels = usableChannels.filter(c => Array.from(frontChannels.keys()).includes(c.id))
-            console.log('usableChannels',usableChannels)
+            //+++ pending improve ux on resrouce selector
             setBackChannels(usableChannels)
         }
     }
@@ -901,10 +904,9 @@ const App: React.FC = () => {
         if (props.channelObject) {
             let cluster = clusters.find(c => c.name===selectedTab?.channelObject.clusterName)
             if (cluster && selectedTab.channel.requiresMetrics()) {
-                props.channelObject.metricsList = cluster?.metricsList!
+                props.channelObject.metricsList = cluster.metricsList
             }
             if (cluster &&  selectedTab.channel.requiresAccessString()) {
-                let cluster = clusters.find(c => c.name===selectedTab?.channelObject.clusterName)
                 props.channelObject.accessString = cluster?.accessString
             }
         }
