@@ -1,11 +1,11 @@
-import React, { useState, ChangeEvent } from 'react'
+import React, { useState, ChangeEvent, useRef } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormLabel, Radio, RadioGroup, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { Subject } from '@mui/icons-material'
 import { ILogInstanceConfig, ILogUiConfig, LogSortOrderEnum } from './LogConfig'
-import { DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers'
+import { DateTimePicker, LocalizationProvider, renderTimeViewClock } from '@mui/x-date-pickers'
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment'
-import { Moment } from 'moment'
+import moment from 'moment'
 
 const LogIcon = <Subject />
 
@@ -21,7 +21,8 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const [follow, setFollow] = useState(logUiConfig.follow)
     const [fromStart, setFromStart] = useState(logInstanceConfig.fromStart)
     const [sortOrder, setSortOrder] = useState(logUiConfig.sortOrder)
-    const [value, setValue] = React.useState<Moment | null>()
+    const startTimeRef = useRef<any>(null)
+
     const onChangeMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
         setMaxMessages(+event.target.value)
     }
@@ -55,6 +56,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         logInstanceConfig.previous  = previous
         logInstanceConfig.timestamp = timestamp
         logInstanceConfig.fromStart = fromStart
+        logInstanceConfig.startTime = new Date(startTimeRef.current?.value).getTime()
         props.onChannelSetupClosed(props.channel, true)
     }
 
@@ -85,10 +87,23 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                         </Stack>
                     </div>
                     <div hidden={selectedTab!=='log'}>
-                        <Stack direction='row' alignItems={'baseline'}>
-                            <Switch checked={fromStart} onChange={onChangeFromStart}/>
-                            <Typography>Get messages from container start time</Typography>
+                        <Stack direction='column'>
+                            <Stack direction='row' alignItems={'baseline'}>
+                                <Switch checked={fromStart} onChange={onChangeFromStart}/>
+                                <Typography>Get messages from container start time</Typography>
+                            </Stack>
+                                <LocalizationProvider dateAdapter={AdapterMoment}>
+                                    <DateTimePicker
+                                        defaultValue={moment(Date.now()-30*60*1000)}
+                                        viewRenderers={{ hours: renderTimeViewClock, minutes: renderTimeViewClock, seconds: renderTimeViewClock }}
+                                        slots={{ textField: (p) => <TextField {...p} variant='standard' sx={{ml:'60px', '& .MuiInputBase-root': {border: 'none'}, '& .MuiInputLabel-root': { color: fromStart?'light-gray':'black' } }}/> }}
+                                        inputRef={startTimeRef}
+                                        disabled={fromStart}
+                                        label="Start time"
+                                    />
+                                </LocalizationProvider>
                         </Stack>
+
                         <Stack direction='row' alignItems={'baseline'}>
                             <Switch checked={previous} onChange={onChangePrevious}/>
                             <Typography>Get messages of previous container</Typography>
@@ -101,16 +116,6 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                             <Switch checked={follow} onChange={onChangeFollow}/>
                             <Typography>Follow new messages</Typography>
                         </Stack>
-                        <LocalizationProvider dateAdapter={AdapterMoment}>
-                        <DateTimePicker
-                            renderInput={(props) => <TextField {...props} />}
-                            label="DateTimePicker"
-                            value={value}
-                            onChange={(newValue) => {
-                            setValue(newValue);
-                            }}
-                        />
-                        </LocalizationProvider>                        
                     </div>
                 </Stack>
             </DialogContent>

@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { Terminal, ColorMode } from './terminal/Terminal'
 import { SelectTerminal } from './terminal/SelectTerminal'
 import { IContentProps } from '../IChannel'
-import { OPSHELPMESSAGE, OPSWELCOMEMESSAGE } from '../../tools/Constants'
+import { OPSHELPMESSAGE } from '../../tools/Constants'
 
 const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let opsObject:IOpsObject = props.channelObject.uiData
@@ -153,10 +153,18 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         </pre>
     }
 
-    const onShellInput = (prompt:string, shellInput:string) => {        
+    const onInputTerminal = (prompt:string, shellInput:string) => {        
         if (shellInput ==='clear') {
             if (opsObject.shell) {
-                opsObject.shell.lines= [ prompt ]
+                opsObject.shell.lines = [ prompt ]
+                setRefresh(Math.random())
+            }
+            return
+        }
+        if (shellInput.endsWith('^C')) {
+            if (opsObject.shell) {
+                opsObject.shell.lines[opsObject.shell.lines.length-1] += prompt + shellInput
+                opsObject.shell.lines.push(prompt)
                 setRefresh(Math.random())
             }
             return
@@ -184,7 +192,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (props.webSocket) props.webSocket.send(payload)
     }
 
-    const onShellKey = (key:string) => {
+    const onKeyTerminal = (key:string) => {
         if (key === 'F12') {
             opsObject.shell = undefined
             setRefresh(Math.random())
@@ -197,12 +205,6 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let index = +key-1
             if (index < opsObject.shells.length) {
                 opsObject.shell = opsObject.shells[index]
-                setRefresh(Math.random())
-            }
-        }
-        else if (key ==='^c') {
-            if (opsObject.shell) {
-                opsObject.shell.lines.push('^c')
                 setRefresh(Math.random())
             }
         }
@@ -222,7 +224,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
         let shell = opsObject.shells[shellIndex]
         return (
-        <Terminal name={`${namespace}/${pod}/${container}` + (shellIndex<10? ` (Key F${shellIndex+1})`:'') } colorMode={ColorMode.Light} onInput={onShellInput} onKey={onShellKey} inputEnabled={shell.connected} lines={shell.lines}>
+        <Terminal name={`${namespace}/${pod}/${container}` + (shellIndex<10? ` (Key F${shellIndex+1})`:'') } colorMode={ColorMode.Light} onInput={onInputTerminal} onKey={onKeyTerminal} inputEnabled={shell.connected} lines={shell.lines}>
             {shell.lines.map( (line,index) => <div key={index} className='react-terminal-line'>{line}</div>)}
         </Terminal>
         )

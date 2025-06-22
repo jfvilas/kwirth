@@ -86,13 +86,11 @@ export class LogChannel implements IChannel {
                                 }
                                 logObject.counters.set(bname, ++cnt)
                             }
-                            if ([...logObject.counters.values()].reduce((prev,acc) => {return prev+acc}, 0) > logUiConfig.maxMessages) {
-                                //+++ 
+                            if ([...logObject.counters.values()].reduce((prev,acc) => prev+acc, 0) > logUiConfig.maxMessages) {
                                 action = IChannelMessageAction.STOP
                             }
                         }
                         else {
-                            //+++ 
                             action = IChannelMessageAction.STOP
                         }
                     }
@@ -144,6 +142,8 @@ export class LogChannel implements IChannel {
 
         let logInstanceConfig:LogInstanceConfig = channelObject.instanceConfig
         let logConfig:LogInstanceConfig = new LogInstanceConfig()
+        console.log(logInstanceConfig)
+
         if (channelObject.uiConfig.startDiagnostics) {
             logConfig = {
                 timestamp: true,
@@ -155,7 +155,8 @@ export class LogChannel implements IChannel {
             logConfig = {
                 timestamp: logInstanceConfig.timestamp,
                 previous: logInstanceConfig.previous,
-                fromStart: logInstanceConfig.fromStart
+                fromStart: logInstanceConfig.fromStart,
+                ...(!logConfig.fromStart? {} : {startTime: logInstanceConfig.startTime})
             }
         }
         channelObject.instanceConfig = logConfig

@@ -277,14 +277,16 @@ class LogChannel implements IChannel {
             //         await new Promise(resolve => setTimeout(resolve, 10 * instance.assets.length))
             //         instance.isSending = false
             //     }
-            // })    
+            // })
             let logConfig = instanceConfig.data as LogConfig
+            console.log(logConfig)
+            let sinceSeconds = logConfig.startTime? Math.max( Math.floor((Date.now() - logConfig.startTime) / 1000), 1) : 1800
             let streamConfig = { 
                 follow: true,
                 pretty: false,
                 timestamps: logConfig.timestamp,
                 previous: Boolean(logConfig.previous),
-                ...(logConfig.fromStart? {} : {sinceSeconds:1800})
+                ...(logConfig.fromStart? {} : {sinceSeconds: sinceSeconds})
             }
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, asset.passThroughStream, streamConfig)
         }

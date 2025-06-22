@@ -309,11 +309,15 @@ const App: React.FC = () => {
         if (frontChannels.has(instanceMessage.channel)) {
             let tab = tabs.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
             if (!tab || !tab.channel || !tab.channelObject) return
-            if (tab.channel.processChannelMessage(tab.channelObject, wsEvent) === IChannelMessageAction.REFRESH) {
+            let action = tab.channel.processChannelMessage(tab.channelObject, wsEvent)
+            if (action === IChannelMessageAction.REFRESH) {
                 if (selectedTabRefName.current === tab.name)
                     setRefreshTabContent(Math.random())
                 else
                     setPendingTabs((prev)=> [...prev, tab!])
+            }
+            else if (action === IChannelMessageAction.STOP) {
+                stopChannel(tab)
             }
         }
         else {

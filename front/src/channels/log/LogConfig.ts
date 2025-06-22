@@ -28,12 +28,14 @@ interface ILogInstanceConfig {
     previous: boolean
     timestamp: boolean
     fromStart: boolean
+    startTime?: number
 }
 
 class LogInstanceConfig implements ILogInstanceConfig{
     previous = false
     timestamp = true
     fromStart = false
+    startTime? = 0
 }
 
 export type { ILogUiConfig, ILogInstanceConfig }
