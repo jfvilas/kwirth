@@ -31,33 +31,40 @@ export class MetricsChannel implements IChannel {
 
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA:
-                metricsObject.assetMetricsValues.push(msg)
-                if (metricsObject.assetMetricsValues.length > metricsUiConfig.depth) {
-                    metricsObject.assetMetricsValues.shift()
+                if (msg.timestamp===0) {  // initial metrics values
+                    let initialIndex = metricsObject.assetMetricsValues.findIndex(m => m.timestamp === 0)
+                    if (initialIndex>=0) {
+                        if (metricsObject.assetMetricsValues[initialIndex].assets.length<=msg.assets.length) {
+                            metricsObject.assetMetricsValues[initialIndex] = msg
+                            if (!this.paused) action = IChannelMessageAction.REFRESH
+                        }
+                    }
+                    else {
+                        metricsObject.assetMetricsValues.push(msg)
+                        if (!this.paused) action = IChannelMessageAction.REFRESH
+                    }
                 }
-                if (!this.paused) action = IChannelMessageAction.REFRESH
+                else {
+                    metricsObject.assetMetricsValues.push(msg)
+                    if (metricsObject.assetMetricsValues.length > metricsUiConfig.depth) metricsObject.assetMetricsValues.shift()
+                    if (!this.paused) action = IChannelMessageAction.REFRESH
+                }
                 break
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
-                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                    if (signalMessage.level === SignalMessageLevelEnum.INFO) {
-                        channelObject.instanceId = instanceMessage.instance
-                    }
-                    else {
-                        metricsObject.events.push( { severity: (signalMessage.level as string) as MetricsEventSeverityEnum, text: signalMessage.text })
-                        action = IChannelMessageAction.REFRESH
-                    }
-                }
-                else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
-                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                    metricsObject.events.push( { severity: MetricsEventSeverityEnum.INFO, text: signalMessage.text })
+                    channelObject.instanceId = instanceMessage.instance
                 }
                 else {
                     let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
-                    if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
-                        metricsObject.events.push( { severity: MetricsEventSeverityEnum.ERROR, text: signalMessage.text })
-                        action = IChannelMessageAction.REFRESH
+                    if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
+                        metricsObject.events.push( { severity: MetricsEventSeverityEnum.INFO, text: signalMessage.text })
+                    }
+                    else {
+                        if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
+                            metricsObject.events.push( { severity: MetricsEventSeverityEnum.ERROR, text: signalMessage.text })
+                            action = IChannelMessageAction.REFRESH
+                        }
                     }
                 }
                 break
@@ -69,55 +76,30 @@ export class MetricsChannel implements IChannel {
     }
 
     initChannel(channelObject:IChannelObject): boolean {
-        console.log('initChannel')
         channelObject.uiData = new MetricsObject()
         channelObject.instanceConfig = new MetricsInstanceConfig()
         channelObject.uiConfig = new MetricsUiConfig()
-
-        // let metricsObject = new MetricsObject()
-        // metricsObject.depth = settingsRef.current?.metricsDepth || 10
-        // metricsObject.width = settingsRef.current?.metricsWidth || 2
-        // metricsObject.chart = settingsRef.current?.metricsChart || 'line'
-        // metricsObject.merge = settingsRef.current?.metricsMerge || false
-        // metricsObject.stack = settingsRef.current?.metricsStack || false
-        // metricsObject.metrics = []
-        // newTab.channelObject.uiData = metricsObject
-
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        console.log('startChannel')
-
         channelObject.uiData.events = []
         channelObject.uiData.assetMetricsValues=[]
-        // let metricsConfig:MetricsInstanceConfig = {
-        //     mode: channelObject.instanceConfig.mode,
-        //     aggregate: channelObject.instanceConfig.aggregate,
-        //     interval: channelObject.instanceConfig.interval,
-        //     metrics: channelObject.instanceConfig.metrics,
-        // }
-        // instanceConfig.scope = InstanceConfigScopeEnum.STREAM
-        // instanceConfig.data = metricsConfig
-
         this.paused = false
         return true
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        console.log('pauseChannel')
         this.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        console.log('contChannel')
         this.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        console.log('stopChannel')
         this.paused = false
         return true
     }
@@ -132,6 +114,4 @@ export class MetricsChannel implements IChannel {
         return false
     }
 
-    // PRIVATE
-    
 }    

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react'
+import React, { useState, useContext, useRef } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material'
 import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox'
 import { SessionContext, SessionContextType } from '../model/SessionContext'
@@ -20,25 +20,20 @@ const Login: React.FC<IProps> = (props:IProps) => {
     const [newPassword2, setNewPassword2] = useState('')
 
     const login = async (user:string, password:string, newpassword:string='') => {
-        var payload
+        let response = undefined
         if (newpassword!=='') {
-            payload=JSON.stringify({user, password, newpassword})
             try {
-                return await fetch(backendUrl+'/login/password', addPostAuthorization('',payload))
+                response = await fetch(backendUrl+'/login/password', addPostAuthorization('', JSON.stringify({user, password, newpassword})))
             }
-            catch {
-                return undefined
-            }
+            catch {}
         }
         else {
-            payload=JSON.stringify({user, password})
             try {
-                return await fetch(backendUrl+'/login', addPostAuthorization('',payload))
+                response = await fetch(backendUrl+'/login', addPostAuthorization('', JSON.stringify({user, password})))
             }
-            catch {
-                return undefined
-            }
+            catch {}
         }
+        return response
     }
 
     const loginOk = (jsonResult:any) => {
@@ -47,7 +42,7 @@ const Login: React.FC<IProps> = (props:IProps) => {
     }
 
     const onClickOk = async () => {
-        var result
+        let result
         if(changingPassword) {
             if (newPassword1 === newPassword2) {
                 result = await login(user,password,newPassword1)
@@ -83,7 +78,7 @@ const Login: React.FC<IProps> = (props:IProps) => {
                         setMsgBox(MsgBoxOkError('Login',`You have entered invalid credentials.`, setMsgBox))
                         break
                     case 403:
-                        setMsgBox(MsgBoxOkError('Login',`Acces has been denied.`, setMsgBox))
+                        setMsgBox(MsgBoxOkError('Login',`Access has been denied.`, setMsgBox))
                         break
                     default:
                         setMsgBox(MsgBoxOkError('Login',`Unknown error.`, setMsgBox))

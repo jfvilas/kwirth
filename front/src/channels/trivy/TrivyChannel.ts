@@ -36,11 +36,9 @@ export class TrivyChannel implements IChannel {
                     }
                 }
                 else if (trivyMessageResponse.flow === InstanceMessageFlowEnum.UNSOLICITED) {
-                    console.log()
                     let asset = trivyMessageResponse.data
                     switch (trivyMessageResponse.msgsubtype) {
                         case 'score':
-                            console.log('newscore',trivyMessageResponse.data.score)
                             trivyObject.score = trivyMessageResponse.data.score
                             break
                         case 'add':
@@ -48,8 +46,6 @@ export class TrivyChannel implements IChannel {
                             break
                         case 'update':
                         case 'delete':
-                            console.log(trivyObject.known)
-                            console.log(asset)
                             trivyObject.known = (trivyObject.known as any[]).filter(a => a.namespace !== asset.namespace || a.name !== asset.name || a.container !== asset.container)
                             if (trivyMessageResponse.msgsubtype==='update') trivyObject.known.push(asset)
                             break
@@ -67,10 +63,7 @@ export class TrivyChannel implements IChannel {
                     this.trivyRequestScore(channelObject)
                 }
                 else {
-                    if (signalMessage.level!== SignalMessageLevelEnum.INFO) {
-                        console.log('SIGNAL RECEIVED')
-                        console.log(wsEvent.data)
-                    }
+                    if (signalMessage.level!== SignalMessageLevelEnum.INFO) console.log('SIGNAL RECEIVED',wsEvent.data)
                 }
                 break
             default:
@@ -83,7 +76,6 @@ export class TrivyChannel implements IChannel {
     }
 
     initChannel(channelObject:IChannelObject): boolean {
-        console.log('initChannel')
         channelObject.uiData = new TrivyObject()
         channelObject.instanceConfig = new TrivyInstanceConfig()
         channelObject.uiConfig = new TrivyUiConfig()
@@ -91,7 +83,6 @@ export class TrivyChannel implements IChannel {
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        console.log('startChannel')
         channelObject.uiData = new TrivyObject()
         channelObject.uiData.started=true
         this.paused = false
@@ -99,19 +90,16 @@ export class TrivyChannel implements IChannel {
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        console.log('pauseChannel')
         this.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        console.log('contChannel')
         this.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        console.log('stopChannel')
         this.paused = false
         channelObject.uiData.started=false
         return true

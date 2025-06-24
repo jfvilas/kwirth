@@ -127,20 +127,17 @@ export class LogChannel implements IChannel {
     }
 
     initChannel(channelObject:IChannelObject): boolean {
-        console.log('initChannel')
         channelObject.instanceConfig = new LogInstanceConfig()
         channelObject.uiConfig = new LogUiConfig()
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        console.log('startChannel')
         this.paused = false;
         channelObject.uiData = new LogObject()
 
         let logInstanceConfig:LogInstanceConfig = channelObject.instanceConfig
         let logConfig:LogInstanceConfig = new LogInstanceConfig()
-        console.log(logInstanceConfig)
 
         if (channelObject.uiConfig.startDiagnostics) {
             logConfig = {
@@ -162,19 +159,16 @@ export class LogChannel implements IChannel {
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        console.log('pauseChannel')
         this.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        console.log('contChannel')
         this.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        console.log('stopChannel')
         let logObject = channelObject.uiData as LogObject
         logObject.messages.push({
             text: '=========================================================================',

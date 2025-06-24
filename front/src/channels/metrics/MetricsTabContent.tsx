@@ -63,8 +63,10 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         for (var i=0; i<series[0].length; i++) {
             var item: { [key: string]: any } = {}
             for (var j=0; j<series.length; j++ ) {
-                item['timestamp'] =  series[0][i].timestamp
-                item[names[j]] = series[j][i].value
+                if (series[j][i]) {
+                    item['timestamp'] = series[0][i].timestamp
+                    item[names[j]] = series[j][i].value
+                }
             }
             resultSeries.push(item)
         }

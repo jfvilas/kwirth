@@ -66,7 +66,6 @@ export class AlertChannel implements IChannel {
     }
 
     initChannel(channelObject:IChannelObject): boolean {
-        console.log('initChannel')
         channelObject.uiData = new AlertObject()
         channelObject.instanceConfig = new AlertInstanceConfig()
         channelObject.uiConfig = new AlertUiConfig()
@@ -74,26 +73,22 @@ export class AlertChannel implements IChannel {
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        console.log('startChannel')
         this.paused = false
         channelObject.uiData.firedAlerts = []
         return true
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        console.log('pauseChannel')
         this.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        console.log('contChannel')
         this.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        console.log('stopChannel')
         let alertObject = channelObject.uiData as AlertObject
         alertObject.firedAlerts.push({
             timestamp: Date.now(),

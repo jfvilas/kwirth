@@ -91,7 +91,6 @@ export class MetricsTools {
 
             if ('machine_scrape_error container_scrape_error'.includes(mname)) {
                 // we ignore scraping metrics
-                // +++ send errors to the user
                 continue
             }
 

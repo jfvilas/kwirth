@@ -49,7 +49,6 @@ export class EchoChannel implements IChannel {
     }
 
     initChannel(channelObject:IChannelObject): boolean {
-        console.log('initChannel')
         channelObject.instanceConfig = new EchoInstanceConfig()
         channelObject.uiConfig = new EchoUiConfig()
         channelObject.uiData = new EchoObject()
@@ -59,7 +58,6 @@ export class EchoChannel implements IChannel {
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        console.log('startChannel')
         let echoObject = channelObject.uiData as EchoObject
         echoObject.lines = [ 'Start']
         this.paused = false
@@ -67,19 +65,16 @@ export class EchoChannel implements IChannel {
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        console.log('pauseChannel')
         this.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        console.log('contChannel')
         this.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        console.log('stopChannel')
         let echoObject = channelObject.uiData as EchoObject
         echoObject.lines.push('==========================================================================')
         this.paused = false

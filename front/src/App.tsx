@@ -197,7 +197,7 @@ const App: React.FC = () => {
             setSelectedClusterName(clusterName)
             let usableChannels = [...cluster.kwirthData.channels]
             usableChannels = usableChannels.filter(c => Array.from(frontChannels.keys()).includes(c.id))
-            //+++ pending improve ux on resource selector
+            //+++ pending improve ux on resource selector (showing front/back channel availability)
             setBackChannels(usableChannels)
         }
     }
@@ -271,8 +271,7 @@ const App: React.FC = () => {
                 instance: ''
             }
             if (tab.ws && tab.ws.readyState === WebSocket.OPEN) tab.ws.send(JSON.stringify(instanceConfig))
-        //}, (settings?.keepAliveInterval || 60) * 1000,'')    
-        }, 60 * 1000,'')  // +++ keepalive settings user configurable
+        }, (settingsRef.current?.keepAliveInterval || 60) * 1000,'')
     }
 
     const onChangeTab = (_event:any, tabName?:string)=> {
@@ -473,6 +472,7 @@ const App: React.FC = () => {
             type: InstanceMessageTypeEnum.SIGNAL
         }
         if (selectedTab && selectedTab.channel) {
+            console.log('iconfig', instanceConfig)
             if (selectedTab.channel.stopChannel(selectedTab.channelObject)) setRefreshTabContent(Math.random())
             if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
             tab.channelStarted = false
@@ -854,18 +854,19 @@ const App: React.FC = () => {
 
     const onChannelSetupClosed = (channel:IChannel, start:boolean, defaultValues:boolean) => {
         channel.setSetupVisibility(false)
-        console.log(settingsRef.current)
-        if (defaultValues && settingsRef.current && selectedTab && selectedTab.channelObject) {
-            settingsRef.current.channels = settingsRef.current.channels.filter(c => c.id !== channel.getChannelId())
-            settingsRef.current.channels.push({
-                id: channel.getChannelId(),
-                uiSettings: selectedTab.channelObject.uiConfig,
-                instanceSettings: selectedTab.channelObject.instanceConfig
-            })
-            writeSettings()
+        if (selectedTab) {
+            if (defaultValues && settingsRef.current && selectedTab.channelObject) {
+                settingsRef.current.channels = settingsRef.current.channels.filter(c => c.id !== channel.getChannelId())
+                settingsRef.current.channels.push({
+                    id: channel.getChannelId(),
+                    uiSettings: selectedTab.channelObject.uiConfig,
+                    instanceSettings: selectedTab.channelObject.instanceConfig
+                })
+                writeSettings()
+            }
+            setRefreshTabContent(Math.random())  // we force rendering
+            if (start) startChannel(selectedTab)
         }
-        setRefreshTabContent(Math.random())  // we force rendering because react doesn't detect changes inside one channel inside frontChannels
-        if (start && selectedTab) startChannel(selectedTab)
     }
 
     const onRenameTabClosed = (newname:string|undefined) => {

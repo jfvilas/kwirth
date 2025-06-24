@@ -117,7 +117,6 @@ export class OpsChannel implements IChannel {
     }
 
     initChannel(channelObject:IChannelObject): boolean {
-        console.log('initChannel')
         channelObject.uiConfig = new OpsUiConfig()
         channelObject.uiData = new OpsObject()
         channelObject.instanceConfig = new OpsInstanceConfig()
@@ -125,7 +124,6 @@ export class OpsChannel implements IChannel {
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        console.log('startChannel')
         let opsObject:IOpsObject = channelObject.uiData
         this.paused = false
         opsObject.messages.push(...OPSWELCOMEMESSAGE, ...OPSHELPMESSAGE)
@@ -135,19 +133,16 @@ export class OpsChannel implements IChannel {
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        console.log('pauseChannel')
         this.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        console.log('contChannel')
         this.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        console.log('stopChannel')
         let opsObject:IOpsObject = channelObject.uiData
         this.paused = false
         opsObject.messages.push('=========================================================================')
