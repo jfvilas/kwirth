@@ -9,9 +9,11 @@ enum IChannelMessageAction {
 }
 
 interface ISetupProps {
-    onChannelSetupClosed: (channel:IChannel, start:boolean) => void
+    onChannelSetupClosed: (channel:IChannel, start:boolean, defaultValues:boolean) => void
     channel: IChannel
     channelObject: IChannelObject
+    uiSettings?: any
+    instanceSettings?: any
 }
 
 interface IContentProps {
@@ -36,8 +38,6 @@ interface IChannelObject {
 }
 
 interface IChannel {
-    getChannelUiConfig(): any
-    getChannelInstanceConfig(): any
     SetupDialog: React.FC<ISetupProps>
     TabContent: React.FC<IContentProps>
 

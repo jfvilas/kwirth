@@ -19,8 +19,6 @@ export class LogChannel implements IChannel {
     getScope() { return InstanceConfigScopeEnum.VIEW }
     getChannelId(): string { return 'log' }
     getChannelIcon(): JSX.Element { return LogIcon }
-    getChannelUiConfig(): any { return new LogUiConfig() }
-    getChannelInstanceConfig(): any { return new LogInstanceConfig() }
     
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }

@@ -18,8 +18,8 @@ import { ManageClusters } from './components/ManageClusters'
 import { ManageUserSecurity } from './components/security/ManageUserSecurity'
 import { ResourceSelector, IResourceSelected } from './components/ResourceSelector'
 import { TabContent } from './components/TabContent'
-import { SettingsUser } from './components/settings/SettingsUser'
 import { SettingsCluster } from './components/settings/SettingsCluster'
+import { SettingsUser } from './components/settings/SettingsUser'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/MsgBox'
@@ -74,10 +74,7 @@ const App: React.FC = () => {
 
     const [refreshTabContent, setRefreshTabContent] = useState(0)
 
-    // general
-    const [settings, setSettings] = useState<Settings>()
-    const settingsRef = useRef(settings)
-    settingsRef.current = settings
+    const settingsRef = useRef<Settings|null>(null)
 
     const [backChannels, setBackChannels] = useState<any[]>([])
     const backChannelsRef = useRef(backChannels)
@@ -124,7 +121,7 @@ const App: React.FC = () => {
         // only when user logs on / off
         if (logged) {
             if (clustersRef.current.length===0) getClusters()
-            if (!settingsRef.current) readSettings()
+            if (!settingsRef.current) readSettings() 
         }
     },[logged])
 
@@ -180,20 +177,16 @@ const App: React.FC = () => {
         let resp = await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString))
         if (resp.status===200) {
             var json=await resp.json()
-            if (json) {
-                var readSettings:Settings=JSON.parse(json) as Settings
-                setSettings(readSettings)
-            }
+            if (json && settingsRef) settingsRef.current = JSON.parse(json) as Settings
         }
         else {
-            setSettings(new Settings())
-            writeSettings(new Settings())
+            settingsRef.current = { channels: [], keepAliveInterval: 60 }
         }
     }
 
-    const writeSettings = async (newSettings:Settings) => {
-        setSettings(newSettings)
-        let payload=JSON.stringify(newSettings)
+    const writeSettings = async () => {
+        let payload = JSON.stringify(settingsRef.current)
+        console.log('payl', payload)
         fetch (`${backendUrl}/store/${user?.id}/settings/general`, addPostAuthorization(accessString, payload))
     }
 
@@ -204,7 +197,7 @@ const App: React.FC = () => {
             setSelectedClusterName(clusterName)
             let usableChannels = [...cluster.kwirthData.channels]
             usableChannels = usableChannels.filter(c => Array.from(frontChannels.keys()).includes(c.id))
-            //+++ pending improve ux on resrouce selector
+            //+++ pending improve ux on resource selector
             setBackChannels(usableChannels)
         }
     }
@@ -278,7 +271,8 @@ const App: React.FC = () => {
                 instance: ''
             }
             if (tab.ws && tab.ws.readyState === WebSocket.OPEN) tab.ws.send(JSON.stringify(instanceConfig))
-        }, (settings?.keepAliveInterval || 60) * 1000,'')  
+        //}, (settings?.keepAliveInterval || 60) * 1000,'')    
+        }, 60 * 1000,'')  // +++ keepalive settings user configurable
     }
 
     const onChangeTab = (_event:any, tabName?:string)=> {
@@ -839,9 +833,9 @@ const App: React.FC = () => {
         }
     }
 
-    const onSettingsUserClosed = (newSettings:Settings|undefined) => {
+    const onSettingsUserClosed = (ok:boolean) => {
         setShowSettingsUser(false)
-        if (newSettings) writeSettings(newSettings)
+        if (ok) writeSettings()
     }
 
     const onSettingsClusterClosed = (readMetricsInterval:number|undefined) => {
@@ -858,8 +852,18 @@ const App: React.FC = () => {
         }
     }
 
-    const onChannelSetupClosed = (channel:IChannel, start:boolean) => {
+    const onChannelSetupClosed = (channel:IChannel, start:boolean, defaultValues:boolean) => {
         channel.setSetupVisibility(false)
+        console.log(settingsRef.current)
+        if (defaultValues && settingsRef.current && selectedTab && selectedTab.channelObject) {
+            settingsRef.current.channels = settingsRef.current.channels.filter(c => c.id !== channel.getChannelId())
+            settingsRef.current.channels.push({
+                id: channel.getChannelId(),
+                uiSettings: selectedTab.channelObject.uiConfig,
+                instanceSettings: selectedTab.channelObject.instanceConfig
+            })
+            writeSettings()
+        }
         setRefreshTabContent(Math.random())  // we force rendering because react doesn't detect changes inside one channel inside frontChannels
         if (start && selectedTab) startChannel(selectedTab)
     }
@@ -902,8 +906,10 @@ const App: React.FC = () => {
         const SetupDialog = selectedTab.channel.SetupDialog
         let props:ISetupProps = {
             channel: selectedTab.channel,
-            onChannelSetupClosed: onChannelSetupClosed,
-            channelObject: selectedTab?.channelObject
+            onChannelSetupClosed,
+            channelObject: selectedTab.channelObject,
+            uiSettings:settingsRef.current?.channels.find(c => c.id === selectedTab?.channel?.getChannelId())?.uiSettings,
+            instanceSettings:settingsRef.current?.channels.find(c => c.id === selectedTab?.channel?.getChannelId())?.instanceSettings,
         }
         if (props.channelObject) {
             let cluster = clusters.find(c => c.name===selectedTab?.channelObject.clusterName)
@@ -985,7 +991,7 @@ const App: React.FC = () => {
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
             { showChannelSetup() }
-            { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settings} /> }
+            { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settingsRef.current} /> }
             { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.kwirthData?.metricsInterval} /> }
             { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }

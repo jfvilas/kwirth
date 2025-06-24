@@ -20,8 +20,6 @@ export class OpsChannel implements IChannel {
     getScope() { return InstanceConfigScopeEnum.GET}
     getChannelId(): string { return 'ops' }
     getChannelIcon(): JSX.Element { return OpsIcon }
-    getChannelUiConfig(): any { return new OpsUiConfig() }
-    getChannelInstanceConfig(): any { return new OpsInstanceConfig() }
     
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
@@ -120,15 +118,15 @@ export class OpsChannel implements IChannel {
 
     initChannel(channelObject:IChannelObject): boolean {
         console.log('initChannel')
+        channelObject.uiConfig = new OpsUiConfig()
         channelObject.uiData = new OpsObject()
         channelObject.instanceConfig = new OpsInstanceConfig()
-        channelObject.uiConfig = new OpsUiConfig()
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
         console.log('startChannel')
-        let opsObject = channelObject.uiData as OpsObject
+        let opsObject:IOpsObject = channelObject.uiData
         this.paused = false
         opsObject.messages.push(...OPSWELCOMEMESSAGE, ...OPSHELPMESSAGE)
         opsObject.shell = undefined

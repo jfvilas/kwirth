@@ -1,5 +1,5 @@
-import React, { useState, ChangeEvent } from 'react'
-import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField } from '@mui/material'
+import React, { useState, ChangeEvent, useRef } from 'react'
+import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, Stack, TextField } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { IAlertInstanceConfig, IAlertUiConfig } from './AlertConfig'
 import { Warning } from '@mui/icons-material'
@@ -13,10 +13,11 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const [info, setInfo] = useState('')
     const [warning, setWarning] = useState('')
     const [error, setError] = useState('')
-    const [regexInfo, setRegexInfo] = useState(alertInstanceConfig.regexInfo)
-    const [regexWarning, setRegexWarning] = useState(alertInstanceConfig.regexWarning)
-    const [regexError, setRegexError] = useState(alertInstanceConfig.regexError)
-    const [maxAlerts, setMaxAlerts] = useState(alertUiConfig.maxAlerts)
+    const [regexInfo, setRegexInfo] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexInfo : alertInstanceConfig.regexInfo)
+    const [regexWarning, setRegexWarning] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexWarning : alertInstanceConfig.regexWarning)
+    const [regexError, setRegexError] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexError : alertInstanceConfig.regexError)
+    const [maxAlerts, setMaxAlerts] = useState<number>(props.uiSettings? props.uiSettings.maxAlerts : alertUiConfig.maxAlerts)
+    const defaultRef = useRef<any>(null)
 
     const onChangeRegexInfo = (event:ChangeEvent<HTMLInputElement>) => {
         setInfo(event.target.value)
@@ -72,7 +73,7 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         alertInstanceConfig.regexInfo = regexInfo
         alertInstanceConfig.regexWarning = regexWarning
         alertInstanceConfig.regexError = regexError
-        props.onChannelSetupClosed(props.channel, true)
+        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked)
     }
 
     return (<>
@@ -88,40 +89,35 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                                 <TextField value={info} onChange={onChangeRegexInfo} label='Info' variant='standard'></TextField>
                                 <Button onClick={addInfo} size='small'>Add</Button>
                             </Stack>
-                            <Grid>
-                                {
-                                    regexInfo.map ((ri,index) => { return <Grid key={index} item><Chip label={ri} variant='outlined' onDelete={() => deleteChipInfo(ri)}/></Grid>})
-                                }
-                            </Grid>
+                            <Stack>{
+                                regexInfo && regexInfo.map ((ri,index) => { return <Grid key={index} item><Chip label={ri} variant='outlined' onDelete={() => deleteChipInfo(ri)}/></Grid>})
+                            }</Stack>
                         </Stack>
                         <Stack direction={'column'} spacing={1}>
                             <Stack direction={'row'}>
                                 <TextField value={warning} onChange={onChangeRegexWarning} label='Warning' variant='standard'></TextField>
                                 <Button onClick={addWarning} size='small'>Add</Button>
                             </Stack>
-                            <Grid>
-                                {
-                                    regexWarning.map ((ri,index) => { return <Grid key={index} item><Chip label={ri} variant='outlined' onDelete={() => deleteChipWarning(ri)}/></Grid>})
-                                }
-                            </Grid>
+                            <Stack>{
+                                regexWarning && regexWarning.map ((ri,index) => { return <Grid key={index} item><Chip label={ri} variant='outlined' onDelete={() => deleteChipWarning(ri)}/></Grid>})
+                            }</Stack>
                         </Stack>
                         <Stack direction={'column'} spacing={1}>
                             <Stack direction={'row'}>
                                 <TextField value={error} onChange={onChangeRegexError} variant='standard' label='Error'></TextField>
                                 <Button onClick={addError} size='small'>Add</Button>
                             </Stack>
-                            <Grid>
-                                {
-                                    regexError.map ((ri,index) => { return <Grid key={index} item><Chip label={ri} variant='outlined' onDelete={() => deleteChipError(ri)}/></Grid>})
-                                }
-                            </Grid>
+                            <Stack>{
+                                regexError && regexError.map ((ri,index) => { return <Grid key={index} item><Chip label={ri} variant='outlined' onDelete={() => deleteChipError(ri)}/></Grid>})
+                            }</Stack>
                         </Stack>
                     </Stack>
                 </Stack>
             </DialogContent>
             <DialogActions>
+                <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
                 <Button onClick={ok} disabled={regexInfo.length===0 && regexWarning.length===0 && regexError.length===0}>OK</Button>
-                <Button onClick={() => props.onChannelSetupClosed(props.channel, false)}>CANCEL</Button>
+                <Button onClick={() => props.onChannelSetupClosed(props.channel, false, false)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

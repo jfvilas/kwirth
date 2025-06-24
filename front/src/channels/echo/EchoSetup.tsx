@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField } from '@mui/material'
+import React, { useRef, useState } from 'react'
+import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { IEchoInstanceConfig, IEchoUiConfig } from './EchoConfig'
 import { Science } from '@mui/icons-material'
@@ -9,13 +9,15 @@ const EchoIcon = <Science />
 const EchoSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     let echoUiConfig:IEchoUiConfig = props.channelObject?.uiConfig
     let echoInstanceConfig:IEchoInstanceConfig = props.channelObject?.instanceConfig
-    const [interval, setInterval] = useState(echoInstanceConfig.interval)
-    const [maxLines, setMaxLines] = useState(echoUiConfig.maxLines)
+
+    const [interval, setInterval] = useState(props.instanceSettings? props.instanceSettings.interval : echoInstanceConfig.interval)
+    const [maxLines, setMaxLines] = useState(props.uiSettings? props.uiSettings.maxLines : echoUiConfig.maxLines)
+    const defaultRef = useRef<any>(null)
 
     const ok = () => {
         echoUiConfig.maxLines = maxLines
         echoInstanceConfig.interval = interval
-        props.onChannelSetupClosed(props.channel, true)
+        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked)
     }
 
     return (<>
@@ -28,8 +30,9 @@ const EchoSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                 </Stack>
             </DialogContent>
             <DialogActions>
+                <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
                 <Button onClick={ok}>OK</Button>
-                <Button onClick={() => props.onChannelSetupClosed(props.channel, false)}>CANCEL</Button>
+                <Button onClick={() => props.onChannelSetupClosed(props.channel, false, false)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

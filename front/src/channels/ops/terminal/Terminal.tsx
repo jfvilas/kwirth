@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent, ReactElement } from 'react';
 import './style.css';
   
-export enum ColorMode {
+export enum ColorModeEnum {
     Light,
-    Dark
+    Dark,
+    Terminal3270
 }
   
 export interface Props {
     name?: string
     height?: string
-    colorMode?: ColorMode
+    colorMode?: ColorModeEnum
     inputEnabled: boolean
     children: ReactElement[]
     startingInputValue?: string
@@ -83,8 +84,11 @@ const Terminal = ({name, height = '600px', colorMode, onInput, onKey, children, 
     }, [onInput])
   
     const classes = ['react-terminal-wrapper']
-    if (colorMode === ColorMode.Light) {
+    if (colorMode === ColorModeEnum.Light) {
         classes.push('react-terminal-light')
+    }
+    else if (colorMode === ColorModeEnum.Terminal3270) {
+        classes.push('react-terminal-3270')
     }
 
     const content = (): JSX.Element => {
@@ -107,7 +111,7 @@ const Terminal = ({name, height = '600px', colorMode, onInput, onKey, children, 
 
     return (
         <div className={ classes.join(' ') } data-terminal-name={name}>
-            <div className="react-terminal" style={{height}}>
+            <div className={`react-terminal`} style={{height}}>
                 {content()}
                 <div ref={scrollIntoViewRef}></div>
             </div>

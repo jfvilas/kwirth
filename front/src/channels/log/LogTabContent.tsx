@@ -2,13 +2,15 @@ import { InstanceConfigViewEnum, InstanceMessageTypeEnum, LogMessage, SignalMess
 import { ILogLine, LogObject } from './LogObject'
 import { Box } from '@mui/material'
 import { IContentProps } from '../IChannel'
+import { useRef } from 'react'
 
 const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let logObject = props.channelObject.uiData as LogObject
+    const lastLineRef = useRef(null)
 
     if (!props.channelObject.uiData || !props.channelObject.uiData) return <pre></pre>
 
-    const formatLogLine = (imessage:ILogLine|null) => {
+    const formatLogLine = (imessage:ILogLine) => {
         if (!imessage) return null
 
         let logMessage = imessage as LogMessage
@@ -44,13 +46,14 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    return (        
-        <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
-            <pre> {
-                logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })
-            }
-            </pre>
-        </Box>
-    )
+    if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
+        
+    return <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
+        <pre>
+            {logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })}
+        </pre>
+        <span ref={lastLineRef}/>
+    </Box>
+
 }
 export { LogTabContent }

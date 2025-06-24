@@ -9,7 +9,7 @@
     width: 100%;
     background: #252a33;
     color: #eee;
-    font-size: 18px;
+    font-size: 16px;
     font-family: 'Fira Mono', Consolas, Menlo, Monaco, 'Courier New', Courier, monospace;
     border-radius: 4px;
     padding: 35px 15px 5px;
@@ -80,6 +80,11 @@
     white-space: pre;
   }
   
+  .react-terminal-3270 .react-terminal-line {
+    white-space: pre;
+    color: greenyellow;
+  }
+  
   .react-terminal-line:before {
     /* Set up defaults and ensure empty lines are displayed. */
     content: '';
@@ -91,6 +96,11 @@
   .react-terminal-light .react-terminal-line:before {
     /* color: #D76D77; */
     color: #000000; 
+  }
+  
+  .react-terminal-3270 .react-terminal-line:before {
+    /* color: #D76D77; */
+    color: greenyellow;
   }
   
   /* .react-terminal-input:before {

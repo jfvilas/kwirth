@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent, useRef } from 'react'
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormLabel, Radio, RadioGroup, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
+import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, FormLabel, Radio, RadioGroup, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { Subject } from '@mui/icons-material'
 import { ILogInstanceConfig, ILogUiConfig, LogSortOrderEnum } from './LogConfig'
@@ -13,15 +13,16 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     let logUiConfig:ILogUiConfig = props.channelObject?.uiConfig
     let logInstanceConfig:ILogInstanceConfig = props.channelObject?.instanceConfig
 
-    const [selectedTab, setSelectedTab] = useState(logUiConfig.startDiagnostics?'sd':'log')
-    const [maxMessages, setMaxMessages] = useState(logUiConfig.maxMessages||5000)
-    const [maxPerPodMessages, setMaxPerPodMessages] = useState(logUiConfig.maxPerPodMessages||1000)
-    const [previous, setPrevious] = useState(logInstanceConfig.previous)
-    const [timestamp, setTimestamp] = useState(logInstanceConfig.timestamp)
-    const [follow, setFollow] = useState(logUiConfig.follow)
-    const [fromStart, setFromStart] = useState(logInstanceConfig.fromStart)
-    const [sortOrder, setSortOrder] = useState(logUiConfig.sortOrder)
+    const [selectedTab, setSelectedTab] = useState(props.uiSettings? (props.uiSettings.startDiagnostics? 'sd':'log') : 'log')
+    const [maxMessages, setMaxMessages] = useState(props.uiSettings? props.uiSettings.maxMessages : logUiConfig.maxMessages)
+    const [maxPerPodMessages, setMaxPerPodMessages] = useState(props.uiSettings? props.uiSettings.maxPerPodMessages : logUiConfig.maxPerPodMessages)
+    const [follow, setFollow] = useState(props.uiSettings? props.uiSettings.follow : logUiConfig.follow)
+    const [sortOrder, setSortOrder] = useState(props.uiSettings? props.uiSettings.sortOrder : logUiConfig.sortOrder)
+    const [previous, setPrevious] = useState(props.instanceSettings? props.instanceSettings.previous : logInstanceConfig.previous)
+    const [timestamp, setTimestamp] = useState(props.instanceSettings? props.instanceSettings.timestamp : logInstanceConfig.timestamp)
+    const [fromStart, setFromStart] = useState(props.instanceSettings? props.instanceSettings.fromStart : logInstanceConfig.fromStart)
     const startTimeRef = useRef<any>(null)
+    const defaultRef = useRef<any>(null)
 
     const onChangeMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
         setMaxMessages(+event.target.value)
@@ -57,7 +58,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         logInstanceConfig.timestamp = timestamp
         logInstanceConfig.fromStart = fromStart
         logInstanceConfig.startTime = new Date(startTimeRef.current?.value).getTime()
-        props.onChannelSetupClosed(props.channel, true)
+        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked)
     }
 
     return (
@@ -120,8 +121,9 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                 </Stack>
             </DialogContent>
             <DialogActions>
+                <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
                 <Button onClick={ok}>OK</Button>
-                <Button onClick={() => props.onChannelSetupClosed(props.channel, false)}>CANCEL</Button>
+                <Button onClick={() => props.onChannelSetupClosed(props.channel, false, false)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     )

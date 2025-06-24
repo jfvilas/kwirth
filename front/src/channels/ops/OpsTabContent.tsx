@@ -3,13 +3,16 @@ import { Box, Button, Stack, TextField } from '@mui/material'
 import { IOpsObject, OpsCommandEnum, OpsMessage } from './OpsObject'
 import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
 import { v4 as uuidv4 } from 'uuid'
-import { Terminal, ColorMode } from './terminal/Terminal'
+import { Terminal } from './terminal/Terminal'
 import { SelectTerminal } from './terminal/SelectTerminal'
 import { IContentProps } from '../IChannel'
 import { OPSHELPMESSAGE } from '../../tools/Constants'
+import { IOpsUiConfig } from './OpsConfig'
 
 const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let opsObject:IOpsObject = props.channelObject.uiData
+    let opsUiConfig:IOpsUiConfig = props.channelObject.uiConfig
+
     const [command, setCommand] = useState('')
     const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
     const lastLineRef = useRef(null)
@@ -224,7 +227,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
         let shell = opsObject.shells[shellIndex]
         return (
-        <Terminal name={`${namespace}/${pod}/${container}` + (shellIndex<10? ` (Key F${shellIndex+1})`:'') } colorMode={ColorMode.Light} onInput={onInputTerminal} onKey={onKeyTerminal} inputEnabled={shell.connected} lines={shell.lines}>
+        <Terminal name={`${namespace}/${pod}/${container}` + (shellIndex<10? ` (Key F${shellIndex+1})`:'') } colorMode={opsUiConfig.colorMode} onInput={onInputTerminal} onKey={onKeyTerminal} inputEnabled={shell.connected} lines={shell.lines}>
             {shell.lines.map( (line,index) => <div key={index} className='react-terminal-line'>{line}</div>)}
         </Terminal>
         )

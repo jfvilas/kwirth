@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, Stack, TextField, Tooltip, Typography} from '@mui/material'
 import { MetricsConfigModeEnum, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { ISetupProps } from '../IChannel'
@@ -12,18 +12,17 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     let metricsInstanceConfig:MetricsInstanceConfig = props.channelObject.instanceConfig
     let metricsList = props.channelObject.metricsList
 
-    const [metrics, setMetrics] = React.useState<string[]>(metricsInstanceConfig.metrics)
-    const [metricsMode, setMetricsMode] = useState(metricsInstanceConfig.mode)
-    const [metricsDepth, setMetricsDepth] = useState(metricsUiConfig.depth)
-    const [metricsWidth, setMetricsWidth] = useState(metricsUiConfig.width)
-    const [metricsInterval, setMetricsInterval] = useState(metricsInstanceConfig.interval)
-    const [assetAggregate, setAssetAggregate] = React.useState(metricsInstanceConfig.aggregate)
-    const [assetMerge, setAssetMerge] = React.useState(metricsUiConfig.merge)
-    const [assetStack, setAssetStack] = React.useState(metricsUiConfig.stack)
+    const [metrics, setMetrics] = React.useState<string[]>(props.instanceSettings? props.instanceSettings.metrics : metricsInstanceConfig.metrics)
+    const [metricsMode, setMetricsMode] = useState(props.instanceSettings? props.instanceSettings.mode : metricsInstanceConfig.mode)
+    const [metricsInterval, setMetricsInterval] = useState(props.instanceSettings? props.instanceSettings.interval : metricsInstanceConfig.interval)
+    const [assetAggregate, setAssetAggregate] = React.useState(props.instanceSettings? props.instanceSettings.aggregate : metricsInstanceConfig.aggregate)
+    const [metricsDepth, setMetricsDepth] = useState(props.uiSettings? props.uiSettings.depth : metricsUiConfig.depth)
+    const [metricsWidth, setMetricsWidth] = useState(props.uiSettings? props.uiSettings.width : metricsUiConfig.width)
+    const [assetMerge, setAssetMerge] = React.useState(props.uiSettings? props.uiSettings.merge : metricsUiConfig.merge)
+    const [assetStack, setAssetStack] = React.useState(props.uiSettings? props.uiSettings.stack : metricsUiConfig.stack)
     const [chart, setChart] = useState(metricsUiConfig.chart)
     const [filter, setFilter] = useState('')
-
-    console.log(props.channelObject)
+    const defaultRef = useRef<any>(null)
 
     const ok = () =>{
         metricsInstanceConfig.mode = metricsMode
@@ -35,7 +34,7 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         metricsUiConfig.merge = assetMerge
         metricsUiConfig.stack = assetStack
         metricsUiConfig.chart = chart
-        props.onChannelSetupClosed(props.channel, true)
+        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked)
     }
 
     const metricAddOrRemove = (value:string) => {
@@ -161,8 +160,9 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
 
             </DialogContent>
             <DialogActions>
+                <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
                 <Button onClick={ok} disabled={metrics.length===0}>OK</Button>
-                <Button onClick={() => props.onChannelSetupClosed(props.channel, false)}>CANCEL</Button>
+                <Button onClick={() => props.onChannelSetupClosed(props.channel, false, false)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

@@ -20,8 +20,6 @@ export class EchoChannel implements IChannel {
     getScope() { return InstanceConfigScopeEnum.NONE}
     getChannelId(): string { return 'echo' }
     getChannelIcon(): JSX.Element { return EchoIcon }
-    getChannelUiConfig(): any { return new EchoUiConfig() }
-    getChannelInstanceConfig(): any { return new EchoInstanceConfig() }
 
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }

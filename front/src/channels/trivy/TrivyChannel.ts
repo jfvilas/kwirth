@@ -16,10 +16,8 @@ export class TrivyChannel implements IChannel {
     requiresAccessString() { return true }
     requiresWebSocket() { return true }
     getScope() { return InstanceConfigScopeEnum.WORKLOAD}
-    getChannelId(): string { return 'alert' }
+    getChannelId(): string { return 'trivy' }
     getChannelIcon(): JSX.Element { return TrivyIcon }
-    getChannelUiConfig(): any { return new TrivyUiConfig() }
-    getChannelInstanceConfig(): any { return new TrivyInstanceConfig() }
     
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }

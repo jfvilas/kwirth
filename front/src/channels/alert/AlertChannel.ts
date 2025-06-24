@@ -19,8 +19,6 @@ export class AlertChannel implements IChannel {
     getScope() { return InstanceConfigScopeEnum.VIEW}
     getChannelId(): string { return 'alert' }
     getChannelIcon(): JSX.Element { return AlertIcon }
-    getChannelUiConfig(): any { return new AlertUiConfig() }
-    getChannelInstanceConfig(): any { return new AlertInstanceConfig() }
     
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }

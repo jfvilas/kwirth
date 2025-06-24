@@ -19,8 +19,6 @@ export class MetricsChannel implements IChannel {
     getScope() { return InstanceConfigScopeEnum.STREAM }
     getChannelId(): string { return 'metrics' }
     getChannelIcon(): JSX.Element { return MetricsIcon }
-    getChannelUiConfig(): any { return new MetricsUiConfig() }
-    getChannelInstanceConfig(): any { return new MetricsInstanceConfig() }
     
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
