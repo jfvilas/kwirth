@@ -40,12 +40,12 @@ interface IChannelObject {
 interface IChannel {
     SetupDialog: React.FC<ISetupProps>
     TabContent: React.FC<IContentProps>
+    readonly channelId: string
 
     requiresMetrics():boolean
     requiresAccessString():boolean
     requiresWebSocket():boolean
     getScope(): string
-    getChannelId(): string
     getChannelIcon(): JSX.Element
     getSetupVisibility():boolean
     setSetupVisibility(visibility:boolean):void

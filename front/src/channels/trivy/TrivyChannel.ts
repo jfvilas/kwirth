@@ -11,12 +11,12 @@ export class TrivyChannel implements IChannel {
     private paused = false
     SetupDialog: FC<ISetupProps> = TrivySetup
     TabContent: FC<IContentProps> = TrivyTabContent
+    channelId = 'trivy'
     
     requiresMetrics() { return false }
     requiresAccessString() { return true }
     requiresWebSocket() { return true }
     getScope() { return InstanceConfigScopeEnum.WORKLOAD}
-    getChannelId(): string { return 'trivy' }
     getChannelIcon(): JSX.Element { return TrivyIcon }
     
     getSetupVisibility(): boolean { return this.setupVisible }

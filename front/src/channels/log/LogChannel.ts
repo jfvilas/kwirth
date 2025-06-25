@@ -11,13 +11,13 @@ export class LogChannel implements IChannel {
     private paused = false
     SetupDialog: FC<ISetupProps> = LogSetup
     TabContent: FC<IContentProps> = LogTabContent
+    channelId = 'log'
     
     requiresMetrics() { return false }
     requiresAccessString() { return false }
     requiresWebSocket() { return false }
 
     getScope() { return InstanceConfigScopeEnum.VIEW }
-    getChannelId(): string { return 'log' }
     getChannelIcon(): JSX.Element { return LogIcon }
     
     getSetupVisibility(): boolean { return this.setupVisible }

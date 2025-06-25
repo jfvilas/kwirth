@@ -6,8 +6,7 @@ interface ITabObject {
     ws: WebSocket|undefined
     keepaliveRef: number
     defaultTab: boolean
-    channel: IChannel|undefined
-    channelId: InstanceMessageChannelEnum
+    channel: IChannel
     channelObject: IChannelObject
     channelStarted: boolean
     channelPaused: boolean

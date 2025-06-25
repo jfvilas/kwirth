@@ -30,7 +30,7 @@ interface IProps {
 const MenuTab: React.FC<IProps> = (props:IProps) => {
     const [subMenuTabOpen, setSubmenuTabOpen] = React.useState(false)
 
-    const pauseable = props.backChannels.find(c => c.id === props.selectedTab?.channel?.getChannelId() && c.pauseable)
+    const pauseable = props.backChannels.find(c => c.id === props.selectedTab?.channel.channelId && c.pauseable)
 
     return (
         <Menu id='menu-logs' anchorEl={props.anchorMenuTab} open={Boolean(props.anchorMenuTab)} onClose={props.onClose}>

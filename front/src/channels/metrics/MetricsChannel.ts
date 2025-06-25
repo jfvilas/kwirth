@@ -11,13 +11,13 @@ export class MetricsChannel implements IChannel {
     private paused = false
     SetupDialog: FC<ISetupProps> = MetricsSetup
     TabContent: FC<IContentProps> = MetricsTabContent
+    channelId = 'metrics'
     
     requiresMetrics() { return true }
     requiresAccessString() { return false }
     requiresWebSocket() { return false }
 
     getScope() { return InstanceConfigScopeEnum.STREAM }
-    getChannelId(): string { return 'metrics' }
     getChannelIcon(): JSX.Element { return MetricsIcon }
     
     getSetupVisibility(): boolean { return this.setupVisible }

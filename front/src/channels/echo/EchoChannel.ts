@@ -12,13 +12,13 @@ export class EchoChannel implements IChannel {
     private paused = false
     SetupDialog: FC<ISetupProps> = EchoSetup
     TabContent: FC<IContentProps> = EchoTabContent
+    channelId = 'echo'
     
     requiresMetrics() { return false }
     requiresAccessString() { return false }
     requiresWebSocket() { return false }
 
     getScope() { return InstanceConfigScopeEnum.NONE}
-    getChannelId(): string { return 'echo' }
     getChannelIcon(): JSX.Element { return EchoIcon }
 
     getSetupVisibility(): boolean { return this.setupVisible }

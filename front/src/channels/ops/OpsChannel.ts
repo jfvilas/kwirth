@@ -12,13 +12,13 @@ export class OpsChannel implements IChannel {
     private paused = false
     SetupDialog: FC<ISetupProps> = OpsSetup
     TabContent: FC<IContentProps> = OpsTabContent
+    channelId = 'ops'
     
     requiresMetrics() { return false }
     requiresAccessString() { return true }
     requiresWebSocket() { return false }
 
     getScope() { return InstanceConfigScopeEnum.GET}
-    getChannelId(): string { return 'ops' }
     getChannelIcon(): JSX.Element { return OpsIcon }
     
     getSetupVisibility(): boolean { return this.setupVisible }

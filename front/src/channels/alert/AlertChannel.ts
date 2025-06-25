@@ -11,13 +11,13 @@ export class AlertChannel implements IChannel {
     private paused = false
     SetupDialog: FC<ISetupProps> = AlertSetup
     TabContent: FC<IContentProps> = AlertTabContent
-    
+    channelId = 'alert'
+
     requiresMetrics() { return false }
     requiresAccessString() { return false }
     requiresWebSocket() { return false }
 
     getScope() { return InstanceConfigScopeEnum.VIEW}
-    getChannelId(): string { return 'alert' }
     getChannelIcon(): JSX.Element { return AlertIcon }
     
     getSetupVisibility(): boolean { return this.setupVisible }

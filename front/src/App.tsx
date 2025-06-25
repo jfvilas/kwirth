@@ -41,7 +41,7 @@ import { MetricsChannel } from './channels/metrics/MetricsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { OpsChannel } from './channels/ops/OpsChannel'
 import { getMetricsNames, readClusterInfo } from './tools/Global'
-import { MetricDescription } from './channels/metrics/MetricDescription'
+import { Channel } from 'diagnostics_channel'
 
 const App: React.FC = () => {
     var backendUrl='http://localhost:3883'
@@ -68,7 +68,7 @@ const App: React.FC = () => {
     //+++ we should use the tab, not the tabname
     const [selectedTabName, setSelectedTabName] = useState<string>()
     const selectedTabRefName = useRef(selectedTabName)
-    selectedTabRefName.current=selectedTabName
+    selectedTabRefName.current = selectedTabName
     let selectedTab = tabs.find(t => t.name===selectedTabName)
     let selectedTabIndex = tabs.findIndex(t => t.name===selectedTabName)
 
@@ -219,36 +219,34 @@ const App: React.FC = () => {
         let index = -1
         while (tabs.find (t => t.name === tabName + index.toString())) index -= 1
 
-        let newTab:ITabObject = {
-            name: tabName+index.toString(),
-            ws: undefined,
-            keepaliveRef: 60,
-            defaultTab: false,
-            channel: undefined,
-            channelId: selection.channel,
-            channelObject: {
-                clusterName: selection.clusterName,
-                instanceId: '',
-                view: selection.view as InstanceConfigViewEnum,
-                namespace: selection.namespaces.join(','),
-                group: selection.groups.join(','),
-                pod: selection.pods.join(','),
-                container: selection.containers.join(','),
-                instanceConfig: undefined,
-                uiConfig: undefined,
-                uiData: undefined
-            },
-            channelStarted: false,
-            channelPaused: false,
-            channelPending: false
-        }
-
         if (frontChannels.has(selection.channel)) {
-            newTab.channel = createChannelInstance(selection.channel)!
+            let newChannel = createChannelInstance(selection.channel)!
+            let newTab:ITabObject = {
+                name: tabName+index.toString(),
+                ws: undefined,
+                keepaliveRef: 60,
+                defaultTab: false,
+                channel: newChannel,
+                channelObject: {
+                    clusterName: selection.clusterName,
+                    instanceId: '',
+                    view: selection.view as InstanceConfigViewEnum,
+                    namespace: selection.namespaces.join(','),
+                    group: selection.groups.join(','),
+                    pod: selection.pods.join(','),
+                    container: selection.containers.join(','),
+                    instanceConfig: undefined,
+                    uiConfig: undefined,
+                    uiData: undefined
+                },
+                channelStarted: false,
+                channelPaused: false,
+                channelPending: false
+            }
             if (newTab.channel.initChannel(newTab.channelObject)) setRefreshTabContent(Math.random())
             startSocket(newTab, cluster, () => {
                 setKeepAlive(newTab)
-                if (newTab.channel?.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
+                if (newTab.channel.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
             })
             setTabs((prev) => [...prev, newTab])
             setSelectedTabName(newTab.name)
@@ -265,7 +263,7 @@ const App: React.FC = () => {
         tab.keepaliveRef = setInterval(() => {
             let instanceConfig:InstanceMessage = {
                 action: InstanceMessageActionEnum.PING,
-                channel: tab.channelId,
+                channel: tab.channel.channelId,
                 flow: InstanceMessageFlowEnum.REQUEST,
                 type: InstanceMessageTypeEnum.SIGNAL,
                 instance: ''
@@ -322,7 +320,7 @@ const App: React.FC = () => {
         if (selectedTab && selectedTab.channel)
             selectedTab.channel.setSetupVisibility(true)
         else
-            console.log(`Unsupported channel ${selectedTab?.channelId}`)
+            console.log(`Unsupported channel ${selectedTab?.channel.channelId}`)
     }
 
     const socketReconnect = (wsEvent:any, id:NodeJS.Timer) => {
@@ -332,7 +330,7 @@ const App: React.FC = () => {
         if (!tab || !tab.channelObject) return
 
         let instanceConfig:InstanceConfig = {
-            channel: tab.channelId,
+            channel: tab.channel.channelId,
             objects: InstanceConfigObjectEnum.PODS,
             flow: InstanceMessageFlowEnum.REQUEST,
             action: InstanceMessageActionEnum.RECONNECT,
@@ -362,7 +360,7 @@ const App: React.FC = () => {
         console.log('Socket disconnected')
         let tab = tabs.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
-        const reconnectable = backChannels.find(c => c.id === tab!.channel?.getChannelId() && c.reconnectable)
+        const reconnectable = backChannels.find(c => c.id === tab!.channel.channelId && c.reconnectable)
         if (reconnectable) {
             console.log(`Trying to reconnect...`)
             if (tab.ws) {
@@ -378,7 +376,7 @@ const App: React.FC = () => {
                 if (selectedTab.channel.socketDisconnected(selectedTab.channelObject)) setRefreshTabContent(Math.random())
             }
             else {
-                console.log('Unsuppported channel on disconnect:', tab.channelId)
+                console.log('Unsuppported channel on disconnect:', tab.channel.channelId)
             }
             setRefreshTabContent(Math.random())
 
@@ -393,7 +391,7 @@ const App: React.FC = () => {
             }, 10000, cluster.url, tab)
         }
         else {
-            console.log(`Channel ${tab.channel?.getChannelId()} does not support reconnect.`)
+            console.log(`Channel ${tab.channel.channelId} does not support reconnect.`)
         }
     }
     
@@ -414,7 +412,7 @@ const App: React.FC = () => {
             tab.ws.onclose = (event) => socketDisconnect(event)
     
             var instanceConfig: InstanceConfig = {
-                channel: tab.channelId,
+                channel: tab.channel.channelId,
                 objects: InstanceConfigObjectEnum.PODS,
                 action: InstanceMessageActionEnum.START,
                 flow: InstanceMessageFlowEnum.REQUEST,
@@ -457,7 +455,7 @@ const App: React.FC = () => {
 
         if (!cluster) return
         let instanceConfig: InstanceConfig = {
-            channel: tab.channelId,
+            channel: tab.channel.channelId,
             objects: InstanceConfigObjectEnum.PODS,
             action: InstanceMessageActionEnum.STOP,
             flow: InstanceMessageFlowEnum.REQUEST,
@@ -479,7 +477,7 @@ const App: React.FC = () => {
             tab.channelPaused = false
         }
         else {
-            console.log('Channel is not supported on stop:',tab.channelId)
+            console.log('Channel is not supported on stop:',tab.channel.channelId)
         }
     }
 
@@ -490,7 +488,7 @@ const App: React.FC = () => {
         if(!cluster) return
         
         var instanceConfig:InstanceConfig = {
-            channel: selectedTab.channelId,
+            channel: selectedTab.channel.channelId,
             objects: InstanceConfigObjectEnum.PODS,
             action: InstanceMessageActionEnum.PAUSE,
             flow: InstanceMessageFlowEnum.REQUEST,
@@ -551,7 +549,7 @@ const App: React.FC = () => {
             case MenuTabOption.TabInfo:
                 if (selectedTab) {
                     var a=`
-                        <b>Tab type</b>: ${selectedTab.channelId}</br>
+                        <b>Tab type</b>: ${selectedTab.channel.channelId}</br>
                         <b>Cluster</b>: ${selectedTab.channelObject.clusterName}</br>
                         <b>View</b>: ${selectedTab.channelObject.view}<br/>
                         <b>Namespace</b>: ${selectedTab.channelObject.namespace}<br/>
@@ -619,8 +617,7 @@ const App: React.FC = () => {
                 defaultTab: tab.defaultTab,
                 ws: undefined,
                 keepaliveRef: 0,
-                channel: undefined,
-                channelId: tab.channelId,
+                channel: tab.channel,
                 channelObject: JSON.parse(JSON.stringify(tab.channelObject)),
                 channelStarted: false,
                 channelPaused: false,
@@ -631,7 +628,7 @@ const App: React.FC = () => {
                 newTabs.push(newTab)
             }
             else {
-                console.log('Channel not supported on saveBoard:',tab.channelId)
+                console.log('Channel not supported on saveBoard:',tab.channel.channelId)
             }
         }
         let board:IBoard = {
@@ -856,9 +853,9 @@ const App: React.FC = () => {
         channel.setSetupVisibility(false)
         if (selectedTab) {
             if (defaultValues && settingsRef.current && selectedTab.channelObject) {
-                settingsRef.current.channels = settingsRef.current.channels.filter(c => c.id !== channel.getChannelId())
+                settingsRef.current.channels = settingsRef.current.channels.filter(c => c.id !== channel.channelId)
                 settingsRef.current.channels.push({
-                    id: channel.getChannelId(),
+                    id: channel.channelId,
                     uiSettings: selectedTab.channelObject.uiConfig,
                     instanceSettings: selectedTab.channelObject.instanceConfig
                 })
@@ -909,8 +906,8 @@ const App: React.FC = () => {
             channel: selectedTab.channel,
             onChannelSetupClosed,
             channelObject: selectedTab.channelObject,
-            uiSettings:settingsRef.current?.channels.find(c => c.id === selectedTab?.channel?.getChannelId())?.uiSettings,
-            instanceSettings:settingsRef.current?.channels.find(c => c.id === selectedTab?.channel?.getChannelId())?.instanceSettings,
+            uiSettings:settingsRef.current?.channels.find(c => c.id === selectedTab?.channel.channelId)?.uiSettings,
+            instanceSettings:settingsRef.current?.channels.find(c => c.id === selectedTab?.channel.channelId)?.instanceSettings,
         }
         if (props.channelObject) {
             let cluster = clusters.find(c => c.name===selectedTab?.channelObject.clusterName)
