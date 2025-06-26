@@ -84,7 +84,8 @@ class LogChannel implements IChannel {
         webSocket.send(JSON.stringify(signalMessage))
     }
 
-    sendBatch = async (webSocket:WebSocket, asset:IAsset, text:string): Promise<void> => {
+    sendBatch = async (webSocket:WebSocket, instance:IInstance, asset:IAsset, text:string): Promise<void> => {
+        if (instance.paused) return
         try {
             if (webSocket.bufferedAmount === 0) {
                 asset.msg.text = text
@@ -162,7 +163,7 @@ class LogChannel implements IChannel {
             })
 
             asset.readableStream.setEncoding('utf8')
-            asset.readableStream.on('data', async chunk => this.sendBatch(webSocket, asset, chunk) )
+            asset.readableStream.on('data', async chunk => this.sendBatch(webSocket, instance, asset, chunk) )
             instance.assets.push( asset )
         }
         catch (err:any) {
@@ -260,7 +261,7 @@ class LogChannel implements IChannel {
             //     webSocket.send(JSON.stringify(asset.msg), () => { asset.passThroughStream!.resume() })
             // })    
 
-            asset.passThroughStream.on('data', async (chunk) => this.sendBatch(webSocket, asset, chunk) )
+            asset.passThroughStream.on('data', async (chunk) => this.sendBatch(webSocket, instance, asset, chunk) )
             
             // asset.passThroughStream.on('data', async (chunk) => {
             //     if (instance.isSending) {
@@ -279,7 +280,6 @@ class LogChannel implements IChannel {
             //     }
             // })
             let logConfig = instanceConfig.data as LogConfig
-            console.log(logConfig)
             let sinceSeconds = logConfig.startTime? Math.max( Math.floor((Date.now() - logConfig.startTime) / 1000), 1) : 1800
             let streamConfig = { 
                 follow: true,
@@ -419,7 +419,7 @@ class LogChannel implements IChannel {
                         for (let asset of instance.assets) {
                             if (asset.readableStream) {
                                 asset.readableStream.removeAllListeners('data')
-                                asset.readableStream.on('data', (chunk:any) => this.sendBatch(newWebSocket, asset, chunk) )
+                                asset.readableStream.on('data', (chunk:any) => this.sendBatch(newWebSocket, instance, asset, chunk) )
                             }        
                         }
                     }
@@ -427,7 +427,7 @@ class LogChannel implements IChannel {
                         for (let asset of instance.assets) {
                             if (asset.passThroughStream) {
                                 asset.passThroughStream.removeAllListeners('data')
-                                asset.passThroughStream.on('data', (chunk:any) => this.sendBatch(newWebSocket, asset, chunk) )
+                                asset.passThroughStream.on('data', (chunk:any) => this.sendBatch(newWebSocket, instance, asset, chunk) )
                             }
                         }
                     }

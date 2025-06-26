@@ -115,10 +115,7 @@ class EchoChannel implements IChannel {
     }
 
     pauseContinueInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void => {
-        let socket = this.webSocketEcho.find(s => s.ws === webSocket)
-        if (!socket) return
-
-        let instance = socket.instances.find(i => i.instanceId === instanceConfig.instance)
+        let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             if (action === InstanceMessageActionEnum.PAUSE) instance.pause = true
             if (action === InstanceMessageActionEnum.CONTINUE) instance.pause = false
@@ -133,10 +130,8 @@ class EchoChannel implements IChannel {
     }
 
     stopInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig): void => {
-        let socket = this.webSocketEcho.find(s => s.ws === webSocket)
-        if (!socket) return
-
-        if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
+        let instance = this.getInstance(webSocket, instanceConfig.instance)
+        if (instance) {
             this.removeInstance(webSocket, instanceConfig.instance)
             this.sendSignalMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.INFO, instanceConfig.instance, 'Echo instance stopped')
         }
@@ -227,11 +222,23 @@ class EchoChannel implements IChannel {
         ws.send(JSON.stringify(resp))
     }
 
-    private checkScopes = (instance:IInstance, scope: InstanceConfigScopeEnum) => {
-        let resources = parseResources (instance.accessKey.resources)
-        let requiredLevel = this.getChannelScopeLevel(scope)
-        let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))
-        return canPerform
+    getInstance(webSocket:WebSocket, instanceId: string) : IInstance | undefined{
+        let socket = this.webSocketEcho.find(entry => entry.ws === webSocket)
+        if (socket) {
+            let instances = socket.instances
+            if (instances) {
+                let instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
+                if (instanceIndex>=0) return instances[instanceIndex]
+                console.log('Instance not found')
+            }
+            else {
+                console.log('There are no Instances on websocket')
+            }
+        }
+        else {
+            console.log('WebSocket not found')
+        }
+        return undefined
     }
 
 }

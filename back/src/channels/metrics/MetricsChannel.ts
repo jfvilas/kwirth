@@ -298,14 +298,14 @@ class MetricsChannel implements IChannel {
             if (instances) {
                 let instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
                 if (instanceIndex>=0) return instances[instanceIndex]
-                console.log('Instance not found, cannot delete')
+                console.log('Instance not found')
             }
             else {
                 console.log('There are no Instances on websocket')
             }
         }
         else {
-            console.log('WebSocket not found on intervals')
+            console.log('WebSocket not found')
         }
         return undefined
     }
