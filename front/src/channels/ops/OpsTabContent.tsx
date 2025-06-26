@@ -242,7 +242,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     return <>
-        <Stack direction='column' alignItems={'start'} sx={{height:'80%', ml:1, mr:1}}>
+        <Stack direction='column' alignItems={'start'} sx={{height:'100%', ml:1, mr:1}}>
             { formatSelector() }
             { opsObject.shell && showTerminal(opsObject.shell.namespace, opsObject.shell.pod, opsObject.shell.container) }
             { !opsObject.shell && <>            

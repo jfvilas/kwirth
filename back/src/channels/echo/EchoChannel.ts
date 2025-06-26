@@ -14,7 +14,7 @@ export interface IInstance {
     instanceId: string
     accessKey: AccessKey
     config: any
-    pause: boolean
+    paused: boolean
     assets: IAsset[]
 }
 
@@ -88,7 +88,7 @@ class EchoChannel implements IChannel {
                 accessKey: accessKeyDeserialize(instanceConfig.accessKey),
                 instanceId: instanceConfig.instance,
                 config: instanceConfig.data,
-                pause: false,
+                paused: false,
                 assets: []
             }
             instances.push(instance)
@@ -97,28 +97,16 @@ class EchoChannel implements IChannel {
             podNamespace,
             podName,
             containerName,
-            interval: setInterval(() => {
-                let msg:IEchoMessageResponse = {
-                    channel: 'echo',
-                    msgtype: 'echomessage',
-                    action: InstanceMessageActionEnum.NONE,
-                    flow: InstanceMessageFlowEnum.UNSOLICITED,
-                    type: InstanceMessageTypeEnum.DATA,
-                    instance: instance.instanceId,
-                    text: `${new Date()} ${podNamespace}/${podName}/${containerName}`
-                }
-                webSocket.send(JSON.stringify(msg))
-            }, instance.config.interval*1000)
+            interval: setInterval(() => this.sendData(webSocket, instance, asset), instance.config.interval*1000)
         }
         instance.assets.push(asset)
-        
     }
 
     pauseContinueInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void => {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
-            if (action === InstanceMessageActionEnum.PAUSE) instance.pause = true
-            if (action === InstanceMessageActionEnum.CONTINUE) instance.pause = false
+            if (action === InstanceMessageActionEnum.PAUSE) instance.paused = true
+            if (action === InstanceMessageActionEnum.CONTINUE) instance.paused = false
         }
         else {
             this.sendSignalMessage(webSocket,InstanceMessageActionEnum.PAUSE, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceConfig.instance, `Echo instance not found`)
@@ -201,6 +189,12 @@ class EchoChannel implements IChannel {
             let exists = entry.instances.find(i => i.instanceId === instanceId)
             if (exists) {
                 entry.ws = newWebSocket
+                for (let instance of entry.instances) {
+                    for (let asset of instance.assets) {
+                        clearInterval(asset.interval)
+                        asset.interval = setInterval(() => this.sendData(newWebSocket, instance, asset), instance.config.interval*1000)
+                    }
+                }
                 return true
             }
         }
@@ -208,6 +202,20 @@ class EchoChannel implements IChannel {
     }
 
     // ************************* private methods *************************
+
+    private sendData = (ws:WebSocket, instance:IInstance, asset:IAsset) => {
+        if (instance.paused) return
+        let msg:IEchoMessageResponse = {
+            channel: 'echo',
+            msgtype: 'echomessage',
+            action: InstanceMessageActionEnum.NONE,
+            flow: InstanceMessageFlowEnum.UNSOLICITED,
+            type: InstanceMessageTypeEnum.DATA,
+            instance: instance.instanceId,
+            text: `${new Date()} ${asset.podNamespace}/${asset.podName}/${asset.containerName}`
+        }
+        ws.send(JSON.stringify(msg))
+    }
 
     private sendSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, level: SignalMessageLevelEnum, instanceId:string, text:string): void => {
         var resp:SignalMessage = {

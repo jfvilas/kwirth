@@ -263,8 +263,6 @@ class MetricsChannel implements IChannel {
             if (exists) {
                 entry.ws = newWebSocket
                 for (var instance of entry.instances) {
-                    console.log('update', instance.instanceId)
-                    console.log('interval', instance.interval, (instance.instanceConfig.data as MetricsConfig).interval)
                     clearInterval(instance.timeout)
                     instance.timeout = setInterval(() => this.sendMetricsDataInstance(newWebSocket, instanceId, false), instance.interval)
                 }

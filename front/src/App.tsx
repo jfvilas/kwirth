@@ -178,7 +178,6 @@ const App: React.FC = () => {
 
     const writeSettings = async () => {
         let payload = JSON.stringify(settingsRef.current)
-        console.log('payl', payload)
         fetch (`${backendUrl}/store/${user?.id}/settings/general`, addPostAuthorization(accessString, payload))
     }
 
@@ -271,7 +270,15 @@ const App: React.FC = () => {
         if (newTab) {
             if (newTab.channelObject) {
                 newTab.channelPending = false
-                if (!newTab.channelPaused) newTab.headerEl.style.backgroundColor = '#ffffff'
+                if (newTab.channelStarted) {
+                    if (newTab.channelPaused) 
+                        newTab.headerEl.style.backgroundColor = '#ffe082'
+                    else
+                        newTab.headerEl.style.backgroundColor = '#99dd99'
+                }
+                else {
+                    newTab.headerEl.style.backgroundColor = '#ffffff'
+                }
                setRefreshTabContent(Math.random())
             }
             //setSelectedTab(newTab)
@@ -427,6 +434,7 @@ const App: React.FC = () => {
                 tab.ws.send(JSON.stringify(instanceConfig))
                 tab.channelStarted = true
                 tab.channelPaused = false
+                selTab.current.headerEl.style.backgroundColor = '#99dd99'
                 selTab.current.channel.startChannel(selTab.current.channelObject)
             }
             else {
@@ -468,6 +476,7 @@ const App: React.FC = () => {
             if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
             tab.channelStarted = false
             tab.channelPaused = false
+            tab.headerEl.style.backgroundColor = '#ffffff'
         }
         else {
             console.log('Channel is not supported on stop:',tab.channel.channelId)
@@ -498,7 +507,7 @@ const App: React.FC = () => {
 
         if (selTab.current.channelPaused) {
             selTab.current.channelPaused = false
-            selTab.current.headerEl.style.backgroundColor = '#ffffff'
+            selTab.current.headerEl.style.backgroundColor = '#99dd99'
             instanceConfig.action = InstanceMessageActionEnum.CONTINUE
         }
         else {
