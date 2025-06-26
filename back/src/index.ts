@@ -424,10 +424,10 @@ const processReconnect = async (webSocket: WebSocket, instanceMessage: InstanceM
             }
         }
         else {
-            console.log(`Instance '${instanceMessage.instance}' not found on channel`)
+            console.log(`Instance '${instanceMessage.instance}' not found on channel for reconnect`)
         }
     }
-    console.log(`Instance '${instanceMessage.instance}' not found`)
+    console.log(`Instance '${instanceMessage.instance}' not found for reconnect`)
     sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.RECONNECT, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for reconnect')
 }
 
@@ -576,7 +576,7 @@ const processChannelCommand = async (webSocket: WebSocket, instanceMessage: Inst
                 channel.processCommand(webSocket, instanceMessage, podNamespace, podName, containerName)
             }
             else {
-                console.log(`Instance '${instanceMessage.instance}' not found`)
+                console.log(`Instance '${instanceMessage.instance}' not found for command`)
                 sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for command')
             }
         }   
@@ -608,7 +608,7 @@ const processChannelRoute = async (webSocket: WebSocket, instanceMessage: Instan
             }
         }
         else {
-            console.log(`Instance '${instanceMessage.instance}' not found on channel ${channel.getChannelData().id}`)
+            console.log(`Instance '${instanceMessage.instance}' not found on channel ${channel.getChannelData().id} for route`)
             sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for routing')
         }   
     }
@@ -887,7 +887,7 @@ const launchKubernetes = async() => {
                     // load channel extensions
                     if (channelLogEnabled) channels.set('log', new LogChannel(clusterInfo))
                     if (channelAlertEnabled) channels.set('alert', new AlertChannel(clusterInfo))
-                    if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
+                    //+++if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
                     if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
                     channels.set('echo', new EchoChannel(clusterInfo))

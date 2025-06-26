@@ -108,9 +108,9 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                         <Grid container sx={{ml:1,mr:1}}>
                             {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
                                 return (
-                                    <Grid xs={12} sm={6} md={4} lg={3} key={index} sx={{margin:1}}>
+                                    <Box key={index} sx={{margin:1, width:'24%'}}>
                                         <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view={'card'} webSocket={props.webSocket!}/>
-                                    </Grid>
+                                    </Box>
                                 )
                             })}
                         </Grid>

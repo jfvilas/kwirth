@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent, useRef } from 'react'
-import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, Stack, TextField } from '@mui/material'
+import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { IAlertInstanceConfig, IAlertUiConfig } from './AlertConfig'
 import { Warning } from '@mui/icons-material'
@@ -90,7 +90,9 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                                 <Button onClick={addInfo} size='small'>Add</Button>
                             </Stack>
                             <Stack>{
-                                regexInfo && regexInfo.map ((ri,index) => { return <Grid key={index} item><Chip label={ri} variant='outlined' onDelete={() => deleteChipInfo(ri)}/></Grid>})
+                                regexInfo && regexInfo.map ((ri,index) => { 
+                                    return <Box key={index}><Chip label={ri} variant='outlined' onDelete={() => deleteChipInfo(ri)}/></Box>
+                                })
                             }</Stack>
                         </Stack>
                         <Stack direction={'column'} spacing={1}>
@@ -99,7 +101,7 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                                 <Button onClick={addWarning} size='small'>Add</Button>
                             </Stack>
                             <Stack>{
-                                regexWarning && regexWarning.map ((ri,index) => { return <Grid key={index} item><Chip label={ri} variant='outlined' onDelete={() => deleteChipWarning(ri)}/></Grid>})
+                                regexWarning && regexWarning.map ((ri,index) => { return <Box key={index}><Chip label={ri} variant='outlined' onDelete={() => deleteChipWarning(ri)}/></Box>})
                             }</Stack>
                         </Stack>
                         <Stack direction={'column'} spacing={1}>
@@ -108,7 +110,7 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                                 <Button onClick={addError} size='small'>Add</Button>
                             </Stack>
                             <Stack>{
-                                regexError && regexError.map ((ri,index) => { return <Grid key={index} item><Chip label={ri} variant='outlined' onDelete={() => deleteChipError(ri)}/></Grid>})
+                                regexError && regexError.map ((ri,index) => { return <Box key={index}><Chip label={ri} variant='outlined' onDelete={() => deleteChipError(ri)}/></Box>})
                             }</Stack>
                         </Stack>
                     </Stack>

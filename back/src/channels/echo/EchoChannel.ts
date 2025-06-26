@@ -1,6 +1,6 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, ClusterTypeEnum } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, ClusterTypeEnum, ChannelData, SourceEnum } from '@jfvilas/kwirth-common';
 import { ClusterInfo } from '../../model/ClusterInfo'
-import { ChannelData, IChannel, SourceEnum } from '../IChannel';
+import { IChannel } from '../IChannel';
 import { IEchoMessageResponse } from './EchoMessage';
 
 export interface IAsset {

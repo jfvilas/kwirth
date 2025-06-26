@@ -3,4 +3,5 @@ export interface LogConfig {
     previous: boolean;
     maxMessages: number;
     fromStart: boolean;
+    startTime: number;
 }

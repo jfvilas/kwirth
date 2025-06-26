@@ -272,7 +272,7 @@ const App: React.FC = () => {
                 newTab.channelPending = false
                 if (newTab.channelStarted) {
                     if (newTab.channelPaused) 
-                        newTab.headerEl.style.backgroundColor = '#ffe082'
+                        newTab.headerEl.style.backgroundColor = '#dddddd'
                     else
                         newTab.headerEl.style.backgroundColor = '#99dd99'
                 }

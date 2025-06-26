@@ -1,3 +1,4 @@
+export * from './Channel';
 export * from './InstanceMessage';
 export * from './InstanceConfig';
 export * from './AlertMessage';

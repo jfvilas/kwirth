@@ -95,6 +95,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                             </Stack>
                                 <LocalizationProvider dateAdapter={AdapterMoment}>
                                     <DateTimePicker
+                                        enableAccessibleFieldDOMStructure={false}
                                         defaultValue={moment(Date.now()-30*60*1000)}
                                         viewRenderers={{ hours: renderTimeViewClock, minutes: renderTimeViewClock, seconds: renderTimeViewClock }}
                                         slots={{ textField: (p) => <TextField {...p} variant='standard' sx={{ml:'60px', '& .MuiInputBase-root': {border: 'none'}, '& .MuiInputLabel-root': { color: fromStart?'light-gray':'black' } }}/> }}

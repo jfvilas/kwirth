@@ -1,7 +1,7 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, OpsMessage, OpsMessageResponse, OpsCommandEnum, RouteMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, OpsMessage, OpsMessageResponse, OpsCommandEnum, RouteMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, ChannelData, SourceEnum } from '@jfvilas/kwirth-common';
 import { WebSocket as NonNativeWebSocket } from 'ws'
 import { ClusterInfo } from '../../model/ClusterInfo'
-import { ChannelData, IChannel, SourceEnum } from '../IChannel';
+import { IChannel } from '../IChannel';
 import { Readable, Writable } from 'stream';
 import { execCommandGetDescribe } from './GetCommand';
 import { execCommandRestart } from './RestartCommand';

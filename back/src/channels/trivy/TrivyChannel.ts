@@ -1,6 +1,6 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, TrivyMessage, TrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, TrivyCommandEnum, TrivyConfig } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, TrivyMessage, TrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, TrivyCommandEnum, TrivyConfig, ChannelData, SourceEnum } from '@jfvilas/kwirth-common';
 import { ClusterInfo } from '../../model/ClusterInfo'
-import { ChannelData, IChannel, SourceEnum } from '../IChannel';
+import { IChannel } from '../IChannel';
 import { KubernetesObject, makeInformer } from '@kubernetes/client-node';
 
 const TRIVY_API_VERSION = 'v1alpha1'
@@ -57,27 +57,24 @@ class TrivyChannel implements IChannel {
     }
 
     processCommand = async (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> => {
-        if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
+        if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) return false
+
+        let socket = this.webSocketTrivy.find(s => s.ws === webSocket)
+        if (!socket) {
+            console.log('Socket not found')
             return false
         }
-        else {
-            let socket = this.webSocketTrivy.find(s => s.ws === webSocket)
-            if (!socket) {
-                console.log('Socket not found')
-                return false
-            }
 
-            let instances = socket.instances
-            let instance = instances.find(i => i.instanceId === instanceMessage.instance)
-            if (!instance) {
-                this.sendSignalMessage(webSocket, instanceMessage.action, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceMessage.instance, `Instance not found`)
-                console.log(`Instance ${instanceMessage.instance} not found`)
-                return false
-            }
-            let resp = await this.executeCommand(instanceMessage as TrivyMessage, instance)
-            if (resp) webSocket.send(JSON.stringify(resp))
-            return Boolean(resp)
+        let instances = socket.instances
+        let instance = instances.find(i => i.instanceId === instanceMessage.instance)
+        if (!instance) {
+            this.sendSignalMessage(webSocket, instanceMessage.action, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceMessage.instance, `Instance not found`)
+            console.log(`Instance ${instanceMessage.instance} not found`)
+            return false
         }
+        let resp = await this.executeCommand(instanceMessage as TrivyMessage, instance)
+        if (resp) webSocket.send(JSON.stringify(resp))
+        return Boolean(resp)
     }
 
     scoreAsset = async (instance:IInstance, asset:IAsset): Promise<{ score: number; known: any; unknown: any; }> => {
@@ -114,7 +111,7 @@ class TrivyChannel implements IChannel {
                 }
             }
         }
-        catch (err){
+        catch (err:any){
             unknown = {
                 name: asset.podName,
                 namespace: asset.podNamespace,
@@ -122,7 +119,7 @@ class TrivyChannel implements IChannel {
                 statusCode: 999,
                 statusMessage: err
             }
-            console.log('err', err)
+            console.log('err', err.response.body)
         }
         return {
             score,
@@ -167,6 +164,7 @@ class TrivyChannel implements IChannel {
             data: undefined
         }
 
+        console.log('instanceMessage.command', instanceMessage.command)
         switch (instanceMessage.command) {
             case TrivyCommandEnum.SCORE:
                 if (!this.checkScopes(instance, InstanceConfigScopeEnum.WORKLOAD)) {

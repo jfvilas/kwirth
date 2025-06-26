@@ -1,19 +1,4 @@
-import { InstanceConfig, InstanceMessage, InstanceMessageActionEnum, RouteMessageResponse } from '@jfvilas/kwirth-common'
-
-enum SourceEnum {
-    DOCKER = 'docker',
-    KUBERNETES = 'kubernetes'
-}
-
-type ChannelData = {
-    id: string
-    routable: boolean  // instance can receive routed commands
-    pauseable: boolean  // instance can be paused
-    modifyable: boolean  // instance can be modified
-    reconnectable: boolean  // instance supports client reconnect requests
-    sources: SourceEnum[]  // array of sources (kubernetes, docker...)
-    metrics: boolean  // this channel requires metrics
-}
+import { ChannelData, InstanceConfig, InstanceMessage, InstanceMessageActionEnum, RouteMessageResponse } from '@jfvilas/kwirth-common'
 
 interface IChannel {
     getChannelData() : ChannelData
@@ -34,5 +19,4 @@ interface IChannel {
     updateConnection (webSocket:WebSocket, instanceId:string) : boolean
 }
 
-export type { ChannelData }
-export { SourceEnum, IChannel }
+export { IChannel }
