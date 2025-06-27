@@ -1,6 +1,5 @@
-import { InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
-import { OpsObject } from "./ops/OpsObject"
-import { MetricDescription } from "./metrics/MetricDescription"
+import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
+import { MetricDescription } from './metrics/MetricDescription'
 
 enum IChannelMessageAction {
     NONE,
@@ -17,7 +16,6 @@ interface ISetupProps {
 }
 
 interface IContentProps {
-    webSocket?: WebSocket
     channelObject: IChannelObject
 }
 
@@ -31,7 +29,7 @@ interface IChannelObject {
     instanceId: string
     instanceConfig: any
     uiConfig: any
-    uiData: OpsObject | undefined | any
+    uiData: any
     metricsList?: Map<string, MetricDescription>
     accessString?: string
     webSocket?: WebSocket

@@ -13,12 +13,12 @@ const OpsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     
     const [sessionKeepAlive, setSessionKeepAlive] = useState(props.instanceSettings? props.instanceSettings.sessionKeepAlive : opsInstanceConfig.sessionKeepAlive)
     const [colorMode, setColorMode] = useState<ColorModeEnum>(props.uiSettings? props.uiSettings.colorMode : ColorModeEnum.Light)
-    const defaultRef = useRef<any>(null)
+    const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () => {
         opsInstanceConfig.sessionKeepAlive = sessionKeepAlive
         opsUiConfig.colorMode = colorMode
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked)
+        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 
     return (<>

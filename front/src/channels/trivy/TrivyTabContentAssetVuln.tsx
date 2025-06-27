@@ -1,11 +1,11 @@
 import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material'
 import { Accordion, AccordionDetails, AccordionSummary, Stack, Typography } from '@mui/material'
 
-interface IVProps {
+interface IProps {
     vuln: any
 }
 
-const TabContentTrivyAssetVulns: React.FC<IVProps> = (props:IVProps) => {
+const TabContentTrivyAssetVulns: React.FC<IProps> = (props:IProps) => {
     let vuln = props.vuln
     let date = new Date(vuln.publishedDate)
     let published = date.getFullYear()+'-'+date.getMonth()+'-'+date.getDate()

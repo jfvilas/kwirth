@@ -5,7 +5,7 @@ export enum TrivyCommandEnum {
     RESCAN = 'rescan'
 }
 
-export interface TrivyMessage extends InstanceMessage {
+export interface ITrivyMessage extends InstanceMessage {
     msgtype: 'trivymessage'
     id: string
     accessKey: string
@@ -18,7 +18,7 @@ export interface TrivyMessage extends InstanceMessage {
     params?: string[]
 }
 
-export interface TrivyMessageResponse extends InstanceMessage {
+export interface ITrivyMessageResponse extends InstanceMessage {
     msgtype: 'trivymessageresponse'
     id: string
     namespace: string

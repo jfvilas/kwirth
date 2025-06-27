@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Button, Stack, TextField } from '@mui/material'
-import { IOpsObject, OpsCommandEnum, OpsMessage } from './OpsObject'
-import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
+import { IOpsObject } from './OpsObject'
+import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessage, OpsCommandEnum } from '@jfvilas/kwirth-common'
 import { v4 as uuidv4 } from 'uuid'
 import { Terminal } from './terminal/Terminal'
 import { SelectTerminal } from './terminal/SelectTerminal'
@@ -98,7 +98,8 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const sendCommand = (data:string) => {
-        if (!props.webSocket)  return
+        console.log('tosend', props.channelObject.webSocket)
+        if (!props.channelObject.webSocket)  return
 
         let [namespace,pod,container] = ['','','']
         let params = data.trim().split(' ').map(p => p.trim()).filter(p => p!=='')
@@ -121,7 +122,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
             }
         }
-        let opsMessage:OpsMessage = {
+        let opsMessage:IOpsMessage = {
             flow: InstanceMessageFlowEnum.REQUEST,
             action: InstanceMessageActionEnum.COMMAND,
             channel: InstanceMessageChannelEnum.OPS,
@@ -138,7 +139,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             msgtype: 'opsmessage'
         }
         let payload = JSON.stringify( opsMessage )
-        props.webSocket.send(payload)
+        if (props.channelObject.webSocket) props.channelObject.webSocket.send(payload)
     }
 
     const formatConsole = () => {
@@ -175,7 +176,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
         if (opsObject.shell) opsObject.shell.pending = prompt
         
-        let opsMessage:OpsMessage = {
+        let opsMessage:IOpsMessage = {
             flow: InstanceMessageFlowEnum.REQUEST,
             action: InstanceMessageActionEnum.COMMAND,
             channel: InstanceMessageChannelEnum.OPS,
@@ -192,7 +193,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             msgtype: 'opsmessage'
         }
         let payload = JSON.stringify( opsMessage )
-        if (props.webSocket) props.webSocket.send(payload)
+        if (props.channelObject.webSocket) props.channelObject.webSocket.send(payload)
     }
 
     const onKeyTerminal = (key:string) => {

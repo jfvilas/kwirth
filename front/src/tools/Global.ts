@@ -1,5 +1,6 @@
+import { KwirthData } from "@jfvilas/kwirth-common"
 import { MetricDescription } from "../channels/metrics/MetricDescription"
-import { Cluster, KwirthData } from "../model/Cluster"
+import { Cluster } from "../model/Cluster"
 import { addGetAuthorization } from "./AuthorizationManagement"
 
 export const getMetricsNames = async (cluster:Cluster) => {

@@ -1,8 +1,14 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ClusterTypeEnum = void 0;
-var ClusterTypeEnum;
-(function (ClusterTypeEnum) {
-    ClusterTypeEnum["KUBERNETES"] = "kubernetes";
-    ClusterTypeEnum["DOCKER"] = "docker";
-})(ClusterTypeEnum || (exports.ClusterTypeEnum = ClusterTypeEnum = {}));
+// export enum ClusterTypeEnum {
+//     KUBERNETES = 'kubernetes',
+//     DOCKER = 'docker'
+// }
+// export interface KwirthData {
+//     version: string
+//     lastVersion: string
+//     clusterName: string
+//     clusterType: ClusterTypeEnum
+//     inCluster: boolean
+//     namespace: string
+//     deployment: string
+// }

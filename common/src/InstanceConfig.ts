@@ -55,7 +55,7 @@ export interface InstanceConfig extends InstanceMessage{
     group: string
     pod: string
     container: string
-    data?: LogConfig | AlertConfig | MetricsConfig | OpsConfig
+    data?: any
 }
 
 export interface InstanceConfigResponse extends InstanceMessage {

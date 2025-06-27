@@ -61,7 +61,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         let resultSeries = []
 
         for (var i=0; i<series[0].length; i++) {
-            var item: { [key: string]: any } = {}
+            var item: { [key: string]: string|number } = {}
             for (var j=0; j<series.length; j++ ) {
                 if (series[j][i]) {
                     item['timestamp'] = series[0][i].timestamp
@@ -79,7 +79,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         return resultSeries
     }
 
-    const addChart = (dataMetrics: MetricsObject, metric:string, names:string[], series:ISample[][], colour:string) => {
+    const addChart = (metric:string, names:string[], series:ISample[][], colour:string) => {
         let result
         let mergedSeries = mergeSeries(names, series)
 
@@ -161,7 +161,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                         <Legend/>
                         { series.map ((serie,index) =>
                             <Bar name={names[index]} {...(metricsUiConfig.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={series.length===1?colour:colours[index]}>
-                                { index === series.length-1 && series.length > 1 ? <LabelList dataKey={names[index]} position='insideTop' content={ renderLabel }/> : null }
+                                { index === series.length-1 && series.length > 1 ? <LabelList dataKey={names[index]} position='insideTop' content={renderLabel}/> : null }
                             </Bar>
                         )}
                     </BarChart>
@@ -245,7 +245,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 var series = assetNames.map(assetName => {
                     return data.get(assetName)!.get(metric)!
                 })
-                allCharts.push(<>{addChart(metricsObject, metric, assetNames, series, '')}</>)
+                allCharts.push(<>{addChart(metric, assetNames, series, '')}</>)
             }
 
             let rows = []
@@ -265,7 +265,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let allCharts = Array.from(data.keys()!).map( (asset, index)  =>  {
                 return Array.from(data.get(asset)?.keys()!).map ( metric => {
                     var series = data.get(asset)?.get(metric)!
-                    return (<>{addChart(metricsObject, metric, [asset], [series], colours[index])}</>)
+                    return (<>{addChart(metric, [asset], [series], colours[index])}</>)
                 })
             })
 

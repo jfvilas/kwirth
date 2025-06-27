@@ -2,6 +2,7 @@ import React from 'react'
 import { Collapse, Menu, MenuItem, MenuList, Typography } from '@mui/material'
 import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, Info } from '@mui/icons-material'
 import { ITabObject } from '../model/ITabObject'
+import { BackChannelData } from '@jfvilas/kwirth-common'
 
 enum MenuTabOption {
     TabInfo,
@@ -24,7 +25,7 @@ interface IProps {
     tabs: ITabObject[]
     selectedTab?: ITabObject
     selectedTabIndex: number
-    backChannels: any[]
+    backChannels: BackChannelData[]
 }
 
 const MenuTab: React.FC<IProps> = (props:IProps) => {

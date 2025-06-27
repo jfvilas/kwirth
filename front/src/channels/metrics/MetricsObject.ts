@@ -6,7 +6,7 @@ export enum MetricsEventSeverityEnum {
     ERROR = 'error'
 }
 
-export interface AssetMetrics {
+export interface IAssetMetrics {
     assetName: string
     values: {
         metricName: string
@@ -15,7 +15,7 @@ export interface AssetMetrics {
 }
 
 export interface IMetricsMessage extends InstanceMessage {
-    assets: AssetMetrics[]
+    assets: IAssetMetrics[]
     timestamp: number
 }
 

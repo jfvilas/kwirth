@@ -1,19 +1,11 @@
 import express, { Request, Response} from 'express'
 import Semaphore from 'ts-semaphore'
 import { ApiKeyApi } from './ApiKeyApi'
-import { AccessKey, ApiKey } from '@jfvilas/kwirth-common'
+import { ApiKey, ILoginResponse, IUser } from '@jfvilas/kwirth-common'
 import { accessKeyCreate } from '@jfvilas/kwirth-common'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import { ISecrets } from '../tools/ISecrets'
 import { IConfigMaps } from '../tools/IConfigMap'
-
-interface User {
-    id: string
-    password: string
-    name: string
-    resources: string
-    accessKey: AccessKey
-}
 
 export class LoginApi {
     secrets: ISecrets
@@ -41,7 +33,7 @@ export class LoginApi {
                     res.status(401).json()
                     return
                 }
-                let user:User = JSON.parse(atob(users[req.body.user]))
+                let user:IUser = JSON.parse(atob(users[req.body.user]))
                 if (user) {
                     if (req.body.password === user.password) {
                         if (user.id === 'admin' && user.password === 'password')
@@ -78,7 +70,7 @@ export class LoginApi {
                     return
                 }
 
-                let user:User = JSON.parse (atob(users[req.body.user]))
+                let user:IUser = JSON.parse (atob(users[req.body.user]))
                 if (user) {
                     if (req.body.password===user.password) {
                         user.password = req.body.newpassword
@@ -98,13 +90,12 @@ export class LoginApi {
         })
     }
 
-    createApiKey = async (req:Request, user:User) : Promise<ApiKey> => {
+    createApiKey = async (req:Request, user:IUser) : Promise<ApiKey> => {
         let ip = (req as any).clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress
         let apiKey:ApiKey = {
-            //accessKey: accessKeyCreate('permanent', 'cluster:::::'),
             accessKey: accessKeyCreate('permanent', user.resources),
             description: `Login user '${user.id}' from ${ip}`,
-            expire: Date.now() + 24*60*60*1000,  // 24h
+            expire: Date.now() + 24*60*60*1000,
             days: 1
         }
         let storedKeys = await this.configMaps.read('kwirth.keys', [])
@@ -115,13 +106,13 @@ export class LoginApi {
         return apiKey
     }
 
-    okResponse = (user:User) => {
-        var newObject:any = {
+    okResponse = (user:IUser) => {
+        var response:ILoginResponse = {
             id: user.id,
             name: user.name,
             accessKey: user.accessKey
         }
-        return newObject
+        return response
     }
     
 }

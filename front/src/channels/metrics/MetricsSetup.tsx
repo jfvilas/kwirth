@@ -22,7 +22,7 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const [assetStack, setAssetStack] = React.useState(props.uiSettings? props.uiSettings.stack : metricsUiConfig.stack)
     const [chart, setChart] = useState(metricsUiConfig.chart)
     const [filter, setFilter] = useState('')
-    const defaultRef = useRef<any>(null)
+    const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () =>{
         metricsInstanceConfig.mode = metricsMode
@@ -34,7 +34,7 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         metricsUiConfig.merge = assetMerge
         metricsUiConfig.stack = assetStack
         metricsUiConfig.chart = chart
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked)
+        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 
     const metricAddOrRemove = (value:string) => {

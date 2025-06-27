@@ -20,8 +20,11 @@ export * from './InstanceConfig'
 export * from './AlertMessage'
 export * from './AlertConfig'
 
-export * from './LogMessage'
+export * from './EchoMessage'
+export * from './EchoConfig'
+
 export * from './LogConfig'
+export * from './LogMessage'
 
 export * from './MetricsMessage'
 export * from './MetricsConfig'
@@ -38,6 +41,7 @@ export * from './SignalMessage'
 
 export * from './ApiKey'
 export * from './AccessKey'
-export * from './KwirthData'
+export * from './Global'
+//export * from './KwirthData'
 export * from './LogConfig'
 export * from './Version'

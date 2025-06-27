@@ -2,6 +2,7 @@ import express, { Request, Response} from 'express'
 import { ClusterInfo } from '../model/ClusterInfo'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
+import { IClusterMetricsConfig } from '@jfvilas/kwirth-common'
 
 export class MetricsApi {
     public route = express.Router()
@@ -34,7 +35,7 @@ export class MetricsApi {
             .get( async (req:Request, res:Response) => {
                 try {
                     if (req.params.action==='node') {
-                        var json:any = {}
+                        var json:{ [key:string]:any } = {}
                         for(var key of this.clusterInfo.nodes.get(req.params.nodename)?.containerMetricValues.keys()!) {
                             var value = this.clusterInfo.nodes.get(req.params.nodename)?.containerMetricValues.get(key)
                             json[key]=value
@@ -75,9 +76,9 @@ export class MetricsApi {
             })
             .post( async (req:Request, res:Response) => {
                 try {
-                    var data = req.body as any
+                    let data:IClusterMetricsConfig = req.body
                     if (data.metricsInterval) {
-                        clusterInfo.metricsInterval=data.metricsInterval
+                        clusterInfo.metricsInterval = data.metricsInterval
                         clusterInfo.stopInterval()
                         clusterInfo.startInterval(+data.metricsInterval) 
                         console.log(`New metrics cluster interval set to ${data.metricsInterval}`)

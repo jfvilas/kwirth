@@ -12,7 +12,7 @@ const EchoTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const formatContent = () => {
         if (!echoObject || !echoObject.lines) return <></>
-        return echoObject.lines.map(l => <Typography>{l}</Typography>)
+        return echoObject.lines.map( (line,index) => <Typography key={index}>{line}</Typography> )
     }
 
     return (

@@ -4,12 +4,12 @@ import { Visibility as VisibilityIcon } from '@mui/icons-material'
 import { Replay as ReplayIcon } from '@mui/icons-material'
 import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
 import { useState } from 'react'
-import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, TrivyCommandEnum, TrivyMessage } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, TrivyCommandEnum, ITrivyMessage } from '@jfvilas/kwirth-common'
 import { IChannelObject } from '../IChannel'
 import { ITrivyInstanceConfig } from './TrivyConfig'
 
 interface IProps {
-    webSocket: WebSocket
+    //webSocket: WebSocket
     asset: any
     channelObject: IChannelObject
     view: string
@@ -49,24 +49,26 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
             </Box>
     )}
 
-    let rescan = (asset:any) => {
-        let trivyMessage: TrivyMessage = {
-            msgtype: 'trivymessage',
-            id: '1',
-            accessKey: props.channelObject.accessString!,
-            instance: props.channelObject.instanceId,
-            namespace: asset.namespace,
-            group: '',
-            pod: asset.name,
-            container: asset.container,
-            command: TrivyCommandEnum.RESCAN,
-            action: InstanceMessageActionEnum.COMMAND,
-            flow: InstanceMessageFlowEnum.REQUEST,
-            type: InstanceMessageTypeEnum.DATA,
-            channel: InstanceMessageChannelEnum.TRIVY
+    const rescan = (asset:any) => {
+        if (props.channelObject.webSocket) {
+            let trivyMessage: ITrivyMessage = {
+                msgtype: 'trivymessage',
+                id: '1',
+                accessKey: props.channelObject.accessString!,
+                instance: props.channelObject.instanceId,
+                namespace: asset.namespace,
+                group: '',
+                pod: asset.name,
+                container: asset.container,
+                command: TrivyCommandEnum.RESCAN,
+                action: InstanceMessageActionEnum.COMMAND,
+                flow: InstanceMessageFlowEnum.REQUEST,
+                type: InstanceMessageTypeEnum.DATA,
+                channel: InstanceMessageChannelEnum.TRIVY
+            }
+            props.channelObject.webSocket.send(JSON.stringify(trivyMessage))
+            props.onDelete(asset)
         }
-        props.webSocket.send(JSON.stringify(trivyMessage))
-        props.onDelete(asset)
     }
 
     let assetMenu = (

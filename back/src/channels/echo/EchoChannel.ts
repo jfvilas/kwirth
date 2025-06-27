@@ -1,19 +1,18 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, ClusterTypeEnum, ChannelData, SourceEnum } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, IEchoConfig, IEchoMessageResponse } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
-import { IEchoMessageResponse } from './EchoMessage';
 
 export interface IAsset {
     podNamespace: string
     podName: string
     containerName: string
-    interval: any
+    interval: NodeJS.Timeout
 }
 
 export interface IInstance {
     instanceId: string
     accessKey: AccessKey
-    config: any
+    configData: IEchoConfig
     paused: boolean
     assets: IAsset[]
 }
@@ -30,7 +29,7 @@ class EchoChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    getChannelData = (): ChannelData => {
+    getChannelData = (): BackChannelData => {
         return {
             id: 'echo',
             routable: false,
@@ -38,7 +37,7 @@ class EchoChannel implements IChannel {
             modifyable: false,
             reconnectable: true,
             metrics: false,
-            sources: [ SourceEnum.KUBERNETES, SourceEnum.DOCKER ]
+            sources: [ ClusterTypeEnum.KUBERNETES, ClusterTypeEnum.DOCKER ]
         }
     }
 
@@ -87,7 +86,7 @@ class EchoChannel implements IChannel {
             instance = {
                 accessKey: accessKeyDeserialize(instanceConfig.accessKey),
                 instanceId: instanceConfig.instance,
-                config: instanceConfig.data,
+                configData: instanceConfig.data,
                 paused: false,
                 assets: []
             }
@@ -97,7 +96,7 @@ class EchoChannel implements IChannel {
             podNamespace,
             podName,
             containerName,
-            interval: setInterval(() => this.sendData(webSocket, instance, asset), instance.config.interval*1000)
+            interval: setInterval(() => this.sendData(webSocket, instance, asset), instance.configData.interval*1000)
         }
         instance.assets.push(asset)
     }
@@ -192,7 +191,7 @@ class EchoChannel implements IChannel {
                 for (let instance of entry.instances) {
                     for (let asset of instance.assets) {
                         clearInterval(asset.interval)
-                        asset.interval = setInterval(() => this.sendData(newWebSocket, instance, asset), instance.config.interval*1000)
+                        asset.interval = setInterval(() => this.sendData(newWebSocket, instance, asset), instance.configData.interval*1000)
                     }
                 }
                 return true
@@ -206,8 +205,8 @@ class EchoChannel implements IChannel {
     private sendData = (ws:WebSocket, instance:IInstance, asset:IAsset) => {
         if (instance.paused) return
         let msg:IEchoMessageResponse = {
+            msgtype: 'echomessageresponse',
             channel: 'echo',
-            msgtype: 'echomessage',
             action: InstanceMessageActionEnum.NONE,
             flow: InstanceMessageFlowEnum.UNSOLICITED,
             type: InstanceMessageTypeEnum.DATA,

@@ -2,9 +2,6 @@ import React from 'react';
 import { Divider, MenuItem, MenuList } from "@mui/material"
 import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, Settings, RemoveFromQueue } from '@mui/icons-material';
 
-import { User } from '../model/User';
-import { parseResources } from '@jfvilas/kwirth-common';
-
 enum MenuDrawerOption {
     NewBoard,
     LoadBoard,
@@ -28,18 +25,13 @@ interface IProps {
     optionSelected: (opt:MenuDrawerOption) => void
     uploadSelected: (a:React.ChangeEvent<HTMLInputElement>) => void
     selectedClusterName?: string
-    user: User
+    hasClusterScope:boolean
   }
   
 const MenuDrawer: React.FC<IProps> = (props:IProps) => {
 
     const optionSelected = (opt:MenuDrawerOption) => {
         props.optionSelected(opt);
-    }
-
-    const hasClusterScope = () => {
-        let resources = parseResources(props.user.accessKey.resources)
-        return resources.some(r => r.scopes.split(',').includes('cluster'))
     }
 
     const menu=(
@@ -57,7 +49,7 @@ const MenuDrawer: React.FC<IProps> = (props:IProps) => {
             <Divider/>
             <MenuItem key='mc' onClick={() => optionSelected(MenuDrawerOption.ManageCluster)}><Edit/>&nbsp;Manage cluster list</MenuItem>
             <Divider/>
-            { hasClusterScope() && 
+            { props.hasClusterScope && 
                 <div>
                     <MenuItem key='asec' onClick={() => optionSelected(MenuDrawerOption.ApiSecurity)}><Key/>&nbsp;API Security</MenuItem>
                     <MenuItem key='usec' onClick={() => optionSelected(MenuDrawerOption.UserSecurity)}><Person />&nbsp;User security</MenuItem>

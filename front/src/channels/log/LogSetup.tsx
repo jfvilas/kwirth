@@ -22,7 +22,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const [timestamp, setTimestamp] = useState(props.instanceSettings? props.instanceSettings.timestamp : logInstanceConfig.timestamp)
     const [fromStart, setFromStart] = useState(props.instanceSettings? props.instanceSettings.fromStart : logInstanceConfig.fromStart)
     const startTimeRef = useRef<any>(null)
-    const defaultRef = useRef<any>(null)
+    const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const onChangeMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
         setMaxMessages(+event.target.value)
@@ -58,7 +58,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         logInstanceConfig.timestamp = timestamp
         logInstanceConfig.fromStart = fromStart
         logInstanceConfig.startTime = new Date(startTimeRef.current?.value).getTime()
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked)
+        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 
     return (

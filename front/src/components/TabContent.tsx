@@ -14,7 +14,6 @@ const TabContent: React.FC<IProps> = (props:IProps) => {
         if (!props.channel) return
         let ChannelTabContent = props.channel.TabContent
         let cprops:IContentProps = {
-            webSocket: props.webSocket,
             channelObject: props.channelObject!
         }
         return <ChannelTabContent {...cprops}/>

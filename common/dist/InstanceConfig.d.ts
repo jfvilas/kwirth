@@ -1,8 +1,4 @@
-import { AlertConfig } from "./AlertConfig";
 import { InstanceMessage } from "./InstanceMessage";
-import { LogConfig } from "./LogConfig";
-import { MetricsConfig } from "./MetricsConfig";
-import { OpsConfig } from "./OpsConfig";
 export declare enum InstanceConfigObjectEnum {
     PODS = "pods",
     EVENTS = "events"
@@ -41,7 +37,7 @@ export interface InstanceConfig extends InstanceMessage {
     group: string;
     pod: string;
     container: string;
-    data?: LogConfig | AlertConfig | MetricsConfig | OpsConfig;
+    data?: any;
 }
 export interface InstanceConfigResponse extends InstanceMessage {
     text: string;

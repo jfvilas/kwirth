@@ -12,12 +12,12 @@ const EchoSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
 
     const [interval, setInterval] = useState(props.instanceSettings? props.instanceSettings.interval : echoInstanceConfig.interval)
     const [maxLines, setMaxLines] = useState(props.uiSettings? props.uiSettings.maxLines : echoUiConfig.maxLines)
-    const defaultRef = useRef<any>(null)
+    const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () => {
         echoUiConfig.maxLines = maxLines
         echoInstanceConfig.interval = interval
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked)
+        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 
     return (<>

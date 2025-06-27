@@ -18,20 +18,20 @@ export enum OpsCommandEnum {
     DELETE = 'delete'
 }
 
-export interface OpsMessage extends InstanceMessage {
+export interface IOpsMessage extends InstanceMessage {
     msgtype: 'opsmessage'
     id: string
     accessKey: string
     instance: string
     namespace: string
     group: string
-    pod:string
+    pod: string
     container: string
     command: OpsCommandEnum
     params?: string[]
 }
 
-export interface OpsMessageResponse extends InstanceMessage {
+export interface IOpsMessageResponse extends InstanceMessage {
     msgtype: 'opsmessageresponse'
     id: string
     command: OpsCommandEnum

@@ -85,7 +85,7 @@ function buildResource (scopes:string[], namespaces:string[], groups:string[], p
 
         the rest of fields are comma-separated names according to this rules:
             - it can be a direct name, like: 'mynamespace', 'your-replicaset', 'our-pod'...
-            - it can be an '', indicating any resource of the scope is valid
+            - it can be an '', indicating a ny resource of the scope is valid
             - it can be a comma-separated list of names, like: namespace 'dev,pre', or pod 'my-pod,our-pod,your-pod'
 
         full access is created by using cluster scope:
@@ -102,7 +102,7 @@ function buildResource (scopes:string[], namespaces:string[], groups:string[], p
             pod: ''
             container: ''
 
-        access to restart any pod in 'development' namespace is like this:
+        access to restart a ny pod in 'development' namespace is like this:
             scope: restart
             namespace: 'development'
             group: ''
@@ -116,7 +116,7 @@ function buildResource (scopes:string[], namespaces:string[], groups:string[], p
             pod: 'my-pod,your-pod'
             container: ''      
 
-        In the furture we have plans to treat the names as regex, so, for allowing a requestor to restart any pod of the accounting application in preproduction environment you would use this:
+        In the furture we have plans to treat the names as regex, so, for allowing a requestor to restart a ny pod of the accounting application in preproduction environment you would use this:
             scope: restart
             namespace: 'preproduction'
             group: ''

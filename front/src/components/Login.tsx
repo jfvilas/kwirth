@@ -2,11 +2,11 @@ import React, { useState, useContext } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography} from '@mui/material'
 import { MsgBoxOkError, MsgBoxOkWarning } from '../tools/MsgBox'
 import { SessionContext, SessionContextType } from '../model/SessionContext'
-import { User } from '../model/User'
 import { addPostAuthorization } from '../tools/AuthorizationManagement'
+import { ILoginResponse, IUser } from '@jfvilas/kwirth-common'
 
 interface IProps {
-      onClose:(user:User|undefined, firstTime:boolean) => void
+    onClose:(user:IUser|undefined, firstTime:boolean) => void
 }
 
 const Login: React.FC<IProps> = (props:IProps) => {
@@ -36,9 +36,15 @@ const Login: React.FC<IProps> = (props:IProps) => {
         return response
     }
 
-    const loginOk = (jsonResult:any) => {
-        var receivedUser:User = jsonResult as User
-        props.onClose(receivedUser, firstTime)
+    const loginOk = (response:ILoginResponse) => {
+        let user:IUser={
+            id: response.id,
+            name: response.name,
+            password: '',
+            accessKey: response.accessKey,
+            resources: ''
+        }
+        props.onClose(user, firstTime)
     }
 
     const onClickOk = async () => {

@@ -1,4 +1,4 @@
-import { LogMessage, InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, LogConfig, ChannelData, SourceEnum } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, LogConfig, BackChannelData, ILogMessage } from '@jfvilas/kwirth-common';
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../../model/ClusterInfo'
@@ -10,7 +10,7 @@ interface IAsset {
     containerName:string
     passThroughStream?:PassThrough
     readableStream?: NodeJS.ReadableStream
-    msg:LogMessage   // we use this for avoiding allocating a LogMessage object for each message sent in the passthrough stream (memory optimization)
+    msg:ILogMessage  
 }        
 
 interface IInstance {
@@ -39,14 +39,14 @@ class LogChannel implements IChannel {
         return false
     }
     
-    getChannelData(): ChannelData {
+    getChannelData(): BackChannelData {
         return {
             id: 'log',
             routable: false,
             pauseable: true,
             modifyable: false,
             reconnectable: true,
-            sources: [ SourceEnum.DOCKER, SourceEnum.KUBERNETES ],
+            sources: [ ClusterTypeEnum.DOCKER, ClusterTypeEnum.KUBERNETES ],
             metrics: false
         }
     }
@@ -166,9 +166,9 @@ class LogChannel implements IChannel {
             asset.readableStream.on('data', async chunk => this.sendBatch(webSocket, instance, asset, chunk) )
             instance.assets.push( asset )
         }
-        catch (err:any) {
+        catch (err:unknown) {
             console.log('Generic error starting pod log', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err as string, instanceConfig)
         }
     }
 

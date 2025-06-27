@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography} from '@mui/material'
-import { Cluster, KwirthData } from '../model/Cluster'
+import { Cluster } from '../model/Cluster'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxWaitCancel, MsgBoxYesNo } from '../tools/MsgBox'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { readClusterInfo } from '../tools/Global'
+import { KwirthData } from '@jfvilas/kwirth-common'
 
 interface IProps {
   onClose:(clusters:Cluster[]) => void

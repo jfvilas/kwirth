@@ -1,4 +1,4 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, TrivyMessage, TrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, TrivyCommandEnum, TrivyConfig, ChannelData, SourceEnum } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, TrivyCommandEnum, TrivyConfig, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common';
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
 import { KubernetesObject, makeInformer } from '@kubernetes/client-node';
@@ -36,14 +36,14 @@ class TrivyChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    getChannelData = (): ChannelData => {
+    getChannelData = (): BackChannelData => {
         return {
             id: 'trivy',
             routable: false,
             pauseable: false,
             modifyable: false,
             reconnectable: false,
-            sources: [ SourceEnum.KUBERNETES ],
+            sources: [ ClusterTypeEnum.KUBERNETES ],
             metrics: false
         }
     }
@@ -72,7 +72,7 @@ class TrivyChannel implements IChannel {
             console.log(`Instance ${instanceMessage.instance} not found`)
             return false
         }
-        let resp = await this.executeCommand(instanceMessage as TrivyMessage, instance)
+        let resp = await this.executeCommand(instanceMessage as ITrivyMessage, instance)
         if (resp) webSocket.send(JSON.stringify(resp))
         return Boolean(resp)
     }
@@ -148,8 +148,8 @@ class TrivyChannel implements IChannel {
         return score
     }
 
-    executeCommand = async (instanceMessage: TrivyMessage, instance:IInstance): Promise<TrivyMessageResponse>=> {
-        let resp:TrivyMessageResponse = {
+    executeCommand = async (instanceMessage: ITrivyMessage, instance:IInstance): Promise<ITrivyMessageResponse>=> {
+        let resp:ITrivyMessageResponse = {
             msgtype: 'trivymessageresponse',
             id: '',
             namespace: instanceMessage.namespace,
@@ -205,7 +205,7 @@ class TrivyChannel implements IChannel {
         if (obj.metadata.labels['trivy-operator.resource.namespace'] === asset.podNamespace &&
             asset.podName.startsWith(obj.metadata.labels['trivy-operator.resource.name']) &&
             obj.metadata.labels['trivy-operator.container.name']  === asset.containerName) {
-            let payload:TrivyMessageResponse = {
+            let payload:ITrivyMessageResponse = {
                 msgtype: 'trivymessageresponse',
                 msgsubtype: event,
                 id: '',
@@ -232,7 +232,7 @@ class TrivyChannel implements IChannel {
             }
 
             let score = await this.calculateScore(instance)
-            let scoreResp:TrivyMessageResponse = {
+            let scoreResp:ITrivyMessageResponse = {
                 msgtype: 'trivymessageresponse',
                 msgsubtype: 'score',
                 id: '',

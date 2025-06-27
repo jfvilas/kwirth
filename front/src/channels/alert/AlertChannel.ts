@@ -1,9 +1,9 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { AlertSeverityEnum, InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
+import { AlertSeverityEnum, IAlertMessage, InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
 import { AlertIcon, AlertSetup } from './AlertSetup'
 import { AlertTabContent } from './AlertTabContent'
-import { AlertObject, IAlertMessage } from './AlertObject'
+import { AlertObject } from './AlertObject'
 import { AlertInstanceConfig, AlertUiConfig } from './AlertConfig'
 
 export class AlertChannel implements IChannel {

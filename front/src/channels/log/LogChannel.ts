@@ -1,13 +1,14 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
+import { ILogMessage, InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
 import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
-import { LogObject, ILogMessage, ILogLine } from './LogObject'
+import { LogObject, ILogLine } from './LogObject'
 import { LogInstanceConfig, LogSortOrderEnum, LogUiConfig } from './LogConfig'
 
 export class LogChannel implements IChannel {
     private setupVisible = false
+    private started = false
     private paused = false
     SetupDialog: FC<ISetupProps> = LogSetup
     TabContent: FC<IContentProps> = LogTabContent
@@ -129,12 +130,13 @@ export class LogChannel implements IChannel {
     initChannel(channelObject:IChannelObject): boolean {
         channelObject.instanceConfig = new LogInstanceConfig()
         channelObject.uiConfig = new LogUiConfig()
+        channelObject.uiData = new LogObject()
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        this.paused = false;
-        channelObject.uiData = new LogObject()
+        this.paused = false
+        this.started = true
 
         let logInstanceConfig:LogInstanceConfig = channelObject.instanceConfig
         let logConfig:LogInstanceConfig = new LogInstanceConfig()
@@ -170,13 +172,16 @@ export class LogChannel implements IChannel {
 
     stopChannel(channelObject: IChannelObject): boolean {
         let logObject = channelObject.uiData as LogObject
-        logObject.messages.push({
-            text: '=========================================================================',
-            type: InstanceMessageTypeEnum.DATA,
-            namespace: '',
-            pod: '',
-            container: ''
-        }) 
+        if (this.started) {
+            logObject.messages.push({
+                text: '=========================================================================',
+                type: InstanceMessageTypeEnum.DATA,
+                namespace: '',
+                pod: '',
+                container: ''
+            })
+        }
+        this.started = false
         this.paused = false
         return true
     }

@@ -1,5 +1,3 @@
-//import { MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
-
 interface IChannelSettings {
     id:string
     uiSettings:any
@@ -13,4 +11,3 @@ class Settings {
 
 export type { IChannelSettings }
 export { Settings }
-

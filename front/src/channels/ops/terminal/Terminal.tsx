@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent, ReactElement } from 'react';
-import './style.css';
+import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent, ReactElement } from 'react'
+import './style.css'
   
 export enum ColorModeEnum {
     Light,
@@ -7,7 +7,7 @@ export enum ColorModeEnum {
     Terminal3270
 }
   
-export interface Props {
+export interface IProps {
     name?: string
     height?: string
     colorMode?: ColorModeEnum
@@ -19,7 +19,7 @@ export interface Props {
     lines: string[]
 }
   
-const Terminal = ({name, height = '600px', colorMode, onInput, onKey, children, inputEnabled, startingInputValue = '', lines }: Props) => {
+const Terminal = ({name, height = '600px', colorMode, onInput, onKey, children, inputEnabled, startingInputValue = '', lines }: IProps) => {
     //+++ adjust height to visible window
     const [currentLineInput, setCurrentLineInput] = useState('')
     const scrollIntoViewRef = useRef<HTMLDivElement>(null)
@@ -67,7 +67,7 @@ const Terminal = ({name, height = '600px', colorMode, onInput, onKey, children, 
         setCurrentLineInput(startingInputValue.trim());
     }, [startingInputValue]);
   
-    // We use a hidden input to capture terminal input; make sure the hidden input is focused when clicking anywhere on the terminal
+    // hidden input for capturing terminal input
     useEffect(() => {
         const elListeners: { terminalEl: Element; listener: EventListenerOrEventListenerObject }[] = []
 

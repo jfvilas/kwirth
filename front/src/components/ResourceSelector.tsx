@@ -14,7 +14,7 @@ import IconKubernetesBlank from'../icons/svg/k8s-blank.svg'
 import IconKubernetes from'../icons/svg/k8s.svg'
 import IconDocker from'../icons/svg/docker-mark-blue.svg'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
-import { ClusterTypeEnum, InstanceConfigViewEnum, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
+import { BackChannelData, ClusterTypeEnum, InstanceConfigViewEnum, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
 
 const KIconDaemonSet = () => <img src={IconDaemonSet} alt='ds' height={'16px'}/>
 const KIconReplicaSet = () => <img src={IconReplicaSet} alt='rs' height={'16px'}/>
@@ -27,7 +27,7 @@ const KIconKubernetes = () => <img src={IconKubernetes} alt='kubernetes' height=
 const KIconDocker = () => <img src={IconDocker} alt='docker' height={'16px'}/>
 
 interface IResourceSelected {
-    channel: InstanceMessageChannelEnum
+    channelId: string
     clusterName: string
     view: string
     namespaces: string[]
@@ -41,7 +41,7 @@ interface IProps {
     onAdd: (resource:IResourceSelected) => void
     onChangeCluster: (clusterName:string) => void
     clusters: Cluster[]
-    backChannels: any[]
+    backChannels: BackChannelData[]
     sx: SxProps
 }
 
@@ -62,7 +62,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     const [pods, setPods] = useState<string[]>([])
     const [allContainers, setAllContainers] = useState<string[]>([])
     const [containers, setContainers] = useState<string[]>([])
-    const [channel, setChannel] = useState(props.backChannels.length>0? props.backChannels[0]  as InstanceMessageChannelEnum : InstanceMessageChannelEnum.LOG)
+    const [channel, setChannel] = useState(props.backChannels.length>0? props.backChannels[0].id : 'log')
     const [msgBox, setMsgBox] = useState(<></>)
 
     let isDocker = cluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER
@@ -213,7 +213,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
 
     const onAdd = () => {
         let selection:IResourceSelected = {
-            channel: channel,
+            channelId: channel,
             clusterName: cluster?.name,
             view,
             namespaces,

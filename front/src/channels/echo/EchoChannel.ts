@@ -2,8 +2,8 @@ import { FC } from "react";
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from "../IChannel";
 import { EchoInstanceConfig, EchoUiConfig, IEchoUiConfig } from "./EchoConfig";
 import { EchoSetup, EchoIcon } from './EchoSetup';
-import { InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from "@jfvilas/kwirth-common";
-import { EchoObject, IEchoMessage } from "./EchoObject";
+import { IEchoMessage, InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from "@jfvilas/kwirth-common";
+import { EchoObject } from "./EchoObject";
 import { EchoTabContent } from "./EchoTabContent";
 
 

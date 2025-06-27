@@ -87,7 +87,7 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
         setScopes(ss)
     }
 
-    const onChangeResource = (event: any) => {
+    const onChangeResource = (event: SelectChangeEvent) => {
         let res = event.target.value
         showResource(res)
         setSelectedResource(res)

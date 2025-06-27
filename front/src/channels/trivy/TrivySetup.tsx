@@ -13,14 +13,14 @@ const TrivySetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const [maxHigh, setMaxHigh] = useState(props.instanceSettings? props.instanceSettings.maxHigh : trivyInstanceConfig.maxHigh)
     const [maxMedium, setMaxMedium] = useState(props.instanceSettings? props.instanceSettings.maxMedium : trivyInstanceConfig.maxMedium)
     const [maxLow, setMaxLow] = useState(props.instanceSettings? props.instanceSettings.maxLow : trivyInstanceConfig.maxLow)
-    const defaultRef = useRef<any>(null)
+    const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () =>{
         trivyInstanceConfig.maxCritical = maxCritical
         trivyInstanceConfig.maxHigh = maxHigh
         trivyInstanceConfig.maxMedium = maxMedium
         trivyInstanceConfig.maxLow = maxLow
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked)
+        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 
     return (<>

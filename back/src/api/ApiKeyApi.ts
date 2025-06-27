@@ -15,8 +15,8 @@ export class ApiKeyApi {
     constructor (configMaps: IConfigMaps, masterKey:string) {
         this.configMaps = configMaps
 
-        configMaps.read('kwirth.keys',[]).then( (result:any) => {
-            if (result) result = AuthorizationManagement.cleanApiKeys(result)
+        configMaps.read('kwirth.keys',[]).then( (result:ApiKey[]) => {
+            result = AuthorizationManagement.cleanApiKeys(result)
             ApiKeyApi.apiKeys=result
         })
 
@@ -61,8 +61,8 @@ export class ApiKeyApi {
                         restart:default:replica+abcd::  // restart all pods in 'abcd' replicaset inside namespace 'default'
                         view,filter,stream:default:replica+abcd:abcd:  // view all pod logs with name 'abcd' inside namespace 'default'
                         filter:pre,dev::pod1:  // search pod named 'pod1' in namespaces 'pre' and 'dev'
-                        filter:::pod2:  // search for all instances of 'pod2' (any namespace)
-                        filter::replica+rs1::  // all pods of replicaset 'rs1' in any namespace
+                        filter:::pod2:  // search for all instances of 'pod2' (a-ny namespace)
+                        filter::replica+rs1::  // all pods of replicaset 'rs1' in a-ny namespace
                         filter:default:replica+rs1::cont1  // 'container1' on replicaset 'rs1' on namespace 'default'
                         filter:pro:replica+rs1:pod1,pod2:  // scope 'filter', pods 'pod1' and 'pod2' on replicaset 'rs1' on namespace 'pro'
                     */

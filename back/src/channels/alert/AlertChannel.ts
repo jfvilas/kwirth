@@ -1,4 +1,4 @@
-import { InstanceConfig, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, AlertSeverityEnum, AlertMessage, InstanceMessage, AlertConfig, RouteMessageResponse, ChannelData, SourceEnum } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, AlertSeverityEnum, IAlertMessage, InstanceMessage, AlertConfig, BackChannelData } from '@jfvilas/kwirth-common'
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../../model/ClusterInfo'
@@ -35,14 +35,14 @@ class AlertChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    getChannelData(): ChannelData {
+    getChannelData(): BackChannelData {
         return {
             id: 'alert',
             routable: false,
             pauseable: true,
             modifyable: false,
             reconnectable: true,
-            sources: [ SourceEnum.DOCKER, SourceEnum.KUBERNETES ],
+            sources: [ ClusterTypeEnum.DOCKER, ClusterTypeEnum.KUBERNETES ],
             metrics: false
         }
     }
@@ -87,7 +87,7 @@ class AlertChannel implements IChannel {
     sendAlert = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alertSeverity:AlertSeverityEnum, line:string, instanceId: string): void => {
         // line includes timestamp at front (beacuse of log stream configuration when starting logstream)
         let i = line.indexOf(' ')
-        let alertMessage: AlertMessage = {
+        let alertMessage: IAlertMessage = {
             action: InstanceMessageActionEnum.NONE,
             flow: InstanceMessageFlowEnum.UNSOLICITED,
             instance: instanceId,
@@ -209,9 +209,9 @@ class AlertChannel implements IChannel {
                 //if (global.gc) global.gc()
             })
         }
-        catch (err:any) {
+        catch (err) {
             console.log('Generic error starting docker pod alert log', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err as string, instanceConfig)
         }
     }
 
@@ -259,9 +259,9 @@ class AlertChannel implements IChannel {
             }
             await this.clusterInfo.logApi.log(podNamespace, podName, containerName, asset.passThroughStream, streamConfig)
         }
-        catch (err:any) {
+        catch (err:unknown) {
             console.log('Generic error starting pod alert log', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
+            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err as string, instanceConfig)
         }
     }
 

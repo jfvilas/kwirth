@@ -5,23 +5,7 @@ import { IChannel } from '../channels/IChannel'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import Docker from 'dockerode'
 import { applyAllResources, deleteAllResources } from '../tools/Trivy'
-
-export enum ClusterTypeEnum {
-    KUBERNETES = 'kubernetes',
-    DOCKER = 'docker'
-}
-
-export interface KwirthData {
-    version: string
-    lastVersion: string
-    clusterName: string
-    clusterType: ClusterTypeEnum
-    inCluster: boolean
-    namespace: string
-    deployment: string
-    metricsInterval: number
-    channels: any[]
-}
+import { ClusterTypeEnum, KwirthData } from '@jfvilas/kwirth-common'
 
 export class ConfigApi {
     public route = express.Router()

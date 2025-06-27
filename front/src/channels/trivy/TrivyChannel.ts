@@ -1,9 +1,9 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { InstanceConfigScopeEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { InstanceConfigScopeEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, SignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
 import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
-import { TrivyMessage as ITrivyMessage, TrivyMessageResponse as ITrivyMessageResponse, ITrivyObject, TrivyCommandEnum, TrivyObject } from './TrivyObject'
+import { ITrivyObject, TrivyObject } from './TrivyObject'
 import { TrivyInstanceConfig, TrivyUiConfig } from './TrivyConfig'
 
 export class TrivyChannel implements IChannel {

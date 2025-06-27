@@ -1,19 +1,26 @@
-import { InstanceConfigViewEnum, InstanceMessageTypeEnum, LogMessage, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { ILogMessage, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { ILogLine, LogObject } from './LogObject'
 import { Box } from '@mui/material'
 import { IContentProps } from '../IChannel'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let logObject = props.channelObject.uiData as LogObject
-    const lastLineRef = useRef(null)
+
+    const logBoxRef = useRef<HTMLDivElement | null>(null)
+    const [logBoxTop, setLogBoxTop] = useState(0)
+    const lastLineRef = useRef<HTMLSpanElement|null>(null)
+
+    useEffect(() => {
+        if (logBoxRef.current) setLogBoxTop(logBoxRef.current.getBoundingClientRect().top)
+    },[])
 
     if (!props.channelObject.uiData || !props.channelObject.uiData) return <pre></pre>
 
     const formatLogLine = (imessage:ILogLine) => {
         if (!imessage) return null
 
-        let logMessage = imessage as LogMessage
+        let logMessage = imessage as ILogMessage
         if (logMessage.type === InstanceMessageTypeEnum.DATA) {
             var txt = logMessage.text
             if (props.channelObject.view === InstanceConfigViewEnum.NAMESPACE) {
@@ -47,11 +54,12 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
-        
-    return <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
+
+    return <Box ref={logBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(85vh - ${logBoxTop}px)`}}>
         <pre>
             {logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })}
         </pre>
+        <br/>
         <span ref={lastLineRef}/>
     </Box>
 

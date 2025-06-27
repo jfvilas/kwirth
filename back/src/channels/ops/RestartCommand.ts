@@ -1,4 +1,4 @@
-import { InstanceMessageFlowEnum, InstanceMessageTypeEnum, OpsCommandEnum, OpsMessage, OpsMessageResponse } from "@jfvilas/kwirth-common"
+import { InstanceMessageFlowEnum, InstanceMessageTypeEnum, OpsCommandEnum, IOpsMessage, IOpsMessageResponse } from "@jfvilas/kwirth-common"
 import { ClusterInfo } from "../../model/ClusterInfo"
 import { IInstance } from "./OpsChannel"
 
@@ -12,8 +12,8 @@ export async function restartPod(clusterInfo: ClusterInfo, podNamespace:string, 
     }
 }
 
-export async function execCommandRestart(clusterInfo: ClusterInfo, instance:IInstance, opsMessage:OpsMessage): Promise<OpsMessageResponse> {
-    let execResponse: OpsMessageResponse = {
+export async function execCommandRestart(clusterInfo: ClusterInfo, instance:IInstance, opsMessage:IOpsMessage): Promise<IOpsMessageResponse> {
+    let execResponse: IOpsMessageResponse = {
         action: opsMessage.action,
         flow: InstanceMessageFlowEnum.RESPONSE,
         type: InstanceMessageTypeEnum.SIGNAL,

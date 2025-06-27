@@ -17,7 +17,7 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const [regexWarning, setRegexWarning] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexWarning : alertInstanceConfig.regexWarning)
     const [regexError, setRegexError] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexError : alertInstanceConfig.regexError)
     const [maxAlerts, setMaxAlerts] = useState<number>(props.uiSettings? props.uiSettings.maxAlerts : alertUiConfig.maxAlerts)
-    const defaultRef = useRef<any>(null)
+    const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const onChangeRegexInfo = (event:ChangeEvent<HTMLInputElement>) => {
         setInfo(event.target.value)
@@ -73,7 +73,7 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         alertInstanceConfig.regexInfo = regexInfo
         alertInstanceConfig.regexWarning = regexWarning
         alertInstanceConfig.regexError = regexError
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked)
+        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 
     return (<>

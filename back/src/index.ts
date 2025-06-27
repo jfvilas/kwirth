@@ -1,6 +1,6 @@
 import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, KubernetesObject } from '@kubernetes/client-node'
 import Docker from 'dockerode'
-import { ConfigApi, KwirthData } from './api/ConfigApi'
+import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
 import { KubernetesConfigMaps } from './tools/KubernetesConfigMaps'
 import { VERSION } from './version'
@@ -15,7 +15,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import { WebSocketServer } from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessage, RouteMessage } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, InstanceConfig, SignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessage, KwirthData, IRouteMessage } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { AuthorizationManagement } from './tools/AuthorizationManagement'
 
@@ -410,9 +410,9 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
 const processReconnect = async (webSocket: WebSocket, instanceMessage: InstanceMessage) => {
     console.log(`Trying to reconnect instance '${instanceMessage.instance}' on channel ${instanceMessage.channel}`)
     for (let channel of channels.values()) {
-        console.log('review channel', channel.getChannelData().id)
+        console.log('Review channel for reconnect:', channel.getChannelData().id)
         if (channel.containsInstance(instanceMessage.instance)) {
-            console.log('found channel', channel.getChannelData().id)
+            console.log('Found channel', channel.getChannelData().id)
             let updated = channel.updateConnection(webSocket, instanceMessage.instance)
             if (updated) {
                 sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.RECONNECT, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Reconnect successful')
@@ -424,10 +424,10 @@ const processReconnect = async (webSocket: WebSocket, instanceMessage: InstanceM
             }
         }
         else {
-            console.log(`Instance '${instanceMessage.instance}' not found on channel for reconnect`)
+            console.log(`Instance '${instanceMessage.instance}' not found on channel ${channel.getChannelData().id} for reconnect`)
         }
     }
-    console.log(`Instance '${instanceMessage.instance}' not found for reconnect`)
+    console.log(`Instance '${instanceMessage.instance}' found for reconnect in no channels`)
     sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.RECONNECT, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for reconnect')
 }
 
@@ -592,7 +592,7 @@ const processChannelRoute = async (webSocket: WebSocket, instanceMessage: Instan
     if (channel) {
         let instance = channel.containsInstance(instanceMessage.instance)
         if (instance) {
-            let routeMessage = instanceMessage as RouteMessage
+            let routeMessage = instanceMessage as IRouteMessage
             if (channels.has(routeMessage.destChannel)) {
                 if (channels.get(routeMessage.destChannel)?.getChannelData().routable) {
                     console.log(`Routing message to channel ${routeMessage.destChannel}`)
@@ -651,7 +651,7 @@ const processClientMessage = async (webSocket:WebSocket, message:string) => {
     }
 
     if (instanceMessage.action === InstanceMessageActionEnum.ROUTE) {
-        let routeMessage = instanceMessage as RouteMessage
+        let routeMessage = instanceMessage as IRouteMessage
         console.log(`Route received from channel ${instanceMessage.channel} to ${routeMessage.destChannel}`)
         processChannelRoute (webSocket, instanceMessage)
         return
@@ -770,8 +770,8 @@ const wss = new WebSocketServer({ server, skipUTF8Validation:true  })
 wss.on('connection', (webSocket:WebSocket) => {
     console.log('Client connected')
 
-    webSocket.onmessage = (_ev:MessageEvent<any>) => {
-        processClientMessage(webSocket, _ev.data)
+    webSocket.onmessage = (event) => {
+        processClientMessage(webSocket, event.data)
     }
 
     webSocket.onclose = () => {
@@ -892,7 +892,7 @@ const launchKubernetes = async() => {
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
                     channels.set('echo', new EchoChannel(clusterInfo))
                     kwirthData.channels =  Array.from(channels.keys()).map(k => {
-                        return channels.get(k)?.getChannelData()
+                        return channels.get(k)?.getChannelData()!
                     })
 
                     // Detect if any channel requires metrics

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListItem, ListItemButton, Stack, TextField, Typography } from '@mui/material'
-import { User } from '../../model/User'
 import { MsgBoxButtons, MsgBoxYesNo } from '../../tools/MsgBox'
 import { SessionContext, SessionContextType } from '../../model/SessionContext'
 import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addPutAuthorization } from '../../tools/AuthorizationManagement'
 import { ResourceEditor } from '../ResourceEditor'
+import { IUser } from '@jfvilas/kwirth-common'
 const copy = require('clipboard-copy')
 
 interface IProps {
@@ -14,7 +14,7 @@ interface IProps {
 const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
     const {accessString, backendUrl} = useContext(SessionContext) as SessionContextType
     const [users, setUsers] = useState<string[]>([])
-    const [selectedUser, setSelectedUser] = useState<User|undefined>(undefined)
+    const [selectedUser, setSelectedUser] = useState<IUser|undefined>(undefined)
     const [msgBox, setMsgBox] = useState(<></>)
 
     const [id, setId] = useState<string>('')
@@ -33,8 +33,8 @@ const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
     },[]);
 
     const onClickUser = async (id:string) => {
+        let user:IUser = (await (await fetch(`${backendUrl}/user/${id}`, addGetAuthorization(accessString))).json())
         setId(id)
-        let user:User = (await (await fetch(`${backendUrl}/user/${id}`, addGetAuthorization(accessString))).json())
         setSelectedUser(user)
         setName(user.name||'')
         setPassword(user.password||'')

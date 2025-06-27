@@ -1,4 +1,4 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, OpsMessage, OpsMessageResponse, OpsCommandEnum, RouteMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, ChannelData, SourceEnum } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, IOpsMessage, IOpsMessageResponse, OpsCommandEnum, IRouteMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common';
 import { WebSocket as NonNativeWebSocket } from 'ws'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
@@ -37,14 +37,14 @@ class OpsChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    getChannelData(): ChannelData {
+    getChannelData(): BackChannelData {
         return {
             id: 'ops',
             routable: true,
             pauseable: false,
             modifyable: false,
             reconnectable: false,
-            sources: [ SourceEnum.KUBERNETES ],
+            sources: [ ClusterTypeEnum.KUBERNETES ],
             metrics: false
         }
     }
@@ -78,7 +78,7 @@ class OpsChannel implements IChannel {
                 console.log(`Instance ${instanceMessage.instance} not found`)
                 return false
             }    
-            let opsMessage = instanceMessage as OpsMessage
+            let opsMessage = instanceMessage as IOpsMessage
             let resp = await this.executeCommand(webSocket, instance, opsMessage)
             if (resp) webSocket.send(JSON.stringify(resp))
             return Boolean(resp)
@@ -231,7 +231,7 @@ class OpsChannel implements IChannel {
     }
 
     private sendOpsResponse = (ws:WebSocket, instance:IInstance, asset:IAsset, id:string, text:string): void => {
-        var resp: OpsMessageResponse = {
+        var resp: IOpsMessageResponse = {
             action: InstanceMessageActionEnum.NONE,
             flow: InstanceMessageFlowEnum.UNSOLICITED,
             channel: InstanceMessageChannelEnum.OPS,
@@ -257,7 +257,7 @@ class OpsChannel implements IChannel {
         let shellSocket = await this.clusterInfo.execApi.exec(podNamespace, podName, containerName, ['/bin/sh', '-i'], stdout, stderr, stdin, true, (st) => { console.log('st',st) })
         shellSocket.onmessage = (event) => {
             let text = event.data.toString('utf8').substring(1)
-            var resp: OpsMessageResponse = {
+            var resp: IOpsMessageResponse = {
                 action: InstanceMessageActionEnum.NONE,
                 flow: InstanceMessageFlowEnum.UNSOLICITED,
                 channel: InstanceMessageChannelEnum.OPS,
@@ -291,9 +291,9 @@ class OpsChannel implements IChannel {
         return canPerform
     }
 
-    private async executeImmediateCommand (instanceMessage:InstanceMessage) : Promise<any> {
+    private async executeImmediateCommand (instanceMessage:InstanceMessage) : Promise<IRouteMessageResponse> {
         console.log('Immediate request received')
-        let opsMessage = instanceMessage as OpsMessage
+        let opsMessage = instanceMessage as IOpsMessage
 
         // we create a dummy instance for executnig command, and we add the asset erefrenced int hte immediate command
         let instance:IInstance = {
@@ -313,7 +313,7 @@ class OpsChannel implements IChannel {
         }
 
         // we prepare a base response message
-        let resp:OpsMessageResponse = {
+        let resp:IOpsMessageResponse = {
             action: opsMessage.action,
             flow: InstanceMessageFlowEnum.RESPONSE,
             type: InstanceMessageTypeEnum.SIGNAL,
@@ -354,7 +354,7 @@ class OpsChannel implements IChannel {
                 break
         }
 
-        let routeMessageResponse:RouteMessageResponse = {
+        let routeMessageResponse:IRouteMessageResponse = {
             msgtype: 'routemessageresponse',
             action: InstanceMessageActionEnum.ROUTE,
             flow: InstanceMessageFlowEnum.RESPONSE,
@@ -366,8 +366,8 @@ class OpsChannel implements IChannel {
         return routeMessageResponse
     }
 
-    private async executeCommand (webSocket:WebSocket, instance:IInstance, opsMessage:OpsMessage) : Promise<OpsMessageResponse | undefined> {
-        let execResponse: OpsMessageResponse = {
+    private async executeCommand (webSocket:WebSocket, instance:IInstance, opsMessage:IOpsMessage) : Promise<IOpsMessageResponse | undefined> {
+        let execResponse: IOpsMessageResponse = {
             action: opsMessage.action,
             flow: InstanceMessageFlowEnum.RESPONSE,
             type: InstanceMessageTypeEnum.SIGNAL,

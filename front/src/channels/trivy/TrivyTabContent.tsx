@@ -109,7 +109,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
                                 return (
                                     <Box key={index} sx={{margin:1, width:'24%'}}>
-                                        <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view={'card'} webSocket={props.webSocket!}/>
+                                        <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view={'card'}/>
                                     </Box>
                                 )
                             })}
@@ -121,7 +121,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
                                 return (
                                     <Grid key={index} sx={{margin:1, width:'100%'}}>
-                                        <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view='list' webSocket={props.webSocket!}/>
+                                        <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view='list'/>
                                     </Grid>
                                 )
                             })}

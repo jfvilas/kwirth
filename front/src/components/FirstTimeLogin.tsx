@@ -35,7 +35,7 @@ const FirstTimeLogin: React.FC<IProps> = (props:IProps) => {
             <DialogContent>
                 <Typography>
                     It seems that this is your first time here. If you are installing Kwirth just for use with <b>Backstage</b> Kubelog,
-                    or any of the Backstage Kwirth plugins (KwirthMetrics, KwirthLog, KwirthSecurity...) you can create your API Key now
+                    or a Backstage Kwirth plugin (KwirthMetrics, KwirthLog, KwirthSecurity...) you can create your API Key now
                     and <b>exit Kwirth</b> (I think you should take a look on what Kwirth can do for you, but it is not needed).
                     <br/>
                     <br/>

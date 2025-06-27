@@ -1,9 +1,9 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { InstanceConfigScopeEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
+import { InstanceConfigScopeEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessageResponse, OpsCommandEnum, SignalMessage } from '@jfvilas/kwirth-common'
 import { OpsIcon, OpsSetup } from './OpsSetup'
 import { OpsTabContent } from './OpsTabContent'
-import { OpsObject, IOpsObject, OpsMessageResponse, OpsCommandEnum } from './OpsObject'
+import { OpsObject, IOpsObject } from './OpsObject'
 import { OpsInstanceConfig, OpsUiConfig } from './OpsConfig'
 import { OPSHELPMESSAGE, OPSWELCOMEMESSAGE } from '../../tools/Constants'
 
@@ -16,7 +16,7 @@ export class OpsChannel implements IChannel {
     
     requiresMetrics() { return false }
     requiresAccessString() { return true }
-    requiresWebSocket() { return false }
+    requiresWebSocket() { return true }
 
     getScope() { return InstanceConfigScopeEnum.GET}
     getChannelIcon(): JSX.Element { return OpsIcon }
@@ -28,9 +28,7 @@ export class OpsChannel implements IChannel {
         let action = IChannelMessageAction.NONE
         let opsObject = channelObject.uiData as OpsObject
 
-
-
-        let opsMessage = JSON.parse(wsEvent.data) as OpsMessageResponse
+        let opsMessage = JSON.parse(wsEvent.data) as IOpsMessageResponse
 
         switch (opsMessage.type) {
             case InstanceMessageTypeEnum.DATA:
