@@ -23,7 +23,7 @@ export class EchoChannel implements IChannel {
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
-    processChannelMessage(channelObject:IChannelObject, wsEvent: any): IChannelMessageAction {
+    processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let msg:IEchoMessage = JSON.parse(wsEvent.data)
 
         let echoObject:IEchoObject = channelObject.uiData

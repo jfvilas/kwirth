@@ -24,7 +24,7 @@ export class StoreApi {
             .get(async (req:Request, res:Response) => {
                 StoreApi.semaphore.use ( async () => {
                     try {
-                        var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
+                        let data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
                         if (data===undefined)
                             res.status(200).json([])
                         else {
@@ -50,7 +50,7 @@ export class StoreApi {
             .get(async (req:Request, res:Response) => {
                 StoreApi.semaphore.use ( async () => {
                     try {
-                        var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
+                        let data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
                         if (data === undefined)
                             res.status(200).json([])
                         else {
@@ -82,7 +82,7 @@ export class StoreApi {
             .get( async (req:Request, res:Response) => {
                 StoreApi.semaphore.use ( async () => {
                     try {
-                        var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
+                        let data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
                         if (data[req.params.group+'-'+req.params.key] === undefined) {
                             res.status(404).json()
                         }

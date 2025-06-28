@@ -2,9 +2,10 @@ import { Avatar, Box, Button, Card, Dialog, DialogActions, DialogContent, Dialog
 import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
 import { TabContentTrivyAssetVulns } from './TrivyTabContentAssetVuln'
 import { ITrivyInstanceConfig } from './TrivyConfig'
+import { IKnown } from '@jfvilas/kwirth-common'
 
 interface IProps {
-    asset: any
+    asset: IKnown
     trivyInstanceConfig: ITrivyInstanceConfig
     onClose: () => void
 }

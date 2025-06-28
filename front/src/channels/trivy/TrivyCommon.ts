@@ -1,7 +1,8 @@
 import { green, red, yellow } from '@mui/material/colors'
 import { ITrivyInstanceConfig } from './TrivyConfig'
+import { IKnown } from '@jfvilas/kwirth-common'
 
-const assetScore = (asset:any, trivyInstanceConfig:ITrivyInstanceConfig) => {
+const assetScore = (asset:IKnown, trivyInstanceConfig:ITrivyInstanceConfig) => {
     let maxScore = (trivyInstanceConfig.maxCritical>=0? trivyInstanceConfig.maxCritical*4:0) +
         (trivyInstanceConfig.maxHigh>=0? trivyInstanceConfig.maxHigh*4:0) +
         (trivyInstanceConfig.maxMedium>=0? trivyInstanceConfig.maxMedium*4:0) +
@@ -13,7 +14,7 @@ const assetScore = (asset:any, trivyInstanceConfig:ITrivyInstanceConfig) => {
     return value
 }
 
-const assetScoreColor = (asset:any, trivyInstanceConfig:ITrivyInstanceConfig) => {
+const assetScoreColor = (asset:IKnown, trivyInstanceConfig:ITrivyInstanceConfig) => {
     let score = assetScore(asset, trivyInstanceConfig)
     if (score>=50) return green[400]
     if (score>=0) return yellow[700]

@@ -1,4 +1,4 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, TrivyCommandEnum, TrivyConfig, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, TrivyCommandEnum, TrivyConfig, BackChannelData, ClusterTypeEnum, IKnown, IUnknown } from '@jfvilas/kwirth-common';
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
 import { KubernetesObject, makeInformer } from '@kubernetes/client-node';
@@ -77,8 +77,20 @@ class TrivyChannel implements IChannel {
         return Boolean(resp)
     }
 
-    scoreAsset = async (instance:IInstance, asset:IAsset): Promise<{ score: number; known: any; unknown: any; }> => {
-        let known:any, unknown:any
+    scoreAsset = async (instance:IInstance, asset:IAsset): Promise<{ score: number, known: IKnown, unknown: IUnknown }> => {
+        let known:IKnown = {
+            name: '',
+            namespace: '',
+            container: '',
+            report: undefined
+        }
+        let unknown:IUnknown = {
+            name: '',
+            namespace: '',
+            container: '',
+            statusCode: 0,
+            statusMessage: ''
+        }
         let score = 0
         try {
             let pod = (await this.clusterInfo.coreApi.readNamespacedPod(asset.podName, asset.podNamespace)).body
@@ -106,8 +118,8 @@ class TrivyChannel implements IChannel {
                     name: asset.podName,
                     namespace: asset.podNamespace,
                     container: asset.containerName,
-                    statusCode: crdObject.response.statusCode,
-                    statusMessage: crdObject.response.statusMessage
+                    statusCode: crdObject.response.statusCode || 0,
+                    statusMessage: crdObject.response.statusMessage || ''
                 }
             }
         }
@@ -130,8 +142,8 @@ class TrivyChannel implements IChannel {
 
     private calculateScore = async (instance: IInstance) => {
         let score = 0
-        let unknown:any[] = []
-        let known:any[] = []
+        let unknown:IUnknown[] = []
+        let known:IKnown[] = []
         let maxScore = (instance.maxCritical>=0? instance.maxCritical*4 : 0) +
             (instance.maxHigh>=0? instance.maxHigh*4 : 0) +
             (instance.maxMedium>=0? instance.maxMedium*4 : 0) +

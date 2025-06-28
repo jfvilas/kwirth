@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { InstanceConfigScopeEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, SignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
+import { IKnown, InstanceConfigScopeEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, SignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
 import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
 import { ITrivyObject, TrivyObject } from './TrivyObject'
@@ -21,7 +21,7 @@ export class TrivyChannel implements IChannel {
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
-    processChannelMessage(channelObject:IChannelObject, wsEvent: any): IChannelMessageAction {
+    processChannelMessage(channelObject:IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
         let trivyObject:ITrivyObject = channelObject.uiData
         let trivyMessageResponse:ITrivyMessageResponse = JSON.parse(wsEvent.data)
@@ -35,7 +35,7 @@ export class TrivyChannel implements IChannel {
                     }
                 }
                 else if (trivyMessageResponse.flow === InstanceMessageFlowEnum.UNSOLICITED) {
-                    let asset = trivyMessageResponse.data
+                    let asset:IKnown = trivyMessageResponse.data
                     switch (trivyMessageResponse.msgsubtype) {
                         case 'score':
                             trivyObject.score = trivyMessageResponse.data.score
@@ -45,7 +45,7 @@ export class TrivyChannel implements IChannel {
                             break
                         case 'update':
                         case 'delete':
-                            trivyObject.known = (trivyObject.known as any[]).filter(a => a.namespace !== asset.namespace || a.name !== asset.name || a.container !== asset.container)
+                            trivyObject.known = (trivyObject.known as IKnown[]).filter(a => a.namespace !== asset.namespace || a.name !== asset.name || a.container !== asset.container)
                             if (trivyMessageResponse.msgsubtype==='update') trivyObject.known.push(asset)
                             break
                         default:

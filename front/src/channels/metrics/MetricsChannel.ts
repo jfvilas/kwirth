@@ -22,7 +22,7 @@ export class MetricsChannel implements IChannel {
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
-    processChannelMessage(channelObject:IChannelObject, wsEvent: any): IChannelMessageAction {
+    processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
         var msg:IMetricsMessage = JSON.parse(wsEvent.data)
         let metricsObject:IMetricsObject = channelObject.uiData

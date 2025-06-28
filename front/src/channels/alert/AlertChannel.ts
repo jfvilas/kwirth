@@ -22,7 +22,7 @@ export class AlertChannel implements IChannel {
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
-    processChannelMessage(channelObject:IChannelObject, wsEvent: any): IChannelMessageAction {
+    processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
         let msg:IAlertMessage = JSON.parse(wsEvent.data)
         let alertObject:IAlertObject = channelObject.uiData

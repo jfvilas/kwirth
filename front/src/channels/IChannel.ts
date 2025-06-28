@@ -47,7 +47,7 @@ interface IChannel {
     getChannelIcon(): JSX.Element
     getSetupVisibility():boolean
     setSetupVisibility(visibility:boolean):void
-    processChannelMessage (channelObject:IChannelObject, wsEvent:any): IChannelMessageAction
+    processChannelMessage (channelObject:IChannelObject, wsEvent:MessageEvent): IChannelMessageAction
     initChannel(channelObject:IChannelObject): boolean
     startChannel(channelObject:IChannelObject): boolean
     pauseChannel(channelObject:IChannelObject): boolean

@@ -4,17 +4,16 @@ import { Visibility as VisibilityIcon } from '@mui/icons-material'
 import { Replay as ReplayIcon } from '@mui/icons-material'
 import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
 import { useState } from 'react'
-import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, TrivyCommandEnum, ITrivyMessage } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, TrivyCommandEnum, ITrivyMessage, IKnown } from '@jfvilas/kwirth-common'
 import { IChannelObject } from '../IChannel'
 import { ITrivyInstanceConfig } from './TrivyConfig'
 
 interface IProps {
-    //webSocket: WebSocket
-    asset: any
+    asset: IKnown
     channelObject: IChannelObject
     view: string
-    onDetails: (asset:any) => void
-    onDelete: (asset:any) => void
+    onDetails: (asset:IKnown) => void
+    onDelete: (asset:IKnown) => void
 }
 
 const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
@@ -49,7 +48,7 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
             </Box>
     )}
 
-    const rescan = (asset:any) => {
+    const rescan = (asset:IKnown) => {
         if (props.channelObject.webSocket) {
             let trivyMessage: ITrivyMessage = {
                 msgtype: 'trivymessage',

@@ -292,7 +292,7 @@ const App: React.FC = () => {
         }
     }
 
-    const onChangeTab = (_event:any, tabNumber:number)=> {
+    const onChangeTab = (_event:unknown, tabNumber:number)=> {
         let newTab = tabs[tabNumber]
         if (newTab.channelObject) {
             newTab.channelPending = false
@@ -303,7 +303,7 @@ const App: React.FC = () => {
         selectedTab.current = newTab
     }
 
-    const wsOnMessage = (wsEvent:any) => {
+    const wsOnMessage = (wsEvent:MessageEvent) => {
         let instanceMessage:InstanceMessage
         try {
             instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage

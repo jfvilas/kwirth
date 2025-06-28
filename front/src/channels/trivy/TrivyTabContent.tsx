@@ -7,6 +7,7 @@ import { TabContentTrivyAssetDetails } from './TrivyTabContentAssetDetails'
 import { IContentProps } from '../IChannel'
 import { ITrivyInstanceConfig } from './TrivyConfig'
 import { ITrivyObject } from './TrivyObject'
+import { IKnown } from '@jfvilas/kwirth-common'
 
 const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let trivyObject:ITrivyObject = props.channelObject.uiData
@@ -15,7 +16,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [trivyBoxTop, setTrivyBoxTop] = useState(0)
     
     const [showMode, setShowMode] = useState('card')
-    const [selectedAsset, setSelectedAsset] = useState()
+    const [selectedAsset, setSelectedAsset] = useState<IKnown>()
     const [anchorMenu, setAnchorMenu] = useState<HTMLElement|null>(null)
     const [refresh, setRefresh] = useState(0)
     const [order, setOrder] = useState('scd')
@@ -41,14 +42,14 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (trivyBoxRef.current) setTrivyBoxTop(trivyBoxRef.current.getBoundingClientRect().top)
     })
 
-    const showDetails = (asset:any) => {
+    const showDetails = (asset:IKnown) => {
         return <TabContentTrivyAssetDetails asset={asset} trivyInstanceConfig={trivyInstanceConfig} onClose={() => setSelectedAsset(undefined)}/>
     }
 
     const orderBy = (orderName:string) => {
         setAnchorMenu(null)
 
-        let known = trivyObject.known as any[]
+        let known = trivyObject.known as IKnown[]
         switch(orderName) {
             case 'scd':
                 known.sort((a,b) => new Date(b.report.updateTimestamp).getTime() - new Date(a.report.updateTimestamp).getTime())
@@ -84,8 +85,8 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setFilterScore(v as number)
     }
 
-    const removeAsset = (asset:any) => {
-        trivyObject.known = (trivyObject.known as any[]).filter(a => a.namespace!==asset.namespace || a.name!==asset.name || a.container!==asset.container)
+    const removeAsset = (asset:IKnown) => {
+        trivyObject.known = (trivyObject.known).filter(a => a.namespace!==asset.namespace || a.name!==asset.name || a.container!==asset.container)
         setRefresh(Math.random())
     }
 
@@ -106,7 +107,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 <Box ref={trivyBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${trivyBoxTop}px - 25px)`}}>
                     { showMode==='card' && trivyObject.known && 
                         <Grid container sx={{ml:1,mr:1}}>
-                            {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
+                            {(trivyObject.known).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
                                 return (
                                     <Box key={index} sx={{margin:1, width:'24%'}}>
                                         <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view={'card'}/>
@@ -118,7 +119,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
                     { showMode==='list' && 
                         <Grid container sx={{ml:1,mr:1}}>
-                            {(trivyObject.known as any[]).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
+                            {(trivyObject.known).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
                                 return (
                                     <Grid key={index} sx={{margin:1, width:'100%'}}>
                                         <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view='list'/>
