@@ -7,11 +7,22 @@ export interface ILogLine {
     text:string
 }
 
-export class LogObject {
-    public messages: ILogLine[] = []
-    public paused: boolean = false
-    public pending: boolean = false
-    public backgroundNotification: boolean = true
-    public counters: Map<string,number> = new Map()
-    public buffers: Map<string,string> = new Map()
+export interface ILogObject {
+    messages: ILogLine[]
+    pending: boolean
+    backgroundNotification: boolean
+    counters: Map<string,number>
+    buffers: Map<string,string>
+    paused:boolean
+    started:boolean
+}
+
+export class LogObject implements ILogObject{
+    messages: ILogLine[] = []
+    pending = false
+    backgroundNotification = true
+    counters = new Map()
+    buffers = new Map()
+    paused = false
+    started = false
 }

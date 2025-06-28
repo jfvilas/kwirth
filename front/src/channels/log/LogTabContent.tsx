@@ -1,11 +1,11 @@
 import { ILogMessage, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
-import { ILogLine, LogObject } from './LogObject'
+import { ILogLine, ILogObject } from './LogObject'
 import { Box } from '@mui/material'
 import { IContentProps } from '../IChannel'
 import { useEffect, useRef, useState } from 'react'
 
 const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    let logObject = props.channelObject.uiData as LogObject
+    let logObject:ILogObject = props.channelObject.uiData
 
     const logBoxRef = useRef<HTMLDivElement | null>(null)
     const [logBoxTop, setLogBoxTop] = useState(0)
@@ -13,7 +13,7 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     useEffect(() => {
         if (logBoxRef.current) setLogBoxTop(logBoxRef.current.getBoundingClientRect().top)
-    },[])
+    })
 
     if (!props.channelObject.uiData || !props.channelObject.uiData) return <pre></pre>
 
@@ -55,13 +55,13 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
 
-    return <Box ref={logBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(85vh - ${logBoxTop}px)`}}>
-        <pre>
-            {logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })}
-        </pre>
-        <br/>
-        <span ref={lastLineRef}/>
-    </Box>
-
+    return <Box ref={logBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 25px)`}}>
+            <pre>
+                {logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })}
+            </pre>
+            <br/>
+            <span ref={lastLineRef}/>
+        </Box>
 }
+
 export { LogTabContent }

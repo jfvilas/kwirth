@@ -3,13 +3,12 @@ import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupP
 import { EchoInstanceConfig, EchoUiConfig, IEchoUiConfig } from "./EchoConfig";
 import { EchoSetup, EchoIcon } from './EchoSetup';
 import { IEchoMessage, InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from "@jfvilas/kwirth-common";
-import { EchoObject } from "./EchoObject";
+import { EchoObject, IEchoObject } from "./EchoObject";
 import { EchoTabContent } from "./EchoTabContent";
 
 
 export class EchoChannel implements IChannel {
     private setupVisible = false
-    private paused = false
     SetupDialog: FC<ISetupProps> = EchoSetup
     TabContent: FC<IContentProps> = EchoTabContent
     channelId = 'echo'
@@ -25,9 +24,9 @@ export class EchoChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject:IChannelObject, wsEvent: any): IChannelMessageAction {
-        let msg = JSON.parse(wsEvent.data) as IEchoMessage
+        let msg:IEchoMessage = JSON.parse(wsEvent.data)
 
-        let echoObject = channelObject.uiData as EchoObject
+        let echoObject:IEchoObject = channelObject.uiData
         let echoUiConfig:IEchoUiConfig = channelObject.uiConfig
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA:
@@ -35,7 +34,7 @@ export class EchoChannel implements IChannel {
                 while (echoObject.lines.length > echoUiConfig.maxLines) echoObject.lines.shift()
                 return IChannelMessageAction.REFRESH
             case InstanceMessageTypeEnum.SIGNAL:
-                let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
+                let instanceMessage:InstanceMessage = JSON.parse(wsEvent.data)
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }
@@ -52,32 +51,36 @@ export class EchoChannel implements IChannel {
         channelObject.instanceConfig = new EchoInstanceConfig()
         channelObject.uiConfig = new EchoUiConfig()
         channelObject.uiData = new EchoObject()
-        let echoObject = channelObject.uiData as EchoObject
+        let echoObject:IEchoObject= channelObject.uiData
         echoObject.lines = []
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        let echoObject = channelObject.uiData as EchoObject
+        let echoObject:IEchoObject = channelObject.uiData
         echoObject.lines = [ 'Start']
-        this.paused = false
+        echoObject.paused = false
+        echoObject.started = true
         return true
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        this.paused = true
+        let echoObject:IEchoObject = channelObject.uiData
+        echoObject.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        this.paused = false
+        let echoObject:IEchoObject = channelObject.uiData
+        echoObject.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        let echoObject = channelObject.uiData as EchoObject
+        let echoObject:IEchoObject = channelObject.uiData
         echoObject.lines.push('==========================================================================')
-        this.paused = false
+        echoObject.paused = false
+        echoObject.started = false
         return true
     }
 

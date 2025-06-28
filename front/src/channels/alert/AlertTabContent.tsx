@@ -1,12 +1,12 @@
 import { Box } from '@mui/material'
-import { AlertObject } from './AlertObject'
+import { IAlertObject } from './AlertObject'
 import { IContentProps } from '../IChannel'
 
 const AlertTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const formatAlert = () => {
-        let alertObject = props.channelObject.uiData as AlertObject
+        let alertObject:IAlertObject = props.channelObject.uiData
         return (<pre>{
-            alertObject.firedAlerts.map(alert => {
+            alertObject.firedAlerts.map((alert,index) => {
                 var color = 'black'
                 if (alert.severity === 'warning') color='orange'
                 if (alert.severity === 'error') color='red'
@@ -17,7 +17,7 @@ const AlertTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     prefix = alert.namespace+'/'+ alert.pod +'/'
                 prefix += alert.container + ' '
                 if (alert.namespace === '') prefix=''
-                return <>{prefix}<span style={{color}}>{new Date(alert.timestamp).toISOString() + ' ' + alert.text}</span><br/></>
+                return <span key={index}>{prefix}<span style={{color}}>{new Date(alert.timestamp).toISOString() + ' ' + alert.text}</span><br/></span>
             })
         }</pre>)
     }

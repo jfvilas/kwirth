@@ -129,7 +129,8 @@ const App: React.FC = () => {
                         startChannel(tab)
                     })                    
                 }
-                onChangeTab(null, tabs[0].name)
+                //onChangeTab(null, tabs[0].name)
+                onChangeTab(null, 0)
             }
         }
     }, [boardLoaded])
@@ -267,25 +268,39 @@ const App: React.FC = () => {
         }, (settingsRef.current?.keepAliveInterval || 60) * 1000,'')
     }
 
-    const onChangeTab = (_event:any, tabName?:string)=> {
-        let newTab = tabs.find(tab => tab.name === tabName)
-        if (newTab) {
-            if (newTab.channelObject) {
-                newTab.channelPending = false
-                if (newTab.channelStarted) {
-                    if (newTab.channelPaused) 
-                        newTab.headerEl.style.backgroundColor = '#dddddd'
-                    else
-                        newTab.headerEl.style.backgroundColor = '#99dd99'
-                }
-                else {
-                    newTab.headerEl.style.backgroundColor = '#ffffff'
-                }
-               setRefreshTabContent(Math.random())
-            }
-            //setSelectedTab(newTab)
-            selectedTab.current = newTab
+    const colorTab = (tab:ITabObject) => {
+        if (selectedTab.current === tab) {
+            if (tab.channelStarted)
+                tab.headerEl.style.backgroundColor = '#99dd99'
+            else
+                tab.headerEl.style.backgroundColor = '#ffffff'
         }
+        else {
+            if (tab.channelStarted) {
+                if (tab.channelPaused)
+                    tab.headerEl.style.backgroundColor = '#dddddd'
+                else {
+                    if (tab.channelPending)
+                        tab.headerEl.style.backgroundColor = '#ffe082'
+                    else
+                        tab.headerEl.style.backgroundColor = '#66ff66'
+                }
+            }
+            else {
+                tab.headerEl.style.backgroundColor = '#ffffff'
+            }
+        }
+    }
+
+    const onChangeTab = (_event:any, tabNumber:number)=> {
+        let newTab = tabs[tabNumber]
+        if (newTab.channelObject) {
+            newTab.channelPending = false
+            setRefreshTabContent(Math.random())
+            if (selectedTab.current) colorTab(selectedTab.current)
+            colorTab(newTab)
+        }
+        selectedTab.current = newTab
     }
 
     const wsOnMessage = (wsEvent:any) => {
@@ -305,10 +320,15 @@ const App: React.FC = () => {
             if (!tab || !tab.channel || !tab.channelObject) return
             let action = tab.channel.processChannelMessage(tab.channelObject, wsEvent)
             if (action === IChannelMessageAction.REFRESH) {
-                if (selectedTab?.current?.name === tab.name)
+                if (selectedTab?.current?.name === tab.name) {
                     setRefreshTabContent(Math.random())
-                else
-                    tab.headerEl.style.backgroundColor = '#ffe082'
+                }
+                else {
+                    if (!tab.channelPending) {
+                        tab.channelPending = true
+                        colorTab(tab)
+                    }
+                }
             }
             else if (action === IChannelMessageAction.STOP) {
                 stopChannel(tab)
@@ -436,7 +456,7 @@ const App: React.FC = () => {
                 tab.ws.send(JSON.stringify(instanceConfig))
                 tab.channelStarted = true
                 tab.channelPaused = false
-                selectedTab.current.headerEl.style.backgroundColor = '#99dd99'
+                colorTab(selectedTab.current)
                 selectedTab.current.channel.startChannel(selectedTab.current.channelObject)
             }
             else {
@@ -478,7 +498,8 @@ const App: React.FC = () => {
             if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
             tab.channelStarted = false
             tab.channelPaused = false
-            tab.headerEl.style.backgroundColor = '#ffffff'
+            //tab.headerEl.style.backgroundColor = '#ffffff'
+            colorTab(tab)
         }
         else {
             console.log('Channel is not supported on stop:',tab.channel.channelId)
@@ -509,12 +530,14 @@ const App: React.FC = () => {
 
         if (selectedTab.current.channelPaused) {
             selectedTab.current.channelPaused = false
-            selectedTab.current.headerEl.style.backgroundColor = '#99dd99'
+            //selectedTab.current.headerEl.style.backgroundColor = '#99dd99'
+            colorTab(selectedTab.current)
             instanceConfig.action = InstanceMessageActionEnum.CONTINUE
         }
         else {
             selectedTab.current.channelPaused = true
-            selectedTab.current.headerEl.style.backgroundColor = '#dddddd'
+            //selectedTab.current.headerEl.style.backgroundColor = '#dddddd'
+            colorTab(selectedTab.current)
             instanceConfig.action = InstanceMessageActionEnum.PAUSE
         }
         selectedTab.current.ws.send(JSON.stringify(instanceConfig))
@@ -530,9 +553,7 @@ const App: React.FC = () => {
             selectedTab.current.ws.onmessage = null
             selectedTab.current.ws.onclose = null
         }
-        selectedTab.current.ws?.close()
         clearInterval(selectedTab.current.keepaliveRef)
-
         if (selectedTab.current.channelObject) stopChannel(selectedTab.current)
 
         let current = tabs.findIndex(t => t === selectedTab.current)
@@ -541,8 +562,8 @@ const App: React.FC = () => {
         if (current >= newTabs.length) current--
         if (current >= 0 && current<newTabs.length) newTabs[current].channelPending = false
         if (current>=0) {
-            console.log('newcu', current, tabs[current])
-            selectedTab.current = tabs[current]
+            selectedTab.current = newTabs[current]
+            colorTab(selectedTab.current)
         }
         setTabs(newTabs)
     }
@@ -974,17 +995,21 @@ const App: React.FC = () => {
             <ResourceSelector clusters={clusters} backChannels={backChannels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }} data-refresh={refreshTabContent}/>
             
             <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
-                <Tabs value={selectedTab.current?.name} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' sx={{ml:1}}>
-                    { tabs.length>0 && tabs.map((tab) => {
-                        return <Tab ref={(el) => tab.headerEl = el} key={tab.name} label={formatTabName(tab)} value={tab.name} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1}}/>
-                    })}
-                </Tabs>
+                { tabs.length>0 &&
+                    <Tabs value={tabs.indexOf(selectedTab.current!)} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' sx={{ml:1}}>
+                        {  tabs.map((tab, index) => {
+                            return <Tab ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1}}/>
+                        })}
+                    </Tabs>
+                }
                 <Typography sx={{ flexGrow: 1 }}></Typography>
             </Stack>
-            <Box sx={{ display: 'flex', flexDirection: 'column', height: '80vh' }}>
-                { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab.current} selectedTabIndex={tabs.findIndex(t => t.name === selectedTab?.current?.name)} backChannels={backChannels}/>}
-                <TabContent channel={selectedTab.current?.channel} webSocket={selectedTab.current?.ws} channelObject={selectedTab.current?.channelObject} refreshTabContent={refreshTabContent} />
-            </Box>
+            { (tabs.length>0) &&
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab.current} selectedTabIndex={tabs.findIndex(t => t.name === selectedTab?.current?.name)} backChannels={backChannels}/>}
+                    <TabContent channel={selectedTab.current?.channel} webSocket={selectedTab.current?.ws} channelObject={selectedTab.current?.channelObject} refreshTabContent={refreshTabContent} />
+                </Box>
+            }   
 
             { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs} oldname={selectedTab.current?.name}/> }
             { showSaveBoard && <SaveBoard onClose={onSaveBoardClosed} name={currentBoardName} description={currentBoardDescription} values={boards} /> }

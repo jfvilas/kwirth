@@ -1,5 +1,6 @@
 export interface ITrivyObject {
-    started: boolean
+    paused:boolean
+    started:boolean
     score: number
     known: any[]
     unknown: any
@@ -7,6 +8,7 @@ export interface ITrivyObject {
 
 export class TrivyObject implements ITrivyObject{
     started = false
+    paused = false
     score = 0
     known:any[] = []
     unknown:any[] = []

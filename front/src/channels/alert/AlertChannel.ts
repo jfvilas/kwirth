@@ -3,12 +3,11 @@ import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupP
 import { AlertSeverityEnum, IAlertMessage, InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
 import { AlertIcon, AlertSetup } from './AlertSetup'
 import { AlertTabContent } from './AlertTabContent'
-import { AlertObject } from './AlertObject'
-import { AlertInstanceConfig, AlertUiConfig } from './AlertConfig'
+import { AlertObject, IAlertObject } from './AlertObject'
+import { AlertInstanceConfig, AlertUiConfig, IAlertUiConfig } from './AlertConfig'
 
 export class AlertChannel implements IChannel {
     private setupVisible = false
-    private paused = false
     SetupDialog: FC<ISetupProps> = AlertSetup
     TabContent: FC<IContentProps> = AlertTabContent
     channelId = 'alert'
@@ -25,9 +24,9 @@ export class AlertChannel implements IChannel {
 
     processChannelMessage(channelObject:IChannelObject, wsEvent: any): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
-        var msg = JSON.parse(wsEvent.data) as IAlertMessage
-        let alertObject = channelObject.uiData as AlertObject
-        let alertConfig = channelObject.uiConfig as AlertUiConfig
+        let msg:IAlertMessage = JSON.parse(wsEvent.data)
+        let alertObject:IAlertObject = channelObject.uiData
+        let alertConfig:IAlertUiConfig = channelObject.uiConfig
 
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA:
@@ -41,15 +40,15 @@ export class AlertChannel implements IChannel {
                     container: msg.container
                 })
                 if (alertObject.firedAlerts.length > alertConfig.maxAlerts) alertObject.firedAlerts.splice(0, alertObject.firedAlerts.length - alertConfig.maxAlerts)
-                if (!this.paused) action = IChannelMessageAction.REFRESH
+                if (!alertObject.paused) action = IChannelMessageAction.REFRESH
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
+                let instanceMessage:InstanceMessage = JSON.parse(wsEvent.data)
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }
                 else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
-                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                    let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
                     alertObject.firedAlerts.push({
                         timestamp: signalMessage.timestamp?.getTime() || 0,
                         severity: AlertSeverityEnum.INFO,
@@ -73,23 +72,27 @@ export class AlertChannel implements IChannel {
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        this.paused = false
+        let alertObject:IAlertObject = channelObject.uiData
+        alertObject.paused = false
+        alertObject.started = true
         channelObject.uiData.firedAlerts = []
         return true
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        this.paused = true
+        let alertObject:IAlertObject = channelObject.uiData
+        alertObject.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        this.paused = false
+        let alertObject:IAlertObject = channelObject.uiData
+        alertObject.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        let alertObject = channelObject.uiData as AlertObject
+        let alertObject:IAlertObject = channelObject.uiData 
         alertObject.firedAlerts.push({
             timestamp: Date.now(),
             severity: AlertSeverityEnum.INFO,
@@ -97,12 +100,13 @@ export class AlertChannel implements IChannel {
             container: '',
             text: 'Channel stopped\n========================================================================='
         })
-        this.paused = false
+        alertObject.paused = false
+        alertObject.started = false
         return true
     }
 
     socketDisconnected(channelObject: IChannelObject): boolean {
-        let alertObject = channelObject.uiData as AlertObject
+        let alertObject:IAlertObject = channelObject.uiData
         alertObject.firedAlerts.push({
             timestamp: Date.now(),
             severity: AlertSeverityEnum.ERROR,

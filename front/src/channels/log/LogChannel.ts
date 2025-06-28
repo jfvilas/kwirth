@@ -3,13 +3,11 @@ import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupP
 import { ILogMessage, InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
 import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
-import { LogObject, ILogLine } from './LogObject'
-import { LogInstanceConfig, LogSortOrderEnum, LogUiConfig } from './LogConfig'
+import { LogObject, ILogLine, ILogObject } from './LogObject'
+import { ILogUiConfig, LogInstanceConfig, LogSortOrderEnum, LogUiConfig } from './LogConfig'
 
 export class LogChannel implements IChannel {
     private setupVisible = false
-    private started = false
-    private paused = false
     SetupDialog: FC<ISetupProps> = LogSetup
     TabContent: FC<IContentProps> = LogTabContent
     channelId = 'log'
@@ -26,14 +24,14 @@ export class LogChannel implements IChannel {
 
     processChannelMessage(channelObject:IChannelObject, wsEvent: any): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
-        let logObject = channelObject.uiData as LogObject
-        let logUiConfig = channelObject.uiConfig as LogUiConfig
+        let logObject:ILogObject = channelObject.uiData
+        let logUiConfig:ILogUiConfig = channelObject.uiConfig
 
         const getMsgEpoch = (lmsg:ILogLine) =>{
             return (new Date(lmsg.text.split(' ')[0])).getTime()
         }
 
-        let logMessage = JSON.parse(wsEvent.data) as ILogMessage
+        let logMessage:ILogMessage = JSON.parse(wsEvent.data)
 
         switch (logMessage.type) {
             case InstanceMessageTypeEnum.DATA:
@@ -100,12 +98,12 @@ export class LogChannel implements IChannel {
                 }
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
+                let instanceMessage:InstanceMessage = JSON.parse(wsEvent.data)
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }
                 else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
-                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                    let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
                     logObject.messages.push({
                         text: signalMessage.text,
                         namespace: '',
@@ -135,11 +133,12 @@ export class LogChannel implements IChannel {
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        this.paused = false
-        this.started = true
-
         let logInstanceConfig:LogInstanceConfig = channelObject.instanceConfig
         let logConfig:LogInstanceConfig = new LogInstanceConfig()
+        let logObject:ILogObject = channelObject.uiData
+        logObject.paused = false
+        logObject.started = true
+
 
         if (channelObject.uiConfig.startDiagnostics) {
             logConfig = {
@@ -161,18 +160,20 @@ export class LogChannel implements IChannel {
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        this.paused = true
+        let logObject:ILogObject = channelObject.uiData
+        logObject.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        this.paused = false
+        let logObject:ILogObject = channelObject.uiData
+        logObject.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        let logObject = channelObject.uiData as LogObject
-        if (this.started) {
+        let logObject:ILogObject = channelObject.uiData
+        if (logObject.started) {
             logObject.messages.push({
                 text: '=========================================================================',
                 type: InstanceMessageTypeEnum.DATA,
@@ -181,13 +182,13 @@ export class LogChannel implements IChannel {
                 container: ''
             })
         }
-        this.started = false
-        this.paused = false
+        logObject.started = false
+        logObject.paused = false
         return true
     }
 
     socketDisconnected(channelObject: IChannelObject): boolean {
-        let logObject = channelObject.uiData as LogObject
+        let logObject:ILogObject = channelObject.uiData
         logObject.messages.push({
             type: InstanceMessageTypeEnum.DATA,
             text: '*** Lost connection ***',

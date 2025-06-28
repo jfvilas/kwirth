@@ -9,7 +9,6 @@ import { OPSHELPMESSAGE, OPSWELCOMEMESSAGE } from '../../tools/Constants'
 
 export class OpsChannel implements IChannel {
     private setupVisible = false
-    private paused = false
     SetupDialog: FC<ISetupProps> = OpsSetup
     TabContent: FC<IContentProps> = OpsTabContent
     channelId = 'ops'
@@ -26,9 +25,9 @@ export class OpsChannel implements IChannel {
 
     processChannelMessage(channelObject:IChannelObject, wsEvent: any): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
-        let opsObject = channelObject.uiData as OpsObject
+        let opsObject:IOpsObject = channelObject.uiData
 
-        let opsMessage = JSON.parse(wsEvent.data) as IOpsMessageResponse
+        let opsMessage:IOpsMessageResponse = JSON.parse(wsEvent.data)
 
         switch (opsMessage.type) {
             case InstanceMessageTypeEnum.DATA:
@@ -90,12 +89,12 @@ export class OpsChannel implements IChannel {
                     action = IChannelMessageAction.REFRESH
                 }
                 else if (opsMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
-                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                    let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
                     opsObject.messages.push(signalMessage.text)
                     action = IChannelMessageAction.REFRESH
                 }
                 else {
-                    let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                    let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
                     if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
                         channelObject.instanceId = signalMessage.instance
                         opsObject.messages.push(signalMessage.text)
@@ -123,7 +122,8 @@ export class OpsChannel implements IChannel {
 
     startChannel(channelObject:IChannelObject): boolean {
         let opsObject:IOpsObject = channelObject.uiData
-        this.paused = false
+        opsObject.paused = false
+        opsObject.started = true
         opsObject.messages.push(...OPSWELCOMEMESSAGE, ...OPSHELPMESSAGE)
         opsObject.shell = undefined
         opsObject.shells = []
@@ -131,18 +131,21 @@ export class OpsChannel implements IChannel {
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        this.paused = true
+        let opsObject:IOpsObject = channelObject.uiData
+        opsObject.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        this.paused = false
+        let opsObject:IOpsObject = channelObject.uiData
+        opsObject.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
         let opsObject:IOpsObject = channelObject.uiData
-        this.paused = false
+        opsObject.paused = false
+        opsObject.started = false
         opsObject.messages.push('=========================================================================')
         return false
     }

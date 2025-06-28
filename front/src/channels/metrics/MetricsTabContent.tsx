@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { MetricsEventSeverityEnum, MetricsObject } from './MetricsObject'
+import { IMetricsObject, MetricsEventSeverityEnum } from './MetricsObject'
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { Alert, Box, Button, Snackbar, Stack, Typography } from '@mui/material'
 import { IContentProps } from '../IChannel'
-import { MetricsUiConfig } from './MetricsConfig'
+import { IMetricsUiConfig } from './MetricsConfig'
 
 interface ISample {
     timestamp:string
@@ -11,8 +11,8 @@ interface ISample {
 }
 
 const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    let metricsObject:MetricsObject = props.channelObject.uiData
-    let metricsUiConfig:MetricsUiConfig = props.channelObject.uiConfig
+    let metricsObject:IMetricsObject = props.channelObject.uiData
+    let metricsUiConfig:IMetricsUiConfig = props.channelObject.uiConfig
 
     const [refresh, setRefresh] = useState(false)
     const [refreshTabContent, setRefreshTabContent] = useState(0)
@@ -197,12 +197,12 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         )
     }
 
-    const handleClose = (reason:string, dataMetrics:MetricsObject, event:{ severity:MetricsEventSeverityEnum, text:string }) => {
+    const handleClose = (reason:string, dataMetrics:IMetricsObject, event:{ severity:MetricsEventSeverityEnum, text:string }) => {
         dataMetrics.events = dataMetrics.events.filter(e => e.severity!==event.severity && e.text!==event.text)
         setRefreshTabContent(Math.random())
     }
 
-    const formatMetricsError = (dataMetrics:MetricsObject) => {
+    const formatMetricsError = (dataMetrics:IMetricsObject) => {
         if (!dataMetrics.events || dataMetrics.events.length === 0) return <></>
 
         return <>
@@ -222,7 +222,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
 
         let data:Map<string, Map<string, ISample[]>> = new Map()
-        for (var assetMetricsValues of metricsObject.assetMetricsValues) {
+        for (let assetMetricsValues of metricsObject.assetMetricsValues) {
             var ts = new Date(assetMetricsValues.timestamp)
             var timestamp = ts.getHours().toString().padStart(2,'0')+':'+ts.getMinutes().toString().padStart(2,'0')+':'+ts.getSeconds().toString().padStart(2,'0')
             for (var i=0;i<assetMetricsValues.assets.length;i++) {

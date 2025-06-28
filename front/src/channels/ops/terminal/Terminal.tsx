@@ -19,11 +19,33 @@ export interface IProps {
     lines: string[]
 }
   
-const Terminal = ({name, height = '600px', colorMode, onInput, onKey, children, inputEnabled, startingInputValue = '', lines }: IProps) => {
-    //+++ adjust height to visible window
+const Terminal = ({name, height, colorMode, onInput, onKey, children, inputEnabled, startingInputValue = '', lines }: IProps) => {
     const [currentLineInput, setCurrentLineInput] = useState('')
     const scrollIntoViewRef = useRef<HTMLDivElement>(null)
   
+    useEffect(() => {
+        setCurrentLineInput(startingInputValue.trim());
+    }, [startingInputValue]);
+  
+    useEffect(() => {
+        const elListeners: { terminalEl: Element; listener: EventListenerOrEventListenerObject }[] = []
+
+        for (let terminalEl of Array.from(document.getElementsByClassName('react-terminal-wrapper'))) {
+            const listener = () => (terminalEl?.querySelector('.terminal-hidden-input') as HTMLElement)?.focus()
+            terminalEl?.addEventListener('click', listener)
+            elListeners.push({ terminalEl, listener })
+        }
+        return function cleanup () {
+            elListeners.forEach(elListener => {
+            elListener.terminalEl.removeEventListener('click', elListener.listener)
+            })
+        }
+    }, [onInput])
+
+    const classes = ['react-terminal-wrapper']
+    if (colorMode === ColorModeEnum.Light) classes.push('react-terminal-light')
+    else if (colorMode === ColorModeEnum.Terminal3270) classes.push('react-terminal-3270')
+
     const updateCurrentLineInput = (event: ChangeEvent<HTMLInputElement>) => {
         setCurrentLineInput(event.target.value)
     }
@@ -62,35 +84,7 @@ const Terminal = ({name, height = '600px', colorMode, onInput, onKey, children, 
             }
         }
     }
-  
-    useEffect(() => {
-        setCurrentLineInput(startingInputValue.trim());
-    }, [startingInputValue]);
-  
-    // hidden input for capturing terminal input
-    useEffect(() => {
-        const elListeners: { terminalEl: Element; listener: EventListenerOrEventListenerObject }[] = []
-
-        for (let terminalEl of Array.from(document.getElementsByClassName('react-terminal-wrapper'))) {
-            const listener = () => (terminalEl?.querySelector('.terminal-hidden-input') as HTMLElement)?.focus()
-            terminalEl?.addEventListener('click', listener)
-            elListeners.push({ terminalEl, listener })
-        }
-        return function cleanup () {
-            elListeners.forEach(elListener => {
-            elListener.terminalEl.removeEventListener('click', elListener.listener)
-            })
-        }
-    }, [onInput])
-  
-    const classes = ['react-terminal-wrapper']
-    if (colorMode === ColorModeEnum.Light) {
-        classes.push('react-terminal-light')
-    }
-    else if (colorMode === ColorModeEnum.Terminal3270) {
-        classes.push('react-terminal-3270')
-    }
-
+    
     const content = (): JSX.Element => {
         let prompt = ''
         if (children.length>0 && children[children.length-1].props && children[children.length-1].props.children) {

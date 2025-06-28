@@ -8,7 +8,6 @@ import { TrivyInstanceConfig, TrivyUiConfig } from './TrivyConfig'
 
 export class TrivyChannel implements IChannel {
     private setupVisible = false
-    private paused = false
     SetupDialog: FC<ISetupProps> = TrivySetup
     TabContent: FC<IContentProps> = TrivyTabContent
     channelId = 'trivy'
@@ -57,7 +56,7 @@ export class TrivyChannel implements IChannel {
                 }
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let signalMessage = JSON.parse(wsEvent.data) as SignalMessage
+                let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
                 if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = signalMessage.instance
                     this.trivyRequestScore(channelObject)
@@ -83,25 +82,28 @@ export class TrivyChannel implements IChannel {
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        channelObject.uiData = new TrivyObject()
-        channelObject.uiData.started=true
-        this.paused = false
+        let trivyObject:ITrivyObject = channelObject.uiData
+        trivyObject.paused = false
+        trivyObject.started = true
         return true
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        this.paused = true
+        let trivyObject:ITrivyObject = channelObject.uiData
+        trivyObject.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        this.paused = false
+        let trivyObject:ITrivyObject = channelObject.uiData
+        trivyObject.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        this.paused = false
-        channelObject.uiData.started=false
+        let trivyObject:ITrivyObject = channelObject.uiData
+        trivyObject.paused = false
+        trivyObject.started = false
         return true
     }
 

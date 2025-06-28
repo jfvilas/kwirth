@@ -15,15 +15,22 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const [command, setCommand] = useState('')
     const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
-    const lastLineRef = useRef(null)
     const [commands, setCommands] = useState<string[]>([])
     const [refresh, setRefresh] = useState(0)
     const [showSelector, setShowSelector] = useState(false)
     const commandRef = useRef<HTMLInputElement>()
+    const opsBoxRef = useRef<HTMLDivElement | null>(null)
+    const [opsBoxTop, setOpsBoxTop] = useState(0)
+    const lastLineRef = useRef<HTMLSpanElement|null>(null)
 
     useEffect(() => {
-        if (!opsObject.shell) commandRef.current?.focus()
-    }, [refresh])
+        if (opsBoxRef.current) setOpsBoxTop(opsBoxRef.current.getBoundingClientRect().top)
+    })
+
+    // this effect causes tabcontent to flick and redraw when swithing to a tab
+    // useEffect(() => {
+    //     if (!opsObject.shell && commandRef.current) commandRef.current.focus()
+    // }, [refresh])
 
     useEffect(() => {
         if (!showSelector) window.addEventListener('keydown', onKeyDown)
@@ -98,7 +105,6 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const sendCommand = (data:string) => {
-        console.log('tosend', props.channelObject.webSocket)
         if (!props.channelObject.webSocket)  return
 
         let [namespace,pod,container] = ['','','']
@@ -153,7 +159,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 else
                     return <div key={index}>{message}</div>
             })}
-            <br ref={lastLineRef}/>
+            <span ref={lastLineRef}/>
         </pre>
     }
 
@@ -222,13 +228,13 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const showTerminal = (namespace:string, pod:string, container: string) => {
+    const showTerminal = (namespace:string, pod:string, container: string, height:string) => {
         let shellIndex = opsObject.shells.findIndex(c => c.namespace === namespace && c.pod === pod && c.container === container)
         if (shellIndex<0 ) return <></>
 
         let shell = opsObject.shells[shellIndex]
         return (
-        <Terminal name={`${namespace}/${pod}/${container}` + (shellIndex<10? ` (Key F${shellIndex+1})`:'') } colorMode={opsUiConfig.colorMode} onInput={onInputTerminal} onKey={onKeyTerminal} inputEnabled={shell.connected} lines={shell.lines}>
+        <Terminal name={`${namespace}/${pod}/${container}` + (shellIndex<10? ` (Key F${shellIndex+1})`:'') } colorMode={opsUiConfig.colorMode} onInput={onInputTerminal} onKey={onKeyTerminal} inputEnabled={shell.connected} lines={shell.lines} height={height}>
             {shell.lines.map( (line,index) => <div key={index} className='react-terminal-line'>{line}</div>)}
         </Terminal>
         )
@@ -237,27 +243,23 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const formatSelector = () => {
         let current = -1
         if (opsObject.shell) current = opsObject.shells.indexOf(opsObject.shell)
-        return <>
-            { showSelector && <SelectTerminal onSelect={selectTerminal} shells={opsObject.shells} current={current}></SelectTerminal>}
-        </>
+        return <SelectTerminal onSelect={selectTerminal} shells={opsObject.shells} current={current}></SelectTerminal>
     }
 
-    return <>
-        <Stack direction='column' alignItems={'start'} sx={{height:'100%', ml:1, mr:1}}>
-            { formatSelector() }
-            { opsObject.shell && showTerminal(opsObject.shell.namespace, opsObject.shell.pod, opsObject.shell.container) }
+    return <Box ref={opsBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${opsBoxTop}px - 25px)`, ml:1, mr:1 }}>
+            { showSelector && formatSelector() }
+            { opsObject.shell && showTerminal(opsObject.shell.namespace, opsObject.shell.pod, opsObject.shell.container, `calc(100vh - ${opsBoxTop}px - 100px)`) }
             { !opsObject.shell && <>            
-                <Box sx={{ flex:1, overflowY: 'auto', width:'100%' }}>
+                <Box sx={{ flex:1, overflowY: 'auto' }}>
                     {formatConsole()}
                 </Box>
-                <Stack direction={'row'} sx={{width:'100%'}}>
-                    <TextField inputRef={commandRef} value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={onKeyDown} autoComplete='off' variant='standard' fullWidth disabled={!props.channelObject.accessString}/>
-                    <Button onClick={() => onKeyDown( { key:'Enter'})} disabled={!props.channelObject.accessString}>ENTER</Button>
+                <Stack direction={'row'}>
+                    <TextField inputRef={commandRef} value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={onKeyDown} autoComplete='off' variant='standard' fullWidth disabled={!props.channelObject.accessString || !opsObject.started}/>
+                    <Button onClick={() => onKeyDown( { key:'Enter'})} disabled={!props.channelObject.accessString || !opsObject.started}>ENTER</Button>
                 </Stack>
             </>}
-        </Stack>
         <br/>
-    </>
+    </Box>
 }
 
 export { OpsTabContent }
