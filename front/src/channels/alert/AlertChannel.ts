@@ -73,9 +73,9 @@ export class AlertChannel implements IChannel {
 
     startChannel(channelObject:IChannelObject): boolean {
         let alertObject:IAlertObject = channelObject.uiData
+        channelObject.uiData.firedAlerts = []
         alertObject.paused = false
         alertObject.started = true
-        channelObject.uiData.firedAlerts = []
         return true
     }
 

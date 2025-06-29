@@ -1,4 +1,4 @@
-import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources, accessKeyDeserialize, ChannelData, SourceEnum } from '@jfvilas/kwirth-common'
+import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources, accessKeyDeserialize, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { AssetData } from '../../tools/Metrics'
 import { IChannel } from '../IChannel'
@@ -27,14 +27,14 @@ class MetricsChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    getChannelData(): ChannelData {
+    getChannelData(): BackChannelData {
         return {
             id: 'metrics',
             routable: false,
             pauseable: true,
             modifyable: true,
             reconnectable: true,
-            sources: [ SourceEnum.KUBERNETES ],
+            sources: [ ClusterTypeEnum.KUBERNETES ],
             metrics: true
         }
     }

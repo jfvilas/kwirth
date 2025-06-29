@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Button, Grid, Menu, MenuItem, MenuList, Slider, Stack, Typography } from '@mui/material'
+import { Box, Button, Grid, IconButton, Menu, MenuItem, MenuList, Slider, Stack, Typography } from '@mui/material'
 import { TabContentTrivyAsset } from './TrivyTabContentAsset'
 import { Check as CheckIcon } from '@mui/icons-material'
 import { assetScore } from './TrivyCommon'
@@ -8,6 +8,8 @@ import { IContentProps } from '../IChannel'
 import { ITrivyInstanceConfig } from './TrivyConfig'
 import { ITrivyObject } from './TrivyObject'
 import { IKnown } from '@jfvilas/kwirth-common'
+import { Error as ErrorIcon } from '@mui/icons-material'
+import { MsgBoxOkError } from '../../tools/MsgBox'
 
 const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let trivyObject:ITrivyObject = props.channelObject.uiData
@@ -23,19 +25,22 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [filterScore, setFilterScore] = useState<number>(0)
     const [maxScore, setMaxScore] = useState<number>(0)
     const [minScore, setMinScore] = useState<number>(0)
+    const [msgBox, setMsgBox] =useState(<></>)
 
     useEffect(() => {
-        let min = Number.MAX_VALUE
-        let max = Number.MIN_VALUE
-        for (let asset of trivyObject.known) {
-            let score = assetScore(asset, trivyInstanceConfig)
-            if (score<min) min=score
-            if (score>max) max=score
+        if (trivyObject.known.length>0) {
+            let min = Number.MAX_VALUE
+            let max = Number.MIN_VALUE
+            for (let asset of trivyObject.known) {
+                let score = assetScore(asset, trivyInstanceConfig)
+                if (score<min) min=score
+                if (score>max) max=score
+            }
+            setMinScore(min)
+            setMaxScore(max)
+            setFilterScore(min)
+            orderBy(order)
         }
-        setMinScore(min)
-        setMaxScore(max)
-        setFilterScore(min)
-        orderBy(order)
     }, [trivyObject.known, trivyObject.score])
 
     useEffect(() => {
@@ -90,15 +95,23 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setRefresh(Math.random())
     }
 
+    const showErrors = () => {
+        let msg = trivyObject.unknown.reduce( (prev,current) => prev + `${current.namespace}/${current.name}/${current.container}: ${current.statusMessage}<br/>`, '')
+        setMsgBox(MsgBoxOkError('Trivy', msg, setMsgBox))
+    }
+
     return (
         <Box sx={{ ml:1, mr:1, display:'flex', flexDirection: 'column'}}>
-            { trivyObject.started && <>
+            { <>
                 <Stack direction={'row'} sx={{overflow:'hidden'}}>
                     <Typography sx={{ml:2,mr:2}}><b>KwirthScore: </b>{trivyObject.score.toPrecision(4)}%</Typography>
                     <Typography>Filter score</Typography>
                     <Slider max={maxScore} min={minScore} value={filterScore} onChange={handleFilter} size='small' sx={{width:'10%', ml:2}}/>
                     <Typography sx={{width:'5%', ml:2}}>{filterScore?.toFixed(0)}</Typography>
                     <Typography sx={{flex:1}}></Typography>
+                    <IconButton title="Some errors have been detected" onClick={showErrors} disabled={trivyObject.unknown.length === 0}>
+                        <ErrorIcon style={{ color: trivyObject.unknown.length>0?'red':'#BDBDBD'}}/>
+                    </IconButton>
                     <Button onClick={(event) => setAnchorMenu(event.currentTarget)}>Order</Button>
                     <Button onClick={() => setShowMode('list')}>List</Button>
                     <Button onClick={() => setShowMode('card')}>Card</Button>
@@ -107,7 +120,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 <Box ref={trivyBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${trivyBoxTop}px - 25px)`}}>
                     { showMode==='card' && trivyObject.known && 
                         <Grid container sx={{ml:1,mr:1}}>
-                            {(trivyObject.known).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
+                            {(trivyObject.known).filter(asset => assetScore(asset,trivyInstanceConfig) >= filterScore).map( (asset,index) => {
                                 return (
                                     <Box key={index} sx={{margin:1, width:'24%'}}>
                                         <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view={'card'}/>
@@ -132,6 +145,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             </>}
             { anchorMenu && orderMenu }
             { selectedAsset!==undefined && showDetails(selectedAsset) }
+            { msgBox }
         </Box>
     )
 }

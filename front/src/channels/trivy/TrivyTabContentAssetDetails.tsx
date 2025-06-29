@@ -64,7 +64,7 @@ const TabContentTrivyAssetDetails: React.FC<IProps> = (props:IProps) => {
                         <Typography><b>Scan:</b> {`${asset.report.scanner.name} ${asset.report.scanner.version} (${asset.report.scanner.vendor}) on ${asset.report.updateTimestamp}`}</Typography>
                     </Card>
                     <Box sx={{display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height:'50vh'}}>
-                        {vulns.map(v => <TabContentTrivyAssetVulns vuln={v}/>)}
+                        {vulns.map((vuln,index) => <TabContentTrivyAssetVulns key={index} vuln={vuln}/>)}
                     </Box>
                 </Stack>
             </DialogContent>

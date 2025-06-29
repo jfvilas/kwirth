@@ -42,7 +42,7 @@ import { OpsChannel } from './channels/ops/OpsChannel'
 import { getMetricsNames, readClusterInfo } from './tools/Global'
 
 const App: React.FC = () => {
-    var backendUrl='http://localhost:3883'
+    let backendUrl='http://localhost:3883'
     const rootPath = window.__PUBLIC_PATH__ || ''
     if ( process.env.NODE_ENV==='production') backendUrl=window.location.protocol+'//'+window.location.host
     backendUrl=backendUrl+rootPath
@@ -59,8 +59,7 @@ const App: React.FC = () => {
     clustersRef.current = clusters
     const [selectedClusterName, setSelectedClusterName] = useState<string>()
 
-    const [tabs, setTabs] = useState<ITabObject[]>([])
-
+    const tabs = useRef<ITabObject[]>([])
     const selectedTab = useRef<ITabObject>()
     const [refreshTabContent, setRefreshTabContent] = useState(0)
 
@@ -75,7 +74,6 @@ const App: React.FC = () => {
     const [menuDrawerOpen,setMenuDrawerOpen]=useState(false)
 
     // boards
-    const [boardLoaded, setBoardLoaded] = useState<boolean>(false)
     const [currentBoardName, setCurrentBoardName] = useState('')
     const [currentBoardDescription, setCurrentBoardDescription] = useState('')
     const [boards, setBoards] = useState<{name:string, description:string}[]>([])
@@ -115,26 +113,6 @@ const App: React.FC = () => {
         }
     },[logged])
 
-    useEffect ( () => {
-        // when loading a board and user logged on
-        if (logged) {
-            setBoardLoaded(false)
-            if (tabs.length>0) {
-                for(let tab of tabs) {
-                    let clusterName = tab.channelObject?.clusterName
-                    let cluster = clusters!.find(c => c.name === clusterName)
-
-                    if (cluster) startSocket(tab, cluster, () => {
-                        setKeepAlive(tab)
-                        startChannel(tab)
-                    })                    
-                }
-                //onChangeTab(null, tabs[0].name)
-                onChangeTab(null, 0)
-            }
-        }
-    }, [boardLoaded])
-
     const getClusters = async () => {
         // get current cluster
         let response = await fetch(`${backendUrl}/config/info`, addGetAuthorization(accessString))
@@ -171,7 +149,7 @@ const App: React.FC = () => {
     const readSettings = async () => {
         let resp = await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString))
         if (resp.status===200) {
-            var json=await resp.json()
+            let json=await resp.json()
             if (json && settingsRef) settingsRef.current = JSON.parse(json) as Settings
         }
         else {
@@ -184,15 +162,21 @@ const App: React.FC = () => {
         fetch (`${backendUrl}/store/${user?.id}/settings/general`, addPostAuthorization(accessString, payload))
     }
 
-    const onChangeCluster = (clusterName:string) => {
-        if (!clusters) return
-        let cluster = clusters.find(c => c.name === clusterName)
+    const setUsablechannels = (cluster:Cluster) => {
         if (cluster && cluster.kwirthData) {
-            setSelectedClusterName(clusterName)
             let usableChannels = [...cluster.kwirthData.channels]
             usableChannels = usableChannels.filter(c => Array.from(frontChannels.keys()).includes(c.id))
             //+++ pending improve ux on resource selector (showing front/back channel availability)
             setBackChannels(usableChannels)
+        }
+    }
+
+    const onChangeCluster = (clusterName:string) => {
+        if (!clusters) return
+        let cluster = clusters.find(c => c.name === clusterName)
+        if (cluster && cluster.kwirthData) {
+            setUsablechannels(cluster)
+            setSelectedClusterName(clusterName)
         }
     }
 
@@ -201,22 +185,17 @@ const App: React.FC = () => {
         tab.ws.onopen = fn
     }
 
-    const onResourceSelectorAdd = (selection:IResourceSelected) => {
+    const onResourceSelectorAdd = (selection:IResourceSelected, tab?:ITabObject) => {
         let cluster = clusters.find(c => c.name===selection.clusterName)
         if (!cluster) {
             setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.clusterName} does not exist.`, setMsgBox))
             return
         }
 
-        let tabName = selection.suggestedName
-        // create unduplicated (unique) name (adding a '-number' suffix)
-        let index = -1
-        while (tabs.find (t => t.name === tabName + index.toString())) index -= 1
-
         if (frontChannels.has(selection.channelId)) {
             let newChannel = createChannelInstance(selection.channelId)!
             let newTab:ITabObject = {
-                name: tabName+index.toString(),
+                name: selection.name,
                 ws: undefined,
                 keepaliveRef: 60,
                 defaultTab: false,
@@ -238,20 +217,26 @@ const App: React.FC = () => {
                 channelPending: false,
                 headerEl: undefined
             }
+            if (newTab.channel.requiresMetrics()) newTab.channelObject.metricsList = cluster.metricsList
+            if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
             if (newTab.channel.initChannel(newTab.channelObject)) setRefreshTabContent(Math.random())
+            if (tab) {
+                newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
+                newTab.channelObject.uiConfig = tab.channelObject.uiConfig
+            }
             startSocket(newTab, cluster, () => {
                 setKeepAlive(newTab)
                 if (newTab.channel.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
+                if (tab && tab.channelStarted) startTabChannel(newTab)
             })
             selectedTab.current = newTab
-            //setSelectedTab(newTab)
-            setTabs((prev) => [...prev, newTab])
+            tabs.current.push(newTab)
+            setRefreshTabContent(Math.random())  // force re-render for showing new tab
         }
         else {
             console.log(`Error, invalid channel: `, selection.channelId)
             setMsgBox(MsgBoxOkError('Add resource', 'Channel is not supported', setMsgBox))
         }
-
     }
 
     const setKeepAlive = (tab:ITabObject) => {
@@ -268,37 +253,55 @@ const App: React.FC = () => {
         }, (settingsRef.current?.keepAliveInterval || 60) * 1000,'')
     }
 
+    interface Colors {
+        stop: string
+        start: string
+        pause: string
+        pending: string
+    }
+
+    const baseColors: Colors = {
+        stop: '#ffffff',
+        start: '#28a745',
+        pause: '#6c757d',
+        pending: '#ffc107'
+    }
+
+    const brightColors: Colors = {
+        stop: '#f1f1f1',
+        start: '#34d058',
+        pause: '#dfd7df',
+        pending: '#ffca2c',
+    }
+
     const colorTab = (tab:ITabObject) => {
-        if (selectedTab.current === tab) {
-            if (tab.channelStarted)
-                tab.headerEl.style.backgroundColor = '#99dd99'
-            else
-                tab.headerEl.style.backgroundColor = '#ffffff'
-        }
-        else {
-            if (tab.channelStarted) {
-                if (tab.channelPaused)
-                    tab.headerEl.style.backgroundColor = '#dddddd'
-                else {
-                    if (tab.channelPending)
-                        tab.headerEl.style.backgroundColor = '#ffe082'
-                    else
-                        tab.headerEl.style.backgroundColor = '#66ff66'
-                }
+        let tabla:Colors = brightColors
+        if (selectedTab.current === tab) tabla = baseColors
+        if (tab.channelStarted) {
+            if (tab.channelPaused) {
+                tab.headerEl.style.backgroundColor = tabla.pause
             }
             else {
-                tab.headerEl.style.backgroundColor = '#ffffff'
+                if (tab.channelPending)
+                    tab.headerEl.style.backgroundColor = tabla.pending
+                else
+                    tab.headerEl.style.backgroundColor = tabla.start
             }
+        }
+        else {
+            tab.headerEl.style.backgroundColor = tabla.stop
         }
     }
 
     const onChangeTab = (_event:unknown, tabNumber:number)=> {
-        let newTab = tabs[tabNumber]
+        let newTab = tabs.current[tabNumber]
         if (newTab.channelObject) {
             newTab.channelPending = false
             setRefreshTabContent(Math.random())
             if (selectedTab.current) colorTab(selectedTab.current)
             colorTab(newTab)
+            let cluster = clusters.find(c => c.name === newTab.channelObject.clusterName)
+            if (cluster) setUsablechannels(cluster)
         }
         selectedTab.current = newTab
     }
@@ -316,7 +319,7 @@ const App: React.FC = () => {
         if (instanceMessage.action === InstanceMessageActionEnum.PING || instanceMessage.channel === InstanceMessageChannelEnum.NONE) return
 
         if (frontChannels.has(instanceMessage.channel)) {
-            let tab = tabs.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
+            let tab = tabs.current.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
             if (!tab || !tab.channel || !tab.channelObject) return
             let action = tab.channel.processChannelMessage(tab.channelObject, wsEvent)
             if (action === IChannelMessageAction.REFRESH) {
@@ -331,7 +334,7 @@ const App: React.FC = () => {
                 }
             }
             else if (action === IChannelMessageAction.STOP) {
-                stopChannel(tab)
+                stopTabChannel(tab)
             }
         }
         else {
@@ -349,7 +352,7 @@ const App: React.FC = () => {
     const socketReconnect = (wsEvent:any, id:NodeJS.Timer) => {
         clearInterval(id)
         console.log('Reconnected, will reconfigure socket')
-        let tab = tabs.find(tab => tab.ws === wsEvent.target)
+        let tab = tabs.current.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
 
         let instanceConfig:InstanceConfig = {
@@ -381,7 +384,7 @@ const App: React.FC = () => {
 
     const socketDisconnect = (wsEvent:any) => {
         console.log('Socket disconnected')
-        let tab = tabs.find(tab => tab.ws === wsEvent.target)
+        let tab = tabs.current.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
         const reconnectable = backChannels.find(c => c.id === tab!.channel.channelId && c.reconnectable)
         if (reconnectable) {
@@ -418,7 +421,7 @@ const App: React.FC = () => {
         }
     }
     
-    const startChannel = (tab:ITabObject) => {
+    const startTabChannel = (tab:ITabObject) => {
         if (!tab || !tab.channelObject) {
             console.log('No active tab found')
             return
@@ -434,7 +437,7 @@ const App: React.FC = () => {
             tab.ws.onmessage = (event) => wsOnMessage(event)
             tab.ws.onclose = (event) => socketDisconnect(event)
     
-            var instanceConfig: InstanceConfig = {
+            let instanceConfig: InstanceConfig = {
                 channel: tab.channel.channelId,
                 objects: InstanceConfigObjectEnum.PODS,
                 action: InstanceMessageActionEnum.START,
@@ -449,19 +452,19 @@ const App: React.FC = () => {
                 container: tab.channelObject.container,
                 type: InstanceMessageTypeEnum.SIGNAL
             }
-            
-            if (selectedTab.current && selectedTab.current.channel) {
-                instanceConfig.scope = selectedTab.current.channel.getScope()
+
+            if (tab.channel) {
+                instanceConfig.scope = tab.channel.getScope()
                 instanceConfig.data = tab.channelObject.instanceConfig
                 tab.ws.send(JSON.stringify(instanceConfig))
                 tab.channelStarted = true
                 tab.channelPaused = false
-                colorTab(selectedTab.current)
-                selectedTab.current.channel.startChannel(selectedTab.current.channelObject)
+                colorTab(tab)
+                tab.channel.startChannel(tab.channelObject)
             }
             else {
                 console.log('Channel is not supported')
-            }
+            }            
         }
         else {
             console.log('Tab web socket is not started')
@@ -470,10 +473,10 @@ const App: React.FC = () => {
 
     const onClickChannelStop = () => {
         setAnchorMenuTab(null)
-        if (selectedTab.current && selectedTab.current.channelObject) stopChannel(selectedTab.current)
+        if (selectedTab.current && selectedTab.current.channelObject) stopTabChannel(selectedTab.current)
     }
 
-    const stopChannel = (tab:ITabObject) => {
+    const stopTabChannel = (tab:ITabObject) => {
         if (!tab || !tab.channelObject) return
         let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
 
@@ -498,7 +501,6 @@ const App: React.FC = () => {
             if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
             tab.channelStarted = false
             tab.channelPaused = false
-            //tab.headerEl.style.backgroundColor = '#ffffff'
             colorTab(tab)
         }
         else {
@@ -509,10 +511,10 @@ const App: React.FC = () => {
     const onClickChannelPause = () => {
         setAnchorMenuTab(null)
         if (!selectedTab.current || !selectedTab.current.channelObject || !selectedTab.current.ws) return
-        var cluster = clusters.find(c => c.name === selectedTab.current!.channelObject.clusterName)
+        let cluster = clusters.find(c => c.name === selectedTab.current!.channelObject.clusterName)
         if(!cluster) return
         
-        var instanceConfig:InstanceConfig = {
+        let instanceConfig:InstanceConfig = {
             channel: selectedTab.current.channel.channelId,
             objects: InstanceConfigObjectEnum.PODS,
             action: InstanceMessageActionEnum.PAUSE,
@@ -530,13 +532,11 @@ const App: React.FC = () => {
 
         if (selectedTab.current.channelPaused) {
             selectedTab.current.channelPaused = false
-            //selectedTab.current.headerEl.style.backgroundColor = '#99dd99'
             colorTab(selectedTab.current)
             instanceConfig.action = InstanceMessageActionEnum.CONTINUE
         }
         else {
             selectedTab.current.channelPaused = true
-            //selectedTab.current.headerEl.style.backgroundColor = '#dddddd'
             colorTab(selectedTab.current)
             instanceConfig.action = InstanceMessageActionEnum.PAUSE
         }
@@ -554,10 +554,10 @@ const App: React.FC = () => {
             selectedTab.current.ws.onclose = null
         }
         clearInterval(selectedTab.current.keepaliveRef)
-        if (selectedTab.current.channelObject) stopChannel(selectedTab.current)
+        if (selectedTab.current.channelObject) stopTabChannel(selectedTab.current)
 
-        let current = tabs.findIndex(t => t === selectedTab.current)
-        let newTabs = tabs.filter(t => t !== selectedTab.current)
+        let current = tabs.current.findIndex(t => t === selectedTab.current)
+        let newTabs = tabs.current.filter(t => t !== selectedTab.current)
 
         if (current >= newTabs.length) current--
         if (current >= 0 && current<newTabs.length) newTabs[current].channelPending = false
@@ -565,16 +565,17 @@ const App: React.FC = () => {
             selectedTab.current = newTabs[current]
             colorTab(selectedTab.current)
         }
-        setTabs(newTabs)
+        tabs.current = newTabs
     }
 
     const menuTabOptionSelected = (option: MenuTabOption) => {
         setAnchorMenuTab(null)
-        let selectedTabIndex = tabs.findIndex(t => t.name === selectedTab?.current?.name)
+        if (!selectedTab?.current) return
+        let selectedTabIndex = tabs.current.indexOf(selectedTab.current)
         switch(option) {
             case MenuTabOption.TabInfo:
                 if (selectedTab.current) {
-                    var a=`
+                    let a=`
                         <b>Tab type</b>: ${selectedTab.current.channel.channelId}</br>
                         <b>Cluster</b>: ${selectedTab.current.channelObject.clusterName}</br>
                         <b>View</b>: ${selectedTab.current.channelObject.view}<br/>
@@ -591,30 +592,30 @@ const App: React.FC = () => {
                 break
             case MenuTabOption.TabMoveLeft:
                 if (selectedTab.current) {
-                    tabs[selectedTabIndex] = tabs[selectedTabIndex-1]
-                    tabs[selectedTabIndex-1] = selectedTab.current
-                    setTabs(tabs)
+                    tabs.current[selectedTabIndex] = tabs.current[selectedTabIndex-1]
+                    tabs.current[selectedTabIndex-1] = selectedTab.current
+                    selectedTab.current = tabs.current[selectedTabIndex]
+                    colorTab(tabs.current[selectedTabIndex])
+                    colorTab(tabs.current[selectedTabIndex-1])
                 }
                 break
             case MenuTabOption.TabMoveRight:
                 if (selectedTab.current) {
-                    tabs[selectedTabIndex] = tabs[selectedTabIndex+1]
-                    tabs[selectedTabIndex+1] = selectedTab.current
-                    setTabs(tabs)
+                    tabs.current[selectedTabIndex] = tabs.current[selectedTabIndex+1]
+                    tabs.current[selectedTabIndex+1] = selectedTab.current
+                    onChangeTab(null, selectedTabIndex+1)
                 }
                 break
             case MenuTabOption.TabMoveFirst:
                 if (selectedTab.current) {
-                    tabs.splice(selectedTabIndex, 1)
-                    tabs.splice(0, 0, selectedTab.current)
-                    setTabs(tabs)
+                    tabs.current.splice(selectedTabIndex, 1)
+                    tabs.current.splice(0, 0, selectedTab.current)
                 }
                 break
             case MenuTabOption.TabMoveLast:
                 if (selectedTab.current) {
-                    tabs.splice(selectedTabIndex, 1)
-                    tabs.push(selectedTab.current)
-                    setTabs(tabs)
+                    tabs.current.splice(selectedTabIndex, 1)
+                    tabs.current.push(selectedTab.current)
                 }
                 break
             case MenuTabOption.TabRemove:
@@ -636,16 +637,16 @@ const App: React.FC = () => {
     }
 
     const saveBoard = (name:string, description:string) => {
-        var newTabs:ITabObject[] = []
-        for (var tab of tabs) {
-            var newTab:ITabObject = {
+        let newTabs:ITabObject[] = []
+        for (let tab of tabs.current) {
+            let newTab:ITabObject = {
                 name: tab.name,
                 defaultTab: tab.defaultTab,
                 ws: undefined,
                 keepaliveRef: 0,
                 channel: tab.channel,
                 channelObject: JSON.parse(JSON.stringify(tab.channelObject)),
-                channelStarted: false,
+                channelStarted: tab.channelStarted,
                 channelPaused: false,
                 channelPending: false,
                 headerEl: undefined
@@ -663,7 +664,8 @@ const App: React.FC = () => {
             description,
             tabs: newTabs
         }
-        var payload=JSON.stringify( board )
+        let payload=JSON.stringify( board )
+        console.log('payload', payload)
         fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addPostAuthorization(accessString, payload))
         if (currentBoardName !== name) {
             setCurrentBoardName(name)
@@ -691,21 +693,34 @@ const App: React.FC = () => {
                 }))
             }
             else if (action === 'load') {
-                clearTabs()
-                var boardDef = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
-                var board = JSON.parse(boardDef) as IBoard
                 let errors = ''
-                for (let t of board.tabs) {
-                    let clusterName = t.channelObject.clusterName
-                    if (!clusters.find(c => c.name === clusterName)) {
-                        errors += `Cluster '${clusterName}' used in tab ${t.name} does not exsist<br/><br/>`
+                clearTabs()
+                let boardDef = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
+                let board:IBoard = JSON.parse(boardDef)
+                if (board && board.tabs && board.tabs.length>0) {
+                    for (let t of board.tabs) {
+                        let clusterName = t.channelObject.clusterName
+                        if (!clusters.find(c => c.name === clusterName)) {
+                            errors += `Cluster '${clusterName}' used in tab ${t.name} does not exsist<br/><br/>`
+                        }
+                    }
+                    if (errors!=='') setMsgBox(MsgBoxOkError('Kwirth',`Some errors have been detected when loading board:<br/><br/>${errors}`, setMsgBox))
+                    setCurrentBoardName(name)
+                    setCurrentBoardDescription(board.description)
+                    for (let t of board.tabs) {
+                        let res:IResourceSelected = {
+                            channelId: t.channel.channelId,
+                            clusterName: t.channelObject.clusterName,
+                            view: t.channelObject.view,
+                            namespaces: t.channelObject.namespace.split(','),
+                            groups: t.channelObject.group.split(','),
+                            pods: t.channelObject.pod.split(','),
+                            containers: t.channelObject.container.split(','),
+                            name: t.name
+                        }
+                        onResourceSelectorAdd(res, t)
                     }
                 }
-                if (errors!=='') setMsgBox(MsgBoxOkError('Kwirth',`Some errors have been detected when loading board:<br/><br/>${errors}`, setMsgBox))
-                setTabs(board.tabs)
-                setCurrentBoardName(name)
-                setCurrentBoardDescription(board.description)
-                setBoardLoaded(true)
             }
         }
     }
@@ -715,13 +730,13 @@ const App: React.FC = () => {
     }
 
     const getBoards = async () => {
-        var allBoards:IBoard[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
+        let allBoards:IBoard[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
         if (allBoards.length===0) {
             showNoBoards()
             return undefined
         }
         else {
-            var values = allBoards.map( b => {
+            let values = allBoards.map( b => {
                 let name=Object.keys(b)[0]
                 let board = JSON.parse((b as any)[name]) as IBoard
                 return { name: board.name,  description: board.description }
@@ -731,10 +746,10 @@ const App: React.FC = () => {
     }
 
     const clearTabs = () => {
-        for (var tab of tabs) {
-            if (tab.channelObject) stopChannel(tab)
+        for (let tab of tabs.current) {
+            if (tab.channelObject) stopTabChannel(tab)
         }
-        setTabs([])
+        tabs.current = []
     }
 
     const menuDrawerOptionSelected = async (option:MenuDrawerOption) => {
@@ -785,14 +800,14 @@ const App: React.FC = () => {
                 setShowUserSecurity(true)
                 break
             case MenuDrawerOption.ExportBoards:
-                var boardsToExport:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
+                let boardsToExport:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
                 if (boardsToExport.length===0) {
                     showNoBoards()
                 }
                 else {
-                    var content:any={}
-                    for (var boardName of boardsToExport) {
-                        var readBoard = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
+                    let content:any={}
+                    for (let boardName of boardsToExport) {
+                        let readBoard = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
                         content[boardName]=JSON.parse(readBoard)
                     }
                     handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`)
@@ -847,9 +862,9 @@ const App: React.FC = () => {
         if (file) {
             const reader = new FileReader()
             reader.onload = (event:any) => {
-                var allBoards=JSON.parse(event.target.result)
-                for (var boardName of Object.keys(allBoards)) {
-                    var payload=JSON.stringify(allBoards[boardName])
+                let allBoards=JSON.parse(event.target.result)
+                for (let boardName of Object.keys(allBoards)) {
+                    let payload=JSON.stringify(allBoards[boardName])
                     fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addPostAuthorization(accessString, payload))
                 }
             }
@@ -867,7 +882,7 @@ const App: React.FC = () => {
         
         if (!readMetricsInterval) return
         if (readMetricsInterval) {
-            var cluster = clusters.find(c => c.name === selectedClusterName)
+            let cluster = clusters.find(c => c.name === selectedClusterName)
             if (cluster && cluster.kwirthData)  {
                 cluster.kwirthData.metricsInterval = readMetricsInterval
                 let payload = JSON.stringify( { metricsInterval: readMetricsInterval } )
@@ -890,7 +905,7 @@ const App: React.FC = () => {
             writeSettings()
         }
         setRefreshTabContent(Math.random())  // we force rendering
-        if (start) startChannel(selectedTab.current)
+        if (start) startTabChannel(selectedTab.current)
     }
 
     const onRenameTabClosed = (newname:string|undefined) => {
@@ -902,7 +917,7 @@ const App: React.FC = () => {
     const onCloseManageClusters = (cc:Cluster[]) => {
         setShowManageClusters(false)
         let otherClusters = cc.filter (c => !c.source)
-        var payload=JSON.stringify(otherClusters)
+        let payload=JSON.stringify(otherClusters)
         fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addPostAuthorization(accessString, payload))
         setClusters([...cc])
     }
@@ -934,21 +949,11 @@ const App: React.FC = () => {
             uiSettings:settingsRef.current?.channels.find(c => c.id === selectedTab.current?.channel.channelId)?.uiSettings,
             instanceSettings:settingsRef.current?.channels.find(c => c.id === selectedTab.current?.channel.channelId)?.instanceSettings,
         }
-        if (props.channelObject) {
-            let cluster = clusters.find(c => c.name===selectedTab.current?.channelObject.clusterName)
-            if (cluster && selectedTab.current.channel.requiresMetrics()) {
-                props.channelObject.metricsList = cluster.metricsList
-            }
-            if (cluster &&  selectedTab.current.channel.requiresAccessString()) {
-                props.channelObject.accessString = cluster?.accessString
-            }
-        }
         return <SetupDialog {...props} />
     }
 
     const formatTabName = (tab : ITabObject) => {
         if (!tab.name) return <>undefined</>
-
         let icon = <Box sx={{minWidth:'24px'}}/>
         if (tab.channel) icon = tab.channel.getChannelIcon()
         let name = tab.name
@@ -992,26 +997,26 @@ const App: React.FC = () => {
                 </Stack>
             </Drawer>
 
-            <ResourceSelector clusters={clusters} backChannels={backChannels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }} data-refresh={refreshTabContent}/>
+            <ResourceSelector clusters={clusters} backChannels={backChannels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }} tabs={tabs.current} data-refresh={refreshTabContent}/>
             
             <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
-                { tabs.length>0 &&
-                    <Tabs value={tabs.indexOf(selectedTab.current!)} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' sx={{ml:1}}>
-                        {  tabs.map((tab, index) => {
-                            return <Tab ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={<IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>} iconPosition='end' sx={{ mb:-1, mt:-1}}/>
+                { tabs.current.length>0 &&
+                    <Tabs value={tabs.current.indexOf(selectedTab.current!)} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' sx={{ml:1}}>
+                        {  tabs.current.map((tab, index) => {
+                            return <Tab ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={tab === selectedTab.current ? <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton> : <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{ mb:-1, mt:-1}}/>
                         })}
                     </Tabs>
                 }
                 <Typography sx={{ flexGrow: 1 }}></Typography>
             </Stack>
-            { (tabs.length>0) &&
+            { (tabs.current.length>0) &&
                 <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                    { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs} selectedTab={selectedTab.current} selectedTabIndex={tabs.findIndex(t => t.name === selectedTab?.current?.name)} backChannels={backChannels}/>}
+                    { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs.current} selectedTab={selectedTab.current} selectedTabIndex={tabs.current.indexOf(selectedTab?.current!)} backChannels={backChannels}/>}
                     <TabContent channel={selectedTab.current?.channel} webSocket={selectedTab.current?.ws} channelObject={selectedTab.current?.channelObject} refreshTabContent={refreshTabContent} />
                 </Box>
             }   
 
-            { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs} oldname={selectedTab.current?.name}/> }
+            { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs.current} oldname={selectedTab.current?.name}/> }
             { showSaveBoard && <SaveBoard onClose={onSaveBoardClosed} name={currentBoardName} description={currentBoardDescription} values={boards} /> }
             { showSelectBoard && <SelectBoard onSelect={onSelectBoardClosed} values={boards} action={selectBoardAction}/> }
             { showManageClusters && <ManageClusters onClose={onCloseManageClusters} clusters={clusters}/> }

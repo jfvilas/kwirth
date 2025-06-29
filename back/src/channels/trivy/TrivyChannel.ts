@@ -77,7 +77,7 @@ class TrivyChannel implements IChannel {
         return Boolean(resp)
     }
 
-    scoreAsset = async (instance:IInstance, asset:IAsset): Promise<{ score: number, known: IKnown, unknown: IUnknown }> => {
+    scoreAsset = async (instance:IInstance, asset:IAsset): Promise<{ score: number, known?: IKnown, unknown?: IUnknown }> => {
         let known:IKnown = {
             name: '',
             namespace: '',
@@ -101,60 +101,56 @@ class TrivyChannel implements IChannel {
             if (crdObject.response.statusCode === 200) {
                 console.log('Got report for', crdName)
                 let summary = (crdObject.body as any).report.summary
-                score += (instance.maxCritical>=0? summary.criticalCount*4 : 0) +
-                    (instance.maxHigh>=0? summary.highCount*4 : 0) +
-                    (instance.maxMedium>=0? summary.mediumCount*4 : 0) +
-                    (instance.maxLow>=0? summary.lowCount*4 : 0)
+                score +=
+                    (instance.maxCritical>=0? summary.criticalCount*4 : 0) +
+                    (instance.maxHigh>=0? summary.highCount*3 : 0) +
+                    (instance.maxMedium>=0? summary.mediumCount*2 : 0) +
+                    (instance.maxLow>=0? summary.lowCount*1 : 0)
                 known = {
+                    container: asset.containerName,
                     name: asset.podName,
                     namespace: asset.podNamespace,
-                    container: asset.containerName,
                     report: (crdObject.body as any).report
                 }
+                return {score, known, unknown:undefined}
             }
             else {
                 console.log(`VulnReport not found for ${crdName} (${crdObject.response.statusCode}-${crdObject.response.statusMessage})`)
                 unknown = {
+                    container: asset.containerName,
                     name: asset.podName,
                     namespace: asset.podNamespace,
-                    container: asset.containerName,
                     statusCode: crdObject.response.statusCode || 0,
                     statusMessage: crdObject.response.statusMessage || ''
                 }
+                return {score:0, known:undefined, unknown}
             }
         }
         catch (err:any){
             unknown = {
+                container: asset.containerName,
                 name: asset.podName,
                 namespace: asset.podNamespace,
-                container: asset.containerName,
                 statusCode: 999,
-                statusMessage: err
+                statusMessage: err.response.body.message
             }
-            console.log('err', err.response.body)
-        }
-        return {
-            score,
-            known,
-            unknown
+            console.log('catcherr', err.response.body)
+            return {score:0, known:undefined, unknown}
         }
     }
 
     private calculateScore = async (instance: IInstance) => {
         let score = 0
-        let unknown:IUnknown[] = []
-        let known:IKnown[] = []
-        let maxScore = (instance.maxCritical>=0? instance.maxCritical*4 : 0) +
-            (instance.maxHigh>=0? instance.maxHigh*4 : 0) +
-            (instance.maxMedium>=0? instance.maxMedium*4 : 0) +
-            (instance.maxLow>=0? instance.maxLow*4 : 0)
+        let maxScore =
+            (instance.maxCritical>=0? instance.maxCritical*4 : 0) +
+            (instance.maxHigh>=0? instance.maxHigh*3 : 0) +
+            (instance.maxMedium>=0? instance.maxMedium*2 : 0) +
+            (instance.maxLow>=0? instance.maxLow*1 : 0)
         let totalMaxScore = instance.assets.length * maxScore
 
         for (let asset of instance.assets) {
             let result = await this.scoreAsset(instance, asset)
             score += result.score
-            if (result.known) known.push(result.known)
-            if (result.unknown) unknown.push(result.unknown)
         }
         score = (1.0 - (score / totalMaxScore)) * 100.0
         return score
@@ -176,7 +172,6 @@ class TrivyChannel implements IChannel {
             data: undefined
         }
 
-        console.log('instanceMessage.command', instanceMessage.command)
         switch (instanceMessage.command) {
             case TrivyCommandEnum.SCORE:
                 if (!this.checkScopes(instance, InstanceConfigScopeEnum.WORKLOAD)) {
@@ -233,16 +228,15 @@ class TrivyChannel implements IChannel {
             }
             if (event==='add' || event==='update') {
                 let result = await this.scoreAsset(instance, asset)
-                if (result.known) {
-                    payload.data = result.known
-                    webSocket.send(JSON.stringify(payload))
-                }                    
+                payload.data = result
+                webSocket.send(JSON.stringify(payload))
             }
             else {
                 payload.data = asset
                 webSocket.send(JSON.stringify(payload))
             }
 
+            // we calculate score everytime a nd event is received in the informer
             let score = await this.calculateScore(instance)
             let scoreResp:ITrivyMessageResponse = {
                 msgtype: 'trivymessageresponse',
@@ -267,14 +261,13 @@ class TrivyChannel implements IChannel {
         const plural = 'vulnerabilityreports'
         const path = `/apis/${TRIVY_API_GROUP}/${TRIVY_API_VERSION}/namespaces/${asset.podNamespace}/${plural}`
 
-
         const listFn = () =>
             this.clusterInfo.crdApi.listNamespacedCustomObject(TRIVY_API_GROUP, TRIVY_API_VERSION, asset.podNamespace, plural).then((res) => {
-                    const typedBody = res.body as { items:KubernetesObject[] }
-                    return {
-                        response: res.response,
-                        body: typedBody,
-                    }
+                const typedBody = res.body as { items:KubernetesObject[] }
+                return {
+                    response: res.response,
+                    body: typedBody,
+                }
             })
         const informer = makeInformer(this.clusterInfo.kubeConfig, path, listFn )
         informer.on('add', (obj:any) => this.processEvent(webSocket, instance, 'add', obj, asset))
@@ -321,9 +314,30 @@ class TrivyChannel implements IChannel {
             containerName,
             informer: undefined
         }
+        // inexistent vuln reports do not create a informer event, so we need to review if some report does not exist and inform the client accordingly
+        let result = await this.scoreAsset(instance, asset)
+        if (result.unknown) {
+            let payload:ITrivyMessageResponse = {
+                msgtype: 'trivymessageresponse',
+                msgsubtype: 'add',
+                id: '',
+                namespace: asset.podNamespace,
+                group: '',
+                pod: asset.podName,
+                container: asset.containerName,
+                action: InstanceMessageActionEnum.NONE,
+                flow: InstanceMessageFlowEnum.UNSOLICITED,
+                type: InstanceMessageTypeEnum.DATA,
+                channel: InstanceMessageChannelEnum.TRIVY,
+                instance: instance.instanceId
+            }
+            payload.data = result
+            webSocket.send(JSON.stringify(payload))
+        }
+
+        instance.assets.push(asset)
         asset.informer = this.createInformer(webSocket, instance, asset)
         asset.informer.start()
-        instance.assets.push(asset)
     }
 
     pauseContinueInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void => {

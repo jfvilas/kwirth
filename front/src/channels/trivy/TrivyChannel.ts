@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { IKnown, InstanceConfigScopeEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, SignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
+import { IKnown, InstanceConfigScopeEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, IUnknown, SignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
 import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
 import { ITrivyObject, TrivyObject } from './TrivyObject'
@@ -35,18 +35,19 @@ export class TrivyChannel implements IChannel {
                     }
                 }
                 else if (trivyMessageResponse.flow === InstanceMessageFlowEnum.UNSOLICITED) {
-                    let asset:IKnown = trivyMessageResponse.data
                     switch (trivyMessageResponse.msgsubtype) {
                         case 'score':
                             trivyObject.score = trivyMessageResponse.data.score
                             break
                         case 'add':
-                            trivyObject.known.push(asset)
+                            if (trivyMessageResponse.data.known) trivyObject.known.push(trivyMessageResponse.data.known as IKnown)
+                            if (trivyMessageResponse.data.unknown) trivyObject.unknown.push(trivyMessageResponse.data.unknown as IUnknown)
                             break
                         case 'update':
                         case 'delete':
-                            trivyObject.known = (trivyObject.known as IKnown[]).filter(a => a.namespace !== asset.namespace || a.name !== asset.name || a.container !== asset.container)
-                            if (trivyMessageResponse.msgsubtype==='update') trivyObject.known.push(asset)
+                            let assetKnown:IKnown = trivyMessageResponse.data.known
+                            trivyObject.known = (trivyObject.known as IKnown[]).filter(a => a.namespace !== assetKnown.namespace || a.name !== assetKnown.name || a.container !== assetKnown.container)
+                            if (trivyMessageResponse.msgsubtype==='update' && trivyMessageResponse.data.known) trivyObject.known.push(assetKnown)
                             break
                         default:
                             console.log('Invalid msgsubtype: ', trivyMessageResponse.msgsubtype)
@@ -59,7 +60,7 @@ export class TrivyChannel implements IChannel {
                 let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
                 if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = signalMessage.instance
-                    this.trivyRequestScore(channelObject)
+                    //this.trivyRequestScore(channelObject)  Not needed, score gets updated when a vuln report is created
                 }
                 else {
                     if (signalMessage.level!== SignalMessageLevelEnum.INFO) console.log('SIGNAL RECEIVED',wsEvent.data)
@@ -85,6 +86,9 @@ export class TrivyChannel implements IChannel {
         let trivyObject:ITrivyObject = channelObject.uiData
         trivyObject.paused = false
         trivyObject.started = true
+        trivyObject.known = []
+        trivyObject.unknown = []
+        trivyObject.score = 0
         return true
     }
 
@@ -135,7 +139,5 @@ export class TrivyChannel implements IChannel {
         }
         channelObject.webSocket!.send(JSON.stringify(triviMessage))
     }
-
-
 
 }    

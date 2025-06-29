@@ -15,6 +15,7 @@ import IconKubernetes from'../icons/svg/k8s.svg'
 import IconDocker from'../icons/svg/docker-mark-blue.svg'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { BackChannelData, ClusterTypeEnum, InstanceConfigViewEnum, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
+import { ITabObject } from '../model/ITabObject'
 
 const KIconDaemonSet = () => <img src={IconDaemonSet} alt='ds' height={'16px'}/>
 const KIconReplicaSet = () => <img src={IconReplicaSet} alt='rs' height={'16px'}/>
@@ -34,14 +35,15 @@ interface IResourceSelected {
     groups: string[]
     pods: string[]
     containers: string[]
-    suggestedName: string
+    name: string
 }
 
 interface IProps {
-    onAdd: (resource:IResourceSelected) => void
+    onAdd: (resource:IResourceSelected, tab?:ITabObject) => void
     onChangeCluster: (clusterName:string) => void
     clusters: Cluster[]
     backChannels: BackChannelData[]
+    tabs: ITabObject[]
     sx: SxProps
 }
 
@@ -212,6 +214,20 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     }
 
     const onAdd = () => {
+        let tabName = ''
+        if (view===InstanceConfigViewEnum.NAMESPACE)
+            tabName=namespaces.join('+')
+        else if (view===InstanceConfigViewEnum.GROUP)
+            tabName=namespaces.join('+')+'-'+groups.join('+')
+        else if (view===InstanceConfigViewEnum.POD)
+            tabName=namespaces.join('+')+'-'+pods.join('+')
+        else if (view===InstanceConfigViewEnum.CONTAINER)
+            tabName=namespaces.join('+')+'-'+pods.join('+')+'-'+containers.join(',')
+
+        let index = -1
+        while (props.tabs.find (t => t.name === tabName + index.toString())) index -= 1
+        tabName = tabName+index.toString()
+        
         let selection:IResourceSelected = {
             channelId: channel,
             clusterName: cluster?.name,
@@ -220,17 +236,8 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             groups,
             pods,
             containers,
-            suggestedName: ''
+            name: tabName
         }
-
-        if (view===InstanceConfigViewEnum.NAMESPACE)
-            selection.suggestedName=namespaces.join('+')
-        else if (view===InstanceConfigViewEnum.GROUP)
-            selection.suggestedName=namespaces.join('+')+'-'+groups.join('+')
-        else if (view===InstanceConfigViewEnum.POD)
-            selection.suggestedName=namespaces.join('+')+'-'+pods.join('+')
-        else if (view===InstanceConfigViewEnum.CONTAINER)
-            selection.suggestedName=namespaces.join('+')+'-'+pods.join('+')+'-'+containers.join(',')
         props.onAdd(selection)
     }
 
