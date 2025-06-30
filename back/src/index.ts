@@ -367,40 +367,29 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
 
         let existClusterScope = accessKeyResources.some(resource => resource.scopes === 'cluster')
         if (!existClusterScope) {
-            console.log('!cluscope')
-
             if (!validPodNames.includes(podName)) continue
 
-            console.log('podincluded')
             if (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace)) {
                 if (!validNamespaces.includes(podNamespace)) continue
             }
 
-            console.log('namespace included')
             if (instanceConfig.pod!=='' && instanceConfig.pod.split(',').includes(podName)) {
                 if (!validPodNames.includes(podName)) continue
             }
 
-            console.log('pod included')
-
             let foundKeyResource = false
             for (let akr of accessKeyResources) {
-                console.log('akr', akr, 'instanceconfig', instanceConfig)
-                console.log('scopes    akr', akr.scopes, '    reqtd',instanceConfig.scope)
-
                 let haveLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, akr.scopes, Number.MIN_VALUE)
                 let requestedLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, instanceConfig.scope, Number.MAX_VALUE)
-                console.log('levels    have', akr.scopes, '    request',instanceConfig.scope)
                 if (haveLevel<requestedLevel) {
                     console.log(`Insufficent level ${haveLevel} < ${requestedLevel}`)
                     continue
                 }
-                console.log(`Level is enough: ${akr.scopes} > ${instanceConfig.scope}`)
+                console.log(`Level is enough: ${akr.scopes} >= ${instanceConfig.scope}`)
                 foundKeyResource = true
                 break
             }
             if (!foundKeyResource) continue
-            console.log('found!')
         }
         selectedPods.push(pod)
     }
@@ -887,7 +876,7 @@ const launchKubernetes = async() => {
                     // load channel extensions
                     if (channelLogEnabled) channels.set('log', new LogChannel(clusterInfo))
                     if (channelAlertEnabled) channels.set('alert', new AlertChannel(clusterInfo))
-                    //+++if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
+                    if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
                     if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
                     channels.set('echo', new EchoChannel(clusterInfo))

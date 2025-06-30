@@ -24,30 +24,24 @@ export class MetricsChannel implements IChannel {
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
-        var msg:IMetricsMessage = JSON.parse(wsEvent.data)
+        var metricsMessage:IMetricsMessage = JSON.parse(wsEvent.data)
         let metricsObject:IMetricsObject = channelObject.uiData
         let metricsUiConfig:IMetricsUiConfig = channelObject.uiConfig
 
-        switch (msg.type) {
+        switch (metricsMessage.type) {
             case InstanceMessageTypeEnum.DATA:
-                if (msg.timestamp===0) {  // initial metrics values
-                    let initialIndex = metricsObject.assetMetricsValues.findIndex(m => m.timestamp === 0)
-                    if (initialIndex>=0) {
-                        if (metricsObject.assetMetricsValues[initialIndex].assets.length<=msg.assets.length) {
-                            metricsObject.assetMetricsValues[initialIndex] = msg
-                            if (!metricsObject.paused) action = IChannelMessageAction.REFRESH
-                        }
-                    }
-                    else {
-                        metricsObject.assetMetricsValues.push(msg)
-                        if (!metricsObject.paused) action = IChannelMessageAction.REFRESH
-                    }
+                if (metricsMessage.timestamp===0) {  // initial metrics values
+                    metricsMessage.timestamp = Date.now()
+                    if (metricsObject.assetMetricsValues.length===0)
+                        metricsObject.assetMetricsValues.push(metricsMessage)
+                    else
+                        metricsObject.assetMetricsValues[0] = metricsMessage
                 }
                 else {
-                    metricsObject.assetMetricsValues.push(msg)
+                    metricsObject.assetMetricsValues.push(metricsMessage)
                     if (metricsObject.assetMetricsValues.length > metricsUiConfig.depth) metricsObject.assetMetricsValues.shift()
-                    if (!metricsObject.paused) action = IChannelMessageAction.REFRESH
                 }
+                if (!metricsObject.paused) action = IChannelMessageAction.REFRESH
                 break
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage:InstanceMessage = JSON.parse(wsEvent.data)
@@ -68,7 +62,7 @@ export class MetricsChannel implements IChannel {
                 }
                 break
             default:
-                console.log(`Invalid message type ${msg.type}`)
+                console.log(`Invalid message type ${metricsMessage.type}`)
                 break
         }
         return action
