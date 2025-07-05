@@ -62,12 +62,6 @@ var dockerApi: Docker = new Docker()
 var kwirthData: KwirthData
 var clusterInfo: ClusterInfo = new ClusterInfo()
 
-// const group = 'mygroup.example.com';
-// const version = 'v1';
-// const namespace = 'default';
-// const plural = 'myresources';
-//const path = `/apis/${group}/${version}/namespaces/${namespace}/${plural}`;
-
 var saToken: ServiceAccountToken
 var secrets: ISecrets
 var configMaps: IConfigMaps
@@ -78,6 +72,7 @@ const channelMetricsEnabled = Boolean(process.env.CHANNEL_METRICS) || true
 const channelAlertEnabled = Boolean(process.env.CHANNEL_ALERT) || true
 const channelOpsEnabled = Boolean(process.env.CHANNEL_OPS) || true
 const channelTrivyEnabled = Boolean(process.env.CHANNEL_TRIVY) || true
+const channelEchoEnabled = Boolean(process.env.CHANNEL_ECHO) || true
 
 // discover where we are running in: docker, kubernetes...
 const getExecutionEnvironment = async ():Promise<string> => {
@@ -879,7 +874,7 @@ const launchKubernetes = async() => {
                     if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
                     if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
-                    channels.set('echo', new EchoChannel(clusterInfo))
+                    if (channelEchoEnabled) channels.set('echo', new EchoChannel(clusterInfo))
                     kwirthData.channels =  Array.from(channels.keys()).map(k => {
                         return channels.get(k)?.getChannelData()!
                     })
