@@ -144,6 +144,7 @@ const App: React.FC = () => {
             readClusterInfo(cluster).then( () => { setRefreshTabContent(Math.random()) })
         clusterList.push(srcCluster)
         setClusters(clusterList)
+        setRefreshTabContent(Math.random())
     }
 
     const readSettings = async () => {

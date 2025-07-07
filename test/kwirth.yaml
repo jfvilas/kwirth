@@ -59,6 +59,7 @@ spec:
         app: kwirth
     spec:
       serviceAccount: kwirth-sa
+      terminationGracePeriodSeconds: 5
       containers:
         - name: kwirth
           image: jfvilasoutlook/kwirth:latest

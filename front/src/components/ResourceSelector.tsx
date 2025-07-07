@@ -54,7 +54,7 @@ interface IGroup {
 }
 
 const ResourceSelector: React.FC<IProps> = (props:IProps) => {
-    const [cluster, setCluster] = useState<Cluster>(props.clusters.find(c => c.source) || new Cluster())
+    const [cluster, setCluster] = useState<Cluster>(new Cluster())
     const [view, setView] = useState('')
     const [allNamespaces, setAllNamespaces] = useState<string[]>([])
     const [namespaces, setNamespaces] = useState<string[]>([])

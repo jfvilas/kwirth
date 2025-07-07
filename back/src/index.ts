@@ -121,7 +121,7 @@ const getKubernetesData = async ():Promise<KwirthData> => {
     }
     else {
         // this namespace will be used to access secrets and configmaps
-        return { clusterName: 'inCluster', namespace:'default', deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:60, channels: [] }
+        return { clusterName: 'inCluster', namespace:'kwirth', deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:60, channels: [] }
     }
 }
 
@@ -857,6 +857,7 @@ const launchKubernetes = async() => {
     console.log('Start Kubernetes Kwirth')
     kwirthData = await getKubernetesData()
     if (kwirthData) {
+        console.log('KwirthData', kwirthData)
         try {
             saToken = new ServiceAccountToken(coreApi, kwirthData.namespace)    
             await saToken.createToken('kwirth-sa',kwirthData.namespace)
@@ -871,7 +872,7 @@ const launchKubernetes = async() => {
                     // load channel extensions
                     if (channelLogEnabled) channels.set('log', new LogChannel(clusterInfo))
                     if (channelAlertEnabled) channels.set('alert', new AlertChannel(clusterInfo))
-                    if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
+                    //if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
                     if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
                     if (channelEchoEnabled) channels.set('echo', new EchoChannel(clusterInfo))
@@ -904,7 +905,7 @@ const launchKubernetes = async() => {
         }
     }
     else {
-        console.log('Cannot get namespace, exiting...')
+        console.log('Cannot get kwirthdata, exiting...')
     }    
 }
 
