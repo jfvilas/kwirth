@@ -106,7 +106,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 <Stack direction={'row'} sx={{overflow:'hidden'}}>
                     <Typography sx={{ml:2,mr:2}}><b>KwirthScore: </b>{trivyObject.score.toPrecision(4)}%</Typography>
                     <Typography>Filter score</Typography>
-                    <Slider max={maxScore} min={minScore} value={filterScore} onChange={handleFilter} size='small' sx={{width:'10%', ml:2}}/>
+                    <Slider max={maxScore} min={minScore} value={filterScore} onChange={handleFilter} size='small' sx={{width:'10%', ml:2}} disabled={trivyObject.known.length + trivyObject.unknown.length === 0}/>
                     <Typography sx={{width:'5%', ml:2}}>{filterScore?.toFixed(0)}</Typography>
                     <Typography sx={{flex:1}}></Typography>
                     <IconButton title="Some errors have been detected" onClick={showErrors} disabled={trivyObject.unknown.length === 0}>
