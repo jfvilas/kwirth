@@ -120,8 +120,17 @@ const getKubernetesData = async ():Promise<KwirthData> => {
         return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:60, channels: [] }
     }
     else {
-        // this namespace will be used to access secrets and configmaps
-        return { clusterName: 'inCluster', namespace:'kwirth', deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:60, channels: [] }
+        // kwirth is supposed to be running outsoud cluster, so we look for kwirth users config in order to detect namespace
+        let secrets = (await coreApi.listSecretForAllNamespaces()).body.items
+        let secret = secrets.find(s => s.metadata?.name === 'kwirth.users')
+        if (secret) {
+            // this namespace will be used to access secrets and configmaps
+            return { clusterName: 'inCluster', namespace:secret.metadata?.namespace!, deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:60, channels: [] }
+        }
+        else {
+            console.log('Cannot determine namespace while running outside cluster')
+            process.exit(1)
+        }
     }
 }
 
@@ -872,7 +881,7 @@ const launchKubernetes = async() => {
                     // load channel extensions
                     if (channelLogEnabled) channels.set('log', new LogChannel(clusterInfo))
                     if (channelAlertEnabled) channels.set('alert', new AlertChannel(clusterInfo))
-                    //if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
+                    //+++if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
                     if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
                     if (channelEchoEnabled) channels.set('echo', new EchoChannel(clusterInfo))
