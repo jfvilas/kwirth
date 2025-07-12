@@ -787,6 +787,8 @@ const runKubernetes = async () => {
     console.log(`SPA is available at: ${rootPath}/front`)
     app.get(`/`, (_req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
 
+    app.get(`/healthz`, (_req:Request,res:Response) => { res.status(200).send() })
+
     app.get(`${rootPath}`, (_req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
     app.use(`${rootPath}/front`, express.static('./dist/front'))
 

@@ -31,13 +31,13 @@ spec:
   #   - www.kwirth-dns.com
   #   secretName: www.kwirth-dns.com.tls
   rules:
-  - host: localhost
-    http:
-      paths:
-        - path: /kwirth
-          pathType: Prefix
-          backend:
-            service:
-              name: kwirth-svc
-              port:
-                number: 3883
+    - host: localhost
+      http:
+        paths:
+          - path: /kwirth
+            pathType: Prefix
+            backend:
+              service:
+                name: kwirth-svc
+                port:
+                  number: 3883
