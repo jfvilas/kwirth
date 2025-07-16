@@ -2,7 +2,7 @@
 * [Installation](installation)
 * [How it works](how)
 * [Data streaming](datastreaming)
-* [Channels](channels)
+* [Channel Architecture](channelarch)
 * [Security](security)
 * [Change log](changelog)
 * [Common tasks](commontasks)
