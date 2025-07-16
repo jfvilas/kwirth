@@ -383,8 +383,8 @@ class MetricsChannel implements IChannel {
                         let prev = prevValues.values.find(prevMetric => prevMetric.metricName === m.metricName)
                         if (prev) {
                             m.metricValue -= prev.metricValue
-                            if (m.metricValue < 0) {
-                                m.metricValue = 0  // this happens when pod restarts take place
+                            if (m.metricValue < 0) {  // this may happen when pod restarts take place
+                                m.metricValue = prev.metricValue
                             }
                             else {
                                 let totalSecs = this.clusterInfo.metricsInterval * this.clusterInfo.vcpus

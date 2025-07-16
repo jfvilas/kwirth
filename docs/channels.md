@@ -9,7 +9,7 @@ Starting with Kwirth 0.3.155 the core has been split into 2 separete blocks:
 According to this structure the different features that users expecto to use with Kwirth are what we call **channels**. For example, receive real-time log streams is just one feature, so there exists a **channel** that implements this feature. Or, for example, Since Kwirth 0.3.155 you can receive cluster metrics via a real-time metrics-stream. For example you can receive information about CPU usage for containers, pods, groups or namespaces. Metrics is another different **channel**. In fact, you can start your Kwirth instance deciding what channels to enable or disable and what other external channels you want to add to your Kwirth instance.
 
 ## What are channels?
-A **channel** is the implementation of a specific feature. For example you can create a channel for receiving info on ConfigMap in such a way that any change to ConfigMaps can be streamed in real-time for somebody to be informed of such changes. Or you can build a channel for exporting log streams in real-time.
+A **channel** is the implementation of a specific feature. For example you can create a channel for receiving info on ConfigMap in such a way that any change to ConfigMaps can be streamed in real-time for somebody to be informed of such changes. Or you can build a channel for exporting log streams in real-time (the original idea behind Kwirth)
 
 That is, a channel is in fact an implementation of a feature that must be built according to a specification (that we explain afterwards) and does not need to be linked nor built with Kwirth core, a channel can be loaded at runtime.
 
@@ -39,9 +39,13 @@ Starting with Kwirth 0.3.155 these are the channels you will find integrated ins
   - **Log**. You can open log streams for receiving container/pod/group/namespace aggregated log streams in real time.
   - **Metrics**. You can receive metrics information related to container/pod/group/namespace aggregated objects.
   - **Alert**. Client can configure alerts for filtering aggregated log streams at origin.
+  - **Echo**. This is a reference channel for channel implementers, it is not useful for real kubernetes operations.
+  - **Trivy**. This is a very interesting channel for kwnow your vulnerabilities exposure based on Trivy. Trivy is fully integrated into Kwirth through this channel.
+  - **Ops**. This is a channel you cna use for performing common operations on your cluster, like launching a shell to a pod or restarting a pod. But Ops channels includes some intersting features like restarting a namespace, or keeping shell terminals connected for a lifetime
 
-It is important to note that **Kwirth always includes a basic front React applicaton**, but you can integrate Kwirth with your own clients. 
+It is important to note that **Kwirth always includes a basic front React applicaton**, but you can integrate Kwirth with your own clients by using Kwirth API.
 
+For getting specific information on each channel follow [this link](channels/list).
 ## Channel development
 The channel system has been designed to allow **an ordered evolution of Kwirth core** and, at the same time, to serve as a basis for other developers to create its own channels, that is, its own data-streaming services for Kubernetes.
 
