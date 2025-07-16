@@ -378,13 +378,18 @@ class MetricsChannel implements IChannel {
                 case 'kwirth_cluster_container_cpu_percentage':
                     if (!usePrevMetricSet) {
                         // we perform a recursive call if-and-only-if we are not extracting prev values
-                        var prevValues = this.getAssetMetrics(instanceConfig, newAssets, true)
+                        let prevValues = this.getAssetMetrics(instanceConfig, newAssets, true)
     
                         let prev = prevValues.values.find(prevMetric => prevMetric.metricName === m.metricName)
                         if (prev) {
                             m.metricValue -= prev.metricValue
-                            let totalSecs = this.clusterInfo.metricsInterval * this.clusterInfo.vcpus       
-                            m.metricValue = Math.round(m.metricValue/totalSecs*100*100)/100
+                            if (m.metricValue < 0) {
+                                m.metricValue = 0  // this happens when pod restarts take place
+                            }
+                            else {
+                                let totalSecs = this.clusterInfo.metricsInterval * this.clusterInfo.vcpus
+                                m.metricValue = Math.round(m.metricValue/totalSecs*100*100)/100
+                            }
                         }
                         else {
                             console.log(`No previous value  [CPU] found for ${m.metricName}`)

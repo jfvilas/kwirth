@@ -84,7 +84,10 @@ const getExecutionEnvironment = async ():Promise<string> => {
         await coreApi.listPodForAllNamespaces()
         return 'kubernetes'
     }
-    catch {}
+    catch (err) {
+        console.log(err)
+        console.log('================================================')
+    }
 
     console.log('Trying Linux...')
     try {
@@ -94,6 +97,7 @@ const getExecutionEnvironment = async ():Promise<string> => {
     }
     catch (err) {
         console.log(err)
+        console.log('================================================')
     }
 
     console.log('Trying Windows...')
@@ -104,6 +108,7 @@ const getExecutionEnvironment = async ():Promise<string> => {
     }
     catch (err) {
         console.log(err)
+        console.log('================================================')
     }
 
     dockerApi = new Docker()
@@ -883,7 +888,7 @@ const launchKubernetes = async() => {
                     // load channel extensions
                     if (channelLogEnabled) channels.set('log', new LogChannel(clusterInfo))
                     if (channelAlertEnabled) channels.set('alert', new AlertChannel(clusterInfo))
-                    //+++if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
+                    if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
                     if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
                     if (channelEchoEnabled) channels.set('echo', new EchoChannel(clusterInfo))
