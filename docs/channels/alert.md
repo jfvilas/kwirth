@@ -1,7 +1,11 @@
-# Log channel
+# Alert channel
++++WIP
 
 ## What for
++++WIP
 
 ## Features
++++WIP
 
-## USe
+## Use
++++WIP

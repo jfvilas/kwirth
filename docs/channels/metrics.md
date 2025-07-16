@@ -1,7 +1,11 @@
-# Log channel
+# Metrics channel
++++WIP
 
 ## What for
++++WIP
 
 ## Features
++++WIP
 
-## USe
+## Use
++++WIP

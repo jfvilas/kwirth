@@ -45,8 +45,9 @@ Starting with Kwirth 0.3.155 these are the channels you will find integrated ins
 
 It is important to note that **Kwirth always includes a basic front React applicaton**, but you can integrate Kwirth with your own clients by using Kwirth API.
 
-For getting specific information on each channel follow [this link](channels/list).
-## Channel development
+For getting specific information on each channel follow [this link](./list).
+
+## Back Channel development
 The channel system has been designed to allow **an ordered evolution of Kwirth core** and, at the same time, to serve as a basis for other developers to create its own channels, that is, its own data-streaming services for Kubernetes.
 
 Creating a channel involves the following processes:
@@ -130,3 +131,6 @@ And this is what each property means:
  - **data**. This is a generic holder for your channel specific data.
 
 This strucutre (and some others) as well as some 'enums', are included in the (**@jfvilas/kwirth-common**)[https://www.npmjs.com/package/@jfvilas/kwirth-common] package.
+
+## Front Channel development
++++WIP
