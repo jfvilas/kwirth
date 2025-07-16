@@ -13,7 +13,7 @@ You can just configure two options prior to starting an Echo Channel:
 This is how the Echo setup feels:
 ![echosetup](./ch-echo-setup.png)
 
-You can set your selected configuration as a default for future echo channel startings.
+You can set your selected configuration as a default for future Echo Channel startings.
 
 ## Use
 When yo add am Echo Channel to your Kwirth desktop, when you start it (after configuring echo interval) Kwirth will start sending information on added objects in a regular basis (your interval in seconds), as shown in next figure.
