@@ -1,4 +1,4 @@
-import { BackChannelData, InstanceConfig, InstanceMessage, InstanceMessageActionEnum, RouteMessageResponse } from '@jfvilas/kwirth-common'
+import { BackChannelData, InstanceConfig, InstanceMessage, InstanceMessageActionEnum } from '@jfvilas/kwirth-common'
 
 interface IChannel {
     getChannelData() : BackChannelData
