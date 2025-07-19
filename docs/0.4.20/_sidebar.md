@@ -1,16 +1,12 @@
-<select id="version" onchange="window.location.href = `/${document.getElementById('version').value}/index`">
-  <option value="0.4.20">0.4.20</option>
-  <option value="0.3.160">0.3.160</option>
-  <option value="0.2.8">0.2.8</option>
-</select>
+<center>
+  Kwirth version:
+  <select id="version" onchange="window.location.href = `/${document.getElementById('version').value}/index.html`">
+    <option value="0.4.20" selected>0.4.20</option>
+    <option value="0.3.160">0.3.160</option>
+    <option value="0.2.8">0.2.8</option>
+  </select>
+</center>
 
-<script>
-  function changeVersion(version) {
-    // Cambia esta URL base según cómo publiques las versiones
-    
-    console.log(version)
-  }
-</script>
 
 * [Home](index)
 * [Installation](installation)
