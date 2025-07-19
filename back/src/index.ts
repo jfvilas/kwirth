@@ -888,6 +888,7 @@ const launchKubernetes = async() => {
                     // load channel extensions
                     if (channelLogEnabled) channels.set('log', new LogChannel(clusterInfo))
                     if (channelAlertEnabled) channels.set('alert', new AlertChannel(clusterInfo))
+                    //+++
                     if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
                     if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))

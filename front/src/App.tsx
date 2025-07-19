@@ -108,8 +108,8 @@ const App: React.FC = () => {
     useEffect ( () => {
         // only when user logs on / off
         if (logged) {
-            if (clustersRef.current.length===0) getClusters()
-            if (!settingsRef.current) readSettings() 
+            if (clustersRef.current.length === 0) getClusters()
+            if (!settingsRef.current || settingsRef.current === null) readSettings() 
         }
     },[logged])
 
@@ -947,14 +947,19 @@ const App: React.FC = () => {
             channel: selectedTab.current.channel,
             onChannelSetupClosed,
             channelObject: selectedTab.current.channelObject,
-            uiSettings:settingsRef.current?.channels.find(c => c.id === selectedTab.current?.channel.channelId)?.uiSettings,
-            instanceSettings:settingsRef.current?.channels.find(c => c.id === selectedTab.current?.channel.channelId)?.instanceSettings,
+            uiSettings: {},
+            instanceSettings: {}
         }
+        if (settingsRef.current?.channels && selectedTab.current.channel) {
+            props.uiSettings = settingsRef.current.channels.find(c => c.id === selectedTab.current?.channel.channelId)?.uiSettings
+            props.instanceSettings = settingsRef.current.channels.find(c => c.id === selectedTab.current?.channel.channelId)?.instanceSettings
+        }
+    
         return <SetupDialog {...props} />
     }
 
     const formatTabName = (tab : ITabObject) => {
-        if (!tab.name) return <>undefined</>
+        if (!tab.name) return <>noname</>
         let icon = <Box sx={{minWidth:'24px'}}/>
         if (tab.channel) icon = tab.channel.getChannelIcon()
         let name = tab.name
