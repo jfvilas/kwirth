@@ -61,17 +61,20 @@ You can set your selected configuration as a default for future Log Channel star
 When you start a log stream or a start diagnostic, messages will be prefixed according to the objects you selected. For example, if you did only selected a container, messages will have no prefix. But, if you selected 2 or more containers from the same or diffferent pod, messages will be prefixed with object information (pod name, group name, namespace name...) in order to have accurate information on the origin of the message.
 
 A log stream would look like this:
-![logstream](./_media/ch-images/log-running-ls.png)
+
+![logstream](./_media/ch-images/log-running-ls.png ':size=80%')
 
 A start diagnostic, as you can see in the example, may not show messages ordered in message occurrence, it depends on your setup configuration.
 
-![sd](./_media/ch-images/log-running-sd.png)
+![sd](./_media/ch-images/log-running-sd.png ':size=80%')
 
 ## Metrics
 Metrics Channel is a very long waited feature that eases your *needs for observability*. Aside from real-time streaming logs (the main original purpose of Kwirth), Metrics Channel can enhance your observability posture by streaming real-time metrics of your Kubernetes objects. As usual, you can build sets of objects by mixing different sources (pods from different namespaces, different whole namespaces...) or even stream real-time metrics for a single container. 
 
 ### What for
-Metrics Channel can send to your browser (or your Kwirth-API consuming application) real-time observability that Kwirth gathers **directly from cAdvisor**. This is important, **Kwirth does not need Prometheus** or other metrics-scraping software, Kwirth can gather required metrics directly from the kubelets running inside your nodes.
+Metrics Channel can send to your browser (or your Kwirth-API consuming application) real-time observability that Kwirth gathers **directly from cAdvisor**.
+
+!> This is important, **Kwirth does not need Prometheus** or other metrics-scraping software, Kwirth can gather required metrics directly from the kubelets running inside your nodes.
 
 ### Features
 Main features of Metrics Channel are:
@@ -121,7 +124,7 @@ To add expressions to ERROR alert list (it is the same for INFO and WARNING), yo
 ### Use
 This is a sample screenshot for an Alert Channel running.
 
-![alertrunning](./_media/ch-images/alert-running.png)
+![alertrunning](./_media/ch-images/alert-running.png ':size=80%')
 
 ## Trivy
 We are very proud of one of the last channel we have added to Kwirth: the Trivy Channel. This channel is based on [Trivy OSS](https://trivy.io). Trivy is an excellent piece of software for observing your cybersecurity threads and be aware of your cybersecurity posture.
