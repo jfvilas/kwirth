@@ -7,7 +7,6 @@
   </select>
 </center>
 
-
 * [Home](index)
 * [Installation](./installation)
 * [How it works](how)
