@@ -93,4 +93,4 @@ If everything is ok, the Kwirth server would start sending log messages. What fo
 ### Signaling
 When a stream of data is open, clients may receive information on that stream related with the events that occur in Kubernetes and impact the resources in scope, for example, new pods created, pods deleted, streaming errors, etc...
 
-?> Every message canotins a signal category, like 'info', 'warning', or 'error'. Typical Kubernetes events, like pod creatin, pod deletion, etc., belong to the 'info category'.
+?> Every message contains a signal category, like 'info', 'warning', or 'error'. Typical Kubernetes events, like pod creating, pod deletion, etc., belong to the 'info category'.

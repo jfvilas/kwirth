@@ -137,4 +137,4 @@ Container added to stream:
   "text": "Container ADDED: default/kwirth-948ddc4f-5gkvm/kwirth"
 }```
 
-As you may see, every message canotins a signal category, like 'info', 'warning', or 'error'. Typical Kubernetes events, like pod creating, pod deletion, etc., belong to the 'info category'.
+As you may see, every message contains a signal category, like 'info', 'warning', or 'error'. Typical Kubernetes events, like pod creating, pod deletion, etc., belong to the 'info category'.

@@ -195,4 +195,4 @@ What follows are several sample signal messages that could be received at client
 {"level":"error","channel":"metrics","instance":"812afcd2-e8fd-4f3b-b157-08127707b677","type":"signal","text":"Metric name is is incorrect"}
 ```
 
-As you may see, every message canotins a signal category, like 'info', 'warning', or 'error'. Typical Kubernetes events, like pod creatin, pod deletion, etc., belong to the 'info category'.
+As you may see, every message contains a signal category, like 'info', 'warning', or 'error'. Typical Kubernetes events, like pod creating, pod deletion, etc., belong to the 'info category'.
