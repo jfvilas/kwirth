@@ -9,11 +9,11 @@
 
 
 * [Home](index)
-* [Installation](installation)
+* [Installation](./installation)
 * [How it works](how)
 * [Data streaming](datastreaming)
 * [Channel Architecture](channelarch)
-* [Channels](channels)
+* [Channels](./channels/index.md)
 * [Security](security)
 * [Change log](changelog)
 * [Common tasks](commontasks)

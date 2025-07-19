@@ -18,18 +18,10 @@
   <div id="app"></div>
   <script>
     window.$docsify = {
-      //basePath: '/kwirth',
       auto2top: true,
       relativePath: true,
       coverpage: true,
       loadSidebar: true,
-      // alias: {
-      // '/.*/_sidebar.md': '/_sidebar.md'
-      // },
-      // alias: {
-      // '/.*/_coverpage.md': '/_coverpage.md'
-      // },
-      // loadNavbar: true,
       logo: '/_media/kwirth-logo-20.png',
       name: 'Kwirth Observability Stack',
       homepage: 'index.md',
@@ -41,12 +33,8 @@
           maxAge: 86400000, // Expiration time, the default one day
           paths: 'auto',
           placeholder: 'Search...',
-
           noData: 'No Results!',
-
-          // Headline depth, 1 - 6
-          depth: 6,
-
+          depth: 6,   // Headline depth, 1 - 6
           hideOtherSidebarContent: false // whether or not to hide other sidebar content
       }
     }

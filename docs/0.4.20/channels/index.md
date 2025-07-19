@@ -1,7 +1,7 @@
 # Channels
 As of Kwirth version 0.4, these are the existing channels:
 
-  - **[Log](./channels/log)**. Real time log streaming from different source objects (a container, a pod, a namespace or a custom mix of any of them).
+  - **[Log](log)**. Real time log streaming from different source objects (a container, a pod, a namespace or a custom mix of any of them).
   - **[Metrics](./channels/metrics)**. Real-time metrics (CPU, memory, I/O, bandwidth...) on a set of objects.
   - **[Alert](./channels/alert)**. Alerts based on los messages. Log messages are processed at Kwirth core, so you only receive alerts accordingn to your channel config.
   - **[Echo](./channels/echo)**. This is a reference channel for channel implementers, it is not useful for real kubernetes operations.
