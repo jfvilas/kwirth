@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kwirth log management system</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <meta name="description" content="Log management system for multicluster logging, alerting, all in just one pod">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+  <style>
+    .markdown-section h2 { margin-bottom: -10px }
+    .markdown-section h3 { margin-bottom: -10px }
+    h5 { margin-bottom: -15px }
+  </style>
+</head>
+
+<body style="background-color: white;">
+  <div id="app"></div>
+  <script>
+    window.$docsify = {
+      coverpage: true,
+      loadSidebar: true,
+      alias: {
+      '/.*/_sidebar.md': '/_sidebar.md'
+      },
+      // loadNavbar: true,
+      logo: '/_media/kwirth-logo-20.png',
+      name: 'Kwirth log management system',
+      homepage:'index.md',
+      subMaxLevel: 2,
+      // search: [
+      // '/'            // => /README.md
+      // ],
+      search: {
+          maxAge: 86400000, // Expiration time, the default one day
+          paths: 'auto',
+          placeholder: 'Search...',
+
+          noData: 'No Results!',
+
+          // Headline depth, 1 - 6
+          depth: 6,
+
+          hideOtherSidebarContent: false // whether or not to hide other sidebar content
+      }
+    }
+  </script>
+  <!-- Docsify v4 -->
+  <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+</body>
+</html>
+

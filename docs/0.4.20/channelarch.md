@@ -1,12 +1,14 @@
 # Channels
-On the very first versions of Kwirth all its capabilities were implemented inside Kwirth core. That is, log streaming or the ability to restart pods or deployments were TypeScript in fact modules co-develoepd with Kwirth core and built next to it, creating one only piece which contains the core backend functionalities (connection to kubernetes cluster, managing security, serving as a storage system for profiles, etc.), the Kwirh capabilities (log streaming, cluster basic operations) and serving the front application (the React module).
+On the very first versions of Kwirth all its capabilities were implemented inside Kwirth core. That is, log streaming or the ability to restart pods or deployments were in fact TypeScript modules co-develoepd with Kwirth core and built next to it, creating one only piece which contains the core backend functionalities (connection to kubernetes cluster, managing security, serving as a storage system for profiles, etc.), the Kwirh capabilities (log streaming, cluster basic operations) and serving the front application (the React module).
 
-Starting with Kwirth 0.3.155 the core has been split into 2 separete blocks:
++++ adapt to 0.4.20
+
+Starting with Kwirth 0.3.160 the core has been split into 2 separete blocks:
 
   1. The core in itself, that is, the artifact that handles WebSockets, security, connections to cluster or HTTP serving.
   2. The interface for implementing features in Kwirth.
 
-According to this structure the different features that users expecto to use with Kwirth are what we call **channels**. For example, receive real-time log streams is just one feature, so there exists a **channel** that implements this feature. Or, for example, Since Kwirth 0.3.155 you can receive cluster metrics via a real-time metrics-stream. For example you can receive information about CPU usage for containers, pods, groups or namespaces. Metrics is another different **channel**. In fact, you can start your Kwirth instance deciding what channels to enable or disable and what other external channels you want to add to your Kwirth instance.
+According to this structure the different features that users expecto to use with Kwirth are what we call **channels**. For example, receive real-time log streams is just one feature, so there exists a **channel** that implements this feature. Or, for example, Since Kwirth 0.3.160 you can receive cluster metrics via a real-time metrics-stream. For example you can receive information about CPU usage for containers, pods, groups or namespaces. Metrics is another different **channel**. In fact, you can start your Kwirth instance deciding what channels to enable or disable and what other external channels you want to add to your Kwirth instance.
 
 ## What are channels?
 A **channel** is the implementation of a specific feature. For example you can create a channel for receiving info on ConfigMap in such a way that any change to ConfigMaps can be streamed in real-time for somebody to be informed of such changes. Or you can build a channel for exporting log streams in real-time (the original idea behind Kwirth)
@@ -34,7 +36,7 @@ What follows is a zoomed view of Kwirth core.
 ![kwirthcore](./_media/kwirth-kwirth-components.png)
 
 ## Existing channels
-Starting with Kwirth 0.3.155 these are the channels you will find integrated inside Kwirth core:
+Starting with Kwirth 0.3.160 these are the channels you will find integrated inside Kwirth core:
 
   - **Log**. You can open log streams for receiving container/pod/group/namespace aggregated log streams in real time.
   - **Metrics**. You can receive metrics information related to container/pod/group/namespace aggregated objects.
@@ -57,7 +59,7 @@ Creating a channel involves the following processes:
   3. Configure your Kwirth.
 
 ### The channel interface
-When you create a new channel, the first thing you should do is to review the interface you must implement for your channel to be integrable with Kwirth. This is how the channel system has been defined for the 0.3.155 version of Kwirth:
+When you create a new channel, the first thing you should do is to review the interface you must implement for your channel to be integrable with Kwirth. This is how the channel system has been defined for the 0.3.160 version of Kwirth:
 
 ```typescript
 interface IChannel {
@@ -116,7 +118,7 @@ export interface InstanceConfig {
 And this is what each property means:
 
  - **channel**. It is the id of the channel ('log', 'metrics', 'alert', or your own).
- - **objects**. It points to the type of kubernetes object your channel will manage: 'pods' and 'events' are the only ones starting with Kwirth 0.3.155.
+ - **objects**. It points to the type of kubernetes object your channel will manage: 'pods' and 'events' are the only ones starting with Kwirth 0.3.160.
  - **action**. The action the client is requesting or the server is answering, for exmaple: 'start', 'stop', 'pause'...
  - **flow**. Indicates the direction of the message: 'request' flows from client to server and 'response' flows back.
  - **instance**. Is the id of the instance the client or the server are working with by using this specific instance config.

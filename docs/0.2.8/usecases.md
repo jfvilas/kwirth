@@ -4,10 +4,10 @@ Explain how to perform common tasks.
 ### Cluster logging
 *Pending*
 
-### Cluster alerting
+### Cluster alarming
 *Pending*
 
-### Corporate alerting
+### Corporate alarming
 *Pending*
 
 ### Development teams
