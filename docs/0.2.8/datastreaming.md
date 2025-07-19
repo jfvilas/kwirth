@@ -67,9 +67,6 @@ var logConfig:LogConfig = {
 ws.send(JSON.stringify(logConfig))
 ```
 
-If everything is ok, the Kwirth server would start sending log messages. What follows is a stream of JSON messages sent by the websocket
-+++streaming sample
-
 ### Metrics streaming
 Metrics streaming means sending resource metrics from server to client. When talking about 'resource metrics' it is very important to note that metrics can be aggregated according to start message indications on resource.
 
@@ -92,13 +89,8 @@ ws.send(JSON.stringify(metricsConfig))
 ```
 
 If everything is ok, the Kwirth server would start sending log messages. What follows is a stream of JSON messages sent by the websocket
-+++streaming sample
 
 ### Signaling
 When a stream of data is open, clients may receive information on that stream related with the events that occur in Kubernetes and impact the resources in scope, for example, new pods created, pods deleted, streaming errors, etc...
 
-What follows are several sample signal messages that could be received at client side:
-
-+++signal streaming sample
-
-As you may see, every message canotins a signal category, like 'info', 'warning', or 'error'. Typical Kubernetes events, like pod creatin, pod deletion, etc., belong to the 'info category'.
+?> Every message canotins a signal category, like 'info', 'warning', or 'error'. Typical Kubernetes events, like pod creatin, pod deletion, etc., belong to the 'info category'.
