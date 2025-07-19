@@ -61,11 +61,11 @@ You can set your selected configuration as a default for future Log Channel star
 When you start a log stream or a start diagnostic, messages will be prefixed according to the objects you selected. For example, if you did only selected a container, messages will have no prefix. But, if you selected 2 or more containers from the same or diffferent pod, messages will be prefixed with object information (pod name, group name, namespace name...) in order to have accurate information on the origin of the message.
 
 A log stream would look like this:
-![logstream](./_ch-images/log-running-ls.png)
+![logstream](./_media/ch-images/log-running-ls.png)
 
 A start diagnostic, as you can see in the example, may not show messages ordered in message occurrence, it depends on your setup configuration.
 
-![sd](./_ch-images/log-running-sd.png)
+![sd](./_media/ch-images/log-running-sd.png)
 
 ## Metrics
 Metrics Channel is a very long waited feature that eases your *needs for observability*. Aside from real-time streaming logs (the main original purpose of Kwirth), Metrics Channel can enhance your observability posture by streaming real-time metrics of your Kubernetes objects. As usual, you can build sets of objects by mixing different sources (pods from different namespaces, different whole namespaces...) or even stream real-time metrics for a single container. 
@@ -106,7 +106,7 @@ Alert detection is **performed on the backend**, that is, your browser will only
   - **WARNING**, is a list of regex or texts that will be searched for matching WARNING alerts.
   - **ERROR**, is a list of regex or texts that will be searched for matching ERROR alerts.
 
-![alertsetup](./_ch-images/alert-setup.png)
+![alertsetup](./_media/ch-images/alert-setup.png)
 
 When an alert is fired the log message will be shown on the browser according to a typical color code (black, yellow, red)
 
@@ -121,7 +121,7 @@ To add expressions to ERROR alert list (it is the same for INFO and WARNING), yo
 ### Use
 This is a sample screenshot for an Alert Channel running.
 
-![alertrunning](./_ch-images/alert-running.png)
+![alertrunning](./_media/ch-images/alert-running.png)
 
 ## Trivy
 We are very proud of one of the last channel we have added to Kwirth: the Trivy Channel. This channel is based on [Trivy OSS](https://trivy.io). Trivy is an excellent piece of software for observing your cybersecurity threads and be aware of your cybersecurity posture.
@@ -148,31 +148,31 @@ When you start a Trivy Channel you must provide a few things for the vulnerabiit
 
   - **Maximum number of accepted issues** of each category of vulnerability, or even just ignore a specific severity (that means accepting as "good" any number of vulnerabilities of a specific kind).
 
-![trivysetup](./_ch-images/trivy-setup.png)
+![trivysetup](./_media/ch-images/trivy-setup.png)
 
 Here are some screenshots of some operations performed with a Trivy Channel. First one shows a general view of a Trivy Channel:
 
-![trivycard](./_ch-images/trivy-card.png)
+![trivycard](./_media/ch-images/trivy-card.png)
 
 You can switch the view (a card view with details on each object) to a list view, a more simplistic approach to use when you just need an overview of the global situation.
 
-![trivylist](./_ch-images/trivy-list.png)
+![trivylist](./_media/ch-images/trivy-list.png)
 
 No matter the kind of view you have selected (card or list), you can decide how to order the objects. Two main options are available: score order, scan date order.
 
-![trivyorder](./_ch-images/trivy-sort.png)
+![trivyorder](./_media/ch-images/trivy-sort.png)
 
 I you want to review the details of a vulnerability report, you can do it (from card or list item) and you will get a list of vulnerabilities including its category (critical, high...) and some details.
 
-![trivydetail](./_ch-images/trivy-detail.png)
+![trivydetail](./_media/ch-images/trivy-detail.png)
 
 IF you want to get detailed info on a specific CVE, just click on it to see the details.
 
-![trivycve](./_ch-images/trivy-cve.png)
+![trivycve](./_media/ch-images/trivy-cve.png)
 
 If there exist some problem with a Trivy vulnerability report, you'll be noticed via a red error icon on the screen, and clicking on it you can see some specifics on the error.
 
-![trivyerror](./_ch-images/trivy-error.png)
+![trivyerror](./_media/ch-images/trivy-error.png)
 
 ## Ops
 Ops Channel is a complex functionally rich channel that Kwirth users can use to operate (perform day-to-day operations) on your Kubernetes workload.
@@ -228,11 +228,11 @@ When you start a shell you'll see the shell showing up inside the Ops Channel ta
 
 Shell selection will be shown like this:
 
-![opseshellselect](./_ch-images/ops-shell-select.png)
+![opseshellselect](./_media/ch-images/ops-shell-select.png)
 
 When you select a shell session you'll see a TTY shell like this one:
 
-![opseshell](./_ch-images/ops-shell.png)
+![opseshell](./_media/ch-images/ops-shell.png)
 
 ## Echo
 This channel sends users realtime "echo" information on objects in scope. It has been built for channel implementers to have a simple channel implementtion to use as a starting point.
@@ -247,11 +247,11 @@ You can just configure two options prior to starting an Echo Channel:
   - **Interval**, seconds to wait before sending next echo from the backend to the frontend.
 
 This is how the Echo setup feels:
-![echosetup](./_ch-images/echo-setup.png)
+![echosetup](./_media/ch-images/echo-setup.png)
 
 You can set your selected configuration as a default for future Echo Channel startings.
 
 ### Use
 When you add an Echo Channel to your Kwirth desktop, when you start it (after configuring echo interval), Kwirth will start sending information on added objects in a regular basis (your interval in seconds), as shown in next figure.
 
-![echo-running](./_ch-images/echo-running.png)
+![echo-running](./_media/ch-images/echo-running.png)

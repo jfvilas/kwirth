@@ -1,7 +1,7 @@
 # Change log
 Although not too exhaustive, this page contains some detail on what we have been done on each version.
 
-## 0.2
+## 0.2.8
 
   - Redefined the API Key / Access Key world, adding a more flexible way to manage security (check the documentation).
   - Add Status information. Now, using the same socket where the log stream is sent to clients, Kwirth sends status data (like pods added, pods stoped, Kubernetes errors...).

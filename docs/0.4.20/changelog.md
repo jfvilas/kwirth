@@ -20,7 +20,7 @@ Although not too exhaustive, this page contains some detail on what we have been
     - **kwirth_cluster_container_receive_mbps** Mbps of data received over the last period
   - Documentation is now versioned according to Kwirth versioning, you can select what Kwirth version documenttion on the side bar.
 
-## 0.3
+## 0.3.160
   - Created '@jfvilas/kwirth-common', for sharing data structures used by clients and by Kwirth server.
   - Added new Kwirth version detector on user login (detecting backend version when connecting to Kwirth backend).
   - Added multi-streaming channels to websockets (required for streaming other data than logs).
@@ -28,7 +28,7 @@ Although not too exhaustive, this page contains some detail on what we have been
   - Added streaming metric service with two scopes: snaptshot (an instant metrics set) and streaming (metrics streaming), always relative to a Kubernetes artifact, that is, metrics for a container, metrics for a pod, metrics for a deployment or even metrics for a whole namespace. When obtaining data for an agreggated artifact (pod, deployment...) metrics will be aggregated according to its semantic (average, sum, etc...).
   - This very first version of streaming metrics requieres establishing a log service (for opening the websocket from client side), but we plan to allow creating independent websockets for different streaming services or even use one only websocket for all services (up to the client implementation).
 
-## 0.2
+## 0.2.8
   - Redefined the API Key / Access Key world, adding a more flexible way to manage security (check the documentation).
   - Add Status information. Now, using the same socket where the log stream is sent to clients, Kwirth sends status data (like pods added, pods stoped, Kubernetes errors...).
   - Added version info via API, so clients can know which version of Kwirth they are connected with (in order to know the featuras implemented).
