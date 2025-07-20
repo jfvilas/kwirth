@@ -67,11 +67,11 @@ When you start a log stream or a start diagnostic, messages will be prefixed acc
 
 A log stream would look like this:
 
-![logstream](./_media/ch-images/log-running-ls.png ':size=80%')
+&nbsp;&nbsp;&nbsp;&nbsp;![logstream](./_media/ch-images/log-running-ls.png ':size=80%')
 
 A start diagnostic, as you can see in the example, may not show messages ordered in message occurrence, it depends on your setup configuration.
 
-![sd](./_media/ch-images/log-running-sd.png ':size=80%')
+>>![sd](./_media/ch-images/log-running-sd.png ':size=80%')
 
 ## Metrics
 Metrics Channel is a very long waited feature that eases your *needs for observability*. Aside from real-time streaming logs (the main original purpose of Kwirth), Metrics Channel can enhance your observability posture by streaming real-time metrics of your Kubernetes objects. As usual, you can build sets of objects by mixing different sources (pods from different namespaces, different whole namespaces...) or even stream real-time metrics for a single container. 
