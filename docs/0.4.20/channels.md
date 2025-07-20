@@ -89,8 +89,41 @@ Main features of Metrics Channel are:
 ### Use
 When you start the channel you must first setup how you want to receive the metrics and show them on the browser. These are the configuration items you must provide:
 
-+++running
-+++WIP
+  - **Streaming mode**, default mode (not changeable right now) is 'Stream', that is, real time streaming.
+  - **Depth**, select the number of vlaues to show in the charts. When this limit is reached, oldest values will start to be removed.
+  - **Width**, typically you select several metrics to be shown in the screen, yo can decide how many charts to show on ecah line.
+  - **Interval**, this is the refresh interval. Kwirth core will send you new values every *interval* seconds.
+  - **Metrics list**, you can add as many metrics as you want, just click on a metric name to add or remove it from the list. You can use the filter for simplify the selectin process. In addition to typical Kubernetes metrics exposed by cAdvisor, Kwirth adds some simple metrics whose names start with **kwirth_** and just show common usage metrics:
+    - *kwirth_cluster_container_memory_percentage*, % of memory used by **all the objects in scope**
+    - *kwirth_cluster_container_cpu_percentage*, % of CPU used by **all the objects in scope**
+    - *kwirth_cluster_container_trnasmit_percentage*, % of data sent by **all the objects in scope**
+    - *kwirth_cluster_container_receive_percentage*, % of data received by **all the objects in scope**
+    - *kwirth_cluster_container_random_conuter*, just for testing purposes.
+    - *kwirth_cluster_container_random_gauge*, just for testing purposes.
+  - **Drawing options**:
+    - *Aggregate*, when there ar miltiple objects in scope, you can **aggregate** metrics values in order to show one only vlaue for all the objects' values.
+    - *Merge*, if you don't want to aggregate the values of the metrics, you can decide to **merge** the values, so same metric from different objects are shown in the same chart.
+    - *Stack*, when you *merge* the values, you can decide whether to stack them or not.
+    - *Chart*, select the chart type: Line, Area, Bar or Value.
+
+Yo need to select at leasr one metrics to be able to start the channel.
+
+![metricssetup](./_media/ch-images/metrics-setup.png)
+
+
+Once you start a Metrics Channel you can see some charts like these ones we've screenshooted for you.
+
+One object with four Kwirth metrics.
+![metricsrunning1](./_media/ch-images/metrics-running-1.png)
+
+Several objects shown bar-stacked.
+![metricsrunning1](./_media/ch-images/metrics-running-2.png)
+
+Several objects shown area-stacked.
+![metricsrunning1](./_media/ch-images/metrics-running-3.png)
+
+Several objects non-stacked.
+![metricsrunning1](./_media/ch-images/metrics-running-4.png)
 
 
 ## Alert
