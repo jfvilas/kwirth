@@ -30,7 +30,7 @@ Log Channel includes two main features:
 ### Use
 When you start a Log Channel you see the setup card where you can decide what kind of log streaming you want to launch: log streaming or start diagnostics.
 
-The tab taht is selected when you click OK is the feature of Log Channel that will be used.
+?> The tab that is selected when you click OK is the feature of Log Channel that will be used.
 
 #### Start diagnostics
 Start diagnostics, as mentioned, is real time streaming that **starts when the set of selected kubernetes objects first started**. The parameters you can configure are:
@@ -44,6 +44,8 @@ Start diagnostics, as mentioned, is real time streaming that **starts when the s
 
 You can set your selected configuration as a default for future Log Channel startings.
 
+![logsetup](./_media/ch-images/log-setup-sd.png)
+
 #### Log streaming
 Log streaming is useful for viewing object current logs in real time starting from any point in time. Please take into account that a very old starting point can cause your browser to become slow in processing messages, since Kwirth Core sends all the data as quick as it can.
 
@@ -56,6 +58,9 @@ The configuration for log streaming is as follows:
   - **Follow new messages**, when you activate this option, the browser will move to the very end when a new message arrives.
 
 You can set your selected configuration as a default for future Log Channel startings.
+
+![logsetup](./_media/ch-images/log-setup-ls.png)
+
 
 #### Running
 When you start a log stream or a start diagnostic, messages will be prefixed according to the objects you selected. For example, if you did only selected a container, messages will have no prefix. But, if you selected 2 or more containers from the same or diffferent pod, messages will be prefixed with object information (pod name, group name, namespace name...) in order to have accurate information on the origin of the message.
@@ -108,7 +113,7 @@ When you start the channel you must first setup how you want to receive the metr
 
 Yo need to select at leasr one metrics to be able to start the channel.
 
-![metricssetup](./_media/ch-images/metrics-setup.png)
+![metricssetup](./_media/ch-images/metrics-setup.png ':size=80%')
 
 
 Once you start a Metrics Channel you can see some charts like these ones we've screenshooted for you.
@@ -142,7 +147,7 @@ Alert detection is **performed on the backend**, that is, your browser will only
   - **WARNING**, is a list of regex or texts that will be searched for matching WARNING alerts.
   - **ERROR**, is a list of regex or texts that will be searched for matching ERROR alerts.
 
-![alertsetup](./_media/ch-images/alert-setup.png)
+![alertsetup](./_media/ch-images/alert-setup.png ':size=80%')
 
 When an alert is fired the log message will be shown on the browser according to a typical color code (black, yellow, red)
 
@@ -184,7 +189,7 @@ When you start a Trivy Channel you must provide a few things for the vulnerabiit
 
   - **Maximum number of accepted issues** of each category of vulnerability, or even just ignore a specific severity (that means accepting as "good" any number of vulnerabilities of a specific kind).
 
-![trivysetup](./_media/ch-images/trivy-setup.png)
+![trivysetup](./_media/ch-images/trivy-setup.png ':size=80%')
 
 Here are some screenshots of some operations performed with a Trivy Channel. First one shows a general view of a Trivy Channel:
 
@@ -293,7 +298,8 @@ You can just configure two options prior to starting an Echo Channel:
   - **Interval**, seconds to wait before sending next echo from the backend to the frontend.
 
 This is how the Echo setup feels:
-![echosetup](./_media/ch-images/echo-setup.png)
+
+![echosetup](./_media/ch-images/echo-setup.png ':size=80%')
 
 You can set your selected configuration as a default for future Echo Channel startings.
 
