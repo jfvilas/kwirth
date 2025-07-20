@@ -229,6 +229,15 @@ The only setup required for starting an Ops Channel is:
   - The other parameter you can configure is the color scheme: light (for normal people), dark (for sysadmins), or 3270 (for mainframe lovers). 
 
 ### Use
+The setup of a Ops Channel is very simple:
+
+  - Keep-alive.
+  - Theme.
+
+And it looks like this:
+
+![opssetup](./_media/ch-images/ops-setup.png)
+
 When you finally launch an Ops Channel the first thing you will see in your screen is the help for the channel and (on the very bottom) an input field where you can type commands in.
 
 It is important to understand the naming structure of objects:
@@ -252,7 +261,8 @@ This way of referring objects is common to all commands inside Ops Channel. Avai
   - SHELL, well, you can start shell sessions to containers. This Kwirth version includes just TTY sessions, but we have strong plans to include ssh sessions via web... just keep an eye on us.
 
 What follows are some screen shots of the commands.
-+++WIP
+
+![opsrunning](./_media/ch-images/ops-running.png)
 
 #### Shell operations
 When you start a shell you'll see the shell showing up inside the Ops Channel tab. Aside from working with shell (/bin/sh in fact), you have some interesting keys you can use:
