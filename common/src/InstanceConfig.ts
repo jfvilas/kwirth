@@ -1,8 +1,4 @@
-import { AlertConfig } from "./AlertConfig"
 import { InstanceMessage } from "./InstanceMessage"
-import { LogConfig } from "./LogConfig"
-import { MetricsConfig } from "./MetricsConfig"
-import { OpsConfig } from "./OpsConfig"
 
 export enum InstanceConfigObjectEnum {
     PODS = 'pods',
