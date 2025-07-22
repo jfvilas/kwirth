@@ -226,7 +226,7 @@ const App: React.FC = () => {
                 newTab.channelObject.uiConfig = tab.channelObject.uiConfig
             }
             startSocket(newTab, cluster, () => {
-                setKeepAlive(newTab)
+                setKeepAlive(newTab) //+++ we should only send ping if session is started???
                 if (newTab.channel.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
                 if (tab && tab.channelStarted) startTabChannel(newTab)
             })

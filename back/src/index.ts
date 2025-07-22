@@ -376,7 +376,7 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
 
         let existClusterScope = accessKeyResources.some(resource => resource.scopes === 'cluster')
         if (!existClusterScope) {
-            if (!validPodNames.includes(podName)) continue
+            if (validPodNames.length>0 && !validPodNames.includes(podName)) continue
 
             if (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace)) {
                 if (!validNamespaces.includes(podNamespace)) continue
@@ -430,7 +430,7 @@ const processReconnect = async (webSocket: WebSocket, instanceMessage: InstanceM
 }
 
 const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: InstanceConfig, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validGroups: string[], validPodNames: string[]) => {
-    console.log('Starting instance config for channel', instanceConfig.channel)
+    console.log('Trying to instance config for channel', instanceConfig.channel)
     let requestedValidatedPods = await getRequestedValidatedScopedPods(instanceConfig, accessKeyResources, validNamespaces, validGroups, validPodNames)
     if (requestedValidatedPods.length === 0) {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: there are no filters that match requested instance config`, instanceConfig)
