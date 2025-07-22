@@ -167,7 +167,7 @@ const App: React.FC = () => {
         if (cluster && cluster.kwirthData) {
             let usableChannels = [...cluster.kwirthData.channels]
             usableChannels = usableChannels.filter(c => Array.from(frontChannels.keys()).includes(c.id))
-            //+++ pending improve ux on resource selector (showing front/back channel availability)
+            //+++ pending improve ux on resource selector (showing front/back channel availability according to user selections)
             setBackChannels(usableChannels)
         }
     }
@@ -226,7 +226,7 @@ const App: React.FC = () => {
                 newTab.channelObject.uiConfig = tab.channelObject.uiConfig
             }
             startSocket(newTab, cluster, () => {
-                setKeepAlive(newTab) //+++ we should only send ping if session is started???
+                setKeepAlive(newTab)
                 if (newTab.channel.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
                 if (tab && tab.channelStarted) startTabChannel(newTab)
             })
@@ -243,15 +243,18 @@ const App: React.FC = () => {
     const setKeepAlive = (tab:ITabObject) => {
         console.log(`WS connected: ${tab.ws?.url}`)
         tab.keepaliveRef = setInterval(() => {
-            let instanceConfig:InstanceMessage = {
-                action: InstanceMessageActionEnum.PING,
-                channel: tab.channel.channelId,
-                flow: InstanceMessageFlowEnum.REQUEST,
-                type: InstanceMessageTypeEnum.SIGNAL,
-                instance: ''
+            if (tab.channelObject.instanceId) {
+                // we only send keealive (ping) if we have a valid instance id
+                let instanceConfig:InstanceMessage = {
+                    action: InstanceMessageActionEnum.PING,
+                    channel: tab.channel.channelId,
+                    flow: InstanceMessageFlowEnum.REQUEST,
+                    type: InstanceMessageTypeEnum.SIGNAL,
+                    instance: tab.channelObject.instanceId
+                }
+                if (tab.ws && tab.ws.readyState === WebSocket.OPEN) tab.ws.send(JSON.stringify(instanceConfig))
             }
-            if (tab.ws && tab.ws.readyState === WebSocket.OPEN) tab.ws.send(JSON.stringify(instanceConfig))
-        }, (settingsRef.current?.keepAliveInterval || 60) * 1000,'')
+        }, (settingsRef.current?.keepAliveInterval || 60) * 1000, '')
     }
 
     interface Colors {
