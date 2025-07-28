@@ -54,7 +54,7 @@ export class OpsChannel implements IChannel {
                             action = IChannelMessageAction.REFRESH
                             break
                         case OpsCommandEnum.EXECUTE:
-                            opsObject.messages.push(cleanANSI(opsMessage.data)) test this cleanansi invocation
+                            opsObject.messages.push(cleanANSI(opsMessage.data))
                             action = IChannelMessageAction.REFRESH
                             break
                         default:

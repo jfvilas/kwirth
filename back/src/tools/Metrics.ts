@@ -161,37 +161,37 @@ export class MetricsTools {
             text=''
         }
         // add kwirth container metrics
-        text += '# HELP kwirth_cluster_container_memory_percentage Percentage of memory used by object from the whole cluster\n'
-        text += '# TYPE kwirth_cluster_container_memory_percentage gauge\n'
-        text += 'kwirth_cluster_container_memory_percentage{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
+        text += '# HELP kwirth_container_memory_percentage Percentage of memory used by object from the whole cluster\n'
+        text += '# TYPE kwirth_container_memory_percentage gauge\n'
+        text += 'kwirth_container_memory_percentage{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
 
-        text += '# HELP kwirth_cluster_container_cpu_percentage Percentage of cpu used from the whole cluster\n'
-        text += '# TYPE kwirth_cluster_container_cpu_percentage gauge\n'
-        text += 'kwirth_cluster_container_cpu_percentage{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
+        text += '# HELP kwirth_container_cpu_percentage Percentage of cpu used from the whole cluster\n'
+        text += '# TYPE kwirth_container_cpu_percentage gauge\n'
+        text += 'kwirth_container_cpu_percentage{container="xxx",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n'
 
-        text += '# HELP kwirth_cluster_container_random_counter Accumulated container random values\n'
-        text += '# TYPE kwirth_cluster_container_random_counter counter\n'
-        text += `kwirth_cluster_container_random_counter{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n`
+        text += '# HELP kwirth_container_random_counter Accumulated container random values\n'
+        text += '# TYPE kwirth_container_random_counter counter\n'
+        text += `kwirth_container_random_counter{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n`
 
-        text += '# HELP kwirth_cluster_container_random_gauge Instant container random values\n'
-        text += '# TYPE kwirth_cluster_container_random_gauge gauge\n'
-        text += `kwirth_cluster_container_random_gauge{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n`
+        text += '# HELP kwirth_container_random_gauge Instant container random values\n'
+        text += '# TYPE kwirth_container_random_gauge gauge\n'
+        text += `kwirth_container_random_gauge{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h",scope="container"} 0 1733656438512\n`
 
-        text += '# HELP kwirth_cluster_container_transmit_percentage Percentage of data sent in relation to the whole cluster\n'
-        text += '# TYPE kwirth_cluster_container_transmit_percentage gauge\n'
-        text += 'kwirth_cluster_container_transmit_percentage{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
+        text += '# HELP kwirth_container_transmit_percentage Percentage of data sent in relation to the whole cluster\n'
+        text += '# TYPE kwirth_container_transmit_percentage gauge\n'
+        text += 'kwirth_container_transmit_percentage{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
 
-        text += '# HELP kwirth_cluster_container_receive_percentage Percentage of data received in relation to the whole cluster\n'
-        text += '# TYPE kwirth_cluster_container_receive_percentage gauge\n'
-        text += 'kwirth_cluster_container_receive_percentage{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
+        text += '# HELP kwirth_container_receive_percentage Percentage of data received in relation to the whole cluster\n'
+        text += '# TYPE kwirth_container_receive_percentage gauge\n'
+        text += 'kwirth_container_receive_percentage{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
 
-        text += '# HELP kwirth_cluster_container_transmit_mbps Mbps of data sent over the last period\n'
-        text += '# TYPE kwirth_cluster_container_transmit_mbps gauge\n'
-        text += 'kwirth_cluster_container_transmit_mbps{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
+        text += '# HELP kwirth_container_transmit_mbps Mbps of data sent over the last period\n'
+        text += '# TYPE kwirth_container_transmit_mbps gauge\n'
+        text += 'kwirth_container_transmit_mbps{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
 
-        text += '# HELP kwirth_cluster_container_receive_mbps Mbps of data received over the last period\n'
-        text += '# TYPE kwirth_cluster_container_receive_mbps gauge\n'
-        text += 'kwirth_cluster_container_receive_mbps{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
+        text += '# HELP kwirth_container_receive_mbps Mbps of data received over the last period\n'
+        text += '# TYPE kwirth_container_receive_mbps gauge\n'
+        text += 'kwirth_container_receive_mbps{container="",id="kwirth",image="doker.io/kwirth",name="kwirth",namespace="default",pod="kwirth-5b9ddf4fd4-tl25h"} 0 1733656438512\n'
 
         return text
     }

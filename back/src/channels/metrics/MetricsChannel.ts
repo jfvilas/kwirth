@@ -332,16 +332,16 @@ class MetricsChannel implements IChannel {
 
         for (let metricName of (instanceConfig.data as MetricsConfig).metrics) {
             let sourceMetricName = metricName
-            if (metricName === 'kwirth_cluster_container_memory_percentage') sourceMetricName = 'container_memory_working_set_bytes'
-            if (metricName === 'kwirth_cluster_container_cpu_percentage') sourceMetricName = 'container_cpu_usage_seconds_total'
+            if (metricName === 'kwirth_container_memory_percentage') sourceMetricName = 'container_memory_working_set_bytes'
+            if (metricName === 'kwirth_container_cpu_percentage') sourceMetricName = 'container_cpu_usage_seconds_total'
 
-            if (metricName === 'kwirth_cluster_container_transmit_percentage') sourceMetricName = 'container_network_transmit_bytes_total'
-            if (metricName === 'kwirth_cluster_container_receive_percentage') sourceMetricName = 'container_network_receive_bytes_total'
+            if (metricName === 'kwirth_container_transmit_percentage') sourceMetricName = 'container_network_transmit_bytes_total'
+            if (metricName === 'kwirth_container_receive_percentage') sourceMetricName = 'container_network_receive_bytes_total'
 
-            if (metricName === 'kwirth_cluster_container_transmit_mbps') sourceMetricName = 'container_network_transmit_bytes_total'
-            if (metricName === 'kwirth_cluster_container_receive_mbps') sourceMetricName = 'container_network_receive_bytes_total'
+            if (metricName === 'kwirth_container_transmit_mbps') sourceMetricName = 'container_network_transmit_bytes_total'
+            if (metricName === 'kwirth_container_receive_mbps') sourceMetricName = 'container_network_receive_bytes_total'
 
-            if (metricName === 'kwirth_cluster_container_random_counter' || metricName === 'kwirth_cluster_container_random_gauge') sourceMetricName = 'container_cpu_system_seconds_total'
+            if (metricName === 'kwirth_container_random_counter' || metricName === 'kwirth_container_random_gauge') sourceMetricName = 'container_cpu_system_seconds_total'
 
             let uniqueValues:number[] = []
 
@@ -370,12 +370,12 @@ class MetricsChannel implements IChannel {
             let m = assetMetrics.values[i]
 
             switch(m.metricName) {
-                case 'kwirth_cluster_container_memory_percentage':
+                case 'kwirth_container_memory_percentage':
                     let clusterMemory = this.clusterInfo.memory
                     if (Number.isNaN(this.clusterInfo.memory)) clusterMemory=Number.MAX_VALUE
                     m.metricValue = Math.round(m.metricValue/clusterMemory*100*100)/100
                     break
-                case 'kwirth_cluster_container_cpu_percentage':
+                case 'kwirth_container_cpu_percentage':
                     if (!usePrevMetricSet) {
                         // we perform a recursive call if-and-only-if we are not extracting prev values
                         let prevValues = this.getAssetMetrics(instanceConfig, newAssets, true)
@@ -396,18 +396,18 @@ class MetricsChannel implements IChannel {
                         }
                     }
                     break
-                case 'kwirth_cluster_container_random_counter':
+                case 'kwirth_container_random_counter':
                     m.metricValue = Date.now() % (Math.random()*32*1000000)
                     break
-                case 'kwirth_cluster_container_random_gauge':
+                case 'kwirth_container_random_gauge':
                     m.metricValue = Math.round(Math.random()*100)/100
                     break
-                case 'kwirth_cluster_container_transmit_percentage':
-                case 'kwirth_cluster_container_receive_percentage':
+                case 'kwirth_container_transmit_percentage':
+                case 'kwirth_container_receive_percentage':
                     // get total transmit/receive bytes
                     let totalBytes:number = 0
                     for (var node of this.clusterInfo.nodes.values()) {
-                        let sourceMetricName = m.metricName==='kwirth_cluster_container_transmit_percentage'? 'container_network_transmit_bytes_total':'container_network_receive_bytes_total'
+                        let sourceMetricName = m.metricName==='kwirth_container_transmit_percentage'? 'container_network_transmit_bytes_total':'container_network_receive_bytes_total'
                         let nodeMetrics = Array.from(node.podMetricValues.keys()).filter(k => k.endsWith('/'+sourceMetricName))
                         nodeMetrics.map ( m => {
                             totalBytes += node.podMetricValues.get(m)?.value!
@@ -415,8 +415,8 @@ class MetricsChannel implements IChannel {
                     }
                     m.metricValue = Math.round(m.metricValue/totalBytes*100*100)/100
                     break
-                case 'kwirth_cluster_container_transmit_mbps':
-                case 'kwirth_cluster_container_receive_mbps':
+                case 'kwirth_container_transmit_mbps':
+                case 'kwirth_container_receive_mbps':
                     if (!usePrevMetricSet) {
                         // we perform a recursive call if-and-only-if we are not extracting prev values
                         var prevValues = this.getAssetMetrics(instanceConfig, newAssets, true)

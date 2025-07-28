@@ -10,14 +10,14 @@ Although not too exhaustive, this page contains some detail on what we have been
   - The base front application included with Kwirth core now support selecting multi-resource objects. For example, if you want to know the CPU usage of three different pods (that can even belong to different namespaces or different groups) you can select the items you want to include in the front application no matter its origin or its belonging.
   - Kwirth front metrics section enables to aggregate and/or merge data form different objects.
   - Mectrics channel at Kwirth core implement several custom metrics that simplify observability by aggregating and calculating hi level data like:
-    - **kwirth_cluster_container_memory_percentage** Percentage of memory used by object from the whole cluster
-    - **kwirth_cluster_container_cpu_percentage** Percentage of cpu used from the whole cluster
-    - **kwirth_cluster_container_random_counter** Accumulated conatiner random values
-    - **kwirth_cluster_container_random_gauge** Instant container random values
-    - **kwirth_cluster_container_transmit_percentage** Percentage of data sent in relation to the whole cluster
-    - **kwirth_cluster_container_receive_percentage** Percentage of data received in relation to the whole cluster
-    - **kwirth_cluster_container_transmit_mbps** Mbps of data sent over the last period
-    - **kwirth_cluster_container_receive_mbps** Mbps of data received over the last period
+    - **kwirth_container_memory_percentage** Percentage of memory used by object from the whole cluster
+    - **kwirth_container_cpu_percentage** Percentage of cpu used from the whole cluster
+    - **kwirth_container_random_counter** Accumulated conatiner random values
+    - **kwirth_container_random_gauge** Instant container random values
+    - **kwirth_container_transmit_percentage** Percentage of data sent in relation to the whole cluster
+    - **kwirth_container_receive_percentage** Percentage of data received in relation to the whole cluster
+    - **kwirth_container_transmit_mbps** Mbps of data sent over the last period
+    - **kwirth_container_receive_mbps** Mbps of data received over the last period
   - Documentation is now versioned according to Kwirth versioning, you can select what Kwirth version documenttion on the side bar.
 
 ## 0.3.160
