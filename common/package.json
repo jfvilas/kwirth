@@ -1,6 +1,6 @@
 {
   "name": "@jfvilas/kwirth-common",
-  "version": "0.4.29",
+  "version": "0.4.30",
   "description": "Common interfaces for integrating applications with Kwirth",
   "scripts": {
     "build": "del .\\dist\\* /s /q && tsc"
@@ -23,8 +23,17 @@
     "kwirth",
     "kubernetes",
     "log",
+    "metrics",
+    "alert",
+    "trivy",
+    "operations",
+    "shell",
     "observability",
-    "kubelog"
+    "kubelog",
+    "kwirth-log",
+    "kwirthlog",
+    "kwirth-metrics",
+    "kwirthmetrics"
   ],
   "author": "Julio Fernandez",
   "license": "ISC",
@@ -34,5 +43,8 @@
   "homepage": "https://github.com/jfvilas/kwirth-common#readme",
   "dependencies": {
     "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
   }
 }

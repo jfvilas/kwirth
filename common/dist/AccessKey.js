@@ -1,6 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildResource = exports.parseResources = exports.parseResource = exports.AccessKey = exports.accessKeySerialize = exports.accessKeyDeserialize = exports.accessKeyCreate = exports.accessKeyBuild = void 0;
+exports.AccessKey = void 0;
+exports.accessKeyBuild = accessKeyBuild;
+exports.accessKeyCreate = accessKeyCreate;
+exports.accessKeyDeserialize = accessKeyDeserialize;
+exports.accessKeySerialize = accessKeySerialize;
+exports.parseResource = parseResource;
+exports.parseResources = parseResources;
+exports.buildResource = buildResource;
 const uuid_1 = require("uuid");
 /*
     Access key format is:
@@ -29,7 +36,6 @@ function accessKeyCreate(type, resources) {
     accessKey.resources = resources;
     return accessKey;
 }
-exports.accessKeyCreate = accessKeyCreate;
 function accessKeyBuild(id, type, resources) {
     let accessKey = new AccessKey();
     accessKey.id = id;
@@ -37,16 +43,13 @@ function accessKeyBuild(id, type, resources) {
     accessKey.resources = resources;
     return accessKey;
 }
-exports.accessKeyBuild = accessKeyBuild;
 function accessKeySerialize(accessKey) {
     return `${accessKey.id}|${accessKey.type}|${accessKey.resources}`;
 }
-exports.accessKeySerialize = accessKeySerialize;
 function accessKeyDeserialize(key) {
     var parts = key.split('|');
     return accessKeyBuild(parts[0], parts[1], parts[2]);
 }
-exports.accessKeyDeserialize = accessKeyDeserialize;
 function parseResource(key) {
     var parts = key.split(':');
     return {
@@ -57,7 +60,6 @@ function parseResource(key) {
         containers: parts[4]
     };
 }
-exports.parseResource = parseResource;
 function parseResources(key) {
     if (!key)
         return [];
@@ -68,8 +70,6 @@ function parseResources(key) {
     }
     return result;
 }
-exports.parseResources = parseResources;
 function buildResource(scopes, namespaces, groups, pods, containers) {
     return `${scopes.join(',')}:${namespaces.join(',')}:${groups.join(',')}:${pods.join(',')}:${containers.join(',')}`;
 }
-exports.buildResource = buildResource;
