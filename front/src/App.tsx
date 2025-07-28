@@ -918,7 +918,7 @@ const App: React.FC = () => {
         selectedTab.current.name = newname
     }
  
-    const onCloseManageClusters = (cc:Cluster[]) => {
+    const onManageClustersClosed = (cc:Cluster[]) => {
         setShowManageClusters(false)
         let otherClusters = cc.filter (c => !c.source)
         let payload=JSON.stringify(otherClusters)
@@ -926,7 +926,7 @@ const App: React.FC = () => {
         setClusters([...cc])
     }
 
-    const onLoginClose = (user:IUser|undefined, firstTime:boolean) => {
+    const onLoginClosed = (user:IUser|undefined, firstTime:boolean) => {
         if (user) {
             setLogged(true)
             setFirstLogin(firstTime)
@@ -979,7 +979,7 @@ const App: React.FC = () => {
     if (!logged) return (<>
         <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
             <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
-                <Login onClose={onLoginClose}></Login>
+                <Login onClose={onLoginClosed}></Login>
             </SessionContext.Provider>
         </div>
     </>)
@@ -1028,7 +1028,7 @@ const App: React.FC = () => {
             { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs.current} oldname={selectedTab.current?.name}/> }
             { showSaveBoard && <SaveBoard onClose={onSaveBoardClosed} name={currentBoardName} description={currentBoardDescription} values={boards} /> }
             { showSelectBoard && <SelectBoard onSelect={onSelectBoardClosed} values={boards} action={selectBoardAction}/> }
-            { showManageClusters && <ManageClusters onClose={onCloseManageClusters} clusters={clusters}/> }
+            { showManageClusters && <ManageClusters onClose={onManageClustersClosed} clusters={clusters}/> }
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
             { showChannelSetup() }

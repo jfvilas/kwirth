@@ -6,6 +6,7 @@ import { OpsTabContent } from './OpsTabContent'
 import { OpsObject, IOpsObject } from './OpsObject'
 import { OpsInstanceConfig, OpsUiConfig } from './OpsConfig'
 import { OPSHELPMESSAGE, OPSWELCOMEMESSAGE } from '../../tools/Constants'
+import { cleanANSI } from './OpsTools'
 
 export class OpsChannel implements IChannel {
     private setupVisible = false
@@ -52,6 +53,10 @@ export class OpsChannel implements IChannel {
                             opsObject.shell = opsObject.shells[opsObject.shells.length-1]
                             action = IChannelMessageAction.REFRESH
                             break
+                        case OpsCommandEnum.EXECUTE:
+                            opsObject.messages.push(cleanANSI(opsMessage.data)) test this cleanansi invocation
+                            action = IChannelMessageAction.REFRESH
+                            break
                         default:
                             if (typeof opsMessage.data !== 'string')
                                 opsObject.messages.push(JSON.stringify(opsMessage.data))
@@ -64,7 +69,7 @@ export class OpsChannel implements IChannel {
                 else {
                     let shell = opsObject.shells.find (s => s.id === opsMessage.id)
                     if (shell) {
-                        let data = (shell.pending + this.cleanANSI(opsMessage.data)).trim().replaceAll('\r','').split('\n')
+                        let data = (shell.pending + cleanANSI(opsMessage.data)).trim().replaceAll('\r','').split('\n')
                         shell.lines.push(...data)
                         shell.pending = ''
                     }
@@ -156,12 +161,6 @@ export class OpsChannel implements IChannel {
 
     socketReconnect(channelObject: IChannelObject): boolean {
         return false
-    }
-
-    // PRIVATE
-    cleanANSI(text: string): string {
-        const regexAnsi = /\x1b\[[0-9;]*[mKHVfJrcegH]|\x1b\[\d*n/g;
-        return text.replace(regexAnsi, '') // replace all matches with empty strings
     }
 
 }    

@@ -5,19 +5,20 @@
 </p>
 
 # Kwirth project
-Kwirth is the final implementation of the idea of having a simple way to be able to recieve live-streaming data form your kubernetes clusters. Maybe you feel comfortable with your DataDog or your Grafana and the Loki and the Promtrail, or any other observability tool for monitoring tour kubernetes. But maybe these (and other tools) are too complex for you.
+Kwirth is the final implementation of the idea of having a simple way to be able to recieve live-streaming observability data from your kubernetes clusters (or even another container orchestrtion systems like Docker or Docker Compose). Maybe you feel comfortable with your DataDog or your Grafana and the Loki and the Promtrail, or any other observability tool for monitoring your kubernetes. But maybe these (and other tools) are too complex for you, it's a common scenario the need for viewing real-time log, metrics, alerts or whatever observability artifact without the need for storing them.
 
 If this is the case, **Kwirth is what you need**.
 
 Yo can go to Kwirth site if you prefer a user-friendly (non-developer) web interface [here](https://jfvilas.github.io/kwirth) for reading Kwirth docs.
 
 ## What you can do with Kwirth
-Basically, Kwirth receives live streams of data that comes from one or more Kubernetes clusters in real-time, and with the data received you can do several thinks depending on your role and your needs.
+Basically, Kwirth receives live streams of **observability data** that comes from one or more Kubernetes clusters in real-time, and with the data received you can perform several activities depending on your role and your needs.
 
-  - Kwirth can be used on Operations areas for detecting exceptional situations (alerts).
-  - It can also be used by development teams for reviewing logs of the services deployed to the cluster.
-  - A Security team (a SOC) can also configure alerts on messages received from the source logs.
-  - You can analyze your kubernetes objects performance and resource usage (CPU%, Memory%, bandwith usage, latencies, filesystem access...)
+  - Kwirth can be used for detecting exceptional situations (alerts) based on log messages (Alert Channel).
+  - It can also be used by development teams for viewing real-time logs of the containers deployed to your Kubernetes cluster (Log Channel)
+  - You can analyze your kubernetes objects performance and resource usage (CPU%, Memory%, bandwith usage, latencies, filesystem access...) using Kwirth provided metrics (Metrics Channel).
+  - You can analyze your containers secrity posture by using the Trivy Operator inside Kwirth (by adding the Trivy Channel).
+  - You can perform day-to-day operations like: restarting objectos, shell to objects, send commands, get object information... by using the Kiwrth Ops Channel.
 
 And, specially...:
 
@@ -56,6 +57,17 @@ It is important to understand that Kwirth *does not store* any logging, metrics 
 
 The architecture of Kwirth is the one depicted below.
 
-![kwirth architecture](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/_media/kwirth-kwirth-arch.png)
+![kwirth architecture](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.4.20/_media/kwirth-kwirth-arch.png)
 
 There is only one pod with one only container needed to run Kwirth. Of course, you can create replicas and services and ingresses if you need to scale out, but, generally speaking, Kwirth has no computing needs, since the only function of the pod is extracting kubernetes data and re-sending it to Kwirth clients, wherever it be Kwirth frontend application or any other client like (Backstage Kubelog)[https://www.npmjs.com/package/@jfvilas/plugin-kubelog] or (KwirthLog plugin for Backstage)[https://www.npmjs.com/package/@jfvilas/plugin-kwirth-log].
+
+## Kwirth features
+Each individual Kwirth feature is implemented via a [**channel**](https://jfvilas.github.io/kwirth/#/0.4.20/channels?id=channels). a channel serves, in fact, a secifica type of information. These are currently existing channels:
+
+  - Log Channel, for receiving real-time logs of get start diagnostics reviewing start-time logs.
+  - Metrics Channel, fro viewing real-time metrics on your selected objects (CPU%, memory%, I/O, etc.). Please note that Kwirth doesn't need Prometheus for getting data, Kwirth implements its own metric-gathering system by accesing directly the cAdvisor running on your nodes' Kubelets.
+  - Alert Channel, for receiving reall-tiem alerts on specific log messages (or regexes matched on log messages).
+  - Ops Channel, for performing container operations like restart or shell.
+  - Trivy Channel, for reviewing the cybersecurity risks associated to your Kubernetes objects (based on Trivy Operator).
+
+Each individual channel can be activated/deactivated on Kwirth Core.

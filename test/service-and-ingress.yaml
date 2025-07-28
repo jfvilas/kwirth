@@ -19,6 +19,7 @@ metadata:
   name: ingress-kwirth
   namespace: kwirth
   annotations:
+    # required for having more than one Kwirth replicas when using 'volatile' tokens
     nginx.ingress.kubernetes.io/affinity: cookie
     # required for websocket duration > 60s
     nginx.ingress.kubernetes.io/proxy-read-timeout: '3600'
