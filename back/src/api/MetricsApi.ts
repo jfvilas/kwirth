@@ -18,8 +18,13 @@ export class MetricsApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    let json = this.clusterInfo.metrics.getMetricsList()
-                    res.status(200).json(json)
+                    if (this.clusterInfo.metrics) {
+                        let json = this.clusterInfo.metrics.getMetricsList()
+                        res.status(200).json(json)
+                    }
+                    else {
+                        res.status(200).json([])
+                    }
                 }
                 catch (err) {
                     res.status(400).send()
