@@ -19,6 +19,7 @@ import { ResourceSelector, IResourceSelected } from './components/ResourceSelect
 import { TabContent } from './components/TabContent'
 import { SettingsCluster } from './components/settings/SettingsCluster'
 import { SettingsUser } from './components/settings/SettingsUser'
+import { SettingsTrivy } from './components/settings/SettingsTrivy'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/MsgBox'
@@ -88,6 +89,7 @@ const App: React.FC = () => {
     const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false)
     const [showSettingsUser, setShowSettingsUser]=useState<boolean>(false)
     const [showSettingsCluster, setShowSettingsCluster]=useState<boolean>(false)
+    const [showSettingsTrivy, setShowSettingsTrivy]=useState<boolean>(false)
     const [initialMessage, setInitialMessage]=useState<string>('')
 
     const createChannelInstance = (type: string): IChannel | null => {
@@ -833,13 +835,8 @@ const App: React.FC = () => {
                     }
                 }))
                 break
-            case MenuDrawerOption.InstallTrivy:
-                let result = await (await fetch (`${backendUrl}/config/trivy?action=install`, addGetAuthorization(accessString))).text()
-                console.log(result)
-                break
-            case MenuDrawerOption.RemoveTrivy:
-                let result2 = await (await fetch (`${backendUrl}/config/trivy?action=remove`, addGetAuthorization(accessString))).text()
-                console.log(result2)
+            case MenuDrawerOption.SettingsTrivy:
+                setShowSettingsTrivy(true)
                 break
             case MenuDrawerOption.Exit:
                 setLogged(false)
@@ -891,6 +888,19 @@ const App: React.FC = () => {
                 cluster.kwirthData.metricsInterval = readMetricsInterval
                 let payload = JSON.stringify( { metricsInterval: readMetricsInterval } )
                 fetch (`${cluster.url}/metrics/config`, addPostAuthorization(cluster.accessString, payload))
+            }
+        }
+    }
+
+    const onSettingsTrivyClosed = async (action:string) => {
+        setShowSettingsTrivy(false)
+        if (action!=='') {
+            let result = await (await fetch (`${backendUrl}/config/trivy?action=${action}`, addGetAuthorization(accessString)))
+            if (result.status === 200) {
+                setMsgBox(MsgBoxOk('Trivy',`Action ${action} succesfully launched.`, setMsgBox))
+            }
+            else {
+                setMsgBox(MsgBoxOkError('Trivy',`Trivy action has shown some errors: ${result.text()}.`, setMsgBox))
             }
         }
     }
@@ -1034,6 +1044,7 @@ const App: React.FC = () => {
             { showChannelSetup() }
             { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settingsRef.current} /> }
             { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.kwirthData?.metricsInterval} /> }
+            { showSettingsTrivy && selectedClusterName && <SettingsTrivy onClose={onSettingsTrivyClosed} cluster={clusters.find(c => c.name===selectedClusterName)!}/> }
             { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
 

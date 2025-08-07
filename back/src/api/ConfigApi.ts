@@ -42,31 +42,118 @@ export class ConfigApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
+                    let ns= 'trivy-system'
+                    let cmnameto = 'trivy-operator'
+                    let cmnametoconfig = 'trivy-operator-trivy-config'
+
                     switch (req.query.action) {
                         case 'install':
                             try {
-                                const yaml = await (await fetch('https://raw.githubusercontent.com/aquasecurity/trivy-operator/v0.26.1/deploy/static/trivy-operator.yaml')).text()
+                                const yaml = await (await fetch('https://raw.githubusercontent.com/aquasecurity/trivy-operator/v0.28.0/deploy/static/trivy-operator.yaml')).text()
                                 await applyAllResources(yaml, this.clusterInfo)
                                 res.status(200).send('ok')
                                 return
                             }
                             catch (err) {
-                                res.status(200).send(err)
+                                res.status(500).send(err)
+                                return
+                            }
+                        case 'configfs':
+                            // +++ restart con cinfugchange
+                            try {
+                                /*
+                                    For filesystem scanning pathc confgiMap trivy-operator-trivy-config with
+                                    trivy:
+                                        command: filesystem
+                                        ignoreUnfixed: true
+                                    trivyOperator:
+                                        scanJobPodTemplateContainerSecurityContext:
+                                            # For filesystem scanning, Trivy needs to run as the root user
+                                            runAsUser: 0                                
+                                */
+                                let cttoconfig = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnametoconfig, ns)
+                                if (cttoconfig.body.data===undefined) {
+                                    res.status(500).send('No Trivy config map exist')
+                                    return
+                                }
+                                else {
+                                    let cmtoconfig = cttoconfig.body
+                                    cmtoconfig.data!['trivy.command'] = 'filesystem'
+                                    cmtoconfig.data!['trivy.ignoreUnfixed'] = 'true'
+                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap(cmnametoconfig, ns, cmtoconfig)
+
+
+                                    let ctto = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnameto, ns)
+                                    let cmto = ctto.body
+                                    cmto.data!['scanJob.podTemplateContainerSecurityContext'] = `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true,"runAsUser":0}`
+                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap(cmnameto, ns, cmto)
+
+                                    res.status(200).send('ok')
+                                    return
+                                }
+                            }
+                            catch (err) {
+                                res.status(500).send(err)
+                                return
+                            }
+                        case 'configimg':
+                            // +++ restart con cinfugchange
+                            try {
+                                let ct = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnametoconfig,ns)
+                                if (ct.body.data===undefined) {
+                                    res.status(500).send('No Trivy config map exist')
+                                    return
+                                }
+                                else {
+                                    let cmtoconfig = ct.body
+                                    cmtoconfig.data!['trivy.command'] = 'image'
+                                    if (cmtoconfig.data && cmtoconfig.data['trivy.ignoreUnfixed']) delete cmtoconfig.data['trivy.ignoreUnfixed']
+                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap(cmnametoconfig, ns, cmtoconfig)
+
+                                    let ctto = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnameto, ns)
+                                    let cmto = ctto.body
+                                    if (cmto.data && cmto.data['scanJob.podTemplateContainerSecurityContext']) delete cmto.data['scanJob.podTemplateContainerSecurityContext']
+                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap(cmnameto, ns, cmto)
+
+                                    res.status(200).send('ok')
+                                    return
+                                }
+                            }
+                            catch (err) {
+                                res.status(500).send(err)
                                 return
                             }
                         case 'remove':
                             try {
-                                const yaml = await (await fetch('https://raw.githubusercontent.com/aquasecurity/trivy-operator/v0.26.1/deploy/static/trivy-operator.yaml')).text()
+                                const yaml = await (await fetch('https://raw.githubusercontent.com/aquasecurity/trivy-operator/v0.28.0/deploy/static/trivy-operator.yaml')).text()
                                 await deleteAllResources(yaml, this.clusterInfo)
                                 res.status(200).send()
                             }
                             catch (err) {
-                                res.status(200).send(err)
+                                res.status(500).send(err)
+                                return
+                            }
+                            break
+                        case 'status':
+                            try {
+                                let cttoconfig = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnametoconfig,ns)
+                                if (cttoconfig.body.data===undefined) {
+                                    res.status(500).send('No Trivy config map exist, Trivy seems not to be installed.')
+                                    return
+                                }
+                                else {
+                                    let cmtoconfig = cttoconfig.body
+                                    let command = cmtoconfig.data!['trivy.command']
+                                    return res.status(200).send(`Installed [mode: ${command}]`)
+                                }
+                            }
+                            catch (err) {
+                                res.status(500).send('Error checking Trivy configMap')
                                 return
                             }
                             break
                         default:
-                            res.status(200).send('invalid action '+req.query.action)
+                            res.status(500).send('invalid action '+req.query.action)
                             return
                     }
                 }
