@@ -16,3 +16,4 @@ We cite here some interesting capabilities that are missing today:
   - **Event streaming**, it seems interesting to have an event streaming service (like logging or metrics) for monitoring all events that take place inside the kubernetes cluster (object lifecycle (create, delete, modify), admin commands...)
   - **IAM**, add integraion with common IAM systems, that is, implemente SSO with Google, Azure, Github...
   - ~~**Websocket multi-service**. Currently we support exchanging information on a websocket that belongs to different services, like logging or metrics. But we need to add something like a 'service instance id' in order to allow several instances of the same service coexist in the same websocket, for example, two or more logging services running on the same websocket, or receiving different metrics on the same websocket.~~ DONE!
+  - **Alerting metrics**. We wish Kwirth to be able to alert you based on metrics thrsholds, not just log messages. 
