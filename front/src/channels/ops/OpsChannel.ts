@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { InstanceConfigScopeEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessageResponse, OpsCommandEnum, SignalMessage } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessageResponse, OpsCommandEnum, SignalMessage } from '@jfvilas/kwirth-common'
 import { OpsIcon, OpsSetup } from './OpsSetup'
 import { OpsTabContent } from './OpsTabContent'
 import { OpsObject, IOpsObject } from './OpsObject'
@@ -18,7 +18,7 @@ export class OpsChannel implements IChannel {
     requiresAccessString() { return true }
     requiresWebSocket() { return true }
 
-    getScope() { return InstanceConfigScopeEnum.GET}
+    getScope() { return 'ops$get' }
     getChannelIcon(): JSX.Element { return OpsIcon }
     
     getSetupVisibility(): boolean { return this.setupVisible }

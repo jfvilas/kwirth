@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Button, Checkbox, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack, TextField, Typography} from '@mui/material'
-import { buildResource, InstanceConfigScopeEnum, parseResource } from '@jfvilas/kwirth-common'
+import { buildResource, parseResource } from '@jfvilas/kwirth-common'
 
 interface IProps {
     resources:string[]
@@ -18,6 +18,26 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
     const [statefulset, setStatefulset] = useState('')
     const [pod, setPod] = useState('')
     const [container, setContainer] = useState('')
+
+    enum allScopes {
+        NONE = 'none',
+        API = 'api',
+        CLUSTER = 'cluster',
+        FILTER = 'filter',
+        VIEW = 'view',
+        SNAPSHOT = 'snapshot',
+        STREAM = 'stream',
+        CREATE = 'create',
+        SUBSCRIBE = 'subscribe',
+        OPS_GET = 'ops$get',
+        OPS_EXECUTE = 'ops$execute',
+        OPS_SHELL = 'ops$shell',
+        OPS_RESTART = 'ops$restart',
+        OPS_CLUSTER = 'ops$cluster',
+        TRIVY_WORKLOAD = 'trivy$workload',
+        TRIVY_KUBERNETES = 'trivy$kubernetes',
+        TRIVY_CLUSTER = 'trivy$cluster'
+    }
 
     useEffect(() => {
         setAllResources(props.resources)
@@ -37,14 +57,16 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
         setNamespace(resource.namespaces||'')
 
         let groups = (resource.groups as string)
-        let dps = groups.split(',').filter(g => g.split('+')[0] === 'deployment').map(g => g.split('+')[1]).join(',')
-        setDeployment(dps)
-        let rss = groups.split(',').filter(g => g.split('+')[0] === 'replicaset').map(g => g.split('+')[1]).join(',')
-        setReplicaset(rss)
-        let dss = groups.split(',').filter(g => g.split('+')[0] === 'daemonset').map(g => g.split('+')[1]).join(',')
-        setDaemonset(dss)
-        let sss = groups.split(',').filter(g => g.split('+')[0] === 'statefulset').map(g => g.split('+')[1]).join(',')
-        setStatefulset(sss)
+        if (groups) {
+            let dps = groups.split(',').filter(g => g.split('+')[0] === 'deployment').map(g => g.split('+')[1]).join(',')
+            setDeployment(dps)
+            let rss = groups.split(',').filter(g => g.split('+')[0] === 'replicaset').map(g => g.split('+')[1]).join(',')
+            setReplicaset(rss)
+            let dss = groups.split(',').filter(g => g.split('+')[0] === 'daemonset').map(g => g.split('+')[1]).join(',')
+            setDaemonset(dss)
+            let sss = groups.split(',').filter(g => g.split('+')[0] === 'statefulset').map(g => g.split('+')[1]).join(',')
+            setStatefulset(sss)
+        }
 
         setPod(resource.pods||'')
         setContainer(resource.containers||'')
@@ -63,14 +85,16 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
     }
 
     const saveResource = () => {
+        if (scopes.length === 0) return
         let groups:string[]=[]
         if (deployment.trim()!=='') groups.push (...deployment.split(',').map(g => 'deployment+'+g))
         if (replicaset.trim()!=='') groups.push (...replicaset.split(',').map(g => 'replicaset+'+g))
         if (daemonset.trim()!=='') groups.push (...daemonset.split(',').map(g => 'daemonset+'+g))
         if (statefulset.trim()!=='') groups.push (...statefulset.split(',').map(g => 'statefulset+'+g))
-        let resource = buildResource(scopes,namespace.split(','),groups,pod.split(','),container.split(','))
+        let resource = buildResource(scopes, namespace.split(','), groups, pod.split(','), container.split(','))
+        console.log(resource)
         let rs = allResources.filter(r => r!== selectedResource)
-        rs=[...rs, resource]
+        rs = [...rs, resource]
         setAllResources (rs)
         props.onUpdate(rs)
         newResource()
@@ -112,7 +136,7 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
                 <FormControl variant='standard'>
                     <InputLabel>Scopes</InputLabel>
                     <Select value={scopes} multiple onChange={onChangeScopes} renderValue={(s) => s.join(',')}>
-                        { Object.entries(InstanceConfigScopeEnum).map( (kvp:[string,string]) => {
+                        { Object.entries(allScopes).map( (kvp:[string,string]) => {
                             let scope = kvp[1]
                             return <MenuItem key={scope} value={scope}>
                                 <Checkbox checked={scopes.includes(scope)} />
@@ -136,8 +160,8 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
                 <TextField value={container} onChange={(e) => setContainer(e.target.value)} variant='standard' label='Containers'/>
                 <Stack direction={'row'} spacing={1} alignSelf={'end'}>
                     <Button onClick={newResource} size='small' variant='outlined'>New</Button>
-                    <Button onClick={saveResource} size='small' variant='outlined'>Save</Button>
-                    <Button onClick={removeResource} size='small' variant='outlined'>Remove</Button>
+                    <Button onClick={saveResource} size='small' variant='outlined' disabled={scopes.length===0}>Save</Button>
+                    <Button onClick={removeResource} size='small' variant='outlined' disabled={scopes.length===0}>Remove</Button>
                 </Stack>
             </Stack>
         </Stack>

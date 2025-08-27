@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { IKnown, InstanceConfigScopeEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, IUnknown, SignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
+import { IKnown, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, IUnknown, SignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
 import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
 import { ITrivyObject, TrivyObject } from './TrivyObject'
@@ -15,7 +15,7 @@ export class TrivyChannel implements IChannel {
     requiresMetrics() { return false }
     requiresAccessString() { return true }
     requiresWebSocket() { return true }
-    getScope() { return InstanceConfigScopeEnum.WORKLOAD}
+    getScope() { return 'trivy$workload' }
     getChannelIcon(): JSX.Element { return TrivyIcon }
     
     getSetupVisibility(): boolean { return this.setupVisible }

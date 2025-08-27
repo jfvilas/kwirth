@@ -38,6 +38,7 @@ import { OpsChannel } from './channels/ops/OpsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { IChannel } from './channels/IChannel'
 import { EchoChannel } from './channels/echo/EchoChannel'
+import { group } from 'console'
 
 const v8 = require('node:v8')
 const http = require('http')
@@ -191,7 +192,16 @@ const sendInstanceConfigSignalMessage = (ws:WebSocket, action:InstanceMessageAct
 }
 
 const addObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) => {
-    console.log(`startPodInstance '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+    console.log(`objectReview '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+
+    let valid = AuthorizationManagement.checkAkr(channels, instanceConfig, podNamespace, podName, containerName)
+    if (!valid) {
+        console.log(`No AKR found for object : ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+        return
+    }
+
+    console.log(`Level is enough for object: ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+    console.log(`startInstance '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
 
     sendChannelSignalAsset(webSocket, SignalMessageLevelEnum.INFO, `Container ADDED: ${podNamespace}/${podName}/${containerName}`, instanceConfig, podNamespace, podName, containerName)
     if(channels.has(instanceConfig.channel)) {
@@ -358,7 +368,8 @@ const watchPods = (apiPath:string, queryParams:any, webSocket:WebSocket, instanc
     }
 }
 
-const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, accessKeyResources:ResourceIdentifier[], validNamespaces:string[], _validGroups:string[], validPodNames:string[]) => {
+const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, accessKeyResources:ResourceIdentifier[], validNamespaces:string[], _validGroups:string[], validPodNames:string[], validContainers:string[]) => {
+    console.log('gRVSP')
     let selectedPods:V1Pod[] = []
     let allPods:V1Pod[] = []
 
@@ -373,9 +384,11 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
     for (let pod of allPods) {
         let podName = pod.metadata?.name!
         let podNamespace = pod.metadata?.namespace!
+        let containerNames = pod.spec?.containers.map(c => c.name) || []
 
         let existClusterScope = accessKeyResources.some(resource => resource.scopes === 'cluster')
         if (!existClusterScope) {
+            console.log('validPodNames:',validPodNames, '  podName:', podName)
             if (validPodNames.length>0 && !validPodNames.includes(podName)) continue
 
             if (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace)) {
@@ -386,17 +399,25 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
                 if (!validPodNames.includes(podName)) continue
             }
 
+            // +++
+            // let foundKeyResource = false
+            // for (let akr of accessKeyResources) {
+            //     let haveLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, akr.scopes, Number.MIN_VALUE)
+            //     let requestedLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, instanceConfig.scope, Number.MAX_VALUE)
+            //     if (haveLevel<requestedLevel) {
+            //         console.log(`Insufficent level ${haveLevel} < ${requestedLevel}`)
+            //         continue
+            //     }
+            //     console.log(`Level is enough: ${akr.scopes} >= ${instanceConfig.scope}`)
+            //     foundKeyResource = true
+            //     break
+            // }
             let foundKeyResource = false
-            for (let akr of accessKeyResources) {
-                let haveLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, akr.scopes, Number.MIN_VALUE)
-                let requestedLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, instanceConfig.scope, Number.MAX_VALUE)
-                if (haveLevel<requestedLevel) {
-                    console.log(`Insufficent level ${haveLevel} < ${requestedLevel}`)
-                    continue
+            for (let c of containerNames) {
+                if (AuthorizationManagement.checkAkr(channels, instanceConfig, podNamespace, podName, c)) {
+                    foundKeyResource = true
+                    break
                 }
-                console.log(`Level is enough: ${akr.scopes} >= ${instanceConfig.scope}`)
-                foundKeyResource = true
-                break
             }
             if (!foundKeyResource) continue
         }
@@ -429,9 +450,9 @@ const processReconnect = async (webSocket: WebSocket, instanceMessage: InstanceM
     sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.RECONNECT, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for reconnect')
 }
 
-const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: InstanceConfig, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validGroups: string[], validPodNames: string[]) => {
+const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: InstanceConfig, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validGroups: string[], validPodNames: string[], validContainers: string[]) => {
     console.log('Trying to instance config for channel', instanceConfig.channel)
-    let requestedValidatedPods = await getRequestedValidatedScopedPods(instanceConfig, accessKeyResources, validNamespaces, validGroups, validPodNames)
+    let requestedValidatedPods = await getRequestedValidatedScopedPods(instanceConfig, accessKeyResources, validNamespaces, validGroups, validPodNames, validContainers)
     if (requestedValidatedPods.length === 0) {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: there are no filters that match requested instance config`, instanceConfig)
         return
@@ -691,7 +712,7 @@ const processClientMessage = async (webSocket:WebSocket, message:string) => {
         validPodNames = await clusterInfo.dockerTools.getAllPodNames()
     }
     else {
-        if (instanceConfig.pod) validPodNames = await AuthorizationManagement.getValidPods(coreApi, appsApi, validNamespaces,accessKey, instanceConfig.pod.split(','))
+        if (instanceConfig.pod) validPodNames = await AuthorizationManagement.getValidPods(coreApi, appsApi, validNamespaces, accessKey, instanceConfig.pod.split(','))
     }
     console.log('validPods:', validPodNames)
 
@@ -731,7 +752,7 @@ const processClientMessage = async (webSocket:WebSocket, message:string) => {
             }
             break
         case InstanceMessageActionEnum.START:
-            processStartInstanceConfig(webSocket, instanceConfig, accessKeyResources, validNamespaces, validGroups, validPodNames)
+            processStartInstanceConfig(webSocket, instanceConfig, accessKeyResources, validNamespaces, validGroups, validPodNames, validContainers)
             break
         case InstanceMessageActionEnum.STOP:
             processStopInstanceConfig(webSocket, instanceConfig)

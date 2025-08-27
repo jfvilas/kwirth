@@ -17,6 +17,27 @@ export class ConfigApi {
         this.dockerApi = dockerApi
     }
 
+    restartDeployment = async (namespace:string, name:string) => {
+        const patch = {
+            spec: {
+                template: {
+                    metadata: {
+                        annotations: { 'kwirth.jfvilas.github.com/restartedAt': new Date().toISOString() }
+                    }
+                }
+            }
+        }
+
+        await this.clusterInfo.appsApi.patchNamespacedDeployment(
+        name,
+        namespace,
+        patch,
+        undefined,
+        undefined,
+        undefined
+        )
+    }
+    
     constructor (apiKeyApi: ApiKeyApi, kwirthData:KwirthData, clusterInfo:ClusterInfo, channels:Map<string,IChannel>) {
         this.kwirthData = kwirthData
         this.clusterInfo = clusterInfo
@@ -59,7 +80,6 @@ export class ConfigApi {
                                 return
                             }
                         case 'configfs':
-                            // +++ restart con cinfugchange
                             try {
                                 /*
                                     For filesystem scanning pathc confgiMap trivy-operator-trivy-config with
@@ -88,6 +108,8 @@ export class ConfigApi {
                                     cmto.data!['scanJob.podTemplateContainerSecurityContext'] = `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true,"runAsUser":0}`
                                     await this.clusterInfo.coreApi?.replaceNamespacedConfigMap(cmnameto, ns, cmto)
 
+                                    this.restartDeployment('trivy-system', 'trivy-operator')
+
                                     res.status(200).send('ok')
                                     return
                                 }
@@ -97,7 +119,6 @@ export class ConfigApi {
                                 return
                             }
                         case 'configimg':
-                            // +++ restart con cinfugchange
                             try {
                                 let ct = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnametoconfig,ns)
                                 if (ct.body.data===undefined) {
@@ -114,6 +135,8 @@ export class ConfigApi {
                                     let cmto = ctto.body
                                     if (cmto.data && cmto.data['scanJob.podTemplateContainerSecurityContext']) delete cmto.data['scanJob.podTemplateContainerSecurityContext']
                                     await this.clusterInfo.coreApi?.replaceNamespacedConfigMap(cmnameto, ns, cmto)
+
+                                    this.restartDeployment('trivy-system', 'trivy-operator')
 
                                     res.status(200).send('ok')
                                     return

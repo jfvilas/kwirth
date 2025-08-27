@@ -1,4 +1,4 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, InstanceConfigScopeEnum, TrivyCommandEnum, TrivyConfig, BackChannelData, ClusterTypeEnum, IKnown, IUnknown } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, TrivyCommandEnum, TrivyConfig, BackChannelData, ClusterTypeEnum, IKnown, IUnknown } from '@jfvilas/kwirth-common';
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
 import { KubernetesObject, makeInformer } from '@kubernetes/client-node';
@@ -25,6 +25,7 @@ export interface IInstance {
 }
 
 class TrivyChannel implements IChannel {
+    readonly channelId: string = 'trivy'
     clusterInfo : ClusterInfo
     webSocketTrivy: {
         ws:WebSocket,
@@ -38,7 +39,7 @@ class TrivyChannel implements IChannel {
 
     getChannelData = (): BackChannelData => {
         return {
-            id: 'trivy',
+            id: this.channelId,
             routable: false,
             pauseable: false,
             modifyable: false,
@@ -49,7 +50,7 @@ class TrivyChannel implements IChannel {
     }
 
     getChannelScopeLevel = (scope: string): number => {
-        return ['', 'workload', 'kubernetes', 'cluster'].indexOf(scope)
+        return ['', 'trivy$workload', 'trivy$kubernetes', 'trivy$cluster'].indexOf(scope)
     }
 
     containsInstance = (instanceId: string): boolean => {
@@ -174,7 +175,7 @@ class TrivyChannel implements IChannel {
 
         switch (instanceMessage.command) {
             case TrivyCommandEnum.SCORE:
-                if (!this.checkScopes(instance, InstanceConfigScopeEnum.WORKLOAD)) {
+                if (!this.checkScopes(instance, 'trivy$workload')) {
                     resp.data = `Insufficient scope for WORKLOAD`
                     return resp
                 }
@@ -315,6 +316,13 @@ class TrivyChannel implements IChannel {
             informer: undefined
         }
         // inexistent vuln reports do not create a informer event, so we need to review if some report does not exist and inform the client accordingly
+        // console.log(instance)
+        // console.log(this.checkScopes(instance, 'trivy$workload'))
+        // if (!this.checkScopes(instance, 'trivy$workload')) {
+        //     this.sendSignalMessage(webSocket, InstanceMessageActionEnum.NONE, InstanceMessageFlowEnum.UNSOLICITED, SignalMessageLevelEnum.ERROR, instance.instanceId, 'Insufficent scope, has no WORKLOAD')
+        //     return
+        // }
+
         let result = await this.scoreAsset(instance, asset)
         if (result.unknown) {
             let payload:ITrivyMessageResponse = {
@@ -437,7 +445,14 @@ class TrivyChannel implements IChannel {
         ws.send(JSON.stringify(resp))
     }
 
-    private checkScopes = (instance:IInstance, scope: InstanceConfigScopeEnum) => {
+    // private checkScopes = (instance:IInstance, scope: InstanceConfigScopeEnum) => {
+    //     let resources = parseResources (instance.accessKey.resources)
+    //     let requiredLevel = this.getChannelScopeLevel(scope)
+    //     let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))
+    //     return canPerform
+    // }
+
+    private checkScopes = (instance:IInstance, scope: string) => {
         let resources = parseResources (instance.accessKey.resources)
         let requiredLevel = this.getChannelScopeLevel(scope)
         let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))

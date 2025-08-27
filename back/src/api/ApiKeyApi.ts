@@ -14,6 +14,7 @@ export class ApiKeyApi {
 
     constructor (configMaps: IConfigMaps, masterKey:string) {
         this.configMaps = configMaps
+        this.masterKey = masterKey
 
         configMaps.read('kwirth.keys',[]).then( (result:ApiKey[]) => {
             result = AuthorizationManagement.cleanApiKeys(result)
@@ -85,7 +86,7 @@ export class ApiKeyApi {
                         }
                         else {
                             // bearer
-                            let input = masterKey + '|' + accessKey.resources + '|' + expire
+                            let input = this.masterKey + '|' + accessKey.resources + '|' + expire
                             let hash = crypto.createHash('md5').update(input).digest('hex')
                             accessKey.type = 'bearer:' + expire 
                             apiKey.accessKey = accessKeyBuild(hash, accessKey.type, accessKey.resources)

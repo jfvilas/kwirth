@@ -1,5 +1,5 @@
 import { ApiKeyApi } from '../api/ApiKeyApi'
-import { AccessKey, accessKeyDeserialize, accessKeySerialize, InstanceConfig, parseResource, parseResources } from '@jfvilas/kwirth-common'
+import { AccessKey, accessKeyDeserialize, accessKeySerialize, InstanceConfig, parseResource, parseResources, ResourceIdentifier } from '@jfvilas/kwirth-common'
 import { ApiKey } from '@jfvilas/kwirth-common'
 import * as crypto from 'crypto'
 import { IChannel } from '../channels/IChannel'
@@ -26,6 +26,7 @@ export class AuthorizationManagement {
             let computedExpire = 0
             if (receivedAccessKey.type && receivedAccessKey.type.startsWith('bearer:')) {
                 if (!AuthorizationManagement.validBearerKey(apiKeyApi.masterKey, receivedAccessKey)) {
+                    res.status(403).json()
                     console.log('Hashes do not match validating key')
                     return false
                 }
@@ -120,7 +121,86 @@ export class AuthorizationManagement {
         if (higherScope<0) higherScope = def
         return higherScope
     }
-    
+
+    public static checkResource = (resource:ResourceIdentifier, podNamespace:string, podName:string, containerName:string) => {
+       if (resource.namespaces !== '') {
+            let x = AuthorizationManagement.getValidValues([podNamespace], resource.namespaces.split(','))
+            if (x.length===0) return false
+        }
+        if (resource.groups !== '') {
+            //+++
+        }
+        if (resource.pods !== '') {
+            let x = AuthorizationManagement.getValidValues([podName], resource.pods.split(','))
+            if (x.length===0) return false
+        }
+        if (resource.containers !== '') {
+            let x = AuthorizationManagement.getValidValues([containerName], resource.containers.split(','))
+            if (x.length===0) return false
+        }
+        return true
+    }
+
+    public static checkAkr = (channels:Map<string, IChannel>, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) => {
+        let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resources)
+        let valid=false
+        console.log('checkAkr')
+        for (let akr of accessKeyResources) {
+            let haveLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, akr.scopes, Number.MIN_VALUE)
+            let requestedLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, instanceConfig.scope, Number.MAX_VALUE)
+            if (haveLevel<requestedLevel) {
+                console.log(`Insufficent level ${akr.scopes}(${haveLevel}) < ${instanceConfig.scope} (${requestedLevel}) for object`)
+                continue
+            }
+            console.log(`Level is enough for object: ${akr.scopes}(${haveLevel}) >= ${instanceConfig.scope} (${requestedLevel}),  let's check regexes...`)
+
+            if (!this.checkResource(akr, podNamespace, podName, containerName)) continue
+
+            valid = true
+            console.log(`Found AKR: ${JSON.stringify(akr)}`)
+            break
+        }
+        return valid
+    }
+
+
+
+    // public static checkAkr = (channels:Map<string, IChannel>, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) => {
+    //     let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resources)
+    //     let valid=false
+    //     console.log('checkAkr')
+    //     for (let akr of accessKeyResources) {
+    //         let haveLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, akr.scopes, Number.MIN_VALUE)
+    //         let requestedLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, instanceConfig.scope, Number.MAX_VALUE)
+    //         if (haveLevel<requestedLevel) {
+    //             console.log(`Insufficent level ${akr.scopes}(${haveLevel}) < ${instanceConfig.scope} (${requestedLevel}) for object`)
+    //             continue
+    //         }
+    //         console.log(`Level is enough for object: ${akr.scopes}(${haveLevel}) >= ${instanceConfig.scope} (${requestedLevel}),  let's check regexes...`)
+
+    //         if (akr.namespaces !== '') {
+    //             let x = AuthorizationManagement.getValidValues([podNamespace], akr.namespaces.split(','))
+    //             if (x.length===0) continue
+    //         }
+    //         if (akr.groups !== '') {
+    //             //+ ++
+    //         }
+    //         if (akr.pods !== '') {
+    //             let x = AuthorizationManagement.getValidValues([podName], akr.pods.split(','))
+    //             if (x.length===0) continue
+    //         }
+    //         if (akr.containers !== '') {
+    //             let x = AuthorizationManagement.getValidValues([containerName], akr.containers.split(','))
+    //             if (x.length===0) continue
+    //         }
+    //         valid = true
+    //         console.log(`Found AKR: ${JSON.stringify(akr)}`)
+    //         break
+    //     }
+    //     return valid
+    // }
+
+
     public static validAuth = (req:Request, res:Response, channels:Map<string, IChannel>, reqScope:string, instanceConfig: InstanceConfig, namespace:string, group:string, pod:string, container:string): boolean => {
         if (!req.headers.authorization) return false
         
@@ -419,11 +499,16 @@ export class AuthorizationManagement {
         for (let ns of namespaces) {
             allowedPods.push (...await this.getAllowedPods(coreApi, appsApi, ns, '', accessKey))
         }
+        console.log('allowedPods')
+        console.log(allowedPods)
+        console.log('reqpod')
+        console.log(requestedPods)
 
         if (requestedPods.length === 0 || (requestedPods.length === 1 && requestedPods[0]==='')) {
             result.push(...allowedPods)
         }
         else {
+            console.log('calculate gvv')
             let x = this.getValidValues(allowedPods, requestedPods.map(pod => '^'+pod+'$'))
             result.push(...x)
         }

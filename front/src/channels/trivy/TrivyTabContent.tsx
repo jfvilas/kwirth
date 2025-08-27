@@ -11,6 +11,13 @@ import { IKnown } from '@jfvilas/kwirth-common'
 import { Error as ErrorIcon } from '@mui/icons-material'
 import { MsgBoxOkError } from '../../tools/MsgBox'
 
+// +++ add filters to trivy content: name, namespace...
+// +++ ad info (number of vuln analysis)
+// +++ add download report
+// +++ add more sort options
+// +++ add avatars for common containers plus kwirth (azure, aws...)
+// +++ add scope validations per channel
+
 const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let trivyObject:ITrivyObject = props.channelObject.uiData
     let trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig

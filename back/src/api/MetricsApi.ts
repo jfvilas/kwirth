@@ -13,7 +13,7 @@ export class MetricsApi {
 
         this.route.route('/')
             .all( async (req:Request,res:Response, next) => {
-                if (await !AuthorizationManagement.validKey(req, res, apiKeyApi)) return
+                if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -34,7 +34,7 @@ export class MetricsApi {
             })
         this.route.route('/debug/:action/:nodename')
             .all( async (req:Request,res:Response, next) => {
-                if (await !AuthorizationManagement.validKey(req, res, apiKeyApi)) return
+                if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -66,7 +66,7 @@ export class MetricsApi {
 
         this.route.route('/config')
             .all( async (req:Request,res:Response, next) => {
-                if (await !AuthorizationManagement.validKey(req, res, apiKeyApi)) return
+                if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {

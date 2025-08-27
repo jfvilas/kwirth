@@ -15,7 +15,7 @@ export class ManageKwirthApi {
 
         this.route.route('/restart')
             .all( async (req:Request,res:Response, next) => {
-                if (await !AuthorizationManagement.validKey(req, res, apiKeyApi)) return
+                if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {

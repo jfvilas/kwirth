@@ -19,25 +19,39 @@ export class ManageClusterApi {
 
         this.route.route('/find')
             .all( async (req:Request,res:Response, next) => {
-                if (await !AuthorizationManagement.validKey(req, res, apiKeyApi)) return
+                if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    // filter results: jq .[].spec.containers[].image aa.json
                     // object indicates what kind of object to search for: pod, deployment
-                    var object:string=req.query.type? (req.query.type as string) : 'pod' // transitional
-                    var namespace:string=req.query.namespace as string
-                    var labelSelector = undefined 
-                    var label:string=req.query.label as string
-                    var value:string=req.query.entity as string  // transitional
-                    if (!value) value=req.query.value as string
-                    if (label && value) labelSelector=`${label}=${value}`
-                    // data points to what data to find: id => just pod id (name+namespace), all => all pod data
-                    var data:string=req.query.data? (req.query.data as string) : 'id'  // transitional
+                    let object:string=req.query.type? (req.query.type as string) : 'pod' // transitional
+                    let namespace:string=req.query.namespace as string
+                    let labelSelector = ''
+                    // we can search for a specific label (label=value) or for a whole labelSelector (wich comes in the request)
+                    if (req.query.label) {
+                        let label:string=req.query.label as string
+                        let labelValue:string=req.query.entity as string  // transitional
+                        if (!labelValue) labelValue=req.query.value as string
+                        if (label && labelValue) labelSelector=`${label}=${labelValue}`
+                    }
+                    else if (req.query.labelselector) {
+                        labelSelector = req.query.labelselector as string
+                    }
+                    else {
+                        console.log('No label selector')
+                        res.status(500).send('"label" or "labelselector" must be specified')
+                        return
+                    }
+                    // 'data' says what data to return to caller:
+                    //      id --> just pod id (name+namespace)
+                    //      containers --> containers list (adds a container names array)
+                    //      all => all pod data
+                    let data:string=req.query.data? (req.query.data as string) : 'id'  // transitional
+                    console.log('labelSelector: ', labelSelector)
                     switch(object) {
                         case 'pod':
-                            var podListResp:{response:IncomingMessage,body:V1PodList}
+                            let podListResp:{response:IncomingMessage,body:V1PodList}
                             if (namespace) 
                                 podListResp = await this.coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)
                             else

@@ -3,8 +3,8 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListIt
 import { MsgBoxButtons, MsgBoxYesNo } from '../../tools/MsgBox'
 import { SessionContext, SessionContextType } from '../../model/SessionContext'
 import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addPutAuthorization } from '../../tools/AuthorizationManagement'
-import { ResourceEditor } from '../ResourceEditor'
 import { IUser } from '@jfvilas/kwirth-common'
+import { ResourceEditor } from './ResourceEditor'
 const copy = require('clipboard-copy')
 
 interface IProps {
