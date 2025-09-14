@@ -9,6 +9,6 @@ entries:
     name: kwirth
     type: application
     urls:
-    - https://github.com/jfvilas/kwirth/deploy/helm/kwirth-0.1.0.tgz
+    - https://github.com/jfvilas/kwirth/deploy/kwirth-0.1.0.tgz
     version: 0.1.0
 generated: "2025-09-14T17:50:38.2312337+02:00"
