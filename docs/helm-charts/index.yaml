@@ -3,12 +3,22 @@ entries:
   kwirth:
   - apiVersion: v2
     appVersion: 0.4.12
-    created: "2025-09-14T17:50:38.2317468+02:00"
+    created: "2025-09-14T18:26:49.8828996+02:00"
     description: A Helm chart for deploying Kwirth on Kubernetes
-    digest: e5e9fb6f0169fb8e81777c27cefe9909d9ae3e403834dbc4c51e266bfeab7b21
+    digest: 7acbdd54c8e588128e3a8501f41554a951a2dbbfde1dd8923d74a3e1edaa7e9b
     name: kwirth
     type: application
     urls:
-    - https://jfvilas.github.io/kwirth/helm-charts/kwirth-0.1.0.tgz
+    - https://github.com/jfvilas/kwirth/deploy/helm/kwirth-0.1.1.tgz
+    version: 0.1.1
+  - apiVersion: v2
+    appVersion: 0.4.12
+    created: "2025-09-14T18:26:49.8823748+02:00"
+    description: A Helm chart for deploying Kwirth on Kubernetes
+    digest: c7d0af5d613be48c6aab68daa0055d550b5473447f046734bb57aedf0786841c
+    name: kwirth
+    type: application
+    urls:
+    - https://github.com/jfvilas/kwirth/deploy/helm/kwirth-0.1.0.tgz
     version: 0.1.0
-generated: "2025-09-14T17:50:38.2312337+02:00"
+generated: "2025-09-14T18:26:49.8813262+02:00"
