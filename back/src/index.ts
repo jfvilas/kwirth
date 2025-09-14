@@ -68,12 +68,12 @@ var secrets: ISecrets
 var configMaps: IConfigMaps
 const rootPath = process.env.ROOTPATH || ''
 const masterKey = process.env.MASTERKEY || 'Kwirth4Ever'
-const channelLogEnabled = Boolean(process.env.CHANNEL_LOG) || true
-const channelMetricsEnabled = Boolean(process.env.CHANNEL_METRICS) || true
-const channelAlertEnabled = Boolean(process.env.CHANNEL_ALERT) || true
-const channelOpsEnabled = Boolean(process.env.CHANNEL_OPS) || true
-const channelTrivyEnabled = Boolean(process.env.CHANNEL_TRIVY) || true
-const channelEchoEnabled = Boolean(process.env.CHANNEL_ECHO) || true
+const channelLogEnabled = (process.env.CHANNEL_LOG || '').toLowerCase() === 'true'
+const channelMetricsEnabled = (process.env.CHANNEL_METRICS || '').toLowerCase() === 'true'
+const channelAlertEnabled = (process.env.CHANNEL_ALERT || '').toLowerCase() === 'true'
+const channelOpsEnabled = (process.env.CHANNEL_OPS || '').toLowerCase() === 'true'
+const channelTrivyEnabled = (process.env.CHANNEL_TRIVY || '').toLowerCase() === 'true'
+const channelEchoEnabled = (process.env.CHANNEL_ECHO || '').toLowerCase() === 'true'
 
 // discover where we are running in: docker, kubernetes...
 const getExecutionEnvironment = async ():Promise<string> => {
@@ -894,7 +894,7 @@ const launchKubernetes = async() => {
     console.log('Start Kubernetes Kwirth')
     kwirthData = await getKubernetesData()
     if (kwirthData) {
-        console.log('KwirthData', kwirthData)
+        console.log('Initial kwirthData', kwirthData)
         try {
             saToken = new ServiceAccountToken(coreApi, kwirthData.namespace)    
             await saToken.createToken('kwirth-sa',kwirthData.namespace)
@@ -913,6 +913,7 @@ const launchKubernetes = async() => {
                     if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
                     if (channelEchoEnabled) channels.set('echo', new EchoChannel(clusterInfo))
+
                     kwirthData.channels =  Array.from(channels.keys()).map(k => {
                         return channels.get(k)?.getChannelData()!
                     })
@@ -930,6 +931,8 @@ const launchKubernetes = async() => {
                         console.log(`Detected own deployment: ${kwirthData.deployment}`)
                     else
                         console.log(`No deployment detected. Kwirth is not running inside a cluster`)
+
+                    console.log('Final kwirthData', kwirthData)
                     runKubernetes()
                 }
                 else {

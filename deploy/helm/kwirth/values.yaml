@@ -1,4 +1,3 @@
-kubernetesClusterDomain: cluster.local
 kwirth:
   kwirth:
     env:

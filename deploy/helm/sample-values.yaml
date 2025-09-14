@@ -1,0 +1,11 @@
+kwirth:
+  kwirth:
+    env:
+      channelAlert: "false"
+      channelEcho: "true"
+      channelLog: "true"
+      channelMetrics: "false"
+      channelOps: "true"
+      channelTrivy: "true"
+      masterkey: Kwirth4Ever
+      rootpath: /kwirth

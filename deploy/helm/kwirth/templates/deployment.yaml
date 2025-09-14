@@ -35,10 +35,7 @@ spec:
           value: {{ quote .Values.kwirth.kwirth.env.channelTrivy }}
         - name: CHANNEL_ECHO
           value: {{ quote .Values.kwirth.kwirth.env.channelEcho }}
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
-        image: {{ .Values.kwirth.kwirth.image.repository }}:{{ .Values.kwirth.kwirth.image.tag
-          | default .Chart.AppVersion }}
+        image: {{ .Values.kwirth.kwirth.image.repository }}:{{ .Values.kwirth.kwirth.image.tag | default .Chart.AppVersion }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -53,12 +50,12 @@ spec:
           httpGet:
             path: /healthz
             port: 3883
-          initialDelaySeconds: 10
+          initialDelaySeconds: 20
         resources: {{- toYaml .Values.kwirth.kwirth.resources | nindent 10 }}
         startupProbe:
           httpGet:
             path: /healthz
             port: 3883
-          initialDelaySeconds: 10
-      serviceAccount: kwirth-sa
+          initialDelaySeconds: 20
+      serviceAccount: {{ include "kwirth.fullname" . }}-sa
       terminationGracePeriodSeconds: 5

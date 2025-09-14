@@ -139,7 +139,6 @@ export class LogChannel implements IChannel {
         logObject.paused = false
         logObject.started = true
 
-
         if (channelObject.uiConfig.startDiagnostics) {
             logConfig = {
                 timestamp: true,
@@ -155,6 +154,7 @@ export class LogChannel implements IChannel {
                 ...(!logConfig.fromStart? {} : {startTime: logInstanceConfig.startTime})
             }
         }
+        logObject.messages = []
         channelObject.instanceConfig = logConfig
         return true
     }
