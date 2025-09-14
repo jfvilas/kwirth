@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  kwirth:
+  - apiVersion: v2
+    appVersion: 0.4.12
+    created: "2025-09-14T17:50:38.2317468+02:00"
+    description: A Helm chart for deploying Kwirth on Kubernetes
+    digest: e5e9fb6f0169fb8e81777c27cefe9909d9ae3e403834dbc4c51e266bfeab7b21
+    name: kwirth
+    type: application
+    urls:
+    - https://github.com/jfvilas/kwirth/deploy/helm/kwirth-0.1.0.tgz
+    version: 0.1.0
+generated: "2025-09-14T17:50:38.2312337+02:00"
