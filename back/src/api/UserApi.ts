@@ -21,7 +21,7 @@ export class UserApi {
         .get( (req:Request,res:Response) => {
             UserApi.semaphore.use ( async () => {
                 try {
-                    let users:{[username:string]: string} = await secrets.read('kwirth.users')
+                    let users:{[username:string]: string} = await secrets.read('kwirth-users')
                     res.status(200).json(Object.keys(users))
                 }
                 catch (err) {
@@ -33,9 +33,9 @@ export class UserApi {
         .post( (req:Request,res:Response) => {
             UserApi.semaphore.use ( async () => {
                 try {
-                    let users:{[username:string]: string} = await secrets.read('kwirth.users')
+                    let users:{[username:string]: string} = await secrets.read('kwirth-users')
                     users[req.body.id]=btoa(JSON.stringify(req.body))
-                    await this.secrets.write('kwirth.users',users)
+                    await this.secrets.write('kwirth-users',users)
                     res.status(200).json()
                 }
                 catch (err) {
@@ -53,7 +53,7 @@ export class UserApi {
         .get( (req:Request,res:Response) => {
             UserApi.semaphore.use ( async () => {
                 try {
-                    let users:{[username:string]: string} = await secrets.read('kwirth.users')
+                    let users:{[username:string]: string} = await secrets.read('kwirth-users')
                     res.status(200).send(atob(users[req.params.user]))
                 }
                 catch (err) {
@@ -65,9 +65,9 @@ export class UserApi {
         .delete( (req:Request,res:Response) => {
             try {
                 UserApi.semaphore.use ( async () => {
-                    let users:{[username:string]: string} = await secrets.read('kwirth.users')
+                    let users:{[username:string]: string} = await secrets.read('kwirth-users')
                     delete users[req.params.user]
-                    await this.secrets.write('kwirth.users',users)
+                    await this.secrets.write('kwirth-users',users)
                     res.status(200).json()
                 });
             }      
@@ -79,9 +79,9 @@ export class UserApi {
         .put( (req:Request,res:Response) => {
             UserApi.semaphore.use ( async () => {
                 try {
-                    let users:{[username:string]: string} = await secrets.read('kwirth.users')
+                    let users:{[username:string]: string} = await secrets.read('kwirth-users')
                     users[req.body.id]=btoa(JSON.stringify(req.body))
-                    await this.secrets.write('kwirth.users',users)
+                    await this.secrets.write('kwirth-users',users)
                     res.status(200).json()
                 }
                 catch (err) {

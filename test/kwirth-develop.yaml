@@ -6,7 +6,7 @@ metadata:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: kwirth.users
+  name: kwirth-users
   namespace: kwirth
 data:
   admin: 'eyJpZCI6ImFkbWluIiwibmFtZSI6Ik5pY2tsYXVzIFdpcnRoIiwicGFzc3dvcmQiOiJwYXNzd29yZCIsInJlc291cmNlcyI6ImNsdXN0ZXI6Ojo6In0='
@@ -61,8 +61,8 @@ spec:
       serviceAccount: kwirth-sa
       containers:
         - name: kwirth
-          image: jfvilasoutlook/kwirth:develop
-          imagePullPolicy: Always
+          image: kwirth:develop
+          imagePullPolicy: Never
           env:
             - name: ROOTPATH
               value: '/kwirth'

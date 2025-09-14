@@ -22,10 +22,10 @@ export class LoginApi {
             LoginApi.semaphore.use ( async () => {
                 let users:{ [username:string]:string }
                 try {
-                     users = await secrets.read('kwirth.users')
+                     users = await secrets.read('kwirth-users')
                 }
                 catch (err) {
-                    console.log(`*** Cannot read 'kwirth.users' secret on source ***`)
+                    console.log(`*** Cannot read 'kwirth-users' secret on source ***`)
                     res.status(403).json()
                     return
                 }
@@ -58,10 +58,10 @@ export class LoginApi {
             LoginApi.semaphore.use ( async () => {
                 let users:{ [username:string]:string }
                 try {
-                     users = await secrets.read('kwirth.users')
+                     users = await secrets.read('kwirth-users')
                 }
                 catch (err) {
-                    console.log(`*** Cannot read 'kwirth.users' secret on source ***`)
+                    console.log(`*** Cannot read 'kwirth-users' secret on source ***`)
                     res.status(403).json()
                     return
                 }
@@ -76,7 +76,7 @@ export class LoginApi {
                         user.password = req.body.newpassword
                         user.accessKey=(await this.createApiKey(req, user)).accessKey
                         users[req.body.user]=btoa(JSON.stringify(user))
-                        await secrets.write('kwirth.users',users)
+                        await secrets.write('kwirth-users',users)
                         res.status(200).json(this.okResponse(user))
                     }
                     else {

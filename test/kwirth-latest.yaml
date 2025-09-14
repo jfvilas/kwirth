@@ -24,7 +24,7 @@ metadata:
   namespace: kwirth
 rules:
   # "" indicates the core API group
-  - apiGroups: ['', 'apps', 'rbac.authorization.k8s.io', 'networking.k8s.io', 'apiextensions.k8s.io','aquasecurity.github.io']
+  - apiGroups: ['', 'apps', 'rbac.authorization.k8s.io', 'networking.k8s.io','customresourcedefinitions.apiextensions.k8s.io']
     resources: ['*']
     verbs: ['*']
 ---
@@ -36,7 +36,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: kwirth-sa
-  namespace : kwirth
+  namespace: kwirth
 roleRef:
   kind: ClusterRole
   name: kwirth-cr
@@ -59,11 +59,10 @@ spec:
         app: kwirth
     spec:
       serviceAccount: kwirth-sa
-      terminationGracePeriodSeconds: 5
       containers:
         - name: kwirth
-          image: jfvilasoutlook/kwirth:latest
-          #imagePullPolicy: Never
+          image: kwirth:latest
+          imagePullPolicy: Never
           env:
             - name: ROOTPATH
               value: '/kwirth'
@@ -79,8 +78,6 @@ spec:
               value: 'true'
             - name: CHANNEL_TRIVY
               value: 'true'
-            - name: CHANNEL_ECHO
-              value: 'true'
           ports:
             - name: kwirth
               containerPort: 3883
@@ -92,18 +89,3 @@ spec:
             requests:
               cpu: 0m
               memory: 256Mi
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 3883
-            initialDelaySeconds: 10
-          startupProbe:
-            httpGet:
-              path: /healthz
-              port: 3883
-            initialDelaySeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 3883
-            periodSeconds: 30
