@@ -21,8 +21,3 @@ kwirth:
         memory: 256Mi
   replicas: 1
   revisionHistoryLimit: 0
-sa:
-  serviceAccount:
-    annotations: {}
-users:
-  admin: ""
