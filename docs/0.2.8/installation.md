@@ -76,7 +76,7 @@ spec:
         - name: kwirth
           image: jfvilasoutlook/kwirth:latest
           env:
-            - name: KWIRTH_ROOTPATH
+            - name: ROOTPATH
               value: '/quirz'
           ports:
             - name: kwirth
@@ -91,7 +91,7 @@ spec:
               memory: 1Gi
 ```
 
-Pay attention to the 'env' var named **KWIRTH_ROOTPATH**. This is the only thing you need to do.
+Pay attention to the 'env' var named **ROOTPATH**. This is the only thing you need to do.
 
 #### 4. Access Kwirth
 So, finally, you should be able to access Kwirth at: http://your.dns.name/quirz. For example, if your are working with Minikube, microK8s, k3s or any kind of local Kubernetes, you would access Kwirth at:

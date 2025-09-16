@@ -64,7 +64,7 @@ spec:
           image: jfvilasoutlook/kwirth:latest
           #imagePullPolicy: Never
           env:
-            - name: KWIRTH_ROOTPATH
+            - name: ROOTPATH
               value: '/kwirth'
             - name: KWIRTH_MASTERKEY
               value: 'Kwirth4Ever'

@@ -1,3 +1,3 @@
 rem docker run -p 3883:3883 -v //c/temp/kwirthdocker/configmaps:/configmaps -v //c/temp/kwirthdocker/secrets:/secrets kwirth
-rem docker run -p 3884:3883 -e KWIRTH_ROOTPATH="/kwirth" -v //c/temp/kwirthdocker/configmaps:/configmaps -v //c/temp/kwirthdocker/secrets:/secrets -v //./pipe/docker_engine:/var/run/docker.sock kwirth
-docker run -p 3884:3883 -e KWIRTH_ROOTPATH="/kwirth" -v //c/temp/kwirthdocker/configmaps:/configmaps -v //c/temp/kwirthdocker/secrets:/secrets -v /var/run/docker.sock:/var/run/docker.sock kwirth
+rem docker run -p 3884:3883 -e ROOTPATH="/kwirth" -v //c/temp/kwirthdocker/configmaps:/configmaps -v //c/temp/kwirthdocker/secrets:/secrets -v //./pipe/docker_engine:/var/run/docker.sock kwirth
+docker run -p 3884:3883 -e ROOTPATH="/kwirth" -v //c/temp/kwirthdocker/configmaps:/configmaps -v //c/temp/kwirthdocker/secrets:/secrets -v /var/run/docker.sock:/var/run/docker.sock kwirth
