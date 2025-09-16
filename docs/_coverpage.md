@@ -10,6 +10,6 @@
 - **Kwirth means flexible observability in real-time.**
 
 [GitHub](https://github.com/jfvilas/kwirth/)
-[Get Started](/0.4.20/index)
+[Get Started](/0.4.63/index)
 
 ![color](#ffffff)
