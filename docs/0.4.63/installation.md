@@ -43,23 +43,13 @@ A sample 'values.yaml' file could be:
 kwirth:
   config:
     channelAlert: "true"
-    channelEcho: "true"
+    channelEcho: "false"
     channelLog: "true"
     channelMetrics: "true"
     channelOps: "true"
-    channelTrivy: "true"
-    masterkey: Kwirth4Ever
+    channelTrivy: "false"
     rootpath: /kwirth
-  image: jfvilasoutlook/kwirth:latest
-  resources:
-    limits:
-      cpu: "1"
-      memory: 2Gi
-    requests:
-      cpu: "0"
-      memory: 256Mi
-  replicas: 1
-  revisionHistoryLimit: 0
+  image: jfvilasoutlook/kwirth:0.4.34
 ```
 
 That could be installed like this:

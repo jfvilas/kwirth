@@ -1,10 +1,10 @@
 kwirth:
-  kwirth:
-    env:
-      channelAlert: "true"
-      channelEcho: "true"
-      channelLog: "true"
-      channelMetrics: "true"
-      channelOps: "true"
-      channelTrivy: "true"
-      rootpath: /kwirth
+  config:
+    channelAlert: "true"
+    channelEcho: "false"
+    channelLog: "true"
+    channelMetrics: "true"
+    channelOps: "true"
+    channelTrivy: "false"
+    rootpath: /kwirth
+  image: jfvilasoutlook/kwirth:0.4.34
