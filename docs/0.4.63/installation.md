@@ -36,6 +36,13 @@ Installation can be tailored by changing some Kwirth installation options:
 | masterkey     | It's the key used to cypher/decypher the access keys sent to clients | string | any string | Kwirth4Ever  |
 | image         | A full image reference | string | A valid reference | jfvilasoutlook/kwirth:latest |
 | resources     | Pod resources in Kubernetes-like format | object | {}  | { limits: { cpu:1, memory:2Gi }, requests: {cpu:0, memory:256Mi } }|
+| ingress.enabled  | Set to true if you want to deploy an Ingress | boolean | true/false  | false |
+| ingress.controller  | Specify what Ingress ctroller you are using | string | nginx / agic  | nginx |
+| agic.privateip     | Associate AGIC listner to private fronetend IP | boolean | true/false | false |
+| nginx.tls     | States that TLS should be used in ingress | boolean | true/false | false |
+| nginx.secret     | Name of the secret holding the CRT and the KEY | string | - | - |
+| ingress.hostname | Name of the host in ithe Ingress | string | - | - |
+
 
 A sample 'values.yaml' file could be:
 

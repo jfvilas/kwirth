@@ -12,9 +12,10 @@ We cite here some interesting capabilities that are missing today:
   - **Consolidated log object**. In addition to the ability to have config boards with content that comes from more than one source cluster, it is desirable to create a log object (a tab, not a full config) in which you can consolidate logging from different source clusters in one only log stream.
   - **Import/Export**, for the imp/exp process to be really useful, it should be desirable that the user could select what config boards to export or import.
   ~~- **Metrics**, we plan to add basic Kubernetes metrics monitoring in the future by checking pod/node status. The metrics will be propagated to customers (Kwirth users, Kubelog users or whatever) through the websocket (the same used for the log stream), so users can view real time metrics and statuses~~ DONE!
-  - **Helm**. Although Kwirth installation is simple and straightforward, we should create a helm chart for installing Kwirth.
+  - ~~**Helm**. Although Kwirth installation is simple and straightforward, we should create a helm chart for installing Kwirth.~~ DONE!
   - **Event streaming**, it seems interesting to have an event streaming service (like logging or metrics) for monitoring all events that take place inside the kubernetes cluster (object lifecycle (create, delete, modify), admin commands...)
   - **IAM**, add integraion with common IAM systems, that is, implemente SSO with Google, Azure, Github...
   - ~~**Websocket multi-service**. Currently we support exchanging information on a websocket that belongs to different services, like logging or metrics. But we need to add something like a 'service instance id' in order to allow several instances of the same service coexist in the same websocket, for example, two or more logging services running on the same websocket, or receiving different metrics on the same websocket.~~ DONE!
   - **Alerting metrics**. We wish Kwirth to be able to alert you based on metrics thrsholds, not just log messages. 
-  - **Session**, we need to manage frontend sessions and store access key into browser's localStorage
+  - **Session**, we need to manage frontend sessions and store access key into browser's localStorage.
+  - **Helm**. Add Ingress support to Helm Charts.
