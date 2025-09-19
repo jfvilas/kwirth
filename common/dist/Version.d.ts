@@ -5,5 +5,5 @@
  * @returns true if version1 version is higher than version2
  */
 declare const versionGreatOrEqualThan: (version1: string, version2: string) => boolean;
-declare const versionGreatThan: (version1: string, version2: string) => boolean;
-export { versionGreatOrEqualThan, versionGreatThan };
+declare const versionGreaterThan: (version1: string, version2: string) => boolean;
+export { versionGreatOrEqualThan, versionGreaterThan };
