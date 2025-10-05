@@ -1,4 +1,3 @@
-import { InstanceMessageChannelEnum } from "@jfvilas/kwirth-common"
 import { IChannel, IChannelObject } from "../channels/IChannel"
 
 interface ITabObject {
@@ -16,6 +15,7 @@ interface ITabObject {
 
 interface ITabSummary {
     name: string
+    description: string
     channel: string
     channelObject: {
         clusterName: string

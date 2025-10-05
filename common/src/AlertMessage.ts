@@ -1,4 +1,4 @@
-import { InstanceMessage } from "./InstanceMessage"
+import { IInstanceMessage } from "./InstanceMessage"
 
 export enum AlertSeverityEnum {
     INFO = 'info',
@@ -6,7 +6,7 @@ export enum AlertSeverityEnum {
     ERROR = 'error'
 }
 
-export interface IAlertMessage extends InstanceMessage {
+export interface IAlertMessage extends IInstanceMessage {
     msgtype: 'alertmessage'
     timestamp?: Date
     severity: AlertSeverityEnum

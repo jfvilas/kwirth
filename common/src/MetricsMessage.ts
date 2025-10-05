@@ -1,11 +1,11 @@
-import { InstanceMessage } from "./InstanceMessage";
+import { IInstanceMessage } from "./InstanceMessage";
 
 export interface AssetMetrics {
     assetName: string
     values: { metricName:string, metricValue:number } []
 }
 
-export interface MetricsMessage extends InstanceMessage  {
+export interface MetricsMessage extends IInstanceMessage  {
     msgtype: 'metricsmessage'
     assets: AssetMetrics[]
     timestamp: number

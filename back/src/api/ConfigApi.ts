@@ -13,31 +13,6 @@ export class ConfigApi {
     kwirthData: KwirthData
     clusterInfo: ClusterInfo
 
-    setDockerApi = (dockerApi:Docker) => {
-        this.dockerApi = dockerApi
-    }
-
-    restartDeployment = async (namespace:string, name:string) => {
-        const patch = {
-            spec: {
-                template: {
-                    metadata: {
-                        annotations: { 'kwirth.jfvilas.github.com/restartedAt': new Date().toISOString() }
-                    }
-                }
-            }
-        }
-
-        await this.clusterInfo.appsApi.patchNamespacedDeployment(
-        name,
-        namespace,
-        patch,
-        undefined,
-        undefined,
-        undefined
-        )
-    }
-    
     constructor (apiKeyApi: ApiKeyApi, kwirthData:KwirthData, clusterInfo:ClusterInfo, channels:Map<string,IChannel>) {
         this.kwirthData = kwirthData
         this.clusterInfo = clusterInfo
@@ -302,4 +277,29 @@ export class ConfigApi {
             })
     }
 
+    setDockerApi = (dockerApi:Docker) => {
+        this.dockerApi = dockerApi
+    }
+
+    restartDeployment = async (namespace:string, name:string) => {
+        const patch = {
+            spec: {
+                template: {
+                    metadata: {
+                        annotations: { 'kwirth.jfvilas.github.com/restartedAt': new Date().toISOString() }
+                    }
+                }
+            }
+        }
+
+        await this.clusterInfo.appsApi.patchNamespacedDeployment(
+        name,
+        namespace,
+        patch,
+        undefined,
+        undefined,
+        undefined
+        )
+    }
+    
 }

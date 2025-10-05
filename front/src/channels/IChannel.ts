@@ -1,5 +1,6 @@
 import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { MetricDescription } from './metrics/MetricDescription'
+import { Cluster } from '../model/Cluster'
 
 enum IChannelMessageAction {
     NONE,
@@ -33,6 +34,7 @@ interface IChannelObject {
     metricsList?: Map<string, MetricDescription>
     accessString?: string
     webSocket?: WebSocket
+    clusterUrl?: string
 }
 
 interface IChannel {
@@ -42,6 +44,7 @@ interface IChannel {
 
     requiresSetup(): boolean
     requiresMetrics(): boolean
+    requiresClusterUrl(): boolean
     requiresAccessString(): boolean
     requiresWebSocket(): boolean
     setNotifier(notifier:any): void
@@ -59,7 +62,7 @@ interface IChannel {
     socketReconnect(channelObject: IChannelObject): boolean
 }
 
-type ChannelConstructor = new () => IChannel
+type ChannelConstructor = (new () => IChannel)|undefined
 
 export { IChannelMessageAction }
 export type { IChannel, IChannelObject, ISetupProps, IContentProps, ChannelConstructor }

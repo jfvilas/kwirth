@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { IKnown, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, IUnknown, SignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
+import { IKnown, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, IUnknown, ISignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
 import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
 import { ITrivyObject, TrivyObject } from './TrivyObject'
@@ -15,6 +15,7 @@ export class TrivyChannel implements IChannel {
     requiresSetup() { return true }
     requiresMetrics() { return false }
     requiresAccessString() { return true }
+    requiresClusterUrl() { return false }
     requiresWebSocket() { return true }
     setNotifier(notifier: any): void { }
 
@@ -60,7 +61,7 @@ export class TrivyChannel implements IChannel {
                 }
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
+                let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
                 if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = signalMessage.instance
                     //this.trivyRequestScore(channelObject)  Not needed, score gets updated when a vuln report is created
@@ -123,7 +124,10 @@ export class TrivyChannel implements IChannel {
     }
 
 
+    // *************************************************************************************
     // PRIVATE
+    // *************************************************************************************
+
     trivyRequestScore = (channelObject:IChannelObject) => {
         let triviMessage: ITrivyMessage = {
             msgtype: 'trivymessage',

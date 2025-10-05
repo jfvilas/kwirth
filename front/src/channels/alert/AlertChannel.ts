@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { AlertSeverityEnum, IAlertMessage, InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
+import { AlertSeverityEnum, IAlertMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage } from '@jfvilas/kwirth-common'
 import { AlertIcon, AlertSetup } from './AlertSetup'
 import { AlertTabContent } from './AlertTabContent'
 import { AlertObject, IAlertObject } from './AlertObject'
@@ -15,6 +15,7 @@ export class AlertChannel implements IChannel {
     requiresSetup() { return true }
     requiresMetrics() { return false }
     requiresAccessString() { return false }
+    requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
     setNotifier(notifier: any): void { }
 
@@ -45,16 +46,16 @@ export class AlertChannel implements IChannel {
                 if (!alertObject.paused) action = IChannelMessageAction.REFRESH
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let instanceMessage:InstanceMessage = JSON.parse(wsEvent.data)
+                let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }
                 else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
-                    let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
+                    let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
                     alertObject.firedAlerts.push({
                         timestamp: signalMessage.timestamp?.getTime() || 0,
                         severity: AlertSeverityEnum.INFO,
-                        text: signalMessage.text
+                        text: signalMessage.text || ''
                     })
                     action = IChannelMessageAction.REFRESH
                 }

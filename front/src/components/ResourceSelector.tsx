@@ -41,6 +41,7 @@ interface IResourceSelected {
 interface IProps {
     onAdd: (resource:IResourceSelected, tab?:ITabObject) => void
     onChangeCluster: (clusterName:string) => void
+    resourceSelected: IResourceSelected|undefined
     clusters: Cluster[]
     backChannels: BackChannelData[]
     tabs: ITabObject[]
@@ -69,7 +70,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
 
     let isDocker = cluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER
 
-    const getNamespaces = async (cluster:Cluster) => {
+    const loadAllNamespaces = async (cluster:Cluster) => {
         if (cluster) {
             let response = await fetch(`${cluster.url}/config/namespace`, addGetAuthorization(cluster.accessString))
             if (response.status!==200) {
@@ -97,15 +98,18 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             setAllPods((prev) => [...prev, ...data])
         }
         else {
+            console.log('listssss', namespaces, groups)
             let list:string[] = []
             for (let namespace of namespaces) {
                 for (let group of groups) {
+                    console.log('getpods', namespace, group)
                     let [gtype,gname] = group.split('+')
                     let response = await fetch(`${cluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(cluster!.accessString))
                     let data = await response.json()
                     list.push (...(data as string[]))
                 }
             }
+            console.log('setallpods', list)
             setAllPods((prev) => [...prev, ...new Set(list)])
         }
     }
@@ -163,7 +167,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             setPods([])
             setAllContainers([])
             setContainers([])
-            getNamespaces(props.clusters?.find(c => c.name===cluster.name)!)
+            loadAllNamespaces(props.clusters?.find(c => c.name===cluster.name)!)
         }
     }
 
@@ -264,6 +268,64 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             else
                 return <KIconKubernetesBlank/>
         }
+    }
+
+    const updateResource = async () => {
+        if (!props.resourceSelected) return
+        let c = props.clusters.find(c => c.name === props.resourceSelected!.clusterName)
+        if (!c) return
+
+        props.onChangeCluster(c.name)
+        setCluster(c)
+        setChannel(props.resourceSelected!.channelId)
+        let v = props.resourceSelected!.view
+        setView(v)
+        let alln=await (await fetch(`${c.url}/config/namespace`, addGetAuthorization(c.accessString))).json()
+        setAllNamespaces(alln)
+        setNamespaces(props.resourceSelected!.namespaces)
+
+        if (v===InstanceConfigViewEnum.GROUP || v===InstanceConfigViewEnum.POD || v===InstanceConfigViewEnum.CONTAINER) {
+            let allg=[]
+            for (let namespace of props.resourceSelected!.namespaces) {
+                let gs = await (await fetch(`${c.url}/config/${namespace}/groups`, addGetAuthorization(c.accessString))).json()
+
+                allg.push(...gs.map((g: { type: string; name: string }) => g.type+'+'+g.name))
+            }
+            setAllGroups(allg)
+            setGroups(props.resourceSelected!.groups)
+            if (v===InstanceConfigViewEnum.POD || v===InstanceConfigViewEnum.CONTAINER) {
+                let allp:string[] = []
+                for (let namespace of props.resourceSelected!.namespaces) {
+                    for (let group of props.resourceSelected!.groups) {
+                        let [gtype,gname] = group.split('+')
+                        let ps = await (await fetch(`${c.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(c.accessString))).json()
+                        allp.push (...ps)
+                    }
+                }
+                setAllPods(allp)
+                setPods(props.resourceSelected!.pods)
+
+                if (v===InstanceConfigViewEnum.CONTAINER) {
+                    let allc:string[]=[]
+                    for (let namespace of props.resourceSelected!.namespaces) {
+                        for (let pod of props.resourceSelected!.pods) {
+                            let cs = await (await fetch(`${c.url}/config/${namespace}/${pod}/containers`, addGetAuthorization(c.accessString))).json()
+                            console.log(cs)
+                            allc.push(...cs.map ((c: string) => pod+'+'+c))
+                        }
+                    }
+                    console.log('allc', allc)
+                    setAllContainers(allc)
+                    setContainers(props.resourceSelected!.containers)
+                }
+            }
+        }
+    }
+    
+
+    if (props.resourceSelected && props.resourceSelected.channelId!=='') {
+        updateResource()
+        props.resourceSelected!.channelId=''
     }
 
     return (<>

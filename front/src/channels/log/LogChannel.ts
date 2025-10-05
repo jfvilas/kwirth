@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { ILogMessage, InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage } from '@jfvilas/kwirth-common'
+import { ILogMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage } from '@jfvilas/kwirth-common'
 import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
 import { LogObject, ILogLine, ILogObject } from './LogObject'
@@ -15,6 +15,7 @@ export class LogChannel implements IChannel {
     requiresSetup() { return true }
     requiresMetrics() { return false }
     requiresAccessString() { return false }
+    requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
     setNotifier(notifier: any): void { }
 
@@ -100,14 +101,14 @@ export class LogChannel implements IChannel {
                 }
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let instanceMessage:InstanceMessage = JSON.parse(wsEvent.data)
+                let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }
                 else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
-                    let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
+                    let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
                     logObject.messages.push({
-                        text: signalMessage.text,
+                        text: signalMessage.text || '',
                         namespace: '',
                         pod: '',
                         container: '',

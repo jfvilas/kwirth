@@ -1,7 +1,8 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, TrivyCommandEnum, TrivyConfig, BackChannelData, ClusterTypeEnum, IKnown, IUnknown } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, TrivyCommandEnum, TrivyConfig, BackChannelData, ClusterTypeEnum, IKnown, IUnknown } from '@jfvilas/kwirth-common';
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
 import { KubernetesObject, makeInformer } from '@kubernetes/client-node';
+import { Request, Response } from 'express'
 
 const TRIVY_API_VERSION = 'v1alpha1'
 const TRIVY_API_GROUP = 'aquasecurity.github.io'
@@ -27,7 +28,7 @@ export interface IInstance {
 class TrivyChannel implements IChannel {
     readonly channelId: string = 'trivy'
     clusterInfo : ClusterInfo
-    webSocketTrivy: {
+    webSockets: {
         ws:WebSocket,
         lastRefresh: number,
         instances: IInstance[] 
@@ -44,8 +45,9 @@ class TrivyChannel implements IChannel {
             pauseable: false,
             modifyable: false,
             reconnectable: false,
+            metrics: false,
             sources: [ ClusterTypeEnum.KUBERNETES ],
-            metrics: false
+            endpoints: []
         }
     }
 
@@ -53,14 +55,26 @@ class TrivyChannel implements IChannel {
         return ['', 'trivy$workload', 'trivy$kubernetes', 'cluster'].indexOf(scope)
     }
 
-    containsInstance = (instanceId: string): boolean => {
-        return this.webSocketTrivy.some(socket => socket.instances.find(i => i.instanceId === instanceId))
+    async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
     }
 
-    processCommand = async (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> => {
+    containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
+        let socket = this.webSockets.find(s => s.ws === webSocket)
+        if (socket) {
+            let instances = socket.instances
+            if (instances) return instances.some(i => i.assets.some(a => a.podNamespace===podNamespace && a.podName===podName && a.containerName===containerName))
+        }
+        return false
+    }
+
+    containsInstance = (instanceId: string): boolean => {
+        return this.webSockets.some(socket => socket.instances.find(i => i.instanceId === instanceId))
+    }
+
+    processCommand = async (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> => {
         if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) return false
 
-        let socket = this.webSocketTrivy.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) {
             console.log('Socket not found')
             return false
@@ -281,13 +295,13 @@ class TrivyChannel implements IChannel {
         return informer
     }
 
-    startInstance = async (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
+    addObject = async (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
 
-        let socket = this.webSocketTrivy.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) {
-            let len = this.webSocketTrivy.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-            socket = this.webSocketTrivy[len-1]
+            let len = this.webSockets.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+            socket = this.webSockets[len-1]
         }
 
         let instances = socket.instances
@@ -348,6 +362,10 @@ class TrivyChannel implements IChannel {
         asset.informer.start()
     }
 
+    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+        
+    }
+    
     pauseContinueInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void => {
         console.log('Pause/Continue not supported')
     }
@@ -357,7 +375,7 @@ class TrivyChannel implements IChannel {
     }
 
     stopInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig): void => {
-        let socket = this.webSocketTrivy.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) return
 
         if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
@@ -370,7 +388,7 @@ class TrivyChannel implements IChannel {
     }
 
     removeInstance = (webSocket: WebSocket, instanceId: string): void => {
-        let socket = this.webSocketTrivy.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             var instances = socket.instances
             if (instances) {
@@ -396,17 +414,17 @@ class TrivyChannel implements IChannel {
     }
 
     containsConnection = (webSocket:WebSocket): boolean => {
-        return Boolean (this.webSocketTrivy.find(s => s.ws === webSocket))
+        return Boolean (this.webSockets.find(s => s.ws === webSocket))
     }
 
     removeConnection = (webSocket: WebSocket): void => {
-        let socket = this.webSocketTrivy.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             for (let instance of socket.instances) {
                 this.removeInstance (webSocket, instance.instanceId)
             }
-            let pos = this.webSocketTrivy.findIndex(s => s.ws === webSocket)
-            this.webSocketTrivy.splice(pos,1)
+            let pos = this.webSockets.findIndex(s => s.ws === webSocket)
+            this.webSockets.splice(pos,1)
         }
         else {
             console.log('WebSocket not found on trivy for remove')
@@ -414,7 +432,7 @@ class TrivyChannel implements IChannel {
     }
 
     refreshConnection = (webSocket: WebSocket): boolean => {
-        let socket = this.webSocketTrivy.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             socket.lastRefresh = Date.now()
             return true
@@ -430,10 +448,12 @@ class TrivyChannel implements IChannel {
         return false
     }
 
-    // ************************* private methods *************************
+    // *************************************************************************************
+    // PRIVATE
+    // *************************************************************************************
 
     private sendSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, level: SignalMessageLevelEnum, instanceId:string, text:string): void => {
-        var resp:SignalMessage = {
+        var resp:ISignalMessage = {
             action,
             flow,
             channel: InstanceMessageChannelEnum.TRIVY,

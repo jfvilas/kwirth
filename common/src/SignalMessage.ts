@@ -1,4 +1,4 @@
-import { InstanceMessage } from './InstanceMessage'
+import { IInstanceMessage } from './InstanceMessage'
 
 export enum SignalMessageLevelEnum {
     INFO='info',
@@ -6,11 +6,18 @@ export enum SignalMessageLevelEnum {
     ERROR='error'
 }
 
-export interface SignalMessage extends InstanceMessage {
+export enum SignalMessageEventEnum {
+    ADD='add',
+    DELETE='delete',
+    OTHER='other'
+}
+
+export interface ISignalMessage extends IInstanceMessage {
     timestamp?: Date
     namespace?: string
     pod?: string
     container?: string
     level: SignalMessageLevelEnum
-    text: string
+    text?: string
+    event?: SignalMessageEventEnum
 }

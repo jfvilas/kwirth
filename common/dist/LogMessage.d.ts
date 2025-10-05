@@ -1,5 +1,5 @@
-import { InstanceMessage } from './InstanceMessage';
-export interface ILogMessage extends InstanceMessage {
+import { IInstanceMessage } from './InstanceMessage';
+export interface ILogMessage extends IInstanceMessage {
     msgtype: 'logmessage';
     timestamp?: Date;
     text: string;

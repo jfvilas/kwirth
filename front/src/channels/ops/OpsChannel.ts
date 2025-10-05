@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessageResponse, OpsCommandEnum, SignalMessage } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessageResponse, OpsCommandEnum, ISignalMessage } from '@jfvilas/kwirth-common'
 import { OpsIcon, OpsSetup } from './OpsSetup'
 import { OpsTabContent } from './OpsTabContent'
 import { OpsObject, IOpsObject } from './OpsObject'
@@ -17,6 +17,7 @@ export class OpsChannel implements IChannel {
     requiresSetup() { return true }
     requiresMetrics() { return false }
     requiresAccessString() { return true }
+    requiresClusterUrl() { return false }
     requiresWebSocket() { return true }
     setNotifier(notifier: any): void { }
 
@@ -96,16 +97,20 @@ export class OpsChannel implements IChannel {
                     action = IChannelMessageAction.REFRESH
                 }
                 else if (opsMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
-                    let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
-                    opsObject.messages.push(signalMessage.text)
-                    action = IChannelMessageAction.REFRESH
-                }
-                else {
-                    let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
-                    if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
-                        channelObject.instanceId = signalMessage.instance
+                    let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
+                    if (signalMessage.text) {
                         opsObject.messages.push(signalMessage.text)
                         action = IChannelMessageAction.REFRESH
+                    }
+                }
+                else {
+                    let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
+                    if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
+                        channelObject.instanceId = signalMessage.instance
+                        if (signalMessage.text) {
+                            opsObject.messages.push(signalMessage.text)
+                            action = IChannelMessageAction.REFRESH
+                        }
                     }
                     else {
                         console.log('wsEvent.data on ops')

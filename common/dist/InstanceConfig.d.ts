@@ -1,4 +1,4 @@
-import { InstanceMessage } from "./InstanceMessage";
+import { IInstanceMessage } from "./InstanceMessage";
 export declare enum InstanceConfigObjectEnum {
     PODS = "pods",
     EVENTS = "events"
@@ -28,7 +28,7 @@ export declare enum InstanceConfigScopeEnum {
     WORKLOAD = "workload",
     KUBERNETES = "kubernetes"
 }
-export interface InstanceConfig extends InstanceMessage {
+export interface InstanceConfig extends IInstanceMessage {
     objects: InstanceConfigObjectEnum;
     accessKey: string;
     scope: string;
@@ -39,6 +39,6 @@ export interface InstanceConfig extends InstanceMessage {
     container: string;
     data?: any;
 }
-export interface InstanceConfigResponse extends InstanceMessage {
+export interface InstanceConfigResponse extends IInstanceMessage {
     text: string;
 }

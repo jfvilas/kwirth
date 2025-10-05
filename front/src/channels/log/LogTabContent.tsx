@@ -1,4 +1,4 @@
-import { ILogMessage, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { ILogMessage, InstanceConfigViewEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { ILogLine, ILogObject } from './LogObject'
 import { Box } from '@mui/material'
 import { IContentProps } from '../IChannel'
@@ -38,7 +38,7 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 return <><span style={{color:'blue'}}>{prefix+' '}</span>{txt}</>
         }
         else if (imessage.type === InstanceMessageTypeEnum.SIGNAL) {
-            let signal = imessage as SignalMessage
+            let signal = imessage as ISignalMessage
             switch (signal.level) {
                 case SignalMessageLevelEnum.INFO:
                     return <span style={{color:'blue'}}><b>{`***** ${signal.text} *****`}</b></span>

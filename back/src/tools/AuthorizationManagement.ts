@@ -114,7 +114,7 @@ export class AuthorizationManagement {
             // we return the higher scope from all valid scopes
             for (let sc of scopes.split(',')) {
                 let scLevel = channels.get(instanceConfigChannel)!.getChannelScopeLevel(sc)
-                if (scLevel<0) console.log(`***************** Inexistent scope ${sc} on channel ${instanceConfigChannel} *****************`)
+                if (scLevel<0) console.log(`***************** Inexistent scope '${sc}' on channel '${instanceConfigChannel}' *****************`)
                 if (scLevel>higherScope) higherScope = scLevel
             }
         }
@@ -436,10 +436,16 @@ export class AuthorizationManagement {
             return emptyResult
         }
     
-        const matchLabels = response.body.spec?.selector.matchLabels
-        const labelSelector = Object.entries(matchLabels || {}).map(([key, value]) => `${key}=${value}`).join(',')
-        const pods = (await coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)).body.items
-        return  { pods, labelSelector }
+        if (response) {
+            const matchLabels = response.body.spec?.selector.matchLabels
+            const labelSelector = Object.entries(matchLabels || {}).map(([key, value]) => `${key}=${value}`).join(',')
+            const pods = (await coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)).body.items
+            return  { pods, labelSelector }
+        }
+        else {
+            console.log('*************', namespace, gTypeName)
+            return { pods:[], labelSelector:[] }            
+        }
     }
 
     // gets controller name including (or not) deployment (aside form replica, daemon and stateful)

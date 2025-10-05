@@ -1,11 +1,11 @@
-import { InstanceMessage } from "./InstanceMessage"
+import { IInstanceMessage } from "./InstanceMessage"
 
 export enum TrivyCommandEnum {
     SCORE = 'score',
     RESCAN = 'rescan'
 }
 
-export interface ITrivyMessage extends InstanceMessage {
+export interface ITrivyMessage extends IInstanceMessage {
     msgtype: 'trivymessage'
     id: string
     accessKey: string
@@ -18,7 +18,7 @@ export interface ITrivyMessage extends InstanceMessage {
     params?: string[]
 }
 
-export interface ITrivyMessageResponse extends InstanceMessage {
+export interface ITrivyMessageResponse extends IInstanceMessage {
     msgtype: 'trivymessageresponse'
     id: string
     namespace: string

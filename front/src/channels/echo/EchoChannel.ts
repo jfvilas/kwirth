@@ -2,7 +2,7 @@ import { FC } from "react";
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from "../IChannel";
 import { EchoInstanceConfig, EchoUiConfig, IEchoUiConfig } from "./EchoConfig";
 import { EchoSetup, EchoIcon } from './EchoSetup';
-import { IEchoMessage, InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from "@jfvilas/kwirth-common";
+import { IEchoMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from "@jfvilas/kwirth-common";
 import { EchoObject, IEchoObject } from "./EchoObject";
 import { EchoTabContent } from "./EchoTabContent";
 
@@ -16,6 +16,7 @@ export class EchoChannel implements IChannel {
     requiresSetup() { return true }
     requiresMetrics() { return false }
     requiresAccessString() { return false }
+    requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
     setNotifier(notifier: any): void { }
 
@@ -36,7 +37,7 @@ export class EchoChannel implements IChannel {
                 while (echoObject.lines.length > echoUiConfig.maxLines) echoObject.lines.shift()
                 return IChannelMessageAction.REFRESH
             case InstanceMessageTypeEnum.SIGNAL:
-                let instanceMessage:InstanceMessage = JSON.parse(wsEvent.data)
+                let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }

@@ -1,4 +1,4 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, IOpsMessage, IOpsMessageResponse, OpsCommandEnum, IRouteMessageResponse, AccessKey, accessKeyDeserialize, parseResources, BackChannelData, ClusterTypeEnum, ResourceIdentifier } from '@jfvilas/kwirth-common';
+import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, IOpsMessage, IOpsMessageResponse, OpsCommandEnum, IRouteMessageResponse, AccessKey, accessKeyDeserialize, parseResources, BackChannelData, ClusterTypeEnum, ResourceIdentifier } from '@jfvilas/kwirth-common';
 import { WebSocket as NonNativeWebSocket } from 'ws'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
@@ -6,6 +6,7 @@ import { Readable, Writable } from 'stream';
 import { execCommandGetDescribe } from './GetCommand';
 import { execCommandRestart } from './RestartCommand';
 import { AuthorizationManagement } from '../../tools/AuthorizationManagement';
+import { Request, Response } from 'express'
 
 export interface IAsset {
     podNamespace: string
@@ -27,7 +28,7 @@ export interface IInstance {
 
 class OpsChannel implements IChannel {    
     clusterInfo : ClusterInfo
-    webSocketOps: {
+    webSocket: {
         ws:WebSocket,
         lastRefresh: number,
         instances: IInstance[] 
@@ -44,8 +45,9 @@ class OpsChannel implements IChannel {
             pauseable: false,
             modifyable: false,
             reconnectable: false,
+            metrics: false,
             sources: [ ClusterTypeEnum.KUBERNETES ],
-            metrics: false
+            endpoints: []
         }
     }
 
@@ -53,11 +55,23 @@ class OpsChannel implements IChannel {
         return ['', 'ops$get', 'ops$execute', 'ops$shell', 'ops$restart', 'cluster'].indexOf(scope)
     }
 
-    containsInstance(instanceId: string): boolean {
-        return this.webSocketOps.some(socket => socket.instances.find(i => i.instanceId === instanceId))
+    async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
     }
 
-    async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+    containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
+        let socket = this.webSocket.find(s => s.ws === webSocket)
+        if (socket) {
+            let instances = socket.instances
+            if (instances) return instances.some(i => i.assets.some(a => a.podNamespace===podNamespace && a.podName===podName && a.containerName===containerName))
+        }
+        return false
+    }
+
+    containsInstance(instanceId: string): boolean {
+        return this.webSocket.some(socket => socket.instances.find(i => i.instanceId === instanceId))
+    }
+
+    async processCommand (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> {
         if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
             // immediate commands are typical request/repsonse pattern, so we invoke 'executeImmediteCommand' and we send back the response
             let resp = await this.executeImmediateCommand(instanceMessage)
@@ -65,7 +79,7 @@ class OpsChannel implements IChannel {
             return Boolean(resp)
         }
         else {
-            let socket = this.webSocketOps.find(s => s.ws === webSocket)
+            let socket = this.webSocket.find(s => s.ws === webSocket)
             if (!socket) {
                 console.log('Socket not found')
                 return false
@@ -85,13 +99,13 @@ class OpsChannel implements IChannel {
         }
     }
 
-    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async addObject (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
 
-        let socket = this.webSocketOps.find(s => s.ws === webSocket)
+        let socket = this.webSocket.find(s => s.ws === webSocket)
         if (!socket) {
-            let len = this.webSocketOps.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-            socket = this.webSocketOps[len-1]
+            let len = this.webSocket.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+            socket = this.webSocket[len-1]
         }
 
         let instances = socket.instances
@@ -118,6 +132,10 @@ class OpsChannel implements IChannel {
         instance.assets.push(asset)
     }
 
+    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+        
+    }
+    
     pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
         console.log('Pause/Continue not supported')
     }
@@ -127,7 +145,7 @@ class OpsChannel implements IChannel {
     }
 
     stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
-        let socket = this.webSocketOps.find(s => s.ws === webSocket)
+        let socket = this.webSocket.find(s => s.ws === webSocket)
         if (!socket) return
 
         if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
@@ -140,7 +158,7 @@ class OpsChannel implements IChannel {
     }
 
     removeInstance(webSocket: WebSocket, instanceId: string): void {
-        let socket = this.webSocketOps.find(s => s.ws === webSocket)
+        let socket = this.webSocket.find(s => s.ws === webSocket)
         if (socket) {
             var instances = socket.instances
             if (instances) {
@@ -169,17 +187,17 @@ class OpsChannel implements IChannel {
     }
 
     containsConnection (webSocket:WebSocket) : boolean {
-        return Boolean (this.webSocketOps.find(s => s.ws === webSocket))
+        return Boolean (this.webSocket.find(s => s.ws === webSocket))
     }
 
     removeConnection(webSocket: WebSocket): void {
-        let socket = this.webSocketOps.find(s => s.ws === webSocket)
+        let socket = this.webSocket.find(s => s.ws === webSocket)
         if (socket) {
             for (let instance of socket.instances) {
                 this.removeInstance (webSocket, instance.instanceId)
             }
-            let pos = this.webSocketOps.findIndex(s => s.ws === webSocket)
-            this.webSocketOps.splice(pos,1)
+            let pos = this.webSocket.findIndex(s => s.ws === webSocket)
+            this.webSocket.splice(pos,1)
         }
         else {
             console.log('WebSocket not found on ops for remove')
@@ -187,7 +205,7 @@ class OpsChannel implements IChannel {
     }
 
     refreshConnection(webSocket: WebSocket): boolean {
-        let socket = this.webSocketOps.find(s => s.ws === webSocket)
+        let socket = this.webSocket.find(s => s.ws === webSocket)
         if (socket) {
             socket.lastRefresh = Date.now()
             return true
@@ -203,10 +221,12 @@ class OpsChannel implements IChannel {
         return false
     }
 
-    // ************************* private methods *************************
+    // *************************************************************************************
+    // PRIVATE
+    // *************************************************************************************
 
     private sendSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, level: SignalMessageLevelEnum, instanceId:string, text:string): void => {
-        var resp:SignalMessage = {
+        var resp:ISignalMessage = {
             action,
             flow,
             channel: InstanceMessageChannelEnum.OPS,
@@ -291,7 +311,7 @@ class OpsChannel implements IChannel {
         return canPerform
     }
 
-    private async executeImmediateCommand (instanceMessage:InstanceMessage) : Promise<IRouteMessageResponse> {
+    private async executeImmediateCommand (instanceMessage:IInstanceMessage) : Promise<IRouteMessageResponse> {
         console.log('Immediate request received')
         let opsMessage = instanceMessage as IOpsMessage
 

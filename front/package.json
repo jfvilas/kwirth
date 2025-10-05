@@ -7,7 +7,7 @@
     "@cubone/react-file-manager": "^1.28.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
-    "@jfvilas/kwirth-common": "^0.4.29",
+    "@jfvilas/kwirth-common": "^0.4.36",
     "@mui/icons-material": "^7.1.2",
     "@mui/material": "^7.1.2",
     "@mui/x-date-pickers": "^8.5.3",

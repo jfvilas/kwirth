@@ -1,4 +1,4 @@
-import { InstanceMessage } from "./InstanceMessage"
+import { IInstanceMessage } from "./InstanceMessage"
 
 export enum OpsCommandEnum {
     GET = 'get',
@@ -15,7 +15,7 @@ export enum OpsCommandEnum {
     RESTARTNS = 'restartns'
 }
 
-export interface IOpsMessage extends InstanceMessage {
+export interface IOpsMessage extends IInstanceMessage {
     msgtype: 'opsmessage'
     id: string
     accessKey: string
@@ -28,7 +28,7 @@ export interface IOpsMessage extends InstanceMessage {
     params?: string[]
 }
 
-export interface IOpsMessageResponse extends InstanceMessage {
+export interface IOpsMessageResponse extends IInstanceMessage {
     msgtype: 'opsmessageresponse'
     id: string
     command: OpsCommandEnum

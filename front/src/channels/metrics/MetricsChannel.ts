@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { InstanceConfigScopeEnum, InstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { MetricsIcon, MetricsSetup } from './MetricsSetup'
 import { MetricsTabContent } from './MetricsTabContent'
 import { MetricsObject, IMetricsMessage, MetricsEventSeverityEnum, IMetricsObject } from './MetricsObject'
@@ -15,6 +15,7 @@ export class MetricsChannel implements IChannel {
     requiresSetup() { return true }
     requiresMetrics() { return true }
     requiresAccessString() { return false }
+    requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
     setNotifier(notifier: any): void { }
 
@@ -46,19 +47,23 @@ export class MetricsChannel implements IChannel {
                 if (!metricsObject.paused) action = IChannelMessageAction.REFRESH
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let instanceMessage:InstanceMessage = JSON.parse(wsEvent.data)
+                let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }
                 else {
-                    let signalMessage:SignalMessage = JSON.parse(wsEvent.data)
+                    let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
                     if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
-                        metricsObject.events.push( { severity: MetricsEventSeverityEnum.INFO, text: signalMessage.text })
+                        if (signalMessage.text) {
+                            metricsObject.events.push( { severity: MetricsEventSeverityEnum.INFO, text: signalMessage.text })
+                        }
                     }
                     else {
                         if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
-                            metricsObject.events.push( { severity: MetricsEventSeverityEnum.ERROR, text: signalMessage.text })
-                            action = IChannelMessageAction.REFRESH
+                            if (signalMessage.text) {
+                                metricsObject.events.push( { severity: MetricsEventSeverityEnum.ERROR, text: signalMessage.text })
+                                action = IChannelMessageAction.REFRESH
+                            }
                         }
                     }
                 }

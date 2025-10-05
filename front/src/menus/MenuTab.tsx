@@ -1,6 +1,6 @@
 import React from 'react'
 import { Collapse, Menu, MenuItem, MenuList, Typography } from '@mui/material'
-import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, Info } from '@mui/icons-material'
+import { Check, Pause, PlayArrow, RemoveCircleRounded,  Stop, ExpandLess, ExpandMore, DriveFileRenameOutline, KeyboardArrowLeft, KeyboardArrowRight, KeyboardDoubleArrowLeft, KeyboardDoubleArrowRight, PlayCircle, Info, FactCheck } from '@mui/icons-material'
 import { ITabObject } from '../model/ITabObject'
 import { BackChannelData } from '@jfvilas/kwirth-common'
 
@@ -13,6 +13,7 @@ enum MenuTabOption {
     TabMoveFirst,
     TabMoveLast,
     TabRemove,
+    TabRestoreParameters,
     ChannelStart,
     ChannelPause,
     ChannelStop
@@ -45,6 +46,7 @@ const MenuTab: React.FC<IProps> = (props:IProps) => {
                 <MenuItem key='tabms' onClick={() => props.optionSelected(MenuTabOption.TabMoveFirst)} disabled={props.selectedTabIndex===0}><KeyboardDoubleArrowLeft/>&nbsp;Move to start</MenuItem>
                 <MenuItem key='tabme' onClick={() => props.optionSelected(MenuTabOption.TabMoveLast)} disabled={props.selectedTabIndex===props.tabs.length-1}><KeyboardDoubleArrowRight/>&nbsp;Move to end</MenuItem>
                 <MenuItem key='tabrm' onClick={() => props.optionSelected(MenuTabOption.TabRemove)}><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
+                <MenuItem key='restoreparms' onClick={() => props.optionSelected(MenuTabOption.TabRestoreParameters)}><FactCheck/>&nbsp;Restore tab parameters</MenuItem>
             </Collapse>
             
             <MenuItem key='channelstart' onClick={() => props.optionSelected(MenuTabOption.ChannelStart)} disabled={props.selectedTab?.channelStarted}><PlayCircle/>&nbsp;Start</MenuItem>

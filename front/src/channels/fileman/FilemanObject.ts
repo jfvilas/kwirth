@@ -1,10 +1,10 @@
-import { InstanceMessage } from "@jfvilas/kwirth-common"
+import { IInstanceMessage } from "@jfvilas/kwirth-common"
 
 export interface IFilemanObject {
-    lines: string[]
-    paused:boolean
-    started:boolean
+    paused: boolean
+    started: boolean
     files: IFileData[]
+    currentPath: string
 }
 
 export interface IFileData {
@@ -20,11 +20,13 @@ export class FilemanObject implements IFilemanObject {
     paused = false
     started = false
     files = []
+    currentPath = '/'
 }
 
 export enum FilemanCommandEnum {
     HOME = 'home',
     DIR = 'dir',
+    CREATE = 'create',
     RENAME = 'rename',
     DELETE = 'delete',
     MOVE = 'move',
@@ -33,7 +35,7 @@ export enum FilemanCommandEnum {
     DOWNLOAD = 'download'
 }
 
-export interface IFilemanMessage extends InstanceMessage {
+export interface IFilemanMessage extends IInstanceMessage {
     msgtype: 'filemanmessage'
     id: string
     accessKey: string
@@ -46,7 +48,7 @@ export interface IFilemanMessage extends InstanceMessage {
     params?: string[]
 }
 
-export interface IFilemanMessageResponse extends InstanceMessage {
+export interface IFilemanMessageResponse extends IInstanceMessage {
     msgtype: 'filemanmessageresponse'
     id: string
     command: FilemanCommandEnum

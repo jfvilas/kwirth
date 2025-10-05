@@ -33,7 +33,7 @@ export enum InstanceMessageFlowEnum {
     UNSOLICITED = 'unsolicited'
 }
 
-export interface InstanceMessage {
+export interface IInstanceMessage {
     action: InstanceMessageActionEnum
     flow: InstanceMessageFlowEnum
     type: InstanceMessageTypeEnum

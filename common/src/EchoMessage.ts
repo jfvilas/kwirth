@@ -1,6 +1,6 @@
-import { InstanceMessage } from "./InstanceMessage"
+import { IInstanceMessage } from "./InstanceMessage"
 
-export interface IEchoMessage extends InstanceMessage {
+export interface IEchoMessage extends IInstanceMessage {
     msgtype: 'echomessage'
     namespace: string
     pod: string
@@ -8,7 +8,7 @@ export interface IEchoMessage extends InstanceMessage {
     text: string
 }
 
-export interface IEchoMessageResponse extends InstanceMessage {
+export interface IEchoMessageResponse extends IInstanceMessage {
     msgtype: 'echomessageresponse'
     text: string
 }

@@ -1,8 +1,9 @@
-import { InstanceConfig, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, AlertSeverityEnum, IAlertMessage, InstanceMessage, AlertConfig, BackChannelData } from '@jfvilas/kwirth-common'
+import { InstanceConfig, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, AlertSeverityEnum, IAlertMessage, IInstanceMessage, AlertConfig, BackChannelData } from '@jfvilas/kwirth-common'
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
+import { Request, Response } from 'express'
 
 interface IAsset {
     podNamespace:string,
@@ -17,15 +18,12 @@ interface IInstance {
     instanceId:string, 
     assets: IAsset[]
     regExps: Map<AlertSeverityEnum, RegExp[]>
-    //timestamps: boolean,
-    //previous:boolean,
-    //tailLines:number,
     paused:boolean
 }
 
 class AlertChannel implements IChannel {    
     clusterInfo : ClusterInfo
-    webSocketAlert: {
+    webSockets: {
         ws: WebSocket,
         lastRefresh: number,
         instances: IInstance[] 
@@ -42,8 +40,9 @@ class AlertChannel implements IChannel {
             pauseable: true,
             modifyable: false,
             reconnectable: true,
+            metrics: false,
             sources: [ ClusterTypeEnum.DOCKER, ClusterTypeEnum.KUBERNETES ],
-            metrics: false
+            endpoints: []
         }
     }
 
@@ -51,114 +50,24 @@ class AlertChannel implements IChannel {
         return ['','view','create','cluster'].indexOf(scope)
     }
 
-    containsInstance(instanceId: string): boolean {
-        for (let socket of this.webSocketAlert) {
-            let exists = socket.instances.find(i => i.instanceId === instanceId)
-            if (exists) return true
+    async endpointRequest(endpoint:string, req:Request, res:Response) : Promise<void> {
+    }
+
+    containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
+        let socket = this.webSockets.find(s => s.ws === webSocket)
+        if (socket) {
+            let instances = socket.instances
+            if (instances) return instances.some(i => i.assets.some(a => a.podNamespace===podNamespace && a.podName===podName && a.containerName===containerName))
         }
         return false
     }
 
-    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
-        var resp:InstanceConfigResponse = {
-            action,
-            flow,
-            channel,
-            instance: instanceConfig.instance,
-            type: InstanceMessageTypeEnum.SIGNAL,
-            text
+    containsInstance(instanceId: string): boolean {
+        for (let socket of this.webSockets) {
+            let exists = socket.instances.find(i => i.instanceId === instanceId)
+            if (exists) return true
         }
-        ws.send(JSON.stringify(resp))
-    }
-
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
-        var signalMessage:SignalMessage = {
-            action: InstanceMessageActionEnum.NONE,
-            flow: InstanceMessageFlowEnum.RESPONSE,
-            level,
-            channel: instanceConfig.channel,
-            instance: instanceConfig.instance,
-            type: InstanceMessageTypeEnum.SIGNAL,
-            text
-        }
-        webSocket.send(JSON.stringify(signalMessage))
-    }
-
-    sendAlert = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alertSeverity:AlertSeverityEnum, line:string, instanceId: string): void => {
-        // line includes timestamp at front (beacuse of log stream configuration when starting logstream)
-        let i = line.indexOf(' ')
-        let alertMessage: IAlertMessage = {
-            action: InstanceMessageActionEnum.NONE,
-            flow: InstanceMessageFlowEnum.UNSOLICITED,
-            instance: instanceId,
-            type: InstanceMessageTypeEnum.DATA,
-            namespace: podNamespace,
-            pod: podName,
-            container: containerName,
-            channel: InstanceMessageChannelEnum.ALERT,
-            text: line.substring(i + 1),
-            timestamp: new Date(line.substring(0, i)),
-            severity: alertSeverity,
-            msgtype: 'alertmessage'
-        }
-        webSocket.send(JSON.stringify(alertMessage))   
-    }
-
-    processAlertSeverity = (webSocket:WebSocket, asset:IAsset, alertSeverity:AlertSeverityEnum, regexes:RegExp[], line:string, instaceId:string): void => {
-        for (var regex of regexes) {
-            var i = line.indexOf(' ')
-            if (regex.test(line.substring(i))) {
-                this.sendAlert(webSocket, asset.podNamespace, asset.podName, asset.containerName, alertSeverity, line, instaceId)
-            }
-        }
-    }
-
-    sendAlertLines = (webSocket:WebSocket, instanceId:string, asset:IAsset, text:string): boolean => {
-        var socket = this.webSocketAlert.find(s => s.ws === webSocket)
-        if (!socket) {
-            return false
-        }
-
-        let instances = socket.instances
-        if (!instances) {
-            console.log('No instances found for sendAlertData')
-            return false
-        }
-        var instance = instances.find (i => i.instanceId === instanceId)
-        if (!instance) {
-            console.log(`No instance found for sendAlertData instance ${instanceId}`)
-            return false
-        }
-
-        if (instance.paused) return true
-
-        const logLines = text.split('\n')
-        for (var line of logLines) {
-            if (line.trim() !== '') {
-                this.processAlertSeverity(webSocket, asset, AlertSeverityEnum.INFO, instance.regExps.get(AlertSeverityEnum.INFO)!, line, instanceId)
-                this.processAlertSeverity(webSocket, asset, AlertSeverityEnum.WARNING, instance.regExps.get(AlertSeverityEnum.WARNING)!, line, instanceId)
-                this.processAlertSeverity(webSocket, asset, AlertSeverityEnum.ERROR, instance.regExps.get(AlertSeverityEnum.ERROR)!, line, instanceId)
-            }
-        }
-        return true
-    }
-
-    sendBlock (webSocket: WebSocket, instanceId: string, asset: IAsset, text:string)  {
-        if (asset.buffer!=='') {
-            // if we have some text from a previous incompleted chunk, we prepend it now
-            text = asset.buffer + text
-            asset.buffer = ''
-        }
-        if (!text.endsWith('\n')) {
-            // it's an incomplete chunk, we cut on the last complete line and store the rest of data for prepending it to next chunk
-            var i=text.lastIndexOf('\n')
-            var next=text.substring(i)
-            asset.buffer = next
-            text = text.substring(0,i)
-        }
-        if (! this.sendAlertLines(webSocket, instanceId, asset, text)) {
-            // we do nothing, cause if there is an error maybe client reconnects later
-        }
+        return false
     }
 
     async startDockerStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string, regExps: Map<AlertSeverityEnum, RegExp[]>): Promise<void> {
@@ -169,10 +78,10 @@ class AlertChannel implements IChannel {
                 return
             }
                              
-            let socket = this.webSocketAlert.find(s => s.ws === webSocket)
+            let socket = this.webSockets.find(s => s.ws === webSocket)
             if (!socket) {
-                let len = this.webSocketAlert.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-                socket = this.webSocketAlert[len-1]
+                let len = this.webSockets.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+                socket = this.webSockets[len-1]
             }
 
             let instances = socket.instances
@@ -217,10 +126,10 @@ class AlertChannel implements IChannel {
 
     async startKubernetesStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string, regExps:Map<AlertSeverityEnum, RegExp[]>): Promise<void> {
         try {
-            let socket = this.webSocketAlert.find(s => s.ws === webSocket)
+            let socket = this.webSockets.find(s => s.ws === webSocket)
             if (!socket) {
-                let len = this.webSocketAlert.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-                socket = this.webSocketAlert[len-1]
+                let len = this.webSockets.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+                socket = this.webSockets[len-1]
             }
 
             let instances = socket.instances
@@ -265,7 +174,7 @@ class AlertChannel implements IChannel {
         }
     }
 
-    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async addObject (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         let regexes: Map<AlertSeverityEnum, RegExp[]> = new Map()
 
         let regExps: RegExp[] = []
@@ -294,8 +203,12 @@ class AlertChannel implements IChannel {
         }
     }
 
+    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+        
+    }
+    
     pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
-        var socket = this.webSocketAlert.find(s => s.ws === webSocket)
+        var socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) {
             console.log('No socket found for pci')
             return
@@ -323,7 +236,7 @@ class AlertChannel implements IChannel {
     }
 
     stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
-        let socket = this.webSocketAlert.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) return
 
         if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
@@ -336,7 +249,7 @@ class AlertChannel implements IChannel {
     }
 
     removeInstance(webSocket: WebSocket, instanceId: string): void {
-        let socket = this.webSocketAlert.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             var instances = socket.instances
             if (instances) {
@@ -364,22 +277,22 @@ class AlertChannel implements IChannel {
         }
     }
 
-    async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+    async processCommand (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> {
         return false
     }
 
     containsConnection (webSocket:WebSocket) : boolean {
-        return Boolean (this.webSocketAlert.find(s => s.ws === webSocket))
+        return Boolean (this.webSockets.find(s => s.ws === webSocket))
     }
 
     removeConnection(webSocket: WebSocket): void {
-        let socket = this.webSocketAlert.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             for (let instance of socket.instances) {
                 this.removeInstance (webSocket, instance.instanceId)
             }
-            let pos = this.webSocketAlert.findIndex(s => s.ws === webSocket)
-            this.webSocketAlert.splice(pos,1)
+            let pos = this.webSockets.findIndex(s => s.ws === webSocket)
+            this.webSockets.splice(pos,1)
         }
         else {
             console.log('WebSocket not found on alerts for remove')
@@ -387,7 +300,7 @@ class AlertChannel implements IChannel {
     }
 
     refreshConnection(webSocket: WebSocket): boolean {
-        let socket = this.webSocketAlert.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             socket.lastRefresh = Date.now()
             return true
@@ -399,7 +312,7 @@ class AlertChannel implements IChannel {
     }
 
     updateConnection(newWebSocket: WebSocket, instanceId: string): boolean {
-        for (let entry of this.webSocketAlert) {
+        for (let entry of this.webSockets) {
             var exists = entry.instances.find(i => i.instanceId === instanceId)
             if (exists) {
                 entry.ws = newWebSocket
@@ -448,6 +361,112 @@ class AlertChannel implements IChannel {
             }
         }
         return false
+    }
+
+    // *************************************************************************************
+    // PRIVATE
+    // *************************************************************************************
+    
+    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
+        var resp:InstanceConfigResponse = {
+            action,
+            flow,
+            channel,
+            instance: instanceConfig.instance,
+            type: InstanceMessageTypeEnum.SIGNAL,
+            text
+        }
+        ws.send(JSON.stringify(resp))
+    }
+
+    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
+        var signalMessage:ISignalMessage = {
+            action: InstanceMessageActionEnum.NONE,
+            flow: InstanceMessageFlowEnum.RESPONSE,
+            level,
+            channel: instanceConfig.channel,
+            instance: instanceConfig.instance,
+            type: InstanceMessageTypeEnum.SIGNAL,
+            text
+        }
+        webSocket.send(JSON.stringify(signalMessage))
+    }
+
+    sendAlert = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string, alertSeverity:AlertSeverityEnum, line:string, instanceId: string): void => {
+        // line includes timestamp at front (beacuse of log stream configuration when starting logstream)
+        let i = line.indexOf(' ')
+        let alertMessage: IAlertMessage = {
+            action: InstanceMessageActionEnum.NONE,
+            flow: InstanceMessageFlowEnum.UNSOLICITED,
+            instance: instanceId,
+            type: InstanceMessageTypeEnum.DATA,
+            namespace: podNamespace,
+            pod: podName,
+            container: containerName,
+            channel: InstanceMessageChannelEnum.ALERT,
+            text: line.substring(i + 1),
+            timestamp: new Date(line.substring(0, i)),
+            severity: alertSeverity,
+            msgtype: 'alertmessage'
+        }
+        webSocket.send(JSON.stringify(alertMessage))   
+    }
+
+    processAlertSeverity = (webSocket:WebSocket, asset:IAsset, alertSeverity:AlertSeverityEnum, regexes:RegExp[], line:string, instaceId:string): void => {
+        for (var regex of regexes) {
+            var i = line.indexOf(' ')
+            if (regex.test(line.substring(i))) {
+                this.sendAlert(webSocket, asset.podNamespace, asset.podName, asset.containerName, alertSeverity, line, instaceId)
+            }
+        }
+    }
+
+    sendAlertLines = (webSocket:WebSocket, instanceId:string, asset:IAsset, text:string): boolean => {
+        var socket = this.webSockets.find(s => s.ws === webSocket)
+        if (!socket) {
+            return false
+        }
+
+        let instances = socket.instances
+        if (!instances) {
+            console.log('No instances found for sendAlertData')
+            return false
+        }
+        var instance = instances.find (i => i.instanceId === instanceId)
+        if (!instance) {
+            console.log(`No instance found for sendAlertData instance ${instanceId}`)
+            return false
+        }
+
+        if (instance.paused) return true
+
+        const logLines = text.split('\n')
+        for (var line of logLines) {
+            if (line.trim() !== '') {
+                this.processAlertSeverity(webSocket, asset, AlertSeverityEnum.INFO, instance.regExps.get(AlertSeverityEnum.INFO)!, line, instanceId)
+                this.processAlertSeverity(webSocket, asset, AlertSeverityEnum.WARNING, instance.regExps.get(AlertSeverityEnum.WARNING)!, line, instanceId)
+                this.processAlertSeverity(webSocket, asset, AlertSeverityEnum.ERROR, instance.regExps.get(AlertSeverityEnum.ERROR)!, line, instanceId)
+            }
+        }
+        return true
+    }
+
+    sendBlock (webSocket: WebSocket, instanceId: string, asset: IAsset, text:string)  {
+        if (asset.buffer!=='') {
+            // if we have some text from a previous incompleted chunk, we prepend it now
+            text = asset.buffer + text
+            asset.buffer = ''
+        }
+        if (!text.endsWith('\n')) {
+            // it's an incomplete chunk, we cut on the last complete line and store the rest of data for prepending it to next chunk
+            var i=text.lastIndexOf('\n')
+            var next=text.substring(i)
+            asset.buffer = next
+            text = text.substring(0,i)
+        }
+        if (! this.sendAlertLines(webSocket, instanceId, asset, text)) {
+            // we do nothing, cause if there is an error maybe client reconnects later
+        }
     }
 
 }

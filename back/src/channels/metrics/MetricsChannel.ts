@@ -1,7 +1,8 @@
-import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources, accessKeyDeserialize, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common'
+import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, IInstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources, accessKeyDeserialize, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { AssetData } from '../../tools/Metrics'
 import { IChannel } from '../IChannel'
+import { Request, Response } from 'express'
 
 interface IInstance {
     instanceId: string
@@ -17,7 +18,7 @@ class MetricsChannel implements IChannel {
     clusterInfo: ClusterInfo
 
     // list of intervals (and its associated metrics) that produce metrics streams    
-    websocketMetrics: {
+    webSockets: {
         ws:WebSocket,
         lastRefresh: number,
         instances: IInstance[]
@@ -34,8 +35,9 @@ class MetricsChannel implements IChannel {
             pauseable: true,
             modifyable: true,
             reconnectable: true,
+            metrics: true,
             sources: [ ClusterTypeEnum.KUBERNETES ],
-            metrics: true
+            endpoints: []
         }
     }
 
@@ -43,12 +45,24 @@ class MetricsChannel implements IChannel {
         return ['','snapshot','stream','cluster'].indexOf(scope)
     }
 
-    async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
+    async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
+    }
+
+    async processCommand (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> {
+        return false
+    }
+
+    containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
+        let socket = this.webSockets.find(s => s.ws === webSocket)
+        if (socket) {
+            let instances = socket.instances
+            if (instances) return instances.some(i => i.assets.some(a => a.podNamespace===podNamespace && a.podName===podName && a.containerName===containerName))
+        }
         return false
     }
 
     containsInstance(instanceId: string): boolean {
-        for (var socket of this.websocketMetrics) {
+        for (var socket of this.webSockets) {
             var exists = socket.instances.find(i => i.instanceId === instanceId)
             if (exists) return true
         }
@@ -62,7 +76,7 @@ class MetricsChannel implements IChannel {
         return canPerform
     }
 
-    async startInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async addObject (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             const podResponse = await this.clusterInfo.coreApi.readNamespacedPod(podName, podNamespace)
             const owner = podResponse.body.metadata?.ownerReferences?.find(or => or.controller)
@@ -86,7 +100,7 @@ class MetricsChannel implements IChannel {
                         if (podNode) {
                             console.log(`Send snapshot metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
 
-                            let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
+                            let socket = this.webSockets.find(entry => entry.ws === webSocket)
                             if (!socket) {
                                 console.log('No socket found for startInstance snapshot')
                                 return
@@ -110,7 +124,7 @@ class MetricsChannel implements IChannel {
 
                         if (podNode) {
                             console.log(`Start pod metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
-                            let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
+                            let socket = this.webSockets.find(entry => entry.ws === webSocket)
                             let metricsConfig = instanceConfig.data as MetricsConfig
                             let interval = (metricsConfig.interval || 60) * 1000
                             if (socket) {
@@ -144,9 +158,9 @@ class MetricsChannel implements IChannel {
                                 }
                             }
                             else {
-                                this.websocketMetrics.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+                                this.webSockets.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
                                 let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance, false), interval)
-                                let instances = this.websocketMetrics.find(entry => entry.ws === webSocket)?.instances
+                                let instances = this.webSockets.find(entry => entry.ws === webSocket)?.instances
                                 instances?.push({
                                     instanceId:instanceConfig.instance, 
                                     working:false, 
@@ -175,6 +189,10 @@ class MetricsChannel implements IChannel {
         }
     }
 
+    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+        
+    }
+    
     stopInstance (webSocket: WebSocket, instanceConfig: InstanceConfig): void {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
@@ -219,7 +237,7 @@ class MetricsChannel implements IChannel {
     }
 
     removeInstance(webSocket: WebSocket, instanceId: string): void {
-        let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
+        let socket = this.webSockets.find(entry => entry.ws === webSocket)
         if (socket) {
             let instances = socket.instances
             if (instances) {
@@ -242,11 +260,11 @@ class MetricsChannel implements IChannel {
     }
 
     containsConnection (webSocket:WebSocket) : boolean {
-        return Boolean (this.websocketMetrics.find(s => s.ws === webSocket))
+        return Boolean (this.webSockets.find(s => s.ws === webSocket))
     }
 
     refreshConnection(webSocket: WebSocket): boolean {
-        let socket = this.websocketMetrics.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             socket.lastRefresh = Date.now()
             return true
@@ -258,7 +276,7 @@ class MetricsChannel implements IChannel {
     }
 
     updateConnection(newWebSocket: WebSocket, instanceId: string): boolean {
-        for (let entry of this.websocketMetrics) {
+        for (let entry of this.webSockets) {
             var exists = entry.instances.find(i => i.instanceId === instanceId)
             if (exists) {
                 entry.ws = newWebSocket
@@ -273,7 +291,7 @@ class MetricsChannel implements IChannel {
     }
 
     removeConnection(webSocket: WebSocket): void {
-        let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
+        let socket = this.webSockets.find(entry => entry.ws === webSocket)
         if (socket) {
             let instances = socket.instances
             if (instances) {
@@ -282,15 +300,15 @@ class MetricsChannel implements IChannel {
                     this.removeInstance(webSocket, instances[i].instanceId)
                 }
             }
-            var pos = this.websocketMetrics.findIndex(s => s.ws === webSocket)
-            this.websocketMetrics.splice(pos,1)
+            var pos = this.webSockets.findIndex(s => s.ws === webSocket)
+            this.webSockets.splice(pos,1)
         }
     }
 
     // PRIVATE
 
     getInstance(webSocket:WebSocket, instanceId: string) : IInstance | undefined{
-        let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
+        let socket = this.webSockets.find(entry => entry.ws === webSocket)
         if (socket) {
             let instances = socket.instances
             if (instances) {
@@ -308,7 +326,10 @@ class MetricsChannel implements IChannel {
         return undefined
     }
 
+    // *************************************************************************************
     // PRIVATE
+    // *************************************************************************************
+
     getAssetMetrics = (instanceConfig:InstanceConfig, assets:AssetData[], usePrevMetricSet:boolean): AssetMetrics => {
         var assetMetrics:AssetMetrics = { assetName: this.getAssetMetricName(instanceConfig, assets), values: [] }
 
@@ -457,7 +478,7 @@ class MetricsChannel implements IChannel {
     }
 
     sendMetricsDataInstance = (webSocket:WebSocket, instanceId:string, initial:boolean): void => {
-        let socket = this.websocketMetrics.find(entry => entry.ws === webSocket)
+        let socket = this.webSockets.find(entry => entry.ws === webSocket)
         if (!socket) {
             console.log('No socket found for sendLogData')
             return
@@ -587,7 +608,7 @@ class MetricsChannel implements IChannel {
     }
 
     sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
-        var signalMessage:SignalMessage = {
+        var signalMessage:ISignalMessage = {
             action: InstanceMessageActionEnum.NONE,
             flow: InstanceMessageFlowEnum.RESPONSE,
             type: InstanceMessageTypeEnum.SIGNAL,

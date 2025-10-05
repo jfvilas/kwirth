@@ -1,4 +1,4 @@
-import { KwirthData, versionGreatThan } from "@jfvilas/kwirth-common"
+import { KwirthData, versionGreaterThan } from "@jfvilas/kwirth-common"
 
 export const getLastKwirthVersion = async (kwirthData:KwirthData) : Promise<string|undefined> => {
     kwirthData.lastVersion=kwirthData.version
@@ -10,7 +10,7 @@ export const getLastKwirthVersion = async (kwirthData:KwirthData) : Promise<stri
             for (var result of results) {
                 var regex = /^\d+\.\d+\.\d+$/
                 if (regex.test(result.name)) {
-                    if (versionGreatThan(result.name, kwirthData.version)) {
+                    if (versionGreaterThan(result.name, kwirthData.version)) {
                         console.log(`New Kwirth version available: ${result.name}`)
                         return result.name
                     }

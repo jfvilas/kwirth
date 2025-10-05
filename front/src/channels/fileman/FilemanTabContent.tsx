@@ -14,32 +14,48 @@ interface IContentProps {
 
 const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const filemanBoxRef = useRef<HTMLDivElement | null>(null)
-    const [currentPath, setCurrentPath] = useState("/")
     const [logBoxTop, setLogBoxTop] = useState(0)
     const [refresh, setRefresh] = useState(0)
+
     let filemanObject:IFilemanObject = props.channelObject.uiData
     let permissions={
-        create: false,
+        create: true,
         delete: true,
-        download: false,
+        download: true,
         copy: true,
         move: true,
         rename: true,
-        upload: false
+        upload: true
     }    
+    let level = filemanObject.currentPath.split('/').length - 1
+    if (level<3) {
+        permissions = {
+            create: false,
+            delete: false,
+            download: false,
+            copy: false,
+            move: false,
+            rename: false,
+            upload: false
+        }
+    }
 
     useEffect(() => {
         if (filemanBoxRef.current) setLogBoxTop(filemanBoxRef.current.getBoundingClientRect().top)
     })
 
-    interface fileUploadConfig  { 
+    interface IFileUploadConfig  { 
         url: string
         method?: "POST" | "PUT"
-        headers?: { [key: string]: string } 
+        headers?: { [key: string]: string }
     }
 
-    let fuc:fileUploadConfig = {
-        url:''
+    let fileUploadConfig:IFileUploadConfig = {
+        url: `${props.channelObject.clusterUrl}/channel/fileman/upload?key=${props.channelObject.instanceId}`,
+        method:'POST',
+        headers: {
+            'Authorization': 'Bearer '+ props.channelObject.accessString
+        }
     }
 
     const onDelete = async (files: Array<IFileData>) => {
@@ -52,21 +68,61 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const onCreateFolder = (name: string, parentFolder: File) => {
-        
+    const onCreateFolder = async (name: string, parentFolder: IFileData) => {
+        setRefresh(Math.random())
+        console.log('cre', parentFolder.path + '/' + name)
+        let [namespace,pod,container] = parentFolder.path.split('/').slice(1)
+        sendCommand(FilemanCommandEnum.CREATE, namespace, pod, container, [parentFolder.path + '/' + name])
     }
 
-    const onDownload = (files: Array<IFileData>) => {
-        
+    const onDownload = async (files: Array<IFileData>) => {
+        for (let file of files) {
+            console.log(file)
+            // Crear la URL para la descarga
+            const url = `${props.channelObject.clusterUrl}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
+            
+            try {
+                // Hacer una petición fetch para obtener el archivo
+                const response = await fetch(url);
+
+                if (response.ok) {
+                    // Convertir la respuesta en un Blob
+                    const blob = await response.blob();
+
+                    // Crear un enlace para descargar el archivo
+                    const link = document.createElement('a')
+                    link.href = URL.createObjectURL(blob)
+                    link.download = file.path.split('/').slice(-1)[0]
+                    if (file.isDirectory) link.download += '.tar.gz'
+                    document.body.appendChild(link)
+                    link.click()
+                    document.body.removeChild(link)
+                    URL.revokeObjectURL(link.href)
+                } else {
+                    console.error(`Error al descargar el archivo: ${file.path}`)
+                }
+            } catch (error) {
+                console.error(`Error en la descarga del archivo: ${file.path}`, error)
+            }
+        }
     }
+    // const onDownloadSimple = (files: Array<IFileData>) => {
+    //     for (let file of files) {
+    //         let url = `${props.channelObject.clusterUrl}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
+    //         const link = document.createElement('a')
+    //         link.href = url
+    //         document.body.appendChild(link)
+    //         link.click()
+    //         document.body.removeChild(link)
+    //     }
+    // }
 
     const onPaste = (files: Array<IFileData>, destFolder:IFileData, operation:string) => {
-        console.log('paste', files)    
         let command = operation==='move'? FilemanCommandEnum.MOVE : FilemanCommandEnum.COPY
         for (let file of files) {
             let [namespace,pod,container] = file.path.split('/').slice(1)
-            console.log(command, namespace, pod, container, [file.path, destFolder.path+'/'])
-            sendCommand(command, namespace, pod, container, [file.path, destFolder.path+'/'])
+            console.log(command, namespace, pod, container, [file.path, destFolder.path])
+            sendCommand(command, namespace, pod, container, [file.path, destFolder.path])
         }        
     }
 
@@ -81,10 +137,9 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onRefresh = () => {
-        let level = currentPath.split('/').length - 1
-        if (level > 2) {
-            filemanObject.files = filemanObject.files.filter ( f => !f.path.startsWith(currentPath+'/'))
-            getLocalDir(currentPath+'/')
+        if (level >= 3) {
+            filemanObject.files = filemanObject.files.filter ( f => !f.path.startsWith(filemanObject.currentPath+'/'))
+            getLocalDir(filemanObject.currentPath+'/')
         }
         else {
             sendCommand(FilemanCommandEnum.HOME, '', '', '', [])
@@ -93,8 +148,8 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const sendCommand = (command: FilemanCommandEnum, namespace:string, pod:string, container:string,  params:string[]) => {
-        if (!props.channelObject.webSocket)  return
-
+        if (!props.channelObject.webSocket) return
+        
         let filemanMessage:IFilemanMessage = {
             flow: InstanceMessageFlowEnum.REQUEST,
             action: InstanceMessageActionEnum.COMMAND,
@@ -138,26 +193,37 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onFolderChange = (folder:string) => {
-        setCurrentPath(folder)
+        filemanObject.currentPath = folder
         folder +='/'
         let level = folder.split('/').length - 1
         if (level > 2) getLocalDir(folder)
     }
 
+    const onFileUploading = (file: File, parentFolder: File) => { 
+        return { filename: filemanObject.currentPath + '/' + file.name }
+    }
+
     return <>
         { filemanObject.started &&
-            <Box ref={filemanBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 25px)`}}>
+            <Box ref={filemanBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 10px)`, paddingLeft: '5px', paddingRight:'5px'}}>
                 <FileManager files={filemanObject.files}
-                    initialPath='/'
+                    initialPath={filemanObject.currentPath}
+                    enableFilePreview={false}
+                    onCreateFolder={onCreateFolder}
                     onError={onError}
                     onRename={onRename}
                     onPaste={onPaste}
                     onDelete={onDelete}
                     onFolderChange={onFolderChange}
                     onRefresh={onRefresh}
+                    onFileUploading={onFileUploading}
+                    onDownload={onDownload}
                     permissions={permissions}
-                    fileUploadConfig={fuc}
+                    fileUploadConfig={fileUploadConfig}
+                    filePreviewPath='http://avoid-console-error'
                     primaryColor='#1976d2'
+                    fontFamily='Roboto, Helvetica, Arial, sans-serif'
+                    height='100%'
                 />
             </Box>
         }

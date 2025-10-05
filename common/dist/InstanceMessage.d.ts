@@ -29,7 +29,7 @@ export declare enum InstanceMessageFlowEnum {
     RESPONSE = "response",
     UNSOLICITED = "unsolicited"
 }
-export interface InstanceMessage {
+export interface IInstanceMessage {
     action: InstanceMessageActionEnum;
     flow: InstanceMessageFlowEnum;
     type: InstanceMessageTypeEnum;

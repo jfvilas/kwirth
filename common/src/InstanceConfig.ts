@@ -1,4 +1,4 @@
-import { InstanceMessage } from "./InstanceMessage"
+import { IInstanceMessage } from "./InstanceMessage"
 
 export enum InstanceConfigObjectEnum {
     PODS = 'pods',
@@ -42,7 +42,7 @@ export enum InstanceConfigScopeEnum {
     KUBERNETES = "kubernetes"
 }
 
-export interface InstanceConfig extends InstanceMessage{
+export interface InstanceConfig extends IInstanceMessage{
     objects: InstanceConfigObjectEnum
     accessKey: string
     scope: string
@@ -54,6 +54,6 @@ export interface InstanceConfig extends InstanceMessage{
     data?: any
 }
 
-export interface InstanceConfigResponse extends InstanceMessage {
+export interface InstanceConfigResponse extends IInstanceMessage {
     text: string
 }

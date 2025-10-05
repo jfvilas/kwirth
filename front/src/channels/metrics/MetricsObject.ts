@@ -1,4 +1,4 @@
-import { InstanceMessage } from "@jfvilas/kwirth-common"
+import { IInstanceMessage } from "@jfvilas/kwirth-common"
 
 export enum MetricsEventSeverityEnum {
     INFO = 'info',
@@ -14,7 +14,7 @@ export interface IAssetMetrics {
     }[]
 }
 
-export interface IMetricsMessage extends InstanceMessage {
+export interface IMetricsMessage extends IInstanceMessage {
     assets: IAssetMetrics[]
     timestamp: number
 }

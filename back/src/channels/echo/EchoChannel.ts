@@ -1,6 +1,7 @@
-import { InstanceConfig, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, IEchoConfig, IEchoMessageResponse } from '@jfvilas/kwirth-common'
+import { InstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, IEchoConfig, IEchoMessageResponse } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
+import { Request, Response } from 'express'
 
 export interface IAsset {
     podNamespace: string
@@ -19,7 +20,7 @@ export interface IInstance {
 
 class EchoChannel implements IChannel {
     clusterInfo : ClusterInfo
-    webSocketEcho: {
+    webSockets: {
         ws:WebSocket,
         lastRefresh: number,
         instances: IInstance[] 
@@ -37,24 +38,37 @@ class EchoChannel implements IChannel {
             modifyable: false,
             reconnectable: true,
             metrics: false,
-            sources: [ ClusterTypeEnum.KUBERNETES, ClusterTypeEnum.DOCKER ]
+            sources: [ ClusterTypeEnum.KUBERNETES, ClusterTypeEnum.DOCKER ],
+            endpoints: []
         }
     }
 
     getChannelScopeLevel = (scope: string): number => {
-        return ['', 'echo', 'cluster'].indexOf(scope)
+        return ['', 'none', 'cluster'].indexOf(scope)
+    }
+
+    async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
+    }
+
+    containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
+        let socket = this.webSockets.find(s => s.ws === webSocket)
+        if (socket) {
+            let instances = socket.instances
+            if (instances) return instances.some(i => i.assets.some(a => a.podNamespace===podNamespace && a.podName===podName && a.containerName===containerName))
+        }
+        return false
     }
 
     containsInstance = (instanceId: string): boolean => {
-        return this.webSocketEcho.some(socket => socket.instances.find(i => i.instanceId === instanceId))
+        return this.webSockets.some(socket => socket.instances.find(i => i.instanceId === instanceId))
     }
 
-    processCommand = async (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> => {
+    processCommand = async (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> => {
         if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
             return false
         }
         else {
-            let socket = this.webSocketEcho.find(s => s.ws === webSocket)
+            let socket = this.webSockets.find(s => s.ws === webSocket)
             if (!socket) {
                 console.log('Socket not found')
                 return false
@@ -71,13 +85,13 @@ class EchoChannel implements IChannel {
         }
     }
 
-    startInstance = async (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
+    addObject = async (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
 
-        let socket = this.webSocketEcho.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) {
-            let len = this.webSocketEcho.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-            socket = this.webSocketEcho[len-1]
+            let len = this.webSockets.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+            socket = this.webSockets[len-1]
         }
 
         let instances = socket.instances
@@ -101,6 +115,10 @@ class EchoChannel implements IChannel {
         instance.assets.push(asset)
     }
 
+    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+        
+    }
+    
     pauseContinueInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void => {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
@@ -128,7 +146,7 @@ class EchoChannel implements IChannel {
     }
 
     removeInstance = (webSocket: WebSocket, instanceId: string): void => {
-        let socket = this.webSocketEcho.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             let instances = socket.instances
             if (instances) {
@@ -154,17 +172,17 @@ class EchoChannel implements IChannel {
     }
 
     containsConnection = (webSocket:WebSocket): boolean => {
-        return Boolean (this.webSocketEcho.find(s => s.ws === webSocket))
+        return Boolean (this.webSockets.find(s => s.ws === webSocket))
     }
 
     removeConnection = (webSocket: WebSocket): void => {
-        let socket = this.webSocketEcho.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             for (let instance of socket.instances) {
                 this.removeInstance (webSocket, instance.instanceId)
             }
-            let pos = this.webSocketEcho.findIndex(s => s.ws === webSocket)
-            this.webSocketEcho.splice(pos,1)
+            let pos = this.webSockets.findIndex(s => s.ws === webSocket)
+            this.webSockets.splice(pos,1)
         }
         else {
             console.log('WebSocket not found on Echo for remove')
@@ -172,7 +190,7 @@ class EchoChannel implements IChannel {
     }
 
     refreshConnection = (webSocket: WebSocket): boolean => {
-        let socket = this.webSocketEcho.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             socket.lastRefresh = Date.now()
             return true
@@ -184,7 +202,7 @@ class EchoChannel implements IChannel {
     }
 
     updateConnection = (newWebSocket: WebSocket, instanceId: string): boolean => {
-        for (let entry of this.webSocketEcho) {
+        for (let entry of this.webSockets) {
             let exists = entry.instances.find(i => i.instanceId === instanceId)
             if (exists) {
                 entry.ws = newWebSocket
@@ -200,7 +218,9 @@ class EchoChannel implements IChannel {
         return false
     }
 
-    // ************************* private methods *************************
+    // *************************************************************************************
+    // PRIVATE
+    // *************************************************************************************
 
     private sendData = (ws:WebSocket, instance:IInstance, asset:IAsset) => {
         if (instance.paused) return
@@ -217,7 +237,7 @@ class EchoChannel implements IChannel {
     }
 
     private sendSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, level: SignalMessageLevelEnum, instanceId:string, text:string): void => {
-        var resp:SignalMessage = {
+        var resp:ISignalMessage = {
             action,
             flow,
             channel: 'echo',
@@ -230,7 +250,7 @@ class EchoChannel implements IChannel {
     }
 
     getInstance(webSocket:WebSocket, instanceId: string) : IInstance | undefined{
-        let socket = this.webSocketEcho.find(entry => entry.ws === webSocket)
+        let socket = this.webSockets.find(entry => entry.ws === webSocket)
         if (socket) {
             let instances = socket.instances
             if (instances) {
