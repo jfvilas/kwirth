@@ -33,10 +33,8 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
         OPS_EXECUTE = 'ops$execute',
         OPS_SHELL = 'ops$shell',
         OPS_RESTART = 'ops$restart',
-        OPS_CLUSTER = 'ops$cluster',
         TRIVY_WORKLOAD = 'trivy$workload',
-        TRIVY_KUBERNETES = 'trivy$kubernetes',
-        TRIVY_CLUSTER = 'trivy$cluster'
+        TRIVY_KUBERNETES = 'trivy$kubernetes'
     }
 
     useEffect(() => {

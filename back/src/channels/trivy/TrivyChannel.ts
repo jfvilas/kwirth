@@ -50,7 +50,7 @@ class TrivyChannel implements IChannel {
     }
 
     getChannelScopeLevel = (scope: string): number => {
-        return ['', 'trivy$workload', 'trivy$kubernetes', 'trivy$cluster'].indexOf(scope)
+        return ['', 'trivy$workload', 'trivy$kubernetes', 'cluster'].indexOf(scope)
     }
 
     containsInstance = (instanceId: string): boolean => {

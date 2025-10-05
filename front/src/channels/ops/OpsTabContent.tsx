@@ -27,7 +27,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (opsBoxRef.current) setOpsBoxTop(opsBoxRef.current.getBoundingClientRect().top)
     })
 
-    // this effect causes tabcontent to flick and redraw when swithing to a tab
+    // this effect causes tabcontent to flick and redraw when switching to a tab
     // useEffect(() => {
     //     if (!opsObject.shell && commandRef.current) commandRef.current.focus()
     // }, [refresh])

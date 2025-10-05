@@ -13,9 +13,11 @@ export class EchoChannel implements IChannel {
     TabContent: FC<IContentProps> = EchoTabContent
     channelId = 'echo'
     
+    requiresSetup() { return true }
     requiresMetrics() { return false }
     requiresAccessString() { return false }
     requiresWebSocket() { return false }
+    setNotifier(notifier: any): void { }
 
     getScope() { return InstanceConfigScopeEnum.NONE}
     getChannelIcon(): JSX.Element { return EchoIcon }

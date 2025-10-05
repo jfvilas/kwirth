@@ -16,7 +16,6 @@ const OPSHELPMESSAGE:string[] = [
     'RESTART    You can restart a container inside a pod (format: RESTART ns/pod/cont)',
     'RESTARTPOD You can also restart a specific pod (format: RESTARTPOD ns/pod)',
     'RESTARTNS  Or you can even restart a whoooooole namespace (format: RESTARTNS ns) ',
-    'DELETE     You can delete a specific pod (its the same behaviour as RESTARTPOD)',
     ' '
 ]
 

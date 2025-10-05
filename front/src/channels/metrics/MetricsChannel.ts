@@ -12,9 +12,11 @@ export class MetricsChannel implements IChannel {
     TabContent: FC<IContentProps> = MetricsTabContent
     channelId = 'metrics'
     
+    requiresSetup() { return true }
     requiresMetrics() { return true }
     requiresAccessString() { return false }
     requiresWebSocket() { return false }
+    setNotifier(notifier: any): void { }
 
     getScope() { return InstanceConfigScopeEnum.STREAM }
     getChannelIcon(): JSX.Element { return MetricsIcon }

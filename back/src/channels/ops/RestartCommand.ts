@@ -28,6 +28,7 @@ export async function execCommandRestart(clusterInfo: ClusterInfo, instance:IIns
         msgtype: 'opsmessageresponse'
     }
 
+    console.log('opsMessage', opsMessage)
     switch(opsMessage.command) {
         case OpsCommandEnum.RESTARTPOD:
             if (opsMessage.namespace==='' || opsMessage.pod==='' || !opsMessage.namespace || !opsMessage.pod) {
@@ -64,7 +65,7 @@ export async function execCommandRestart(clusterInfo: ClusterInfo, instance:IIns
             break                
             
         default:
-            execResponse.data = `Invalid command '${opsMessage.command}`
+            execResponse.data = `Invalid command '${opsMessage.command}'`
             break
     }
     return execResponse

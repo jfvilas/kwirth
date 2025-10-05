@@ -14,4 +14,17 @@ interface ITabObject {
     headerEl:any
 }
 
-export type { ITabObject }
+interface ITabSummary {
+    name: string
+    channel: string
+    channelObject: {
+        clusterName: string
+        view: string
+        namespace: string
+        group: string
+        pod: string
+        container: string
+    }
+}
+
+export type { ITabObject, ITabSummary }

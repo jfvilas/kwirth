@@ -12,10 +12,7 @@ export enum OpsCommandEnum {
 
     RESTART = 'restart',
     RESTARTPOD = 'restartpod',
-    RESTARTALL = 'restartall',
-    RESTARTNS = 'restartns',
-
-    DELETE = 'delete'
+    RESTARTNS = 'restartns'
 }
 
 export interface IOpsMessage extends InstanceMessage {

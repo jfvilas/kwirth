@@ -12,9 +12,11 @@ export class AlertChannel implements IChannel {
     TabContent: FC<IContentProps> = AlertTabContent
     channelId = 'alert'
 
+    requiresSetup() { return true }
     requiresMetrics() { return false }
     requiresAccessString() { return false }
     requiresWebSocket() { return false }
+    setNotifier(notifier: any): void { }
 
     getScope() { return InstanceConfigScopeEnum.VIEW}
     getChannelIcon(): JSX.Element { return AlertIcon }

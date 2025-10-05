@@ -1,8 +1,9 @@
 import React from 'react';
 import { Divider, MenuItem, MenuList } from "@mui/material"
-import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, Settings } from '@mui/icons-material';
+import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, HomeTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, Settings } from '@mui/icons-material';
 
 enum MenuDrawerOption {
+    Home,
     NewBoard,
     LoadBoard,
     SaveBoard,
@@ -35,6 +36,7 @@ const MenuDrawer: React.FC<IProps> = (props:IProps) => {
 
     const menu=(
         <MenuList sx={{height:'85vh'}}>
+            <MenuItem key='home' onClick={() => optionSelected(MenuDrawerOption.Home)}><HomeTwoTone/>&nbsp;Home</MenuItem>
             <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.NewBoard)}><CreateNewFolderTwoTone/>&nbsp;New board</MenuItem>
             <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.LoadBoard)}><FileOpenTwoTone/>&nbsp;Load board</MenuItem>
             <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.SaveBoard)}><SaveTwoTone/>&nbsp;Save board</MenuItem>

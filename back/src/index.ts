@@ -38,7 +38,7 @@ import { OpsChannel } from './channels/ops/OpsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { IChannel } from './channels/IChannel'
 import { EchoChannel } from './channels/echo/EchoChannel'
-import { group } from 'console'
+import { FilemanChannel } from './channels/fileman/FilemanChannel'
 
 const v8 = require('node:v8')
 const http = require('http')
@@ -68,12 +68,13 @@ var secrets: ISecrets
 var configMaps: IConfigMaps
 const rootPath = process.env.ROOTPATH || ''
 const masterKey = process.env.MASTERKEY || 'Kwirth4Ever'
-const channelLogEnabled = (process.env.CHANNEL_LOG || '').toLowerCase() === 'true'
-const channelMetricsEnabled = (process.env.CHANNEL_METRICS || '').toLowerCase() === 'true'
+const channelLogEnabled = (process.env.CHANNEL_LOG || 'true').toLowerCase() === 'true'
+const channelMetricsEnabled = (process.env.CHANNEL_METRICS || 'true').toLowerCase() === 'true'
 const channelAlertEnabled = (process.env.CHANNEL_ALERT || '').toLowerCase() === 'true'
-const channelOpsEnabled = (process.env.CHANNEL_OPS || '').toLowerCase() === 'true'
-const channelTrivyEnabled = (process.env.CHANNEL_TRIVY || '').toLowerCase() === 'true'
-const channelEchoEnabled = (process.env.CHANNEL_ECHO || '').toLowerCase() === 'true'
+const channelOpsEnabled = (process.env.CHANNEL_OPS || 'true').toLowerCase() === 'true'
+const channelTrivyEnabled = (process.env.CHANNEL_TRIVY || 'true').toLowerCase() === 'true'
+const channelEchoEnabled = (process.env.CHANNEL_ECHO || 'true').toLowerCase() === 'true'
+const channelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLowerCase() === 'true'
 
 // discover where we are running in: docker, kubernetes...
 const getExecutionEnvironment = async ():Promise<string> => {
@@ -381,6 +382,7 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
         }
     }
 
+    console.log(allPods)
     for (let pod of allPods) {
         let podName = pod.metadata?.name!
         let podNamespace = pod.metadata?.namespace!
@@ -451,7 +453,7 @@ const processReconnect = async (webSocket: WebSocket, instanceMessage: InstanceM
 }
 
 const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: InstanceConfig, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validGroups: string[], validPodNames: string[], validContainers: string[]) => {
-    console.log('Trying to instance config for channel', instanceConfig.channel)
+    console.log('Trying to perform instance config for channel', instanceConfig.channel)
     let requestedValidatedPods = await getRequestedValidatedScopedPods(instanceConfig, accessKeyResources, validNamespaces, validGroups, validPodNames, validContainers)
     if (requestedValidatedPods.length === 0) {
         sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: there are no filters that match requested instance config`, instanceConfig)
@@ -913,6 +915,7 @@ const launchKubernetes = async() => {
                     if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
                     if (channelEchoEnabled) channels.set('echo', new EchoChannel(clusterInfo))
+                    if (channelFilemanEnabled) channels.set('fileman', new FilemanChannel(clusterInfo))
 
                     kwirthData.channels =  Array.from(channels.keys()).map(k => {
                         return channels.get(k)?.getChannelData()!

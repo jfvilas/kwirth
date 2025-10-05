@@ -5,7 +5,6 @@ import { IChannel } from '../IChannel';
 import { Readable, Writable } from 'stream';
 import { execCommandGetDescribe } from './GetCommand';
 import { execCommandRestart } from './RestartCommand';
-import { execCommandDelete } from './DeleteCommand';
 import { AuthorizationManagement } from '../../tools/AuthorizationManagement';
 
 export interface IAsset {
@@ -51,7 +50,7 @@ class OpsChannel implements IChannel {
     }
 
     getChannelScopeLevel(scope: string): number {
-        return ['', 'ops$get', 'ops$execute', 'ops$shell', 'ops$restart', 'ops$cluster'].indexOf(scope)
+        return ['', 'ops$get', 'ops$execute', 'ops$shell', 'ops$restart', 'cluster'].indexOf(scope)
     }
 
     containsInstance(instanceId: string): boolean {
@@ -60,7 +59,7 @@ class OpsChannel implements IChannel {
 
     async processCommand (webSocket:WebSocket, instanceMessage:InstanceMessage) : Promise<boolean> {
         if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
-            // immediate commands aretypical  request/repsonse pattern, so we invoke 'executeImmediteCommand' and we send back the response
+            // immediate commands are typical request/repsonse pattern, so we invoke 'executeImmediteCommand' and we send back the response
             let resp = await this.executeImmediateCommand(instanceMessage)
             if (resp) webSocket.send(JSON.stringify(resp))
             return Boolean(resp)
@@ -250,7 +249,7 @@ class OpsChannel implements IChannel {
         ws.send(JSON.stringify(resp))
     }
 
-    private async executeLinuxCommand (webSocket:WebSocket, instance:IInstance, podNamespace:string, podName:string, containerName:string, id:string, command:String) {
+    private async executeLinuxCommand (webSocket:WebSocket, instance:IInstance, podNamespace:string, podName:string, containerName:string, id:string, command:string) {
         let stdout = new Writable({})
         let stderr = new Writable({})
         let stdin = new Readable({ read() {} })
@@ -285,39 +284,12 @@ class OpsChannel implements IChannel {
         stdin?.push(command+'\n')
     }
 
-    // checkResource = (resource:ResourceIdentifier, asset:IAsset) => {
-    //    if (resource.namespaces !== '') {
-    //         let x = AuthorizationManagement.getValidValues([asset.podNamespace], resource.namespaces.split(','))
-    //         if (x.length===0) return false
-    //     }
-    //     if (resource.groups !== '') {
-    //         //+ + +
-    //     }
-    //     if (resource.pods !== '') {
-    //         let x = AuthorizationManagement.getValidValues([asset.podName], resource.pods.split(','))
-    //         if (x.length===0) return false
-    //     }
-    //     if (resource.containers !== '') {
-    //         let x = AuthorizationManagement.getValidValues([asset.containerName], resource.containers.split(','))
-    //         if (x.length===0) return false
-    //     }
-    //     return true
-    // }
-
     private checkAssetScope = (instance:IInstance, asset: IAsset, scope: string) => {
         let resources = parseResources (instance.accessKey.resources)
         let requiredLevel = this.getChannelScopeLevel(scope)
-        //let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel) && this.checkResource(r, asset))
         let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel) && AuthorizationManagement.checkResource(r, asset.podNamespace, asset.podName, asset.containerName))
         return canPerform
     }
-
-    // private checkScopesx = (instance:IInstance, scope: string) => {
-    //     let resources = parseResources (instance.accessKey.resources)
-    //     let requiredLevel = this.getChannelScopeLevel(scope)
-    //     let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))
-    //     return canPerform
-    // }
 
     private async executeImmediateCommand (instanceMessage:InstanceMessage) : Promise<IRouteMessageResponse> {
         console.log('Immediate request received')
@@ -367,16 +339,8 @@ class OpsChannel implements IChannel {
                 break
             case OpsCommandEnum.RESTARTPOD:
             case OpsCommandEnum.RESTARTNS:
-                //if (this.checkScopes(instance, 'ops$restart'))
                 if (this.checkAssetScope(instance, instance.assets[0], 'ops$restart'))
                     resp = await execCommandRestart(this.clusterInfo, instance, opsMessage)
-                else
-                    resp.data = `Insufficient scope for RESTART`
-                break
-            case OpsCommandEnum.DELETE:
-                //if (this.checkScopes(instance, 'ops$restart'))
-                if (this.checkAssetScope(instance, instance.assets[0], 'ops$restart'))
-                    resp = await execCommandDelete(this.clusterInfo, instance, opsMessage)
                 else
                     resp.data = `Insufficient scope for RESTART`
                 break
@@ -440,11 +404,10 @@ class OpsChannel implements IChannel {
             case OpsCommandEnum.GET:
             case OpsCommandEnum.DESCRIBE: {
                 let asset = instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod && a.containerName === opsMessage.container)
-                    if (!asset) {
-                        execResponse.data = 'Asset not found or not autorized'
-                        return execResponse
-                    }
-                //if (!this.checkScopes(instance, 'ops$get')) {
+                if (!asset) {
+                    execResponse.data = 'Asset not found or not autorized'
+                    return execResponse
+                }
                 if (!this.checkAssetScope(instance, asset, 'ops$get')) {
                     execResponse.data = `Insuffcient scope for GET/DESCRIBE`
                     return execResponse
@@ -462,11 +425,12 @@ class OpsChannel implements IChannel {
                         execResponse.data = 'Asset not found or not autorized'
                         return execResponse
                     }
-                    //if (!this.checkScopes(instance, 'ops$execute')) {
+
                     if (!this.checkAssetScope(instance, asset, 'ops$execute')) {
                         execResponse.data = `Insuffcient scope for EXECUTE`
                         return execResponse
                     }
+
                     this.executeLinuxCommand(webSocket, instance, asset.podNamespace, asset.podName, asset.containerName, opsMessage.id, opsMessage.params!.join(' '))
                     execResponse.type = InstanceMessageTypeEnum.DATA
                     break
@@ -483,12 +447,10 @@ class OpsChannel implements IChannel {
                         return execResponse
                     }
 
-                    //if (!this.checkScopes(instance, 'ops$shell')) {
                     if (!this.checkAssetScope(instance, asset, 'ops$shell')) {
                         execResponse.data = 'Insufficent scope to SHELL'
                         return execResponse
                     }
-
 
                     asset.shellId = opsMessage.id
                     asset.stdout = new Writable({})
@@ -536,7 +498,6 @@ class OpsChannel implements IChannel {
                         return execResponse
                     }
 
-                    //if (!this.checkScopes(instance, 'ops$restart')) {
                     if (!this.checkAssetScope(instance, asset, 'ops$restart')) {
                         execResponse.data = 'Insufficient scope to RESTART CONTAINER'
                         return execResponse
@@ -553,24 +514,6 @@ class OpsChannel implements IChannel {
                     execResponse.type = InstanceMessageTypeEnum.DATA
                 }
                 break
-            case OpsCommandEnum.RESTARTALL:
-                for (let asset of instance.assets) {
-                    if (!this.checkAssetScope(instance, asset, 'ops$restart')) {
-                        execResponse.data = `You have no RESTART scope on all namespace objects [${asset.podNamespace}/${asset.podName}/${asset.containerName}]`
-                        return execResponse
-                    }
-                }
-
-                for (let asset of instance.assets) {
-                    try {
-                        await this.executeLinuxCommand(webSocket, instance, asset.podNamespace, asset.podName, asset.containerName, opsMessage.id, '/usr/sbin/killall5')
-                    }
-                    catch (err) {
-                        this.sendDataMessage(webSocket, instance.instanceId, `Error executing command on ${asset.podNamespace}/${asset.podName}: ${err}`)
-                    }            
-                }
-                execResponse.type = InstanceMessageTypeEnum.DATA
-                break
 
             case OpsCommandEnum.RESTARTNS:
                 for (let asset of instance.assets) {
@@ -583,25 +526,23 @@ class OpsChannel implements IChannel {
                 execResponse = await execCommandRestart(this.clusterInfo, instance, opsMessage)
                 break
 
-            case OpsCommandEnum.DELETE:
             case OpsCommandEnum.RESTARTPOD: {
                     if (opsMessage.namespace==='' || opsMessage.pod==='' || !opsMessage.namespace || !opsMessage.pod) {
                         execResponse.data = `Namespace, pod and container must be specified (format 'ns/pod')`
                         return execResponse
                     }
 
-                    let asset = instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod && a.containerName === opsMessage.container)
+                    let asset = instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod)
                     if (!asset) {
                         execResponse.data = 'Asset not found or not autorized'
                         return execResponse
                     }
 
-                    //if (!this.checkScopes(instance, 'ops$restart')) {
                     if (!this.checkAssetScope(instance, asset, 'ops$restart')) {
                         execResponse.data = 'Insufficient scope to RESTARTPOD'
                         return execResponse
                     }
-                    execResponse = await execCommandDelete(this.clusterInfo, instance, opsMessage)
+                    execResponse = await execCommandRestart(this.clusterInfo, instance, opsMessage)
                 }
                 break
 

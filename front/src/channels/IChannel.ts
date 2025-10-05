@@ -40,9 +40,11 @@ interface IChannel {
     TabContent: React.FC<IContentProps>
     readonly channelId: string
 
-    requiresMetrics():boolean
-    requiresAccessString():boolean
-    requiresWebSocket():boolean
+    requiresSetup(): boolean
+    requiresMetrics(): boolean
+    requiresAccessString(): boolean
+    requiresWebSocket(): boolean
+    setNotifier(notifier:any): void
     getScope(): string
     getChannelIcon(): JSX.Element
     getSetupVisibility():boolean

@@ -12,9 +12,12 @@ export class TrivyChannel implements IChannel {
     TabContent: FC<IContentProps> = TrivyTabContent
     channelId = 'trivy'
     
+    requiresSetup() { return true }
     requiresMetrics() { return false }
     requiresAccessString() { return true }
     requiresWebSocket() { return true }
+    setNotifier(notifier: any): void { }
+
     getScope() { return 'trivy$workload' }
     getChannelIcon(): JSX.Element { return TrivyIcon }
     

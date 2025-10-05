@@ -149,10 +149,10 @@ export class AuthorizationManagement {
             let haveLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, akr.scopes, Number.MIN_VALUE)
             let requestedLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, instanceConfig.scope, Number.MAX_VALUE)
             if (haveLevel<requestedLevel) {
-                console.log(`Insufficent level ${akr.scopes}(${haveLevel}) < ${instanceConfig.scope} (${requestedLevel}) for object`)
+                console.log(`Insufficent level '${akr.scopes}' (${haveLevel}) < '${instanceConfig.scope}' (${requestedLevel}) for object`)
                 continue
             }
-            console.log(`Level is enough for object: ${akr.scopes}(${haveLevel}) >= ${instanceConfig.scope} (${requestedLevel}),  let's check regexes...`)
+            console.log(`Level is enough for object: '${akr.scopes}'(${haveLevel}) >= '${instanceConfig.scope}' (${requestedLevel}),  let's check regexes...`)
 
             if (!this.checkResource(akr, podNamespace, podName, containerName)) continue
 

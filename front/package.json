@@ -4,6 +4,7 @@
   "homepage": ".",
   "private": true,
   "dependencies": {
+    "@cubone/react-file-manager": "^1.28.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@jfvilas/kwirth-common": "^0.4.29",

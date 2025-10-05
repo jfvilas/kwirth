@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 
 // material & icons
-import { AppBar, Box, Drawer, IconButton, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
+import { Alert, AppBar, Box, Drawer, IconButton, Snackbar, SnackbarCloseReason, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
 import { Settings as SettingsIcon, Menu, Person } from '@mui/icons-material'
 
 // model
@@ -31,7 +31,7 @@ import { VERSION } from './version'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
 import { InstanceMessage, versionGreatThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources, KwirthData, BackChannelData, IUser } from '@jfvilas/kwirth-common'
-import { ITabObject } from './model/ITabObject'
+import { ITabObject, ITabSummary } from './model/ITabObject'
 
 import { ChannelConstructor, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
 import { LogChannel } from './channels/log/LogChannel'
@@ -41,6 +41,8 @@ import { MetricsChannel } from './channels/metrics/MetricsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { OpsChannel } from './channels/ops/OpsChannel'
 import { getMetricsNames, readClusterInfo } from './tools/Global'
+import { FilemanChannel } from './channels/fileman/FilemanChannel'
+import { Homepage } from './components/Homepage'
 
 const App: React.FC = () => {
     let backendUrl='http://localhost:3883'
@@ -92,9 +94,19 @@ const App: React.FC = () => {
     const [showSettingsTrivy, setShowSettingsTrivy]=useState<boolean>(false)
     const [initialMessage, setInitialMessage]=useState<string>('')
 
+    // last & favs
+    const [lastTabs, setLastTabs]=useState<ITabSummary[]>([])
+    const [favTabs, setFavTabs]=useState<ITabSummary[]>([])
+    const [notifyOpen, setNotifyOpen]=useState(false)
+    const [notifyMessage, setNotifyMessage]=useState('')
+    const [notifyLevel, setNotifyLevel]=useState<'info'|'error'|'warning'|'success'>('info')
+    const [showHomepage, setShowHomepage]=useState(false)
+
     const createChannelInstance = (type: string): IChannel | null => {
         const channelClass = frontChannels.get(type)
-        return channelClass ? new channelClass() : null
+        let channel = channelClass ? new channelClass() : null
+        if (channel) channel.setNotifier(notify)
+        return channel
     }
 
     useEffect( () => {
@@ -105,13 +117,32 @@ const App: React.FC = () => {
         frontChannels.set('metrics', MetricsChannel)
         frontChannels.set('trivy', TrivyChannel)
         frontChannels.set('ops', OpsChannel)
-    })
+        frontChannels.set('fileman', FilemanChannel)
+    },[])
+
+    const onNotifyClose = (event?: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
+        if (reason === 'clickaway') return
+        setNotifyOpen(false)
+    }
+
+    const notify = (msg:string, level:string) => {
+        setNotifyOpen(true)
+        setNotifyMessage(msg)
+        setNotifyLevel(level as 'info'|'error'|'warning'|'success')
+    }
 
     useEffect ( () => {
         // only when user logs on / off
         if (logged) {
             if (clustersRef.current.length === 0) getClusters()
             if (!settingsRef.current || settingsRef.current === null) readSettings() 
+            let last = localStorage.getItem('lastTabs')
+            if (last) {
+                setLastTabs(JSON.parse(last))
+                console.log(JSON.parse(last))
+            }
+            let fav = localStorage.getItem('favTabs')
+            if (fav) setFavTabs(JSON.parse(fav))
         }
     },[logged])
 
@@ -196,50 +227,54 @@ const App: React.FC = () => {
         }
 
         if (frontChannels.has(selection.channelId)) {
-            let newChannel = createChannelInstance(selection.channelId)!
-            let newTab:ITabObject = {
-                name: selection.name,
-                ws: undefined,
-                keepaliveRef: 60,
-                defaultTab: false,
-                channel: newChannel,
-                channelObject: {
-                    clusterName: selection.clusterName,
-                    instanceId: '',
-                    view: selection.view as InstanceConfigViewEnum,
-                    namespace: selection.namespaces.join(','),
-                    group: selection.groups.join(','),
-                    pod: selection.pods.join(','),
-                    container: selection.containers.join(','),
-                    instanceConfig: undefined,
-                    uiConfig: undefined,
-                    uiData: undefined
-                },
-                channelStarted: false,
-                channelPaused: false,
-                channelPending: false,
-                headerEl: undefined
-            }
-            if (newTab.channel.requiresMetrics()) newTab.channelObject.metricsList = cluster.metricsList
-            if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
-            if (newTab.channel.initChannel(newTab.channelObject)) setRefreshTabContent(Math.random())
-            if (tab) {
-                newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
-                newTab.channelObject.uiConfig = tab.channelObject.uiConfig
-            }
-            startSocket(newTab, cluster, () => {
-                setKeepAlive(newTab)
-                if (newTab.channel.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
-                if (tab && tab.channelStarted) startTabChannel(newTab)
-            })
-            selectedTab.current = newTab
-            tabs.current.push(newTab)
-            setRefreshTabContent(Math.random())  // force re-render for showing new tab
+            populateTabObject(selection.name, selection.channelId, cluster, selection.view, selection.namespaces.join(','), selection.groups.join(','), selection.pods.join(','), selection.containers.join(','))
         }
         else {
             console.log(`Error, invalid channel: `, selection.channelId)
             setMsgBox(MsgBoxOkError('Add resource', 'Channel is not supported', setMsgBox))
         }
+    }
+
+    const populateTabObject = (name:string, channelId:string, cluster:Cluster, view:string, namespaces:string, groups:string, pods:string, containers:string, tab?:ITabObject) => {
+        let newChannel = createChannelInstance(channelId)!
+        let newTab:ITabObject = {
+            name: name,
+            ws: undefined,
+            keepaliveRef: 60,
+            defaultTab: false,
+            channel: newChannel,
+            channelObject: {
+                clusterName: cluster.name,
+                instanceId: '',
+                view: view as InstanceConfigViewEnum,
+                namespace: namespaces,
+                group: groups,
+                pod: pods,
+                container: containers,
+                instanceConfig: undefined,
+                uiConfig: undefined,
+                uiData: undefined
+            },
+            channelStarted: false,
+            channelPaused: false,
+            channelPending: false,
+            headerEl: undefined
+        }
+        if (newTab.channel.requiresMetrics()) newTab.channelObject.metricsList = cluster.metricsList
+        if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
+        if (newTab.channel.initChannel(newTab.channelObject)) setRefreshTabContent(Math.random())
+        if (tab) {
+            newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
+            newTab.channelObject.uiConfig = tab.channelObject.uiConfig
+        }
+        startSocket(newTab, cluster, () => {
+            setKeepAlive(newTab)
+            if (newTab.channel.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
+            if (tab && tab.channelStarted) startTabChannel(newTab)
+        })
+        selectedTab.current = newTab
+        tabs.current.push(newTab)
+        setRefreshTabContent(Math.random())  // force re-render for showing new tab
     }
 
     const setKeepAlive = (tab:ITabObject) => {
@@ -299,6 +334,10 @@ const App: React.FC = () => {
         }
     }
 
+    const onClickTab = () => {
+        setShowHomepage(false)
+    }
+    
     const onChangeTab = (_event:unknown, tabNumber:number)=> {
         let newTab = tabs.current[tabNumber]
         if (newTab.channelObject) {
@@ -349,10 +388,17 @@ const App: React.FC = () => {
     }
 
     const onClickChannelStart = () => {
-        if (selectedTab.current && selectedTab.current.channel)
-            selectedTab.current.channel.setSetupVisibility(true)
-        else
+        if (selectedTab.current && selectedTab.current.channel) {
+            if (selectedTab.current.channel.requiresSetup()) {
+                selectedTab.current.channel.setSetupVisibility(true)
+            }
+            else {
+                startTabChannel(selectedTab.current)
+            }
+        }
+        else {
             console.log(`Unsupported channel ${selectedTab.current?.channel.channelId}`)
+        }
     }
 
     const socketReconnect = (wsEvent:any, id:NodeJS.Timer) => {
@@ -467,6 +513,23 @@ const App: React.FC = () => {
                 tab.channelPaused = false
                 colorTab(tab)
                 tab.channel.startChannel(tab.channelObject)
+
+                if (!lastTabs.some(t => t.name === tab.name)) {
+                    let newTab = {
+                        name: tab.name,
+                        channel: tab.channel.channelId,
+                        channelObject: {
+                            clusterName: tab.channelObject.clusterName,
+                            view: tab.channelObject.view,
+                            namespace: tab.channelObject.namespace,
+                            group: tab.channelObject.group,
+                            pod: tab.channelObject.pod,
+                            container: tab.channelObject.container
+                        }
+                    }
+                    setLastTabs([...lastTabs, newTab])
+                    localStorage.setItem('lastTabs', JSON.stringify([...lastTabs, newTab]))
+                }
             }
             else {
                 console.log('Channel is not supported')
@@ -761,6 +824,9 @@ const App: React.FC = () => {
     const menuDrawerOptionSelected = async (option:MenuDrawerOption) => {
         setMenuDrawerOpen(false)
         switch(option) {
+            case MenuDrawerOption.Home:
+                setShowHomepage(true)
+                break
             case MenuDrawerOption.NewBoard:
                 clearTabs()
                 setCurrentBoardName('untitled')
@@ -986,6 +1052,23 @@ const App: React.FC = () => {
         return resources.some(r => r.scopes.split(',').includes('cluster'))
     }
 
+    const onHomepageTab = (tab: ITabSummary): void => {
+        setShowHomepage(false)
+        let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
+        if (cluster) populateTabObject(tab.name, tab.channel, cluster, tab.channelObject.view, tab.channelObject.namespace, tab.channelObject.group, tab.channelObject.pod, tab.channelObject.container)
+    }
+
+    const onHomepageBoard = (board: IBoard): void => {
+        setShowHomepage(false)
+    }
+    
+    const onHomepageUpdateTabs = (last: ITabSummary[], fav: ITabSummary[]): void => {
+        localStorage.setItem('lastTabs', JSON.stringify(last))
+        localStorage.setItem('favTabs', JSON.stringify(fav))
+        setLastTabs(last)
+        setFavTabs(fav)
+    }
+    
     if (!logged) return (<>
         <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
             <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
@@ -1018,22 +1101,29 @@ const App: React.FC = () => {
 
             <ResourceSelector clusters={clusters} backChannels={backChannels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }} tabs={tabs.current} data-refresh={refreshTabContent}/>
             
-            <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>          
-                { tabs.current.length>0 &&
-                    <Tabs value={tabs.current.indexOf(selectedTab.current!)} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' sx={{ml:1}}>
-                        {  tabs.current.map((tab, index) => {
-                            return <Tab ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={tab === selectedTab.current ? <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton> : <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{ mb:-1, mt:-1}}/>
-                        })}
-                    </Tabs>
+            <Stack direction={'column'}>
+                <Stack direction={'row'} alignItems={'end'} sx={{mb:1}}>
+                    { tabs.current.length>0 && 
+                        <Tabs value={tabs.current.indexOf(selectedTab.current!)} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' sx={{ml:1}}>
+                            {  tabs.current.map((tab, index) => {
+                                return <Tab ref={(el) => tab.headerEl = el} onClick={onClickTab}  key={index} label={formatTabName(tab)} value={index} icon={tab === selectedTab.current ? <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton> : <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{ mb:-1, mt:-1}}/>
+                            })}
+                        </Tabs>
+                    }
+                    <Typography sx={{ flexGrow: 1 }}></Typography>
+                </Stack>
+                { (tabs.current.length===0 || showHomepage) && 
+                    <Homepage lastTabs={lastTabs} favTabs={favTabs} lastBoards={undefined} favBoards={undefined} onSelectTab={onHomepageTab} onSelectBoard={onHomepageBoard} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs}/>
                 }
-                <Typography sx={{ flexGrow: 1 }}></Typography>
+
+                { tabs.current.length>0 && !showHomepage &&
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs.current} selectedTab={selectedTab.current} selectedTabIndex={tabs.current.indexOf(selectedTab?.current!)} backChannels={backChannels}/>}
+                        <TabContent channel={selectedTab.current?.channel} webSocket={selectedTab.current?.ws} channelObject={selectedTab.current?.channelObject} refreshTabContent={refreshTabContent} />
+                    </Box>
+                }   
+
             </Stack>
-            { (tabs.current.length>0) &&
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                    { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs.current} selectedTab={selectedTab.current} selectedTabIndex={tabs.current.indexOf(selectedTab?.current!)} backChannels={backChannels}/>}
-                    <TabContent channel={selectedTab.current?.channel} webSocket={selectedTab.current?.ws} channelObject={selectedTab.current?.channelObject} refreshTabContent={refreshTabContent} />
-                </Box>
-            }   
 
             { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs.current} oldname={selectedTab.current?.name}/> }
             { showSaveBoard && <SaveBoard onClose={onSaveBoardClosed} name={currentBoardName} description={currentBoardDescription} values={boards} /> }
@@ -1047,7 +1137,9 @@ const App: React.FC = () => {
             { showSettingsTrivy && selectedClusterName && <SettingsTrivy onClose={onSettingsTrivyClosed} cluster={clusters.find(c => c.name===selectedClusterName)!}/> }
             { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
-
+            <Snackbar open={notifyOpen} autoHideDuration={2000} onClose={onNotifyClose} anchorOrigin={{vertical: 'bottom', horizontal:'center'}}>
+                <Alert severity={notifyLevel} variant="filled" sx={{ width: '100%' }}>{notifyMessage}</Alert>
+            </Snackbar>
             { msgBox }
         </SessionContext.Provider>
     )

@@ -14,9 +14,11 @@ export class OpsChannel implements IChannel {
     TabContent: FC<IContentProps> = OpsTabContent
     channelId = 'ops'
     
+    requiresSetup() { return true }
     requiresMetrics() { return false }
     requiresAccessString() { return true }
     requiresWebSocket() { return true }
+    setNotifier(notifier: any): void { }
 
     getScope() { return 'ops$get' }
     getChannelIcon(): JSX.Element { return OpsIcon }
