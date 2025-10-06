@@ -61,57 +61,73 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         props.onSelectTab(tab)
     }
 
-    const drawTabs = (tabList:ITabSummary[], listType:ListTypeEnum) => {
-        return tabList.map(tab => {
-            let icon = <Box sx={{minWidth:'24px'}}/>
+    const drawTabCard = (tabList:ITabSummary[], listType:ListTypeEnum) => {
+        return <>
+            <Card sx={{flex:1}}>
+                <CardHeader title={`${listType=== ListTypeEnum.LAST? 'Last':'Fav'} tabs`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
+                <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>                                    
+                    {
+                        tabList.map(tab => {
+                            let icon = <Box sx={{minWidth:'24px'}}/>
 
-            const channelClass = props.frontChannels.get(tab.channel)
-            if (channelClass) icon = new channelClass()!.getChannelIcon()
+                            const channelClass = props.frontChannels.get(tab.channel)
+                            if (channelClass) icon = new channelClass()!.getChannelIcon()
 
-            let view = <></>
-            console.log('tab.channelObject.view')
-            console.log(tab.channelObject.view)
-            switch (tab.channelObject.view) {
-                case InstanceConfigViewEnum.NAMESPACE:
-                    view = <KIconNamespace/>
-                    break
-                case InstanceConfigViewEnum.GROUP:
-                    view = <KIconGroup/>
-                    break
-                case InstanceConfigViewEnum.POD:
-                    view = <KIconPod/>
-                    break
-                case InstanceConfigViewEnum.CONTAINER:
-                    view = <KIconContainer/>
-                    break
-                default:
-                    view = <KIconBlank/>
-                    break
-            }
+                            let view = <></>
+                            switch (tab.channelObject.view) {
+                                case InstanceConfigViewEnum.NAMESPACE:
+                                    view = <KIconNamespace/>
+                                    break
+                                case InstanceConfigViewEnum.GROUP:
+                                    view = <KIconGroup/>
+                                    break
+                                case InstanceConfigViewEnum.POD:
+                                    view = <KIconPod/>
+                                    break
+                                case InstanceConfigViewEnum.CONTAINER:
+                                    view = <KIconContainer/>
+                                    break
+                                default:
+                                    view = <KIconBlank/>
+                                    break
+                            }
 
-            return (
-                <Stack key={listType+tab.name} direction={'row'} alignItems={'center'} flex={1}>
-                    {icon}
-                    <Typography>&nbsp;&nbsp;</Typography>
-                    {view}
-                    <Typography>&nbsp;&nbsp;</Typography>
-                    <Typography>{tab.name}</Typography>
-                    <Typography flexGrow={1}/>
-                    <IconButton onClick={() => openTab(tab)}>
-                        <OpenInBrowser/>
-                    </IconButton>
-                    { listType !== ListTypeEnum.FAV && 
-                        <IconButton onClick={() => toOrFromFavTabs(tab)}>
-                            { props.favTabs.some(t => t.name === tab.name)? <Star sx={{ color: 'gold' }} /> : <Star sx={{ color: 'gray' }} /> }
-                        </IconButton>
+                            return <Stack key={listType+tab.name} direction={'row'} alignItems={'center'} flex={1}>
+                                {icon}
+                                <Typography>&nbsp;&nbsp;</Typography>
+                                {view}
+                                <Typography>&nbsp;&nbsp;</Typography>
+                                <Typography>{tab.name}</Typography>
+                                <Typography flexGrow={1}/>
+                                <IconButton onClick={() => openTab(tab)}>
+                                    <OpenInBrowser/>
+                                </IconButton>
+                                { listType !== ListTypeEnum.FAV && 
+                                    <IconButton onClick={() => toOrFromFavTabs(tab)}>
+                                        { props.favTabs.some(t => t.name === tab.name)? <Star sx={{ color: 'gold' }} /> : <Star sx={{ color: 'gray' }} /> }
+                                    </IconButton>
 
+                                }
+                                <IconButton onClick={() => deleteFromList(tabList, tab)}>
+                                    <Delete/>
+                                </IconButton>
+                            </Stack>
+                        })
                     }
-                    <IconButton onClick={() => deleteFromList(tabList, tab)}>
-                        <Delete/>
-                    </IconButton>
-                </Stack>
-            )
-        })
+                </CardContent>
+            </Card>
+        </>
+    }
+
+    const drawBoardCard = (tabList:ITabSummary[], listType:ListTypeEnum) => {
+        return <>
+            <Card sx={{flex:1}}>
+                <CardHeader title={`${listType=== ListTypeEnum.LAST? 'Last':'Fav'} boards`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
+                <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>
+                    No boards.
+                </CardContent>
+            </Card>
+        </>
     }
 
     let homeCluster = props.clusterName? props.clusters.find(c => c.name===props.clusterName)!.name : 'n/a'
@@ -123,10 +139,10 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     let frontChannels = ((props.frontChannels.keys() as any).toArray()).join(', ')
 
     return (<>
-        <Card sx={{flex:1, width:'90%', alignSelf:'center'}}>
-            <CardContent>
+        <Card sx={{flex:1, width:'95%', alignSelf:'center', marginTop:'8px'}}>
+            <CardContent sx={{backgroundColor:'#f0f0f0'}}>
                 <Stack direction={'row'} spacing={2} sx={{mt:'4px'}}>
-                    <Stack width={'50%'}>
+                    <Stack width={'49%'}>
                         <Typography><b>Home cluster: </b>{homeCluster} [{clusterUrl}]</Typography>
                         <Typography><b>Home channels: </b>{homeChannels}</Typography>
                         <Typography><b>Front channels: </b>{frontChannels}</Typography>
@@ -141,37 +157,17 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
             </CardContent>
         </Card>
 
-        <Box sx={{ marginTop:'20px', display: 'flex', alignItems: 'center', justifyContent: 'center', width:'100%'}}>
-            <Stack direction={'column'} spacing={2}>
+        <Box sx={{ marginTop:'16px', display: 'flex', alignItems: 'center', justifyContent: 'center', width:'100%'}}>
+            <Stack direction={'column'} spacing={2} width={'95%'}>
 
-                <Stack direction={'row'} spacing={1} sx={{width:'100%'}}>
-                    <Stack direction={'column'} width='100%' spacing={1} height='100%'>
-                        <Card sx={{flex:1}}>
-                            <CardHeader title='Last tabs'/>
-                            <CardContent>
-                                {drawTabs(props.lastTabs, ListTypeEnum.LAST)}
-                            </CardContent>
-                        </Card>
-                        <Card sx={{flex:1}}>
-                            <CardHeader title='Fav tabs'/>
-                            <CardContent>
-                                {drawTabs(props.favTabs, ListTypeEnum.FAV)}
-                            </CardContent>
-                        </Card>
+                <Stack direction={'row'} spacing={2} sx={{width:'100%'}}>
+                    <Stack direction={'column'} width='100%' spacing={2} height='100%'>
+                        {drawTabCard(props.lastTabs, ListTypeEnum.LAST)}
+                        {drawTabCard(props.favTabs, ListTypeEnum.FAV)}
                     </Stack>
                     <Stack direction={'column'} width='100%' spacing={2} height='100%'>
-                        <Card sx={{flex:1}}>
-                            <CardHeader title='Last boards'/>
-                            <CardContent>
-                                No last boards detected.
-                            </CardContent>
-                        </Card>
-                        <Card  sx={{flex:1}}>
-                            <CardHeader title='Fav boards'/>
-                            <CardContent>
-                                You have no favorite boards.
-                            </CardContent>
-                        </Card>
+                        {drawBoardCard(props.lastBoards, ListTypeEnum.LAST)}
+                        {drawBoardCard(props.favBoards, ListTypeEnum.FAV)}
                     </Stack>
                 </Stack>
 

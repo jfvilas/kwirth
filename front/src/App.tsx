@@ -867,6 +867,7 @@ const App: React.FC = () => {
                 clearTabs()
                 setCurrentBoardName('untitled')
                 setCurrentBoardDescription('No description yet')
+                selectedTab.current = undefined
                 break
             case MenuDrawerOption.SaveBoard:
                 if (currentBoardName !== '' && currentBoardName !== 'untitled')
@@ -1007,11 +1008,11 @@ const App: React.FC = () => {
         }
     }
 
-    const onChannelSetupClosed = (channel:IChannel, start:boolean, defaultValues:boolean) => {
+    const onChannelSetupClosed = (channel:IChannel, start:boolean, setDefaultValues:boolean) => {
         channel.setSetupVisibility(false)
         if (!selectedTab.current) return
 
-        if (defaultValues && settingsRef.current && selectedTab.current.channelObject) {
+        if (setDefaultValues && settingsRef.current && selectedTab.current.channelObject) {
             settingsRef.current.channels = settingsRef.current.channels.filter(c => c.id !== channel.channelId)
             settingsRef.current.channels.push({
                 id: channel.channelId,
@@ -1146,7 +1147,7 @@ const App: React.FC = () => {
             
             <Stack direction={'column'}>
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1, borderBottom: 1, borderColor: 'divider'}}>                    
-                    <Tabs value={selectedTab.current? false : 0}>
+                    <Tabs value={selectedTab.current? false : 0} sx={{minWidth:'100px'}}>
                         <Tab key={'0'} label={<Home/>} value={0} onClick={onSelectHome} sx={{height:'60px'}}/>
                     </Tabs>
                     { tabs.current.length>0 &&

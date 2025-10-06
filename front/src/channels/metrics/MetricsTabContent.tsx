@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IMetricsObject, MetricsEventSeverityEnum } from './MetricsObject'
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { Alert, Box, Button, Snackbar, Stack, Typography } from '@mui/material'
 import { IContentProps } from '../IChannel'
-import { IMetricsUiConfig } from './MetricsConfig'
+import { IMetricsUiConfig, METRICSCOLOURS } from './MetricsConfig'
 
 interface ISample {
     timestamp:string
@@ -13,43 +13,14 @@ interface ISample {
 const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let metricsObject:IMetricsObject = props.channelObject.uiData
     let metricsUiConfig:IMetricsUiConfig = props.channelObject.uiConfig
-
     const [refresh, setRefresh] = useState(false)
     const [refreshTabContent, setRefreshTabContent] = useState(0)
-    const colours = [
-        "#6e5bb8", // morado oscuro
-        "#4a9076", // verde oscuro
-        "#b56c52", // naranja oscuro
-        "#7f6b97", // color lavanda oscuro
-        "#b0528f", // rosa oscuro
-        "#b0b052", // amarillo oscuro
-        "#b05252", // rojo oscuro
-        "#5285b0", // azul oscuro
-        "#a38ad6", // morado pastel
-        "#89c1a0", // verde pastel
-        "#e4a28a", // naranja pastel
-        "#b09dbd", // lavanda pastel
-        "#e2a4c6", // rosa pastel
-        "#c5c89e", // amarillo pastel
-        "#e2a4a4", // rojo pastel
-        "#90b7e2", // azul pastel
-        "#f8d5e1", // rosa claro pastel
-        "#b2d7f0", // azul muy claro pastel
-        "#f7e1b5", // amarillo muy claro pastel
-        "#d0f0c0", // verde muy claro pastel
-        "#f5b0a1", // coral pastel
-        "#d8a7db", // lavanda muy claro pastel
-        "#f4c2c2", // rosa suave pastel
-        "#e6c7b9", // marrón claro pastel
-        "#f0e2b6", // crema pastel
-        "#a7c7e7", // azul pálido pastel
-        "#f5e6a5", // amarillo pálido pastel
-        "#e3c8f5", // lilas pastel
-        "#d0c4e8", // lila pálido pastel
-        "#b8d8b8", // verde claro pastel
-        "#d2ebfa", // azul muy claro pastel
-        "#f1c1d2"  // rosa bebé pastel
-    ]
+    const metricsBoxRef = useRef<HTMLDivElement | null>(null)
+    const [metricsBoxTop, setMetricsBoxTop] = useState(0)
+
+    useEffect(() => {
+        if (metricsBoxRef.current) setMetricsBoxTop(metricsBoxRef.current.getBoundingClientRect().top)
+    })
 
     const mergeSeries = (names:string[], series:ISample[][]) => {
         // names is an array of names of series
@@ -88,7 +59,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             var total:number = values.reduce((acc,value) => acc+value.value, 0)
             return <text x={data.x + data.width/3.5} y={data.y-10}>{total.toPrecision(3).replace(/0+$/, '').replace(/\.+$/, '')}</text>
         }
-        let  height=300
+        let height=300
 
         switch (metricsUiConfig.chart) {
             case 'value':
@@ -99,10 +70,10 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             <Typography textAlign={'center'} alignSelf={'center'} width={'100%'}>
                                 { series.map( (serie,index) => {
                                     return (<>
-                                        <Typography textAlign={'center'} alignSelf={'center'} width={'100%'} fontSize={48} color={series.length===1?colour:colours[index]}>
+                                        <Typography textAlign={'center'} alignSelf={'center'} width={'100%'} fontSize={48} color={series.length===1?colour:METRICSCOLOURS[index]}>
                                             {serie[serie.length-1].value}
                                         </Typography>
-                                        <Typography textAlign={'center'} alignSelf={'center'} width={'100%'} fontSize={12} color={series.length===1?colour:colours[index]}>
+                                        <Typography textAlign={'center'} alignSelf={'center'} width={'100%'} fontSize={12} color={series.length===1?colour:METRICSCOLOURS[index]}>
                                             {names[index]}
                                         </Typography>
                                     </>)
@@ -118,10 +89,10 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     <LineChart data={mergedSeries}>
                         <CartesianGrid strokeDasharray='3 3'/>
                         <XAxis dataKey='timestamp' fontSize={8}/>
-                        <YAxis />
+                        <YAxis/>
                         <Tooltip />
                         <Legend/>
-                        { series.map ((_serie,index) => <Line key={index} name={names[index]} type='monotone' dataKey={names[index]} stroke={series.length===1?colour:colours[index]} activeDot={{ r: 8 }} />) }
+                        { series.map ((_serie,index) => <Line key={index} name={names[index]} type='monotone' dataKey={names[index]} stroke={series.length===1?colour:METRICSCOLOURS[index]} activeDot={{ r: 8 }} />) }
                     </LineChart>
                 )
                 break
@@ -132,9 +103,9 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             {
                                 series.map( (_serie,index) => {
                                     return (
-                                        <linearGradient key={index} id={`color${series.length===1?colour:colours[index]}`} x1='0' y1='0' x2='0' y2='1'>
-                                            <stop offset='7%' stopColor={series.length===1?colour:colours[index]} stopOpacity={0.8}/>
-                                            <stop offset='93%' stopColor={series.length===1?colour:colours[index]} stopOpacity={0}/>
+                                        <linearGradient key={index} id={`color${series.length===1?colour:METRICSCOLOURS[index]}`} x1='0' y1='0' x2='0' y2='1'>
+                                            <stop offset='7%' stopColor={series.length===1?colour:METRICSCOLOURS[index]} stopOpacity={0.8}/>
+                                            <stop offset='93%' stopColor={series.length===1?colour:METRICSCOLOURS[index]} stopOpacity={0}/>
                                         </linearGradient>
                                     )
                                 })
@@ -146,7 +117,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                         <Tooltip />
                         <Legend/>
                         { series.map ((_serie,index) => 
-                            <Area key={index} name={names[index]} type='monotone' {...(metricsUiConfig.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={`url(#color${series.length===1?colour:colours[index]})`}/> )
+                            <Area key={index} name={names[index]} type='monotone' {...(metricsUiConfig.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:METRICSCOLOURS[index]} fill={`url(#color${series.length===1?colour:METRICSCOLOURS[index]})`}/> )
                         }
                     </AreaChart>
                 )
@@ -160,7 +131,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                         <Tooltip/>
                         <Legend/>
                         { series.map ((serie,index) =>
-                            <Bar name={names[index]} {...(metricsUiConfig.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:colours[index]} fill={series.length===1?colour:colours[index]}>
+                            <Bar name={names[index]} {...(metricsUiConfig.stack? {stackId:'1'}:{})} dataKey={names[index]} stroke={series.length===1?colour:METRICSCOLOURS[index]} fill={series.length===1?colour:METRICSCOLOURS[index]}>
                                 { index === series.length-1 && series.length > 1 ? <LabelList dataKey={names[index]} position='insideTop' content={renderLabel}/> : null }
                             </Bar>
                         )}
@@ -175,9 +146,9 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     <PieChart>
                         <Tooltip />
                         <Legend layout='vertical' align='right' verticalAlign='middle'/>
-                        <Pie key={'asd'} data={ns} dataKey={'value'} fill={colours[0]} innerRadius={0} outerRadius={90}>
+                        <Pie key={'asd'} data={ns} dataKey={'value'} fill={METRICSCOLOURS[0]} innerRadius={0} outerRadius={90}>
                             {ns.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={colours[index % colours.length]} />
+                                <Cell key={`cell-${index}`} fill={METRICSCOLOURS[index % METRICSCOLOURS.length]} />
                             ))}
                         </Pie>
                     </PieChart>
@@ -188,7 +159,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 break
         }
         return (
-            <Stack direction={'column'} alignItems={'center'} width={'100%'} sx={{mb:'24px'}}>
+            <Stack direction='column' alignItems='center' width='100%' sx={{mb:'24px'}}>
                 <Typography>{metric}</Typography>
                 <ResponsiveContainer width='100%' height={height} key={metric+JSON.stringify(names)}>
                     {result}
@@ -265,7 +236,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let allCharts = Array.from(data.keys()!).map( (asset, index)  =>  {
                 return Array.from(data.get(asset)?.keys()!).map ( metric => {
                     var series = data.get(asset)?.get(metric)!
-                    return (<>{addChart(metric, [asset], [series], colours[index])}</>)
+                    return (<>{addChart(metric, [asset], [series], METRICSCOLOURS[index])}</>)
                 })
             })
 
@@ -288,7 +259,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     return (
-        <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }} data-refresh={refreshTabContent}>
+        <Box ref={metricsBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${metricsBoxTop}px)`}}>
             {formatMetrics()}
         </Box>
     )
