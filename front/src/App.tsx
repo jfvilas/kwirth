@@ -5,7 +5,7 @@ import { Alert, AppBar, Box, Drawer, IconButton, Snackbar, SnackbarCloseReason, 
 import { Settings as SettingsIcon, Menu, Person, Home } from '@mui/icons-material'
 
 // model
-import { Cluster } from './model/Cluster'
+import { Cluster, IClusterInfo } from './model/Cluster'
 
 // components
 import { RenameTab } from './components/RenameTab'
@@ -44,6 +44,7 @@ import { getMetricsNames, readClusterInfo } from './tools/Global'
 import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
 import { BASECOLORS, BRIGHTCOLORS, DEFAULTLASTTABS, IColors } from './tools/Constants'
+import cluster from 'cluster'
 
 const App: React.FC = () => {
     let backendUrl='http://localhost:3883'
@@ -195,6 +196,9 @@ const App: React.FC = () => {
             console.log('No kwirthtdata received from source cluster')
             return
         }
+        let responseCluster = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString))
+        srcCluster.clusterInfo = await responseCluster.json() as IClusterInfo
+
         srcCluster.name = srcCluster.kwirthData.clusterName
         srcCluster.url = backendUrl
         srcCluster.accessString = accessString
@@ -1160,7 +1164,9 @@ const App: React.FC = () => {
                     <Typography sx={{ flexGrow: 1 }}></Typography>
                 </Stack>
                 { !selectedTab.current && 
-                    <Homepage lastTabs={lastTabs} favTabs={favTabs} lastBoards={undefined} favBoards={undefined} onSelectTab={onHomepageTab} onSelectBoard={onHomepageBoard} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} clusterName={selectedClusterName} clusters={clusters}/>
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastBoards={undefined} favBoards={undefined} onSelectTab={onHomepageTab} onSelectBoard={onHomepageBoard} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name===selectedClusterName)} clusters={clusters}/>
+                    </Box>
                 }
                 { selectedTab.current &&
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>

@@ -1,6 +1,6 @@
 import { KwirthData } from "@jfvilas/kwirth-common"
 import { MetricDescription } from "../channels/metrics/MetricDescription"
-import { Cluster } from "../model/Cluster"
+import { Cluster, IClusterInfo } from "../model/Cluster"
 import { addGetAuthorization } from "./AuthorizationManagement"
 
 export const getMetricsNames = async (cluster:Cluster) => {
@@ -22,20 +22,28 @@ export const getMetricsNames = async (cluster:Cluster) => {
 export const readClusterInfo = async (cluster: Cluster): Promise<void> => {
         try {
             cluster.enabled = false
-            let response = await fetch(`${cluster.url}/config/info`, addGetAuthorization(cluster.accessString))
-            if (response.status===200) {
-                cluster.kwirthData = await response.json() as KwirthData
+            let responseInfo = await fetch(`${cluster.url}/config/info`, addGetAuthorization(cluster.accessString))
+            if (responseInfo.status===200) {
+                cluster.kwirthData = await responseInfo.json() as KwirthData
                 // accessString, name & url are set in clustersList, we don't overwrite them here
                 cluster.source = false
                 cluster.enabled = true
                 if (cluster.kwirthData) {
                     let metricsRequired = Array.from(cluster.kwirthData.channels).reduce( (prev, current) => { return prev || current.metrics}, false)
                     if (metricsRequired) getMetricsNames(cluster)
-                }
-                return
+                }               
             }
             else {
-                console.log('Status', response.status)
+                console.log('get info Status:', responseInfo.status)
+                return
+            }
+            let responseCluster = await fetch(`${cluster.url}/config/cluster`, addGetAuthorization(cluster.accessString))
+            if (responseCluster.status===200) {
+                cluster.clusterInfo = await responseCluster.json() as IClusterInfo
+            }
+            else {
+                console.log('get cluster Status:', responseInfo.status)
+                return
             }
         }
         catch (error) {

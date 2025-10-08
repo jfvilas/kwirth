@@ -12,8 +12,17 @@ export class Cluster {
     public inCluster: boolean = false
     public metricsList: Map<string,MetricDescription> = new Map()
     public kwirthData?: KwirthData
+    public clusterInfo?: IClusterInfo
     
     constructor () {
         this.id = uuid()
     }
+}
+
+export interface IClusterInfo {
+    name: string,
+    type: string,
+    flavour: string,
+    memory: number
+    vcpu: number
 }

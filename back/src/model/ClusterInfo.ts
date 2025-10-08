@@ -3,6 +3,7 @@ import { MetricsTools } from "../tools/Metrics";
 import { ClusterTypeEnum } from "@jfvilas/kwirth-common";
 import Docker from 'dockerode'
 import { DockerTools } from "../tools/KwirthApi";
+import { NodeMetrics } from "./MetricsNode";
 
 export interface NodeInfo {
     name:string
@@ -14,6 +15,8 @@ export interface NodeInfo {
     prevPodMetricValues: Map<string,{value: number, timestamp:number}>
     machineMetricValues: Map<string,{value: number, timestamp:number}>
     prevMachineMetricValues: Map<string,{value: number, timestamp:number}>
+    prevSummary: NodeMetrics|undefined
+    summary: NodeMetrics|undefined
     timestamp: number
 }
 
@@ -44,7 +47,7 @@ export class ClusterInfo {
     startInterval = (seconds: number) => {
         this.metricsInterval = seconds
         this.metricsIntervalRef = setInterval(() => {
-            this.metrics.readClusterMetrics(this) 
+            this.metrics.readClusterMetrics(this)
         }, this.metricsInterval * 1000, {})
     }
 
@@ -109,7 +112,9 @@ export class ClusterInfo {
                     timestamp: 0,
                     podMetricValues: new Map(),
                     prevPodMetricValues: new Map(),
-                    prevMachineMetricValues: new Map()
+                    prevMachineMetricValues: new Map(),
+                    prevSummary: undefined,
+                    summary: undefined
                 }
                 nodes.set(nodeData.name, nodeData)
             }

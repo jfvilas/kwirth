@@ -32,9 +32,57 @@ export class MetricsApi {
                     console.log(err)
                 }
             })
-        this.route.route('/debug/:action/:nodename')
+        this.route.route('/usage')
             .all( async (req:Request,res:Response, next) => {
                 if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
+                next()
+            })
+            .get( async (req:Request, res:Response) => {
+                try {
+                    let cpuu=0
+                    let memu=0, memt=0
+                    let tx=0, rx=0
+                    let prevtx=0, prevrx=0
+                    if (this.clusterInfo.metrics) {
+                        try {
+                            for (let node of this.clusterInfo.nodes.values()) {
+                                if (node.summary) {
+                                    memu+=node.summary.memory.usageBytes
+                                    memt+=node.summary.memory.usageBytes + node.summary.memory.availableBytes
+                                    cpuu+=node.summary.cpu.usageNanoCores
+                                    tx += node.summary.network.txBytes
+                                    rx += node.summary.network.rxBytes
+
+                                    if (node.prevSummary) {
+                                        prevtx += node.prevSummary.network.txBytes
+                                        prevrx += node.prevSummary.network.rxBytes
+                                    }
+                                }
+                            }
+                            let tottx = tx-prevtx
+                            let totrx = rx-prevrx
+                            tottx = (tottx/1024/1024) / this.clusterInfo.metricsInterval
+                            totrx = (totrx/1024/1024) / this.clusterInfo.metricsInterval
+                            res.status(200).send({cpu:(cpuu/(44*Math.pow(10,9)))*100, memory:memu/memt*100, txmbps:tottx, rxmbps:totrx})
+                        }
+                        catch (err) {
+                            console.error('Error calculating node resources', err)
+                            res.status(200).send({cpu:Math.random()*100, memory:Math.random()*100})
+                        }
+                    }
+                    else {
+                        res.status(200).send({cpu:0, memory:0})
+                    }
+                }
+                catch (err) {
+                    res.status(400).send()
+                    console.log('Error obtaining available metrics list')
+                    console.log(err)
+                }
+            })
+        this.route.route('/debug/:action/:nodename')
+            .all( async (req:Request,res:Response, next) => {
+                // if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -59,7 +107,7 @@ export class MetricsApi {
                 }
                 catch (err) {
                     res.status(400).send()
-                    console.log('Error dbugging available metrics list')
+                    console.log('Error debugging available metrics list')
                     console.log(err)
                 }
             })

@@ -30,7 +30,28 @@ export class ConfigApi {
                 }
             })
             
-        // returns cluster information of the k8 cluster which this kwirth is connected to or running inside
+        // return kwirth version information
+        this.route.route('/cluster')
+            .all( async (req:Request,res:Response, next) => {
+                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
+                next()
+            })
+            .get( async (req:Request, res:Response) => {
+                try {
+                    res.status(200).json({
+                        name: this.clusterInfo.name,
+                        type: this.clusterInfo.type,
+                        flavour: this.clusterInfo.flavour,
+                        memory: this.clusterInfo.memory,
+                        vcpu: this.clusterInfo.vcpus
+                    })
+                }
+                catch (err) {
+                    res.status(500).json({})
+                    console.log(err)
+                }
+            })
+            
         this.route.route('/trivy')
             .all( async (req:Request,res:Response, next) => {
                 if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return

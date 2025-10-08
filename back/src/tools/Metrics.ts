@@ -1,5 +1,6 @@
 import { ClusterInfo, NodeInfo } from "../model/ClusterInfo"
 import { InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
+import { NodeMetrics } from "../model/MetricsNode"
 
 export interface AssetData {
     podNode:string
@@ -34,7 +35,6 @@ export class MetricsTools {
         /metrics/probes
         /metrics/resource
         /pods
-        /stats/summary
         /healthz
         /configz
 
@@ -196,14 +196,40 @@ export class MetricsTools {
         return text
     }
 
+    // public readCAdvisorGeneric = async (node:NodeInfo, path:string): Promise<string> => {
+    //     var text=''
+    //     try {
+    //         var resp = await fetch (`https://${node.ip}:10250/${path}`, { headers: { Authorization: 'Bearer ' + this.clusterInfo.token} })
+    //         text = await resp.text()
+    //     }
+    //     catch (error:any) {
+    //         console.log(`Error reading cAdvisor metics at node ${node.ip}`, error.stack)
+    //         text=''
+    //     }
+    //     return text
+    // }
+
+    public readCAdvisorSummary = async (node:NodeInfo): Promise<any> => {
+        var json={}
+        try {
+            var resp = await fetch (`https://${node.ip}:10250/stats/summary`, { headers: { Authorization: 'Bearer ' + this.clusterInfo.token} })
+            json = await resp.json()
+        }
+        catch (error:any) {
+            console.log(`Error reading cAdvisor summary at node ${node.ip}`, error.stack)
+            json=''
+        }
+        return json
+    }
+
     // reads node metrics and loads 'metricValues' with parsed and formated data
     public async readNodeMetrics(node:NodeInfo): Promise<void> {
-        var rawSampledNodeMetrics = await this.readCAdvisorMetrics(node)
+        let rawSampledNodeMetrics = await this.readCAdvisorMetrics(node)
         const regex = /(?:\s*([^=^{]*)=\"([^"]*)",*)/gm;
-        var lines=rawSampledNodeMetrics.split('\n')
-        var newContainerMetricValues:Map<string, {value: number, timestamp:number}> = new Map()
-        var newPodMetricValues:Map<string, {value: number, timestamp:number}> = new Map()
-        var newMachineMetricValues:Map<string, {value: number, timestamp:number}> = new Map()
+        let lines=rawSampledNodeMetrics.split('\n')
+        let newContainerMetricValues:Map<string, {value: number, timestamp:number}> = new Map()
+        let newPodMetricValues:Map<string, {value: number, timestamp:number}> = new Map()
+        let newMachineMetricValues:Map<string, {value: number, timestamp:number}> = new Map()
 
         for (var line of lines) {
             if (line==='' || line.startsWith('#')) continue
@@ -361,6 +387,10 @@ export class MetricsTools {
 
         node.prevMachineMetricValues = node.machineMetricValues
         node.machineMetricValues = newMachineMetricValues
+        
+        node.prevSummary = node.summary
+        node.summary = (await this.readCAdvisorSummary(node)).node as NodeMetrics
+        
         node.timestamp = Date.now()
     }
 
