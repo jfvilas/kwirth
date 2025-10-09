@@ -37,13 +37,26 @@ export class ConfigApi {
                 next()
             })
             .get( async (req:Request, res:Response) => {
+                const versionInfo = (await this.clusterInfo.versionApi.getCode()).body
+                console.log(versionInfo)
+                const clusterInfo = this.clusterInfo.kubeConfig.getCurrentCluster()
+                console.log(clusterInfo)
+
+                const nodes = await this.clusterInfo.coreApi.listNode();
+                const nodeNames = nodes.body.items.map((node:any) => node.metadata.name);
+
                 try {
                     res.status(200).json({
                         name: this.clusterInfo.name,
                         type: this.clusterInfo.type,
                         flavour: this.clusterInfo.flavour,
                         memory: this.clusterInfo.memory,
-                        vcpu: this.clusterInfo.vcpus
+                        vcpu: this.clusterInfo.vcpus,
+                        reportedName: clusterInfo?.name,
+                        reportedServer: clusterInfo?.server,
+                        version: versionInfo.major + '.' + versionInfo.minor,
+                        platform: versionInfo.platform,
+                        nodes: nodeNames
                     })
                 }
                 catch (err) {

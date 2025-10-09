@@ -19,10 +19,15 @@ export class Cluster {
     }
 }
 
-export interface IClusterInfo {
+export interface IClusterInfo {  //+++ take this to common
     name: string,
     type: string,
     flavour: string,
     memory: number
     vcpu: number
+    reportedName: string,
+    reportedServer: string,
+    version: string,
+    platform: string,
+    nodes: string[]
 }

@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, KubernetesObject } from '@kubernetes/client-node'
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, KubernetesObject, VersionApi } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -54,6 +54,7 @@ const channels : Map<string, IChannel> = new Map()
 // Kubernetes API access
 const kubeConfig = new KubeConfig()
 kubeConfig.loadFromDefault()
+const versionApi = kubeConfig.makeApiClient(VersionApi)
 const coreApi = kubeConfig.makeApiClient(CoreV1Api)
 const appsApi = kubeConfig.makeApiClient(AppsV1Api)
 const crdApi = kubeConfig.makeApiClient(CustomObjectsApi)
@@ -964,6 +965,7 @@ const initKubernetesCluster = async (token:string, metricsRequired:boolean) : Pr
     clusterInfo.token = token
     clusterInfo.kubeConfig = kubeConfig
     clusterInfo.coreApi = coreApi
+    clusterInfo.versionApi = versionApi
     clusterInfo.appsApi = appsApi
     clusterInfo.execApi = execApi
     clusterInfo.logApi = logApi

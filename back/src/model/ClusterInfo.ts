@@ -1,11 +1,11 @@
-import { ApiextensionsV1Api, AppsV1Api, CoreV1Api, CustomObjectsApi, Exec, KubeConfig, Log, RbacAuthorizationV1Api, V1Node } from "@kubernetes/client-node";
+import { ApiextensionsV1Api, AppsV1Api, CoreV1Api, CustomObjectsApi, Exec, KubeConfig, Log, RbacAuthorizationV1Api, V1Node, VersionApi } from "@kubernetes/client-node";
 import { MetricsTools } from "../tools/Metrics";
 import { ClusterTypeEnum } from "@jfvilas/kwirth-common";
 import Docker from 'dockerode'
 import { DockerTools } from "../tools/KwirthApi";
-import { NodeMetrics } from "./MetricsNode";
+import { NodeMetrics } from "./INodeMetrics";
 
-export interface NodeInfo {
+export interface INodeInfo {
     name:string
     ip:string
     kubernetesNode: V1Node
@@ -22,11 +22,12 @@ export interface NodeInfo {
 
 export class ClusterInfo {
     public name: string = ''
-    public nodes: Map<string, NodeInfo> = new Map()
+    public nodes: Map<string, INodeInfo> = new Map()
     public dockerTools!: DockerTools
     public dockerApi!: Docker
     public kubeConfig!: KubeConfig
     public coreApi!: CoreV1Api
+    public versionApi!: VersionApi
     public appsApi!: AppsV1Api
     public execApi!: Exec
     public logApi!: Log
@@ -96,13 +97,13 @@ export class ClusterInfo {
     loadNodes = async () => {
         // load nodes
         var resp = await this.coreApi.listNode()
-        var nodes:Map<string, NodeInfo> = new Map()
+        var nodes:Map<string, INodeInfo> = new Map()
         for (var node of resp.body.items) {
             if (node.spec?.unschedulable) {
                 console.log(`WARNING: Node ${node.metadata?.name} is unschedulable`)
             }
             else {
-                var nodeData:NodeInfo = {
+                var nodeData:INodeInfo = {
                     name: node.metadata?.name!,
                     ip: node.status?.addresses!.find(a => a.type === 'InternalIP')?.address!,
                     kubernetesNode: node,

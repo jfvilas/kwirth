@@ -14,6 +14,15 @@ import { Cluster } from '../model/Cluster'
 import { GaugeComponent } from 'react-gauge-component'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 
+import IconAks from'../icons/general/aks.svg'
+import IconEks from'../icons/general/eks.svg'
+import IconGke from'../icons/general/gke.svg'
+import IconRk2e from'../icons/general/rk2e.svg'
+import IconK3d from'../icons/general/k3d.svg'
+import IconK3s from'../icons/general/k3s.svg'
+import IconK8s from'../icons/general/k8s.svg'
+import IconOcp from'../icons/general/ocp.svg'
+
 const KIconBlank = () => { return <img src={IconBlank} alt='ns' height={'24px'}/> }
 const KIconNamespace = () => { return <img src={IconNamespace} alt='ns' height={'24px'}/> }
 const KIconGroup = () => { return <img src={IconGroup} alt='grp' height={'24px'}/> }
@@ -227,12 +236,37 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         )
     }
 
+    const distributionIcon = (flavour:string|undefined) => {
+        if (!flavour) return ''
+        
+        switch (flavour) {
+            case 'aks':
+                return <img src={IconAks} alt='ns' height={'16px'}/>
+            case 'k3s':
+                return <img src={IconK3s} alt='ns' height={'16px'}/>
+            case 'k3d':
+                return <img src={IconK3d} alt='ns' height={'16px'}/>
+            case 'eks':
+                return <img src={IconEks} alt='ns' height={'16px'}/>
+            case 'ocp':
+                return <img src={IconOcp} alt='ns' height={'16px'}/>
+            case 'gke':
+                return <img src={IconGke} alt='ns' height={'16px'}/>
+            case 'rk2e':
+                return <img src={IconRk2e} alt='ns' height={'16px'}/>
+            default:
+                return <img src={IconK8s} alt='ns' height={'16px'}/>
+        }                
+    }
+    
     return (<>
     
         <Card sx={{flex:1, width:'95%', alignSelf:'center', marginTop:'8px'}}>
             <CardContent sx={{backgroundColor:'#f0f0f0'}}>
                 <Stack direction={'row'} spacing={2} sx={{mt:'4px'}}>
                     <Stack width={'30%'}>
+                         
+                        <Typography fontSize={20}><b>Context</b></Typography>
                         <Typography><b>Home cluster: </b>{homeCluster} [{clusterUrl}]</Typography>
                         <Typography><b>Selected cluster: </b>{props.cluster?.clusterInfo?.name}</Typography>
                         <Typography><b>Cluster channels: </b>{homeChannels}</Typography>
@@ -240,25 +274,31 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                     </Stack>
                     <Divider orientation='vertical' flexItem/>
                     <Stack width={'20%'}>
+                        <Typography fontSize={20}><b>Kwirth Info</b></Typography>
                         <Typography><b>Kwirth version: </b>{kwirthVersion}</Typography>
                         <Typography><b>Deployment: </b>{kwrithNs} / {kwrithDeployment}</Typography>
                         <Typography><b>Clusters: </b>{props.clusters.map (c => c.name).join(', ')}</Typography>
-                    </Stack>
-                    <Divider orientation='vertical' flexItem/>
-                    <Stack width={'14%'}>
                         <Typography><b>Type: </b>{props.cluster?.clusterInfo?.type}</Typography>
-                        <Typography><b>Flavour: </b>{props.cluster?.clusterInfo?.flavour}</Typography>
-                        <Typography><b>vCPU: </b>{props.cluster?.clusterInfo?.vcpu}</Typography>
-                        <Typography><b>Memory: </b>{((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)}GB</Typography>
                     </Stack>
                     <Divider orientation='vertical' flexItem/>
-                    <Stack width={'9%'} direction={'column'} alignItems={'center'}>
+                    <Stack width={'20%'}>
+                        <Typography fontSize={20}><b>Cluster Info</b></Typography>
+                        <Typography><b>Name: </b>{props.cluster?.clusterInfo?.name}</Typography>
+                        <Typography><b>Flavour: </b>{distributionIcon(props.cluster?.clusterInfo?.flavour)}</Typography>
+                        <Typography><b>Version: </b>{props.cluster?.clusterInfo?.version}</Typography>
+                        <Typography><b>Platform: </b>{props.cluster?.clusterInfo?.platform}</Typography>
+                        <Typography><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes.length}</Typography>
+                        <Typography><b>Total vCPU: </b>{props.cluster?.clusterInfo?.vcpu}</Typography>
+                        <Typography><b>Total Memory: </b>{((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)}GB</Typography>
+                    </Stack>
+                    <Divider orientation='vertical' flexItem/>
+                    <Stack width={'10%'} direction={'column'} alignItems={'center'}>
                         {drawRadial(cpu,'CPU')}
                     </Stack>
-                    <Stack width={'9%'} direction={'column'} alignItems={'center'}>
+                    <Stack width={'10%'} direction={'column'} alignItems={'center'}>
                         {drawRadial(memory,'Memory')}
                     </Stack>
-                    <Stack width={'9%'} direction={'column'} alignItems={'center'}>
+                    <Stack width={'10%'} direction={'column'} alignItems={'center'}>
                         {drawSemicircle(txmbps,'Tx', 0, 10)}
                         {drawSemicircle(rxmbps,'Rx', 0, 10)}
                     </Stack>
