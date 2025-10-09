@@ -35,7 +35,7 @@ export class ClusterInfo {
     public extensionApi!: ApiextensionsV1Api
     public token: string = ''
     public metrics!: MetricsTools;
-    public metricsInterval: number = 60
+    public metricsInterval: number = 15
     public metricsIntervalRef: number = -1
     public vcpus: number = 0
     public memory: number = 0

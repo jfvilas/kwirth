@@ -126,7 +126,7 @@ const getKubernetesData = async ():Promise<KwirthData> => {
     const pod = pods.body.items.find(p => p.metadata?.name === podName)  
     if (pod && pod.metadata?.namespace) {
         let depName = (await AuthorizationManagement.getPodControllerName(appsApi, pod, true)) || ''
-        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:60, channels: [] }
+        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:15, channels: [] }
     }
     else {
         // kwirth is supposed to be running outsoud cluster, so we look for kwirth users config in order to detect namespace
@@ -134,7 +134,7 @@ const getKubernetesData = async ():Promise<KwirthData> => {
         let secret = secrets.find(s => s.metadata?.name === 'kwirth-users')
         if (secret) {
             // this namespace will be used to access secrets and configmaps
-            return { clusterName: 'inCluster', namespace:secret.metadata?.namespace!, deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:60, channels: [] }
+            return { clusterName: 'inCluster', namespace:secret.metadata?.namespace!, deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:15, channels: [] }
         }
         else {
             console.log('Cannot determine namespace while running outside cluster')
@@ -984,7 +984,7 @@ const initKubernetesCluster = async (token:string, metricsRequired:boolean) : Pr
 
     if (metricsRequired) {
         clusterInfo.metrics = new Metrics(clusterInfo)
-        clusterInfo.metricsInterval = 60
+        clusterInfo.metricsInterval = 15
         await clusterInfo.metrics.startMetrics()
         console.log('  vCPU:', clusterInfo.vcpus)
         console.log('  Memory (GB):', clusterInfo.memory/1024/1024/1024)
@@ -1113,12 +1113,12 @@ const launchDocker = async() => {
         lastVersion: VERSION,
         clusterName: 'inDocker',
         clusterType: ClusterTypeEnum.DOCKER,
-        metricsInterval:60,
+        metricsInterval:15,
         channels: []
     }
     clusterInfo.nodes = new Map()
     clusterInfo.metrics = new Metrics(clusterInfo)
-    clusterInfo.metricsInterval = 60
+    clusterInfo.metricsInterval = 15
     clusterInfo.token = ''
     clusterInfo.dockerApi = dockerApi
     clusterInfo.dockerTools = new DockerTools(clusterInfo)

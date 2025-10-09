@@ -150,6 +150,11 @@ const App: React.FC = () => {
         }
     },[logged])
 
+    useEffect( () => {
+        let c = clusters.find(c => c.source)
+        if (c) onChangeCluster(c.name)
+    }, [clusters])
+
     const fillTabSummary = async (tab:ITabSummary) => {
         let namespacesArray:string[] = []
         if (tab.channelObject.namespace==='$all' || tab.channelObject.group==='$all'|| tab.channelObject.pod==='$all'|| tab.channelObject.container==='$all') {

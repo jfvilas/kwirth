@@ -68,7 +68,6 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
             try {
                 fetch(`${cluster.url}/metrics/usage`, addGetAuthorization(cluster.accessString)).then ( (result) => {
                     result.json().then ( (data) => {
-                        console.log(data)
                         setCpu(data.cpu)
                         setMemory(data.memory)
                         setTxmbps(data.txmbps)
@@ -181,7 +180,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                 <GaugeComponent 
                     type='radial'
                     labels={{
-                        valueLabel:{ style: {fontSize: "30px", fill: "#000000", textShadow: "black"} }
+                        valueLabel:{ style: {fontSize: "30px", fill: "#000000", textShadow: "none"} }
                     }}
                     arc={{
                         subArcs: [
@@ -191,6 +190,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                         ]
                     }}
                     value={value}
+                    pointer={{elastic: true}}
                 />
                 <Stack direction={'column'} alignItems={'center'}>
                     <Typography>{text}</Typography>
@@ -209,7 +209,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                     }}                
                     labels={{
                         valueLabel:{
-                            style: {fontSize: "20px", fill: "#000000", textShadow: "black" },
+                            style: {fontSize: "30px", fill: "#000000", textShadow: "none" },
                             formatTextValue: (v) => v
                         },
                         tickLabels: {
@@ -249,7 +249,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                         <Typography><b>Type: </b>{props.cluster?.clusterInfo?.type}</Typography>
                         <Typography><b>Flavour: </b>{props.cluster?.clusterInfo?.flavour}</Typography>
                         <Typography><b>vCPU: </b>{props.cluster?.clusterInfo?.vcpu}</Typography>
-                        <Typography><b>Memory: </b>{(props.cluster?.clusterInfo?.memory||0)/1024/1024/1024}GB</Typography>
+                        <Typography><b>Memory: </b>{((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)}GB</Typography>
                     </Stack>
                     <Divider orientation='vertical' flexItem/>
                     <Stack width={'9%'} direction={'column'} alignItems={'center'}>

@@ -126,7 +126,7 @@ class MetricsChannel implements IChannel {
                             console.log(`Start pod metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
                             let socket = this.webSockets.find(entry => entry.ws === webSocket)
                             let metricsConfig = instanceConfig.data as MetricsConfig
-                            let interval = (metricsConfig.interval || 60) * 1000
+                            let interval = (metricsConfig.interval || 15) * 1000
                             if (socket) {
                                 let instances = socket.instances
                                 let instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
