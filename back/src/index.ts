@@ -675,10 +675,6 @@ const processClientMessage = async (webSocket:WebSocket, message:string) => {
     }
 
     console.log('Received request:', instanceMessage.flow, instanceMessage.action, instanceMessage.channel)
-    if (instanceMessage.action=== InstanceMessageActionEnum.COMMAND) {
-        console.log(message)
-    }
-
     if (instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
         console.log('Reconnect received')
         if (!channels.get(instanceMessage.channel)?.getChannelData().reconnectable) {

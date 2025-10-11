@@ -62,12 +62,14 @@ spec:
       containers:
         - name: kwirth
           image: kwirth:develop
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           env:
             - name: ROOTPATH
               value: '/kwirth'
             - name: MASTERKEY
               value: 'Kwirth4Ever'
+            - name: CHANNEL_ECHO
+              value: 'true'
             - name: CHANNEL_LOG
               value: 'true'
             - name: CHANNEL_METRICS
@@ -77,6 +79,8 @@ spec:
             - name: CHANNEL_OPS
               value: 'true'
             - name: CHANNEL_TRIVY
+              value: 'true'
+            - name: CHANNEL_FILEMAN
               value: 'true'
           ports:
             - name: kwirth

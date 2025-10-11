@@ -435,7 +435,7 @@ class FilemanChannel implements IChannel {
                 return execResponse
             }
             case FilemanCommandEnum.DIR: {
-                console.log(`Get DIR from '${filemanMessage.command}' to ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container}`)
+                console.log(`Get DIR from '${filemanMessage.params![0]}' to ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container}`)
                 let asset = instance.assets.find (a => a.podNamespace === filemanMessage.namespace && a.podName === filemanMessage.pod && a.containerName === filemanMessage.container)
                 if (!asset) {
                     console.log(`Asset ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container} not found`)
@@ -446,7 +446,7 @@ class FilemanChannel implements IChannel {
                 return
             }
             case FilemanCommandEnum.RENAME: {
-                console.log(`Do RENAME in '${filemanMessage.command}' to ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container}`)
+                console.log(`Do RENAME '${filemanMessage.params![0]}' to '${filemanMessage.params![1]}' on ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container}`)
                 let asset = instance.assets.find (a => a.podNamespace === filemanMessage.namespace && a.podName === filemanMessage.pod && a.containerName === filemanMessage.container)
                 if (!asset) {
                     console.log(`Asset ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container} not found`)
@@ -458,10 +458,6 @@ class FilemanChannel implements IChannel {
                 let srcLocalPath = '/' + srcClusterPath.split('/').slice(4,-1).join('/')
                 let fname = srcClusterPath.split('/').slice(-1)[0]
                 let [srcNamespace,srcPod,srcContainer] = srcHomeDir.split('/').slice(1)
-
-                // console.log(srcHomeDir, srcNamespace, srcPod, srcContainer)
-                // console.log(srcLocalPath, fname)
-                // console.log(['mv', srcLocalPath+'/'+fname, srcLocalPath+'/'+filemanMessage.params![1]])
 
                 try {
                     let fileInfo = await this.getFileInfo(srcClusterPath)
@@ -480,7 +476,7 @@ class FilemanChannel implements IChannel {
                 return
             }
             case FilemanCommandEnum.CREATE: {
-                console.log(`Do CREATE in ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container}`)
+                console.log(`Do CREATE in '${filemanMessage.params![0]}' in ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container}`)
                 let asset = instance.assets.find (a => a.podNamespace === filemanMessage.namespace && a.podName === filemanMessage.pod && a.containerName === filemanMessage.container)
                 if (!asset) {
                     console.log(`Asset ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container} not found`)
@@ -492,7 +488,7 @@ class FilemanChannel implements IChannel {
             }
             case FilemanCommandEnum.COPY:
             case FilemanCommandEnum.MOVE: {
-                console.log(`Do `+filemanMessage.command.toUpperCase())
+                console.log(`Do ${filemanMessage.command.toUpperCase()} ${filemanMessage.params![0]} to ${filemanMessage.params![1]}  in ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container}`)
                 let srcAsset = instance.assets.find (a => a.podNamespace === filemanMessage.namespace && a.podName === filemanMessage.pod && a.containerName === filemanMessage.container)
                 let dstAsset = instance.assets.find (a => a.podNamespace === filemanMessage.namespace && a.podName === filemanMessage.pod && a.containerName === filemanMessage.container)
                 if (!srcAsset || !dstAsset) {
@@ -506,7 +502,7 @@ class FilemanChannel implements IChannel {
                 return
             }
             case FilemanCommandEnum.DELETE: {
-                console.log(`Do DELETE on ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container}`)
+                console.log(`Do DELETE ${filemanMessage.params![0]} in ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container}`)
                 let asset = instance.assets.find (a => a.podNamespace === filemanMessage.namespace && a.podName === filemanMessage.pod && a.containerName === filemanMessage.container)
                 if (!asset) {
                     console.log(`Asset ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container} not found`)

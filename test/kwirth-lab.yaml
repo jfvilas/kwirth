@@ -61,8 +61,8 @@ spec:
       serviceAccount: kwirth-sa
       containers:
         - name: kwirth
-          image: kwirth:latest
-          imagePullPolicy: Never
+          image: kwirth:lab
+          imagePullPolicy: IfNotPresent
           env:
             - name: ROOTPATH
               value: '/kwirth'

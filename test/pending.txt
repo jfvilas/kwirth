@@ -1,0 +1,9 @@
+en rioja
+    colores metrics
+    fileman no arranca
+    deteccion nombre eks
+
+fav y last
+    gestion de favs
+    acabar fav y last boards
+    limitar $all

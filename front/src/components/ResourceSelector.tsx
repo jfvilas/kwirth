@@ -98,7 +98,6 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             setAllPods((prev) => [...prev, ...data])
         }
         else {
-            console.log('listssss', namespaces, groups)
             let list:string[] = []
             for (let namespace of namespaces) {
                 for (let group of groups) {
@@ -109,7 +108,6 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                     list.push (...(data as string[]))
                 }
             }
-            console.log('setallpods', list)
             setAllPods((prev) => [...prev, ...new Set(list)])
         }
     }

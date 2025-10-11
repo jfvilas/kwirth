@@ -144,7 +144,6 @@ export class AuthorizationManagement {
     public static checkAkr = (channels:Map<string, IChannel>, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) => {
         let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resources)
         let valid=false
-        console.log('checkAkr')
         for (let akr of accessKeyResources) {
             let haveLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, akr.scopes, Number.MIN_VALUE)
             let requestedLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, instanceConfig.scope, Number.MAX_VALUE)
@@ -505,16 +504,13 @@ export class AuthorizationManagement {
         for (let ns of namespaces) {
             allowedPods.push (...await this.getAllowedPods(coreApi, appsApi, ns, '', accessKey))
         }
-        console.log('allowedPods')
-        console.log(allowedPods)
-        console.log('reqpod')
-        console.log(requestedPods)
+        console.log('allowedPods', allowedPods)
+        console.log('requestedPods', requestedPods)
 
         if (requestedPods.length === 0 || (requestedPods.length === 1 && requestedPods[0]==='')) {
             result.push(...allowedPods)
         }
         else {
-            console.log('calculate gvv')
             let x = this.getValidValues(allowedPods, requestedPods.map(pod => '^'+pod+'$'))
             result.push(...x)
         }

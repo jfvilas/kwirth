@@ -136,7 +136,6 @@ export class FilemanChannel implements IChannel {
                 let signalMessage = JSON.parse(wsEvent.data) as ISignalMessage
                 if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
                     if (signalMessage.action === InstanceMessageActionEnum.START) {
-                        console.log('received iid',signalMessage.instance)
                         channelObject.instanceId = signalMessage.instance
 
                         // +++ session is started, so we ask for conatiner list
@@ -168,8 +167,6 @@ export class FilemanChannel implements IChannel {
                 }
                 if (signalMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
                     if (signalMessage.event === SignalMessageEventEnum.ADD) {
-                        console.log('addinstance')
-                        console.log(channelObject.instanceId)
                         let filemanMessage:IFilemanMessage = {
                             flow: InstanceMessageFlowEnum.REQUEST,
                             action: InstanceMessageActionEnum.COMMAND,
@@ -213,9 +210,14 @@ export class FilemanChannel implements IChannel {
     }
 
     startChannel(channelObject:IChannelObject): boolean {
+        console.log('started')
+        console.log('started')
+        console.log('started')
         let filemanObject:IFilemanObject = channelObject.uiData
         filemanObject.paused = false
-        filemanObject.started = true
+        filemanObject.started = true;
+        filemanObject.files=[]
+        filemanObject.currentPath='/'
         return true
     }
 

@@ -78,6 +78,16 @@ export class ClusterInfo {
                         }
                     }
                 }
+                if (this.name==='') {
+                    for (let node of resp.body.items) {
+                        if (node.metadata?.labels) {
+                            if (node.metadata.labels['alpha.eksctl.io/cluster-name']) {
+                                this.name=node.metadata.labels['alpha.eksctl.io/cluster-name']
+                                break
+                            }
+                        }
+                    }
+                }
             }
         }
         else if (node.metadata?.annotations && node.metadata?.annotations['k3s.io/hostname']) {
