@@ -62,7 +62,7 @@ spec:
       containers:
         - name: kwirth
           image: kwirth:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           env:
             - name: ROOTPATH
               value: '/kwirth'

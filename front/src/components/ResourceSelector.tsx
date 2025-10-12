@@ -101,7 +101,6 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             let list:string[] = []
             for (let namespace of namespaces) {
                 for (let group of groups) {
-                    console.log('getpods', namespace, group)
                     let [gtype,gname] = group.split('+')
                     let response = await fetch(`${cluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(cluster!.accessString))
                     let data = await response.json()

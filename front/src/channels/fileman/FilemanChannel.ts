@@ -75,6 +75,8 @@ export class FilemanChannel implements IChannel {
                                 return IChannelMessageAction.REFRESH
                             case FilemanCommandEnum.DIR:
                                 let content = JSON.parse(response.data)
+                                console.log('*************')
+                                console.log(content)
                                 if (content.status!=='Success') {
                                     this.nofify('ERROR: '+ (content.text || content.message), 'error')
                                 }
@@ -137,29 +139,6 @@ export class FilemanChannel implements IChannel {
                 if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
                     if (signalMessage.action === InstanceMessageActionEnum.START) {
                         channelObject.instanceId = signalMessage.instance
-
-                        // +++ session is started, so we ask for conatiner list
-                        // setTimeout( (iid:string) => {
-                        //     let [namespace,pod,container] = ['','','']
-                        //     let filemanMessage:IFilemanMessage = {
-                        //         flow: InstanceMessageFlowEnum.REQUEST,
-                        //         action: InstanceMessageActionEnum.COMMAND,
-                        //         channel: 'fileman',
-                        //         type: InstanceMessageTypeEnum.DATA,
-                        //         accessKey: channelObject.accessString!,
-                        //         instance: iid,
-                        //         id: uuidv4(),
-                        //         command: FilemanCommandEnum.HOME,
-                        //         namespace: namespace,
-                        //         group: '',
-                        //         pod: pod,
-                        //         container: container,
-                        //         params: [],
-                        //         msgtype: 'filemanmessage'
-                        //     }
-                        //     let payload = JSON.stringify( filemanMessage )
-                        //     channelObject.webSocket!.send(payload)
-                        // }, 1500, signalMessage.instance)
                     }
                     else if (signalMessage.action === InstanceMessageActionEnum.COMMAND) {
                         if (signalMessage.text) this.nofify(signalMessage.text,'error')
