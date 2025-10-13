@@ -1,7 +1,7 @@
 import { InstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, InstanceConfigResponse, parseResources } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel'
-import { Readable, Writable } from 'stream';
+import { PassThrough, Readable, Writable } from 'stream';
 import { Request, Response } from 'express'
 import { randomUUID } from 'crypto';
 import fs from 'fs'
@@ -152,10 +152,19 @@ class FilemanChannel implements IChannel {
                     if (fileInfo.type === 0 || fileInfo.type === 2) {
                         console.log('filePath', filepath)
                         let tmpName='/tmp/'+randomUUID()
-                        await this.downloadFile(srcNamespace, srcPod, srcContainer, filepath, tmpName)
-                        res.setHeader('Content-Disposition', `attachment; filename="${encondedFilename}"`)
-                        res.send(fs.readFileSync(tmpName)).status(200)
-                        fs.unlinkSync(tmpName)
+                        let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, filepath, tmpName)
+                        if (result.status === ExecutionStatus.SUCCESS) {
+                            res.setHeader('Content-Disposition', `attachment; filename="${encondedFilename}"`)
+                            res.send(fs.readFileSync(tmpName)).status(200)
+                        }
+                        else {
+                            res.send(result.message).status(400)
+                        }
+
+                        try {
+                            fs.unlinkSync(tmpName)
+                        }
+                        catch {}
                     }
                     else if (fileInfo.type === 1) {
                         let tmpName='/tmp/'+randomUUID()
@@ -578,32 +587,35 @@ class FilemanChannel implements IChannel {
 
     }
 
-    downloadFile = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string, localPath: string) => {
-        const writeStream = fs.createWriteStream(localPath);
-        let ready=false
+    // downloadFile = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string, localPath: string) => {
+    //     const writeStream = fs.createWriteStream(localPath);
+    //     let ready=false
         
-        await this.clusterInfo.execApi.exec(
-            srcNamespace,
-            srcPod,
-            srcContainer,
-            ['cat', remotePath],
-            writeStream, 
-            process.stderr,   // +++
-            null, 
-            false, 
-            async (status) => {
-                writeStream.end()
-                writeStream.close()
-                while (!writeStream.closed) {
-                    await new Promise ( (resolve) => { setTimeout(resolve, 5)})
-                }
-                ready=true
-            }
-        )    
-        while (!ready) {
-            await new Promise ( (resolve) => { setTimeout(resolve, 5)})
-        }
-    }
+    //     await this.clusterInfo.execApi.exec(
+    //         srcNamespace,
+    //         srcPod,
+    //         srcContainer,
+    //         ['cat', remotePath],
+    //         writeStream, 
+    //         process.stderr,   // +++
+    //         null, 
+    //         false, 
+    //         async (status) => {
+    //             writeStream.end()
+    //             while (!writeStream.closed) {
+    //                 await new Promise ( (resolve) => { setTimeout(resolve, 5)})
+    //             }
+    //             ready=true
+    //         }
+    //     )
+    //     while (!ready) {
+    //         await new Promise ( (resolve) => { setTimeout(resolve, 5)})
+    //     }
+    //     if (!writeStream.closed) {
+    //         console.error('****** forcing close ******')
+    //         writeStream.end()
+    //     }
+    // }
 
     downloadFolder = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string, localPath: string) => {
         const writeStream = fs.createWriteStream(localPath)
@@ -620,7 +632,7 @@ class FilemanChannel implements IChannel {
             false,
             async (status) => {
                 writeStream.end()
-                writeStream.close()
+                //writeStream.close()
                 while (!writeStream.closed) {
                     await new Promise ( (resolve) => { setTimeout(resolve, 5)})
                 }
@@ -699,15 +711,66 @@ class FilemanChannel implements IChannel {
         })
     }    
 
+    downloadFile = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string, localPath: string) : Promise<IExecutionResult> => {
+        const writeStream = fs.createWriteStream(localPath);
+        let ready=false
+        const errorStream = new PassThrough();
+        let errorString = ''; // Esta será la variable que almacene el error como string
+
+        // Capturamos los datos del error en la variable `errorString`
+        errorStream.on('data', (chunk:any) => {
+            errorString += chunk.toString(); // Acumulamos los datos de error en un string
+            console.log('errorString')
+            console.log(errorString)
+        });
+        
+        await this.clusterInfo.execApi.exec(
+            srcNamespace,
+            srcPod,
+            srcContainer,
+            ['cat', remotePath],
+            writeStream, 
+            errorStream,
+            null, 
+            false, 
+            async (status) => {
+                writeStream.end()
+                while (!writeStream.closed) {
+                    await new Promise ( (resolve) => { setTimeout(resolve, 5)})
+                }
+                ready=true
+            }
+        )
+        while (!ready) {
+            await new Promise ( (resolve) => { setTimeout(resolve, 5)})
+        }
+        if (!writeStream.closed) {
+            console.error('****** forcing close ******')
+            writeStream.end()
+        }
+
+        if (errorString==='') {
+            return {
+                metadata: {},
+                message: '',
+                status: ExecutionStatus.SUCCESS
+            }
+        }
+        else {
+            return {
+                metadata: {},
+                message: errorString,
+                status: ExecutionStatus.FAILURE
+            }
+        }
+
+    }
+
     clusterCopyOrMove = async (operation:FilemanCommandEnum, srcNamespace:string, srcPod:string, srcContainer:string, srcLocalPath:string, dstNamespace:string, dstPod:string, dstContainer:string, dstLocalPath:string) : Promise<IExecutionResult> => {
         const tempLocalFile = `/tmp/${srcNamespace}-${srcPod}-${srcContainer}-${dstNamespace}-${dstPod}-${dstContainer}`
 
-        try {
-            await this.downloadFile(srcNamespace, srcPod, srcContainer, srcLocalPath, tempLocalFile)
-        }
-        catch (err) {
-            return { metadata: {}, message: 'Cannot download file: '+JSON.stringify(err), status:ExecutionStatus.FAILURE }
-        }
+        let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, srcLocalPath, tempLocalFile)
+        if (result.status !== ExecutionStatus.SUCCESS) return result            
 
         try {
             await this.uploadFile(dstNamespace, dstPod, dstContainer, tempLocalFile, dstLocalPath)
@@ -840,16 +903,15 @@ class FilemanChannel implements IChannel {
                     let result = await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcLocalPath + '/' + fname, dstNamespace, dstPod, dstContainer, dstLocalPath + '/' + fname)
                     if (result.status === ExecutionStatus.SUCCESS) {
                         let fileInfo = await this.getFileInfo(srcClusterPath)
-                            if (fileInfo)  {
-                                this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:dstClusterPath + '/' + fname, type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
-                            }
-                            if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))
+                        if (fileInfo)  {
+                            this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:dstClusterPath + '/' + fname, type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
                         }
-                        else {
-                            this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.message)
-                        }
-                    } 
-                    break
+                        if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))
+                    }
+                    else {
+                        this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.message)
+                    }
+                    } break
                 case 1:
                     console.log('dir')
                     let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['ls', '-l', srcLocalPath + '/' + fname])
@@ -868,31 +930,69 @@ class FilemanChannel implements IChannel {
                     ParseListing.parseEntries(result.stdout, (err:any, entryArray:IDirectoryEntry[]) => { entryArray.map(e => fileList.push(e)) })
                     for (var e of fileList) {
                         switch(e.type) {
-                            case 0:
+                            case 0: {
                                 console.log('dirfile')
-                                await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcLocalPath + fname+'/'+e.name, dstNamespace, dstPod, dstContainer, dstLocalPath + fname+'/'+e.name)
-                                break
-                            case 1:
+                                let result = await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcLocalPath + '/' + fname+'/' + e.name, dstNamespace, dstPod, dstContainer, dstLocalPath + '/' + fname + '/' + e.name)
+                                if (result.status === ExecutionStatus.SUCCESS) {
+                                    let src = '/' + [srcNamespace, srcPod, srcContainer, srcLocalPath, fname, e.name].join('/')
+                                    let fileInfo = await this.getFileInfo(src)
+                                    if (fileInfo)  {
+                                        this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:'/'+[dstNamespace, dstPod, dstContainer, dstLocalPath, fname, e.name].join('/'), type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
+                                    }
+                                    if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:src }, status: ExecutionStatus.SUCCESS}))
+                                }
+                                else {
+                                    this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.message)
+                                }
+                                } break
+                            case 1: {
                                 console.log('dirdir')
-                                await this.executeCopyOrMove(webSocket, operation, instance, srcHomeDir+srcLocalPath+fname+'/'+e.name, dstHomeDir+dstLocalPath+fname)
-                                break
-                            case 2:
+                                await this.executeCopyOrMove(webSocket, operation, instance, srcHomeDir + '/' + fname + '/' + e.name, dstHomeDir + dstLocalPath + '/' + fname)
+                                } break
+                            case 2: {
                                 console.log('dirlink')
-                                await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcLocalPath + fname + '/' + e.target, dstNamespace, dstPod, dstContainer, dstLocalPath + fname + '/'+e.name)
-                                break
-                            default:
+                                let srcPath = srcLocalPath + '/' + fname + '/' + e.target
+                                if (e.target && e.target.startsWith('/')) srcPath = e.target
+                                console.log('linkcopy from', srcPath)
+                                let result = await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcPath, dstNamespace, dstPod, dstContainer, dstLocalPath + '/' + fname + '/'+e.name)
+                                if (result.status === ExecutionStatus.SUCCESS) {
+                                    let src = '/' + [srcNamespace, srcPod, srcContainer, srcPath].join('/')
+                                    let fileInfo = await this.getFileInfo(src)
+                                    if (fileInfo)  {
+                                        this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:'/'+[dstNamespace, dstPod, dstContainer, dstLocalPath, fname, e.name].join('/'), type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
+                                    }
+                                    if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:src }, status: ExecutionStatus.SUCCESS}))
+                                }
+                                else {
+                                    this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.message)
+                                }
+                                } break
+                            default: {
                                 console.error(`Invalid type ${e.type} working with ${e.name}`)
-                                break
+                            }
+                            break
+                                
                         }
                     }
                     break
                 case 2:
                     console.log('link')
+                    let src = '/' + [srcNamespace, srcPod, srcContainer, srcMetadata.target].join('/')
                     if (srcMetadata.target) {
-                        await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcMetadata.target, dstNamespace, dstPod, dstContainer, dstLocalPath + fname)
+                        let result = await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcMetadata.target, dstNamespace, dstPod, dstContainer, dstLocalPath + fname)
+                        if (result.status === ExecutionStatus.SUCCESS) {
+                            let fileInfo = await this.getFileInfo(src)
+                            if (fileInfo)  {
+                                this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:'/'+[dstNamespace, dstPod, dstContainer, dstLocalPath + fname].join('/'), type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
+                            }
+                            if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:src }, status: ExecutionStatus.SUCCESS}))
+                        }
+                        else {
+                            this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.message)
+                        }
                     }
                     else {
-                        console.error(`Invalid target for link ${srcMetadata.name}`)
+                        this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, 'Invalid target for '+src)
                     }
                     break
                 default:

@@ -157,37 +157,40 @@ const App: React.FC = () => {
 
     const fillTabSummary = async (tab:ITabSummary) => {
         let namespacesArray:string[] = []
-        if (tab.channelObject.namespace==='$all' || tab.channelObject.group==='$all'|| tab.channelObject.pod==='$all'|| tab.channelObject.container==='$all') {
+        if (tab.channelObject.namespace.startsWith('$') || tab.channelObject.group.startsWith('$')|| tab.channelObject.pod.startsWith('$') || tab.channelObject.container.startsWith('$')) {
             namespacesArray = (await (await fetch(`${backendUrl}/config/namespace`, addGetAuthorization(accessString))).json())
             tab.channelObject.namespace = namespacesArray.join(',')
         }
         let groupsArr = []
-        if (tab.channelObject.group==='$all') {
+        if (tab.channelObject.group.startsWith('$')) {
             for (let namespace of namespacesArray) {
-                let data = await((await fetch(`${backendUrl}/config/${namespace}/groups`, addGetAuthorization(accessString))).json())
+                let data = await ((await fetch(`${backendUrl}/config/${namespace}/groups`, addGetAuthorization(accessString))).json())
                 data = data.map ( (g:any) => ({ ...g, namespace }))
                 groupsArr.push(...data)
             }
-            if (tab.channelObject.group==='$all') tab.channelObject.group = groupsArr.map(g => g.type+'+'+g.name).join(',')
+            if (tab.channelObject.group==='$some') groupsArr = groupsArr.slice(0,3)
+            tab.channelObject.group = groupsArr.map(g => g.type+'+'+g.name).join(',')
         }
 
         let podsArray:any[] = []
-        if (tab.channelObject.pod==='$all' || tab.channelObject.container==='$all') {
+        if (tab.channelObject.pod.startsWith('$') || tab.channelObject.container.startsWith('$')) {
             for (let group of groupsArr.filter(g => g.type!=='deployment')) {
                 let data = await (await fetch(`${backendUrl}/config/${group.namespace}/${group.name}/pods?type=${group.type}`, addGetAuthorization(accessString))).json()
                 data = data.map ((name:string) => ({ name, namespace:group.namespace}))
                 podsArray.push (...data)
             }
-            if (tab.channelObject.pod==='$all') tab.channelObject.pod = podsArray.map(pod => pod.name).join(',')
+            if (tab.channelObject.pod==='$some') podsArray = podsArray.slice(0,3)
+            tab.channelObject.pod = podsArray.map(pod => pod.name).join(',')
         }
     
         let containersArray:string[] = []
-        if (tab.channelObject.container==='$all') {
+        if (tab.channelObject.container.startsWith('$')) {
             for (let pod of podsArray) {
                 let data = await ((await fetch(`${backendUrl}/config/${pod.namespace}/${pod.name}/containers`, addGetAuthorization(accessString))).json())
                 data = data.map( (c:string) => pod.name+'+'+c)
                 containersArray.push (...(data as string[]))
             }
+            if (tab.channelObject.container==='$some') containersArray = containersArray.slice(0,3)
             tab.channelObject.container = containersArray.join(',')
         }
     }

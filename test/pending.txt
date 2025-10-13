@@ -7,3 +7,5 @@ fav y last
     gestion de favs
     acabar fav y last boards
     limitar $all
+
+crear un permiso para indicar que cosas del front puede ver el usuario

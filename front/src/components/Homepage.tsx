@@ -104,10 +104,12 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     }
 
     const deleteFromList = (list:ITabSummary[], tab:ITabSummary) => {
-        let i = list.findIndex(t => t.name !== tab.name  && t.channel === tab.channel)
-        list.splice(i,1)
-        props.onUpdateTabs([...props.lastTabs], [...props.favTabs])
-        setRefresh(Math.random())
+        let i = list.findIndex(t => t.name === tab.name  && t.channel === tab.channel)
+        if (i>=0) {
+            list.splice(i,1)
+            props.onUpdateTabs([...props.lastTabs], [...props.favTabs])
+            setRefresh(Math.random())
+        }
     }
 
     const openTab = (tab:ITabSummary) => {
@@ -237,25 +239,25 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     }
 
     const distributionIcon = (flavour:string|undefined) => {
-        if (!flavour) return ''
+        if (!flavour) return <></>
         
         switch (flavour) {
             case 'aks':
-                return <img src={IconAks} alt='ns' height={'16px'}/>
+                return <p style={{fontSize:10, margin:0}}><img src={IconAks} alt='ns' height={'16px'}/> Azure Kubernetes</p>
             case 'k3s':
-                return <img src={IconK3s} alt='ns' height={'16px'}/>
+                return <p style={{fontSize:10, margin:0}}><img src={IconK3s} alt='ns' height={'16px'}/> Rancher K3</p>
             case 'k3d':
-                return <img src={IconK3d} alt='ns' height={'16px'}/>
+                return <p style={{fontSize:10, margin:0}}><img src={IconK3d} alt='ns' height={'16px'}/> K3D</p>
             case 'eks':
-                return <img src={IconEks} alt='ns' height={'16px'}/>
+                return <p style={{fontSize:10, margin:0, }}><img src={IconEks} alt='ns' height={'16px'}/> AWS Kubernetes</p>
             case 'ocp':
-                return <img src={IconOcp} alt='ns' height={'16px'}/>
+                return <p style={{fontSize:10, margin:0}}><img src={IconOcp} alt='ns' height={'16px'}/> openShift</p>
             case 'gke':
-                return <img src={IconGke} alt='ns' height={'16px'}/>
+                return <p style={{fontSize:10, margin:0}}><img src={IconGke} alt='ns' height={'16px'}/> Google Kubernetes</p>
             case 'rk2e':
-                return <img src={IconRk2e} alt='ns' height={'16px'}/>
+                return <p style={{fontSize:10, margin:0}}><img src={IconRk2e} alt='ns' height={'16px'}/> Rancher Kubernetes</p>
             default:
-                return <img src={IconK8s} alt='ns' height={'16px'}/>
+                return <><img src={IconK8s} alt='ns' height={'16px'}/></>
         }                
     }
     
@@ -264,8 +266,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         <Card sx={{flex:1, width:'95%', alignSelf:'center', marginTop:'8px'}}>
             <CardContent sx={{backgroundColor:'#f0f0f0'}}>
                 <Stack direction={'row'} spacing={2} sx={{mt:'4px'}}>
-                    <Stack width={'30%'}>
-                         
+                    <Stack width={'30%'}> 
                         <Typography fontSize={20}><b>Context</b></Typography>
                         <Typography><b>Home cluster: </b>{homeCluster} [{clusterUrl}]</Typography>
                         <Typography><b>Selected cluster: </b>{props.cluster?.clusterInfo?.name}</Typography>
@@ -284,7 +285,10 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                     <Stack width={'20%'}>
                         <Typography fontSize={20}><b>Cluster Info</b></Typography>
                         <Typography><b>Name: </b>{props.cluster?.clusterInfo?.name}</Typography>
-                        <Typography><b>Flavour: </b>{distributionIcon(props.cluster?.clusterInfo?.flavour)}</Typography>
+                        <Stack direction={'row'} alignItems={'center'}>
+                            <Typography><b>Flavour: &nbsp;</b></Typography>
+                            {distributionIcon(props.cluster?.clusterInfo?.flavour)}
+                        </Stack>
                         <Typography><b>Version: </b>{props.cluster?.clusterInfo?.version}</Typography>
                         <Typography><b>Platform: </b>{props.cluster?.clusterInfo?.platform}</Typography>
                         <Typography><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes.length}</Typography>
