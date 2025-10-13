@@ -6,6 +6,7 @@ import { FileManager } from "@cubone/react-file-manager";
 import { Box } from '@mui/material';
 import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common';
 import { v4 as uuidv4 } from 'uuid'
+import './custom-fm.css'
 
 interface IContentProps {
     webSocket?: WebSocket
@@ -224,6 +225,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     primaryColor='#1976d2'
                     fontFamily='Roboto, Helvetica, Arial, sans-serif'
                     height='100%'
+                    className='custom-fm'
                 />
             </Box>
         }

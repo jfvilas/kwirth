@@ -1,0 +1,21 @@
+.custom-fm .toolbar {
+  background-color: #e0e0e0;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.custom-fm .files-container {
+  background-color: #f0f0f0;
+}
+
+.custom-fm .bread-crumb-container {
+  background-color: #f0f0f0;
+}
+
+.custom-fm .files.grid {
+  background-color: #f0f0f0;
+}
+
+.custom-fm .item-action {
+  background-color: #e0e0e0;
+}

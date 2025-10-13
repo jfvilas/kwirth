@@ -8,7 +8,7 @@ import fs from 'fs'
 import path from 'path';
 import fileUpload from 'express-fileupload';
 
-const ParseListing = require ('parse-listing')
+const ParseListing = require ('@jfvilas/parse-listing')
 
 export interface IFilemanConfig {
     interval: number
@@ -66,18 +66,19 @@ export interface IInstance {
 
 interface IExecutionResult {
     metadata: Record<string, any>,
-    status: string,
+    status: ExecutionStatus,
     message: string,
-    reason: string,
-    details: {  causes: Record<string, any>[] },
-    code: number
+    reason?: string,
+    details?: {  causes: Record<string, any>[] },
+    code?: number
 }
 
 enum ExecutionStatus {
     SUCCESS = 'Success',
     FAILURE = 'Failure'
 }
-interface ILsEntry {
+
+interface IDirectoryEntry {
     name: string,
     type: number,
     time: number,
@@ -559,10 +560,11 @@ class FilemanChannel implements IChannel {
 
         console.log('launchcommand', localDir)
         let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['ls', '-l', localDir])
+        console.log(result)
         if (result.stdend.status===ExecutionStatus.SUCCESS) {
             if (result.stderr==='') {
-                let arr:ILsEntry[] = []
-                ParseListing.parseEntries(result.stdout, (err:any, entryArray:ILsEntry[]) => { entryArray.map(e => arr.push(e)) })
+                let arr:IDirectoryEntry[] = []
+                ParseListing.parseEntries(result.stdout, (err:any, entryArray:IDirectoryEntry[]) => { entryArray.map(e => arr.push(e)) })
                 arr.map(e => e.name = homeDir + localDir + e.name)
                 this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DIR, JSON.stringify({ metadata: { object: arr }, status: ExecutionStatus.SUCCESS}))
             }
@@ -697,17 +699,50 @@ class FilemanChannel implements IChannel {
         })
     }    
 
-    clusterCopy = async (srcNamespace:string, srcPod:string, srcContainer:string, srcLocalPath:string, dstNamespace:string, dstPod:string, dstContainer:string, dstLocalPath:string) => {
+    clusterCopyOrMove = async (operation:FilemanCommandEnum, srcNamespace:string, srcPod:string, srcContainer:string, srcLocalPath:string, dstNamespace:string, dstPod:string, dstContainer:string, dstLocalPath:string) : Promise<IExecutionResult> => {
         const tempLocalFile = `/tmp/${srcNamespace}-${srcPod}-${srcContainer}-${dstNamespace}-${dstPod}-${dstContainer}`
-        await this.downloadFile(srcNamespace, srcPod, srcContainer, srcLocalPath, tempLocalFile)
-        await this.uploadFile(dstNamespace, dstPod, dstContainer, tempLocalFile, `${dstLocalPath}`)
+
+        try {
+            await this.downloadFile(srcNamespace, srcPod, srcContainer, srcLocalPath, tempLocalFile)
+        }
+        catch (err) {
+            return { metadata: {}, message: 'Cannot download file: '+JSON.stringify(err), status:ExecutionStatus.FAILURE }
+        }
+
+        try {
+            await this.uploadFile(dstNamespace, dstPod, dstContainer, tempLocalFile, dstLocalPath)
+        }
+        catch (err) {
+            return { metadata:{}, message: 'Cannot upload file: '+JSON.stringify(err), status:ExecutionStatus.FAILURE }
+        }
+
         try {
             await fs.unlinkSync(tempLocalFile)
         }
-        catch(err) {
+        catch (err) {
             console.log('Error removing temp file')
-            console.log(err)
+            return { metadata:{}, message: 'Error removing temp file '+JSON.stringify(err), status: ExecutionStatus.FAILURE}
         }
+
+        try {
+            if (operation === FilemanCommandEnum.MOVE) {
+                let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['rm', '-r', srcLocalPath])
+                if (result.stdend.status===ExecutionStatus.SUCCESS) {
+                    if (result.stderr!=='') {
+                        return { metadata: {}, message: result.stderr, status:ExecutionStatus.FAILURE }
+                    }
+                }
+                else {
+                    return { metadata: {}, message: result.stdend.message, status:ExecutionStatus.FAILURE }
+                }
+            }
+        }
+        catch(err) {
+            console.log('Error removing source file')
+            return { metadata:{}, message: 'Error removing source file '+JSON.stringify(err), status: ExecutionStatus.FAILURE}
+        }
+
+        return { metadata:{}, message: '', status: ExecutionStatus.SUCCESS}
     }
 
     private async getFileInfo(clusterPath:string) {
@@ -717,8 +752,8 @@ class FilemanChannel implements IChannel {
         let result = await this.launchCommand(namespace, pod, container, ['ls', '-l', localPath])
         if (result.stdend.status===ExecutionStatus.SUCCESS) {
             if (result.stderr==='') {
-                let arr :ILsEntry[] = []
-                ParseListing.parseEntries(result.stdout, (err:any, entryArray:ILsEntry[]) => { entryArray.map(e => arr.push(e)) })
+                let arr :IDirectoryEntry[] = []
+                ParseListing.parseEntries(result.stdout, (err:any, entryArray:IDirectoryEntry[]) => { entryArray.map(e => arr.push(e)) })
                 let srcMetadata = arr.find(e => e.name === fname)
                 if (arr.length===0 || !srcMetadata) return undefined
                 return srcMetadata
@@ -790,8 +825,8 @@ class FilemanChannel implements IChannel {
                 return
             }
 
-            let arr :ILsEntry[] = []
-            ParseListing.parseEntries(result.stdout, (err:any, entryArray:ILsEntry[]) => { entryArray.map(e => arr.push(e)) })
+            let arr:IDirectoryEntry[] = []
+            ParseListing.parseEntries(result.stdout, (err:any, entryArray:IDirectoryEntry[]) => { entryArray.map(e => arr.push(e)) })
             let srcMetadata = arr.find(e => e.name === fname)
             if (arr.length===0 || !srcMetadata) {
                 console.log('**********NO CONTENT************ >', fname)
@@ -800,13 +835,24 @@ class FilemanChannel implements IChannel {
             }
 
             switch(srcMetadata.type) {
-                case 0:
+                case 0: {
                     console.log('file')
-                    await this.clusterCopy(srcNamespace, srcPod, srcContainer, srcLocalPath + fname, dstNamespace, dstPod, dstContainer, dstLocalPath + fname)
+                    let result = await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcLocalPath + '/' + fname, dstNamespace, dstPod, dstContainer, dstLocalPath + '/' + fname)
+                    if (result.status === ExecutionStatus.SUCCESS) {
+                        let fileInfo = await this.getFileInfo(srcClusterPath)
+                            if (fileInfo)  {
+                                this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:dstClusterPath + '/' + fname, type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
+                            }
+                            if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))
+                        }
+                        else {
+                            this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.message)
+                        }
+                    } 
                     break
                 case 1:
                     console.log('dir')
-                    let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['ls', '-l', srcLocalPath + fname])
+                    let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['ls', '-l', srcLocalPath + '/' + fname])
                     if (result.stdend.status===ExecutionStatus.SUCCESS) {
                         if (result.stderr!=='') {
                             this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.stderr)
@@ -818,13 +864,13 @@ class FilemanChannel implements IChannel {
                         return
                     }
 
-                    let fileList:ILsEntry[] = []
-                    ParseListing.parseEntries(result.stdout, (err:any, entryArray:ILsEntry[]) => { entryArray.map(e => fileList.push(e)) })
+                    let fileList:IDirectoryEntry[] = []
+                    ParseListing.parseEntries(result.stdout, (err:any, entryArray:IDirectoryEntry[]) => { entryArray.map(e => fileList.push(e)) })
                     for (var e of fileList) {
                         switch(e.type) {
                             case 0:
                                 console.log('dirfile')
-                                await this.clusterCopy(srcNamespace, srcPod, srcContainer, srcLocalPath + fname+'/'+e.name, dstNamespace, dstPod, dstContainer, dstLocalPath + fname+'/'+e.name)
+                                await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcLocalPath + fname+'/'+e.name, dstNamespace, dstPod, dstContainer, dstLocalPath + fname+'/'+e.name)
                                 break
                             case 1:
                                 console.log('dirdir')
@@ -832,7 +878,7 @@ class FilemanChannel implements IChannel {
                                 break
                             case 2:
                                 console.log('dirlink')
-                                await this.clusterCopy(srcNamespace, srcPod, srcContainer, srcLocalPath + fname + '/' + e.target, dstNamespace, dstPod, dstContainer, dstLocalPath + fname + '/'+e.name)
+                                await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcLocalPath + fname + '/' + e.target, dstNamespace, dstPod, dstContainer, dstLocalPath + fname + '/'+e.name)
                                 break
                             default:
                                 console.error(`Invalid type ${e.type} working with ${e.name}`)
@@ -843,7 +889,7 @@ class FilemanChannel implements IChannel {
                 case 2:
                     console.log('link')
                     if (srcMetadata.target) {
-                        await this.clusterCopy(srcNamespace, srcPod, srcContainer, srcMetadata.target, dstNamespace, dstPod, dstContainer, dstLocalPath + fname)
+                        await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcMetadata.target, dstNamespace, dstPod, dstContainer, dstLocalPath + fname)
                     }
                     else {
                         console.error(`Invalid target for link ${srcMetadata.name}`)
