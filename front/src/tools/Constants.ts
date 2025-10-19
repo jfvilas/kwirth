@@ -57,41 +57,41 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     }
   },
   {
-    name: 'some-groups-fileman',
+    name: 'all-groups-fileman',
     description: 'File manager for all sets',
     channel: 'fileman',
     channelObject: {
       clusterName: 'inCluster',
       view: 'group',
       namespace: '$all',
-      group: '$some',
+      group: '$all',
       pod: '',
       container: ''
     }
   },
   {
-    name: 'some-pods-metrics',
+    name: 'all-pods-metrics',
     description: 'Basic metrics for all pods in cluster',
     channel: 'metrics',
     channelObject: {
       clusterName: 'inCluster',
       view: 'pod',
       namespace: '$all',
-      group: '$some',
-      pod: '$some',
+      group: '$all',
+      pod: '$all',
       container: ''
     }
   },
   {
-    name: 'some-containers-ops',
+    name: 'all-containers-ops',
     description: 'Perform operations on all contianers',
     channel: 'ops',
     channelObject: {
       clusterName: 'inCluster',
       view: 'container',
       namespace: '$all',
-      group: '$some',
-      pod: '$some',
+      group: '$all',
+      pod: '$all',
       container: '$all'
     }
   }

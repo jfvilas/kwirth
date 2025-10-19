@@ -13,6 +13,23 @@ export class LoginApi {
     static semaphore:Semaphore = new Semaphore(1)
     public route = express.Router()
 
+    readUsersSecret = async (secrets: ISecrets) => {
+        let users:{ [username:string]:string }
+        try {
+            users = await secrets.read('kwirth-users')
+        }
+        catch (err) {
+            try {
+                users = await secrets.read('kwirth.users')
+            }
+            catch (err) {
+                console.log(`*** Cannot read 'kwirth-users' secret on source ***`)
+                return undefined
+            }
+            return users
+        }
+    }
+
     constructor (secrets: ISecrets, configMaps: IConfigMaps) {
         this.secrets = secrets
         this.configMaps = configMaps
@@ -20,15 +37,13 @@ export class LoginApi {
         // authentication (login)
         this.route.post('/', async (req:Request,res:Response) => {
             LoginApi.semaphore.use ( async () => {
-                let users:{ [username:string]:string }
-                try {
-                     users = await secrets.read('kwirth-users')
-                }
-                catch (err) {
-                    console.log(`*** Cannot read 'kwirth-users' secret on source ***`)
-                    res.status(403).json()
+                let users = await this.readUsersSecret(this.secrets)
+                if (!users) {
+                    console.error('Cannot access kwirth users')
+                    res.status(401).json()
                     return
                 }
+
                 if (!users[req.body.user]) {
                     res.status(401).json()
                     return
@@ -56,15 +71,13 @@ export class LoginApi {
         // change password
         this.route.post('/password', async (req:Request,res:Response) => { 
             LoginApi.semaphore.use ( async () => {
-                let users:{ [username:string]:string }
-                try {
-                     users = await secrets.read('kwirth-users')
-                }
-                catch (err) {
-                    console.log(`*** Cannot read 'kwirth-users' secret on source ***`)
-                    res.status(403).json()
+                let users = await this.readUsersSecret(this.secrets)
+                if (!users) {
+                    console.error('Cannot access kwirth users')
+                    res.status(401).json()
                     return
                 }
+
                 if (!users[req.body.user]) {
                     res.status(401).json()
                     return

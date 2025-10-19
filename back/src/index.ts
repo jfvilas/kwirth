@@ -133,6 +133,7 @@ const getKubernetesData = async ():Promise<KwirthData> => {
         // kwirth is supposed to be running outsoud cluster, so we look for kwirth users config in order to detect namespace
         let secrets = (await coreApi.listSecretForAllNamespaces()).body.items
         let secret = secrets.find(s => s.metadata?.name === 'kwirth-users')
+        if (!secret) secret = secrets.find(s => s.metadata?.name === 'kwirth.users')
         if (secret) {
             // this namespace will be used to access secrets and configmaps
             return { clusterName: 'inCluster', namespace:secret.metadata?.namespace!, deployment:'', inCluster:false, version:VERSION, lastVersion: VERSION, clusterType: ClusterTypeEnum.KUBERNETES, metricsInterval:15, channels: [] }
