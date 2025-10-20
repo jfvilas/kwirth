@@ -128,12 +128,14 @@ class FilemanChannel implements IChannel {
         let key=req.query['key'] as string
         switch (endpoint){
             case 'download':
-                // +++
-                // temporarily, the key will contain just the instanceId. When ReactFileManager supports adding headers to download requests
-                // we should receive an Authorization header containing a valid accessKey
-                let filename=req.query['filename'] as string
+                let socket = this.webSockets.find(ws => ws.instances.some(i => i.instanceId === key))
+                if (!socket) {
+                    res.send('Inexistent instance').status(500)
+                    return
+                }
 
-                if (!key || !filename) {
+                let filename=req.query['filename'] as string
+                if (!filename) {
                     res.send().status(400)
                     return
                 }
@@ -183,39 +185,39 @@ class FilemanChannel implements IChannel {
                 break
             case 'upload': {
                 let socket = this.webSockets.find(ws => ws.instances.some(i => i.instanceId === key))
-                if (socket) {
-                    const filedata = req.files!.file  as fileUpload.UploadedFile
-                    const filename = req.body.filename as string
-
-                    let tmpName='/tmp/'+randomUUID()
-                    fs.writeFileSync(tmpName, filedata.data)
-                    let [dstNamespace,dstPod,dstContainer] = filename.split('/').slice(1)
-                    let dstLocalPath = '/' + filename.split('/').slice(4).join('/')
-                    await this.uploadFile(dstNamespace, dstPod, dstContainer, tmpName, dstLocalPath)
-
-                    let size = fs.statSync(tmpName).size
-                    let result = { metadata: { object:filename, type:0, time: Date.now(), size: size }, status: ExecutionStatus.SUCCESS}
-                    let resp: IFilemanMessageResponse = {
-                        action: InstanceMessageActionEnum.COMMAND,
-                        flow: InstanceMessageFlowEnum.UNSOLICITED,
-                        channel: 'fileman',
-                        instance: key,
-                        type: InstanceMessageTypeEnum.DATA,
-                        id: '1',
-                        command: FilemanCommandEnum.CREATE,
-                        namespace: '',
-                        group: '',
-                        pod: '',
-                        container: '',
-                        data: JSON.stringify(result),
-                        msgtype: 'filemanmessageresponse'
-                    }
-                    socket.ws.send(JSON.stringify(resp))
-                    res.send().status(200)
-                }
-                else {
+                if (!socket) {
                     res.send('Inexistent instance').status(500)
+                    return
                 }
+
+                const filedata = req.files!.file  as fileUpload.UploadedFile
+                const filename = req.body.filename as string
+
+                let tmpName='/tmp/'+randomUUID()
+                fs.writeFileSync(tmpName, filedata.data)
+                let [dstNamespace,dstPod,dstContainer] = filename.split('/').slice(1)
+                let dstLocalPath = '/' + filename.split('/').slice(4).join('/')
+                await this.uploadFile(dstNamespace, dstPod, dstContainer, tmpName, dstLocalPath)
+
+                let size = fs.statSync(tmpName).size
+                let result = { metadata: { object:filename, type:0, time: Date.now(), size: size }, status: ExecutionStatus.SUCCESS}
+                let resp: IFilemanMessageResponse = {
+                    action: InstanceMessageActionEnum.COMMAND,
+                    flow: InstanceMessageFlowEnum.UNSOLICITED,
+                    channel: 'fileman',
+                    instance: key,
+                    type: InstanceMessageTypeEnum.DATA,
+                    id: '1',
+                    command: FilemanCommandEnum.CREATE,
+                    namespace: '',
+                    group: '',
+                    pod: '',
+                    container: '',
+                    data: JSON.stringify(result),
+                    msgtype: 'filemanmessageresponse'
+                }
+                socket.ws.send(JSON.stringify(resp))
+                res.send().status(200)
                 break
             }
         } 

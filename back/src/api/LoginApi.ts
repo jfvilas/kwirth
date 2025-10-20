@@ -17,6 +17,7 @@ export class LoginApi {
         let users:{ [username:string]:string }
         try {
             users = await secrets.read('kwirth-users')
+            return users
         }
         catch (err) {
             try {
@@ -39,7 +40,7 @@ export class LoginApi {
             LoginApi.semaphore.use ( async () => {
                 let users = await this.readUsersSecret(this.secrets)
                 if (!users) {
-                    console.error('Cannot access kwirth users')
+                    console.error('Cannot access kwirth users on /')
                     res.status(401).json()
                     return
                 }
@@ -73,7 +74,7 @@ export class LoginApi {
             LoginApi.semaphore.use ( async () => {
                 let users = await this.readUsersSecret(this.secrets)
                 if (!users) {
-                    console.error('Cannot access kwirth users')
+                    console.error('Cannot access kwirth users for changini password')
                     res.status(401).json()
                     return
                 }

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { IChannelObject } from '../IChannel'
 import { FilemanCommandEnum, IFileData, IFilemanMessage, IFilemanObject } from './FilemanObject'
-import '@cubone/react-file-manager/dist/style.css'
-import { FileManager } from "@cubone/react-file-manager";
+import '@jfvilas/react-file-manager/dist/style.css'
+import { FileManager } from '@jfvilas/react-file-manager'
 import { Box } from '@mui/material';
 import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common';
 import { v4 as uuidv4 } from 'uuid'
@@ -80,15 +80,15 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         for (let file of files) {
             console.log(file)
             // Crear la URL para la descarga
-            const url = `${props.channelObject.clusterUrl}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
+            const url = `${props.channelObject.clusterUrl}/channel/fileman/download?filename=${file.path}`
             
             try {
                 // Hacer una petición fetch para obtener el archivo
-                const response = await fetch(url);
+                const response = await fetch(url, { headers: { 'Authorization': 'Bearer '+ props.channelObject.accessString } })
 
                 if (response.ok) {
                     // Convertir la respuesta en un Blob
-                    const blob = await response.blob();
+                    const blob = await response.blob()
 
                     // Crear un enlace para descargar el archivo
                     const link = document.createElement('a')
