@@ -90,16 +90,6 @@ export class ConfigApi {
                             }
                         case 'configfs':
                             try {
-                                /*
-                                    For filesystem scanning pathc confgiMap trivy-operator-trivy-config with
-                                    trivy:
-                                        command: filesystem
-                                        ignoreUnfixed: true
-                                    trivyOperator:
-                                        scanJobPodTemplateContainerSecurityContext:
-                                            # For filesystem scanning, Trivy needs to run as the root user
-                                            runAsUser: 0                                
-                                */
                                 let cttoconfig = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnametoconfig, ns)
                                 if (cttoconfig.body.data===undefined) {
                                     res.status(500).send('No Trivy config map exist')

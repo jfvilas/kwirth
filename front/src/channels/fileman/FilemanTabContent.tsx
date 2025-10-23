@@ -9,6 +9,8 @@ import { IError, IFileData } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
 import { IconContainer, IconNamespace, IconPod } from '../../tools/Constants-React'
 import { v4 as uuid } from 'uuid'
+import { addGetAuthorization } from '../../tools/AuthorizationManagement'
+import { MsgBoxOk } from '../../tools/MsgBox'
 
 interface IContentProps {
     webSocket?: WebSocket
@@ -19,6 +21,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const filemanBoxRef = useRef<HTMLDivElement | null>(null)
     const [logBoxTop, setLogBoxTop] = useState(0)
     const [refresh, setRefresh] = useState(0)
+    const [msgBox, setMsgBox] =useState(<></>)
 
     let filemanObject:IFilemanObject = props.channelObject.uiData
     let permissions={
@@ -32,26 +35,21 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     let icons = new Map()
-    icons.set('namespace', { open:<IconNamespace height={18}/>, closed:<IconNamespace height={18}/>, default:<IconNamespace height={18}/> })
-    icons.set('pod', { open:<IconPod height={18}/>, closed:<IconPod height={18}/>, default:<IconPod height={18}/> })
-    icons.set('container', { open:<IconContainer/>, closed:<IconContainer/>, default:<IconContainer/> })
+    icons.set('namespace', { open:<IconNamespace height={18}/>, closed:<IconNamespace height={18}/>, grid:<IconNamespace height={50}/>, list:<IconNamespace height={18}/>, default:<IconNamespace height={18}/> })
+    icons.set('pod', { open:<IconPod height={18}/>, closed:<IconPod height={18}/>, grid:<IconPod height={50}/>, list:<IconPod height={18}/>, default:<IconPod height={18}/> })
+    icons.set('container', { open:<IconContainer/>, closed:<IconContainer/>, grid:<IconContainer height={44}/>, list:<IconContainer height={16}/>, default:<IconContainer height={16}/> })
 
     let actions = new Map()
     actions.set('namespace', [
         {
-            title: 'view namespace',
+            title: 'Namespace details',
             icon: <Typography color='green' fontWeight={600}>V</Typography>,
-            onClick: (files : any) => {
-                console.log('onclick view')
-                console.log(files)
-            }
-        },
-        {
-            title: 'delete namespace',
-            icon: <Typography color='blue' fontWeight={600}>D</Typography>,
-            onClick: (files:any) => {
-                console.log('onclick delete')
-                console.log(files)
+            onClick: async (files : any) => {
+                let namespace = files[0].name
+                let data = await((await fetch(`${props.channelObject.clusterUrl}/config/${namespace}/groups`, addGetAuthorization(props.channelObject.accessString!))).json())
+                let info = `Controllers inside ${namespace} namespace:<br/><br/>` + data.map((ns:any) => '<b>-</b> '+ ns.name + '<br/>').join('')
+                console.log(info)
+                setMsgBox(MsgBoxOk('Namespace info', info, setMsgBox))
             }
         }
     ])
@@ -259,6 +257,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     height='100%'
                     className='custom-fm' 
                 />
+                { msgBox }
             </Box>
         }
     </>
