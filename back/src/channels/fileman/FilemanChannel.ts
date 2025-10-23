@@ -1,12 +1,12 @@
 import { InstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, InstanceConfigResponse, parseResources } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel'
-import { PassThrough, Readable, Writable } from 'stream';
+import { PassThrough, Readable, Writable } from 'stream'
 import { Request, Response } from 'express'
-import { randomUUID } from 'crypto';
+import { v4 as uuid } from 'uuid'
 import fs from 'fs'
-import path from 'path';
-import fileUpload from 'express-fileupload';
+import path from 'path'
+import fileUpload from 'express-fileupload'
 
 const ParseListing = require ('@jfvilas/parse-listing')
 
@@ -153,7 +153,7 @@ class FilemanChannel implements IChannel {
                 if (fileInfo) {
                     if (fileInfo.type === 0 || fileInfo.type === 2) {
                         console.log('filePath', filepath)
-                        let tmpName='/tmp/'+randomUUID()
+                        let tmpName='/tmp/'+uuid()
                         let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, filepath, tmpName)
                         if (result.status === ExecutionStatus.SUCCESS) {
                             res.setHeader('Content-Disposition', `attachment; filename="${encondedFilename}"`)
@@ -169,7 +169,7 @@ class FilemanChannel implements IChannel {
                         catch {}
                     }
                     else if (fileInfo.type === 1) {
-                        let tmpName='/tmp/'+randomUUID()
+                        let tmpName='/tmp/'+uuid()
                         await this.downloadFolder(srcNamespace, srcPod, srcContainer, filepath, tmpName)
                         res.setHeader('Content-Disposition', `attachment; filename="${encondedFilename}.tar.gz"`)
                         res.send(fs.readFileSync(tmpName)).status(200)
@@ -193,7 +193,7 @@ class FilemanChannel implements IChannel {
                 const filedata = req.files!.file  as fileUpload.UploadedFile
                 const filename = req.body.filename as string
 
-                let tmpName='/tmp/'+randomUUID()
+                let tmpName='/tmp/'+uuid()
                 fs.writeFileSync(tmpName, filedata.data)
                 let [dstNamespace,dstPod,dstContainer] = filename.split('/').slice(1)
                 let dstLocalPath = '/' + filename.split('/').slice(4).join('/')

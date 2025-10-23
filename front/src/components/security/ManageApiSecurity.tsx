@@ -5,7 +5,7 @@ import { SessionContext, SessionContextType } from '../../model/SessionContext'
 import { AccessKey, accessKeySerialize, ApiKey } from '@jfvilas/kwirth-common'
 import { addDeleteAuthorization, addGetAuthorization, addPostAuthorization, addPutAuthorization } from '../../tools/AuthorizationManagement'
 import { ResourceEditor } from './ResourceEditor'
-import { v4 as uuidv4 } from 'uuid'
+import { v4 as uuid } from 'uuid'
 const copy = require('clipboard-copy')
 
 interface IProps {
@@ -59,7 +59,7 @@ const ManageApiSecurity: React.FC<IProps> = (props:IProps) => {
             await fetch(`${backendUrl}/key/${selectedKey?.accessKey.id}`, addPutAuthorization(accessString, payload))
         }
         else {
-            let accessKey:AccessKey = { type: keyType, resources, id: uuidv4() }
+            let accessKey:AccessKey = { type: keyType, resources, id: uuid() }
             let apiKey:ApiKey = { accessKey, description, expire: Date.now() + days*24*60*60*1000, days }
             payload = JSON.stringify(apiKey)
             await fetch(`${backendUrl}/key`, addPostAuthorization(accessString, payload))

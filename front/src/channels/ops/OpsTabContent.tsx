@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Box, Button, Stack, TextField } from '@mui/material'
 import { IOpsObject } from './OpsObject'
 import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessage, OpsCommandEnum } from '@jfvilas/kwirth-common'
-import { v4 as uuidv4 } from 'uuid'
 import { Terminal } from './terminal/Terminal'
 import { SelectTerminal } from './terminal/SelectTerminal'
 import { IContentProps } from '../IChannel'
 import { OPSHELPMESSAGE } from '../../tools/Constants'
 import { IOpsUiConfig } from './OpsConfig'
+import { v4 as uuid } from 'uuid'
 
 const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let opsObject:IOpsObject = props.channelObject.uiData
@@ -135,7 +135,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             type: InstanceMessageTypeEnum.DATA,
             accessKey: props.channelObject.accessString!,
             instance: props.channelObject.instanceId,
-            id: uuidv4(),
+            id: uuid(),
             command: cmd,
             namespace: namespace,
             group: '',

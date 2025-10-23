@@ -1,11 +1,11 @@
-import { FC } from "react"
-import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from "../IChannel"
-import { FilemanInstanceConfig, FilemanUiConfig, IFilemanUiConfig } from "./FilemanConfig"
+import { FC } from 'react'
+import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { FilemanInstanceConfig, FilemanUiConfig, IFilemanUiConfig } from './FilemanConfig'
 import { FilemanSetup, FilemanIcon } from './FilemanSetup'
 import { IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
-import { FilemanCommandEnum, FilemanObject, IFilemanMessageResponse, IFilemanObject } from "./FilemanObject"
-import { FilemanTabContent } from "./FilemanTabContent"
-import { v4 as uuidv4 } from 'uuid'
+import { FilemanCommandEnum, FilemanObject, IFilemanMessageResponse, IFilemanObject } from './FilemanObject'
+import { FilemanTabContent } from './FilemanTabContent'
+import { v4 as uuid } from 'uuid'
 
 interface IFilemanMessage extends IInstanceMessage {
     msgtype: 'filemanmessage'
@@ -56,17 +56,17 @@ export class FilemanChannel implements IChannel {
                                 let nss = Array.from (new Set (data.map(n => n.split('/')[0])))
                                 nss.map(ns => {
                                     if (!filemanObject.files.some(f => f.path === '/'+ ns)) {
-                                        filemanObject.files.push ({ name: ns, isDirectory: true, path: '/'+ ns })
+                                        filemanObject.files.push ({ name: ns, isDirectory: true, path: '/'+ ns, class:'namespace' })
                                     }
                                     let podNames = Array.from (new Set (data.filter(a => a.split('/')[0]===ns).map(o => o.split('/')[1])))
                                     podNames.map(p => {
                                         if (!filemanObject.files.some(f => f.path === '/'+ns+'/'+p)) {
-                                            filemanObject.files.push({ name: p, isDirectory: true, path: '/'+ns+'/'+p })
+                                            filemanObject.files.push({ name: p, isDirectory: true, path: '/'+ns+'/'+p, class:'pod' })
                                         }
                                         let conts = Array.from (new Set (data.filter(a => a.split('/')[0]===ns && a.split('/')[1]===p).map(o => o.split('/')[2])))
                                         conts.map(c => {
                                             if (!filemanObject.files.some(f => f.path === '/'+ns+'/'+p+'/'+c)) {
-                                                filemanObject.files.push ({ name: c, isDirectory: true, path: '/'+ns+'/'+p+'/'+c })
+                                                filemanObject.files.push ({ name: c, isDirectory: true, path: '/'+ns+'/'+p+'/'+c, class:'container' })
                                             }
                                         })
                                     })
@@ -75,8 +75,6 @@ export class FilemanChannel implements IChannel {
                                 return IChannelMessageAction.REFRESH
                             case FilemanCommandEnum.DIR:
                                 let content = JSON.parse(response.data)
-                                console.log('*************')
-                                console.log(content)
                                 if (content.status!=='Success') {
                                     this.nofify('ERROR: '+ (content.text || content.message), 'error')
                                 }
@@ -122,7 +120,6 @@ export class FilemanChannel implements IChannel {
                                         size: +content.metadata.size,
                                     }
                                     filemanObject.files.push(f)
-                                    //filemanObject.files = [...filemanObject.files]
                                 }
                                 else {
                                     this.nofify('ERROR: '+ (content.text || content.message), 'error')
@@ -153,7 +150,7 @@ export class FilemanChannel implements IChannel {
                             type: InstanceMessageTypeEnum.DATA,
                             accessKey: channelObject.accessString!,
                             instance: channelObject.instanceId,
-                            id: uuidv4(),
+                            id: uuid(),
                             command: FilemanCommandEnum.HOME,
                             namespace: signalMessage.namespace!,
                             group: '',

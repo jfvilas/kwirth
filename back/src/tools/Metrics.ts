@@ -397,10 +397,12 @@ export class MetricsTools {
     loadNodeSummary = async (node: INodeInfo) => {
         node.prevSummary = node.summary
         node.summary = (await this.readCAdvisorSummary(node)).node as NodeMetrics
-        if (!node.summary.network.txBytes) node.summary.network.txBytes = node.summary.network.interfaces.reduce( (tot,iface) => tot+iface.txBytes, 0 )
-        if (!node.summary.network.rxBytes) node.summary.network.rxBytes = node.summary.network.interfaces.reduce( (tot,iface) => tot+iface.rxBytes, 0 )
-        if (!node.summary.network.txErrors) node.summary.network.txErrors = node.summary.network.interfaces.reduce( (tot,iface) => tot+iface.txErrors, 0 )
-        if (!node.summary.network.rxErrors) node.summary.network.rxErrors = node.summary.network.interfaces.reduce( (tot,iface) => tot+iface.rxErrors, 0 )
+        if (node.summary.network) {
+            if (!node.summary.network.txBytes) node.summary.network.txBytes = node.summary.network.interfaces.reduce( (tot,iface) => tot+iface.txBytes, 0 )
+            if (!node.summary.network.rxBytes) node.summary.network.rxBytes = node.summary.network.interfaces.reduce( (tot,iface) => tot+iface.rxBytes, 0 )
+            if (!node.summary.network.txErrors) node.summary.network.txErrors = node.summary.network.interfaces.reduce( (tot,iface) => tot+iface.txErrors, 0 )
+            if (!node.summary.network.rxErrors) node.summary.network.rxErrors = node.summary.network.interfaces.reduce( (tot,iface) => tot+iface.rxErrors, 0 )
+        }
     }
 
     // read metrics and values for all nodes in the cluster

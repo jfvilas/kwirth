@@ -1,18 +1,11 @@
 import { IInstanceMessage } from "@jfvilas/kwirth-common"
+import { IFileData } from "@jfvilas/react-file-manager"
 
 export interface IFilemanObject {
     paused: boolean
     started: boolean
     files: IFileData[]
     currentPath: string
-}
-
-export interface IFileData {
-    name: string
-    isDirectory: boolean
-    path: string
-    updatedAt?: string
-    size?: number
 }
 
 export class FilemanObject implements IFilemanObject {

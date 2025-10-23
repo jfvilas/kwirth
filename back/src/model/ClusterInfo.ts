@@ -6,6 +6,7 @@ import { DockerTools } from "../tools/KwirthApi";
 import { NodeMetrics } from "./INodeMetrics";
 
 export interface INodeInfo {
+    [x: string]: any;
     name:string
     ip:string
     kubernetesNode: V1Node

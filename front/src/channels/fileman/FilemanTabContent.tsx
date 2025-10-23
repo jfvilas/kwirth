@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { IChannelObject } from '../IChannel'
-import { FilemanCommandEnum, IFileData, IFilemanMessage, IFilemanObject } from './FilemanObject'
+import { FilemanCommandEnum, IFilemanMessage, IFilemanObject } from './FilemanObject'
 import '@jfvilas/react-file-manager/dist/style.css'
-import { FileManager } from '@jfvilas/react-file-manager'
-import { Box } from '@mui/material';
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common';
-import { v4 as uuidv4 } from 'uuid'
+import { Box, Typography } from '@mui/material'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
 import './custom-fm.css'
+import { IError, IFileData } from '@jfvilas/react-file-manager'
+import { FileManager } from '@jfvilas/react-file-manager'
+import { IconContainer, IconNamespace, IconPod } from '../../tools/Constants-React'
+import { v4 as uuid } from 'uuid'
 
 interface IContentProps {
     webSocket?: WebSocket
@@ -27,7 +29,33 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         move: true,
         rename: true,
         upload: true
-    }    
+    }
+
+    let icons = new Map()
+    icons.set('namespace', { open:<IconNamespace height={18}/>, closed:<IconNamespace height={18}/>, default:<IconNamespace height={18}/> })
+    icons.set('pod', { open:<IconPod height={18}/>, closed:<IconPod height={18}/>, default:<IconPod height={18}/> })
+    icons.set('container', { open:<IconContainer/>, closed:<IconContainer/>, default:<IconContainer/> })
+
+    let actions = new Map()
+    actions.set('namespace', [
+        {
+            title: 'view namespace',
+            icon: <Typography color='green' fontWeight={600}>V</Typography>,
+            onClick: (files : any) => {
+                console.log('onclick view')
+                console.log(files)
+            }
+        },
+        {
+            title: 'delete namespace',
+            icon: <Typography color='blue' fontWeight={600}>D</Typography>,
+            onClick: (files:any) => {
+                console.log('onclick delete')
+                console.log(files)
+            }
+        }
+    ])
+
     let level = filemanObject.currentPath.split('/').length - 1
     if (level<3) {
         permissions = {
@@ -59,7 +87,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const onDelete = async (files: Array<IFileData>) => {
+    const onDelete = async (files: IFileData[]) => {
         console.log('remove', files, filemanObject.files)    
         for (let file of files) {
             let [namespace,pod,container] = file.path.split('/').slice(1)
@@ -127,7 +155,8 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }        
     }
 
-    const onError = (error: { type: string, message: string }, file: IFileData) => {
+    //const onError = (error: { type: string, message: string }, file: IFileData) => {
+    const onError = (error: IError, file: IFileData) => {
         props.channelObject.uiConfig.notify(error.message, 'error')
     }
 
@@ -158,7 +187,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             type: InstanceMessageTypeEnum.DATA,
             accessKey: props.channelObject.accessString!,
             instance: props.channelObject.instanceId,
-            id: uuidv4(),
+            id: uuid(),
             command: command,
             namespace: namespace,
             group: '',
@@ -180,7 +209,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             type: InstanceMessageTypeEnum.DATA,
             accessKey: props.channelObject.accessString!,
             instance: props.channelObject.instanceId,
-            id: uuidv4(),
+            id: uuid(),
             command: FilemanCommandEnum.DIR,
             namespace: namespace,
             group: '',
@@ -200,14 +229,17 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (level > 2) getLocalDir(folder)
     }
 
-    const onFileUploading = (file: File, parentFolder: File) => { 
+    const onFileUploading = (file: IFileData, parentFolder: IFileData) => { 
         return { filename: filemanObject.currentPath + '/' + file.name }
     }
 
     return <>
         { filemanObject.started &&
             <Box ref={filemanBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 10px)`, paddingLeft: '5px', paddingRight:'5px'}}>
-                <FileManager files={filemanObject.files}
+                <FileManager
+                    files={filemanObject.files}
+                    actions={actions}
+                    icons={icons}
                     initialPath={filemanObject.currentPath}
                     enableFilePreview={false}
                     onCreateFolder={onCreateFolder}
@@ -225,7 +257,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     primaryColor='#1976d2'
                     fontFamily='Roboto, Helvetica, Arial, sans-serif'
                     height='100%'
-                    className='custom-fm'
+                    className='custom-fm' 
                 />
             </Box>
         }

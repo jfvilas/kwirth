@@ -3,8 +3,9 @@ import { SessionContext, SessionContextType } from '../model/SessionContext'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography} from '@mui/material'
 import { AccessKey, accessKeySerialize, ApiKey } from '@jfvilas/kwirth-common'
 import { addPostAuthorization } from '../tools/AuthorizationManagement'
-import { v4 as uuidv4 } from 'uuid'
 import { MsgBoxOk } from '../tools/MsgBox'
+import { v4 as uuid } from 'uuid'
+
 const copy = require('clipboard-copy')
 
 interface IProps {
@@ -16,7 +17,7 @@ const FirstTimeLogin: React.FC<IProps> = (props:IProps) => {
     const [msgBox, setMsgBox] = useState(<></>)
 
     const onClickYes = async () => {
-        let accessKey:AccessKey = { type: 'permanent', resources: 'cluster::::', id: uuidv4() }
+        let accessKey:AccessKey = { type: 'permanent', resources: 'cluster::::', id: uuid() }
         let apiKey:ApiKey = { accessKey, description:'Key for Backstage to access Kwirth', expire: Date.now() + 365*24*60*60*1000, days: 365 }
         let payload = JSON.stringify(apiKey)
         let resp = await fetch(`${backendUrl}/key`, addPostAuthorization(accessString, payload))

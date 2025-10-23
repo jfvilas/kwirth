@@ -5,29 +5,10 @@ import { ITabSummary } from '../model/ITabObject'
 import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { Delete, OpenInBrowser, Star } from '@mui/icons-material'
 import { ChannelConstructor } from '../channels/IChannel'
-import IconNamespace from'../icons/svg/ns.svg'
-import IconPod from'../icons/svg/pod.svg'
-import IconGroup from'../icons/svg/group.svg'
-import IconContainer from'../icons/svg/docker-mark-blue.svg'
-import IconBlank from'../icons/svg/k8s-blank.svg'
 import { Cluster } from '../model/Cluster'
 import { GaugeComponent } from 'react-gauge-component'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
-
-import IconAks from'../icons/general/aks.svg'
-import IconEks from'../icons/general/eks.svg'
-import IconGke from'../icons/general/gke.svg'
-import IconRk2e from'../icons/general/rk2e.svg'
-import IconK3d from'../icons/general/k3d.svg'
-import IconK3s from'../icons/general/k3s.svg'
-import IconK8s from'../icons/general/k8s.svg'
-import IconOcp from'../icons/general/ocp.svg'
-
-const KIconBlank = () => { return <img src={IconBlank} alt='ns' height={'24px'}/> }
-const KIconNamespace = () => { return <img src={IconNamespace} alt='ns' height={'24px'}/> }
-const KIconGroup = () => { return <img src={IconGroup} alt='grp' height={'24px'}/> }
-const KIconPod = () => { return <img src={IconPod} alt='pod' height={'24px'}/> }
-const KIconContainer = () => { return <img src={IconContainer} alt='c' height={'24px'}/> }
+import { IconAks, IconBlank, IconContainer, IconEks, IconGke, IconGroup, IconK3d, IconK3s, IconK8s, IconNamespace, IconOcp, IconPod, IconRk2e } from '../tools/Constants-React'
 
 // svg optimizer: https://jakearchibald.github.io/svgomg/ (optmizes size and removes namespaces)
 
@@ -131,19 +112,19 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                             let view = <></>
                             switch (tab.channelObject.view) {
                                 case InstanceConfigViewEnum.NAMESPACE:
-                                    view = <KIconNamespace/>
+                                    view = <IconNamespace/>
                                     break
                                 case InstanceConfigViewEnum.GROUP:
-                                    view = <KIconGroup/>
+                                    view = <IconGroup/>
                                     break
                                 case InstanceConfigViewEnum.POD:
-                                    view = <KIconPod/>
+                                    view = <IconPod/>
                                     break
                                 case InstanceConfigViewEnum.CONTAINER:
-                                    view = <KIconContainer/>
+                                    view = <IconContainer/>
                                     break
                                 default:
-                                    view = <KIconBlank/>
+                                    view = <IconBlank/>
                                     break
                             }
 
@@ -243,21 +224,21 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         
         switch (flavour) {
             case 'aks':
-                return <p style={{fontSize:10, margin:0}}><img src={IconAks} alt='ns' height={'16px'}/> Azure Kubernetes</p>
+                return <p style={{fontSize:10, margin:0}}><IconAks/> Azure Kubernetes</p>
             case 'k3s':
-                return <p style={{fontSize:10, margin:0}}><img src={IconK3s} alt='ns' height={'16px'}/> Rancher K3</p>
+                return <p style={{fontSize:10, margin:0}}><IconK3s/> Rancher K3</p>
             case 'k3d':
-                return <p style={{fontSize:10, margin:0}}><img src={IconK3d} alt='ns' height={'16px'}/> K3D</p>
+                return <p style={{fontSize:10, margin:0}}><IconK3d/> K3D</p>
             case 'eks':
-                return <p style={{fontSize:10, margin:0, }}><img src={IconEks} alt='ns' height={'16px'}/> AWS Kubernetes</p>
+                return <p style={{fontSize:10, margin:0, }}><IconEks/> AWS Kubernetes</p>
             case 'ocp':
-                return <p style={{fontSize:10, margin:0}}><img src={IconOcp} alt='ns' height={'16px'}/> openShift</p>
+                return <p style={{fontSize:10, margin:0}}><IconOcp/> openShift</p>
             case 'gke':
-                return <p style={{fontSize:10, margin:0}}><img src={IconGke} alt='ns' height={'16px'}/> Google Kubernetes</p>
+                return <p style={{fontSize:10, margin:0}}><IconGke/> Google Kubernetes</p>
             case 'rk2e':
-                return <p style={{fontSize:10, margin:0}}><img src={IconRk2e} alt='ns' height={'16px'}/> Rancher Kubernetes</p>
+                return <p style={{fontSize:10, margin:0}}><IconRk2e/> Rancher Kubernetes</p>
             default:
-                return <><img src={IconK8s} alt='ns' height={'16px'}/></>
+                return <IconK8s/>
         }                
     }
     

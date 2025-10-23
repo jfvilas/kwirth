@@ -3,29 +3,10 @@ import { Button, Checkbox, FormControl, InputLabel, MenuItem, Select, SelectChan
 import { Cluster } from '../model/Cluster'
 import { MsgBoxOkError } from '../tools/MsgBox'
 
-// app icons 
-import IconDaemonSet from'../icons/svg/ds.svg'
-import IconReplicaSet from'../icons/svg/rs.svg'
-import IconStatefulSet from'../icons/svg/ss.svg'
-import IconDeployment from'../icons/svg/dp.svg'
-
-import IconKubernetesUnknown from'../icons/svg/k8s-unknown.svg'
-import IconKubernetesBlank from'../icons/svg/k8s-blank.svg'
-import IconKubernetes from'../icons/svg/k8s.svg'
-import IconDocker from'../icons/svg/docker-mark-blue.svg'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { BackChannelData, ClusterTypeEnum, InstanceConfigViewEnum, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
 import { ITabObject } from '../model/ITabObject'
-
-const KIconDaemonSet = () => <img src={IconDaemonSet} alt='ds' height={'16px'}/>
-const KIconReplicaSet = () => <img src={IconReplicaSet} alt='rs' height={'16px'}/>
-const KIconStatefulSet = () => <img src={IconStatefulSet} alt='ss' height={'16px'}/>
-const KIconDeployment = () => <img src={IconDeployment} alt='ss' height={'16px'}/>
-
-const KIconKubernetesUnknown = () => <img src={IconKubernetesUnknown} alt='kubernetes' height={'16px'}/>
-const KIconKubernetesBlank = () => <img src={IconKubernetesBlank} alt='kubernetes' height={'16px'}/>
-const KIconKubernetes = () => <img src={IconKubernetes} alt='kubernetes' height={'16px'}/>
-const KIconDocker = () => <img src={IconDocker} alt='docker' height={'16px'}/>
+import { IconDaemonSet, IconDeployment, IconDocker, IconKubernetes, IconKubernetesBlank, IconKubernetesUnknown, IconReplicaSet, IconStatefulSet } from '../tools/Constants-React'
 
 interface IResourceSelected {
     channelId: string
@@ -257,13 +238,13 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     }
 
     const getIcon = (cluster:Cluster)  => {
-        if (!cluster.kwirthData || !cluster.kwirthData.clusterType) return <KIconKubernetesUnknown/>
-        if (cluster.kwirthData.clusterType[0] === 'd') return <KIconDocker/>
+        if (!cluster.kwirthData || !cluster.kwirthData.clusterType) return <IconKubernetesUnknown/>
+        if (cluster.kwirthData.clusterType[0] === 'd') return <IconDocker/>
         if (cluster.kwirthData.clusterType[0] === 'k') {
             if (cluster.kwirthData.inCluster) 
-                return <KIconKubernetes/>
+                return <IconKubernetes/>
             else
-                return <KIconKubernetesBlank/>
+                return <IconKubernetesBlank/>
         }
     }
 
@@ -369,7 +350,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 { allGroups && allGroups.map( (value) => 
                     <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
                         <Checkbox checked={groups.includes (value)} />
-                        {value.startsWith('replica')? <KIconReplicaSet/>: value.startsWith('daemon')?<KIconDaemonSet/>: value.startsWith('deployment')?<KIconDeployment/>:<KIconStatefulSet/>}&nbsp;{value.split('+')[1]}
+                        {value.startsWith('replica')? <IconReplicaSet/>: value.startsWith('daemon')?<IconDaemonSet/>: value.startsWith('deployment')?<IconDeployment/>:<IconStatefulSet/>}&nbsp;{value.split('+')[1]}
                     </MenuItem>
                 )}
                 </Select>
