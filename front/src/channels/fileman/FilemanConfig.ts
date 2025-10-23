@@ -1,9 +1,9 @@
 interface IFilemanUiConfig {
-    nofify: (msg:string, level:string) => void
+    notify: (msg:string, level:string) => void
 }
 
 class FilemanUiConfig implements IFilemanUiConfig {
-    nofify: (msg:string, level:string) => void = () => {}
+    notify: (msg:string, level:string) => void = () => {}
 }
 
 interface IFilemanInstanceConfig {

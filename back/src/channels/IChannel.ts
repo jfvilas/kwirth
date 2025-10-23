@@ -1,11 +1,11 @@
-import { BackChannelData, InstanceConfig, IInstanceMessage, InstanceMessageActionEnum } from '@jfvilas/kwirth-common'
+import { BackChannelData, InstanceConfig, IInstanceMessage, InstanceMessageActionEnum, AccessKey } from '@jfvilas/kwirth-common'
 import { Request, Response } from 'express'
 
 interface IChannel {
     getChannelData() : BackChannelData
     getChannelScopeLevel(scope:string) : number
 
-    endpointRequest(endpoint:string,req:Request, res:Response) : void
+    endpointRequest(endpoint:string,req:Request, res:Response, accessKey?:AccessKey) : void
 
     addObject (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void
     deleteObject (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void

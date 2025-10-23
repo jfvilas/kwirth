@@ -113,8 +113,8 @@ class FilemanChannel implements IChannel {
             metrics: false,
             sources: [ ClusterTypeEnum.KUBERNETES, ClusterTypeEnum.DOCKER ],
             endpoints: [
-                { name: 'download', methods: ['GET'], requiresAccessKey: false },
-                { name: 'upload', methods: ['POST'], requiresAccessKey: false } 
+                { name: 'download', methods: ['GET'], requiresAccessKey: true },
+                { name: 'upload', methods: ['POST'], requiresAccessKey: true } 
             ]
         }
     }
@@ -123,25 +123,26 @@ class FilemanChannel implements IChannel {
         return ['', 'fileman$read', 'fileman$write', 'cluster'].indexOf(scope)
     }
 
-    async endpointRequest(endpoint:string, req:Request, res:Response) : Promise<void> {
-        console.log('endpointreq:',endpoint, req.method, req.url)
+    async endpointRequest(endpoint:string, req:Request, res:Response, accessKey:AccessKey) : Promise<void> {
+        console.log('Received endpointreq:', endpoint, req.method, req.url)
+
+        let socket = this.webSockets.find(ws => ws.instances.some(i => i.accessKey.id === accessKey.id))
+        if (!socket) {
+            res.status(400).send('Inexistent socket')
+            return
+        }
         let key=req.query['key'] as string
+        let instance = socket.instances.find(i => i.instanceId === key)
+        if (!instance) {
+            res.status(400).send(`Inexistent instance: '${key}'`)
+            return
+        }
+
         switch (endpoint){
             case 'download':
-                let socket = this.webSockets.find(ws => ws.instances.some(i => i.instanceId === key))
-                if (!socket) {
-                    res.send('Inexistent instance').status(500)
-                    return
-                }
-
                 let filename=req.query['filename'] as string
                 if (!filename) {
-                    res.send().status(400)
-                    return
-                }
-                let existInstance = this.webSockets.some(ws => ws.instances.some(i => i.instanceId === key))
-                if (!existInstance) {
-                    res.send('Inexistent instance').status(403)
+                    res.status(400).send()
                     return
                 }
 
@@ -157,10 +158,10 @@ class FilemanChannel implements IChannel {
                         let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, filepath, tmpName)
                         if (result.status === ExecutionStatus.SUCCESS) {
                             res.setHeader('Content-Disposition', `attachment; filename="${encondedFilename}"`)
-                            res.send(fs.readFileSync(tmpName)).status(200)
+                            res.status(200).send(fs.readFileSync(tmpName))
                         }
                         else {
-                            res.send(result.message).status(400)
+                            res.status(400).send(result.message)
                         }
 
                         try {
@@ -172,11 +173,11 @@ class FilemanChannel implements IChannel {
                         let tmpName='/tmp/'+uuid()
                         await this.downloadFolder(srcNamespace, srcPod, srcContainer, filepath, tmpName)
                         res.setHeader('Content-Disposition', `attachment; filename="${encondedFilename}.tar.gz"`)
-                        res.send(fs.readFileSync(tmpName)).status(200)
+                        res.status(200).send(fs.readFileSync(tmpName))
                         fs.unlinkSync(tmpName)
                     }
                     else {
-                        console.error('fileInfoType', fileInfo.type)
+                        console.error('Unmanaged fileInfo/Type', fileInfo.type)
                     }
                 }
                 else {
@@ -184,12 +185,6 @@ class FilemanChannel implements IChannel {
                 }
                 break
             case 'upload': {
-                let socket = this.webSockets.find(ws => ws.instances.some(i => i.instanceId === key))
-                if (!socket) {
-                    res.send('Inexistent instance').status(500)
-                    return
-                }
-
                 const filedata = req.files!.file  as fileUpload.UploadedFile
                 const filename = req.body.filename as string
 
@@ -205,7 +200,7 @@ class FilemanChannel implements IChannel {
                     action: InstanceMessageActionEnum.COMMAND,
                     flow: InstanceMessageFlowEnum.UNSOLICITED,
                     channel: 'fileman',
-                    instance: key,
+                    instance: instance.instanceId,
                     type: InstanceMessageTypeEnum.DATA,
                     id: '1',
                     command: FilemanCommandEnum.CREATE,
@@ -217,7 +212,7 @@ class FilemanChannel implements IChannel {
                     msgtype: 'filemanmessageresponse'
                 }
                 socket.ws.send(JSON.stringify(resp))
-                res.send().status(200)
+                res.status(200).send()
                 break
             }
         } 

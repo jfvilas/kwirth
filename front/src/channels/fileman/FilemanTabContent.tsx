@@ -86,7 +86,6 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onDelete = async (files: IFileData[]) => {
-        console.log('remove', files, filemanObject.files)    
         for (let file of files) {
             let [namespace,pod,container] = file.path.split('/').slice(1)
             filemanObject.files = filemanObject.files.filter(f => f.path !== file.path)
@@ -97,26 +96,20 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const onCreateFolder = async (name: string, parentFolder: IFileData) => {
         setRefresh(Math.random())
-        console.log('cre', parentFolder.path + '/' + name)
         let [namespace,pod,container] = parentFolder.path.split('/').slice(1)
         sendCommand(FilemanCommandEnum.CREATE, namespace, pod, container, [parentFolder.path + '/' + name])
     }
 
     const onDownload = async (files: Array<IFileData>) => {
         for (let file of files) {
-            console.log(file)
-            // Crear la URL para la descarga
-            const url = `${props.channelObject.clusterUrl}/channel/fileman/download?filename=${file.path}`
+            const url = `${props.channelObject.clusterUrl}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
             
             try {
-                // Hacer una petición fetch para obtener el archivo
                 const response = await fetch(url, { headers: { 'Authorization': 'Bearer '+ props.channelObject.accessString } })
 
                 if (response.ok) {
-                    // Convertir la respuesta en un Blob
                     const blob = await response.blob()
 
-                    // Crear un enlace para descargar el archivo
                     const link = document.createElement('a')
                     link.href = URL.createObjectURL(blob)
                     link.download = file.path.split('/').slice(-1)[0]
@@ -125,24 +118,18 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     link.click()
                     document.body.removeChild(link)
                     URL.revokeObjectURL(link.href)
-                } else {
-                    console.error(`Error al descargar el archivo: ${file.path}`)
                 }
-            } catch (error) {
-                console.error(`Error en la descarga del archivo: ${file.path}`, error)
+                else {
+                    console.error(`Error downloading file: ${file.path}`)
+                    props.channelObject.uiConfig.notify(`Error downloading file ${file.path}: (${response.status}) ${await response.text()}`, 'error')
+                }
+            }
+            catch (error) {
+                console.error(`Error downloading file: ${file.path}`, error)
+                props.channelObject.uiConfig.notify(`Error downloading file ${file.path}: ${error}`, 'error')
             }
         }
     }
-    // const onDownloadSimple = (files: Array<IFileData>) => {
-    //     for (let file of files) {
-    //         let url = `${props.channelObject.clusterUrl}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
-    //         const link = document.createElement('a')
-    //         link.href = url
-    //         document.body.appendChild(link)
-    //         link.click()
-    //         document.body.removeChild(link)
-    //     }
-    // }
 
     const onPaste = (files: Array<IFileData>, destFolder:IFileData, operation:string) => {
         let command = operation==='move'? FilemanCommandEnum.MOVE : FilemanCommandEnum.COPY
@@ -153,7 +140,6 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }        
     }
 
-    //const onError = (error: { type: string, message: string }, file: IFileData) => {
     const onError = (error: IError, file: IFileData) => {
         props.channelObject.uiConfig.notify(error.message, 'error')
     }

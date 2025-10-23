@@ -15,7 +15,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import { WebSocketServer } from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, InstanceConfig, ISignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, IInstanceMessage, KwirthData, IRouteMessage, SignalMessageEventEnum } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, InstanceConfig, ISignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, IInstanceMessage, KwirthData, IRouteMessage, SignalMessageEventEnum, AccessKey } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { AuthorizationManagement } from './tools/AuthorizationManagement'
 
@@ -823,6 +823,23 @@ wss.on('connection', (webSocket:WebSocket) => {
 })
 
 const runKubernetes = async () => {
+    const processRequest = async (channel: IChannel, endpointName:string,req:Request, res:Response) : Promise<void> => {
+        try {
+            let accessKey = await AuthorizationManagement.getKey(req,res,ka)
+            if (accessKey) {
+                channel.endpointRequest(endpointName, req, res, accessKey)
+            }
+            else {
+                res.status(400).send()
+            }
+        }
+        catch (err) {
+            console.log('Error on GET endpoint')
+            console.log(err)
+            res.status(400).send()
+        }
+    }
+
     secrets = new KubernetesSecrets(coreApi, kwirthData.namespace)
     configMaps = new KubernetesConfigMaps(coreApi, kwirthData.namespace)
 
@@ -870,67 +887,28 @@ const runKubernetes = async () => {
                         next()
                     })
                     .get( async (req:Request, res:Response) => {
-                        if (endpoint.methods.includes('GET')) {
-                            try {
-                                channel.endpointRequest(endpoint.name, req, res)
-                            }
-                            catch (err) {
-                                // res.status(400).send()
-                                // console.log('Error obtaining available metrics list')
-                                // console.log(err)
-                            }
-                        }
-                        else {
-                            res.status(405)
-                        }
+                        if (endpoint.methods.includes('GET'))
+                            processRequest(channel, endpoint.name, req, res)
+                        else
+                            res.status(405).send()
                     })
                     .post( async (req:Request, res:Response) => {
-                        console.log('oost')
-                        if (endpoint.methods.includes('POST')) {
-                            try {
-                                console.log('invok')
-                                channel.endpointRequest(endpoint.name, req, res)
-                            }
-                            catch (err) {
-                                console.log(err)
-                                // res.status(400).send()
-                                // console.log('Error obtaining available metrics list')
-                                // console.log(err)
-                            }
-                        }
-                        else {
-                            res.status(405)
-                        }
+                        if (endpoint.methods.includes('POST'))
+                            processRequest(channel, endpoint.name, req, res)
+                        else
+                            res.status(405).send()
                     })
                     .put( async (req:Request, res:Response) => {
-                        if (endpoint.methods.includes('PUT')) {
-                            try {
-                                channel.endpointRequest(endpoint.name, req, res)
-                            }
-                            catch (err) {
-                                // res.status(400).send()
-                                // console.log('Error obtaining available metrics list')
-                                // console.log(err)
-                            }
-                        }
-                        else {
-                            res.status(405)
-                        }
+                        if (endpoint.methods.includes('PUT'))
+                            processRequest(channel, endpoint.name, req, res)
+                        else
+                            res.status(405).send()
                     })
                     .delete( async (req:Request, res:Response) => {
-                        if (endpoint.methods.includes('DELETE')) {
-                            try {
-                                channel.endpointRequest(endpoint.name, req, res)
-                            }
-                            catch (err) {
-                                // res.status(400).send()
-                                // console.log('Error obtaining available metrics list')
-                                // console.log(err)
-                            }
-                        }
-                        else {
-                            res.status(405)
-                        }
+                        if (endpoint.methods.includes('DELETE'))
+                            processRequest(channel, endpoint.name, req, res)
+                        else
+                            res.status(405).send()
                     })
                 app.use(`${rootPath}/channel/${cdata.id}/${endpoint.name}`, router)
             }

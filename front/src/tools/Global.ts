@@ -20,35 +20,35 @@ export const getMetricsNames = async (cluster:Cluster) => {
 
 
 export const readClusterInfo = async (cluster: Cluster): Promise<void> => {
-        try {
-            cluster.enabled = false
-            let responseInfo = await fetch(`${cluster.url}/config/info`, addGetAuthorization(cluster.accessString))
-            if (responseInfo.status===200) {
-                cluster.kwirthData = await responseInfo.json() as KwirthData
-                // accessString, name & url are set in clustersList, we don't overwrite them here
-                cluster.source = false
-                cluster.enabled = true
-                if (cluster.kwirthData) {
-                    let metricsRequired = Array.from(cluster.kwirthData.channels).reduce( (prev, current) => { return prev || current.metrics}, false)
-                    if (metricsRequired) getMetricsNames(cluster)
-                }               
-            }
-            else {
-                console.log('get info Status:', responseInfo.status)
-                return
-            }
-            let responseCluster = await fetch(`${cluster.url}/config/cluster`, addGetAuthorization(cluster.accessString))
-            if (responseCluster.status===200) {
-                cluster.clusterInfo = await responseCluster.json() as IClusterInfo
-            }
-            else {
-                console.log('get cluster Status:', responseInfo.status)
-                return
-            }
+    try {
+        cluster.enabled = false
+        let responseInfo = await fetch(`${cluster.url}/config/info`, addGetAuthorization(cluster.accessString))
+        if (responseInfo.status===200) {
+            cluster.kwirthData = await responseInfo.json() as KwirthData
+            // accessString, name & url are set in clustersList, we don't overwrite them here
+            cluster.source = false
+            cluster.enabled = true
+            if (cluster.kwirthData) {
+                let metricsRequired = Array.from(cluster.kwirthData.channels).reduce( (prev, current) => { return prev || current.metrics}, false)
+                if (metricsRequired) getMetricsNames(cluster)
+            }               
         }
-        catch (error) {
-            console.log(error)
+        else {
+            console.log('Get config info status code:', responseInfo.status)
+            return
         }
+        let responseCluster = await fetch(`${cluster.url}/config/cluster`, addGetAuthorization(cluster.accessString))
+        if (responseCluster.status===200) {
+            cluster.clusterInfo = await responseCluster.json() as IClusterInfo
+        }
+        else {
+            console.log('Get cluster info status code:', responseInfo.status)
+            return
+        }
+    }
+    catch (error) {
+        console.log(error)
         console.log(`Cluster ${cluster.name} not enabled`)
     }
+}
 
