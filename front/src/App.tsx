@@ -40,11 +40,10 @@ import { AlertChannel } from './channels/alert/AlertChannel'
 import { MetricsChannel } from './channels/metrics/MetricsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { OpsChannel } from './channels/ops/OpsChannel'
-import { getMetricsNames, readClusterInfo } from './tools/Global'
+import { getMetricsNames, ENotifyLevel, readClusterInfo } from './tools/Global'
 import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
 import { BASECOLORS, BRIGHTCOLORS, DEFAULTLASTTABS, IColors } from './tools/Constants'
-import cluster from 'cluster'
 
 const App: React.FC = () => {
     let backendUrl='http://localhost:3883'
@@ -99,9 +98,12 @@ const App: React.FC = () => {
     // last & favs
     const [lastTabs, setLastTabs] = useState<ITabSummary[]>([])
     const [favTabs, setFavTabs] = useState<ITabSummary[]>([])
+
+    // ui notifications
     const [notifyOpen, setNotifyOpen] = useState(false)
     const [notifyMessage, setNotifyMessage] = useState('')
-    const [notifyLevel, setNotifyLevel] = useState<'info'|'error'|'warning'|'success'>('info')
+    const [notifyLevel, setNotifyLevel] = useState<ENotifyLevel>(ENotifyLevel.INFO)
+    
     const [resourceSelected, setResourceSelected] = useState<IResourceSelected|undefined>(undefined)
 
     const createChannelInstance = (type: string): IChannel | null => {
@@ -127,10 +129,10 @@ const App: React.FC = () => {
         setNotifyOpen(false)
     }
 
-    const notify = (msg:string, level:string) => {
+    const notify = (level:ENotifyLevel, msg:string) => {
         setNotifyOpen(true)
         setNotifyMessage(msg)
-        setNotifyLevel(level as 'info'|'error'|'warning'|'success')
+        setNotifyLevel(level)
     }
 
     useEffect ( () => {
@@ -546,7 +548,7 @@ const App: React.FC = () => {
                 
                 tab.channel.startChannel(tab.channelObject)
 
-                if (!lastTabs.some(t => t.name === tab.name)) {
+                if (!lastTabs.some(t => t.name === tab.name && t.channel === tab.channel.channelId)) {
                     let newTab = {
                         name: tab.name,
                         description: tab.name,
@@ -560,8 +562,10 @@ const App: React.FC = () => {
                             container: tab.channelObject.container
                         }
                     }
-                    setLastTabs([...lastTabs, newTab])
-                    localStorage.setItem('lastTabs', JSON.stringify([...lastTabs, newTab]))
+                    let newLastTabs = lastTabs
+                    if (newLastTabs.length>5) newLastTabs= newLastTabs.slice(0,4)
+                    setLastTabs([newTab, ...newLastTabs])
+                    localStorage.setItem('lastTabs', JSON.stringify([newTab, ...newLastTabs]))
                 }
             }
             else {
@@ -1104,6 +1108,7 @@ const App: React.FC = () => {
             let clonedTab:ITabSummary = await JSON.parse(JSON.stringify(tab))
             await fillTabSummary(clonedTab)
             populateTabObject(clonedTab.name, clonedTab.channel, cluster, clonedTab.channelObject.view, clonedTab.channelObject.namespace, clonedTab.channelObject.group, clonedTab.channelObject.pod, clonedTab.channelObject.container)
+            onClickChannelStart()
         }
     }
 

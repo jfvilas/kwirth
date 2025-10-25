@@ -7,9 +7,11 @@ import { OpsObject, IOpsObject } from './OpsObject'
 import { OpsInstanceConfig, OpsUiConfig } from './OpsConfig'
 import { OPSHELPMESSAGE, OPSWELCOMEMESSAGE } from '../../tools/Constants'
 import { cleanANSI } from './OpsTools'
+import { ENotifyLevel } from '../../tools/Global'
 
 export class OpsChannel implements IChannel {
     private setupVisible = false
+    private notify: (level:ENotifyLevel, message:string) => void = (level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = OpsSetup
     TabContent: FC<IContentProps> = OpsTabContent
     channelId = 'ops'
@@ -19,7 +21,7 @@ export class OpsChannel implements IChannel {
     requiresAccessString() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return true }
-    setNotifier(notifier: any): void { }
+    setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'ops$get' }
     getChannelIcon(): JSX.Element { return OpsIcon }

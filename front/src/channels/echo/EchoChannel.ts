@@ -5,10 +5,12 @@ import { EchoSetup, EchoIcon } from './EchoSetup';
 import { IEchoMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from "@jfvilas/kwirth-common";
 import { EchoObject, IEchoObject } from "./EchoObject";
 import { EchoTabContent } from "./EchoTabContent";
+import { ENotifyLevel } from "../../tools/Global";
 
 
 export class EchoChannel implements IChannel {
     private setupVisible = false
+    private notify: (level:ENotifyLevel, message:string) => void = (level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = EchoSetup
     TabContent: FC<IContentProps> = EchoTabContent
     channelId = 'echo'
@@ -18,7 +20,7 @@ export class EchoChannel implements IChannel {
     requiresAccessString() { return false }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
-    setNotifier(notifier: any): void { }
+    setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return InstanceConfigScopeEnum.NONE}
     getChannelIcon(): JSX.Element { return EchoIcon }

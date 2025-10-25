@@ -11,6 +11,8 @@ import { IconContainer, IconNamespace, IconPod } from '../../tools/Constants-Rea
 import { v4 as uuid } from 'uuid'
 import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 import { MsgBoxOk } from '../../tools/MsgBox'
+import { IFilemanUiConfig } from './FilemanConfig'
+import { ENotifyLevel } from '../../tools/Global'
 
 interface IContentProps {
     webSocket?: WebSocket
@@ -121,12 +123,14 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
                 else {
                     console.error(`Error downloading file: ${file.path}`)
-                    props.channelObject.uiConfig.notify(`Error downloading file ${file.path}: (${response.status}) ${await response.text()}`, 'error')
+                    let uiConfig = props.channelObject.uiConfig as IFilemanUiConfig
+                    uiConfig.notify(ENotifyLevel.ERROR, `Error downloading file ${file.path}: (${response.status}) ${await response.text()}`)
                 }
             }
             catch (error) {
                 console.error(`Error downloading file: ${file.path}`, error)
-                props.channelObject.uiConfig.notify(`Error downloading file ${file.path}: ${error}`, 'error')
+                let uiConfig = props.channelObject.uiConfig as IFilemanUiConfig
+                uiConfig.notify(ENotifyLevel.ERROR, `Error downloading file ${file.path}: ${error}`)
             }
         }
     }
@@ -141,7 +145,8 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onError = (error: IError, file: IFileData) => {
-        props.channelObject.uiConfig.notify(error.message, 'error')
+        let uiConfig = props.channelObject.uiConfig as IFilemanUiConfig
+        uiConfig.notify(ENotifyLevel.ERROR, error.message)
     }
 
     const onRename	= (file: IFileData, newName: string) => {

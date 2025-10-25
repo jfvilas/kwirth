@@ -5,9 +5,11 @@ import { AlertIcon, AlertSetup } from './AlertSetup'
 import { AlertTabContent } from './AlertTabContent'
 import { AlertObject, IAlertObject } from './AlertObject'
 import { AlertInstanceConfig, AlertUiConfig, IAlertUiConfig } from './AlertConfig'
+import { ENotifyLevel } from '../../tools/Global'
 
 export class AlertChannel implements IChannel {
     private setupVisible = false
+    private notify: (level:ENotifyLevel, message:string) => void = (level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = AlertSetup
     TabContent: FC<IContentProps> = AlertTabContent
     channelId = 'alert'
@@ -17,7 +19,7 @@ export class AlertChannel implements IChannel {
     requiresAccessString() { return false }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
-    setNotifier(notifier: any): void { }
+    setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return InstanceConfigScopeEnum.VIEW}
     getChannelIcon(): JSX.Element { return AlertIcon }

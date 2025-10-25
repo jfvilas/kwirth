@@ -1,6 +1,7 @@
 import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { MetricDescription } from './metrics/MetricDescription'
 import { Cluster } from '../model/Cluster'
+import { ENotifyLevel } from '../tools/Global'
 
 enum IChannelMessageAction {
     NONE,
@@ -47,7 +48,7 @@ interface IChannel {
     requiresClusterUrl(): boolean
     requiresAccessString(): boolean
     requiresWebSocket(): boolean
-    setNotifier(notifier:any): void
+    setNotifier(notifier:(level:ENotifyLevel, message:string) => void): void
     getScope(): string
     getChannelIcon(): JSX.Element
     getSetupVisibility():boolean

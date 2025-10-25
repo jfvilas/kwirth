@@ -18,7 +18,6 @@ export const getMetricsNames = async (cluster:Cluster) => {
     }
 }
 
-
 export const readClusterInfo = async (cluster: Cluster): Promise<void> => {
     try {
         cluster.enabled = false
@@ -52,3 +51,9 @@ export const readClusterInfo = async (cluster: Cluster): Promise<void> => {
     }
 }
 
+export enum ENotifyLevel {
+    INFO ='info',
+    ERROR='error',
+    WARNING='warning',
+    SUCCESS='success'
+}

@@ -6,6 +6,7 @@ import { IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, I
 import { FilemanCommandEnum, FilemanObject, IFilemanMessageResponse, IFilemanObject } from './FilemanObject'
 import { FilemanTabContent } from './FilemanTabContent'
 import { v4 as uuid } from 'uuid'
+import { ENotifyLevel } from '../../tools/Global'
 
 interface IFilemanMessage extends IInstanceMessage {
     msgtype: 'filemanmessage'
@@ -22,7 +23,7 @@ interface IFilemanMessage extends IInstanceMessage {
 
 export class FilemanChannel implements IChannel {
     private setupVisible = false
-    private notify: (msg:string, level:string) => void = () => {}
+    private notify: (level:ENotifyLevel, message:string) => void = (level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = FilemanSetup
     TabContent: FC<IContentProps> = FilemanTabContent
     channelId = 'fileman'
@@ -32,10 +33,7 @@ export class FilemanChannel implements IChannel {
     requiresAccessString() { return true }
     requiresClusterUrl() { return true }
     requiresWebSocket() { return true }
-    setNotifier(notifier: any): void { 
-        console.log('notifier', notifier)
-        this.notify = notifier 
-    }
+    setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'fileman$read'}
     getChannelIcon(): JSX.Element { return FilemanIcon }
@@ -79,7 +77,7 @@ export class FilemanChannel implements IChannel {
                             case FilemanCommandEnum.DIR:
                                 let content = JSON.parse(response.data)
                                 if (content.status!=='Success') {
-                                    this.notify('ERROR: '+ (content.text || content.message), 'error')
+                                    this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 else {
                                     for (let o of content.metadata.object) {
@@ -93,7 +91,7 @@ export class FilemanChannel implements IChannel {
                             case FilemanCommandEnum.RENAME: {
                                 let content = JSON.parse(response.data)
                                 if (content.status!=='Success') {
-                                    this.notify('ERROR: '+ (content.text || content.message), 'error')
+                                    this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return IChannelMessageAction.REFRESH
                             }
@@ -105,7 +103,7 @@ export class FilemanChannel implements IChannel {
                                     filemanObject.files = filemanObject.files.filter(f => !f.path.startsWith(fname+'/'))
                                 }
                                 else {
-                                    this.notify('ERROR: '+ (content.text || content.message), 'error')
+                                    this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return IChannelMessageAction.REFRESH
                             }
@@ -125,7 +123,7 @@ export class FilemanChannel implements IChannel {
                                     filemanObject.files.push(f)
                                 }
                                 else {
-                                    this.notify('ERROR: '+ (content.text || content.message), 'error')
+                                    this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return IChannelMessageAction.REFRESH
                             }
@@ -141,7 +139,7 @@ export class FilemanChannel implements IChannel {
                         channelObject.instanceId = signalMessage.instance
                     }
                     else if (signalMessage.action === InstanceMessageActionEnum.COMMAND) {
-                        if (signalMessage.text) this.notify(signalMessage.text,'error')
+                        if (signalMessage.text) this.notify(ENotifyLevel.ERROR, signalMessage.text)
                     }
                 }
                 if (signalMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
@@ -165,12 +163,12 @@ export class FilemanChannel implements IChannel {
                         let payload = JSON.stringify( filemanMessage )
                         channelObject.webSocket!.send(payload)
 
-                        if (signalMessage.text) this.notify(signalMessage.text,'info')
+                        if (signalMessage.text) this.notify(ENotifyLevel.ERROR, signalMessage.text)
                     }
                     if (signalMessage.event === SignalMessageEventEnum.DELETE) {
                         filemanObject.files = filemanObject.files.filter(f => !f.path.startsWith('/'+signalMessage.namespace+'/'+signalMessage.pod+'/'))
                         filemanObject.files = filemanObject.files.filter(f => f.path!=='/'+signalMessage.namespace+'/'+signalMessage.pod)
-                        if (signalMessage.text) this.notify(signalMessage.text,'info')
+                        if (signalMessage.text) this.notify(ENotifyLevel.INFO, signalMessage.text)
                     }
                 }
                 return IChannelMessageAction.REFRESH

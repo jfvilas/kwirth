@@ -1,3 +1,4 @@
+import { InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
 import { IChannel, IChannelObject } from "../channels/IChannel"
 
 interface ITabObject {
@@ -19,7 +20,7 @@ interface ITabSummary {
     channel: string
     channelObject: {
         clusterName: string
-        view: string
+        view: InstanceConfigViewEnum
         namespace: string
         group: string
         pod: string

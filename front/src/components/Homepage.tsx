@@ -86,8 +86,11 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     })
 
     const toOrFromFavTabs = (tab:ITabSummary) => {
-        if (!props.favTabs.some(t => t.name === tab.name && t.channel === tab.channel))
+        if (!props.favTabs.some(t => t.name === tab.name && t.channel === tab.channel)) {
             props.favTabs.push(tab)
+            let i = props.lastTabs.findIndex(t => t.name !== tab.name || t.channel !== tab.channel)
+            props.lastTabs.splice(i,1)
+        }
         else {
             let i = props.favTabs.findIndex(t => t.name !== tab.name || t.channel !== tab.channel)
             props.favTabs.splice(i,1)
@@ -116,36 +119,43 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                 <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>                                    
                     {
                         tabList.map(tab => {
-                            let icon = <Box sx={{minWidth:'24px'}}/>
+                            let channelIcon = <Box sx={{minWidth:'24px'}}/>
 
                             const channelClass = props.frontChannels.get(tab.channel)
-                            if (channelClass) icon = new channelClass()!.getChannelIcon()
+                            if (channelClass) channelIcon = new channelClass()!.getChannelIcon()
 
-                            let view = <></>
+                            let viewIcon = <></>
                             switch (tab.channelObject.view) {
                                 case InstanceConfigViewEnum.NAMESPACE:
-                                    view = <IconNamespace/>
+                                    viewIcon = <IconNamespace height={20}/>
                                     break
                                 case InstanceConfigViewEnum.GROUP:
-                                    view = <IconGroup/>
+                                    viewIcon = <IconGroup height={20}/>
                                     break
                                 case InstanceConfigViewEnum.POD:
-                                    view = <IconPod/>
+                                    viewIcon = <IconPod height={20}/>
                                     break
                                 case InstanceConfigViewEnum.CONTAINER:
-                                    view = <IconContainer/>
+                                    viewIcon = <IconContainer height={20}/>
                                     break
                                 default:
-                                    view = <IconBlank/>
+                                    viewIcon = <IconBlank/>
                                     break
                             }
 
+                            let name = tab.name
+                            if (name.length>50) name = name.substring(0,25) + '...' + name.substring(name.length-25)
+                                
                             return <Stack key={listType+tab.name} direction={'row'} alignItems={'center'} flex={1}>
-                                {icon}
-                                <Typography>&nbsp;&nbsp;</Typography>
-                                {view}
-                                <Typography>&nbsp;&nbsp;</Typography>
-                                <Typography>{tab.name}</Typography>
+                                <Tooltip title={tab.channel}>
+                                    {channelIcon}
+                                </Tooltip>
+                                <Typography>&nbsp;</Typography>
+                                {viewIcon}
+                                <Typography>&nbsp;</Typography>
+                                <Tooltip title={tab.name}>
+                                    <Typography>{name}</Typography>
+                                </Tooltip>
                                 <Typography flexGrow={1}/>
                                 <IconButton onClick={() => openTab(tab)}>
                                     <OpenInBrowser/>
@@ -273,14 +283,13 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                     {!expanded && <Stack direction={'row'}>
                         <Typography><b>Cluster: </b>{props.cluster?.clusterInfo?.name}</Typography>
                         <Typography sx={{ml:'32px'}}><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes.length}</Typography>
-                        <Typography sx={{ml:'32px'}}><b>Resources: </b>{props.cluster?.clusterInfo?.vcpu} vCPU/{((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)}GB</Typography>
+                        <Typography sx={{ml:'32px'}}><b>Resources: </b>{props.cluster?.clusterInfo?.vcpu} vCPU / {((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)} GB</Typography>
 
                         <Typography flexGrow={1}></Typography>
 
                         <Stack sx={{ml:'32px'}} direction={'row'} alignItems={'center'}>
                             {
-                                frontChannels.split(',').map (c => {
-                                    console.log(c)
+                                props.clusters && props.cluster && frontChannels.split(',').map (c => {
                                     const channelClass = props.frontChannels.get(c.trim())
                                     if (channelClass) {
                                         let icon = new channelClass()!.getChannelIcon()
@@ -296,7 +305,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
 
                         <Typography flexGrow={1}></Typography>
 
-                        <Tooltip title={`${cpu.toFixed(2)}%`}>
+                        <Tooltip title={`${(cpu||0).toFixed(2)}%`}>
                             <Stack direction={'column'} alignItems={'center'}>
                                 <Typography fontSize={8} mb={-1}>CPU</Typography>
                                 <AreaChart width={120} height={20} data={dataCpu} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
@@ -304,7 +313,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                 </AreaChart>
                             </Stack>
                         </Tooltip>
-                        <Tooltip title={`${memory.toFixed()}GB / ${((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed()}GB`}>
+                        <Tooltip title={`${(memory||0).toFixed()}GB / ${((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed()}GB`}>
                             <Stack direction={'column'} alignItems={'center'}>
                                 <Typography fontSize={8} mb={-1}>Mem</Typography>
                                 <AreaChart width={120} height={20} data={dataMemory} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
@@ -312,7 +321,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                 </AreaChart>
                             </Stack>
                         </Tooltip>
-                        <Tooltip title={`${txmbps.toFixed(2)}Mbps / ${rxmbps.toFixed(2)}Mbps`}>
+                        <Tooltip title={`${(txmbps||0).toFixed(2)}Mbps / ${(rxmbps||0).toFixed(2)}Mbps`}>
                             <Stack direction={'column'} alignItems={'center'}>                            
                                 <Typography fontSize={8} mb={-1}>Net</Typography>
                                 <AreaChart width={120} height={20} data={dataNetwork} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>

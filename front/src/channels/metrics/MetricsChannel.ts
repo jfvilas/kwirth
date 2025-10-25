@@ -5,9 +5,11 @@ import { MetricsIcon, MetricsSetup } from './MetricsSetup'
 import { MetricsTabContent } from './MetricsTabContent'
 import { MetricsObject, IMetricsMessage, MetricsEventSeverityEnum, IMetricsObject } from './MetricsObject'
 import { IMetricsUiConfig, MetricsInstanceConfig, MetricsUiConfig } from './MetricsConfig'
+import { ENotifyLevel } from '../../tools/Global'
 
 export class MetricsChannel implements IChannel {
     private setupVisible = false
+    private notify: (level:ENotifyLevel, message:string) => void = (level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = MetricsSetup
     TabContent: FC<IContentProps> = MetricsTabContent
     channelId = 'metrics'
@@ -17,7 +19,7 @@ export class MetricsChannel implements IChannel {
     requiresAccessString() { return false }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
-    setNotifier(notifier: any): void { }
+    setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return InstanceConfigScopeEnum.STREAM }
     getChannelIcon(): JSX.Element { return MetricsIcon }

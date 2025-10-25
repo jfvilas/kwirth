@@ -5,9 +5,11 @@ import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
 import { LogObject, ILogLine, ILogObject } from './LogObject'
 import { ILogUiConfig, LogInstanceConfig, LogSortOrderEnum, LogUiConfig } from './LogConfig'
+import { ENotifyLevel } from '../../tools/Global'
 
 export class LogChannel implements IChannel {
     private setupVisible = false
+    private notify: (level:ENotifyLevel, message:string) => void = (level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = LogSetup
     TabContent: FC<IContentProps> = LogTabContent
     channelId = 'log'
@@ -17,7 +19,7 @@ export class LogChannel implements IChannel {
     requiresAccessString() { return false }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
-    setNotifier(notifier: any): void { }
+    setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return InstanceConfigScopeEnum.VIEW }
     getChannelIcon(): JSX.Element { return LogIcon }
