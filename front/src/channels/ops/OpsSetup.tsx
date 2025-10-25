@@ -2,14 +2,14 @@ import React, { useRef, useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Select, Stack, Switch, Typography, Checkbox } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { Terminal } from '@mui/icons-material'
-import { IOpsInstanceConfig, IOpsUiConfig } from './OpsConfig'
+import { IOpsInstanceConfig, IOpsConfig } from './OpsConfig'
 import { ColorModeEnum } from './terminal/Terminal'
 
 const OpsIcon = <Terminal />
 
 const OpsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     let opsInstanceConfig:IOpsInstanceConfig = props.channelObject?.instanceConfig
-    let opsUiConfig:IOpsUiConfig = props.channelObject?.uiConfig
+    let opsUiConfig:IOpsConfig = props.channelObject?.config
     
     const [sessionKeepAlive, setSessionKeepAlive] = useState(props.instanceSettings? props.instanceSettings.sessionKeepAlive : opsInstanceConfig.sessionKeepAlive)
     const [colorMode, setColorMode] = useState<ColorModeEnum>(props.uiSettings? props.uiSettings.colorMode : ColorModeEnum.Light)

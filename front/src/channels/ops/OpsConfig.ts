@@ -1,10 +1,10 @@
 import { ColorModeEnum } from "./terminal/Terminal"
 
-interface IOpsUiConfig {
+interface IOpsConfig {
     colorMode: ColorModeEnum
 }
 
-class OpsUiConfig implements IOpsUiConfig{
+class OpsConfig implements IOpsConfig{
     colorMode = ColorModeEnum.Light
 }
 
@@ -16,5 +16,5 @@ class OpsInstanceConfig implements IOpsInstanceConfig{
     sessionKeepAlive = true
 }
 
-export type { IOpsUiConfig, IOpsInstanceConfig }
-export { OpsUiConfig, OpsInstanceConfig }
+export type { IOpsConfig, IOpsInstanceConfig }
+export { OpsConfig, OpsInstanceConfig }

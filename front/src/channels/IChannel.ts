@@ -30,8 +30,8 @@ interface IChannelObject {
     container: string
     instanceId: string
     instanceConfig: any
-    uiConfig: any
-    uiData: any
+    config: any
+    data: any
     metricsList?: Map<string, MetricDescription>
     accessString?: string
     webSocket?: WebSocket

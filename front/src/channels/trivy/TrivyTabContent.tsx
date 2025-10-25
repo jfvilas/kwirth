@@ -6,7 +6,7 @@ import { assetScore } from './TrivyCommon'
 import { TabContentTrivyAssetDetails } from './TrivyTabContentAssetDetails'
 import { IContentProps } from '../IChannel'
 import { ITrivyInstanceConfig } from './TrivyConfig'
-import { ITrivyObject } from './TrivyObject'
+import { ITrivyData } from './TrivyData'
 import { IKnown } from '@jfvilas/kwirth-common'
 import { Error as ErrorIcon } from '@mui/icons-material'
 import { MsgBoxOkError } from '../../tools/MsgBox'
@@ -19,7 +19,7 @@ import { MsgBoxOkError } from '../../tools/MsgBox'
 // +++ add scope validations per channel
 
 const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    let trivyObject:ITrivyObject = props.channelObject.uiData
+    let trivyObject:ITrivyData = props.channelObject.data
     let trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig
     const trivyBoxRef = useRef<HTMLDivElement | null>(null)
     const [trivyBoxTop, setTrivyBoxTop] = useState(0)

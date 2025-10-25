@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Button, Stack, TextField } from '@mui/material'
-import { IOpsObject } from './OpsObject'
+import { IOpsData } from './OpsData'
 import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessage, OpsCommandEnum } from '@jfvilas/kwirth-common'
 import { Terminal } from './terminal/Terminal'
 import { SelectTerminal } from './terminal/SelectTerminal'
 import { IContentProps } from '../IChannel'
 import { OPSHELPMESSAGE } from '../../tools/Constants'
-import { IOpsUiConfig } from './OpsConfig'
+import { IOpsConfig } from './OpsConfig'
 import { v4 as uuid } from 'uuid'
 
 const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    let opsObject:IOpsObject = props.channelObject.uiData
-    let opsUiConfig:IOpsUiConfig = props.channelObject.uiConfig
+    let opsObject:IOpsData = props.channelObject.data
+    let opsUiConfig:IOpsConfig = props.channelObject.config
 
     const [command, setCommand] = useState('')
     const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
@@ -144,7 +144,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const formatConsole = () => {
-        if (!props.channelObject.uiData || !props.channelObject.uiData) return <></>
+        if (!props.channelObject.data) return <></>
         if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
 
         return <pre>

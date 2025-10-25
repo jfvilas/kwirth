@@ -1,11 +1,11 @@
 import { ILogMessage, InstanceConfigViewEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
-import { ILogLine, ILogObject } from './LogObject'
+import { ILogLine, ILogData as ILogData } from './LogData'
 import { Box } from '@mui/material'
 import { IContentProps } from '../IChannel'
 import { useEffect, useRef, useState } from 'react'
 
 const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    let logObject:ILogObject = props.channelObject.uiData
+    let logData:ILogData = props.channelObject.data
 
     const logBoxRef = useRef<HTMLDivElement | null>(null)
     const [logBoxTop, setLogBoxTop] = useState(0)
@@ -15,7 +15,7 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (logBoxRef.current) setLogBoxTop(logBoxRef.current.getBoundingClientRect().top)
     })
 
-    if (!props.channelObject.uiData || !props.channelObject.uiData) return <pre></pre>
+    if (!props.channelObject.data || !props.channelObject.data) return <pre></pre>
 
     const formatLogLine = (imessage:ILogLine) => {
         if (!imessage) return null
@@ -57,7 +57,7 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     return <Box ref={logBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 25px)`}}>
             <pre>
-                {logObject.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })}
+                {logData.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })}
             </pre>
             <br/>
             <span ref={lastLineRef}/>

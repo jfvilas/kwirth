@@ -10,13 +10,13 @@ export interface FiredAlert {
     container?:string
 }
 
-export interface IAlertObject {
+export interface IAlertData {
     firedAlerts: FiredAlert[]
     paused:boolean
     started:boolean
 }
 
-export class AlertObject implements IAlertObject {
+export class AlertData implements IAlertData {
     firedAlerts = []
     paused = false
     started = false

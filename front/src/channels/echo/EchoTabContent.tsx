@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import { IChannelObject } from '../IChannel'
-import { IEchoObject } from './EchoObject'
+import { IEchoData as IEchoData } from './EchoData'
 
 interface IContentProps {
     webSocket?: WebSocket
@@ -9,7 +9,7 @@ interface IContentProps {
 }
 
 const EchoTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    let echoObject:IEchoObject = props.channelObject.uiData
+    let echoData:IEchoData = props.channelObject.data
     const echoBoxRef = useRef<HTMLDivElement | null>(null)
     const [echoBoxTop, setEchoBoxTop] = useState(0)
 
@@ -19,8 +19,8 @@ const EchoTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
 
     const formatContent = () => {
-        if (!echoObject || !echoObject.lines) return <></>
-        return echoObject.lines.map( (line,index) => <Typography key={index}>{line}</Typography> )
+        if (!echoData || !echoData.lines) return <></>
+        return echoData.lines.map( (line,index) => <Typography key={index}>{line}</Typography> )
     }
 
     return <Box ref={echoBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${echoBoxTop}px - 25px)`}}>

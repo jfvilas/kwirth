@@ -19,14 +19,14 @@ export interface IMetricsMessage extends IInstanceMessage {
     timestamp: number
 }
 
-export interface IMetricsObject {
+export interface IMetricsData {
     assetMetricsValues: IMetricsMessage[]
     events: { severity:MetricsEventSeverityEnum, text:string }[]
     paused:boolean
     started:boolean
 }
 
-export class MetricsObject implements IMetricsObject{
+export class MetricsData implements IMetricsData{
     assetMetricsValues = []
     events = []
     paused = false

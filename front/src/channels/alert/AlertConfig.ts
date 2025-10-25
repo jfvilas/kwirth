@@ -1,8 +1,8 @@
-interface IAlertUiConfig {
+interface IAlertConfig {
     maxAlerts: number
 }
 
-class AlertUiConfig implements IAlertUiConfig{
+class AlertConfig implements IAlertConfig{
     maxAlerts:number = 25
 }
 
@@ -18,5 +18,5 @@ class AlertInstanceConfig implements IAlertInstanceConfig{
     regexError:string[] = []
 }
 
-export type { IAlertUiConfig, IAlertInstanceConfig }
-export { AlertUiConfig, AlertInstanceConfig }
+export type { IAlertConfig, IAlertInstanceConfig }
+export { AlertConfig, AlertInstanceConfig }

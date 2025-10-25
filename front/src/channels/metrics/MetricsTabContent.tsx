@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { IMetricsObject, MetricsEventSeverityEnum } from './MetricsObject'
+import { IMetricsData, MetricsEventSeverityEnum } from './MetricsData'
 import { Area, AreaChart, Line, LineChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { Alert, Box, Button, Snackbar, Stack, Typography } from '@mui/material'
 import { IContentProps } from '../IChannel'
-import { IMetricsUiConfig, METRICSCOLOURS } from './MetricsConfig'
+import { IMetricsConfig, METRICSCOLOURS } from './MetricsConfig'
 
 interface ISample {
     timestamp:string
@@ -11,8 +11,8 @@ interface ISample {
 }
 
 const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    let metricsObject:IMetricsObject = props.channelObject.uiData
-    let metricsUiConfig:IMetricsUiConfig = props.channelObject.uiConfig
+    let metricsObject:IMetricsData = props.channelObject.data
+    let metricsUiConfig:IMetricsConfig = props.channelObject.config
     const [refresh, setRefresh] = useState(false)
     const [refreshTabContent, setRefreshTabContent] = useState(0)
     const metricsBoxRef = useRef<HTMLDivElement | null>(null)
@@ -168,12 +168,12 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         )
     }
 
-    const handleClose = (reason:string, dataMetrics:IMetricsObject, event:{ severity:MetricsEventSeverityEnum, text:string }) => {
+    const handleClose = (reason:string, dataMetrics:IMetricsData, event:{ severity:MetricsEventSeverityEnum, text:string }) => {
         dataMetrics.events = dataMetrics.events.filter(e => e.severity!==event.severity && e.text!==event.text)
         setRefreshTabContent(Math.random())
     }
 
-    const formatMetricsError = (dataMetrics:IMetricsObject) => {
+    const formatMetricsError = (dataMetrics:IMetricsData) => {
         if (!dataMetrics.events || dataMetrics.events.length === 0) return <></>
 
         return <>

@@ -1,21 +1,21 @@
 import React, { useRef, useState } from 'react'
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField } from '@mui/material'
 import { ISetupProps } from '../IChannel'
-import { IEchoInstanceConfig, IEchoUiConfig } from './EchoConfig'
+import { IEchoInstanceConfig, IEchoConfig } from './EchoConfig'
 import { Science } from '@mui/icons-material'
 
 const EchoIcon = <Science />
 
 const EchoSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let echoUiConfig:IEchoUiConfig = props.channelObject?.uiConfig
+    let echoConfig:IEchoConfig = props.channelObject?.config
     let echoInstanceConfig:IEchoInstanceConfig = props.channelObject?.instanceConfig
 
     const [interval, setInterval] = useState(props.instanceSettings? props.instanceSettings.interval : echoInstanceConfig.interval)
-    const [maxLines, setMaxLines] = useState(props.uiSettings? props.uiSettings.maxLines : echoUiConfig.maxLines)
+    const [maxLines, setMaxLines] = useState(props.uiSettings? props.uiSettings.maxLines : echoConfig.maxLines)
     const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () => {
-        echoUiConfig.maxLines = maxLines
+        echoConfig.maxLines = maxLines
         echoInstanceConfig.interval = interval
         props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }

@@ -1,7 +1,7 @@
-interface ITrivyUiConfig {
+interface ITrivyConfig {
 }
 
-class TrivyUiConfig implements ITrivyUiConfig{
+class TrivyConfig implements ITrivyConfig{
 }
 
 interface ITrivyInstanceConfig {
@@ -18,5 +18,5 @@ class TrivyInstanceConfig implements ITrivyInstanceConfig{
     maxLow = -1
 }
 
-export type { ITrivyUiConfig, ITrivyInstanceConfig }
-export { TrivyUiConfig, TrivyInstanceConfig }
+export type { ITrivyConfig, ITrivyInstanceConfig }
+export { TrivyConfig, TrivyInstanceConfig }

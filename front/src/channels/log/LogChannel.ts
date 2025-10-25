@@ -3,7 +3,7 @@ import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupP
 import { ILogMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage } from '@jfvilas/kwirth-common'
 import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
-import { LogObject, ILogLine, ILogObject } from './LogObject'
+import { LogData, ILogLine, ILogData } from './LogData'
 import { ILogUiConfig, LogInstanceConfig, LogSortOrderEnum, LogUiConfig } from './LogConfig'
 import { ENotifyLevel } from '../../tools/Global'
 
@@ -29,8 +29,8 @@ export class LogChannel implements IChannel {
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
-        let logObject:ILogObject = channelObject.uiData
-        let logUiConfig:ILogUiConfig = channelObject.uiConfig
+        let logData:ILogData = channelObject.data
+        let logUiConfig:ILogUiConfig = channelObject.config
 
         const getMsgEpoch = (lmsg:ILogLine) =>{
             return (new Date(lmsg.text.split(' ')[0])).getTime()
@@ -44,14 +44,14 @@ export class LogChannel implements IChannel {
 
                 let bname = logMessage.namespace+'/'+logMessage.pod+'/'+logMessage.container
                 let text = logMessage.text
-                if (logObject.buffers.get(bname)) {
-                    text = logObject.buffers.get(bname) + text
-                    logObject.buffers.set(bname,'')
+                if (logData.buffers.get(bname)) {
+                    text = logData.buffers.get(bname) + text
+                    logData.buffers.set(bname,'')
                 }
                 if (!text.endsWith('\n')) {
                     let i = text.lastIndexOf('\n')
                     let next = text.substring(i)
-                    logObject.buffers.set(bname, next)
+                    logData.buffers.set(bname, next)
                     text = text.substring(0,i)
                 }
 
@@ -66,29 +66,29 @@ export class LogChannel implements IChannel {
                         type: logMessage.type
                     }
                     if (logUiConfig.startDiagnostics) {
-                        if (logObject.messages.length < logUiConfig.maxMessages) {
-                            let cnt = logObject.counters.get(bname)
+                        if (logData.messages.length < logUiConfig.maxMessages) {
+                            let cnt = logData.counters.get(bname)
                             if (!cnt) {
-                                logObject.counters.set(bname,0)
+                                logData.counters.set(bname,0)
                                 cnt = 0
                             }
                             if (cnt < logUiConfig.maxPerPodMessages) {
                                 switch (logUiConfig.sortOrder) {
                                     case LogSortOrderEnum.POD:
-                                        let podIndex = logObject.messages.findLastIndex(m => m.container===logLine.container && m.pod===logLine.pod && m.namespace===logLine.namespace)
-                                        logObject.messages.splice(podIndex+1,0,logLine)
+                                        let podIndex = logData.messages.findLastIndex(m => m.container===logLine.container && m.pod===logLine.pod && m.namespace===logLine.namespace)
+                                        logData.messages.splice(podIndex+1,0,logLine)
                                         break
                                     case LogSortOrderEnum.TIME:
-                                        let timeIndex = logObject.messages.findLastIndex(m => getMsgEpoch(m) < getMsgEpoch(logLine))
-                                        logObject.messages.splice(timeIndex+1,0,logLine)
+                                        let timeIndex = logData.messages.findLastIndex(m => getMsgEpoch(m) < getMsgEpoch(logLine))
+                                        logData.messages.splice(timeIndex+1,0,logLine)
                                         break
                                     default:
-                                        logObject.messages.push(logLine)
+                                        logData.messages.push(logLine)
                                         break
                                 }
-                                logObject.counters.set(bname, ++cnt)
+                                logData.counters.set(bname, ++cnt)
                             }
-                            if ([...logObject.counters.values()].reduce((prev,acc) => prev+acc, 0) > logUiConfig.maxMessages) {
+                            if ([...logData.counters.values()].reduce((prev,acc) => prev+acc, 0) > logUiConfig.maxMessages) {
                                 action = IChannelMessageAction.STOP
                             }
                         }
@@ -97,8 +97,8 @@ export class LogChannel implements IChannel {
                         }
                     }
                     else {
-                        logObject.messages.push(logLine)
-                        if (logObject.messages.length > logUiConfig.maxMessages) logObject.messages.splice(0, logObject.messages.length - logUiConfig.maxMessages)
+                        logData.messages.push(logLine)
+                        if (logData.messages.length > logUiConfig.maxMessages) logData.messages.splice(0, logData.messages.length - logUiConfig.maxMessages)
                     }
                 }
                 break
@@ -109,7 +109,7 @@ export class LogChannel implements IChannel {
                 }
                 else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
                     let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
-                    logObject.messages.push({
+                    logData.messages.push({
                         text: signalMessage.text || '',
                         namespace: '',
                         pod: '',
@@ -118,7 +118,7 @@ export class LogChannel implements IChannel {
                     })
                 }
                 else {
-                    logObject.messages.push(logMessage)
+                    logData.messages.push(logMessage)
                     action = IChannelMessageAction.REFRESH
                 }
                 break
@@ -132,19 +132,19 @@ export class LogChannel implements IChannel {
 
     initChannel(channelObject:IChannelObject): boolean {
         channelObject.instanceConfig = new LogInstanceConfig()
-        channelObject.uiConfig = new LogUiConfig()
-        channelObject.uiData = new LogObject()
+        channelObject.config = new LogUiConfig()
+        channelObject.data = new LogData()
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
         let logInstanceConfig:LogInstanceConfig = channelObject.instanceConfig
         let logConfig:LogInstanceConfig = new LogInstanceConfig()
-        let logObject:ILogObject = channelObject.uiData
-        logObject.paused = false
-        logObject.started = true
+        let logData:ILogData = channelObject.data
+        logData.paused = false
+        logData.started = true
 
-        if (channelObject.uiConfig.startDiagnostics) {
+        if (channelObject.config.startDiagnostics) {
             logConfig = {
                 timestamp: true,
                 previous: false,
@@ -159,27 +159,27 @@ export class LogChannel implements IChannel {
                 ...(!logConfig.fromStart? {} : {startTime: logInstanceConfig.startTime})
             }
         }
-        logObject.messages = []
+        logData.messages = []
         channelObject.instanceConfig = logConfig
         return true
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        let logObject:ILogObject = channelObject.uiData
-        logObject.paused = true
+        let logData:ILogData = channelObject.data
+        logData.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        let logObject:ILogObject = channelObject.uiData
-        logObject.paused = false
+        let logData:ILogData = channelObject.data
+        logData.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        let logObject:ILogObject = channelObject.uiData
-        if (logObject.started) {
-            logObject.messages.push({
+        let logData:ILogData = channelObject.data
+        if (logData.started) {
+            logData.messages.push({
                 text: '=========================================================================',
                 type: InstanceMessageTypeEnum.DATA,
                 namespace: '',
@@ -187,14 +187,14 @@ export class LogChannel implements IChannel {
                 container: ''
             })
         }
-        logObject.started = false
-        logObject.paused = false
+        logData.started = false
+        logData.paused = false
         return true
     }
 
     socketDisconnected(channelObject: IChannelObject): boolean {
-        let logObject:ILogObject = channelObject.uiData
-        logObject.messages.push({
+        let logData:ILogData = channelObject.data
+        logData.messages.push({
             type: InstanceMessageTypeEnum.DATA,
             text: '*** Lost connection ***',
             namespace: '',

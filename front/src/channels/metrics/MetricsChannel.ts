@@ -3,8 +3,8 @@ import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupP
 import { InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { MetricsIcon, MetricsSetup } from './MetricsSetup'
 import { MetricsTabContent } from './MetricsTabContent'
-import { MetricsObject, IMetricsMessage, MetricsEventSeverityEnum, IMetricsObject } from './MetricsObject'
-import { IMetricsUiConfig, MetricsInstanceConfig, MetricsUiConfig } from './MetricsConfig'
+import { MetricsData, IMetricsMessage, MetricsEventSeverityEnum, IMetricsData } from './MetricsData'
+import { IMetricsConfig, MetricsInstanceConfig, MetricsConfig } from './MetricsConfig'
 import { ENotifyLevel } from '../../tools/Global'
 
 export class MetricsChannel implements IChannel {
@@ -30,23 +30,23 @@ export class MetricsChannel implements IChannel {
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
         var metricsMessage:IMetricsMessage = JSON.parse(wsEvent.data)
-        let metricsObject:IMetricsObject = channelObject.uiData
-        let metricsUiConfig:IMetricsUiConfig = channelObject.uiConfig
+        let metricsData:IMetricsData = channelObject.data
+        let metricsConfig:IMetricsConfig = channelObject.config
 
         switch (metricsMessage.type) {
             case InstanceMessageTypeEnum.DATA:
                 if (metricsMessage.timestamp===0) {  // initial metrics values
                     metricsMessage.timestamp = Date.now()
-                    if (metricsObject.assetMetricsValues.length===0)
-                        metricsObject.assetMetricsValues.push(metricsMessage)
+                    if (metricsData.assetMetricsValues.length===0)
+                        metricsData.assetMetricsValues.push(metricsMessage)
                     else
-                        metricsObject.assetMetricsValues[0] = metricsMessage
+                        metricsData.assetMetricsValues[0] = metricsMessage
                 }
                 else {
-                    metricsObject.assetMetricsValues.push(metricsMessage)
-                    if (metricsObject.assetMetricsValues.length > metricsUiConfig.depth) metricsObject.assetMetricsValues.shift()
+                    metricsData.assetMetricsValues.push(metricsMessage)
+                    if (metricsData.assetMetricsValues.length > metricsConfig.depth) metricsData.assetMetricsValues.shift()
                 }
-                if (!metricsObject.paused) action = IChannelMessageAction.REFRESH
+                if (!metricsData.paused) action = IChannelMessageAction.REFRESH
                 break
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
@@ -57,13 +57,13 @@ export class MetricsChannel implements IChannel {
                     let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
                     if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
                         if (signalMessage.text) {
-                            metricsObject.events.push( { severity: MetricsEventSeverityEnum.INFO, text: signalMessage.text })
+                            metricsData.events.push( { severity: MetricsEventSeverityEnum.INFO, text: signalMessage.text })
                         }
                     }
                     else {
                         if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
                             if (signalMessage.text) {
-                                metricsObject.events.push( { severity: MetricsEventSeverityEnum.ERROR, text: signalMessage.text })
+                                metricsData.events.push( { severity: MetricsEventSeverityEnum.ERROR, text: signalMessage.text })
                                 action = IChannelMessageAction.REFRESH
                             }
                         }
@@ -78,43 +78,43 @@ export class MetricsChannel implements IChannel {
     }
 
     initChannel(channelObject:IChannelObject): boolean {
-        channelObject.uiData = new MetricsObject()
+        channelObject.data = new MetricsData()
         channelObject.instanceConfig = new MetricsInstanceConfig()
-        channelObject.uiConfig = new MetricsUiConfig()
+        channelObject.config = new MetricsConfig()
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        let metricsObject:IMetricsObject = channelObject.uiData
-        channelObject.uiData.events = []
-        channelObject.uiData.assetMetricsValues=[]
-        metricsObject.paused = false
-        metricsObject.started = true
+        let metricsData:IMetricsData = channelObject.data
+        metricsData.events = []
+        metricsData.assetMetricsValues=[]
+        metricsData.paused = false
+        metricsData.started = true
         return true
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        let metricsObject:IMetricsObject = channelObject.uiData
-        metricsObject.paused = true
+        let metricsData:IMetricsData = channelObject.data
+        metricsData.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        let metricsObject:IMetricsObject = channelObject.uiData
-        metricsObject.paused = false
+        let metricsData:IMetricsData = channelObject.data
+        metricsData.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        let metricsObject:IMetricsObject = channelObject.uiData
-        metricsObject.paused = false
-        metricsObject.started = false
+        let metricsData:IMetricsData = channelObject.data
+        metricsData.paused = false
+        metricsData.started = false
         return true
     }
 
     socketDisconnected(channelObject: IChannelObject): boolean {
-        let metricsObject:IMetricsObject = channelObject.uiData
-        metricsObject.events.push( { severity: MetricsEventSeverityEnum.INFO, text: '*** Lost connection ***' })
+        let metricsData:IMetricsData = channelObject.data
+        metricsData.events.push( { severity: MetricsEventSeverityEnum.INFO, text: '*** Lost connection ***' })
         return true
     }
 

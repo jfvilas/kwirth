@@ -3,8 +3,8 @@ import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupP
 import { IKnown, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, IUnknown, ISignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
 import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
-import { ITrivyObject, TrivyObject } from './TrivyObject'
-import { TrivyInstanceConfig, TrivyUiConfig } from './TrivyConfig'
+import { ITrivyData, TrivyData } from './TrivyData'
+import { TrivyConfig, TrivyInstanceConfig } from './TrivyConfig'
 import { ENotifyLevel } from '../../tools/Global'
 
 export class TrivyChannel implements IChannel {
@@ -29,7 +29,7 @@ export class TrivyChannel implements IChannel {
 
     processChannelMessage(channelObject:IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
-        let trivyObject:ITrivyObject = channelObject.uiData
+        let trivyData:ITrivyData = channelObject.data
         let trivyMessageResponse:ITrivyMessageResponse = JSON.parse(wsEvent.data)
 
         switch (trivyMessageResponse.type) {
@@ -37,28 +37,28 @@ export class TrivyChannel implements IChannel {
                 if (trivyMessageResponse.flow === InstanceMessageFlowEnum.RESPONSE && trivyMessageResponse.action === InstanceMessageActionEnum.COMMAND) {
                     if (trivyMessageResponse.data) {
                         action = IChannelMessageAction.REFRESH
-                        trivyObject.score = trivyMessageResponse.data.score
+                        trivyData.score = trivyMessageResponse.data.score
                     }
                 }
                 else if (trivyMessageResponse.flow === InstanceMessageFlowEnum.UNSOLICITED) {
                     switch (trivyMessageResponse.msgsubtype) {
                         case 'score':
-                            trivyObject.score = trivyMessageResponse.data.score
+                            trivyData.score = trivyMessageResponse.data.score
                             break
                         case 'add':
-                            if (trivyMessageResponse.data.known) trivyObject.known.push(trivyMessageResponse.data.known as IKnown)
-                            if (trivyMessageResponse.data.unknown) trivyObject.unknown.push(trivyMessageResponse.data.unknown as IUnknown)
+                            if (trivyMessageResponse.data.known) trivyData.known.push(trivyMessageResponse.data.known as IKnown)
+                            if (trivyMessageResponse.data.unknown) trivyData.unknown.push(trivyMessageResponse.data.unknown as IUnknown)
                             break
                         case 'update':
                         case 'delete':
                             let assetKnown:IKnown = trivyMessageResponse.data.known
-                            trivyObject.known = (trivyObject.known as IKnown[]).filter(a => a.namespace !== assetKnown.namespace || a.name !== assetKnown.name || a.container !== assetKnown.container)
-                            if (trivyMessageResponse.msgsubtype==='update' && trivyMessageResponse.data.known) trivyObject.known.push(assetKnown)
+                            trivyData.known = (trivyData.known as IKnown[]).filter(a => a.namespace !== assetKnown.namespace || a.name !== assetKnown.name || a.container !== assetKnown.container)
+                            if (trivyMessageResponse.msgsubtype==='update' && trivyMessageResponse.data.known) trivyData.known.push(assetKnown)
                             break
                         default:
                             console.log('Invalid msgsubtype: ', trivyMessageResponse.msgsubtype)
                     }
-                    trivyObject.known = [...trivyObject.known]
+                    trivyData.known = [...trivyData.known]
                     action = IChannelMessageAction.REFRESH
                 }
                 break
@@ -82,38 +82,38 @@ export class TrivyChannel implements IChannel {
     }
 
     initChannel(channelObject:IChannelObject): boolean {
-        channelObject.uiData = new TrivyObject()
+        channelObject.data = new TrivyData()
         channelObject.instanceConfig = new TrivyInstanceConfig()
-        channelObject.uiConfig = new TrivyUiConfig()
+        channelObject.config = new TrivyConfig()
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        let trivyObject:ITrivyObject = channelObject.uiData
-        trivyObject.paused = false
-        trivyObject.started = true
-        trivyObject.known = []
-        trivyObject.unknown = []
-        trivyObject.score = 0
+        let trivyData:ITrivyData = channelObject.data
+        trivyData.paused = false
+        trivyData.started = true
+        trivyData.known = []
+        trivyData.unknown = []
+        trivyData.score = 0
         return true
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        let trivyObject:ITrivyObject = channelObject.uiData
-        trivyObject.paused = true
+        let trivyData:ITrivyData = channelObject.data
+        trivyData.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        let trivyObject:ITrivyObject = channelObject.uiData
-        trivyObject.paused = false
+        let trivyData:ITrivyData = channelObject.data
+        trivyData.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        let trivyObject:ITrivyObject = channelObject.uiData
-        trivyObject.paused = false
-        trivyObject.started = false
+        let trivyData:ITrivyData = channelObject.data
+        trivyData.paused = false
+        trivyData.started = false
         return true
     }
 

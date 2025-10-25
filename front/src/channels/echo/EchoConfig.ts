@@ -1,8 +1,8 @@
-interface IEchoUiConfig {
+interface IEchoConfig {
     maxLines: number
 }
 
-class EchoUiConfig implements IEchoUiConfig{
+class EchoConfig implements IEchoConfig{
     maxLines = 3
 }
 
@@ -14,5 +14,5 @@ class EchoInstanceConfig implements IEchoInstanceConfig{
     interval = 5
 }
 
-export type { IEchoUiConfig, IEchoInstanceConfig }
-export { EchoUiConfig, EchoInstanceConfig }
+export type { IEchoConfig, IEchoInstanceConfig }
+export { EchoConfig, EchoInstanceConfig }

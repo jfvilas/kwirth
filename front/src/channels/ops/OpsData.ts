@@ -8,7 +8,7 @@ export interface IShell {
     pending: string
 }
 
-export interface IOpsObject {
+export interface IOpsData {
     messages: string[]
     shells: IShell[]
     shell: IShell|undefined
@@ -16,7 +16,7 @@ export interface IOpsObject {
     started:boolean
 }
 
-export class OpsObject implements IOpsObject{
+export class OpsData implements IOpsData {
     messages:string[] = []
     shells:IShell[] = []
     shell:IShell|undefined = undefined

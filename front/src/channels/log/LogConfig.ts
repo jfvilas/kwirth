@@ -4,7 +4,7 @@ enum LogSortOrderEnum {
     POD = 'pod'
 }
 
-interface ILogUiConfig {
+interface ILogConfig {
     startDiagnostics: boolean
 
     // for general log viewing
@@ -16,7 +16,7 @@ interface ILogUiConfig {
     sortOrder: LogSortOrderEnum
 }
 
-class LogUiConfig implements ILogUiConfig{
+class LogConfig implements ILogConfig{
     startDiagnostics = false
     follow = true
     maxMessages = 5000
@@ -38,5 +38,5 @@ class LogInstanceConfig implements ILogInstanceConfig{
     startTime? = 0
 }
 
-export type { ILogUiConfig, ILogInstanceConfig }
-export { LogUiConfig, LogInstanceConfig, LogSortOrderEnum }
+export type { ILogConfig as ILogUiConfig, ILogInstanceConfig }
+export { LogConfig as LogUiConfig, LogInstanceConfig, LogSortOrderEnum }

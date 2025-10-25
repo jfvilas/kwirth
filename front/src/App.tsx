@@ -303,8 +303,8 @@ const App: React.FC = () => {
                 pod: pods,
                 container: containers,
                 instanceConfig: undefined,
-                uiConfig: undefined,
-                uiData: undefined
+                config: undefined,
+                data: undefined
             },
             channelStarted: false,
             channelPaused: false,
@@ -317,7 +317,7 @@ const App: React.FC = () => {
         if (newTab.channel.initChannel(newTab.channelObject)) setRefreshTabContent(Math.random())
         if (tab) {
             newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
-            newTab.channelObject.uiConfig = tab.channelObject.uiConfig
+            newTab.channelObject.config = tab.channelObject.config
         }
         startSocket(newTab, cluster, () => {
             setKeepAlive(newTab)
@@ -773,7 +773,7 @@ const App: React.FC = () => {
                 headerEl: undefined
             }
             if (selectedTab.current && selectedTab.current.channel) {
-                delete newTab.channelObject.uiData  // we only need uiConfig and instanceConfig
+                delete newTab.channelObject.data  // we only need uiConfig and instanceConfig
                 newTabs.push(newTab)
             }
             else {
@@ -1029,7 +1029,7 @@ const App: React.FC = () => {
             settingsRef.current.channels = settingsRef.current.channels.filter(c => c.id !== channel.channelId)
             settingsRef.current.channels.push({
                 id: channel.channelId,
-                uiSettings: selectedTab.current.channelObject.uiConfig,
+                uiSettings: selectedTab.current.channelObject.config,
                 instanceSettings: selectedTab.current.channelObject.instanceConfig
             })
             writeSettings()

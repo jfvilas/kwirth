@@ -1,5 +1,5 @@
 import { Box } from '@mui/material'
-import { IAlertObject } from './AlertObject'
+import { IAlertData } from './AlertData'
 import { IContentProps } from '../IChannel'
 import { useEffect, useRef, useState } from 'react'
 
@@ -12,7 +12,7 @@ const AlertTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     })
 
     const formatAlert = () => {
-        let alertObject:IAlertObject = props.channelObject.uiData
+        let alertObject:IAlertData = props.channelObject.data
         return (<pre>{
             alertObject.firedAlerts.map((alert,index) => {
                 var color = 'black'

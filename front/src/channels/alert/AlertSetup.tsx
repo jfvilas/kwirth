@@ -1,14 +1,14 @@
 import React, { useState, ChangeEvent, useRef } from 'react'
 import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField } from '@mui/material'
 import { ISetupProps } from '../IChannel'
-import { IAlertInstanceConfig, IAlertUiConfig } from './AlertConfig'
+import { IAlertInstanceConfig, IAlertConfig } from './AlertConfig'
 import { Warning } from '@mui/icons-material'
 import { TextToolTip } from '../../tools/FrontTools'
 
 const AlertIcon = <Warning />
 
 const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let alertUiConfig:IAlertUiConfig = props.channelObject?.uiConfig
+    let alertConfig:IAlertConfig = props.channelObject?.config
     let alertInstanceConfig:IAlertInstanceConfig = props.channelObject?.instanceConfig
     
     const [info, setInfo] = useState('')
@@ -17,7 +17,7 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const [regexInfo, setRegexInfo] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexInfo : alertInstanceConfig.regexInfo)
     const [regexWarning, setRegexWarning] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexWarning : alertInstanceConfig.regexWarning)
     const [regexError, setRegexError] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexError : alertInstanceConfig.regexError)
-    const [maxAlerts, setMaxAlerts] = useState<number>(props.uiSettings? props.uiSettings.maxAlerts : alertUiConfig.maxAlerts)
+    const [maxAlerts, setMaxAlerts] = useState<number>(props.uiSettings? props.uiSettings.maxAlerts : alertConfig.maxAlerts)
     const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const onChangeRegexInfo = (event:ChangeEvent<HTMLInputElement>) => {
@@ -70,7 +70,7 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     }
 
     const ok = () => {
-        alertUiConfig.maxAlerts = maxAlerts
+        alertConfig.maxAlerts = maxAlerts
         alertInstanceConfig.regexInfo = regexInfo
         alertInstanceConfig.regexWarning = regexWarning
         alertInstanceConfig.regexError = regexError

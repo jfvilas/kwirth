@@ -7,7 +7,7 @@ export interface ILogLine {
     text:string
 }
 
-export interface ILogObject {
+export interface ILogData {
     messages: ILogLine[]
     pending: boolean
     backgroundNotification: boolean
@@ -17,7 +17,7 @@ export interface ILogObject {
     started:boolean
 }
 
-export class LogObject implements ILogObject{
+export class LogData implements ILogData{
     messages: ILogLine[] = []
     pending = false
     backgroundNotification = true

@@ -1,7 +1,7 @@
 import { MetricsConfigModeEnum } from "@jfvilas/kwirth-common"
 import { MetricDescription } from "./MetricDescription"
 
-interface IMetricsUiConfig {
+interface IMetricsConfig {
     metricsList: Map<string,MetricDescription>
     depth: number
     width: number
@@ -10,7 +10,7 @@ interface IMetricsUiConfig {
     chart: string
 }
 
-class MetricsUiConfig implements IMetricsUiConfig{
+class MetricsConfig implements IMetricsConfig{
     metricsList = new Map()
     depth = 20
     width = 3
@@ -68,5 +68,5 @@ const METRICSCOLOURS = [
     "#f1c1d2"  // rosa bebé pastel
 ]
 
-export type { IMetricsUiConfig, IMetricsInstanceConfig }
-export { MetricsUiConfig, MetricsInstanceConfig, METRICSCOLOURS }
+export type { IMetricsConfig, IMetricsInstanceConfig }
+export { MetricsConfig, MetricsInstanceConfig, METRICSCOLOURS }

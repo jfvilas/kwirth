@@ -1,9 +1,9 @@
 import { FC } from "react";
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from "../IChannel";
-import { EchoInstanceConfig, EchoUiConfig, IEchoUiConfig } from "./EchoConfig";
+import { EchoInstanceConfig, EchoConfig, IEchoConfig } from "./EchoConfig";
 import { EchoSetup, EchoIcon } from './EchoSetup';
 import { IEchoMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from "@jfvilas/kwirth-common";
-import { EchoObject, IEchoObject } from "./EchoObject";
+import { EchoData, IEchoData } from "./EchoData";
 import { EchoTabContent } from "./EchoTabContent";
 import { ENotifyLevel } from "../../tools/Global";
 
@@ -31,20 +31,20 @@ export class EchoChannel implements IChannel {
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let msg:IEchoMessage = JSON.parse(wsEvent.data)
 
-        let echoObject:IEchoObject = channelObject.uiData
-        let echoUiConfig:IEchoUiConfig = channelObject.uiConfig
+        let echoData:IEchoData = channelObject.data
+        let echoUiConfig:IEchoConfig = channelObject.config
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA:
-                echoObject.lines.push(msg.text)
-                while (echoObject.lines.length > echoUiConfig.maxLines) echoObject.lines.shift()
+                echoData.lines.push(msg.text)
+                while (echoData.lines.length > echoUiConfig.maxLines) echoData.lines.shift()
                 return IChannelMessageAction.REFRESH
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }
-                echoObject.lines.push('*** '+msg.text+' ***')
-                while (echoObject.lines.length> echoUiConfig.maxLines) echoObject.lines.shift()
+                echoData.lines.push('*** '+msg.text+' ***')
+                while (echoData.lines.length> echoUiConfig.maxLines) echoData.lines.shift()
                 return IChannelMessageAction.REFRESH
             default:
                 console.log(`Invalid message type ${msg.type}`)
@@ -54,15 +54,15 @@ export class EchoChannel implements IChannel {
 
     initChannel(channelObject:IChannelObject): boolean {
         channelObject.instanceConfig = new EchoInstanceConfig()
-        channelObject.uiConfig = new EchoUiConfig()
-        channelObject.uiData = new EchoObject()
-        let echoObject:IEchoObject= channelObject.uiData
+        channelObject.config = new EchoConfig()
+        channelObject.data = new EchoData()
+        let echoObject:IEchoData= channelObject.data
         echoObject.lines = []
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        let echoObject:IEchoObject = channelObject.uiData
+        let echoObject:IEchoData = channelObject.data
         echoObject.lines = [ 'Start']
         echoObject.paused = false
         echoObject.started = true
@@ -70,19 +70,19 @@ export class EchoChannel implements IChannel {
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        let echoObject:IEchoObject = channelObject.uiData
+        let echoObject:IEchoData = channelObject.data
         echoObject.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        let echoObject:IEchoObject = channelObject.uiData
+        let echoObject:IEchoData = channelObject.data
         echoObject.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        let echoObject:IEchoObject = channelObject.uiData
+        let echoObject:IEchoData = channelObject.data
         echoObject.lines.push('==========================================================================')
         echoObject.paused = false
         echoObject.started = false

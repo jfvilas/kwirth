@@ -3,12 +3,12 @@ import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTit
 import { MetricsConfigModeEnum, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { ISetupProps } from '../IChannel'
 import { BarChart } from '@mui/icons-material'
-import { MetricsInstanceConfig, MetricsUiConfig } from './MetricsConfig'
+import { MetricsInstanceConfig, MetricsConfig } from './MetricsConfig'
 
 const MetricsIcon = <BarChart/>
 
 const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let metricsUiConfig:MetricsUiConfig = props.channelObject.uiConfig
+    let metricsConfig:MetricsConfig = props.channelObject.config
     let metricsInstanceConfig:MetricsInstanceConfig = props.channelObject.instanceConfig
     let metricsList = props.channelObject.metricsList
 
@@ -16,11 +16,11 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const [metricsMode, setMetricsMode] = useState(props.instanceSettings? props.instanceSettings.mode : metricsInstanceConfig.mode)
     const [metricsInterval, setMetricsInterval] = useState(props.instanceSettings? props.instanceSettings.interval : metricsInstanceConfig.interval)
     const [assetAggregate, setAssetAggregate] = React.useState(props.instanceSettings? props.instanceSettings.aggregate : metricsInstanceConfig.aggregate)
-    const [metricsDepth, setMetricsDepth] = useState(props.uiSettings? props.uiSettings.depth : metricsUiConfig.depth)
-    const [metricsWidth, setMetricsWidth] = useState(props.uiSettings? props.uiSettings.width : metricsUiConfig.width)
-    const [assetMerge, setAssetMerge] = React.useState(props.uiSettings? props.uiSettings.merge : metricsUiConfig.merge)
-    const [assetStack, setAssetStack] = React.useState(props.uiSettings? props.uiSettings.stack : metricsUiConfig.stack)
-    const [chart, setChart] = useState(metricsUiConfig.chart)
+    const [metricsDepth, setMetricsDepth] = useState(props.uiSettings? props.uiSettings.depth : metricsConfig.depth)
+    const [metricsWidth, setMetricsWidth] = useState(props.uiSettings? props.uiSettings.width : metricsConfig.width)
+    const [assetMerge, setAssetMerge] = React.useState(props.uiSettings? props.uiSettings.merge : metricsConfig.merge)
+    const [assetStack, setAssetStack] = React.useState(props.uiSettings? props.uiSettings.stack : metricsConfig.stack)
+    const [chart, setChart] = useState(metricsConfig.chart)
     const [filter, setFilter] = useState('')
     const defaultRef = useRef<HTMLInputElement|null>(null)
 
@@ -29,11 +29,11 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         metricsInstanceConfig.interval = metricsInterval
         metricsInstanceConfig.aggregate = assetAggregate
         metricsInstanceConfig.metrics = metrics
-        metricsUiConfig.depth = metricsDepth
-        metricsUiConfig.width = metricsWidth
-        metricsUiConfig.merge = assetMerge
-        metricsUiConfig.stack = assetStack
-        metricsUiConfig.chart = chart
+        metricsConfig.depth = metricsDepth
+        metricsConfig.width = metricsWidth
+        metricsConfig.merge = assetMerge
+        metricsConfig.stack = assetStack
+        metricsConfig.chart = chart
         props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 

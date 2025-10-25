@@ -10,7 +10,7 @@ import moment from 'moment'
 const LogIcon = <Subject />
 
 const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let logUiConfig:ILogUiConfig = props.channelObject?.uiConfig
+    let logUiConfig:ILogUiConfig = props.channelObject?.config
     let logInstanceConfig:ILogInstanceConfig = props.channelObject?.instanceConfig
 
     const [selectedTab, setSelectedTab] = useState(props.uiSettings? (props.uiSettings.startDiagnostics? 'sd':'log') : 'log')

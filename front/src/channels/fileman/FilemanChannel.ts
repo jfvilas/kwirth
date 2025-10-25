@@ -1,9 +1,9 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { FilemanInstanceConfig, FilemanUiConfig, IFilemanUiConfig } from './FilemanConfig'
+import { FilemanInstanceConfig, FilemanConfig, IFilemanConfig } from './FilemanConfig'
 import { FilemanSetup, FilemanIcon } from './FilemanSetup'
 import { IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
-import { FilemanCommandEnum, FilemanObject, IFilemanMessageResponse, IFilemanObject } from './FilemanObject'
+import { FilemanCommandEnum, FilemanData, IFilemanMessageResponse, IFilemanData } from './FilemanData'
 import { FilemanTabContent } from './FilemanTabContent'
 import { v4 as uuid } from 'uuid'
 import { ENotifyLevel } from '../../tools/Global'
@@ -44,8 +44,8 @@ export class FilemanChannel implements IChannel {
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let msg:IFilemanMessage = JSON.parse(wsEvent.data)
 
-        let filemanObject:IFilemanObject = channelObject.uiData
-        let filemanUiConfig:IFilemanUiConfig = channelObject.uiConfig
+        let filemanData:IFilemanData = channelObject.data
+        //let filemanUiConfig:IFilemanConfig = channelObject.config
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA: {
                 let response = JSON.parse(wsEvent.data) as IFilemanMessageResponse
@@ -56,23 +56,23 @@ export class FilemanChannel implements IChannel {
                                 let data = response.data as string[]
                                 let nss = Array.from (new Set (data.map(n => n.split('/')[0])))
                                 nss.map(ns => {
-                                    if (!filemanObject.files.some(f => f.path === '/'+ ns)) {
-                                        filemanObject.files.push ({ name: ns, isDirectory: true, path: '/'+ ns, class:'namespace' })
+                                    if (!filemanData.files.some(f => f.path === '/'+ ns)) {
+                                        filemanData.files.push ({ name: ns, isDirectory: true, path: '/'+ ns, class:'namespace' })
                                     }
                                     let podNames = Array.from (new Set (data.filter(a => a.split('/')[0]===ns).map(o => o.split('/')[1])))
                                     podNames.map(p => {
-                                        if (!filemanObject.files.some(f => f.path === '/'+ns+'/'+p)) {
-                                            filemanObject.files.push({ name: p, isDirectory: true, path: '/'+ns+'/'+p, class:'pod' })
+                                        if (!filemanData.files.some(f => f.path === '/'+ns+'/'+p)) {
+                                            filemanData.files.push({ name: p, isDirectory: true, path: '/'+ns+'/'+p, class:'pod' })
                                         }
                                         let conts = Array.from (new Set (data.filter(a => a.split('/')[0]===ns && a.split('/')[1]===p).map(o => o.split('/')[2])))
                                         conts.map(c => {
-                                            if (!filemanObject.files.some(f => f.path === '/'+ns+'/'+p+'/'+c)) {
-                                                filemanObject.files.push ({ name: c, isDirectory: true, path: '/'+ns+'/'+p+'/'+c, class:'container' })
+                                            if (!filemanData.files.some(f => f.path === '/'+ns+'/'+p+'/'+c)) {
+                                                filemanData.files.push ({ name: c, isDirectory: true, path: '/'+ns+'/'+p+'/'+c, class:'container' })
                                             }
                                         })
                                     })
                                 })
-                                filemanObject.files=[...filemanObject.files]
+                                filemanData.files=[...filemanData.files]
                                 return IChannelMessageAction.REFRESH
                             case FilemanCommandEnum.DIR:
                                 let content = JSON.parse(response.data)
@@ -83,8 +83,8 @@ export class FilemanChannel implements IChannel {
                                     for (let o of content.metadata.object) {
                                         let name = o.name.split('/')[o.name.split('/').length-1]
                                         let e = { name, isDirectory: (o.type===1), path: o.name, updatedAt: new Date(+o.time).toISOString(), size: +o.size  }
-                                        filemanObject.files = filemanObject.files.filter(f => f.path !== e.path)
-                                        filemanObject.files.push (e)
+                                        filemanData.files = filemanData.files.filter(f => f.path !== e.path)
+                                        filemanData.files.push (e)
                                     }
                                 }
                                 return IChannelMessageAction.REFRESH
@@ -99,8 +99,8 @@ export class FilemanChannel implements IChannel {
                                 let content = JSON.parse(response.data)
                                 if (content.status==='Success') {
                                     let fname = content.metadata.object
-                                    filemanObject.files = filemanObject.files.filter(f => f.path !== fname)
-                                    filemanObject.files = filemanObject.files.filter(f => !f.path.startsWith(fname+'/'))
+                                    filemanData.files = filemanData.files.filter(f => f.path !== fname)
+                                    filemanData.files = filemanData.files.filter(f => !f.path.startsWith(fname+'/'))
                                 }
                                 else {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
@@ -112,7 +112,7 @@ export class FilemanChannel implements IChannel {
                             case FilemanCommandEnum.CREATE: {
                                 let content = JSON.parse(response.data)
                                 if (content.status==='Success') {
-                                    filemanObject.files = filemanObject.files.filter(f => f.path !== content.metadata.object)
+                                    filemanData.files = filemanData.files.filter(f => f.path !== content.metadata.object)
                                     let f = { 
                                         name: (content.metadata.object as string).split('/').slice(-1)[0],
                                         isDirectory: (content.metadata.type===1),
@@ -120,7 +120,7 @@ export class FilemanChannel implements IChannel {
                                         updatedAt: new Date(+content.metadata.time).toISOString(), 
                                         size: +content.metadata.size,
                                     }
-                                    filemanObject.files.push(f)
+                                    filemanData.files.push(f)
                                 }
                                 else {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
@@ -166,8 +166,8 @@ export class FilemanChannel implements IChannel {
                         if (signalMessage.text) this.notify(ENotifyLevel.ERROR, signalMessage.text)
                     }
                     if (signalMessage.event === SignalMessageEventEnum.DELETE) {
-                        filemanObject.files = filemanObject.files.filter(f => !f.path.startsWith('/'+signalMessage.namespace+'/'+signalMessage.pod+'/'))
-                        filemanObject.files = filemanObject.files.filter(f => f.path!=='/'+signalMessage.namespace+'/'+signalMessage.pod)
+                        filemanData.files = filemanData.files.filter(f => !f.path.startsWith('/'+signalMessage.namespace+'/'+signalMessage.pod+'/'))
+                        filemanData.files = filemanData.files.filter(f => f.path!=='/'+signalMessage.namespace+'/'+signalMessage.pod)
                         if (signalMessage.text) this.notify(ENotifyLevel.INFO, signalMessage.text)
                     }
                 }
@@ -180,40 +180,40 @@ export class FilemanChannel implements IChannel {
 
     initChannel(channelObject:IChannelObject): boolean {        
         channelObject.instanceConfig = new FilemanInstanceConfig()
-        let uiConfig = new FilemanUiConfig()
-        uiConfig.notify = this.notify
-        let uiData = new FilemanObject()
+        let config = new FilemanConfig()
+        config.notify = this.notify
+        let data = new FilemanData()
 
-        channelObject.uiConfig = uiConfig
-        channelObject.uiData = uiData
+        channelObject.config = config
+        channelObject.data = data
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        let filemanObject:IFilemanObject = channelObject.uiData
-        filemanObject.paused = false
-        filemanObject.started = true;
-        filemanObject.files=[]
-        filemanObject.currentPath='/'
+        let filemanData:IFilemanData = channelObject.data
+        filemanData.paused = false
+        filemanData.started = true;
+        filemanData.files=[]
+        filemanData.currentPath='/'
         return true
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        let filemanObject:IFilemanObject = channelObject.uiData
-        filemanObject.paused = true
+        let filemanData:IFilemanData = channelObject.data
+        filemanData.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        let filemanObject:IFilemanObject = channelObject.uiData
-        filemanObject.paused = false
+        let filemanData:IFilemanData = channelObject.data
+        filemanData.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        let filemanObject:IFilemanObject = channelObject.uiData
-        filemanObject.paused = false
-        filemanObject.started = false
+        let filemanData:IFilemanData = channelObject.data
+        filemanData.paused = false
+        filemanData.started = false
         return true
     }
 

@@ -1,6 +1,6 @@
 import { IKnown, IUnknown } from "@jfvilas/kwirth-common"
 
-export interface ITrivyObject {
+export interface ITrivyData {
     paused:boolean
     started:boolean
     score: number
@@ -8,7 +8,7 @@ export interface ITrivyObject {
     unknown: IUnknown[]
 }
 
-export class TrivyObject implements ITrivyObject{
+export class TrivyData implements ITrivyData{
     started = false
     paused = false
     score = 0

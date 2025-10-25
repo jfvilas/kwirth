@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { IChannelObject } from '../IChannel'
-import { FilemanCommandEnum, IFilemanMessage, IFilemanObject } from './FilemanObject'
+import { FilemanCommandEnum, IFilemanMessage, IFilemanData } from './FilemanData'
 import '@jfvilas/react-file-manager/dist/style.css'
 import { Box, Typography } from '@mui/material'
 import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
@@ -11,7 +11,7 @@ import { IconContainer, IconNamespace, IconPod } from '../../tools/Constants-Rea
 import { v4 as uuid } from 'uuid'
 import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 import { MsgBoxOk } from '../../tools/MsgBox'
-import { IFilemanUiConfig } from './FilemanConfig'
+import { IFilemanConfig } from './FilemanConfig'
 import { ENotifyLevel } from '../../tools/Global'
 
 interface IContentProps {
@@ -25,7 +25,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [refresh, setRefresh] = useState(0)
     const [msgBox, setMsgBox] =useState(<></>)
 
-    let filemanObject:IFilemanObject = props.channelObject.uiData
+    let filemanData:IFilemanData = props.channelObject.data
     let permissions={
         create: true,
         delete: true,
@@ -56,7 +56,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     ])
 
-    let level = filemanObject.currentPath.split('/').length - 1
+    let level = filemanData.currentPath.split('/').length - 1
     if (level<3) {
         permissions = {
             create: false,
@@ -90,7 +90,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const onDelete = async (files: IFileData[]) => {
         for (let file of files) {
             let [namespace,pod,container] = file.path.split('/').slice(1)
-            filemanObject.files = filemanObject.files.filter(f => f.path !== file.path)
+            filemanData.files = filemanData.files.filter(f => f.path !== file.path)
             await sendCommand(FilemanCommandEnum.DELETE, namespace, pod, container, [file.path])
             setRefresh(Math.random())
         }
@@ -123,13 +123,13 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
                 else {
                     console.error(`Error downloading file: ${file.path}`)
-                    let uiConfig = props.channelObject.uiConfig as IFilemanUiConfig
+                    let uiConfig = props.channelObject.config as IFilemanConfig
                     uiConfig.notify(ENotifyLevel.ERROR, `Error downloading file ${file.path}: (${response.status}) ${await response.text()}`)
                 }
             }
             catch (error) {
                 console.error(`Error downloading file: ${file.path}`, error)
-                let uiConfig = props.channelObject.uiConfig as IFilemanUiConfig
+                let uiConfig = props.channelObject.config as IFilemanConfig
                 uiConfig.notify(ENotifyLevel.ERROR, `Error downloading file ${file.path}: ${error}`)
             }
         }
@@ -145,20 +145,20 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onError = (error: IError, file: IFileData) => {
-        let uiConfig = props.channelObject.uiConfig as IFilemanUiConfig
+        let uiConfig = props.channelObject.config as IFilemanConfig
         uiConfig.notify(ENotifyLevel.ERROR, error.message)
     }
 
     const onRename	= (file: IFileData, newName: string) => {
         let [namespace,pod,container] = file.path.split('/').slice(1)
-        filemanObject.files = filemanObject.files.filter (f => f.path!==file.path)
+        filemanData.files = filemanData.files.filter (f => f.path!==file.path)
         sendCommand(FilemanCommandEnum.RENAME, namespace, pod, container, [file.path, newName])
     }
 
     const onRefresh = () => {
         if (level >= 3) {
-            filemanObject.files = filemanObject.files.filter ( f => !f.path.startsWith(filemanObject.currentPath+'/'))
-            getLocalDir(filemanObject.currentPath+'/')
+            filemanData.files = filemanData.files.filter ( f => !f.path.startsWith(filemanData.currentPath+'/'))
+            getLocalDir(filemanData.currentPath+'/')
         }
         else {
             sendCommand(FilemanCommandEnum.HOME, '', '', '', [])
@@ -212,24 +212,24 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onFolderChange = (folder:string) => {
-        filemanObject.currentPath = folder
+        filemanData.currentPath = folder
         folder +='/'
         let level = folder.split('/').length - 1
         if (level > 2) getLocalDir(folder)
     }
 
     const onFileUploading = (file: IFileData, parentFolder: IFileData) => { 
-        return { filename: filemanObject.currentPath + '/' + file.name }
+        return { filename: filemanData.currentPath + '/' + file.name }
     }
 
     return <>
-        { filemanObject.started &&
+        { filemanData.started &&
             <Box ref={filemanBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 10px)`, paddingLeft: '5px', paddingRight:'5px'}}>
                 <FileManager
-                    files={filemanObject.files}
+                    files={filemanData.files}
                     actions={actions}
                     icons={icons}
-                    initialPath={filemanObject.currentPath}
+                    initialPath={filemanData.currentPath}
                     enableFilePreview={false}
                     onCreateFolder={onCreateFolder}
                     onError={onError}
