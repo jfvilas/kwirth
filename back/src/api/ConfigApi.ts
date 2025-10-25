@@ -38,9 +38,7 @@ export class ConfigApi {
             })
             .get( async (req:Request, res:Response) => {
                 const versionInfo = (await this.clusterInfo.versionApi.getCode()).body
-                console.log(versionInfo)
                 const clusterInfo = this.clusterInfo.kubeConfig.getCurrentCluster()
-                console.log(clusterInfo)
 
                 const nodes = await this.clusterInfo.coreApi.listNode();
                 const nodeNames = nodes.body.items.map((node:any) => node.metadata.name);

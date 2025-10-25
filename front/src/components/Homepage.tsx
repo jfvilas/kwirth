@@ -162,9 +162,8 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                 </IconButton>
                                 { listType !== ListTypeEnum.FAV && 
                                     <IconButton onClick={() => toOrFromFavTabs(tab)}>
-                                        { props.favTabs.some(t => t.name === tab.name)? <Star sx={{ color: 'gold' }} /> : <Star sx={{ color: 'gray' }} /> }
+                                        <Star sx={{ color: 'gray' }} /> 
                                     </IconButton>
-
                                 }
                                 <IconButton onClick={() => deleteFromList(tabList, tab)}>
                                     <Delete/>
@@ -387,9 +386,8 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
             
         </Card>
 
-        {/* <Box ref={homepageBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${homepageBoxTop}px - 25px)`, marginTop:'16px', alignItems: 'center', justifyContent: 'center'}}> */}
         <Box sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, marginTop:'16px', alignItems: 'center', justifyContent: 'center'}}>
-            <Stack direction={'column'} spacing={2} width={'95%'}>
+            <Stack direction={'column'} spacing={2} width={'95%'} mb={'4px'}>
 
                 <Stack direction={'row'} spacing={2} sx={{width:'100%'}}>
                     <Stack direction={'column'} width='100%' spacing={2} height='100%'>

@@ -50,7 +50,6 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 let namespace = files[0].name
                 let data = await((await fetch(`${props.channelObject.clusterUrl}/config/${namespace}/groups`, addGetAuthorization(props.channelObject.accessString!))).json())
                 let info = `Controllers inside ${namespace} namespace:<br/><br/>` + data.map((ns:any) => '<b>-</b> '+ ns.name + '<br/>').join('')
-                console.log(info)
                 setMsgBox(MsgBoxOk('Namespace info', info, setMsgBox))
             }
         }
@@ -139,7 +138,6 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         let command = operation==='move'? FilemanCommandEnum.MOVE : FilemanCommandEnum.COPY
         for (let file of files) {
             let [namespace,pod,container] = file.path.split('/').slice(1)
-            console.log(command, namespace, pod, container, [file.path, destFolder.path])
             sendCommand(command, namespace, pod, container, [file.path, destFolder.path])
         }        
     }

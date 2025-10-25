@@ -153,7 +153,6 @@ class FilemanChannel implements IChannel {
                 let encondedFilename = encodeURIComponent(filename.split('/').slice(-1)[0])
                 if (fileInfo) {
                     if (fileInfo.type === 0 || fileInfo.type === 2) {
-                        console.log('filePath', filepath)
                         let tmpName='/tmp/'+uuid()
                         let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, filepath, tmpName)
                         if (result.status === ExecutionStatus.SUCCESS) {
@@ -475,7 +474,6 @@ class FilemanChannel implements IChannel {
                     execResponse.data = `Asset ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container} not found`
                     return execResponse
                 }
-                console.log('executedir')
                 this.executeDir(webSocket, instance, filemanMessage.params![0])
                 return
             }
@@ -535,8 +533,6 @@ class FilemanChannel implements IChannel {
                     execResponse.data = `Asset src or dst not found`
                     return execResponse
                 }
-                console.log('(webSocket, filemanMessage.command, instance, filemanMessage.params![0], filemanMessage.params![1])')
-                console.log(filemanMessage.command, instance, filemanMessage.params![0], filemanMessage.params![1])
                 this.executeCopyOrMove(webSocket, filemanMessage.command, instance, filemanMessage.params![0], filemanMessage.params![1])
                 return
             }
@@ -564,9 +560,7 @@ class FilemanChannel implements IChannel {
         let localDir = "/" + dir.split('/').slice(4).join('/')
         let [srcNamespace,srcPod,srcContainer] = homeDir.split('/').slice(1)
 
-        console.log('launchcommand', localDir)
         let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['ls', '-l', localDir])
-        console.log(result)
         if (result.stdend.status===ExecutionStatus.SUCCESS) {
             if (result.stderr==='') {
                 let arr:IDirectoryEntry[] = []
@@ -655,8 +649,6 @@ class FilemanChannel implements IChannel {
             let parentFolder = remotePath.split('/').slice(0,-1).join('/').trim()
             let mkdir = `mkdir -p ${parentFolder} ;`
             if (parentFolder === '') mkdir = ''
-            console.log('************************')
-            console.log(ns, pod, c, ['sh', '-c', `${mkdir} cat > "${remotePath}" && exit`])
             const execPromise = this.clusterInfo.execApi.exec(
                 ns,
                 pod,
@@ -684,8 +676,8 @@ class FilemanChannel implements IChannel {
             let stdout = new Writable({})
             let stderr = new Writable({})
             let stdin = new Readable({ read() {} })
-            let shellSocket = await this.clusterInfo.execApi.exec(ns, pod, c, cmd, stdout, stderr, stdin, false, (st) => { console.log('st',st) })
-            shellSocket.on('end', () => console.log('end'))
+            let shellSocket = await this.clusterInfo.execApi.exec(ns, pod, c, cmd, stdout, stderr, stdin, false, (st) => { console.log('launchcommand st',st) })
+            shellSocket.on('end', () => console.log('launchcommand end'))
             shellSocket.onmessage = (event) => {
                 let data = event.data as Buffer
                 if (data[0]===1) accumulatedOut = Buffer.concat([accumulatedOut, data.slice(1)])
@@ -709,17 +701,15 @@ class FilemanChannel implements IChannel {
     }    
 
     downloadFile = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string, localPath: string) : Promise<IExecutionResult> => {
-        const writeStream = fs.createWriteStream(localPath);
+        const writeStream = fs.createWriteStream(localPath)
         let ready=false
-        const errorStream = new PassThrough();
-        let errorString = ''; // Esta será la variable que almacene el error como string
+        const errorStream = new PassThrough()
+        let errorString = ''
 
-        // Capturamos los datos del error en la variable `errorString`
         errorStream.on('data', (chunk:any) => {
-            errorString += chunk.toString(); // Acumulamos los datos de error en un string
-            console.log('errorString')
-            console.log(errorString)
-        });
+            errorString += chunk.toString()
+            console.log('downloadFile error', errorString)
+        })
         
         await this.clusterInfo.execApi.exec(
             srcNamespace,
@@ -850,15 +840,10 @@ class FilemanChannel implements IChannel {
 
         if (srcHomeDir===dstHomeDir) {
             // copy/move on same container
-            console.log([linuxCommand, srcLocalPath+'/'+fname, dstLocalPath])
             let fileInfo = await this.getFileInfo(srcClusterPath)
             if (fileInfo) {
                 let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, [linuxCommand, srcLocalPath+'/'+fname, dstLocalPath])
                 if (result.stdend.status===ExecutionStatus.SUCCESS && result.stderr==='') {
-                    console.log('*****************')
-                    console.log(dstLocalPath)
-                    console.log(dstClusterPath)
-                    console.log(fname)
                     this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:dstClusterPath + '/' + fname, type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
                     if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))
                 }
@@ -889,14 +874,12 @@ class FilemanChannel implements IChannel {
             ParseListing.parseEntries(result.stdout, (err:any, entryArray:IDirectoryEntry[]) => { entryArray.map(e => arr.push(e)) })
             let srcMetadata = arr.find(e => e.name === fname)
             if (arr.length===0 || !srcMetadata) {
-                console.log('**********NO CONTENT************ >', fname)
-                console.log(arr)
+                console.log('**********NO CONTENT************ ', fname)
                 return
             }
 
             switch(srcMetadata.type) {
                 case 0: {
-                    console.log('file')
                     let result = await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcLocalPath + '/' + fname, dstNamespace, dstPod, dstContainer, dstLocalPath + '/' + fname)
                     if (result.status === ExecutionStatus.SUCCESS) {
                         let fileInfo = await this.getFileInfo(srcClusterPath)
@@ -910,7 +893,6 @@ class FilemanChannel implements IChannel {
                     }
                     } break
                 case 1:
-                    console.log('dir')
                     let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['ls', '-l', srcLocalPath + '/' + fname])
                     if (result.stdend.status===ExecutionStatus.SUCCESS) {
                         if (result.stderr!=='') {
@@ -928,7 +910,6 @@ class FilemanChannel implements IChannel {
                     for (var e of fileList) {
                         switch(e.type) {
                             case 0: {
-                                console.log('dirfile')
                                 let result = await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcLocalPath + '/' + fname+'/' + e.name, dstNamespace, dstPod, dstContainer, dstLocalPath + '/' + fname + '/' + e.name)
                                 if (result.status === ExecutionStatus.SUCCESS) {
                                     let src = '/' + [srcNamespace, srcPod, srcContainer, srcLocalPath, fname, e.name].join('/')
@@ -943,14 +924,11 @@ class FilemanChannel implements IChannel {
                                 }
                                 } break
                             case 1: {
-                                console.log('dirdir')
                                 await this.executeCopyOrMove(webSocket, operation, instance, srcHomeDir + '/' + fname + '/' + e.name, dstHomeDir + dstLocalPath + '/' + fname)
                                 } break
                             case 2: {
-                                console.log('dirlink')
                                 let srcPath = srcLocalPath + '/' + fname + '/' + e.target
                                 if (e.target && e.target.startsWith('/')) srcPath = e.target
-                                console.log('linkcopy from', srcPath)
                                 let result = await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcPath, dstNamespace, dstPod, dstContainer, dstLocalPath + '/' + fname + '/'+e.name)
                                 if (result.status === ExecutionStatus.SUCCESS) {
                                     let src = '/' + [srcNamespace, srcPod, srcContainer, srcPath].join('/')
@@ -973,7 +951,6 @@ class FilemanChannel implements IChannel {
                     }
                     break
                 case 2:
-                    console.log('link')
                     let src = '/' + [srcNamespace, srcPod, srcContainer, srcMetadata.target].join('/')
                     if (srcMetadata.target) {
                         let result = await this.clusterCopyOrMove(operation, srcNamespace, srcPod, srcContainer, srcMetadata.target, dstNamespace, dstPod, dstContainer, dstLocalPath + fname)
@@ -1003,9 +980,6 @@ class FilemanChannel implements IChannel {
         let srcHomeDir = srcPath.split('/').slice(0,4).join('/')
         let srcLocalPath = '/' + srcPath.split('/').slice(4).join('/')
         let [srcNamespace,srcPod,srcContainer] = srcHomeDir.split('/').slice(1)
-
-        console.log('srcHomeDir, srcLocalPath')
-        console.log(srcHomeDir, srcLocalPath)
 
         let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['rm', '-r', srcLocalPath])
         if (result.stdend.status===ExecutionStatus.SUCCESS) {
@@ -1037,14 +1011,6 @@ class FilemanChannel implements IChannel {
         }
 
     }
-
-    // private checkAssetScope = (instance:IInstance, asset: IAsset, scope: string) => {
-    //     let resources = parseResources (instance.accessKey.resources)
-    //     let requiredLevel = this.getChannelScopeLevel(scope)
-    //     // +++ AuthorizationManagemetn must be provided as a service to the channel
-    //     let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel) && AuthorizationManagement.checkResource(r, asset.podNamespace, asset.podName, asset.containerName))
-    //     return canPerform
-    // }
 
 }
 

@@ -419,19 +419,6 @@ const getRequestedValidatedScopedPods = async (instanceConfig:InstanceConfig, ac
                 if (!validPodNames.includes(podName)) continue
             }
 
-            // +++
-            // let foundKeyResource = false
-            // for (let akr of accessKeyResources) {
-            //     let haveLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, akr.scopes, Number.MIN_VALUE)
-            //     let requestedLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, instanceConfig.scope, Number.MAX_VALUE)
-            //     if (haveLevel<requestedLevel) {
-            //         console.log(`Insufficent level ${haveLevel} < ${requestedLevel}`)
-            //         continue
-            //     }
-            //     console.log(`Level is enough: ${akr.scopes} >= ${instanceConfig.scope}`)
-            //     foundKeyResource = true
-            //     break
-            // }
             let foundKeyResource = false
             for (let c of containerNames) {
                 if (AuthorizationManagement.checkAkr(channels, instanceConfig, podNamespace, podName, c)) {

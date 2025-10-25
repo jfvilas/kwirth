@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { FilemanInstanceConfig, FilemanConfig, IFilemanConfig } from './FilemanConfig'
+import { FilemanInstanceConfig, FilemanConfig } from './FilemanConfig'
 import { FilemanSetup, FilemanIcon } from './FilemanSetup'
 import { IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
 import { FilemanCommandEnum, FilemanData, IFilemanMessageResponse, IFilemanData } from './FilemanData'
@@ -45,7 +45,6 @@ export class FilemanChannel implements IChannel {
         let msg:IFilemanMessage = JSON.parse(wsEvent.data)
 
         let filemanData:IFilemanData = channelObject.data
-        //let filemanUiConfig:IFilemanConfig = channelObject.config
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA: {
                 let response = JSON.parse(wsEvent.data) as IFilemanMessageResponse
@@ -139,10 +138,11 @@ export class FilemanChannel implements IChannel {
                         channelObject.instanceId = signalMessage.instance
                     }
                     else if (signalMessage.action === InstanceMessageActionEnum.COMMAND) {
-                        if (signalMessage.text) this.notify(ENotifyLevel.ERROR, signalMessage.text)
+                        if (signalMessage.text) this.notify(ENotifyLevel.INFO, signalMessage.text)
                     }
                 }
                 if (signalMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
+
                     if (signalMessage.event === SignalMessageEventEnum.ADD) {
                         let filemanMessage:IFilemanMessage = {
                             flow: InstanceMessageFlowEnum.REQUEST,
@@ -163,7 +163,7 @@ export class FilemanChannel implements IChannel {
                         let payload = JSON.stringify( filemanMessage )
                         channelObject.webSocket!.send(payload)
 
-                        if (signalMessage.text) this.notify(ENotifyLevel.ERROR, signalMessage.text)
+                        if (signalMessage.text) this.notify(ENotifyLevel.INFO, signalMessage.text)
                     }
                     if (signalMessage.event === SignalMessageEventEnum.DELETE) {
                         filemanData.files = filemanData.files.filter(f => !f.path.startsWith('/'+signalMessage.namespace+'/'+signalMessage.pod+'/'))

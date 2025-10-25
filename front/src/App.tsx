@@ -251,7 +251,6 @@ const App: React.FC = () => {
         if (cluster && cluster.kwirthData) {
             let usableChannels = [...cluster.kwirthData.channels]
             usableChannels = usableChannels.filter(c => Array.from(frontChannels.keys()).includes(c.id))
-            //+++ pending improve ux on resource selector (showing front/back channel availability according to user selections)
             setBackChannels(usableChannels)
         }
     }
