@@ -27,11 +27,6 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (opsBoxRef.current) setOpsBoxTop(opsBoxRef.current.getBoundingClientRect().top)
     })
 
-    // this effect causes tabcontent to flick and redraw when switching to a tab
-    // useEffect(() => {
-    //     if (!opsObject.shell && commandRef.current) commandRef.current.focus()
-    // }, [refresh])
-
     useEffect(() => {
         if (!showSelector) window.addEventListener('keydown', onKeyDown)
         return () => window.removeEventListener('keydown', onKeyDown)
@@ -249,15 +244,15 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     return <Box ref={opsBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${opsBoxTop}px - 25px)`, ml:1, mr:1 }}>
             { showSelector && formatSelector() }
             { opsObject.shell && showTerminal(opsObject.shell.namespace, opsObject.shell.pod, opsObject.shell.container, `calc(100vh - ${opsBoxTop}px - 100px)`) }
-            { !opsObject.shell && <>            
+            { !opsObject.shell && (<>            
                 <Box sx={{ flex:1, overflowY: 'auto' }}>
                     {formatConsole()}
                 </Box>
-                <Stack direction={'row'}>
-                    <TextField inputRef={commandRef} value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={onKeyDown} autoComplete='off' variant='standard' fullWidth disabled={!props.channelObject.accessString || !opsObject.started}/>
+                {opsObject.started && <Stack direction={'row'}>
+                    <TextField focused={true} inputRef={commandRef} value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={onKeyDown} autoComplete='off' variant='standard' fullWidth disabled={!props.channelObject.accessString || !opsObject.started}/>
                     <Button onClick={() => onKeyDown( { key:'Enter'})} disabled={!props.channelObject.accessString || !opsObject.started}>ENTER</Button>
-                </Stack>
-            </>}
+                </Stack>}
+            </>)}
         <br/>
     </Box>
 }

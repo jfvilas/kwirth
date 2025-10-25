@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, KubernetesObject, VersionApi } from '@kubernetes/client-node'
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, VersionApi } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -15,7 +15,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import { WebSocketServer } from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, InstanceConfig, ISignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, IInstanceMessage, KwirthData, IRouteMessage, SignalMessageEventEnum, AccessKey } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, InstanceConfig, ISignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, IInstanceMessage, KwirthData, IRouteMessage, SignalMessageEventEnum } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { AuthorizationManagement } from './tools/AuthorizationManagement'
 
@@ -25,7 +25,7 @@ import { ServiceAccountToken } from './tools/ServiceAccountToken'
 import { MetricsApi } from './api/MetricsApi'
 import { v4 as uuid } from 'uuid'
 
-import { MetricsTools as Metrics } from './tools/Metrics'
+import { MetricsTools } from './tools/MetricsTools'
 import { LogChannel } from './channels/log/LogChannel'
 import { AlertChannel } from './channels/alert/AlertChannel'
 import { MetricsChannel } from './channels/metrics/MetricsChannel'
@@ -73,7 +73,7 @@ const rootPath = process.env.ROOTPATH || ''
 const masterKey = process.env.MASTERKEY || 'Kwirth4Ever'
 const channelLogEnabled = (process.env.CHANNEL_LOG || 'true').toLowerCase() === 'true'
 const channelMetricsEnabled = (process.env.CHANNEL_METRICS || 'true').toLowerCase() === 'true'
-const channelAlertEnabled = (process.env.CHANNEL_ALERT || '').toLowerCase() === 'true'
+const channelAlertEnabled = (process.env.CHANNEL_ALERT || 'true').toLowerCase() === 'true'
 const channelOpsEnabled = (process.env.CHANNEL_OPS || 'true').toLowerCase() === 'true'
 const channelTrivyEnabled = (process.env.CHANNEL_TRIVY || 'true').toLowerCase() === 'true'
 const channelEchoEnabled = (process.env.CHANNEL_ECHO || 'true').toLowerCase() === 'true'
@@ -960,7 +960,7 @@ const initKubernetesCluster = async (token:string, metricsRequired:boolean) : Pr
     console.log('  Nodes:', clusterInfo.nodes.size)
 
     if (metricsRequired) {
-        clusterInfo.metrics = new Metrics(clusterInfo)
+        clusterInfo.metrics = new MetricsTools(clusterInfo)
         clusterInfo.metricsInterval = 15
         await clusterInfo.metrics.startMetrics()
         console.log('  vCPU:', clusterInfo.vcpus)
@@ -1094,7 +1094,7 @@ const launchDocker = async() => {
         channels: []
     }
     clusterInfo.nodes = new Map()
-    clusterInfo.metrics = new Metrics(clusterInfo)
+    clusterInfo.metrics = new MetricsTools(clusterInfo)
     clusterInfo.metricsInterval = 15
     clusterInfo.token = ''
     clusterInfo.dockerApi = dockerApi

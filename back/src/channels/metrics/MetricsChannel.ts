@@ -1,6 +1,6 @@
 import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, IInstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources, accessKeyDeserialize, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
-import { AssetData } from '../../tools/Metrics'
+import { AssetData } from '../../tools/MetricsTools'
 import { IChannel } from '../IChannel'
 import { Request, Response } from 'express'
 

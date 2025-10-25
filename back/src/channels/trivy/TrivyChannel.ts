@@ -55,8 +55,7 @@ class TrivyChannel implements IChannel {
         return ['', 'trivy$workload', 'trivy$kubernetes', 'cluster'].indexOf(scope)
     }
 
-    async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
-    }
+    async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {}
 
     containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
         let socket = this.webSockets.find(s => s.ws === webSocket)
@@ -90,6 +89,200 @@ class TrivyChannel implements IChannel {
         let resp = await this.executeCommand(instanceMessage as ITrivyMessage, instance)
         if (resp) webSocket.send(JSON.stringify(resp))
         return Boolean(resp)
+    }
+
+    addObject = async (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
+        console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
+
+        let socket = this.webSockets.find(s => s.ws === webSocket)
+        if (!socket) {
+            let len = this.webSockets.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+            socket = this.webSockets[len-1]
+        }
+
+        let instances = socket.instances
+        let instance = instances.find(i => i.instanceId === instanceConfig.instance)
+        if (!instance) {
+            instance = {
+                accessKey: accessKeyDeserialize(instanceConfig.accessKey),
+                instanceId: instanceConfig.instance,
+                assets: [],
+                maxCritical: 0,
+                maxHigh: 0,
+                maxMedium: 0,
+                maxLow: 0,
+            }
+            instances.push(instance)
+        }
+        let ic = instanceConfig.data as TrivyConfig
+        instance.maxCritical = ic.maxCritical
+        instance.maxHigh = ic.maxHigh
+        instance.maxMedium = ic.maxMedium
+        instance.maxLow = ic.maxLow
+        let asset:IAsset = {
+            podNamespace,
+            podName,
+            containerName,
+            informer: undefined
+        }
+        //+++ inexistent vuln reports do not create a informer event, so we need to review if some report does not exist and inform the client accordingly
+
+        let result = await this.scoreAsset(instance, asset)
+        if (result.unknown) {
+            let payload:ITrivyMessageResponse = {
+                msgtype: 'trivymessageresponse',
+                msgsubtype: 'add',
+                id: '',
+                namespace: asset.podNamespace,
+                group: '',
+                pod: asset.podName,
+                container: asset.containerName,
+                action: InstanceMessageActionEnum.NONE,
+                flow: InstanceMessageFlowEnum.UNSOLICITED,
+                type: InstanceMessageTypeEnum.DATA,
+                channel: InstanceMessageChannelEnum.TRIVY,
+                instance: instance.instanceId
+            }
+            payload.data = result
+            webSocket.send(JSON.stringify(payload))
+        }
+
+        instance.assets.push(asset)
+        asset.informer = this.createInformer(webSocket, instance, asset)
+        asset.informer.start()
+    }
+
+    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+        
+    }
+    
+    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void => {
+        console.log('Pause/Continue not supported')
+    }
+
+    modifyInstance = (webSocket:WebSocket, instanceConfig: InstanceConfig): void => {
+        console.log('Modify not supported')
+    }
+
+    stopInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig): void => {
+        let socket = this.webSockets.find(s => s.ws === webSocket)
+        if (!socket) return
+
+        if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
+            this.removeInstance(webSocket, instanceConfig.instance)
+            this.sendSignalMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.INFO, instanceConfig.instance, 'Trivy instance stopped')
+        }
+        else {
+            this.sendSignalMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceConfig.instance, `Trivy instance not found`)
+        }
+    }
+
+    removeInstance = (webSocket: WebSocket, instanceId: string): void => {
+        let socket = this.webSockets.find(s => s.ws === webSocket)
+        if (socket) {
+            var instances = socket.instances
+            if (instances) {
+                let pos = instances.findIndex(t => t.instanceId === instanceId)
+                if (pos>=0) {
+                    let instance = instances[pos]
+                    for (let asset of instance.assets) {
+                        asset.informer.stop()
+                    }
+                    instances.splice(pos,1)
+                }
+                else {
+                    console.log(`Instance ${instanceId} not found, cannot delete`)
+                }
+            }
+            else {
+                console.log('There are no trivy Instances on websocket')
+            }
+        }
+        else {
+            console.log('WebSocket not found on trivy')
+        }
+    }
+
+    containsConnection = (webSocket:WebSocket): boolean => {
+        return Boolean (this.webSockets.find(s => s.ws === webSocket))
+    }
+
+    removeConnection = (webSocket: WebSocket): void => {
+        let socket = this.webSockets.find(s => s.ws === webSocket)
+        if (socket) {
+            for (let instance of socket.instances) {
+                this.removeInstance (webSocket, instance.instanceId)
+            }
+            let pos = this.webSockets.findIndex(s => s.ws === webSocket)
+            this.webSockets.splice(pos,1)
+        }
+        else {
+            console.log('WebSocket not found on trivy for remove')
+        }
+    }
+
+    refreshConnection = (webSocket: WebSocket): boolean => {
+        let socket = this.webSockets.find(s => s.ws === webSocket)
+        if (socket) {
+            socket.lastRefresh = Date.now()
+            return true
+        }
+        else {
+            console.log('WebSocket not found')
+            return false
+        }
+    }
+
+    updateConnection = (newWebSocket: WebSocket, instanceId: string): boolean => {
+        console.log('updateConnection not supported')
+        return false
+    }
+
+    // *************************************************************************************
+    // PRIVATE
+    // *************************************************************************************
+
+    private sendSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, level: SignalMessageLevelEnum, instanceId:string, text:string): void => {
+        var resp:ISignalMessage = {
+            action,
+            flow,
+            channel: InstanceMessageChannelEnum.TRIVY,
+            instance: instanceId,
+            type: InstanceMessageTypeEnum.SIGNAL,
+            text,
+            level
+        }
+        ws.send(JSON.stringify(resp))
+    }
+
+    private checkScopes = (instance:IInstance, scope: string) => {
+        let resources = parseResources (instance.accessKey.resources)
+        let requiredLevel = this.getChannelScopeLevel(scope)
+        let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))
+        return canPerform
+    }
+
+    createInformer = (webSocket:WebSocket, instance:IInstance, asset:IAsset) => {
+        const plural = 'vulnerabilityreports'
+        const path = `/apis/${TRIVY_API_GROUP}/${TRIVY_API_VERSION}/namespaces/${asset.podNamespace}/${plural}`
+
+        const listFn = () =>
+            this.clusterInfo.crdApi.listNamespacedCustomObject(TRIVY_API_GROUP, TRIVY_API_VERSION, asset.podNamespace, plural).then((res) => {
+                const typedBody = res.body as { items:KubernetesObject[] }
+                return {
+                    response: res.response,
+                    body: typedBody,
+                }
+            })
+        const informer = makeInformer(this.clusterInfo.kubeConfig, path, listFn )
+        informer.on('add', (obj:any) => this.processEvent(webSocket, instance, 'add', obj, asset))
+        informer.on('update', (obj:any) => this.processEvent(webSocket, instance, 'update', obj, asset))
+        informer.on('delete', (obj:any) => this.processEvent(webSocket, instance, 'delete', obj, asset))
+        informer.on('error', (err:any) => {
+            console.error('Error in informer:', err)
+            setTimeout(() => { informer.start(); console.log('informer restarterd')}, 5000)
+        })
+        return informer
     }
 
     scoreAsset = async (instance:IInstance, asset:IAsset): Promise<{ score: number, known?: IKnown, unknown?: IUnknown }> => {
@@ -270,213 +463,6 @@ class TrivyChannel implements IChannel {
             }
             webSocket.send(JSON.stringify(scoreResp))
         }
-    }
-
-    createInformer = (webSocket:WebSocket, instance:IInstance, asset:IAsset) => {
-        const plural = 'vulnerabilityreports'
-        const path = `/apis/${TRIVY_API_GROUP}/${TRIVY_API_VERSION}/namespaces/${asset.podNamespace}/${plural}`
-
-        const listFn = () =>
-            this.clusterInfo.crdApi.listNamespacedCustomObject(TRIVY_API_GROUP, TRIVY_API_VERSION, asset.podNamespace, plural).then((res) => {
-                const typedBody = res.body as { items:KubernetesObject[] }
-                return {
-                    response: res.response,
-                    body: typedBody,
-                }
-            })
-        const informer = makeInformer(this.clusterInfo.kubeConfig, path, listFn )
-        informer.on('add', (obj:any) => this.processEvent(webSocket, instance, 'add', obj, asset))
-        informer.on('update', (obj:any) => this.processEvent(webSocket, instance, 'update', obj, asset))
-        informer.on('delete', (obj:any) => this.processEvent(webSocket, instance, 'delete', obj, asset))
-        informer.on('error', (err:any) => {
-            console.error('Error in informer:', err)
-            setTimeout(() => { informer.start(); console.log('informer restarterd')}, 5000)
-        })
-        return informer
-    }
-
-    addObject = async (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
-        console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
-
-        let socket = this.webSockets.find(s => s.ws === webSocket)
-        if (!socket) {
-            let len = this.webSockets.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-            socket = this.webSockets[len-1]
-        }
-
-        let instances = socket.instances
-        let instance = instances.find(i => i.instanceId === instanceConfig.instance)
-        if (!instance) {
-            instance = {
-                accessKey: accessKeyDeserialize(instanceConfig.accessKey),
-                instanceId: instanceConfig.instance,
-                assets: [],
-                maxCritical: 0,
-                maxHigh: 0,
-                maxMedium: 0,
-                maxLow: 0,
-            }
-            instances.push(instance)
-        }
-        let ic = instanceConfig.data as TrivyConfig
-        instance.maxCritical = ic.maxCritical
-        instance.maxHigh = ic.maxHigh
-        instance.maxMedium = ic.maxMedium
-        instance.maxLow = ic.maxLow
-        let asset:IAsset = {
-            podNamespace,
-            podName,
-            containerName,
-            informer: undefined
-        }
-        // inexistent vuln reports do not create a informer event, so we need to review if some report does not exist and inform the client accordingly
-        // console.log(instance)
-        // console.log(this.checkScopes(instance, 'trivy$workload'))
-        // if (!this.checkScopes(instance, 'trivy$workload')) {
-        //     this.sendSignalMessage(webSocket, InstanceMessageActionEnum.NONE, InstanceMessageFlowEnum.UNSOLICITED, SignalMessageLevelEnum.ERROR, instance.instanceId, 'Insufficent scope, has no WORKLOAD')
-        //     return
-        // }
-
-        let result = await this.scoreAsset(instance, asset)
-        if (result.unknown) {
-            let payload:ITrivyMessageResponse = {
-                msgtype: 'trivymessageresponse',
-                msgsubtype: 'add',
-                id: '',
-                namespace: asset.podNamespace,
-                group: '',
-                pod: asset.podName,
-                container: asset.containerName,
-                action: InstanceMessageActionEnum.NONE,
-                flow: InstanceMessageFlowEnum.UNSOLICITED,
-                type: InstanceMessageTypeEnum.DATA,
-                channel: InstanceMessageChannelEnum.TRIVY,
-                instance: instance.instanceId
-            }
-            payload.data = result
-            webSocket.send(JSON.stringify(payload))
-        }
-
-        instance.assets.push(asset)
-        asset.informer = this.createInformer(webSocket, instance, asset)
-        asset.informer.start()
-    }
-
-    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
-        
-    }
-    
-    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void => {
-        console.log('Pause/Continue not supported')
-    }
-
-    modifyInstance = (webSocket:WebSocket, instanceConfig: InstanceConfig): void => {
-        console.log('Modify not supported')
-    }
-
-    stopInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig): void => {
-        let socket = this.webSockets.find(s => s.ws === webSocket)
-        if (!socket) return
-
-        if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
-            this.removeInstance(webSocket, instanceConfig.instance)
-            this.sendSignalMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.INFO, instanceConfig.instance, 'Trivy instance stopped')
-        }
-        else {
-            this.sendSignalMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceConfig.instance, `Trivy instance not found`)
-        }
-    }
-
-    removeInstance = (webSocket: WebSocket, instanceId: string): void => {
-        let socket = this.webSockets.find(s => s.ws === webSocket)
-        if (socket) {
-            var instances = socket.instances
-            if (instances) {
-                let pos = instances.findIndex(t => t.instanceId === instanceId)
-                if (pos>=0) {
-                    let instance = instances[pos]
-                    for (let asset of instance.assets) {
-                        asset.informer.stop()
-                    }
-                    instances.splice(pos,1)
-                }
-                else {
-                    console.log(`Instance ${instanceId} not found, cannot delete`)
-                }
-            }
-            else {
-                console.log('There are no trivy Instances on websocket')
-            }
-        }
-        else {
-            console.log('WebSocket not found on trivy')
-        }
-    }
-
-    containsConnection = (webSocket:WebSocket): boolean => {
-        return Boolean (this.webSockets.find(s => s.ws === webSocket))
-    }
-
-    removeConnection = (webSocket: WebSocket): void => {
-        let socket = this.webSockets.find(s => s.ws === webSocket)
-        if (socket) {
-            for (let instance of socket.instances) {
-                this.removeInstance (webSocket, instance.instanceId)
-            }
-            let pos = this.webSockets.findIndex(s => s.ws === webSocket)
-            this.webSockets.splice(pos,1)
-        }
-        else {
-            console.log('WebSocket not found on trivy for remove')
-        }
-    }
-
-    refreshConnection = (webSocket: WebSocket): boolean => {
-        let socket = this.webSockets.find(s => s.ws === webSocket)
-        if (socket) {
-            socket.lastRefresh = Date.now()
-            return true
-        }
-        else {
-            console.log('WebSocket not found')
-            return false
-        }
-    }
-
-    updateConnection = (newWebSocket: WebSocket, instanceId: string): boolean => {
-        console.log('updateConnection not supported')
-        return false
-    }
-
-    // *************************************************************************************
-    // PRIVATE
-    // *************************************************************************************
-
-    private sendSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, level: SignalMessageLevelEnum, instanceId:string, text:string): void => {
-        var resp:ISignalMessage = {
-            action,
-            flow,
-            channel: InstanceMessageChannelEnum.TRIVY,
-            instance: instanceId,
-            type: InstanceMessageTypeEnum.SIGNAL,
-            text,
-            level
-        }
-        ws.send(JSON.stringify(resp))
-    }
-
-    // private checkScopes = (instance:IInstance, scope: InstanceConfigScopeEnum) => {
-    //     let resources = parseResources (instance.accessKey.resources)
-    //     let requiredLevel = this.getChannelScopeLevel(scope)
-    //     let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))
-    //     return canPerform
-    // }
-
-    private checkScopes = (instance:IInstance, scope: string) => {
-        let resources = parseResources (instance.accessKey.resources)
-        let requiredLevel = this.getChannelScopeLevel(scope)
-        let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))
-        return canPerform
     }
 
 }

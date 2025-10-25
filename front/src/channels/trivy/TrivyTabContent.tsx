@@ -109,7 +109,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     return (
         <Box sx={{ ml:1, mr:1, display:'flex', flexDirection: 'column'}}>
-            { <>
+            { trivyObject.started && <>
                 <Stack direction={'row'} sx={{overflow:'hidden'}}>
                     <Typography sx={{ml:2,mr:2}}><b>KwirthScore: </b>{trivyObject.score.toPrecision(4)}%</Typography>
                     <Typography>Filter score</Typography>

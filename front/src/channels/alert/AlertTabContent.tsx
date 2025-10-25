@@ -1,8 +1,16 @@
 import { Box } from '@mui/material'
 import { IAlertObject } from './AlertObject'
 import { IContentProps } from '../IChannel'
+import { useEffect, useRef, useState } from 'react'
 
 const AlertTabContent: React.FC<IContentProps> = (props:IContentProps) => {
+    const alertBoxRef = useRef<HTMLDivElement | null>(null)
+    const [alertBoxTop, setAlertBoxTop] = useState(0)
+
+    useEffect(() => {
+        if (alertBoxRef.current) setAlertBoxTop(alertBoxRef.current.getBoundingClientRect().top)
+    })
+
     const formatAlert = () => {
         let alertObject:IAlertObject = props.channelObject.uiData
         return (<pre>{
@@ -23,7 +31,7 @@ const AlertTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     return (
-        <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
+        <Box ref={alertBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${alertBoxTop}px - 25px)`}}>
             { formatAlert() }
         </Box>
     )

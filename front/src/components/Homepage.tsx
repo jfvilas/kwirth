@@ -70,7 +70,6 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
             }
         }, 3000)
         return () => clearInterval(i)
-
     })
 
     const toOrFromFavTabs = (tab:ITabSummary) => {

@@ -136,7 +136,7 @@ export class OpsChannel implements IChannel {
         let opsObject:IOpsObject = channelObject.uiData
         opsObject.paused = false
         opsObject.started = true
-        opsObject.messages.push(...OPSWELCOMEMESSAGE, ...OPSHELPMESSAGE)
+        opsObject.messages = [...OPSWELCOMEMESSAGE, ...OPSHELPMESSAGE]
         opsObject.shell = undefined
         opsObject.shells = []
         return true

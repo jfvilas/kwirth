@@ -3,6 +3,7 @@ import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, Dial
 import { ISetupProps } from '../IChannel'
 import { IAlertInstanceConfig, IAlertUiConfig } from './AlertConfig'
 import { Warning } from '@mui/icons-material'
+import { TextToolTip } from '../../tools/FrontTools'
 
 const AlertIcon = <Warning />
 
@@ -76,41 +77,58 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 
+    let help = <>
+        Please enter here regular expressions (regex) that must<br/>
+        match a message in order to be considered an alert of <br/>
+        this category. Some examples are:<br/><br/>
+        - ^HELLO - Messages that begin with word 'HELLO'<br/>
+        - last$ - Messages that end with word 'last'<br/>
+        - [ERROR] - Messages that contain the text '[ERROR]'<br/>
+        - 5[0-9][0-9] - Messages contain a number between 500 - 599
+        </>
+        
     return (<>
         <Dialog open={true}>
             <DialogTitle>Create alert</DialogTitle>
             <DialogContent>
-                <Stack direction={'column'} spacing={1}>
-                    <TextField value={maxAlerts} onChange={onChangeMaxAlerts} variant='standard'label='Max alerts' SelectProps={{native: true}} type='number'></TextField>
+                <Stack direction={'column'} >
+                    <TextField value={maxAlerts} onChange={onChangeMaxAlerts} variant='standard' label='Max alerts' SelectProps={{native: true}} type='number' sx={{mb:'8px'}}/>
                     
-                    <Stack direction={'row'} spacing={3}>
-                        <Stack direction={'column'} spacing={1}>
-                            <Stack direction={'row'}>
-                                <TextField value={info} onChange={onChangeRegexInfo} label='Info' variant='standard'></TextField>
+                    <Stack direction={'row'} spacing={1}>
+                        <Stack direction={'column'}>
+                            <TextToolTip name='Info' help={help} />
+                            <Stack direction={'row'} alignItems={'baseline'}>
+                                <TextField value={info} onChange={onChangeRegexInfo} variant='standard'></TextField>
                                 <Button onClick={addInfo} size='small'>Add</Button>
                             </Stack>
-                            <Stack>{
+                            <Stack mt={1}>{
                                 regexInfo && regexInfo.map ((ri,index) => { 
-                                    return <Box key={index}><Chip label={ri} variant='outlined' onDelete={() => deleteChipInfo(ri)}/></Box>
+                                    return <Box key={index}><Chip label={ri} variant='outlined' onDelete={() => deleteChipInfo(ri)} size='small'/></Box>
                                 })
                             }</Stack>
                         </Stack>
-                        <Stack direction={'column'} spacing={1}>
-                            <Stack direction={'row'}>
-                                <TextField value={warning} onChange={onChangeRegexWarning} label='Warning' variant='standard'></TextField>
+                        <Stack direction={'column'}>
+                            <TextToolTip name='Warning' help={help}/>
+                            <Stack direction={'row'} alignItems={'baseline'}>
+                                <TextField value={warning} onChange={onChangeRegexWarning} variant='standard'></TextField>
                                 <Button onClick={addWarning} size='small'>Add</Button>
                             </Stack>
                             <Stack>{
-                                regexWarning && regexWarning.map ((ri,index) => { return <Box key={index}><Chip label={ri} variant='outlined' onDelete={() => deleteChipWarning(ri)}/></Box>})
+                                regexWarning && regexWarning.map ((ri,index) => {
+                                    return <Box key={index}><Chip label={ri} variant='outlined' size='small' onDelete={() => deleteChipWarning(ri)}/></Box>
+                                })
                             }</Stack>
                         </Stack>
-                        <Stack direction={'column'} spacing={1}>
-                            <Stack direction={'row'}>
-                                <TextField value={error} onChange={onChangeRegexError} variant='standard' label='Error'></TextField>
+                        <Stack direction={'column'}>
+                            <TextToolTip name='Error' help={help}/>
+                            <Stack direction={'row'} alignItems={'baseline'}>
+                                <TextField value={error} onChange={onChangeRegexError} variant='standard'></TextField>
                                 <Button onClick={addError} size='small'>Add</Button>
                             </Stack>
                             <Stack>{
-                                regexError && regexError.map ((ri,index) => { return <Box key={index}><Chip label={ri} variant='outlined' onDelete={() => deleteChipError(ri)}/></Box>})
+                                regexError && regexError.map ((ri,index) => { 
+                                    return <Box key={index}><Chip label={ri} variant='outlined' size='small'onDelete={() => deleteChipError(ri)}/></Box>
+                                })
                             }</Stack>
                         </Stack>
                     </Stack>

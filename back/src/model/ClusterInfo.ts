@@ -1,5 +1,5 @@
 import { ApiextensionsV1Api, AppsV1Api, CoreV1Api, CustomObjectsApi, Exec, KubeConfig, Log, RbacAuthorizationV1Api, V1Node, VersionApi } from "@kubernetes/client-node";
-import { MetricsTools } from "../tools/Metrics";
+import { MetricsTools } from "../tools/MetricsTools";
 import { ClusterTypeEnum } from "@jfvilas/kwirth-common";
 import Docker from 'dockerode'
 import { DockerTools } from "../tools/KwirthApi";

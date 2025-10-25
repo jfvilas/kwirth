@@ -69,8 +69,8 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                         <TextField value={maxMessages} onChange={onChangeMaxMessages} variant='standard'label='Max messages' SelectProps={{native: true}} type='number' fullWidth />
 
                     <Tabs value={selectedTab} onChange={(_: React.SyntheticEvent, newValue: string) => { setSelectedTab(newValue)}}>
-                        <Tab key='sd' label='Start Diagnostics' value='sd' sx={{width:'50%'}}/>
                         <Tab key='log' label='Logging' value='log' sx={{width:'50%'}}/>
+                        <Tab key='sd' label='Start Diagnostics' value='sd' sx={{width:'50%'}}/>
                     </Tabs>
                     <div hidden={selectedTab!=='sd'}>
                         <Stack spacing={2}>
