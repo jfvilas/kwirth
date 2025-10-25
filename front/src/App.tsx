@@ -243,8 +243,10 @@ const App: React.FC = () => {
     }
 
     const writeSettings = async () => {
-        let payload = JSON.stringify(settingsRef.current)
-        fetch (`${backendUrl}/store/${user?.id}/settings/general`, addPostAuthorization(accessString, payload))
+        if (user) {
+            let payload = JSON.stringify(settingsRef.current)
+            fetch (`${backendUrl}/store/${user.id}/settings/general`, addPostAuthorization(accessString, payload))
+        }
     }
 
     const setUsablechannels = (cluster:Cluster) => {
@@ -1166,7 +1168,7 @@ const App: React.FC = () => {
                     { tabs.current.length>0 &&
                         <Tabs value={selectedTab.current? tabs.current.indexOf(selectedTab.current) : false} onChange={onChangeTab} variant='scrollable' scrollButtons='auto'>
                             {  tabs.current.map((tab:ITabObject, index) => {
-                                    return <Tab ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={tab === selectedTab.current ? <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton> : <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{ mb:-1, mt:-1}}/>
+                                    return <Tab component='span' ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={tab === selectedTab.current ? <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton> : <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{ mb:-1, mt:-1}}/>
                             })}
                         </Tabs>
                     }

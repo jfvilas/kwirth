@@ -288,14 +288,14 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
 
                         <Stack sx={{ml:'32px'}} direction={'row'} alignItems={'center'}>
                             {
-                                props.clusters && props.cluster && frontChannels.split(',').map (c => {
+                                props.clusters && props.cluster && frontChannels.split(',').map ((c,ci) => {
                                     const channelClass = props.frontChannels.get(c.trim())
                                     if (channelClass) {
                                         let icon = new channelClass()!.getChannelIcon()
                                         let color = '#333333'
                                         if ( ! props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData!.channels.some(ch => ch.id === c.trim())) color = '#dddddd'
                                         let newElement = React.cloneElement(icon, { fontSize: 'small', sx:{ color } })
-                                        return <Tooltip title={c.trim()}>{newElement}</Tooltip>
+                                        return <Tooltip key={ci} title={c.trim()}>{newElement}</Tooltip>
                                     }
                                     return <></>
                                 })

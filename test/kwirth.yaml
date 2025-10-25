@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kwirth
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kwirth-users
+  namespace: kwirth
+data:
+  admin: 'eyJpZCI6ImFkbWluIiwibmFtZSI6Ik5pY2tsYXVzIFdpcnRoIiwicGFzc3dvcmQiOiJwYXNzd29yZCIsInJlc291cmNlcyI6ImNsdXN0ZXI6Ojo6In0='
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kwirth-sa
+  namespace: kwirth
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kwirth-cr
+  namespace: kwirth
+rules:
+  # "" indicates the core API group
+  - apiGroups: ['', 'apps', 'rbac.authorization.k8s.io', 'networking.k8s.io','customresourcedefinitions.apiextensions.k8s.io']
+    resources: ['*']
+    verbs: ['*']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kwirth-crb
+  namespace: kwirth
+subjects:
+- kind: ServiceAccount
+  name: kwirth-sa
+  namespace: kwirth
+roleRef:
+  kind: ClusterRole
+  name: kwirth-cr
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kwirth
+  namespace: kwirth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kwirth
+  revisionHistoryLimit: 0
+  template:
+    metadata:
+      name: kwirth
+      labels:
+        app: kwirth
+    spec:
+      serviceAccount: kwirth-sa
+      containers:
+        - name: kwirth
+          image: kwirth:latest
+          imagePullPolicy: Always
+          env:
+            - name: ROOTPATH
+              value: '/kwirth'
+            - name: MASTERKEY
+              value: 'Kwirth4Ever'
+            - name: CHANNEL_ECHO
+              value: 'true'
+            - name: CHANNEL_LOG
+              value: 'true'
+            - name: CHANNEL_METRICS
+              value: 'true'
+            - name: CHANNEL_ALERT
+              value: 'true'
+            - name: CHANNEL_OPS
+              value: 'true'
+            - name: CHANNEL_TRIVY
+              value: 'true'
+            - name: CHANNEL_FILEMAN
+              value: 'true'
+          ports:
+            - name: kwirth
+              containerPort: 3883
+              protocol: TCP
+          resources:
+            limits:
+              cpu: '1'
+              memory: 2Gi
+            requests:
+              cpu: 0m
+              memory: 256Mi

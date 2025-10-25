@@ -61,6 +61,10 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 
+    const TextFieldForwardRef = React.forwardRef(function MyCustomTextField(props, ref) {
+        return <TextField {...props} variant='standard' sx={{ml:'60px', '& .MuiInputBase-root': {border: 'none'}, '& .MuiInputLabel-root': { color: fromStart?'light-gray':'black' } }}/>
+    })
+
     return (
         <Dialog open={true}>
             <DialogTitle>Configure log stream</DialogTitle>
@@ -98,7 +102,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                                         enableAccessibleFieldDOMStructure={false}
                                         defaultValue={moment(Date.now()-30*60*1000)}
                                         viewRenderers={{ hours: renderTimeViewClock, minutes: renderTimeViewClock, seconds: renderTimeViewClock }}
-                                        slots={{ textField: (p) => <TextField {...p} variant='standard' sx={{ml:'60px', '& .MuiInputBase-root': {border: 'none'}, '& .MuiInputLabel-root': { color: fromStart?'light-gray':'black' } }}/> }}
+                                        slots={{ textField: TextFieldForwardRef }}
                                         inputRef={startTimeRef}
                                         disabled={fromStart}
                                         label="Start time"
