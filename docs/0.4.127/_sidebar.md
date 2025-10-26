@@ -22,5 +22,6 @@
 * [Cluster mangement](clustermanagement)
 * [API mangement](apimanagement)
 * [Use cases](usecases)
+* [Developing](developing)
 * [Roadmap](roadmap)
 * [About](about)
