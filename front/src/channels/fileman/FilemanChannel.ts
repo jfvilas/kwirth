@@ -81,7 +81,14 @@ export class FilemanChannel implements IChannel {
                                 else {
                                     for (let o of content.metadata.object) {
                                         let name = o.name.split('/')[o.name.split('/').length-1]
-                                        let e = { name, isDirectory: (o.type===1), path: o.name, updatedAt: new Date(+o.time).toISOString(), size: +o.size  }
+                                        let e = { 
+                                            name,
+                                            isDirectory: (o.type===1),
+                                            path: o.name,
+                                            updatedAt: new Date(+o.time).toISOString(),
+                                            size: +o.size,
+                                            ...(o.type===0? {class:'file'}:{})
+                                        }
                                         filemanData.files = filemanData.files.filter(f => f.path !== e.path)
                                         filemanData.files.push (e)
                                     }
@@ -118,6 +125,7 @@ export class FilemanChannel implements IChannel {
                                         path: content.metadata.object,
                                         updatedAt: new Date(+content.metadata.time).toISOString(), 
                                         size: +content.metadata.size,
+                                        ...(content.metadata.type.type===0? {class:'file'}:{})
                                     }
                                     filemanData.files.push(f)
                                 }

@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { IChannelObject } from '../IChannel'
 import { FilemanCommandEnum, IFilemanMessage, IFilemanData } from './FilemanData'
-import '@jfvilas/react-file-manager/dist/style.css'
 import { Box, Typography } from '@mui/material'
 import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
-import './custom-fm.css'
 import { IError, IFileData } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
 import { IconContainer, IconNamespace, IconPod } from '../../tools/Constants-React'
@@ -13,6 +11,8 @@ import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 import { MsgBoxOk } from '../../tools/MsgBox'
 import { IFilemanConfig } from './FilemanConfig'
 import { ENotifyLevel } from '../../tools/Global'
+import '@jfvilas/react-file-manager/dist/style.css'
+import './custom-fm.css'
 
 interface IContentProps {
     webSocket?: WebSocket
@@ -52,8 +52,19 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 let info = `Controllers inside ${namespace} namespace:<br/><br/>` + data.map((ns:any) => '<b>-</b> '+ ns.name + '<br/>').join('')
                 setMsgBox(MsgBoxOk('Namespace info', info, setMsgBox))
             }
+        },
+    ])
+    actions.set('file', [
+        {
+            title: 'File details',
+            icon: <Typography color='blue' fontWeight={600}>D</Typography>,
+            onClick: async (files : IFileData[]) => {
+                let info = `Details of file '${files[0].name}':<br/><br/><b>Name</b>: ${files[0].name}<br/><b>Path</b>: ${files[0].path}<br/><b>Last update</b>: ${files[0].updatedAt}<br/><b>Size (bytes)</b>: ${files[0].size}`
+                setMsgBox(MsgBoxOk('File info', info, setMsgBox))
+            }
         }
     ])
+
 
     let level = filemanData.currentPath.split('/').length - 1
     if (level<3) {
