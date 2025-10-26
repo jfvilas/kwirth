@@ -74,7 +74,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                         setDataMemory([...dataMemory, { value: data.memory as number}])
                         setTxmbps(data.txmbps)
                         setRxmbps(data.rxmbps)
-                        setDataNetwork([...dataNetwork, { value: data.txmbps + data.rxmbps}])
+                        setDataNetwork([...dataNetwork, { value: (data.txmbps + data.rxmbps) || 0}])
                     })
                 })
             }
@@ -146,7 +146,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                             let name = tab.name
                             if (name.length>50) name = name.substring(0,25) + '...' + name.substring(name.length-25)
                                 
-                            return <Stack key={listType+tab.name} direction={'row'} alignItems={'center'} flex={1}>
+                            return <Stack key={listType+tab.name+tab.channel} direction={'row'} alignItems={'center'} flex={1}>
                                 <Tooltip title={tab.channel}>
                                     {channelIcon}
                                 </Tooltip>
