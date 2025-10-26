@@ -144,16 +144,16 @@ This is the explanation for each member of the interface:
   - `readonly channelId: string`, it is the channel Id ('log', 'metrics', 'trivy',...) it must be unique. The same id is used also in back channels.
 
 And this is the explanation for each function the interface must implement:
-  - `requiresSetup(): boolean`, returns a boolean indicating if the channal needs a setup beor it can be started. Kwirth main App will invoke the `SetupDialog` previously mentioned i `requiresSetip` si `true`.
+  - `requiresSetup(): boolean`, returns a boolean indicating if the channal needs a setup beor it can be started. Kwirth main App will invoke the `SetupDialog` previously mentioned i `requiresSetup` is `true`.
   - `requiresClusterUrl(): boolean`, indicates if the channel requires knowing the cluster URL for any of its features.
-  - `requiresMetrics():boolean`, returns a value indicating if the channel requires the use of metrics (Kubernetes metrics, Docker metrics, etc...). If front channel requires metrics, Kwirth front will inject a list of available metrics when using the channel. That list comes from back channel.
-  - `requiresAccessString():boolean`, must return a value indicating if the channel requires using the access Key. This is not normally needed, but it is a requirement if the channel plans to communicate directly to corresponding back channel.
-  - `requiresWebSocket():boolean`, as explained before, if the front channel requires sending/receiving data over the channel websocket, this function must return `true`.
+  - `requiresMetrics(): boolean`, returns a value indicating if the channel requires the use of metrics (Kubernetes metrics, Docker metrics, etc...). If front channel requires metrics, Kwirth front will inject a list of available metrics when using the channel. That list comes from back channel.
+  - `requiresAccessString(): boolean`, must return a value indicating if the channel requires using the access Key. This is not normally needed, but it is a requirement if the channel plans to communicate directly to corresponding back channel.
+  - `requiresWebSocket(): boolean`, as explained before, if the front channel requires sending/receiving data over the channel websocket, this function must return `true`.
   - `setNotifier(notifier:(level:ENotifyLevel, message:string) => void): void`, the `notifier` is a function that channels can use to send notifications to end-user. It use is simple: a *notification level* (info, warning, error or success) and a *notification message*.
   - `getScope(): string`, channel must return the minimum scope needed to use the channel 
   - `getChannelIcon(): JSX.Element`, returns an SVG icon that will be shown on tabs nect to the name of the tab in front app.
-  - `getSetupVisibility():boolean`, channel must return the visibulity status of the SetUp dialog.
-  - `setSetupVisibility(visibility:boolean):void`, Kwirth informs channel about a new visibility status for the SetUp dialog.
+  - `getSetupVisibility(): boolean`, channel must return the visibulity status of the SetUp dialog.
+  - `setSetupVisibility(visibility:boolean): void`, Kwirth informs channel about a new visibility status for the SetUp dialog.
   - `processChannelMessage (channelObject:IChannelObject, wsEvent:MessageEvent): IChannelMessageAction`, when a channel message is received from a Back Channel via a connected websocket, the message is delivered to the channel for its further processing.
   - `initChannel(channelObject:IChannelObject): boolean`, Kwirth will invoke this function when a new tab using this channel is first created (exactly after the user selects resources and clicks 'ADD' on resource selector).
   - `startChannel(channelObject:IChannelObject): boolean`, this function will be invoked when the user clicks on 'START' to start the channel.
