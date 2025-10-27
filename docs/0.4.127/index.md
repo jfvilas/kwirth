@@ -6,12 +6,24 @@ If this is the case, **Kwirth is the answer to your needs**. Just *one pod to ac
 You can access the source code [**HERE**](https://github.com/jfvilas/kwirth).
 
 ## Get started
+Kwirth can be easily deployed using Kubernetes manifests or a Helm chart.
+
+#### Manifests
 Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirth to your cluster.
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/jfvilas/kwirth/master/test/kwirth.yaml
 ```
 
+#### Helm chart
+Helm is even mor simple:
+
+```bash
+helm repo add kwirth https://github.com/jfvilas/kwirth/tree/master/deploy/helm
+helm install kwirth kwirth/kwirth -n kwirth --create-namespace
+```
+
+## Access Kwirth
 If everything is ok, in no more than 8 to 10 seconds Kwirth should be **up and running**. So next step is to access the front application of your fresh new Kubernetes observability system. Several options exist here...
 
 1. You can access just using **command line port forwarding**:
@@ -23,15 +35,15 @@ If everything is ok, in no more than 8 to 10 seconds Kwirth should be **up and r
 
     - With Headlamp...
       
-      ![Headlamp](./_media/pf-headlamp.png)
+      ![Headlamp](./_media/pf-headlamp.png ':class=imageclass80')
 
     - With Lens...
 
-      ![Lens](./_media/pf-lens.png)
+      ![Lens](./_media/pf-lens.png ':class=imageclass80')
 
     - With K9S. Just select the Kwirth pod and press **Caps+F**, then just accept (or change) the port sugegstions from K9s and navigate...
 
-      ![Lens](./_media/pf-k9s.png)
+      ![Lens](./_media/pf-k9s.png ':class=imageclass80')
 
 
 3. **Using an Ingress**. It is the best option if you plan to access your Kwirth from Internet and if you also plan to share Kwirth with the development team in your corporate private network. For publishing Kwirth to be accesible from outside the cluster, you must create an Ingress (be sure, you need to deploy an ingress controller before, you have info on how to perform a simple ingress installation [**HERE**](https://jfvilas.github.io/oberkorn/#/ingins)).
