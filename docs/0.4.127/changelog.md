@@ -1,6 +1,18 @@
 # Change log
 Although not too exhaustive, this page contains some detail on what we have been done on each version.
 
+## 0.4.127
+  - Added Fileman channel
+  - Added configurable endpoint for channel use
+  - Added homepage including:
+    - Cluster details
+    - CLustur usage data
+    - Last & Fav tabs and boards
+  - Added notifier for sending messages to user from front channels.
+  - Added react-file-manager as customizable filemanager for kwirth.
+  - Added parse listener for parsing 'ls' commands in fileman channel.
+  - Added Helm chart installation
+
 ## 0.4.20
   - Strong architecture changes have been introduced inside Kwirth, specially for being able to suport different kinds of connections consuming ifferent kinds of information (not only logs)
   - Added channels to Kwirth. A Channel represents a specific kind of information that Kwirth takes from kubernetes and send to clients. First implemented channels (included in base Kwirth) are: log, metrics, alert.

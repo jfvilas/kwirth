@@ -27,7 +27,7 @@ API Security is the mechanism you use to give API Keys to another external appli
 
 On the other side, API security is the way you can use to give access to your Kwirth to users that work with another Kwirth. The diagram below explains how this works (refer to API Management documentation to undertand basic concepts).
 
-![two-cluster](./_media/kwirth-two-cluster.png)
+![two-cluster](./_media/kwirth-two-cluster.png ':class=imageclass80')
 
 As you can see...:
 

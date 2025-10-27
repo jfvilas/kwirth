@@ -45,7 +45,7 @@ Start diagnostics, as mentioned, is real time streaming that **starts when the s
 
 You can set your selected configuration as a default for future Log Channel startings.
 
-![logsetup](./_media/ch-images/log-setup-sd.png)
+![logsetup](./_media/ch-images/log-setup-sd.png ':class=imageclass40')
 
 #### Log streaming
 Log streaming is useful for viewing object current logs in real time starting from any point in time. Please take into account that a very old starting point can cause your browser to become slow in processing messages, since Kwirth Core sends all the data as quick as it can.
@@ -60,7 +60,7 @@ The configuration for log streaming is as follows:
 
 You can set your selected configuration as a default for future Log Channel startings.
 
-![logsetup](./_media/ch-images/log-setup-ls.png)
+![logsetup](./_media/ch-images/log-setup-ls.png  ':class=imageclass40')
 
 
 #### Running
@@ -114,22 +114,22 @@ When you start the channel you must first setup how you want to receive the metr
 
 Yo need to select at leasr one metrics to be able to start the channel.
 
-![metricssetup](./_media/ch-images/metrics-setup.png ':size=80%')
+![metricssetup](./_media/ch-images/metrics-setup.png ':class=imageclass60')
 
 
 Once you start a Metrics Channel you can see some charts like these ones we've screenshooted for you.
 
 One object with four Kwirth metrics.
-![metricsrunning1](./_media/ch-images/metrics-running-1.png)
+![metricsrunning1](./_media/ch-images/metrics-running-1.png ':class=imageclass100')
 
 Several objects shown bar-stacked.
-![metricsrunning1](./_media/ch-images/metrics-running-2.png)
+![metricsrunning1](./_media/ch-images/metrics-running-2.png ':class=imageclass100')
 
 Several objects shown area-stacked.
-![metricsrunning1](./_media/ch-images/metrics-running-3.png)
+![metricsrunning1](./_media/ch-images/metrics-running-3.png ':class=imageclass100')
 
 Several objects non-stacked.
-![metricsrunning1](./_media/ch-images/metrics-running-4.png)
+![metricsrunning1](./_media/ch-images/metrics-running-4.png ':class=imageclass100')
 
 
 ## Alert
@@ -148,7 +148,7 @@ Alert detection is **performed on the backend**, that is, your browser will only
   - **WARNING**, is a list of regex or texts that will be searched for matching WARNING alerts.
   - **ERROR**, is a list of regex or texts that will be searched for matching ERROR alerts.
 
-![alertsetup](./_media/ch-images/alert-setup.png ':size=80%')
+![alertsetup](./_media/ch-images/alert-setup.png ':class=imageclass40')
 
 When an alert is fired the log message will be shown on the browser according to a typical color code (black, yellow, red)
 
@@ -163,7 +163,7 @@ To add expressions to ERROR alert list (it is the same for INFO and WARNING), yo
 ### Use
 This is a sample screenshot for an Alert Channel running.
 
-![alertrunning](./_media/ch-images/alert-running.png ':size=80%')
+![alertrunning](./_media/ch-images/alert-running.png ':class=imageclass80')
 
 ## Trivy
 We are very proud of one of the last channel we have added to Kwirth: the Trivy Channel. This channel is based on [Trivy OSS](https://trivy.io). Trivy is an excellent piece of software for observing your cybersecurity threads and be aware of your cybersecurity posture.
@@ -190,31 +190,31 @@ When you start a Trivy Channel you must provide a few things for the vulnerabiit
 
   - **Maximum number of accepted issues** of each category of vulnerability, or even just ignore a specific severity (that means accepting as "good" any number of vulnerabilities of a specific kind).
 
-![trivysetup](./_media/ch-images/trivy-setup.png ':size=80%')
+![trivysetup](./_media/ch-images/trivy-setup.png ':class=imageclass40')
 
 Here are some screenshots of some operations performed with a Trivy Channel. First one shows a general view of a Trivy Channel:
 
-![trivycard](./_media/ch-images/trivy-card.png)
+![trivycard](./_media/ch-images/trivy-card.png ':class=imageclass100')
 
 You can switch the view (a card view with details on each object) to a list view, a more simplistic approach to use when you just need an overview of the global situation.
 
-![trivylist](./_media/ch-images/trivy-list.png)
+![trivylist](./_media/ch-images/trivy-list.png ':class=imageclass100')
 
 No matter the kind of view you have selected (card or list), you can decide how to order the objects. Two main options are available: score order, scan date order.
 
-![trivyorder](./_media/ch-images/trivy-sort.png)
+![trivyorder](./_media/ch-images/trivy-sort.png ':class=imageclass20')
 
 I you want to review the details of a vulnerability report, you can do it (from card or list item) and you will get a list of vulnerabilities including its category (critical, high...) and some details.
 
-![trivydetail](./_media/ch-images/trivy-detail.png)
+![trivydetail](./_media/ch-images/trivy-detail.png ':class=imageclass40')
 
 IF you want to get detailed info on a specific CVE, just click on it to see the details.
 
-![trivycve](./_media/ch-images/trivy-cve.png)
+![trivycve](./_media/ch-images/trivy-cve.png  ':class=imageclass40')
 
 If there exist some problem with a Trivy vulnerability report, you'll be noticed via a red error icon on the screen, and clicking on it you can see some specifics on the error.
 
-![trivyerror](./_media/ch-images/trivy-error.png)
+![trivyerror](./_media/ch-images/trivy-error.png  ':class=imageclass40')
 
 ## Ops
 Ops Channel is a complex functionally rich channel that Kwirth users can use to operate (perform day-to-day operations) on your Kubernetes workload.
@@ -242,7 +242,7 @@ The setup of a Ops Channel is very simple:
 
 And it looks like this:
 
-![opssetup](./_media/ch-images/ops-setup.png)
+![opssetup](./_media/ch-images/ops-setup.png ':class=imageclass40')
 
 When you finally launch an Ops Channel the first thing you will see in your screen is the help for the channel and (on the very bottom) an input field where you can type commands in.
 
@@ -268,7 +268,7 @@ This way of referring objects is common to all commands inside Ops Channel. Avai
 
 What follows are some screen shots of the commands.
 
-![opsrunning](./_media/ch-images/ops-running.png)
+![opsrunning](./_media/ch-images/ops-running.png ':class=imageclass100')
 
 #### Shell operations
 When you start a shell you'll see the shell showing up inside the Ops Channel tab. Aside from working with shell (/bin/sh in fact), you have some interesting keys you can use:
@@ -280,11 +280,11 @@ When you start a shell you'll see the shell showing up inside the Ops Channel ta
 
 Shell selection will be shown like this:
 
-![opseshellselect](./_media/ch-images/ops-shell-select.png)
+![opseshellselect](./_media/ch-images/ops-shell-select.png ':class=imageclass40')
 
 When you select a shell session you'll see a TTY shell like this one:
 
-![opseshell](./_media/ch-images/ops-shell.png)
+![opseshell](./_media/ch-images/ops-shell.png ':class=imageclass80')
 
 ## Echo
 This channel sends users realtime "echo" information on objects in scope. It has been built for channel implementers to have a simple channel implementtion to use as a starting point.
@@ -300,14 +300,14 @@ You can just configure two options prior to starting an Echo Channel:
 
 This is how the Echo setup feels:
 
-![echosetup](./_media/ch-images/echo-setup.png ':size=80%')
+![echosetup](./_media/ch-images/echo-setup.png  ':class=imageclass40')
 
 You can set your selected configuration as a default for future Echo Channel startings.
 
 ### Use
 When you add an Echo Channel to your Kwirth desktop, when you start it (after configuring echo interval), Kwirth will start sending information on added objects in a regular basis (your interval in seconds), as shown in next figure.
 
-![echo-running](./_media/ch-images/echo-running.png)
+![echo-running](./_media/ch-images/echo-running.png ':class=imageclass100')
 
 ## Fileman
 Fileman is a really easy-to-use file manager for accessing all your filesystems inside a Kubernetes cluster. That is, you can visually manage all the filesystems that exist in your cluster wherever they are just image filesystems, PVC, secrets... With fileman you will have a consolidated view fo all the objects in the cluster and you will use **a navigation tool to view and manage** all your files.
@@ -340,7 +340,7 @@ When the channel starts the navigation pane shows up, and in just some milliseco
 
 A typical view of Fileman channel is as follows:
 
-![filemanstart](./_media/ch-images/fileman-initial.png)
+![filemanstart](./_media/ch-images/fileman-initial.png ':class=imageclass80')
 
 The navigation pane includes:
  - A folder tree navigation tool on the left.
@@ -348,13 +348,13 @@ The navigation pane includes:
 
 As you navigate, some actions may appear on the navigation pane header, like 'Rename', 'Delete', 'Copy'...
 
-![filemanactions](./_media/ch-images/fileman-actions.png)
+![filemanactions](./_media/ch-images/fileman-actions.png ':class=imageclass80')
 
 These actions are also available when right-clicking an object on the file list. When you righ-click an item a context-menu appears with actions according to the object selected.
 
-![filemancontextmenu](./_media/ch-images/fileman-contextmenu.png)
+![filemancontextmenu](./_media/ch-images/fileman-contextmenu.png ':class=imageclassCenter :class=imageclass20')
 
 Finally, for having a detailed view of a file or folder, you can switch the file list from 'Grid' to 'List' and back. The 'list' will show file information (length, date...).
 
-![filemangridlist](./_media/ch-images/fileman-gridlist.png)
+![filemangridlist](./_media/ch-images/fileman-gridlist.png  ':class=imageclass60')
 
