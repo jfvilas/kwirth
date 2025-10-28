@@ -6,4 +6,9 @@ interface IBoard {
     tabs:ITabObject[]
 }
 
-export type { IBoard }
+interface IBoardSummary {
+    name: string
+    description:string
+}
+
+export type { IBoard,  IBoardSummary }

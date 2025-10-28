@@ -387,7 +387,7 @@ class FilemanChannel implements IChannel {
     // PRIVATE
     // *************************************************************************************
 
-    private sendUnsolMessage = (webSocket:WebSocket, instanceId:string, command: FilemanCommandEnum, data:any): void => {
+    private sendUnsolicitedMessage = (webSocket:WebSocket, instanceId:string, command: FilemanCommandEnum, data:any): void => {
         let resp: IFilemanMessageResponse = {
             action: InstanceMessageActionEnum.COMMAND,
             flow: InstanceMessageFlowEnum.UNSOLICITED,
@@ -474,7 +474,7 @@ class FilemanChannel implements IChannel {
                     execResponse.data = `Asset ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container} not found`
                     return execResponse
                 }
-                this.executeDir(webSocket, instance, filemanMessage.params![0])
+                await this.executeDir(webSocket, instance, filemanMessage.params![0])
                 return
             }
             case FilemanCommandEnum.RENAME: {
@@ -496,8 +496,8 @@ class FilemanChannel implements IChannel {
                     if (fileInfo) {
                         let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['mv', srcLocalPath+'/'+fname, srcLocalPath+'/'+filemanMessage.params![1]])
                         if (result.stdend.status===ExecutionStatus.SUCCESS) {
-                            this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object: srcHomeDir + srcLocalPath + '/' + filemanMessage.params![1], type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
-                            this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object: srcClusterPath }, status: ExecutionStatus.SUCCESS}))
+                            this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object: srcHomeDir + srcLocalPath + '/' + filemanMessage.params![1], type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
+                            this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object: srcClusterPath }, status: ExecutionStatus.SUCCESS}))
                         }
                         else {
                             this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.stdout + result.stderr)
@@ -566,7 +566,7 @@ class FilemanChannel implements IChannel {
                 let arr:IDirectoryEntry[] = []
                 ParseListing.parseEntries(result.stdout, (err:any, entryArray:IDirectoryEntry[]) => { entryArray.map(e => arr.push(e)) })
                 arr.map(e => e.name = homeDir + localDir + e.name)
-                this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DIR, JSON.stringify({ metadata: { object: arr }, status: ExecutionStatus.SUCCESS}))
+                this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.DIR, JSON.stringify({ metadata: { object: arr }, status: ExecutionStatus.SUCCESS}))
             }
             else {
                 this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.stderr)
@@ -844,8 +844,8 @@ class FilemanChannel implements IChannel {
             if (fileInfo) {
                 let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, [linuxCommand, srcLocalPath+'/'+fname, dstLocalPath])
                 if (result.stdend.status===ExecutionStatus.SUCCESS && result.stderr==='') {
-                    this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:dstClusterPath + '/' + fname, type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
-                    if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))
+                    this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:dstClusterPath + '/' + fname, type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
+                    if (operation === FilemanCommandEnum.MOVE) this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))
                 }
                 else {
                     this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.stdend + result.stderr)
@@ -884,9 +884,9 @@ class FilemanChannel implements IChannel {
                     if (result.status === ExecutionStatus.SUCCESS) {
                         let fileInfo = await this.getFileInfo(srcClusterPath)
                         if (fileInfo)  {
-                            this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:dstClusterPath + '/' + fname, type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
+                            this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:dstClusterPath + '/' + fname, type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
                         }
-                        if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))
+                        if (operation === FilemanCommandEnum.MOVE) this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))
                     }
                     else {
                         this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.message)
@@ -915,9 +915,9 @@ class FilemanChannel implements IChannel {
                                     let src = '/' + [srcNamespace, srcPod, srcContainer, srcLocalPath, fname, e.name].join('/')
                                     let fileInfo = await this.getFileInfo(src)
                                     if (fileInfo)  {
-                                        this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:'/'+[dstNamespace, dstPod, dstContainer, dstLocalPath, fname, e.name].join('/'), type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
+                                        this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:'/'+[dstNamespace, dstPod, dstContainer, dstLocalPath, fname, e.name].join('/'), type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
                                     }
-                                    if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:src }, status: ExecutionStatus.SUCCESS}))
+                                    if (operation === FilemanCommandEnum.MOVE) this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:src }, status: ExecutionStatus.SUCCESS}))
                                 }
                                 else {
                                     this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.message)
@@ -934,9 +934,9 @@ class FilemanChannel implements IChannel {
                                     let src = '/' + [srcNamespace, srcPod, srcContainer, srcPath].join('/')
                                     let fileInfo = await this.getFileInfo(src)
                                     if (fileInfo)  {
-                                        this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:'/'+[dstNamespace, dstPod, dstContainer, dstLocalPath, fname, e.name].join('/'), type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
+                                        this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:'/'+[dstNamespace, dstPod, dstContainer, dstLocalPath, fname, e.name].join('/'), type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
                                     }
-                                    if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:src }, status: ExecutionStatus.SUCCESS}))
+                                    if (operation === FilemanCommandEnum.MOVE) this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:src }, status: ExecutionStatus.SUCCESS}))
                                 }
                                 else {
                                     this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.message)
@@ -957,9 +957,9 @@ class FilemanChannel implements IChannel {
                         if (result.status === ExecutionStatus.SUCCESS) {
                             let fileInfo = await this.getFileInfo(src)
                             if (fileInfo)  {
-                                this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:'/'+[dstNamespace, dstPod, dstContainer, dstLocalPath + fname].join('/'), type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
+                                this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:'/'+[dstNamespace, dstPod, dstContainer, dstLocalPath + fname].join('/'), type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
                             }
-                            if (operation === FilemanCommandEnum.MOVE) this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:src }, status: ExecutionStatus.SUCCESS}))
+                            if (operation === FilemanCommandEnum.MOVE) this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:src }, status: ExecutionStatus.SUCCESS}))
                         }
                         else {
                             this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.message)
@@ -984,7 +984,7 @@ class FilemanChannel implements IChannel {
         let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['rm', '-r', srcLocalPath])
         if (result.stdend.status===ExecutionStatus.SUCCESS) {
             if (result.stderr==='')
-                this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcPath, type:0 }, status: ExecutionStatus.SUCCESS}))
+                this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcPath, type:0 }, status: ExecutionStatus.SUCCESS}))
             else
                 this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.stderr)
         }
@@ -1002,7 +1002,7 @@ class FilemanChannel implements IChannel {
         let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, ['mkdir', srcLocalPath])
         if (result.stdend.status===ExecutionStatus.SUCCESS) {
             if (result.stderr==='')
-                this.sendUnsolMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:srcPath, type:1, time:Date.now(), size:4096 }, status: ExecutionStatus.SUCCESS}))
+                this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.CREATE, JSON.stringify({ metadata: { object:srcPath, type:1, time:Date.now(), size:4096 }, status: ExecutionStatus.SUCCESS}))
             else
                 this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.stderr)
         }

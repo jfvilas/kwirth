@@ -16,7 +16,7 @@ kubectl apply -f https://raw.githubusercontent.com/jfvilas/kwirth/master/test/kw
 ```
 
 #### Helm chart
-Helm is even mor simple:
+Helm is even more simple:
 
 ```bash
 helm repo add kwirth https://github.com/jfvilas/kwirth/tree/master/deploy/helm

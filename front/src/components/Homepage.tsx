@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Box,  Card, CardContent, CardHeader, Collapse, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
-import { IBoard } from '../model/IBoard'
+import { IBoard, IBoardSummary } from '../model/IBoard'
 import { ITabSummary } from '../model/ITabObject'
 import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { Delete, ExpandLess, ExpandMore, OpenInBrowser, Star } from '@mui/icons-material'
@@ -19,11 +19,12 @@ interface IProps {
     frontChannels: Map<string, ChannelConstructor>
     lastTabs:ITabSummary[]
     favTabs:ITabSummary[]
-    lastBoards:any
-    favBoards:any
+    lastBoards:IBoardSummary[]
+    favBoards:IBoardSummary[]
     onSelectTab: (tab:ITabSummary) => void
-    onSelectBoard: (board:IBoard) => void
+    onSelectBoard: (board:IBoardSummary) => void
     onUpdateTabs: (last:ITabSummary[], fav:ITabSummary[]) => void
+    onUpdateBoards: (last:IBoardSummary[], fav:IBoardSummary[]) => void
 }
 
 enum ListTypeEnum {
@@ -39,15 +40,10 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     const [rxmbps, setRxmbps] = useState(0)
     const homepageBoxRef = useRef<HTMLDivElement | null>(null)
     const [homepageBoxTop, setHomepageBoxTop] = useState(0)
-    const [expanded, setExpanded] = useState(false)
+    const [cardExpanded, setCardExpanded] = useState(false)
     const [dataCpu, setDataCpu]  = useState<any[]>([])
     const [dataMemory, setDataMemory]  = useState<any[]>([])
     const [dataNetwork, setDataNetwork]  = useState<any[]>([])
-
-    const handleToggle = () => {
-        setExpanded((prev) => !prev)
-    }
-
 
     let homeCluster = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.name : 'n/a'
     let clusterUrl = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.url : 'n/a'
@@ -56,6 +52,10 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     let kwrithNs = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData?.namespace : 'n/a'
     let kwrithDeployment = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData?.deployment : 'n/a'
     let frontChannels:string = ((props.frontChannels.keys() as any).toArray()).join(', ')
+
+    const handleCardToggle = () => {
+        setCardExpanded((prev) => !prev)
+    }
 
     useEffect(() => {
         if (homepageBoxRef.current) setHomepageBoxTop(homepageBoxRef.current.getBoundingClientRect().top)
@@ -85,21 +85,28 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         return () => clearInterval(i)
     })
 
-    const toOrFromFavTabs = (tab:ITabSummary) => {
+    const toFavTabs = (tab:ITabSummary) => {
         if (!props.favTabs.some(t => t.name === tab.name && t.channel === tab.channel)) {
             props.favTabs.push(tab)
             let i = props.lastTabs.findIndex(t => t.name !== tab.name || t.channel !== tab.channel)
             props.lastTabs.splice(i,1)
+            setRefresh(Math.random())
+            props.onUpdateTabs([...props.lastTabs], [...props.favTabs])
         }
-        else {
-            let i = props.favTabs.findIndex(t => t.name !== tab.name || t.channel !== tab.channel)
-            props.favTabs.splice(i,1)
-        }
-        setRefresh(Math.random())
-        props.onUpdateTabs([...props.lastTabs], [...props.favTabs])
     }
 
-    const deleteFromList = (list:ITabSummary[], tab:ITabSummary) => {
+    const toFavBoards = (board:IBoardSummary) => {
+        if (!props.favBoards.some(b => b.name === board.name)) {
+            // from last to fav
+            props.favBoards.push(board)
+            let i = props.lastBoards.findIndex(b => b.name === board.name)
+            props.lastBoards.splice(i,1)
+            setRefresh(Math.random())
+            props.onUpdateBoards([...props.lastBoards], [...props.favBoards])
+        }
+    }
+
+    const deleteFromTabsList = (list:ITabSummary[], tab:ITabSummary) => {
         let i = list.findIndex(t => t.name === tab.name  && t.channel === tab.channel)
         if (i>=0) {
             list.splice(i,1)
@@ -108,8 +115,21 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         }
     }
 
+    const deleteFromBoardsList = (list:IBoardSummary[], board:IBoardSummary) => {
+        let i = list.findIndex(b => b.name === board.name)
+        if (i>=0) {
+            list.splice(i,1)
+            props.onUpdateBoards([...props.lastBoards], [...props.favBoards])
+            setRefresh(Math.random())
+        }
+    }
+
     const openTab = (tab:ITabSummary) => {
         props.onSelectTab(tab)
+    }
+
+    const openBoard = (board:IBoardSummary) => {
+        props.onSelectBoard(board)
     }
 
     const drawTabCard = (tabList:ITabSummary[], listType:ListTypeEnum) => {
@@ -161,11 +181,11 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                     <OpenInBrowser/>
                                 </IconButton>
                                 { listType !== ListTypeEnum.FAV && 
-                                    <IconButton onClick={() => toOrFromFavTabs(tab)}>
+                                    <IconButton onClick={() => toFavTabs(tab)}>
                                         <Star sx={{ color: 'gray' }} /> 
                                     </IconButton>
                                 }
-                                <IconButton onClick={() => deleteFromList(tabList, tab)}>
+                                <IconButton onClick={() => deleteFromTabsList(tabList, tab)}>
                                     <Delete/>
                                 </IconButton>
                             </Stack>
@@ -176,12 +196,32 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         </>
     }
 
-    const drawBoardCard = (tabList:ITabSummary[], listType:ListTypeEnum) => {
+    const drawBoardCard = (boardList:IBoardSummary[], listType:ListTypeEnum) => {
         return <>
             <Card sx={{flex:1}}>
                 <CardHeader title={`${listType=== ListTypeEnum.LAST? 'Last':'Fav'} boards`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
                 <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>
-                    No boards.
+                    { boardList.map (board => {
+                        return <>
+                            <Stack direction={'row'} spacing={1} alignItems={'baseline'}>
+                                <Typography>{board.name}</Typography>
+                                <Typography color='gray' fontSize={'12px'}>{board.description}</Typography>                            
+                                <Typography flexGrow={1}/>
+                                <IconButton onClick={() => openBoard(board)}>
+                                    <OpenInBrowser/>
+                                </IconButton>
+                                { listType !== ListTypeEnum.FAV && 
+                                    <IconButton onClick={() => toFavBoards(board)}>
+                                        <Star sx={{ color: 'gray' }} /> 
+                                    </IconButton>
+                                }
+                                <IconButton onClick={() => deleteFromBoardsList(boardList, board)}>
+                                    <Delete/>
+                                </IconButton>
+
+                            </Stack>
+                        </>
+                    })}
                 </CardContent>
             </Card>
         </>
@@ -276,10 +316,10 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     return (<>
     
         <Card sx={{flex:1, width:'95%', alignSelf:'center', marginTop:'8px', transition: 'all 0.3s ease'}}>
-            <CardHeader sx={{backgroundColor:'#f0f0f0'}}
+            <CardHeader sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}
                 title={<>
-                    {expanded && <Typography variant="h6">Cluster details</Typography>}
-                    {!expanded && <Stack direction={'row'}>
+                    {cardExpanded && <Typography variant="h6">Cluster details</Typography>}
+                    {!cardExpanded && <Stack direction={'row'}>
                         <Typography><b>Cluster: </b>{props.cluster?.clusterInfo?.name}</Typography>
                         <Typography sx={{ml:'32px'}}><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes.length}</Typography>
                         <Typography sx={{ml:'32px'}}><b>Resources: </b>{props.cluster?.clusterInfo?.vcpu} vCPU / {((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)} GB</Typography>
@@ -293,7 +333,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                     if (channelClass) {
                                         let icon = new channelClass()!.getChannelIcon()
                                         let color = '#333333'
-                                        if ( ! props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData!.channels.some(ch => ch.id === c.trim())) color = '#dddddd'
+                                        if ( ! props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData!.channels.some(ch => ch.id === c.trim())) color = '#f4f4f4'
                                         let newElement = React.cloneElement(icon, { fontSize: 'small', sx:{ color } })
                                         return <Tooltip key={ci} title={c.trim()}>{newElement}</Tooltip>
                                     }
@@ -331,12 +371,12 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                     </Stack>}
                 </>}
                 action={
-                    <IconButton onClick={handleToggle} aria-label="expandir/colapsar">
-                        {expanded ? <ExpandLess /> : <ExpandMore />}
+                    <IconButton onClick={handleCardToggle} aria-label="expandir/colapsar">
+                        {cardExpanded ? <ExpandLess /> : <ExpandMore />}
                     </IconButton>
                 }
             />
-            <Collapse in={expanded} timeout="auto" unmountOnExit>
+            <Collapse in={cardExpanded} timeout="auto" unmountOnExit>
                 <CardContent sx={{backgroundColor:'#f0f0f0'}}>
                     <Stack direction={'row'} spacing={2} sx={{mt:'4px'}}>
                         <Stack width={'30%'}> 

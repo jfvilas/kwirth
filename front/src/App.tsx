@@ -25,7 +25,7 @@ import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/MsgBox'
 import { Settings } from './model/Settings'
 import { FirstTimeLogin } from './components/FirstTimeLogin'
-import { IBoard } from './model/IBoard'
+import { IBoard, IBoardSummary } from './model/IBoard'
 
 import { VERSION } from './version'
 import { SessionContext } from './model/SessionContext'
@@ -98,6 +98,8 @@ const App: React.FC = () => {
     // last & favs
     const [lastTabs, setLastTabs] = useState<ITabSummary[]>([])
     const [favTabs, setFavTabs] = useState<ITabSummary[]>([])
+    const [lastBoards, setLastBoards] = useState<IBoardSummary[]>([])
+    const [favBoards, setFavBoards] = useState<IBoardSummary[]>([])
 
     // ui notifications
     const [notifyOpen, setNotifyOpen] = useState(false)
@@ -137,19 +139,29 @@ const App: React.FC = () => {
 
     useEffect ( () => {
         // only when user logs on / off
-        if (logged) {
-            if (clustersRef.current.length === 0) getClusters()
-            if (!settingsRef.current || settingsRef.current === null) readSettings() 
-            let last = localStorage.getItem('lastTabs')
-            if (last) {
-                setLastTabs(JSON.parse(last))
-            }
-            else {
-                setLastTabs(DEFAULTLASTTABS)
-            }
-            let fav = localStorage.getItem('favTabs')
-            if (fav) setFavTabs(JSON.parse(fav))
-        }
+        if (!logged) return
+
+        if (clustersRef.current.length === 0) getClusters()
+            
+        if (!settingsRef.current || settingsRef.current === null) readSettings() 
+
+        // load user tabs
+        let lt = localStorage.getItem('lastTabs')
+        if (lt)
+            setLastTabs(JSON.parse(lt))
+        else
+            setLastTabs(DEFAULTLASTTABS)
+        let ft = localStorage.getItem('favTabs')
+        if (ft) setFavTabs(JSON.parse(ft))
+
+        // load user boards
+        let lb = localStorage.getItem('lastBoards')
+        if (lb)
+            setLastBoards(JSON.parse(lb))
+        else
+            setLastBoards([])
+        let fb = localStorage.getItem('favBoards')
+        if (fb) setFavBoards(JSON.parse(fb))
     },[logged])
 
     useEffect( () => {
@@ -787,11 +799,15 @@ const App: React.FC = () => {
             tabs: newTabs
         }
         let payload=JSON.stringify( board )
-        console.log('payload', payload)
         fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addPostAuthorization(accessString, payload))
+
         if (currentBoardName !== name) {
             setCurrentBoardName(name)
             setCurrentBoardDescription(description)
+            
+            let newLastBoards=[{name: board.name, description:board.description}, ...lastBoards]
+            setLastBoards(newLastBoards)
+            localStorage.setItem('lastBoards', JSON.stringify(newLastBoards))
         }
     }
 
@@ -811,38 +827,53 @@ const App: React.FC = () => {
                             setCurrentBoardName('untitled')
                             setCurrentBoardDescription('No description yet')                            
                         }
+                        let newLastBoards=[...lastBoards.filter(b => b.name!==name)]
+                        setLastBoards(newLastBoards)
+                        localStorage.setItem('lastBoards', JSON.stringify(newLastBoards))
                     }
                 }))
             }
             else if (action === 'load') {
-                let errors = ''
-                clearTabs()
-                let boardDef = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
-                let board:IBoard = JSON.parse(boardDef)
-                if (board && board.tabs && board.tabs.length>0) {
-                    for (let t of board.tabs) {
-                        let clusterName = t.channelObject.clusterName
-                        if (!clusters.find(c => c.name === clusterName)) {
-                            errors += `Cluster '${clusterName}' used in tab ${t.name} does not exsist<br/><br/>`
-                        }
-                    }
-                    if (errors!=='') setMsgBox(MsgBoxOkError('Kwirth',`Some errors have been detected when loading board:<br/><br/>${errors}`, setMsgBox))
-                    setCurrentBoardName(name)
-                    setCurrentBoardDescription(board.description)
-                    for (let t of board.tabs) {
-                        let res:IResourceSelected = {
-                            channelId: t.channel.channelId,
-                            clusterName: t.channelObject.clusterName,
-                            view: t.channelObject.view,
-                            namespaces: t.channelObject.namespace.split(','),
-                            groups: t.channelObject.group.split(','),
-                            pods: t.channelObject.pod.split(','),
-                            containers: t.channelObject.container.split(','),
-                            name: t.name
-                        }
-                        onResourceSelectorAdd(res)
-                    }
+                loadBoard(name)
+            }
+        }
+    }
+
+    const loadBoard = async (name: string) => {
+        let errors = ''
+        clearTabs()
+
+        let boardDef = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
+        let newBoard:IBoard = JSON.parse(boardDef)
+        if (newBoard && newBoard.tabs && newBoard.tabs.length>0) {
+            for (let t of newBoard.tabs) {
+                let clusterName = t.channelObject.clusterName
+                if (!clusters.find(c => c.name === clusterName)) {
+                    errors += `Cluster '${clusterName}' used in tab ${t.name} does not exsist<br/><br/>`
                 }
+            }
+            if (errors!=='') setMsgBox(MsgBoxOkError('Kwirth',`Some errors have been detected when loading board:<br/><br/>${errors}`, setMsgBox))
+            setCurrentBoardName(name)
+            setCurrentBoardDescription(newBoard.description)
+            for (let t of newBoard.tabs) {
+                let res:IResourceSelected = {
+                    channelId: t.channel.channelId,
+                    clusterName: t.channelObject.clusterName,
+                    view: t.channelObject.view,
+                    namespaces: t.channelObject.namespace.split(','),
+                    groups: t.channelObject.group.split(','),
+                    pods: t.channelObject.pod.split(','),
+                    containers: t.channelObject.container.split(','),
+                    name: t.name
+                }
+                onResourceSelectorAdd(res)
+            }
+
+            if (!lastBoards.some(board => board.name === newBoard.name)) {
+                let newLastBoards = lastBoards
+                if (newLastBoards.length>5) newLastBoards= newLastBoards.slice(0,4)
+                setLastBoards([newBoard, ...newLastBoards])
+                localStorage.setItem('lastBoards', JSON.stringify([newBoard, ...newLastBoards]))
             }
         }
     }
@@ -1113,7 +1144,8 @@ const App: React.FC = () => {
         }
     }
 
-    const onHomepageBoard = (board: IBoard): void => {
+    const onHomepageBoard = (board: IBoardSummary): void => {
+        loadBoard(board.name)
     }
     
     const onHomepageUpdateTabs = (last: ITabSummary[], fav: ITabSummary[]): void => {
@@ -1121,6 +1153,13 @@ const App: React.FC = () => {
         localStorage.setItem('favTabs', JSON.stringify(fav))
         setLastTabs(last)
         setFavTabs(fav)
+    }
+    
+    const onHomepageUpdateBoards = (last: IBoardSummary[], fav: IBoardSummary[]): void => {
+        localStorage.setItem('lastBoards', JSON.stringify(last))
+        localStorage.setItem('favBoards', JSON.stringify(fav))
+        setLastBoards(last)
+        setFavBoards(fav)
     }
     
     if (!logged) return (<>
@@ -1176,7 +1215,7 @@ const App: React.FC = () => {
                 </Stack>
                 { !selectedTab.current && 
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastBoards={undefined} favBoards={undefined} onSelectTab={onHomepageTab} onSelectBoard={onHomepageBoard} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name===selectedClusterName)} clusters={clusters}/>
+                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastBoards={lastBoards} favBoards={favBoards} onSelectTab={onHomepageTab} onSelectBoard={onHomepageBoard} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateBoards={onHomepageUpdateBoards}/>
                     </Box>
                 }
                 { selectedTab.current &&

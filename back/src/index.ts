@@ -916,8 +916,14 @@ const runKubernetes = async () => {
         }
         console.log(`KWI1500I Control is being given to Kwirth`)
     })
-    process.on('exit', () => {
-        console.log('exiting')
+    process.on('exit', async () => {
+        console.log('********************************************************************************')
+        console.log('********************************************************************************')
+        console.log('********************************************************************************')
+        console.log('********************************************************************************')
+        console.log('********************************************************************************')
+        console.log('exiting on node exit')
+        await new Promise((resolve) => setTimeout(resolve, 10000))
         saToken.deleteToken('kwirth-sa', kwirthData.namespace)
     })
 }
