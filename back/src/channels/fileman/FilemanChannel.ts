@@ -474,7 +474,7 @@ class FilemanChannel implements IChannel {
                     execResponse.data = `Asset ${filemanMessage.namespace}/${filemanMessage.pod}/${filemanMessage.container} not found`
                     return execResponse
                 }
-                await this.executeDir(webSocket, instance, filemanMessage.params![0])
+                this.executeDir(webSocket, instance, filemanMessage.params![0])
                 return
             }
             case FilemanCommandEnum.RENAME: {

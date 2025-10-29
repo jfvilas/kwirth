@@ -588,27 +588,33 @@ const processPing = (webSocket:WebSocket, instanceMessage:IInstanceMessage): voi
 }
 
 const processChannelCommand = async (webSocket: WebSocket, instanceMessage: IInstanceMessage, podNamespace?:string, podName?:string, containerName?:string): Promise<void> => {
-    let channel = channels.get(instanceMessage.channel)
-    if (channel) {
-        let instance = channel.containsInstance(instanceMessage.instance)
-        if (instance) {
-            channel.processCommand(webSocket, instanceMessage, podNamespace, podName, containerName)
-        }
-        else {
-            // we have no instance, may be an IMMED command
-            if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
-                console.log(`Process IMMEDIATE command`)
+    try {
+        let channel = channels.get(instanceMessage.channel)
+        if (channel) {
+            let instance = channel.containsInstance(instanceMessage.instance)
+            if (instance) {
                 channel.processCommand(webSocket, instanceMessage, podNamespace, podName, containerName)
             }
             else {
-                console.log(`Instance '${instanceMessage.instance}' not found for command`)
-                sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for command')
-            }
-        }   
+                // we have no instance, may be an IMMED command
+                if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
+                    console.log(`Process IMMEDIATE command`)
+                    channel.processCommand(webSocket, instanceMessage, podNamespace, podName, containerName)
+                }
+                else {
+                    console.log(`Instance '${instanceMessage.instance}' not found for command`)
+                    sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for command')
+                }
+            }   
+        }
+        else {
+            console.log(`Channel not found`)
+            sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Socket has not been found')
+        }
     }
-    else {
-        console.log(`Channel not found`)
-        sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Socket has not been found')
+    catch (err) {
+        console.error('Error on processCommand')
+        console.error(err)
     }
 }
 

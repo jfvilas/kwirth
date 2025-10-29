@@ -40,7 +40,10 @@ spec:
           httpGet:
             path: /healthz
             port: 3883
-          periodSeconds: 30
+          timeoutSeconds: 30
+          periodSeconds: 60
+          successThreshold: 1
+          failureThreshold: 3
         name: kwirth
         ports:
         - containerPort: 3883
