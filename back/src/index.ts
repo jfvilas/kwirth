@@ -41,12 +41,13 @@ import { EchoChannel } from './channels/echo/EchoChannel'
 import { FilemanChannel } from './channels/fileman/FilemanChannel'
 
 import fileUpload from 'express-fileupload'
+import { IncomingMessage } from 'http'
 
 const v8 = require('node:v8')
 const http = require('http')
 const cors = require('cors')
 const bodyParser = require('body-parser')
-const requestIp = require ('request-ip')
+//const requestIp = require ('request-ip')
 const PORT = 3883
 
 const channels : Map<string, IChannel> = new Map()
@@ -799,19 +800,26 @@ app.use(fileUpload())
 
 const server = http.createServer(app)
 const wss = new WebSocketServer({ server, skipUTF8Validation:true  })
-wss.on('connection', (webSocket:WebSocket) => {
-    console.log('Client connected')
+wss.on('connection', (webSocket:WebSocket, req:IncomingMessage) => {
+    const ipHeader = req.headers['x-forwarded-for']
+    const ip = (Array.isArray(ipHeader) ? ipHeader[0] : ipHeader || req.socket.remoteAddress || '').split(',')[0].trim()
+    console.log(`Client connected from ${ip}`)
 
     webSocket.onmessage = (event) => {
         processClientMessage(webSocket, event.data)
     }
 
     webSocket.onclose = () => {
-        console.log('Client disconnected')
         // we do not remove connectios for the client to reconnect. previous code was:
         // for (var channel of channels.keys()) {
         //     channels.get(channel)?.removeConnection(ws)
         // }
+        console.log('Client disconnected')
+        for (let chan of channels.values()) {
+            if (chan.containsConnection(webSocket)) {
+                console.log(`Connection from IP ${ip} to channel ${chan.getChannelData().id} has been interrupted.`)
+            }
+        }
     }
 })
 
@@ -908,7 +916,7 @@ const runKubernetes = async () => {
         }
     }
     // obtain remote ip
-    app.use(requestIp.mw())
+    //app.use(requestIp.mw())
     
     // listen
     server.listen(PORT, () => {
@@ -1060,7 +1068,7 @@ const runDocker = async () => {
     app.use(`${rootPath}/managecluster`, mc.route)
 
     // obtain remote ip
-    app.use(requestIp.mw())
+    //app.use(requestIp.mw())
     
     // listen
     server.listen(PORT, () => {
