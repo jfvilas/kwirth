@@ -206,7 +206,7 @@ const addObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamesp
         return
     }
 
-    console.log(`Level is enough for object: ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+    console.log(`Level is enough for adding object: ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
 
     if(channels.has(instanceConfig.channel)) {
         if (channels.get(instanceConfig.channel)?.containsAsset(webSocket, podNamespace,podName, containerName)) {

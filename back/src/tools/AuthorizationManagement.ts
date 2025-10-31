@@ -151,7 +151,7 @@ export class AuthorizationManagement {
                 console.log(`Insufficent level '${akr.scopes}' (${haveLevel}) < '${instanceConfig.scope}' (${requestedLevel}) for object`)
                 continue
             }
-            console.log(`Level is enough for object: '${akr.scopes}'(${haveLevel}) >= '${instanceConfig.scope}' (${requestedLevel}),  let's check regexes...`)
+            console.log(`Level is enough for object (${podNamespace}/${podName}/${containerName}): '${akr.scopes}'(${haveLevel}) >= '${instanceConfig.scope}' (${requestedLevel}),  let's check regexes...`)
 
             if (!this.checkResource(akr, podNamespace, podName, containerName)) continue
 

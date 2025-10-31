@@ -48,7 +48,6 @@ export class ManageClusterApi {
                     //      containers --> containers list (adds a container names array)
                     //      all => all pod data
                     let data:string=req.query.data? (req.query.data as string) : 'id'  // transitional
-                    console.log('labelSelector: ', labelSelector)
                     switch(object) {
                         case 'pod':
                             let podListResp:{response:IncomingMessage,body:V1PodList}
