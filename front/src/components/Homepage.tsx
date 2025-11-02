@@ -49,7 +49,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     let clusterUrl = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.url : 'n/a'
     let homeChannels = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData?.channels.map(c => c.id).join(', ') : ''
     let kwirthVersion = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData?.version : 'n/a'
-    let kwrithNs = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData?.namespace : 'n/a'
+    let kwrithNamespace = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData?.namespace : 'n/a'
     let kwrithDeployment = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData?.deployment : 'n/a'
     let frontChannels:string = ((props.frontChannels.keys() as any).toArray()).join(', ')
 
@@ -316,7 +316,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     return (<>
     
         <Card sx={{flex:1, width:'95%', alignSelf:'center', marginTop:'8px', transition: 'all 0.3s ease'}}>
-            <CardHeader sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}
+            <CardHeader sx={{borderBottom:(cardExpanded?1:0), borderColor:'divider', backgroundColor:'#e0e0e0'}}
                 title={<>
                     {cardExpanded && <Typography variant="h6">Cluster details</Typography>}
                     {!cardExpanded && <Stack direction={'row'}>
@@ -333,7 +333,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                     if (channelClass) {
                                         let icon = new channelClass()!.getChannelIcon()
                                         let color = '#333333'
-                                        if ( ! props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData!.channels.some(ch => ch.id === c.trim())) color = '#f4f4f4'
+                                        if ( ! props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData!.channels.some(ch => ch.id === c.trim())) color = '#b4b4b4'
                                         let newElement = React.cloneElement(icon, { fontSize: 'small', sx:{ color } })
                                         return <Tooltip key={ci} title={c.trim()}>{newElement}</Tooltip>
                                     }
@@ -390,7 +390,8 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                         <Stack width={'20%'}>
                             <Typography fontSize={20}><b>Kwirth Info</b></Typography>
                             <Typography><b>Kwirth version: </b>{kwirthVersion}</Typography>
-                            <Typography><b>Deployment: </b>{kwrithNs} / {kwrithDeployment}</Typography>
+                            <Typography><b>Namespace: </b>{kwrithNamespace}</Typography>
+                            <Typography><b>Deployment: </b>{kwrithDeployment}</Typography>
                             <Typography><b>Clusters: </b>{props.clusters.map (c => c.name).join(', ')}</Typography>
                             <Typography><b>Type: </b>{props.cluster?.clusterInfo?.type}</Typography>
                         </Stack>
