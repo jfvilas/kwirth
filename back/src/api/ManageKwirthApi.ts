@@ -20,20 +20,20 @@ export class ManageKwirthApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    this.restartGroup(this.coreApi, this.appsApi, kwirthData.namespace, kwirthData.deployment)
+                    this.restartGroup(this.coreApi, this.appsApi, kwirthData.namespace, 'deployment+' + kwirthData.deployment)
                     res.status(200).json()
                 }
                 catch (err) {
-                    res.status(200).json()
+                    res.status(500).json()
                     console.log(err)
                 }
             })
         
     }
 
-    restartGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, group:string): Promise<void> => {
+    restartGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, groupTypeName:string): Promise<void> => {
         try {
-            var result = await AuthorizationManagement.getPodLabelSelectorsFromGroup(coreApi, appsApi, namespace, group);
+            var result = await AuthorizationManagement.getPodLabelSelectorsFromGroup(coreApi, appsApi, namespace, groupTypeName)
 
             // Delete all pods, which forces kubernetes to recreate them
             for (const pod of result.pods) {
@@ -43,7 +43,6 @@ export class ManageKwirthApi {
                     console.log(`Pod ${podName} deleted.`);
                 }
             }
-
         }
         catch (error) {
             console.log(`Error restarting group: ${error}`);

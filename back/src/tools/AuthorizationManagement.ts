@@ -392,11 +392,11 @@ export class AuthorizationManagement {
         return result
     }
     
-    public static getPodLabelSelectorsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, gTypeName:string) => {
+    public static getPodLabelSelectorsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, groupTypeName:string) => {
         let response:any
         let groupName, groupType
         let emptyResult = { pods:[],labelSelector:'' };
-        [groupType, groupName] = gTypeName.toLowerCase().split('+')
+        [groupType, groupName] = groupTypeName.toLowerCase().split('+')
     
         try {
             switch (groupType) {
@@ -442,7 +442,6 @@ export class AuthorizationManagement {
             return  { pods, labelSelector }
         }
         else {
-            console.log('*************', namespace, gTypeName)
             return { pods:[], labelSelector:[] }            
         }
     }
