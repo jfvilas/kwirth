@@ -2,7 +2,7 @@ import React, { useState, ChangeEvent, useRef } from 'react'
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, FormLabel, Radio, RadioGroup, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { Subject } from '@mui/icons-material'
-import { ILogInstanceConfig, ILogUiConfig, LogSortOrderEnum } from './LogConfig'
+import { ILogInstanceConfig, ILogConfig, LogSortOrderEnum } from './LogConfig'
 import { DateTimePicker, LocalizationProvider, renderTimeViewClock } from '@mui/x-date-pickers'
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment'
 import moment from 'moment'
@@ -10,14 +10,14 @@ import moment from 'moment'
 const LogIcon = <Subject />
 
 const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let logUiConfig:ILogUiConfig = props.channelObject?.config
+    let logConfig:ILogConfig = props.channelObject?.config
     let logInstanceConfig:ILogInstanceConfig = props.channelObject?.instanceConfig
 
     const [selectedTab, setSelectedTab] = useState(props.uiSettings? (props.uiSettings.startDiagnostics? 'sd':'log') : 'log')
-    const [maxMessages, setMaxMessages] = useState(props.uiSettings? props.uiSettings.maxMessages : logUiConfig.maxMessages)
-    const [maxPerPodMessages, setMaxPerPodMessages] = useState(props.uiSettings? props.uiSettings.maxPerPodMessages : logUiConfig.maxPerPodMessages)
-    const [follow, setFollow] = useState(props.uiSettings? props.uiSettings.follow : logUiConfig.follow)
-    const [sortOrder, setSortOrder] = useState(props.uiSettings? props.uiSettings.sortOrder : logUiConfig.sortOrder)
+    const [maxMessages, setMaxMessages] = useState(props.uiSettings? props.uiSettings.maxMessages : logConfig.maxMessages)
+    const [maxPerPodMessages, setMaxPerPodMessages] = useState(props.uiSettings? props.uiSettings.maxPerPodMessages : logConfig.maxPerPodMessages)
+    const [follow, setFollow] = useState(props.uiSettings? props.uiSettings.follow : logConfig.follow)
+    const [sortOrder, setSortOrder] = useState(props.uiSettings? props.uiSettings.sortOrder : logConfig.sortOrder)
     const [previous, setPrevious] = useState(props.instanceSettings? props.instanceSettings.previous : logInstanceConfig.previous)
     const [timestamp, setTimestamp] = useState(props.instanceSettings? props.instanceSettings.timestamp : logInstanceConfig.timestamp)
     const [fromStart, setFromStart] = useState(props.instanceSettings? props.instanceSettings.fromStart : logInstanceConfig.fromStart)
@@ -49,11 +49,11 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     }
 
     const ok = () => {
-        logUiConfig.follow = follow
-        logUiConfig.maxMessages = maxMessages
-        logUiConfig.maxPerPodMessages = maxPerPodMessages
-        logUiConfig.sortOrder = sortOrder
-        logUiConfig.startDiagnostics = (selectedTab === 'sd')
+        logConfig.follow = follow
+        logConfig.maxMessages = maxMessages
+        logConfig.maxPerPodMessages = maxPerPodMessages
+        logConfig.sortOrder = sortOrder
+        logConfig.startDiagnostics = (selectedTab === 'sd')
         logInstanceConfig.previous  = previous
         logInstanceConfig.timestamp = timestamp
         logInstanceConfig.fromStart = fromStart

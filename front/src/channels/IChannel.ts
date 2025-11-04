@@ -1,5 +1,5 @@
 import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
-import { MetricDescription } from './metrics/MetricDescription'
+import { MetricDefinition } from './metrics/MetricDefinition'
 import { Cluster } from '../model/Cluster'
 import { ENotifyLevel } from '../tools/Global'
 
@@ -32,7 +32,7 @@ interface IChannelObject {
     instanceConfig: any
     config: any
     data: any
-    metricsList?: Map<string, MetricDescription>
+    metricsList?: Map<string, MetricDefinition>
     accessString?: string
     webSocket?: WebSocket
     clusterUrl?: string

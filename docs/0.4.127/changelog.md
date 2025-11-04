@@ -30,6 +30,8 @@ Although not too exhaustive, this page contains some detail on what we have been
     - **kwirth_container_receive_percentage** Percentage of data received in relation to the whole cluster
     - **kwirth_container_transmit_mbps** Mbps of data sent over the last period
     - **kwirth_container_receive_mbps** Mbps of data received over the last period
+    - **kwirth_container_write_mbps** Mbps of data written to disk during the last period
+    - **kwirth_container_read_mbps** Mbps of data read from disk during the last period
   - Documentation is now versioned according to Kwirth versioning, you can select what Kwirth version documenttion on the side bar.
 
 ## 0.3.160

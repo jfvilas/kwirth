@@ -969,7 +969,8 @@ const initKubernetesCluster = async (token:string, metricsRequired:boolean) : Pr
     if (metricsRequired) {
         clusterInfo.metrics = new MetricsTools(clusterInfo)
         clusterInfo.metricsInterval = 15
-        await clusterInfo.metrics.startMetrics()
+        //+++await clusterInfo.metrics.startMetrics()
+        clusterInfo.metrics.startMetrics()
         console.log('  vCPU:', clusterInfo.vcpus)
         console.log('  Memory (GB):', clusterInfo.memory/1024/1024/1024)
     }
@@ -1154,7 +1155,7 @@ getExecutionEnvironment().then( async (exenv:string) => {
             launchKubernetes()
             break
         default:
-            console.log('Unuspported execution environment. Existing...')
+            console.log('Unuspported execution environment. Exiting...')
         }
 })
 .catch( (error) => {

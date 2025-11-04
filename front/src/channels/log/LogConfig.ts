@@ -38,5 +38,5 @@ class LogInstanceConfig implements ILogInstanceConfig{
     startTime? = 0
 }
 
-export type { ILogConfig as ILogUiConfig, ILogInstanceConfig }
-export { LogConfig as LogUiConfig, LogInstanceConfig, LogSortOrderEnum }
+export type { ILogConfig, ILogInstanceConfig }
+export { LogConfig, LogInstanceConfig, LogSortOrderEnum }

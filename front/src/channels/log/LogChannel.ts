@@ -4,7 +4,7 @@ import { ILogMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessage
 import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
 import { LogData, ILogLine, ILogData } from './LogData'
-import { ILogUiConfig, LogInstanceConfig, LogSortOrderEnum, LogUiConfig } from './LogConfig'
+import { ILogConfig, LogInstanceConfig, LogSortOrderEnum, LogConfig } from './LogConfig'
 import { ENotifyLevel } from '../../tools/Global'
 
 export class LogChannel implements IChannel {
@@ -30,7 +30,7 @@ export class LogChannel implements IChannel {
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
         let action = IChannelMessageAction.NONE
         let logData:ILogData = channelObject.data
-        let logUiConfig:ILogUiConfig = channelObject.config
+        let logConfig:ILogConfig = channelObject.config
 
         const getMsgEpoch = (lmsg:ILogLine) =>{
             return (new Date(lmsg.text.split(' ')[0])).getTime()
@@ -65,15 +65,15 @@ export class LogChannel implements IChannel {
                         container: logMessage.container,
                         type: logMessage.type
                     }
-                    if (logUiConfig.startDiagnostics) {
-                        if (logData.messages.length < logUiConfig.maxMessages) {
+                    if (logConfig.startDiagnostics) {
+                        if (logData.messages.length < logConfig.maxMessages) {
                             let cnt = logData.counters.get(bname)
                             if (!cnt) {
                                 logData.counters.set(bname,0)
                                 cnt = 0
                             }
-                            if (cnt < logUiConfig.maxPerPodMessages) {
-                                switch (logUiConfig.sortOrder) {
+                            if (cnt < logConfig.maxPerPodMessages) {
+                                switch (logConfig.sortOrder) {
                                     case LogSortOrderEnum.POD:
                                         let podIndex = logData.messages.findLastIndex(m => m.container===logLine.container && m.pod===logLine.pod && m.namespace===logLine.namespace)
                                         logData.messages.splice(podIndex+1,0,logLine)
@@ -88,7 +88,7 @@ export class LogChannel implements IChannel {
                                 }
                                 logData.counters.set(bname, ++cnt)
                             }
-                            if ([...logData.counters.values()].reduce((prev,acc) => prev+acc, 0) > logUiConfig.maxMessages) {
+                            if ([...logData.counters.values()].reduce((prev,acc) => prev+acc, 0) > logConfig.maxMessages) {
                                 action = IChannelMessageAction.STOP
                             }
                         }
@@ -98,7 +98,7 @@ export class LogChannel implements IChannel {
                     }
                     else {
                         logData.messages.push(logLine)
-                        if (logData.messages.length > logUiConfig.maxMessages) logData.messages.splice(0, logData.messages.length - logUiConfig.maxMessages)
+                        if (logData.messages.length > logConfig.maxMessages) logData.messages.splice(0, logData.messages.length - logConfig.maxMessages)
                     }
                 }
                 break
@@ -132,7 +132,7 @@ export class LogChannel implements IChannel {
 
     initChannel(channelObject:IChannelObject): boolean {
         channelObject.instanceConfig = new LogInstanceConfig()
-        channelObject.config = new LogUiConfig()
+        channelObject.config = new LogConfig()
         channelObject.data = new LogData()
         return false
     }

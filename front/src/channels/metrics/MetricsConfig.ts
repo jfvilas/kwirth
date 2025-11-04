@@ -1,22 +1,23 @@
 import { MetricsConfigModeEnum } from "@jfvilas/kwirth-common"
-import { MetricDescription } from "./MetricDescription"
+import { MenuChartOption } from "./MenuChart"
+//import { MetricDefinition } from "./MetricDefinition"
 
 interface IMetricsConfig {
-    metricsList: Map<string,MetricDescription>
+    //metricsList: Map<string,MetricDefinition>
     depth: number
     width: number
     merge: boolean 
     stack: boolean
-    chart: string
+    chart: MenuChartOption
 }
 
 class MetricsConfig implements IMetricsConfig{
-    metricsList = new Map()
+    //metricsList = new Map()
     depth = 20
     width = 3
     merge = false
     stack = false
-    chart = 'line'
+    chart = MenuChartOption.LineChart
 }
 
 interface IMetricsInstanceConfig {

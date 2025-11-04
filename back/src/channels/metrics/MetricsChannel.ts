@@ -362,6 +362,9 @@ class MetricsChannel implements IChannel {
             if (metricName === 'kwirth_container_transmit_mbps') sourceMetricName = 'container_network_transmit_bytes_total'
             if (metricName === 'kwirth_container_receive_mbps') sourceMetricName = 'container_network_receive_bytes_total'
 
+            if (metricName === 'kwirth_container_write_mbps') sourceMetricName = 'container_fs_writes_bytes_total'
+            if (metricName === 'kwirth_container_read_mbps') sourceMetricName = 'container_fs_reads_bytes_total'
+
             if (metricName === 'kwirth_container_random_counter' || metricName === 'kwirth_container_random_gauge') sourceMetricName = 'container_cpu_system_seconds_total'
 
             let uniqueValues:number[] = []
@@ -436,6 +439,8 @@ class MetricsChannel implements IChannel {
                     }
                     m.metricValue = Math.round(m.metricValue/totalBytes*100*100)/100
                     break
+                case 'kwirth_container_write_mbps':
+                case 'kwirth_container_read_mbps':
                 case 'kwirth_container_transmit_mbps':
                 case 'kwirth_container_receive_mbps':
                     if (!usePrevMetricSet) {
@@ -451,11 +456,10 @@ class MetricsChannel implements IChannel {
                             m.metricValue = Math.round(m.metricValue/totalSecs*100*100)/100   // we build a percentage with 2 decimal positions
                         }
                         else {
-                            console.log(`No previous value  [NETWORK] found for ${m.metricName}`)
+                            console.log(`No previous value found for ${m.metricName}`)
                         }
                     }
                     break
-
             }
         }
 

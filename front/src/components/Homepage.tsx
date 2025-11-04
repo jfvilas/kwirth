@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Box,  Card, CardContent, CardHeader, Collapse, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
-import { IBoard, IBoardSummary } from '../model/IBoard'
+import { IBoardSummary } from '../model/IBoard'
 import { ITabSummary } from '../model/ITabObject'
 import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { Delete, ExpandLess, ExpandMore, OpenInBrowser, Star } from '@mui/icons-material'
