@@ -1,6 +1,6 @@
 import React from 'react'
 import { Divider, Menu, MenuItem, MenuList } from '@mui/material'
-import { AreaChart, BarChart, Delete, PieChart, Remove, ShowChart, StackedLineChart, Stop, ThirtyFps } from '@mui/icons-material'
+import { AreaChart, BarChart, Delete, ImportExport, PieChart, ShowChart, StackedLineChart, ThirtyFps } from '@mui/icons-material'
 
 enum MenuChartOption {
     LineChart='line',
@@ -9,7 +9,8 @@ enum MenuChartOption {
     ValueChart='value',
     PieChart='pie',
     Stack='stack',
-    Remove='remove'
+    Remove='remove',
+    Export='export'
 }
 
 interface IProps {
@@ -33,6 +34,7 @@ const MenuChart: React.FC<IProps> = (props:IProps) => {
             <Divider/>
             <MenuItem key='chartstack' onClick={() => props.optionSelected(MenuChartOption.Stack)} selected={props.stacked} disabled={props.selected!==MenuChartOption.AreaChart && props.selected!==MenuChartOption.BarChart}><StackedLineChart/>&nbsp;Stack values</MenuItem>
             <Divider/>
+            <MenuItem key='chartexport' disabled={true}><ImportExport/>&nbsp;Export data</MenuItem>
             <MenuItem key='chartremove' disabled={true}><Delete/>&nbsp;Remove chart</MenuItem>
         </MenuList>
     </Menu>

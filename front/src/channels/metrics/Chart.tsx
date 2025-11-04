@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Alert, Stack, Typography } from '@mui/material'
+import { Alert, Box, Stack, Typography } from '@mui/material'
 import { MetricDefinition } from './MetricDefinition'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { METRICSCOLOURS } from './MetricsConfig'
@@ -68,6 +68,9 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
             case MenuChartOption.Remove:
                 //+++ pending implementation on parent
                 break
+            case MenuChartOption.Export:
+                //+++ pending implementation on parent
+                break
             default:
                 setChartType(opt)
             break
@@ -83,23 +86,25 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     switch (chartType) {
         case MenuChartOption.ValueChart:
             result = (
-                <Stack direction={'row'} alignItems={'center'} justifyContent={'center'} spacing={2}>
+                <div style={{padding:'30px', height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex'}}>
+                <Stack direction={'row'} alignItems={'center'} justifyContent={'center'} spacing={2} sx={{ flexWrap: 'wrap'}}>
                     { props.series.map( (serie,index) => {
-                        return (<>
+                        return (
                             <Stack direction={'column'}>
-                                <Typography textAlign={'center'} alignSelf={'center'} width={'100%'} fontSize={48} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
+                                <Typography mt={2} textAlign={'center'} width={'100%'} fontSize={Math.min(48, 192/props.series.length)} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
                                     {serie[serie.length-1].value}
                                 </Typography>
-                                <Typography textAlign={'center'} alignSelf={'center'} width={'100%'} fontSize={12} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
+                                <Typography textAlign={'center'} width={'100%'} fontSize={12} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
                                     {props.names[index]}
                                 </Typography>
                             </Stack>
-                        </>)
+                        )
                     })}
                 </Stack>
+                </div>
             )
             break
-        case 'line':
+        case MenuChartOption.LineChart:
             result = (
                 <LineChart data={mergedSeries}>
                     <CartesianGrid strokeDasharray='3 3'/>
@@ -111,7 +116,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </LineChart>
             )
             break
-        case 'area':
+        case MenuChartOption.AreaChart:
             result = (
                 <AreaChart data={mergedSeries}>
                     <defs>
@@ -137,7 +142,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </AreaChart>
             )
             break
-        case 'bar':
+        case MenuChartOption.BarChart:
             result = (
                 <BarChart data={mergedSeries}>
                     <CartesianGrid strokeDasharray='3 3'/>
