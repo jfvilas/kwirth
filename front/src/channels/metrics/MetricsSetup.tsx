@@ -148,6 +148,7 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                                     <MenuItem value={'area'}>Area</MenuItem>
                                     <MenuItem value={'bar'}>Bar</MenuItem>
                                     <MenuItem value={'pie'}>Pie</MenuItem>
+                                    <MenuItem value={'treemap'}>Treemap</MenuItem>
                                 </Select>
                             </FormControl>
 

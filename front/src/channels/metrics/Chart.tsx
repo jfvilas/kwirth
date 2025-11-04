@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { Alert, Box, Stack, Typography } from '@mui/material'
 import { MetricDefinition } from './MetricDefinition'
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, Treemap, XAxis, YAxis } from 'recharts'
 import { METRICSCOLOURS } from './MetricsConfig'
 import { Tooltip as MUITooltip, IconButton } from '@mui/material'
 import { MenuChart, MenuChartOption } from './MenuChart'
 import { MoreVert } from '@mui/icons-material'
+import { TreemapNode } from 'recharts/types/util/types'
 
 export interface ISample {
     timestamp:string
@@ -19,6 +20,8 @@ export interface IChartProps {
     colour: string,
     chartType: MenuChartOption,
     stack: boolean
+    tooltip: boolean
+    labels: boolean
     numSeries: number
 }
 
@@ -50,10 +53,35 @@ const mergeSeries = (names:string[], series:ISample[][]) => {
     return resultSeries
 }
 
+const CustomizedContent: React.FC<TreemapNode> = (props) => {
+    const { root, depth, x, y, width, height, index, name } = props
+
+    return (
+        <g>
+            <rect x={x} y={y} width={width} height={height}
+                style={{
+                    fill: depth < 2 ? METRICSCOLOURS[Math.floor((index / root.children.length) * 6)] : '#ffffff00',
+                    stroke: '#fff',
+                    strokeWidth: 2 / (depth + 1e-10),
+                    strokeOpacity: 1 / (depth + 1e-10),
+                }}
+            />
+            {depth === 1 ? (
+                <text x={x + width / 2} y={y + height / 2 + 7} textAnchor="middle" fill="#fff" fontSize={14} fontFamily='Roboto, Helvetica, Arial, sans-serif'>
+                {name}
+                </text>
+            ) : null}
+
+        </g>
+    )
+}
+
 export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     const [anchorMenuChart, setAnchorMenuChart] = useState<null | HTMLElement>(null)
     const [chartType, setChartType] = useState<MenuChartOption>(props.chartType)
     const [stack, setStack] = useState<boolean>(props.stack)
+    const [tooltip, setTooltip] = useState<boolean>(props.tooltip)
+    const [labels, setLabels] = useState<boolean>(props.labels)
     
     let result
     let height=300
@@ -70,6 +98,12 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 break
             case MenuChartOption.Export:
                 //+++ pending implementation on parent
+                break
+            case MenuChartOption.Tooltip:
+                setTooltip(!tooltip)
+                break
+            case MenuChartOption.Labels:
+                setLabels(!labels)
                 break
             default:
                 setChartType(opt)
@@ -110,7 +144,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                     <CartesianGrid strokeDasharray='3 3'/>
                     <XAxis dataKey='timestamp' fontSize={8}/>
                     <YAxis/>
-                    <Tooltip />
+                    { tooltip && <Tooltip /> }
                     <Legend/>
                     { props.series.map ((_serie,index) => <Line key={index} name={props.names[index]} type='monotone' dataKey={props.names[index]} stroke={props.series.length===1?props.colour:METRICSCOLOURS[index]} activeDot={{ r: 8 }} />) }
                 </LineChart>
@@ -134,7 +168,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                     <CartesianGrid strokeDasharray='3 3'/>
                     <XAxis dataKey='timestamp' fontSize={8}/>
                     <YAxis />
-                    <Tooltip />
+                    { tooltip && <Tooltip /> }
                     <Legend/>
                     { props.series.map ((_serie,index) => 
                         <Area key={index} name={props.names[index]} type='monotone' {...(stack? {stackId:'1'}:{})} dataKey={props.names[index]} stroke={props.series.length===1?props.colour:METRICSCOLOURS[index]} fill={`url(#color${props.series.length===1?props.colour:METRICSCOLOURS[index]})`}/> )
@@ -148,30 +182,45 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                     <CartesianGrid strokeDasharray='3 3'/>
                     <XAxis dataKey='timestamp' fontSize={8}/>
                     <YAxis />
-                    <Tooltip/>
+                    { tooltip && <Tooltip /> }
                     <Legend/>
                     { props.series.map ((serie,index) =>
                         <Bar name={props.names[index]} {...(stack? {stackId:'1'}:{})} dataKey={props.names[index]} stroke={props.series.length===1?props.colour:METRICSCOLOURS[index]} fill={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
-                            { index === props.series.length-1 && props.series.length > 1 ? <LabelList dataKey={props.names[index]} position='insideTop' content={renderLabel}/> : null }
+                            { index === props.series.length-1 && props.series.length > 1 && labels ? <LabelList dataKey={props.names[index]} position='insideTop' content={renderLabel}/> : null }
                         </Bar>
                     )}
                 </BarChart>
             )
             break
         case MenuChartOption.PieChart:
-            var ns:any[] = props.names.map( (name,index) => {
-                return { name, value:(props.series[index] as any[]).reduce((ac,val) => ac+val.value,0)}
+            var dataSummarized:any[] = props.names.map( (name,index) => {
+                return { name, value:(props.series[index] as ISample[]).reduce((ac,val) => ac+val.value,0)}
             })
             result = (
                 <PieChart>
-                    <Tooltip />
+                    { tooltip && <Tooltip /> }
                     <Legend layout='vertical' align='right' verticalAlign='middle'/>
-                    <Pie key={'asd'} data={ns} dataKey={'value'} fill={METRICSCOLOURS[0]} innerRadius={0} outerRadius={90}>
-                        {ns.map((entry, index) => (
+                    <Pie key={'asd'} data={dataSummarized} dataKey={'value'} fill={METRICSCOLOURS[0]} innerRadius={0} outerRadius={90}>
+                        {dataSummarized.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={METRICSCOLOURS[index % METRICSCOLOURS.length]} />
                         ))}
                     </Pie>
                 </PieChart>
+            )
+            break
+        case MenuChartOption.TreemapChart:
+            var dataSummarized:any[] = props.names.map( (name,index) => {
+                return { name, value:(props.series[index] as ISample[]).reduce((ac,val) => ac+val.value,0)}
+            })
+            console.log(dataSummarized)
+            result = (
+                <div style={{paddingLeft:'32px', height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex'}}>
+                    <ResponsiveContainer width='100%' onResize={() => {}}>
+                        <Treemap data={dataSummarized} dataKey='value' nameKey='name' aspectRatio={4 / 3} stroke="#ffffff" fill="#6e5bb8" content={React.createElement(CustomizedContent)}>
+                            { tooltip && <Tooltip /> }
+                        </Treemap>
+                    </ResponsiveContainer>
+                </div>
             )
             break
         default:
@@ -197,7 +246,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                         <Typography align='center'>{title}</Typography>
                 </MUITooltip>
                 <IconButton onClick={(event) => setAnchorMenuChart(event.currentTarget)}><MoreVert fontSize='small'/></IconButton> 
-                { anchorMenuChart && <MenuChart onClose={() => setAnchorMenuChart(null)} optionSelected={menuChartOptionSelected} anchorMenu={anchorMenuChart} selected={chartType} stacked={stack} numSeries={props.numSeries}/>}
+                { anchorMenuChart && <MenuChart onClose={() => setAnchorMenuChart(null)} optionSelected={menuChartOptionSelected} anchorMenu={anchorMenuChart} selected={chartType} stacked={stack} tooltip={tooltip} labels={labels} numSeries={props.numSeries} />}
             </Stack>
             <ResponsiveContainer width='100%' height={height} key={props.metricDefinition.metric+JSON.stringify(props.names)}>
                 {result}

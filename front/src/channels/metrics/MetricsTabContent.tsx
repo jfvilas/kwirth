@@ -232,9 +232,8 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 let series = assetNames.map(assetName => {
                     return data.get(assetName)!.get(metric)!
                 })
-                //allCharts.push(<>{createChart(metricDefinition, assetNames, series, '', metricsConfig.chart)}</>)
                 allCharts.push(
-                    <Chart metricDefinition={metricDefinition} names={assetNames} series={series} colour={''} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length}/>
+                    <Chart metricDefinition={metricDefinition} names={assetNames} series={series} colour={''} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} tooltip={true} labels={true}/>
                 )
             }
 
@@ -256,8 +255,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 return Array.from(data.get(asset)?.keys()!).map ( metric => {
                     let metricDefinition = props.channelObject.metricsList?.get(metric)!
                     var series = data.get(asset)?.get(metric)!
-                    //return (<>{createChart(metricDescription, [asset], [series], METRICSCOLOURS[index], metricsConfig.chart)}</>)
-                    return <Chart metricDefinition={metricDefinition} names={[asset]} series={[series]} colour={METRICSCOLOURS[index]} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} />
+                    return <Chart metricDefinition={metricDefinition} names={[asset]} series={[series]} colour={METRICSCOLOURS[index]} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} labels={true} tooltip={true}/>
                 })
             })
 
