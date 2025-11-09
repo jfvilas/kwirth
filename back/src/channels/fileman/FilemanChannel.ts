@@ -755,6 +755,7 @@ class FilemanChannel implements IChannel {
 
     uploadFile = async (ns: string, pod: string, c: string, localPath: string, remotePath: string) : Promise<IExecutionResult> => {
         try {
+            console.log('startupload')
             let accumulatedErr: Buffer = Buffer.alloc(0)
             let accumulatedEnd: Buffer = Buffer.alloc(0)
             let stdout = new Writable({})
@@ -762,6 +763,7 @@ class FilemanChannel implements IChannel {
             const fs = require('fs')
             const readStream = fs.createReadStream(localPath)
             let ended = false
+            let srclen = fs.statSync(localPath).size
 
             readStream.on('error', (err:any) => {
                 console.error('Error al leer el archivo local:', err)
@@ -769,13 +771,21 @@ class FilemanChannel implements IChannel {
             })
 
             let parentFolder = remotePath.split('/').slice(0,-1).join('/').trim()
-            let mkdir = `mkdir -p ${parentFolder} ;`
-            if (parentFolder === '') mkdir = ''
+            if (parentFolder !== '') {
+                let mkdir = ['mkdir', '-p', parentFolder]
+
+                let mkresult = await this.launchCommand(ns,pod,c, mkdir)
+                if (mkresult.stdend.status!== ExecutionStatus.SUCCESS) {
+                    return { metadata: {}, message: 'Cannot create dir: '+mkresult.stdend.message, status: ExecutionStatus.FAILURE }
+                }
+            }
+
             let shellSocket = await this.clusterInfo.execApi.exec(
                 ns,
                 pod,
                 c,
-                ['sh', '-c', `${mkdir} cat > "${remotePath}" && exit`],
+                ['sh', '-c', `cat > "${remotePath}" && exit`],
+                //[`cat > "${remotePath}"`],
                 stdout,
                 stderr,
                 readStream,
@@ -784,6 +794,7 @@ class FilemanChannel implements IChannel {
 
             shellSocket.onmessage = (event) => {
                 let data = event.data as Buffer
+                //console.log('data', data[0], data.slice(1).toString())
                 if (data[0]===2) accumulatedErr = Buffer.concat([accumulatedErr, data.slice(1)])
                 if (data[0]===3) accumulatedEnd = Buffer.concat([accumulatedEnd, data.slice(1)])
             }
@@ -791,11 +802,22 @@ class FilemanChannel implements IChannel {
                 ended=true
             }
 
-            while (!ended) {
-                await new Promise ( (resolve) => { setTimeout(resolve, 5)})
+            // exec api with the sh and the > returns immediately, so we add a '&& exit'
+            // when executoing this way, we dont receive channel 3 messages (where a json with the result should be present)
+            let dstPath = '/'+ns+'/'+pod+'/'+c+remotePath
+            let len = (await this.getFileInfo(dstPath))?.size
+            let retries = (10*100) * 15  // 15 seconds
+            while ((!len || +len!==srclen) && (retries>0)) {
+                retries--
+                await new Promise ( (resolve) => { setTimeout(resolve, 10)})
+                len = (await this.getFileInfo(dstPath))?.size
             }
-            let result:IExecutionResult = JSON.parse(accumulatedEnd.toString('utf8'))
-            return { metadata: { filename: localPath}, message: result.message, status: result.status }
+            if (retries>0) {
+                return { metadata: {}, message: '', status: ExecutionStatus.SUCCESS }
+            }
+            else {
+                return { metadata: {}, message: 'Error copying temp file to dest file', status: ExecutionStatus.FAILURE }
+            }
         }
         catch (err:any) {
             console.log(err)
