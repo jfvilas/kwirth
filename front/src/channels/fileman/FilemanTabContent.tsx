@@ -97,11 +97,11 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const onDelete = async (files: IFileData[]) => {
+    const onDelete = (files: IFileData[]) => {
         for (let file of files) {
             let [namespace,pod,container] = file.path.split('/').slice(1)
             filemanData.files = filemanData.files.filter(f => f.path !== file.path)
-            await sendCommand(FilemanCommandEnum.DELETE, namespace, pod, container, [file.path])
+            sendCommand(FilemanCommandEnum.DELETE, namespace, pod, container, [file.path])
             setRefresh(Math.random())
         }
     }
@@ -255,7 +255,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     primaryColor='#1976d2'
                     fontFamily='Roboto, Helvetica, Arial, sans-serif'
                     height='100%'
-                    className='custom-fm' 
+                    className='custom-fm'
                 />
                 { msgBox }
             </Box>

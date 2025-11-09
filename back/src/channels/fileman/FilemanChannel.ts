@@ -7,6 +7,7 @@ import { v4 as uuid } from 'uuid'
 import fs from 'fs'
 import path from 'path'
 import fileUpload from 'express-fileupload'
+import os from 'os'
 
 const ParseListing = require ('@jfvilas/parse-listing')
 
@@ -150,13 +151,16 @@ class FilemanChannel implements IChannel {
                 let filepath = '/' + filename.split('/').slice(4).join('/')
 
                 let fileInfo  = await this.getFileInfo(filename)
-                let encondedFilename = encodeURIComponent(filename.split('/').slice(-1)[0])
+                let encodedFilename = encodeURIComponent(filename.split('/').slice(-1)[0])
                 if (fileInfo) {
                     if (fileInfo.type === 0 || fileInfo.type === 2) {
-                        let tmpName='/tmp/'+uuid()
-                        let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, filepath, tmpName)
+                        let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, filepath)
+                        let tmpName=result.metadata.filename as string
                         if (result.status === ExecutionStatus.SUCCESS) {
-                            res.setHeader('Content-Disposition', `attachment; filename="${encondedFilename}"`)
+                            // res.sendFile(tmpName, { headers: {
+                            //     'Content-Disposition': `attachment; filename="${encodedFilename}"`,
+                            // }})
+                            res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`)
                             res.status(200).send(fs.readFileSync(tmpName))
                         }
                         else {
@@ -171,7 +175,7 @@ class FilemanChannel implements IChannel {
                     else if (fileInfo.type === 1) {
                         let tmpName='/tmp/'+uuid()
                         await this.downloadFolder(srcNamespace, srcPod, srcContainer, filepath, tmpName)
-                        res.setHeader('Content-Disposition', `attachment; filename="${encondedFilename}.tar.gz"`)
+                        res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}.tar.gz"`)
                         res.status(200).send(fs.readFileSync(tmpName))
                         fs.unlinkSync(tmpName)
                     }
@@ -623,50 +627,50 @@ class FilemanChannel implements IChannel {
             false,
             async (status) => {
                 writeStream.end()
-                //writeStream.close()
                 while (!writeStream.closed) {
                     await new Promise ( (resolve) => { setTimeout(resolve, 5)})
                 }
                 ready=true
             }
-        );
+        )
 
         while (!ready) {
             await new Promise ( (resolve) => { setTimeout(resolve, 5)})
         }
     }
 
-    uploadFile = async (ns: string, pod: string, c: string, localPath: string, remotePath: string) => {
-        const fs = require('fs')
-        const readStream = fs.createReadStream(localPath)
 
-        return new Promise((resolve, reject) => {
-            readStream.on('error', (err:any) => {
-                console.error('Error al leer el archivo local:', err)
-                reject(err)
-            })
+    // uploadFileOld = async (ns: string, pod: string, c: string, localPath: string, remotePath: string) => {
+    //     const fs = require('fs')
+    //     const readStream = fs.createReadStream(localPath)
 
-            let parentFolder = remotePath.split('/').slice(0,-1).join('/').trim()
-            let mkdir = `mkdir -p ${parentFolder} ;`
-            if (parentFolder === '') mkdir = ''
-            const execPromise = this.clusterInfo.execApi.exec(
-                ns,
-                pod,
-                c,
-                ['sh', '-c', `${mkdir} cat > "${remotePath}" && exit`],
-                process.stdout,  //+++
-                process.stderr,  //+++
-                readStream,
-                false
-            )
+    //     return new Promise((resolve, reject) => {
+    //         readStream.on('error', (err:any) => {
+    //             console.error('Error al leer el archivo local:', err)
+    //             reject(err)
+    //         })
 
-            execPromise.then(x => {                
-                x.onclose = (event) => { resolve({ metadata: {}, status: ExecutionStatus.SUCCESS }) }
-                x.onerror = (event) => { reject(new Error(`Upload socket error: ${JSON.stringify(event)}`)) }
-            })
-            .catch(err => { reject(err) })
-        })
-    }
+    //         let parentFolder = remotePath.split('/').slice(0,-1).join('/').trim()
+    //         let mkdir = `mkdir -p ${parentFolder} ;`
+    //         if (parentFolder === '') mkdir = ''
+    //         const execPromise = this.clusterInfo.execApi.exec(
+    //             ns,
+    //             pod,
+    //             c,
+    //             ['sh', '-c', `${mkdir} cat > "${remotePath}" && exit`],
+    //             process.stdout,  //+++
+    //             process.stderr,  //+++
+    //             readStream,
+    //             false
+    //         )
+
+    //         execPromise.then(x => {                
+    //             x.onclose = (event) => { resolve({ metadata: {}, status: ExecutionStatus.SUCCESS }) }
+    //             x.onerror = (event) => { reject(new Error(`Upload socket error: ${JSON.stringify(event)}`)) }
+    //         })
+    //         .catch(err => { reject(err) })
+    //     })
+    // }
     
     private launchCommand (ns:string, pod:string, c:string, cmd:string[]): Promise<{stdout:string, stderr:string, stdend:IExecutionResult}> {
         return new Promise( async (resolve, reject) => {
@@ -700,63 +704,163 @@ class FilemanChannel implements IChannel {
         })
     }    
 
-    downloadFile = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string, localPath: string) : Promise<IExecutionResult> => {
-        const writeStream = fs.createWriteStream(localPath)
-        let ready=false
-        const errorStream = new PassThrough()
-        let errorString = ''
+    downloadFile = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string) : Promise<IExecutionResult> => {
+        try {
+            let accumulatedErr: Buffer = Buffer.alloc(0)
+            let accumulatedEnd: Buffer = Buffer.alloc(0)
+            let stdout = new Writable({})
+            let stderr = new Writable({})
+            const tmpDir = os.tmpdir()
+            const localPath = path.join(tmpDir, uuid())
+            let ws = fs.createWriteStream(localPath)
+            let ended = false
 
-        errorStream.on('data', (chunk:any) => {
-            errorString += chunk.toString()
-            console.log('downloadFile error', errorString)
-        })
-        
-        await this.clusterInfo.execApi.exec(
-            srcNamespace,
-            srcPod,
-            srcContainer,
-            ['cat', remotePath],
-            writeStream, 
-            errorStream,
-            null, 
-            false, 
-            async (status) => {
-                writeStream.end()
-                while (!writeStream.closed) {
-                    await new Promise ( (resolve) => { setTimeout(resolve, 5)})
+            let shellSocket = await this.clusterInfo.execApi.exec(
+                srcNamespace,
+                srcPod,
+                srcContainer,
+                ['cat', remotePath],
+                stdout,
+                stderr,
+                null, 
+                false
+            )
+            shellSocket.onmessage = (event) => {
+                let data = event.data as Buffer
+                if (data[0]===1) {
+                    ws.write(data.slice(1))
                 }
-                ready=true
+                if (data[0]===2) accumulatedErr = Buffer.concat([accumulatedErr, data.slice(1)])
+                if (data[0]===3) accumulatedEnd = Buffer.concat([accumulatedEnd, data.slice(1)])
             }
-        )
-        while (!ready) {
-            await new Promise ( (resolve) => { setTimeout(resolve, 5)})
-        }
-        if (!writeStream.closed) {
-            console.error('****** forcing close ******')
-            writeStream.end()
-        }
-
-        if (errorString==='') {
-            return {
-                metadata: {},
-                message: '',
-                status: ExecutionStatus.SUCCESS
+            shellSocket.onclose = (event) => {
+                ws.end()
+                ended=true
             }
-        }
-        else {
-            return {
-                metadata: {},
-                message: errorString,
-                status: ExecutionStatus.FAILURE
+            shellSocket.onerror = (event) => {
+                console.log('lauchCommand error', event)
+                return { metadata: {}, message: 'Error '+event, status: ExecutionStatus.FAILURE }
             }
+            while (!ended) {
+                await new Promise ( (resolve) => { setTimeout(resolve, 10)})
+            }
+            let result:IExecutionResult = JSON.parse(accumulatedEnd.toString('utf8'))
+            return { metadata: { filename: localPath}, message: result.message, status: result.status }
         }
-
+        catch (err:any) {
+            console.log(err)
+            return { metadata: {}, message: err.toString(), status: ExecutionStatus.FAILURE }
+        }
     }
 
-    clusterCopyOrMove = async (operation:FilemanCommandEnum, srcNamespace:string, srcPod:string, srcContainer:string, srcLocalPath:string, dstNamespace:string, dstPod:string, dstContainer:string, dstLocalPath:string) : Promise<IExecutionResult> => {
-        const tempLocalFile = `/tmp/${srcNamespace}-${srcPod}-${srcContainer}-${dstNamespace}-${dstPod}-${dstContainer}`
+    uploadFile = async (ns: string, pod: string, c: string, localPath: string, remotePath: string) : Promise<IExecutionResult> => {
+        try {
+            let accumulatedErr: Buffer = Buffer.alloc(0)
+            let accumulatedEnd: Buffer = Buffer.alloc(0)
+            let stdout = new Writable({})
+            let stderr = new Writable({})
+            const fs = require('fs')
+            const readStream = fs.createReadStream(localPath)
+            let ended = false
 
-        let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, srcLocalPath, tempLocalFile)
+            readStream.on('error', (err:any) => {
+                console.error('Error al leer el archivo local:', err)
+                console.log('err')
+            })
+
+            let parentFolder = remotePath.split('/').slice(0,-1).join('/').trim()
+            let mkdir = `mkdir -p ${parentFolder} ;`
+            if (parentFolder === '') mkdir = ''
+            let shellSocket = await this.clusterInfo.execApi.exec(
+                ns,
+                pod,
+                c,
+                ['sh', '-c', `${mkdir} cat > "${remotePath}" && exit`],
+                stdout,
+                stderr,
+                readStream,
+                false
+            )
+
+            shellSocket.onmessage = (event) => {
+                let data = event.data as Buffer
+                if (data[0]===2) accumulatedErr = Buffer.concat([accumulatedErr, data.slice(1)])
+                if (data[0]===3) accumulatedEnd = Buffer.concat([accumulatedEnd, data.slice(1)])
+            }
+            shellSocket.onclose = (event) => {
+                ended=true
+            }
+
+            while (!ended) {
+                await new Promise ( (resolve) => { setTimeout(resolve, 5)})
+            }
+            let result:IExecutionResult = JSON.parse(accumulatedEnd.toString('utf8'))
+            return { metadata: { filename: localPath}, message: result.message, status: result.status }
+        }
+        catch (err:any) {
+            console.log(err)
+            return { metadata: {}, message: err.toString(), status: ExecutionStatus.FAILURE }
+        }
+    }
+    
+    // downloadFile = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string, localPath: string) : Promise<IExecutionResult> => {
+    //     const writeStream = fs.createWriteStream(localPath)
+    //     let ready=false
+    //     const errorStream = new PassThrough()
+    //     let errorString = ''
+
+    //     errorStream.on('data', (chunk:any) => {
+    //         errorString += chunk.toString()
+    //         console.log('downloadFile error', errorString)
+    //     })
+        
+    //     await this.clusterInfo.execApi.exec(
+    //         srcNamespace,
+    //         srcPod,
+    //         srcContainer,
+    //         ['cat', remotePath],
+    //         writeStream, 
+    //         errorStream,
+    //         null, 
+    //         false, 
+    //         async (status) => {
+    //             writeStream.end()
+    //             while (!writeStream.closed) {
+    //                 await new Promise ( (resolve) => { setTimeout(resolve, 5)})
+    //             }
+    //             ready=true
+    //         }
+    //     )
+    //     while (!ready) {
+    //         await new Promise ( (resolve) => { setTimeout(resolve, 5)})
+    //     }
+    //     if (!writeStream.closed) {
+    //         console.error('****** forcing close ******')
+    //         writeStream.end()
+    //     }
+
+    //     if (errorString==='') {
+    //         return {
+    //             metadata: {},
+    //             message: '',
+    //             status: ExecutionStatus.SUCCESS
+    //         }
+    //     }
+    //     else {
+    //         return {
+    //             metadata: {},
+    //             message: errorString,
+    //             status: ExecutionStatus.FAILURE
+    //         }
+    //     }
+
+    // }
+
+    clusterCopyOrMove = async (operation:FilemanCommandEnum, srcNamespace:string, srcPod:string, srcContainer:string, srcLocalPath:string, dstNamespace:string, dstPod:string, dstContainer:string, dstLocalPath:string) : Promise<IExecutionResult> => {
+        //const tempLocalFile = `/tmp/${srcNamespace}-${srcPod}-${srcContainer}-${dstNamespace}-${dstPod}-${dstContainer}`
+
+        let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, srcLocalPath)
+        let tempLocalFile = result.metadata.filename
         if (result.status !== ExecutionStatus.SUCCESS) return result            
 
         try {
