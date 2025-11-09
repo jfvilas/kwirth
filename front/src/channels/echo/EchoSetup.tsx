@@ -1,23 +1,37 @@
 import React, { useRef, useState } from 'react'
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField } from '@mui/material'
 import { ISetupProps } from '../IChannel'
-import { IEchoInstanceConfig, IEchoConfig } from './EchoConfig'
+import { IEchoInstanceConfig, IEchoConfig, EchoInstanceConfig, EchoConfig } from './EchoConfig'
 import { Science } from '@mui/icons-material'
 
 const EchoIcon = <Science />
 
 const EchoSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let echoConfig:IEchoConfig = props.channelObject?.config
-    let echoInstanceConfig:IEchoInstanceConfig = props.channelObject?.instanceConfig
+    let echoInstanceConfig:IEchoInstanceConfig = props.setupConfig?.channelInstanceConfig || new EchoInstanceConfig()
+    let echoConfig:IEchoConfig = props.setupConfig?.channelConfig || new EchoConfig()
 
-    const [interval, setInterval] = useState(props.instanceSettings? props.instanceSettings.interval : echoInstanceConfig.interval)
-    const [maxLines, setMaxLines] = useState(props.uiSettings? props.uiSettings.maxLines : echoConfig.maxLines)
+    const [interval, setInterval] = useState(echoInstanceConfig.interval)
+    const [maxLines, setMaxLines] = useState(echoConfig.maxLines)
     const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () => {
         echoConfig.maxLines = maxLines
         echoInstanceConfig.interval = interval
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
+        props.onChannelSetupClosed(props.channel,
+        {
+            channelId: props.channel.channelId,
+            channelConfig: echoConfig,
+            channelInstanceConfig: echoInstanceConfig
+        }, true, defaultRef.current?.checked || false)
+    }
+
+    const cancel = () => {
+        props.onChannelSetupClosed(props.channel, 
+        {
+            channelId: props.channel.channelId,
+            channelConfig: undefined,
+            channelInstanceConfig:undefined
+        }, false, false)
     }
 
     return (<>
@@ -32,7 +46,7 @@ const EchoSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
             <DialogActions>
                 <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
                 <Button onClick={ok}>OK</Button>
-                <Button onClick={() => props.onChannelSetupClosed(props.channel, false, false)}>CANCEL</Button>
+                <Button onClick={cancel}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

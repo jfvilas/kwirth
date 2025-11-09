@@ -15,6 +15,7 @@ export class TrivyChannel implements IChannel {
     channelId = 'trivy'
     
     requiresSetup() { return true }
+    requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return true }
     requiresClusterUrl() { return false }

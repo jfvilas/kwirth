@@ -1,7 +1,7 @@
 import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { MetricDefinition } from './metrics/MetricDefinition'
-import { Cluster } from '../model/Cluster'
 import { ENotifyLevel } from '../tools/Global'
+import { IChannelSettings } from '../model/Settings'
 
 enum IChannelMessageAction {
     NONE,
@@ -10,10 +10,10 @@ enum IChannelMessageAction {
 }
 
 interface ISetupProps {
-    onChannelSetupClosed: (channel:IChannel, start:boolean, defaultValues:boolean) => void
+    onChannelSetupClosed: (channel:IChannel, channelSettings:IChannelSettings, start:boolean, defaultValues:boolean) => void
     channel: IChannel
+    setupConfig?: IChannelSettings
     channelObject: IChannelObject
-    uiSettings?: any
     instanceSettings?: any
 }
 
@@ -36,6 +36,8 @@ interface IChannelObject {
     accessString?: string
     webSocket?: WebSocket
     clusterUrl?: string
+    onUpdateChannelSettings?: (channelSettings:IChannelSettings) => void
+    channelSettings?: IChannelSettings
 }
 
 interface IChannel {
@@ -44,6 +46,7 @@ interface IChannel {
     readonly channelId: string
 
     requiresSetup(): boolean
+    requiresSettings(): boolean
     requiresMetrics(): boolean
     requiresClusterUrl(): boolean
     requiresAccessString(): boolean

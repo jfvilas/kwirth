@@ -29,6 +29,7 @@ export class FilemanChannel implements IChannel {
     channelId = 'fileman'
     
     requiresSetup() { return false }
+    requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return true }
     requiresClusterUrl() { return true }

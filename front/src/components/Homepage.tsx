@@ -199,28 +199,25 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     const drawBoardCard = (boardList:IBoardSummary[], listType:ListTypeEnum) => {
         return <>
             <Card sx={{flex:1}}>
-                <CardHeader title={`${listType=== ListTypeEnum.LAST? 'Last':'Fav'} boards`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
+                <CardHeader title={`${listType === ListTypeEnum.LAST? 'Last':'Fav'} boards`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
                 <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>
                     { boardList.map (board => {
-                        return <>
-                            <Stack direction={'row'} spacing={1} alignItems={'baseline'}>
-                                <Typography>{board.name}</Typography>
-                                <Typography color='gray' fontSize={'12px'}>{board.description}</Typography>                            
-                                <Typography flexGrow={1}/>
-                                <IconButton onClick={() => openBoard(board)}>
-                                    <OpenInBrowser/>
+                        return <Stack key={listType+board.name} direction={'row'} spacing={1} alignItems={'baseline'}>
+                            <Typography>{board.name}</Typography>
+                            <Typography color='gray' fontSize={'12px'}>{board.description}</Typography>                            
+                            <Typography flexGrow={1}/>
+                            <IconButton onClick={() => openBoard(board)}>
+                                <OpenInBrowser/>
+                            </IconButton>
+                            { listType !== ListTypeEnum.FAV && 
+                                <IconButton onClick={() => toFavBoards(board)}>
+                                    <Star sx={{ color: 'gray' }} /> 
                                 </IconButton>
-                                { listType !== ListTypeEnum.FAV && 
-                                    <IconButton onClick={() => toFavBoards(board)}>
-                                        <Star sx={{ color: 'gray' }} /> 
-                                    </IconButton>
-                                }
-                                <IconButton onClick={() => deleteFromBoardsList(boardList, board)}>
-                                    <Delete/>
-                                </IconButton>
-
-                            </Stack>
-                        </>
+                            }
+                            <IconButton onClick={() => deleteFromBoardsList(boardList, board)}>
+                                <Delete/>
+                            </IconButton>
+                        </Stack>
                     })}
                 </CardContent>
             </Card>

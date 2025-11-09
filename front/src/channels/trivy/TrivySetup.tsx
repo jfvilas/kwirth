@@ -1,18 +1,19 @@
 import React, { useRef, useState } from 'react'
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Radio, RadioGroup, Stack, Typography } from '@mui/material'
 import { ISetupProps } from '../IChannel'
-import { ITrivyInstanceConfig } from './TrivyConfig'
+import { ITrivyConfig, ITrivyInstanceConfig, TrivyConfig, TrivyInstanceConfig } from './TrivyConfig'
 import { VerifiedUser } from '@mui/icons-material'
 
 const TrivyIcon = <VerifiedUser />
 
 const TrivySetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig
+    let trivyInstanceConfig:ITrivyInstanceConfig = props.setupConfig?.channelInstanceConfig || new TrivyInstanceConfig()
+    let trivyConfig:ITrivyConfig = props.setupConfig?.channelConfig || new TrivyConfig()
     
-    const [maxCritical, setMaxCritical] = useState(props.instanceSettings? props.instanceSettings.maxCritical : trivyInstanceConfig.maxCritical)
-    const [maxHigh, setMaxHigh] = useState(props.instanceSettings? props.instanceSettings.maxHigh : trivyInstanceConfig.maxHigh)
-    const [maxMedium, setMaxMedium] = useState(props.instanceSettings? props.instanceSettings.maxMedium : trivyInstanceConfig.maxMedium)
-    const [maxLow, setMaxLow] = useState(props.instanceSettings? props.instanceSettings.maxLow : trivyInstanceConfig.maxLow)
+    const [maxCritical, setMaxCritical] = useState(trivyInstanceConfig.maxCritical)
+    const [maxHigh, setMaxHigh] = useState(trivyInstanceConfig.maxHigh)
+    const [maxMedium, setMaxMedium] = useState(trivyInstanceConfig.maxMedium)
+    const [maxLow, setMaxLow] = useState(trivyInstanceConfig.maxLow)
     const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () =>{
@@ -20,7 +21,21 @@ const TrivySetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         trivyInstanceConfig.maxHigh = maxHigh
         trivyInstanceConfig.maxMedium = maxMedium
         trivyInstanceConfig.maxLow = maxLow
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
+        props.onChannelSetupClosed(props.channel,
+        {
+            channelId: props.channel.channelId,
+            channelConfig: trivyConfig,
+            channelInstanceConfig: trivyInstanceConfig
+        }, true, defaultRef.current?.checked || false)
+    }
+
+    const cancel = () => {
+        props.onChannelSetupClosed(props.channel, 
+        {
+            channelId: props.channel.channelId,
+            channelConfig: undefined,
+            channelInstanceConfig:undefined
+        }, false, false)
     }
 
     return (<>
@@ -84,7 +99,7 @@ const TrivySetup: React.FC<ISetupProps> = (props:ISetupProps) => {
             <DialogActions>
                 <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
                 <Button onClick={ok}>OK</Button>
-                <Button onClick={() => props.onChannelSetupClosed(props.channel, false, false)}>CANCEL</Button>
+                <Button onClick={cancel}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

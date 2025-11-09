@@ -15,6 +15,7 @@ export class MetricsChannel implements IChannel {
     channelId = 'metrics'
     
     requiresSetup() { return true }
+    requiresSettings() { return true }
     requiresMetrics() { return true }
     requiresAccessString() { return false }
     requiresClusterUrl() { return false }

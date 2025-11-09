@@ -8,14 +8,14 @@ interface IColors {
     pending: string
 }
 
-const BASECOLORS: IColors = {
+const TABBASECOLORS: IColors = {
     stop: '#f7f7f7',
     start: '#28a745',
     pause: '#6c757d',
     pending: '#ffc107'
 }
 
-const BRIGHTCOLORS: IColors = {
+const TABBRIGHTCOLORS: IColors = {
     stop: '#f1f1f1',
     start: '#34d058',
     pause: '#dfd7df',
@@ -98,4 +98,4 @@ const DEFAULTLASTTABS:ITabSummary[] = [
 ]
 
 export type { IColors }
-export { OPSWELCOMEMESSAGE, OPSHELPMESSAGE, DEFAULTLASTTABS, BASECOLORS, BRIGHTCOLORS }
+export { OPSWELCOMEMESSAGE, OPSHELPMESSAGE, DEFAULTLASTTABS, TABBASECOLORS, TABBRIGHTCOLORS }

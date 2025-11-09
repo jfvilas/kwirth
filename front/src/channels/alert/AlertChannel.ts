@@ -15,6 +15,7 @@ export class AlertChannel implements IChannel {
     channelId = 'alert'
 
     requiresSetup() { return true }
+    requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return false }
     requiresClusterUrl() { return false }

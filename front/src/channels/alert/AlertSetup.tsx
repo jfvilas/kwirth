@@ -1,24 +1,46 @@
 import React, { useState, ChangeEvent, useRef } from 'react'
 import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField } from '@mui/material'
 import { ISetupProps } from '../IChannel'
-import { IAlertInstanceConfig, IAlertConfig } from './AlertConfig'
+import { IAlertInstanceConfig, IAlertConfig, AlertInstanceConfig, AlertConfig } from './AlertConfig'
 import { Warning } from '@mui/icons-material'
 import { TextToolTip } from '../../tools/FrontTools'
 
 const AlertIcon = <Warning />
 
 const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let alertConfig:IAlertConfig = props.channelObject?.config
-    let alertInstanceConfig:IAlertInstanceConfig = props.channelObject?.instanceConfig
+    let alertInstanceConfig:IAlertInstanceConfig = props.setupConfig?.channelInstanceConfig || new AlertInstanceConfig()
+    let alertConfig:IAlertConfig = props.setupConfig?.channelConfig || new AlertConfig()
     
     const [info, setInfo] = useState('')
     const [warning, setWarning] = useState('')
     const [error, setError] = useState('')
-    const [regexInfo, setRegexInfo] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexInfo : alertInstanceConfig.regexInfo)
-    const [regexWarning, setRegexWarning] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexWarning : alertInstanceConfig.regexWarning)
-    const [regexError, setRegexError] = useState<string[]>(props.instanceSettings? props.instanceSettings.regexError : alertInstanceConfig.regexError)
-    const [maxAlerts, setMaxAlerts] = useState<number>(props.uiSettings? props.uiSettings.maxAlerts : alertConfig.maxAlerts)
+    const [regexInfo, setRegexInfo] = useState<string[]>(alertInstanceConfig.regexInfo)
+    const [regexWarning, setRegexWarning] = useState<string[]>(alertInstanceConfig.regexWarning)
+    const [regexError, setRegexError] = useState<string[]>(alertInstanceConfig.regexError)
+    const [maxAlerts, setMaxAlerts] = useState<number>(alertConfig.maxAlerts)
     const defaultRef = useRef<HTMLInputElement|null>(null)
+
+    const ok = () => {
+        alertConfig.maxAlerts = maxAlerts
+        alertInstanceConfig.regexInfo = regexInfo
+        alertInstanceConfig.regexWarning = regexWarning
+        alertInstanceConfig.regexError = regexError
+        props.onChannelSetupClosed(props.channel,
+        {
+            channelId: props.channel.channelId,
+            channelConfig: alertConfig,
+            channelInstanceConfig: alertInstanceConfig
+        }, true, defaultRef.current?.checked || false)
+    }
+
+    const cancel = () => {
+        props.onChannelSetupClosed(props.channel, 
+        {
+            channelId: props.channel.channelId,
+            channelConfig: undefined,
+            channelInstanceConfig:undefined
+        }, false, false)
+    }
 
     const onChangeRegexInfo = (event:ChangeEvent<HTMLInputElement>) => {
         setInfo(event.target.value)
@@ -67,14 +89,6 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
 
     const onChangeMaxAlerts = (event:ChangeEvent<HTMLInputElement>) => {
         setMaxAlerts(+event.target.value)
-    }
-
-    const ok = () => {
-        alertConfig.maxAlerts = maxAlerts
-        alertInstanceConfig.regexInfo = regexInfo
-        alertInstanceConfig.regexWarning = regexWarning
-        alertInstanceConfig.regexError = regexError
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 
     let help = <>
@@ -137,7 +151,7 @@ const AlertSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
             <DialogActions>
                 <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
                 <Button onClick={ok} disabled={regexInfo.length===0 && regexWarning.length===0 && regexError.length===0}>OK</Button>
-                <Button onClick={() => props.onChannelSetupClosed(props.channel, false, false)}>CANCEL</Button>
+                <Button onClick={cancel}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { Alert, Box, Stack, Typography } from '@mui/material'
+import { Alert, Stack, Typography } from '@mui/material'
 import { MetricDefinition } from './MetricDefinition'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, Treemap, XAxis, YAxis } from 'recharts'
-import { METRICSCOLOURS } from './MetricsConfig'
+import { IMetricViewConfig, METRICSCOLOURS } from './MetricsConfig'
 import { Tooltip as MUITooltip, IconButton } from '@mui/material'
-import { MenuChart, MenuChartOption } from './MenuChart'
+import { MenuChart, MenuChartOption, ChartType } from './MenuChart'
 import { MoreVert } from '@mui/icons-material'
 import { TreemapNode } from 'recharts/types/util/types'
 
@@ -18,76 +18,78 @@ export interface IChartProps {
     names: string[],
     series: ISample[][],
     colour: string,
-    chartType: MenuChartOption,
+    chartType: ChartType,
     stack: boolean
     tooltip: boolean
     labels: boolean
     numSeries: number
-}
-
-const mergeSeries = (names:string[], series:ISample[][]) => {
-    // names is an array of names of series
-    // series is an array of arrays of samples
-    // example:
-    //   [default, ingress-nginx]
-    //   [  [ {timestamp:'dad',value:1}, {timestamp:'dad',value:2} ], [ {timestamp:'dad',value:4}, {timestamp:'dad',value:0} ]  ]
-    if (!names || names.length===0) return []
-    let resultSeries = []
-
-    for (var i=0; i<series[0].length; i++) {
-        var item: { [key: string]: string|number } = {}
-        for (var j=0; j<series.length; j++ ) {
-            if (series[j][i]) {
-                item['timestamp'] = series[0][i].timestamp
-                item[names[j]] = series[j][i].value
-            }
-        }
-        resultSeries.push(item)
-    }
-
-    // result is:
-    // [ 
-    //   {timestamp: '09:16:27', default: 0.21, ingress-nginx: 0.93}
-    //   {timestamp: '09:16:32', default: 0.5, ingress-nginx: 0.04}
-    // ]
-    return resultSeries
-}
-
-const CustomizedContent: React.FC<TreemapNode> = (props) => {
-    const { root, depth, x, y, width, height, index, name } = props
-
-    return (
-        <g>
-            <rect x={x} y={y} width={width} height={height}
-                style={{
-                    fill: depth < 2 ? METRICSCOLOURS[Math.floor((index / root.children.length) * 6)] : '#ffffff00',
-                    stroke: '#fff',
-                    strokeWidth: 2 / (depth + 1e-10),
-                    strokeOpacity: 1 / (depth + 1e-10),
-                }}
-            />
-            {depth === 1 ? (
-                <text x={x + width / 2} y={y + height / 2 + 7} textAnchor="middle" fill="#fff" fontSize={14} fontFamily='Roboto, Helvetica, Arial, sans-serif'>
-                {name}
-                </text>
-            ) : null}
-
-        </g>
-    )
+    viewConfig : IMetricViewConfig
+    onSetDefault: (name:string, mvc: IMetricViewConfig) => void
 }
 
 export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     const [anchorMenuChart, setAnchorMenuChart] = useState<null | HTMLElement>(null)
-    const [chartType, setChartType] = useState<MenuChartOption>(props.chartType)
-    const [stack, setStack] = useState<boolean>(props.stack)
-    const [tooltip, setTooltip] = useState<boolean>(props.tooltip)
-    const [labels, setLabels] = useState<boolean>(props.labels)
-    
+    const [chartType, setChartType] = useState<ChartType>(props.viewConfig?.chartType? props.viewConfig.chartType : props.chartType)
+    const [stack, setStack] = useState<boolean>(props.viewConfig?.stack? props.viewConfig.stack : props.stack)
+    const [tooltip, setTooltip] = useState<boolean>(props.viewConfig?.tooltip? props.viewConfig.tooltip : props.tooltip)
+    const [labels, setLabels] = useState<boolean>(props.viewConfig?.labels? props.viewConfig.labels : props.labels)
+
     let result
     let height=300
-    let mergedSeries = mergeSeries(props.names, props.series)
+    let  dataSummarized:any[]
 
-    const menuChartOptionSelected = (opt:MenuChartOption) => {
+    const mergeSeries = (names:string[], series:ISample[][]) => {
+        // names is an array of names of series
+        // series is an array of arrays of samples
+        // example:
+        //   [default, ingress-nginx]
+        //   [  [ {timestamp:'dad',value:1}, {timestamp:'dad',value:2} ], [ {timestamp:'dad',value:4}, {timestamp:'dad',value:0} ]  ]
+        if (!names || names.length===0) return []
+        let resultSeries = []
+
+        for (var i=0; i<series[0].length; i++) {
+            var item: { [key: string]: string|number } = {}
+            for (var j=0; j<series.length; j++ ) {
+                if (series[j][i]) {
+                    item['timestamp'] = series[0][i].timestamp
+                    item[names[j]] = series[j][i].value
+                }
+            }
+            resultSeries.push(item)
+        }
+
+        // result is:
+        // [ 
+        //   {timestamp: '09:16:27', default: 0.21, ingress-nginx: 0.93}
+        //   {timestamp: '09:16:32', default: 0.5, ingress-nginx: 0.04}
+        // ]
+        return resultSeries
+    }
+
+    const CustomizedContent: React.FC<TreemapNode> = (props) => {
+        const { root, depth, x, y, width, height, index, name } = props
+
+        return (
+            <g>
+                <rect x={x} y={y} width={width} height={height}
+                    style={{
+                        fill: depth < 2 ? METRICSCOLOURS[Math.floor((index / root.children.length) * 6)] : '#ffffff00',
+                        stroke: '#fff',
+                        strokeWidth: 2 / (depth + 1e-10),
+                        strokeOpacity: 1 / (depth + 1e-10),
+                    }}
+                />
+                {depth === 1 ? (
+                    <text x={x + width / 2} y={y + height / 2 + 7} textAnchor="middle" fill="#fff" fontSize={14} fontFamily='Roboto, Helvetica, Arial, sans-serif'>
+                    {name}
+                    </text>
+                ) : null}
+
+            </g>
+        )
+    }
+
+    const menuChartOptionSelected = (opt:MenuChartOption, data:any) => {
         setAnchorMenuChart(null)
         switch (opt) {
             case MenuChartOption.Stack:
@@ -97,7 +99,22 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 //+++ pending implementation on parent
                 break
             case MenuChartOption.Export:
-                //+++ pending implementation on parent
+                if (!props.names?.length || !props.series?.length) return
+
+                const headers = ["timestamp", ...props.names]
+                const timestamps = props.series[0].map(point => point.timestamp)
+                const rows = timestamps.map((timestamp, idx) => {
+                    const values = props.series.map(serie => serie[idx]?.value ?? "")
+                    return [timestamp, ...values];
+                })
+                const separator = ",";
+                const csvContent = headers.join(separator) + "\n" + rows.map(r => r.join(separator)).join("\n")
+                const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" })
+                
+                const link = document.createElement("a")
+                link.href = URL.createObjectURL(blob)
+                link.download = `${props.metricDefinition.metric}.csv`
+                link.click()
                 break
             case MenuChartOption.Tooltip:
                 setTooltip(!tooltip)
@@ -105,9 +122,18 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
             case MenuChartOption.Labels:
                 setLabels(!labels)
                 break
+            case MenuChartOption.Default:
+                props.onSetDefault(props.metricDefinition.metric, {
+                    displayName: props.metricDefinition.metric,
+                    chartType: chartType,
+                    stack: stack,
+                    tooltip: tooltip,
+                    labels: labels
+                })
+                break
             default:
-                setChartType(opt)
-            break
+                setChartType(data as ChartType)
+                break
         } 
     }
 
@@ -118,15 +144,23 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     }
 
     switch (chartType) {
-        case MenuChartOption.ValueChart:
+        case ChartType.ValueChart:
             result = (
                 <div style={{padding:'30px', height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex'}}>
                 <Stack direction={'row'} alignItems={'center'} justifyContent={'center'} spacing={2} sx={{ flexWrap: 'wrap'}}>
                     { props.series.map( (serie,index) => {
+                        let value = serie[serie.length-1].value
+                        let valueStr = value.toString()
+                        if (value) {
+                            valueStr = value.toFixed(3)
+                            if (value>10) valueStr=value.toFixed(2)
+                            if (value>100) valueStr=value.toFixed(1)
+                            if (value>1000) valueStr=value.toFixed(0)
+                        }
                         return (
-                            <Stack direction={'column'}>
+                            <Stack key={index} direction={'column'}>
                                 <Typography mt={2} textAlign={'center'} width={'100%'} fontSize={Math.min(48, 192/props.series.length)} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
-                                    {serie[serie.length-1].value}
+                                    {valueStr}
                                 </Typography>
                                 <Typography textAlign={'center'} width={'100%'} fontSize={12} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
                                     {props.names[index]}
@@ -138,9 +172,9 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </div>
             )
             break
-        case MenuChartOption.LineChart:
+        case ChartType.LineChart:
             result = (
-                <LineChart data={mergedSeries}>
+                <LineChart data={mergeSeries(props.names, props.series)}>
                     <CartesianGrid strokeDasharray='3 3'/>
                     <XAxis dataKey='timestamp' fontSize={8}/>
                     <YAxis/>
@@ -150,9 +184,9 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </LineChart>
             )
             break
-        case MenuChartOption.AreaChart:
+        case ChartType.AreaChart:
             result = (
-                <AreaChart data={mergedSeries}>
+                <AreaChart data={mergeSeries(props.names, props.series)}>
                     <defs>
                         {
                             props.series.map( (_serie,index) => {
@@ -176,24 +210,24 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </AreaChart>
             )
             break
-        case MenuChartOption.BarChart:
+        case ChartType.BarChart:
             result = (
-                <BarChart data={mergedSeries}>
+                <BarChart data={mergeSeries(props.names, props.series)}>
                     <CartesianGrid strokeDasharray='3 3'/>
                     <XAxis dataKey='timestamp' fontSize={8}/>
                     <YAxis />
                     { tooltip && <Tooltip /> }
                     <Legend/>
                     { props.series.map ((serie,index) =>
-                        <Bar name={props.names[index]} {...(stack? {stackId:'1'}:{})} dataKey={props.names[index]} stroke={props.series.length===1?props.colour:METRICSCOLOURS[index]} fill={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
+                        <Bar key={index} name={props.names[index]} {...(stack? {stackId:'1'}:{})} dataKey={props.names[index]} stroke={props.series.length===1?props.colour:METRICSCOLOURS[index]} fill={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
                             { index === props.series.length-1 && props.series.length > 1 && labels ? <LabelList dataKey={props.names[index]} position='insideTop' content={renderLabel}/> : null }
                         </Bar>
                     )}
                 </BarChart>
             )
             break
-        case MenuChartOption.PieChart:
-            var dataSummarized:any[] = props.names.map( (name,index) => {
+        case ChartType.PieChart:
+            dataSummarized= props.names.map( (name,index) => {
                 return { name, value:(props.series[index] as ISample[]).reduce((ac,val) => ac+val.value,0)}
             })
             result = (
@@ -208,11 +242,10 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </PieChart>
             )
             break
-        case MenuChartOption.TreemapChart:
-            var dataSummarized:any[] = props.names.map( (name,index) => {
+        case ChartType.TreemapChart:
+            dataSummarized = props.names.map( (name,index) => {
                 return { name, value:(props.series[index] as ISample[]).reduce((ac,val) => ac+val.value,0)}
             })
-            console.log(dataSummarized)
             result = (
                 <div style={{paddingLeft:'32px', height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex'}}>
                     <ResponsiveContainer width='100%' onResize={() => {}}>

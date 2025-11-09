@@ -17,6 +17,7 @@ export class OpsChannel implements IChannel {
     channelId = 'ops'
     
     requiresSetup() { return true }
+    requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return true }
     requiresClusterUrl() { return false }

@@ -2,23 +2,37 @@ import React, { useRef, useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Select, Stack, Switch, Typography, Checkbox } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { Terminal } from '@mui/icons-material'
-import { IOpsInstanceConfig, IOpsConfig } from './OpsConfig'
+import { IOpsInstanceConfig, IOpsConfig, OpsInstanceConfig, OpsConfig } from './OpsConfig'
 import { ColorModeEnum } from './terminal/Terminal'
 
 const OpsIcon = <Terminal />
 
 const OpsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let opsInstanceConfig:IOpsInstanceConfig = props.channelObject?.instanceConfig
-    let opsUiConfig:IOpsConfig = props.channelObject?.config
+    let opsInstanceConfig:IOpsInstanceConfig = props.setupConfig?.channelInstanceConfig || new OpsInstanceConfig()
+    let opsConfig:IOpsConfig = props.setupConfig?.channelConfig || new OpsConfig()
     
-    const [sessionKeepAlive, setSessionKeepAlive] = useState(props.instanceSettings? props.instanceSettings.sessionKeepAlive : opsInstanceConfig.sessionKeepAlive)
-    const [colorMode, setColorMode] = useState<ColorModeEnum>(props.uiSettings? props.uiSettings.colorMode : ColorModeEnum.Light)
+    const [sessionKeepAlive, setSessionKeepAlive] = useState(opsInstanceConfig.sessionKeepAlive)
+    const [colorMode, setColorMode] = useState<ColorModeEnum>(opsConfig.colorMode)
     const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () => {
         opsInstanceConfig.sessionKeepAlive = sessionKeepAlive
-        opsUiConfig.colorMode = colorMode
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
+        opsConfig.colorMode = colorMode
+        props.onChannelSetupClosed(props.channel,
+        {
+            channelId: props.channel.channelId,
+            channelConfig: opsConfig,
+            channelInstanceConfig: opsInstanceConfig
+        }, true, defaultRef.current?.checked || false)
+    }
+
+    const cancel = () => {
+        props.onChannelSetupClosed(props.channel, 
+        {
+            channelId: props.channel.channelId,
+            channelConfig: undefined,
+            channelInstanceConfig:undefined
+        }, false, false)
     }
 
     return (<>
@@ -41,7 +55,7 @@ const OpsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
             <DialogActions>
                 <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
                 <Button onClick={ok}>OK</Button>
-                <Button onClick={() => props.onChannelSetupClosed(props.channel, false, false)}>CANCEL</Button>
+                <Button onClick={cancel}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

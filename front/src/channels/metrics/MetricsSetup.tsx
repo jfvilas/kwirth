@@ -8,9 +8,9 @@ import { MetricsInstanceConfig, MetricsConfig } from './MetricsConfig'
 const MetricsIcon = <BarChart/>
 
 const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let metricsConfig:MetricsConfig = props.channelObject.config
-    let metricsInstanceConfig:MetricsInstanceConfig = props.channelObject.instanceConfig
-    let metricsList = props.channelObject.metricsList
+    let metricsInstanceConfig:MetricsInstanceConfig = props.setupConfig?.channelInstanceConfig || new MetricsInstanceConfig()
+    let metricsConfig:MetricsConfig = props.setupConfig?.channelConfig || new MetricsConfig()
+    let allMetricsList = props.channelObject.metricsList
     
     let multiAssets=false
     if (props.channelObject) {
@@ -30,23 +30,23 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         }
     }
 
-    let merge = multiAssets? (props.uiSettings? props.uiSettings.merge : metricsConfig.merge) : false
-    let aggregate = multiAssets? (!merge && (props.instanceSettings? props.instanceSettings.aggregate : metricsInstanceConfig.aggregate)) : false
-    let stack = multiAssets? (merge && (props.uiSettings? props.uiSettings.stack : metricsConfig.stack)) : false
+    let merge = multiAssets? (metricsConfig.merge) : false
+    let aggregate = multiAssets? (!merge && (metricsInstanceConfig.aggregate)) : false
+    let stack = multiAssets? (merge && (metricsConfig.stack)) : false
 
-    const [metricsNames, setMetricsNames] = React.useState<string[]>(props.instanceSettings? props.instanceSettings.metrics : metricsInstanceConfig.metrics)
-    const [metricsMode, setMetricsMode] = useState(props.instanceSettings? props.instanceSettings.mode : metricsInstanceConfig.mode)
-    const [metricsInterval, setMetricsInterval] = useState(props.instanceSettings? props.instanceSettings.interval : metricsInstanceConfig.interval)
-    const [metricsDepth, setMetricsDepth] = useState(props.uiSettings? props.uiSettings.depth : metricsConfig.depth)
-    const [metricsWidth, setMetricsWidth] = useState(props.uiSettings? props.uiSettings.width : metricsConfig.width)
+    const [metricsNames, setMetricsNames] = React.useState<string[]>(metricsInstanceConfig.metrics)
+    const [metricsMode, setMetricsMode] = useState(metricsInstanceConfig.mode)
+    const [metricsInterval, setMetricsInterval] = useState(metricsInstanceConfig.interval)
+    const [metricsDepth, setMetricsDepth] = useState(metricsConfig.depth)
+    const [metricsWidth, setMetricsWidth] = useState(metricsConfig.width)
     const [assetAggregate, setAssetAggregate] = React.useState(aggregate)
     const [assetMerge, setAssetMerge] = React.useState(merge)
     const [assetStack, setAssetStack] = React.useState(stack)
     const [chart, setChart] = useState(metricsConfig.chart)
     const [metricsFilter, setMetricsFilter] = useState('')
-    const defaultRef = useRef<HTMLInputElement|null>(null)
+    const setDefaultRef = useRef<HTMLInputElement|null>(null)
 
-    const onClickOk = () =>{
+    const ok = () =>{
         metricsInstanceConfig.mode = metricsMode
         metricsInstanceConfig.interval = metricsInterval
         metricsInstanceConfig.aggregate = assetAggregate
@@ -56,7 +56,21 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         metricsConfig.merge = assetMerge
         metricsConfig.stack = assetStack
         metricsConfig.chart = chart
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
+        props.onChannelSetupClosed(props.channel,
+        {
+            channelId: props.channel.channelId,
+            channelConfig: metricsConfig,
+            channelInstanceConfig: metricsInstanceConfig
+        }, true, setDefaultRef.current?.checked || false)
+    }
+
+    const cancel = () => {
+        props.onChannelSetupClosed(props.channel, 
+        {
+            channelId: props.channel.channelId,
+            channelConfig: undefined,
+            channelInstanceConfig:undefined
+        }, false, false)
     }
 
     const metricAddOrRemove = (value:string) => {
@@ -117,12 +131,12 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                     <Stack direction={'row'} spacing={1} sx={{width:'100%', height:'22vh'}}>
                         <Stack direction={'column'} sx={{width:'70%'}}>
                             <List sx={{ width: '100%', overflowY: 'auto' }}>
-                                { metricsList && Array.from(metricsList.keys()).map((value, index) => {
+                                { allMetricsList && Array.from(allMetricsList.keys()).map((value, index) => {
                                     if (value.includes(metricsFilter) && (value.startsWith('container_') || value.startsWith('kwirth_'))) {
                                         return (
                                             <ListItem key={index} disablePadding>
                                                 <ListItemButton onClick={() => metricAddOrRemove(value)} dense>
-                                                    <Tooltip title={<><Typography fontSize={12}><b>{metricsList && metricsList.get(value)?.type}</b></Typography><Typography fontSize={12}>{metricsList && metricsList.get(value)?.help}</Typography></>} placement="bottom-start" enterDelay={750}>
+                                                    <Tooltip title={<><Typography fontSize={12}><b>{allMetricsList && allMetricsList.get(value)?.type}</b></Typography><Typography fontSize={12}>{allMetricsList && allMetricsList.get(value)?.help}</Typography></>} placement="bottom-start" enterDelay={750}>
                                                         <ListItemText primary={value} sx={{color:metricsNames.includes(value)?'black':'gray'}} />
                                                     </Tooltip>
                                                 </ListItemButton>
@@ -163,9 +177,9 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
 
             </DialogContent>
             <DialogActions>
-                <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
-                <Button onClick={onClickOk} disabled={metricsNames.length===0}>OK</Button>
-                <Button onClick={() => props.onChannelSetupClosed(props.channel, false, false)}>CANCEL</Button>
+                <FormControlLabel control={<Checkbox slotProps={{ input: { ref: setDefaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
+                <Button onClick={ok} disabled={metricsNames.length===0}>OK</Button>
+                <Button onClick={cancel}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     </>)

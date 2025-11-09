@@ -2,7 +2,7 @@ import React, { useState, ChangeEvent, useRef } from 'react'
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, FormLabel, Radio, RadioGroup, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { Subject } from '@mui/icons-material'
-import { ILogInstanceConfig, ILogConfig, LogSortOrderEnum } from './LogConfig'
+import { ILogInstanceConfig, ILogConfig, LogSortOrderEnum, LogInstanceConfig, LogConfig } from './LogConfig'
 import { DateTimePicker, LocalizationProvider, renderTimeViewClock } from '@mui/x-date-pickers'
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment'
 import moment from 'moment'
@@ -10,19 +10,46 @@ import moment from 'moment'
 const LogIcon = <Subject />
 
 const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
-    let logConfig:ILogConfig = props.channelObject?.config
-    let logInstanceConfig:ILogInstanceConfig = props.channelObject?.instanceConfig
+    let logInstanceConfig:ILogInstanceConfig = props.setupConfig?.channelInstanceConfig || new LogInstanceConfig()
+    let logConfig:ILogConfig = props.setupConfig?.channelConfig || new LogConfig()
 
-    const [selectedTab, setSelectedTab] = useState(props.uiSettings? (props.uiSettings.startDiagnostics? 'sd':'log') : 'log')
-    const [maxMessages, setMaxMessages] = useState(props.uiSettings? props.uiSettings.maxMessages : logConfig.maxMessages)
-    const [maxPerPodMessages, setMaxPerPodMessages] = useState(props.uiSettings? props.uiSettings.maxPerPodMessages : logConfig.maxPerPodMessages)
-    const [follow, setFollow] = useState(props.uiSettings? props.uiSettings.follow : logConfig.follow)
-    const [sortOrder, setSortOrder] = useState(props.uiSettings? props.uiSettings.sortOrder : logConfig.sortOrder)
-    const [previous, setPrevious] = useState(props.instanceSettings? props.instanceSettings.previous : logInstanceConfig.previous)
-    const [timestamp, setTimestamp] = useState(props.instanceSettings? props.instanceSettings.timestamp : logInstanceConfig.timestamp)
-    const [fromStart, setFromStart] = useState(props.instanceSettings? props.instanceSettings.fromStart : logInstanceConfig.fromStart)
+    const [selectedTab, setSelectedTab] = useState(logConfig.startDiagnostics? 'sd':'log')
+    const [maxMessages, setMaxMessages] = useState(logConfig.maxMessages)
+    const [maxPerPodMessages, setMaxPerPodMessages] = useState(logConfig.maxPerPodMessages)
+    const [follow, setFollow] = useState(logConfig.follow)
+    const [sortOrder, setSortOrder] = useState(logConfig.sortOrder)
+    const [previous, setPrevious] = useState(logInstanceConfig.previous)
+    const [timestamp, setTimestamp] = useState(logInstanceConfig.timestamp)
+    const [fromStart, setFromStart] = useState(logInstanceConfig.fromStart)
     const startTimeRef = useRef<any>(null)
     const defaultRef = useRef<HTMLInputElement|null>(null)
+
+    const ok = () => {
+        logConfig.follow = follow
+        logConfig.maxMessages = maxMessages
+        logConfig.maxPerPodMessages = maxPerPodMessages
+        logConfig.sortOrder = sortOrder
+        logConfig.startDiagnostics = (selectedTab === 'sd')
+        logInstanceConfig.previous  = previous
+        logInstanceConfig.timestamp = timestamp
+        logInstanceConfig.fromStart = fromStart
+        logInstanceConfig.startTime = new Date(startTimeRef.current?.value).getTime()
+        props.onChannelSetupClosed(props.channel,
+        {
+            channelId: props.channel.channelId,
+            channelConfig: logConfig,
+            channelInstanceConfig: logInstanceConfig
+        }, true, defaultRef.current?.checked || false)
+    }
+
+    const cancel = () => {
+        props.onChannelSetupClosed(props.channel, 
+        {
+            channelId: props.channel.channelId,
+            channelConfig: undefined,
+            channelInstanceConfig:undefined
+        }, false, false)
+    }
 
     const onChangeMaxMessages = (event:ChangeEvent<HTMLInputElement>) => {
         setMaxMessages(+event.target.value)
@@ -46,19 +73,6 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
 
     const onChangeFollow = (event:ChangeEvent<HTMLInputElement>) => {
         setFollow(event.target.checked)
-    }
-
-    const ok = () => {
-        logConfig.follow = follow
-        logConfig.maxMessages = maxMessages
-        logConfig.maxPerPodMessages = maxPerPodMessages
-        logConfig.sortOrder = sortOrder
-        logConfig.startDiagnostics = (selectedTab === 'sd')
-        logInstanceConfig.previous  = previous
-        logInstanceConfig.timestamp = timestamp
-        logInstanceConfig.fromStart = fromStart
-        logInstanceConfig.startTime = new Date(startTimeRef.current?.value).getTime()
-        props.onChannelSetupClosed(props.channel, true, defaultRef.current?.checked || false)
     }
 
     const TextFieldForwardRef = React.forwardRef(function MyCustomTextField(props, ref) {
@@ -128,7 +142,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
             <DialogActions>
                 <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>
                 <Button onClick={ok}>OK</Button>
-                <Button onClick={() => props.onChannelSetupClosed(props.channel, false, false)}>CANCEL</Button>
+                <Button onClick={cancel}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     )

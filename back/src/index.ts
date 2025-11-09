@@ -199,28 +199,34 @@ const sendInstanceConfigSignalMessage = (ws:WebSocket, action:InstanceMessageAct
 }
 
 const addObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) => {
-    console.log(`objectReview '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+    try {
+        console.log(`objectReview '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
 
-    let valid = AuthorizationManagement.checkAkr(channels, instanceConfig, podNamespace, podName, containerName)
-    if (!valid) {
-        console.log(`No AKR found for object : ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
-        return
-    }
+        let valid = AuthorizationManagement.checkAkr(channels, instanceConfig, podNamespace, podName, containerName)
+        if (!valid) {
+            console.log(`No AKR found for object : ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+            return
+        }
 
-    console.log(`Level is enough for adding object: ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+        console.log(`Level is enough for adding object: ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
 
-    if(channels.has(instanceConfig.channel)) {
-        if (channels.get(instanceConfig.channel)?.containsAsset(webSocket, podNamespace,podName, containerName)) {
-            console.log(`existingAsset '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+        if(channels.has(instanceConfig.channel)) {
+            let chan = channels.get(instanceConfig.channel)!
+            if (chan?.containsAsset(webSocket, podNamespace,podName, containerName)) {
+                console.log(`existingAsset '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+            }
+            else {
+                console.log(`addObject '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+                chan.addObject(webSocket, instanceConfig, podNamespace, podName, containerName)
+                sendChannelSignalAsset(webSocket, SignalMessageLevelEnum.INFO, SignalMessageEventEnum.ADD, `Container ADDED: ${podNamespace}/${podName}/${containerName}`, instanceConfig, podNamespace, podName, containerName)
+            }
         }
         else {
-            console.log(`addObject '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
-            channels.get(instanceConfig.channel)?.addObject(webSocket, instanceConfig, podNamespace, podName, containerName)
-            sendChannelSignalAsset(webSocket, SignalMessageLevelEnum.INFO, SignalMessageEventEnum.ADD, `Container ADDED: ${podNamespace}/${podName}/${containerName}`, instanceConfig, podNamespace, podName, containerName)
+            console.log(`Invalid channel`, instanceConfig.channel)
         }
     }
-    else {
-        console.log(`Invalid channel`, instanceConfig.channel)
+    catch (err) {
+        console.error('Error adding object', err)
     }
 }
 

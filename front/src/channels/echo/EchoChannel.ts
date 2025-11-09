@@ -16,6 +16,7 @@ export class EchoChannel implements IChannel {
     channelId = 'echo'
     
     requiresSetup() { return true }
+    requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return false }
     requiresClusterUrl() { return false }
@@ -32,11 +33,11 @@ export class EchoChannel implements IChannel {
         let msg:IEchoMessage = JSON.parse(wsEvent.data)
 
         let echoData:IEchoData = channelObject.data
-        let echoUiConfig:IEchoConfig = channelObject.config
+        let echoConfig:IEchoConfig = channelObject.config
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA:
                 echoData.lines.push(msg.text)
-                while (echoData.lines.length > echoUiConfig.maxLines) echoData.lines.shift()
+                while (echoData.lines.length > echoConfig.maxLines) echoData.lines.shift()
                 return IChannelMessageAction.REFRESH
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
@@ -44,7 +45,7 @@ export class EchoChannel implements IChannel {
                     channelObject.instanceId = instanceMessage.instance
                 }
                 echoData.lines.push('*** '+msg.text+' ***')
-                while (echoData.lines.length> echoUiConfig.maxLines) echoData.lines.shift()
+                while (echoData.lines.length> echoConfig.maxLines) echoData.lines.shift()
                 return IChannelMessageAction.REFRESH
             default:
                 console.log(`Invalid message type ${msg.type}`)

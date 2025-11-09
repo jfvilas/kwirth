@@ -1,23 +1,31 @@
 import { MetricsConfigModeEnum } from "@jfvilas/kwirth-common"
-import { MenuChartOption } from "./MenuChart"
-//import { MetricDefinition } from "./MetricDefinition"
+import { ChartType } from "./MenuChart"
+
+interface IMetricViewConfig {
+    displayName: string
+    chartType: ChartType
+    tooltip: boolean
+    labels: boolean
+    stack: boolean
+}
 
 interface IMetricsConfig {
-    //metricsList: Map<string,MetricDefinition>
     depth: number
     width: number
     merge: boolean 
     stack: boolean
-    chart: MenuChartOption
+    chart: ChartType
+    // although we like Map's, we prefer using a JSN  beacuse of serialization to backend
+    metricsDefault: { [key:string]: IMetricViewConfig }
 }
 
 class MetricsConfig implements IMetricsConfig{
-    //metricsList = new Map()
     depth = 20
     width = 3
     merge = false
     stack = false
-    chart = MenuChartOption.LineChart
+    chart = ChartType.LineChart
+    metricsDefault = {}
 }
 
 interface IMetricsInstanceConfig {
@@ -69,5 +77,5 @@ const METRICSCOLOURS = [
     "#f1c1d2"  // rosa bebé pastel
 ]
 
-export type { IMetricsConfig, IMetricsInstanceConfig }
+export type { IMetricsConfig, IMetricsInstanceConfig, IMetricViewConfig }
 export { MetricsConfig, MetricsInstanceConfig, METRICSCOLOURS }

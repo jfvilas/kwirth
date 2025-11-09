@@ -23,7 +23,7 @@ import { SettingsTrivy } from './components/settings/SettingsTrivy'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/MsgBox'
-import { Settings } from './model/Settings'
+import { IChannelSettings, Settings } from './model/Settings'
 import { FirstTimeLogin } from './components/FirstTimeLogin'
 import { IBoard, IBoardSummary } from './model/IBoard'
 
@@ -43,7 +43,7 @@ import { OpsChannel } from './channels/ops/OpsChannel'
 import { getMetricsNames, ENotifyLevel, readClusterInfo } from './tools/Global'
 import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
-import { BASECOLORS, BRIGHTCOLORS, DEFAULTLASTTABS, IColors } from './tools/Constants'
+import { DEFAULTLASTTABS, IColors, TABBASECOLORS, TABBRIGHTCOLORS } from './tools/Constants'
 
 const App: React.FC = () => {
     let backendUrl='http://localhost:3883'
@@ -250,7 +250,7 @@ const App: React.FC = () => {
             if (json && settingsRef) settingsRef.current = JSON.parse(json) as Settings
         }
         else {
-            settingsRef.current = { channels: [], keepAliveInterval: 60 }
+            settingsRef.current = { channelSettings: [], keepAliveInterval: 60 }
         }
     }
 
@@ -315,22 +315,63 @@ const App: React.FC = () => {
                 group: groups,
                 pod: pods,
                 container: containers,
-                instanceConfig: undefined,
                 config: undefined,
-                data: undefined
+                data: undefined,
+                instanceConfig: undefined
             },
             channelStarted: false,
             channelPaused: false,
             channelPending: false,
             headerEl: undefined
         }
+
         if (newTab.channel.requiresMetrics()) newTab.channelObject.metricsList = cluster.metricsList
         if (newTab.channel.requiresClusterUrl()) newTab.channelObject.clusterUrl = cluster.url
         if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
+        newTab.channelObject.config = settingsRef.current?.channelSettings.find(c => c,channelId === newTab.channel.channelId)
         if (newTab.channel.initChannel(newTab.channelObject)) setRefreshTabContent(Math.random())
         if (tab) {
             newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
-            newTab.channelObject.config = tab.channelObject.config
+        }
+        if (newTab.channel.requiresSettings()) {
+            // this 'requires' must be executed after managing config and instanceConfig
+            if (settingsRef.current) {
+                let thisChannnel = settingsRef.current.channelSettings.find(c => c.channelId === newTab.channel.channelId)
+                if (thisChannnel) {
+                    newTab.channelObject.channelSettings = {
+                        channelId: newTab.channel.channelId,
+                        channelConfig: thisChannnel.channelConfig,
+                        channelInstanceConfig: thisChannnel.channelInstanceConfig
+                    }
+                }
+                else {
+                    newTab.channelObject.channelSettings = {
+                        channelId: newTab.channel.channelId,
+                        channelConfig: undefined,
+                        channelInstanceConfig: undefined
+                    }
+                }
+            }
+            newTab.channelObject.onUpdateChannelSettings = (channelSettings:IChannelSettings) => {
+                if (settingsRef.current) {
+                    console.log('sccb', settingsRef.current.channelSettings)
+                    let thisChannnel = settingsRef.current.channelSettings.find(c => c.channelId === newTab.channel.channelId)
+                    if (!thisChannnel) {
+                        thisChannnel = {
+                            channelId: newTab.channel.channelId,
+                            channelConfig: channelSettings.channelConfig,
+                            channelInstanceConfig: undefined
+                        }
+                        settingsRef.current.channelSettings.push(thisChannnel)
+                    }
+                    else {
+                        thisChannnel.channelConfig = channelSettings.channelConfig
+                    }
+                    
+                    console.log('scca', settingsRef.current.channelSettings)
+                    writeSettings()
+                }
+            }
         }
         startSocket(newTab, cluster, () => {
             setKeepAlive(newTab)
@@ -340,6 +381,52 @@ const App: React.FC = () => {
         selectedTab.current = newTab
         tabs.current.push(newTab)
         setRefreshTabContent(Math.random())  // force re-render for showing new tab
+    }
+
+    const showChannelSetup = () => {
+        if (!selectedTab.current || !selectedTab.current.channel || !selectedTab.current.channel.getSetupVisibility()) return
+        const SetupDialog = selectedTab.current.channel.SetupDialog
+        let props:ISetupProps = {
+            channel: selectedTab.current.channel,
+            onChannelSetupClosed,
+            channelObject: selectedTab.current.channelObject,
+            setupConfig: {
+                channelId: selectedTab.current.channel.channelId,
+                channelConfig: selectedTab.current.channelObject.config,
+                channelInstanceConfig: selectedTab.current.channelObject.instanceConfig
+            }
+        }
+        if (settingsRef.current?.channelSettings && settingsRef.current.channelSettings.some(c => c.channelId === selectedTab.current?.channel.channelId)) {
+            props.setupConfig = settingsRef.current.channelSettings.find(c => c.channelId === selectedTab.current?.channel.channelId)
+        }
+        return <SetupDialog {...props} />
+    }
+
+    const onChannelSetupClosed = (channel:IChannel, channelSettings:IChannelSettings, start:boolean, setDefaultValues:boolean) => {
+        channel.setSetupVisibility(false)
+        if (!selectedTab.current || !settingsRef.current) return
+        if (!start) {
+            setRefreshTabContent(Math.random())
+            return
+        }
+
+        if (setDefaultValues) {
+            settingsRef.current.channelSettings = settingsRef.current.channelSettings.filter(c => c.channelId !== channel.channelId)
+            settingsRef.current.channelSettings.push ({
+                channelId: selectedTab.current.channel.channelId,
+                channelInstanceConfig: channelSettings.channelInstanceConfig,
+                channelConfig: channelSettings.channelConfig
+            })
+            console.log(settingsRef.current)
+            writeSettings()
+        }
+
+        console.log('channelSettings.channelInstanceConfig')
+        console.log(channelSettings.channelInstanceConfig)
+        selectedTab.current.channelObject.config = channelSettings.channelConfig
+        selectedTab.current.channelObject.instanceConfig = channelSettings.channelInstanceConfig
+        setRefreshTabContent(Math.random())  // we force rendering
+        startTabChannel(selectedTab.current)
     }
 
     const setKeepAlive = (tab:ITabObject) => {
@@ -360,8 +447,8 @@ const App: React.FC = () => {
     }
 
     const colorizeTab = (tab:ITabObject) => {
-        let colorTable:IColors = BRIGHTCOLORS
-        if (selectedTab.current === tab) colorTable = BASECOLORS
+        let colorTable:IColors = TABBRIGHTCOLORS
+        if (selectedTab.current === tab) colorTable = TABBASECOLORS
         if (tab.channelStarted) {
             if (tab.channelPaused) {
                 tab.headerEl.style.backgroundColor = colorTable.pause
@@ -1053,23 +1140,6 @@ const App: React.FC = () => {
         }
     }
 
-    const onChannelSetupClosed = (channel:IChannel, start:boolean, setDefaultValues:boolean) => {
-        channel.setSetupVisibility(false)
-        if (!selectedTab.current) return
-
-        if (setDefaultValues && settingsRef.current && selectedTab.current.channelObject) {
-            settingsRef.current.channels = settingsRef.current.channels.filter(c => c.id !== channel.channelId)
-            settingsRef.current.channels.push({
-                id: channel.channelId,
-                uiSettings: selectedTab.current.channelObject.config,
-                instanceSettings: selectedTab.current.channelObject.instanceConfig
-            })
-            writeSettings()
-        }
-        setRefreshTabContent(Math.random())  // we force rendering
-        if (start) startTabChannel(selectedTab.current)
-    }
-
     const onRenameTabClosed = (newname:string|undefined) => {
         setShowRenameLog(false)
         if (!selectedTab.current || !newname) return
@@ -1099,24 +1169,6 @@ const App: React.FC = () => {
     const onFirstTimeLoginClose = (exit:boolean) => {
         setFirstLogin(false)
         if (exit) setLogged(false)
-    }
-
-    const showChannelSetup = () => {
-        if (!selectedTab.current || !selectedTab.current.channel || !selectedTab.current.channel.getSetupVisibility()) return
-        const SetupDialog = selectedTab.current.channel.SetupDialog
-        let props:ISetupProps = {
-            channel: selectedTab.current.channel,
-            onChannelSetupClosed,
-            channelObject: selectedTab.current.channelObject,
-            uiSettings: {},
-            instanceSettings: {}
-        }
-        if (settingsRef.current?.channels && selectedTab.current.channel) {
-            props.uiSettings = settingsRef.current.channels.find(c => c.id === selectedTab.current?.channel.channelId)?.uiSettings
-            props.instanceSettings = settingsRef.current.channels.find(c => c.id === selectedTab.current?.channel.channelId)?.instanceSettings
-        }
-    
-        return <SetupDialog {...props} />
     }
 
     const formatTabName = (tab : ITabObject) => {

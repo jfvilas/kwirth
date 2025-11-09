@@ -1,11 +1,11 @@
 interface IChannelSettings {
-    id:string
-    uiSettings:any
-    instanceSettings:any
+    channelId: string
+    channelConfig: any
+    channelInstanceConfig: any
 }
 
 class Settings {
-    public channels: IChannelSettings[] = []
+    public channelSettings: IChannelSettings[] = []
     public keepAliveInterval: number = 60
 }
 
