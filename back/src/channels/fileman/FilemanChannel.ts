@@ -795,6 +795,7 @@ class FilemanChannel implements IChannel {
             shellSocket.onmessage = (event) => {
                 let data = event.data as Buffer
                 //console.log('data', data[0], data.slice(1).toString())
+                //+++ stdout should send a \n when the copy ois finished, since the cat is redirected. we should try this way and forget '&& exit'
                 if (data[0]===2) accumulatedErr = Buffer.concat([accumulatedErr, data.slice(1)])
                 if (data[0]===3) accumulatedEnd = Buffer.concat([accumulatedEnd, data.slice(1)])
             }
@@ -803,7 +804,7 @@ class FilemanChannel implements IChannel {
             }
 
             // exec api with the sh and the > returns immediately, so we add a '&& exit'
-            // when executoing this way, we dont receive channel 3 messages (where a json with the result should be present)
+            // when executing this way, we dont receive 'channel 3' messages (where a json with the result should be present)
             let dstPath = '/'+ns+'/'+pod+'/'+c+remotePath
             let len = (await this.getFileInfo(dstPath))?.size
             let retries = (10*100) * 15  // 15 seconds

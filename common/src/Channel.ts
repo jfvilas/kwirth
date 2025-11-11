@@ -18,6 +18,7 @@ interface BackChannelData {
     sources: string[]  // array of sources (kubernetes, docker...)
     metrics: boolean  // this channel requires metrics
     endpoints: IEndpointConfig[]  // array of specific endpoints the channel requires (usually this would be empty)
+    websocket: boolean  // this channel allows websocket creation (aside from main websocket communication)
 }
 
 interface KwirthData {
