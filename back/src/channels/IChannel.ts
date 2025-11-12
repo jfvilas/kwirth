@@ -6,6 +6,7 @@ interface IChannel {
     getChannelScopeLevel(scope:string) : number
 
     endpointRequest(endpoint:string,req:Request, res:Response, accessKey?:AccessKey) : void
+    websocketRequest(newWebSocket:WebSocket) : void
 
     addObject (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void
     deleteObject (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void

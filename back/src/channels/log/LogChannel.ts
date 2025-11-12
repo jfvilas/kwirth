@@ -43,6 +43,9 @@ class LogChannel implements IChannel {
     async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
     }
 
+    async websocketRequest(newWebSocket:WebSocket) : Promise<void> {
+    }
+
     getChannelData(): BackChannelData {
         return {
             id: 'log',
@@ -52,7 +55,8 @@ class LogChannel implements IChannel {
             reconnectable: true,
             metrics: false,
             sources: [ ClusterTypeEnum.DOCKER, ClusterTypeEnum.KUBERNETES ],
-            endpoints: []
+            endpoints: [],
+            websocket: false
         }
     }
 

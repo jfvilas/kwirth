@@ -23,7 +23,8 @@ export enum InstanceMessageActionEnum {
     MODIFY = 'modify',
     PING = 'ping',
     RECONNECT = 'reconnect',
-    COMMAND = 'command'
+    COMMAND = 'command',
+    WEBSOCKET = 'websocket'
 }
 
 export enum InstanceMessageFlowEnum {

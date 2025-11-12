@@ -28,6 +28,7 @@ var InstanceMessageActionEnum;
     InstanceMessageActionEnum["PING"] = "ping";
     InstanceMessageActionEnum["RECONNECT"] = "reconnect";
     InstanceMessageActionEnum["COMMAND"] = "command";
+    InstanceMessageActionEnum["WEBSOCKET"] = "websocket";
 })(InstanceMessageActionEnum || (exports.InstanceMessageActionEnum = InstanceMessageActionEnum = {}));
 var InstanceMessageFlowEnum;
 (function (InstanceMessageFlowEnum) {

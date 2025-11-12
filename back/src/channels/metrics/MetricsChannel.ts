@@ -37,7 +37,8 @@ class MetricsChannel implements IChannel {
             reconnectable: true,
             metrics: true,
             sources: [ ClusterTypeEnum.KUBERNETES ],
-            endpoints: []
+            endpoints: [],
+            websocket: false
         }
     }
 
@@ -46,6 +47,9 @@ class MetricsChannel implements IChannel {
     }
 
     async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
+    }
+
+    async websocketRequest(newWebSocket:WebSocket) : Promise<void> {
     }
 
     async processCommand (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> {

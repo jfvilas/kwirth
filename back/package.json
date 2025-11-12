@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@jfvilas/kwirth-common": "^0.4.36",
+    "@jfvilas/kwirth-common": "^0.4.38",
     "@jfvilas/parse-listing": "^1.0.1",
     "@kubernetes/client-node": "^0.21.0",
     "@types/node": "^20.12.13",

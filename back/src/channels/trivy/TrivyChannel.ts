@@ -47,7 +47,8 @@ class TrivyChannel implements IChannel {
             reconnectable: false,
             metrics: false,
             sources: [ ClusterTypeEnum.KUBERNETES ],
-            endpoints: []
+            endpoints: [],
+            websocket: false
         }
     }
 
@@ -55,7 +56,11 @@ class TrivyChannel implements IChannel {
         return ['', 'trivy$workload', 'trivy$kubernetes', 'cluster'].indexOf(scope)
     }
 
-    async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {}
+    async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
+    }
+
+    async websocketRequest(newWebSocket:WebSocket) : Promise<void> {
+    }
 
     containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
         let socket = this.webSockets.find(s => s.ws === webSocket)

@@ -116,7 +116,8 @@ class FilemanChannel implements IChannel {
             endpoints: [
                 { name: 'download', methods: ['GET'], requiresAccessKey: true },
                 { name: 'upload', methods: ['POST'], requiresAccessKey: true } 
-            ]
+            ],
+            websocket: false
         }
     }
 
@@ -157,9 +158,6 @@ class FilemanChannel implements IChannel {
                         let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, filepath)
                         let tmpName=result.metadata.filename as string
                         if (result.status === ExecutionStatus.SUCCESS) {
-                            // res.sendFile(tmpName, { headers: {
-                            //     'Content-Disposition': `attachment; filename="${encodedFilename}"`,
-                            // }})
                             res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`)
                             res.status(200).send(fs.readFileSync(tmpName))
                         }
@@ -219,6 +217,9 @@ class FilemanChannel implements IChannel {
                 break
             }
         } 
+    }
+
+    async websocketRequest(newWebSocket:WebSocket) : Promise<void> {
     }
 
     containsInstance = (instanceId: string): boolean => {

@@ -39,7 +39,8 @@ class EchoChannel implements IChannel {
             reconnectable: true,
             metrics: false,
             sources: [ ClusterTypeEnum.KUBERNETES, ClusterTypeEnum.DOCKER ],
-            endpoints: []
+            endpoints: [],
+            websocket: false
         }
     }
 
@@ -48,6 +49,9 @@ class EchoChannel implements IChannel {
     }
 
     async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
+    }
+
+    async websocketRequest(newWebSocket:WebSocket) : Promise<void> {
     }
 
     containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
@@ -68,14 +72,7 @@ class EchoChannel implements IChannel {
             return false
         }
         else {
-            let socket = this.webSockets.find(s => s.ws === webSocket)
-            if (!socket) {
-                console.log('Socket not found')
-                return false
-            }
-
-            let instances = socket.instances
-            let instance = instances.find(i => i.instanceId === instanceMessage.instance)
+            let instance = this.getInstance(webSocket, instanceMessage.instance)
             if (!instance) {
                 this.sendSignalMessage(webSocket, instanceMessage.action, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceMessage.instance, `Instance not found`)
                 console.log(`Instance ${instanceMessage.instance} not found`)

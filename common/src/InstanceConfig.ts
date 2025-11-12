@@ -42,7 +42,7 @@ export enum InstanceConfigScopeEnum {
     KUBERNETES = "kubernetes"
 }
 
-export interface InstanceConfig extends IInstanceMessage{
+export interface IInstanceConfig extends IInstanceMessage{
     objects: InstanceConfigObjectEnum
     accessKey: string
     scope: string
@@ -54,6 +54,6 @@ export interface InstanceConfig extends IInstanceMessage{
     data?: any
 }
 
-export interface InstanceConfigResponse extends IInstanceMessage {
+export interface IInstanceConfigResponse extends IInstanceMessage {
     text: string
 }

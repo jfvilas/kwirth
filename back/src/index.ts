@@ -15,7 +15,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import { WebSocketServer } from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, InstanceConfig, ISignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse, IInstanceMessage, KwirthData, IRouteMessage, SignalMessageEventEnum } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, InstanceConfig, ISignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, InstanceConfigResponse as IInstanceConfigResponse, IInstanceMessage, KwirthData, IRouteMessage, SignalMessageEventEnum } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { AuthorizationManagement } from './tools/AuthorizationManagement'
 
@@ -187,7 +187,7 @@ const sendChannelSignalAsset = (webSocket: WebSocket, level: SignalMessageLevelE
 }
 
 const sendInstanceConfigSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: string, instanceMessage:IInstanceMessage, text:string) => {
-    let resp:InstanceConfigResponse = {
+    let resp:IInstanceConfigResponse = {
         action,
         flow,
         channel,
@@ -656,6 +656,32 @@ const processChannelRoute = async (webSocket: WebSocket, instanceMessage: IInsta
     }
 }
 
+const processChannelWebsocket = async (webSocket: WebSocket, instanceMessage: IInstanceMessage): Promise<void> => {
+    let channel = channels.get(instanceMessage.channel)
+    if (channel) {
+        let instance = channel.containsInstance(instanceMessage.instance)
+        if (instance) {
+            let response: IInstanceConfigResponse = {
+                text: '',
+                action: InstanceMessageActionEnum.WEBSOCKET,
+                flow: InstanceMessageFlowEnum.RESPONSE,
+                type: InstanceMessageTypeEnum.DATA,
+                channel: channel.getChannelData().id,
+                instance: uuid()
+            }
+            webSocket.send(JSON.stringify(response))
+        }
+        else {
+            console.log(`Instance '${instanceMessage.instance}' not found on channel ${channel.getChannelData().id} for route`)
+            sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for routing')
+        }   
+    }
+    else {
+        console.log(`Socket not found for routing`)
+        sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, 'Socket has not been found')
+    }
+}
+
 // clients send requests to start receiving log
 const processClientMessage = async (webSocket:WebSocket, message:string) => {
     const instanceMessage = JSON.parse(message) as IInstanceMessage
@@ -769,6 +795,10 @@ const processClientMessage = async (webSocket:WebSocket, message:string) => {
                 processChannelCommand(webSocket, instanceConfig)
             }
             break
+        case InstanceMessageActionEnum.WEBSOCKET:
+            processChannelWebsocket (webSocket, instanceConfig)
+            break
+
         case InstanceMessageActionEnum.START:
             processStartInstanceConfig(webSocket, instanceConfig, accessKeyResources, validNamespaces, validGroups, validPodNames, validContainers)
             break
