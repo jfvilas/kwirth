@@ -34,7 +34,6 @@ export enum InstanceConfigScopeEnum {
     // OPS
     GET = 'get',
     EXECUTE = 'execute',
-    SHELL = 'shell',
     RESTART = 'restart',
 
     // TRIVY
@@ -55,5 +54,6 @@ export interface IInstanceConfig extends IInstanceMessage{
 }
 
 export interface IInstanceConfigResponse extends IInstanceMessage {
-    text: string
+    text?: string
+    data?: any
 }

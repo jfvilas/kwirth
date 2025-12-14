@@ -37,15 +37,15 @@ export class ManageKwirthApi {
 
             // Delete all pods, which forces kubernetes to recreate them
             for (const pod of result.pods) {
-                const podName = pod.metadata?.name;
+                const podName = pod.metadata?.name
                 if (podName) {
-                    await coreApi.deleteNamespacedPod(podName, namespace);
-                    console.log(`Pod ${podName} deleted.`);
+                    await coreApi.deleteNamespacedPod({ name: podName, namespace: namespace })
+                    console.log(`Pod ${podName} deleted.`)
                 }
             }
         }
         catch (error) {
-            console.log(`Error restarting group: ${error}`);
+            console.log(`Error restarting group: ${error}`)
         }
     }
 

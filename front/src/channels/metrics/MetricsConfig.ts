@@ -15,7 +15,7 @@ interface IMetricsConfig {
     merge: boolean 
     stack: boolean
     chart: ChartType
-    // although we like Map's, we prefer using a JSN  beacuse of serialization to backend
+    // although we like Map's, we prefer using a JSON  beacuse of serialization to backend
     metricsDefault: { [key:string]: IMetricViewConfig }
 }
 

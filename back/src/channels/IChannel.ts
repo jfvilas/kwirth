@@ -1,4 +1,4 @@
-import { BackChannelData, InstanceConfig, IInstanceMessage, InstanceMessageActionEnum, AccessKey } from '@jfvilas/kwirth-common'
+import { BackChannelData, IInstanceConfig, IInstanceMessage, InstanceMessageActionEnum, AccessKey } from '@jfvilas/kwirth-common'
 import { Request, Response } from 'express'
 
 interface IChannel {
@@ -6,16 +6,18 @@ interface IChannel {
     getChannelScopeLevel(scope:string) : number
 
     endpointRequest(endpoint:string,req:Request, res:Response, accessKey?:AccessKey) : void
-    websocketRequest(newWebSocket:WebSocket) : void
+    websocketRequest(newWebSocket:WebSocket, instanceId:string, instanceConfig:IInstanceConfig) : void
 
-    addObject (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void
-    deleteObject (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void
+    processEvent(type:string, obj:any) : void
+
+    addObject (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void
+    deleteObject (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void
     
-    pauseContinueInstance (webSocket: WebSocket, instanceConfig: InstanceConfig, action:InstanceMessageActionEnum) : void
-    modifyInstance (webSocket: WebSocket, instanceConfig: InstanceConfig) : void
+    pauseContinueInstance (webSocket: WebSocket, instanceConfig: IInstanceConfig, action:InstanceMessageActionEnum) : void
+    modifyInstance (webSocket: WebSocket, instanceConfig: IInstanceConfig) : void
     containsInstance (instanceId:string) : boolean
     containsAsset (webSocket: WebSocket, podNamespace:string, podName:string, containerName:string) : boolean
-    stopInstance (webSocket:WebSocket, instanceConfig:InstanceConfig) : void
+    stopInstance (webSocket:WebSocket, instanceConfig:IInstanceConfig) : void
     removeInstance (webSocket:WebSocket, instanceId:string) : void
 
     processCommand (webSocket:WebSocket, instanceMessage:IInstanceMessage, podNamespace?:string, podName?:string, containerName?:string) : Promise<boolean>

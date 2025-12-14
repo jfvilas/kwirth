@@ -9,8 +9,8 @@ import { Cluster, IClusterInfo } from './model/Cluster'
 
 // components
 import { RenameTab } from './components/RenameTab'
-import { SaveBoard } from './components/board/SaveBoard'
-import { SelectBoard }  from './components/board/SelectBoard'
+import { SaveWorkspace } from './components/board/SaveWorkspace'
+import { SelectWorkspace }  from './components/board/SelectWorkspace'
 import { ManageApiSecurity } from './components/security/ManageApiSecurity'
 import { Login } from './components/Login'
 import { ManageClusters } from './components/ManageClusters'
@@ -25,21 +25,22 @@ import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/MsgBox'
 import { IChannelSettings, Settings } from './model/Settings'
 import { FirstTimeLogin } from './components/FirstTimeLogin'
-import { IBoard, IBoardSummary } from './model/IBoard'
+import { IWorkspace, IWorkspaceSummary } from './model/IWorkspace'
 
 import { VERSION } from './version'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources, KwirthData, BackChannelData, IUser } from '@jfvilas/kwirth-common'
+import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, IInstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources, KwirthData, BackChannelData, IUser } from '@jfvilas/kwirth-common'
 import { ITabObject, ITabSummary } from './model/ITabObject'
 
-import { ChannelConstructor, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
+import { ChannelConstructor, ChannelRefreshAction as ChannelRefresh, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
 import { LogChannel } from './channels/log/LogChannel'
 import { EchoChannel } from './channels/echo/EchoChannel'
 import { AlertChannel } from './channels/alert/AlertChannel'
 import { MetricsChannel } from './channels/metrics/MetricsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { OpsChannel } from './channels/ops/OpsChannel'
+import { LensChannel } from './channels/lens/LensChannel'
 import { getMetricsNames, ENotifyLevel, readClusterInfo } from './tools/Global'
 import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
@@ -65,7 +66,7 @@ const App: React.FC = () => {
 
     const tabs = useRef<ITabObject[]>([])
     const selectedTab = useRef<ITabObject>()
-    const [refreshTabContent, setRefreshTabContent] = useState(0)
+    const [channelMessageAction, setChannelMessageAction] = useState<IChannelMessageAction>({action: ChannelRefresh.NONE})
 
     const settingsRef = useRef<Settings|null>(null)
 
@@ -78,16 +79,16 @@ const App: React.FC = () => {
     const [menuDrawerOpen,setMenuDrawerOpen]=useState(false)
 
     // boards
-    const [currentBoardName, setCurrentBoardName] = useState('')
-    const [currentBoardDescription, setCurrentBoardDescription] = useState('')
-    const [boards, setBoards] = useState<{name:string, description:string}[]>([])
-    const [selectBoardAction, setSelectBoardAction] = useState('')
+    const [currentWorkspaceName, setCurrentWorkspaceName] = useState('')
+    const [currentWorkspaceDescription, setCurrentWorkspaceDescription] = useState('')
+    const [workspaces, setWorkspaces] = useState<{name:string, description:string}[]>([])
+    const [selectWorkspaceAction, setSelectWorkspaceAction] = useState('')
 
     // components
     const [showRenameTab, setShowRenameLog]=useState<boolean>(false)
     const [showManageClusters, setShowManageClusters]=useState<boolean>(false)
-    const [showSaveBoard, setShowSaveBoard]=useState<boolean>(false)
-    const [showSelectBoard, setShowSelectBoard]=useState<boolean>(false)
+    const [showSaveWorkspace, setShowSaveWorkspace]=useState<boolean>(false)
+    const [showSelectWorkspace, setShowSelectWorkspace]=useState<boolean>(false)
     const [showApiSecurity, setShowApiSecurity]=useState<boolean>(false)
     const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false)
     const [showSettingsUser, setShowSettingsUser]=useState<boolean>(false)
@@ -98,8 +99,8 @@ const App: React.FC = () => {
     // last & favs
     const [lastTabs, setLastTabs] = useState<ITabSummary[]>([])
     const [favTabs, setFavTabs] = useState<ITabSummary[]>([])
-    const [lastBoards, setLastBoards] = useState<IBoardSummary[]>([])
-    const [favBoards, setFavBoards] = useState<IBoardSummary[]>([])
+    const [lastWorkspaces, setLastWorkspaces] = useState<IWorkspaceSummary[]>([])
+    const [favWorkspaces, setFavWorkspaces] = useState<IWorkspaceSummary[]>([])
 
     // ui notifications
     const [notifyOpen, setNotifyOpen] = useState(false)
@@ -124,6 +125,7 @@ const App: React.FC = () => {
         frontChannels.set('trivy', TrivyChannel)
         frontChannels.set('ops', OpsChannel)
         frontChannels.set('fileman', FilemanChannel)
+        frontChannels.set('lens', LensChannel)
     },[])
 
     const onNotifyClose = (event?: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
@@ -154,14 +156,14 @@ const App: React.FC = () => {
         let ft = localStorage.getItem('favTabs')
         if (ft) setFavTabs(JSON.parse(ft))
 
-        // load user boards
-        let lb = localStorage.getItem('lastBoards')
+        // load user Workspaces
+        let lb = localStorage.getItem('lastWorkspaces')
         if (lb)
-            setLastBoards(JSON.parse(lb))
+            setLastWorkspaces(JSON.parse(lb))
         else
-            setLastBoards([])
-        let fb = localStorage.getItem('favBoards')
-        if (fb) setFavBoards(JSON.parse(fb))
+            setLastWorkspaces([])
+        let fb = localStorage.getItem('favWorkspaces')
+        if (fb) setFavWorkspaces(JSON.parse(fb))
     },[logged])
 
     useEffect( () => {
@@ -237,10 +239,10 @@ const App: React.FC = () => {
             clusterList = clusterList.filter (c => c.name !== srcCluster.name)
         }
         for (let cluster of clusterList)
-            readClusterInfo(cluster).then( () => { setRefreshTabContent(Math.random()) })
+            readClusterInfo(cluster).then( () => { setChannelMessageAction({action : ChannelRefresh.REFRESH}) })
         clusterList.push(srcCluster)
         setClusters(clusterList)
-        setRefreshTabContent(Math.random())
+        setChannelMessageAction({action : ChannelRefresh.REFRESH})
     }
 
     const readSettings = async () => {
@@ -283,7 +285,7 @@ const App: React.FC = () => {
         tab.ws.onopen = fn
     }
 
-    const onResourceSelectorAdd = (selection:IResourceSelected) => {
+    const onResourceSelectorAdd = (selection:IResourceSelected, start:boolean, settings:any) => {
         let cluster = clusters.find(c => c.name===selection.clusterName)
         if (!cluster) {
             setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.clusterName} does not exist.`, setMsgBox))
@@ -291,7 +293,7 @@ const App: React.FC = () => {
         }
 
         if (frontChannels.has(selection.channelId)) {
-            populateTabObject(selection.name, selection.channelId, cluster, selection.view, selection.namespaces.join(','), selection.groups.join(','), selection.pods.join(','), selection.containers.join(','))
+           populateTabObject(selection.name, selection.channelId, cluster, selection.view, selection.namespaces.join(','), selection.groups.join(','), selection.pods.join(','), selection.containers.join(','), start, settings)
         }
         else {
             console.log(`Error, invalid channel: `, selection.channelId)
@@ -299,7 +301,7 @@ const App: React.FC = () => {
         }
     }
 
-    const populateTabObject = (name:string, channelId:string, cluster:Cluster, view:string, namespaces:string, groups:string, pods:string, containers:string, tab?:ITabObject) => {
+    const populateTabObject = (name:string, channelId:string, cluster:Cluster, view:string, namespaces:string, groups:string, pods:string, containers:string, start:boolean, settings:any, tab?:ITabObject) : ITabObject => {
         let newChannel = createChannelInstance(channelId)!
         let newTab:ITabObject = {
             name: name,
@@ -329,10 +331,8 @@ const App: React.FC = () => {
         if (newTab.channel.requiresClusterUrl()) newTab.channelObject.clusterUrl = cluster.url
         if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
         newTab.channelObject.config = settingsRef.current?.channelSettings.find(c => c,channelId === newTab.channel.channelId)
-        if (newTab.channel.initChannel(newTab.channelObject)) setRefreshTabContent(Math.random())
-        if (tab) {
-            newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
-        }
+        if (newTab.channel.initChannel(newTab.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
+        if (tab) newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
         if (newTab.channel.requiresSettings()) {
             // this 'requires' must be executed after managing config and instanceConfig
             if (settingsRef.current) {
@@ -367,20 +367,30 @@ const App: React.FC = () => {
                     else {
                         thisChannnel.channelConfig = channelSettings.channelConfig
                     }
-                    
-                    console.log('scca', settingsRef.current.channelSettings)
                     writeSettings()
                 }
             }
         }
+        newTab.channelObject.onCreateTab = (xresource:IResourceSelected, sstart:boolean, ssettings:any) => {
+            console.log('xresource', sstart, ssettings)
+            onResourceSelectorAdd(xresource, sstart, ssettings)
+        }
         startSocket(newTab, cluster, () => {
+            console.log(`WebSocket connected: ${newTab.ws?.url}`, new Date().toTimeString())
             setKeepAlive(newTab)
             if (newTab.channel.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
-            if (tab && tab.channelStarted) startTabChannel(newTab)
+            if (newTab && (newTab.channelStarted || start)) {
+                console.log(newTab, newTab?.channelStarted, start)
+                newTab.channelObject.config = settings.config
+                newTab.channelObject.instanceConfig = settings.instanceConfig
+                startTabChannel(newTab)
+                setChannelMessageAction({action : ChannelRefresh.REFRESH})  // we force rendering
+            }
         })
         selectedTab.current = newTab
         tabs.current.push(newTab)
-        setRefreshTabContent(Math.random())  // force re-render for showing new tab
+        setChannelMessageAction({action : ChannelRefresh.REFRESH})  // force re-render for showing new tab
+        return newTab
     }
 
     const showChannelSetup = () => {
@@ -406,7 +416,7 @@ const App: React.FC = () => {
         channel.setSetupVisibility(false)
         if (!selectedTab.current || !settingsRef.current) return
         if (!start) {
-            setRefreshTabContent(Math.random())
+            setChannelMessageAction({action : ChannelRefresh.REFRESH})
             return
         }
 
@@ -421,16 +431,13 @@ const App: React.FC = () => {
             writeSettings()
         }
 
-        console.log('channelSettings.channelInstanceConfig')
-        console.log(channelSettings.channelInstanceConfig)
         selectedTab.current.channelObject.config = channelSettings.channelConfig
         selectedTab.current.channelObject.instanceConfig = channelSettings.channelInstanceConfig
-        setRefreshTabContent(Math.random())  // we force rendering
+        setChannelMessageAction({action : ChannelRefresh.REFRESH})  // we force rendering
         startTabChannel(selectedTab.current)
     }
 
     const setKeepAlive = (tab:ITabObject) => {
-        console.log(`WS connected: ${tab.ws?.url}`)
         tab.keepaliveRef = setInterval(() => {
             if (tab.channelObject.instanceId) {
                 // we only send keealive (ping) if we have a valid instance id
@@ -456,8 +463,9 @@ const App: React.FC = () => {
             else {
                 if (tab.channelPending)
                     tab.headerEl.style.backgroundColor = colorTable.pending
-                else
+                else {
                     tab.headerEl.style.backgroundColor = colorTable.start
+                }
             }
         }
         else {
@@ -470,7 +478,7 @@ const App: React.FC = () => {
             let newTab = tabs.current[tabNumber]
             if (newTab.channelObject) {
                 newTab.channelPending = false
-                setRefreshTabContent(Math.random())
+                setChannelMessageAction({action : ChannelRefresh.REFRESH})
                 if (selectedTab.current) colorizeTab(selectedTab.current)
                 colorizeTab(newTab)
                 let cluster = clusters.find(c => c.name === newTab.channelObject.clusterName)
@@ -480,7 +488,7 @@ const App: React.FC = () => {
         }
         else {
             selectedTab.current = undefined
-            setRefreshTabContent(Math.random())
+            setChannelMessageAction({action : ChannelRefresh.REFRESH})
         }
     }
 
@@ -499,10 +507,10 @@ const App: React.FC = () => {
         if (frontChannels.has(instanceMessage.channel)) {
             let tab = tabs.current.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
             if (!tab || !tab.channel || !tab.channelObject) return
-            let action = tab.channel.processChannelMessage(tab.channelObject, wsEvent)
-            if (action === IChannelMessageAction.REFRESH) {
+            let refresh = tab.channel.processChannelMessage(tab.channelObject, wsEvent)
+            if (refresh.action === ChannelRefresh.REFRESH) {
                 if (selectedTab?.current?.name === tab.name) {
-                    setRefreshTabContent(Math.random())
+                    setChannelMessageAction({action : ChannelRefresh.REFRESH})
                 }
                 else {
                     if (!tab.channelPending) {
@@ -511,7 +519,7 @@ const App: React.FC = () => {
                     }
                 }
             }
-            else if (action === IChannelMessageAction.STOP) {
+            else if (refresh.action === ChannelRefresh.STOP) {
                 stopTabChannel(tab)
             }
         }
@@ -540,7 +548,7 @@ const App: React.FC = () => {
         let tab = tabs.current.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
 
-        let instanceConfig:InstanceConfig = {
+        let instanceConfig:IInstanceConfig = {
             channel: tab.channel.channelId,
             objects: InstanceConfigObjectEnum.PODS,
             flow: InstanceMessageFlowEnum.REQUEST,
@@ -568,7 +576,7 @@ const App: React.FC = () => {
     }
 
     const socketDisconnect = (wsEvent:any) => {
-        console.log('Socket disconnected')
+        console.log('WebSocket disconnected', new Date().toString())
         let tab = tabs.current.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
         const reconnectable = backChannels.find(c => c.id === tab!.channel.channelId && c.reconnectable)
@@ -584,12 +592,12 @@ const App: React.FC = () => {
             if (!cluster) return
 
             if (selectedTab.current && selectedTab.current.channel) {
-                if (selectedTab.current.channel.socketDisconnected(selectedTab.current.channelObject)) setRefreshTabContent(Math.random())
+                if (selectedTab.current.channel.socketDisconnected(selectedTab.current.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
             }
             else {
                 console.log('Unsuppported channel on disconnect:', tab.channel.channelId)
             }
-            setRefreshTabContent(Math.random())
+            setChannelMessageAction({action : ChannelRefresh.REFRESH})
 
             let selfId = setInterval( (url, tab) => {
                 console.log(`Trying to reconnect using ${url} and ${tab.channelObject.instanceId}`)
@@ -622,7 +630,7 @@ const App: React.FC = () => {
             tab.ws.onmessage = (event) => wsOnMessage(event)
             tab.ws.onclose = (event) => socketDisconnect(event)
 
-            let instanceConfig: InstanceConfig = {
+            let instanceConfig: IInstanceConfig = {
                 channel: tab.channel.channelId,
                 objects: InstanceConfigObjectEnum.PODS,
                 action: InstanceMessageActionEnum.START,
@@ -644,9 +652,9 @@ const App: React.FC = () => {
                 tab.ws.send(JSON.stringify(instanceConfig))
                 tab.channelStarted = true
                 tab.channelPaused = false
-                colorizeTab(tab)
                 
                 tab.channel.startChannel(tab.channelObject)
+                colorizeTab(tab)
 
                 if (!lastTabs.some(t => t.name === tab.name && t.channel === tab.channel.channelId)) {
                     let newTab = {
@@ -687,7 +695,7 @@ const App: React.FC = () => {
         let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
 
         if (!cluster) return
-        let instanceConfig: InstanceConfig = {
+        let instanceConfig: IInstanceConfig = {
             channel: tab.channel.channelId,
             objects: InstanceConfigObjectEnum.PODS,
             action: InstanceMessageActionEnum.STOP,
@@ -703,7 +711,7 @@ const App: React.FC = () => {
             type: InstanceMessageTypeEnum.SIGNAL
         }
         if (selectedTab.current && selectedTab.current.channel) {
-            if (selectedTab.current.channel.stopChannel(selectedTab.current.channelObject)) setRefreshTabContent(Math.random())
+            if (selectedTab.current.channel.stopChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
             if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
             tab.channelStarted = false
             tab.channelPaused = false
@@ -720,7 +728,7 @@ const App: React.FC = () => {
         let cluster = clusters.find(c => c.name === selectedTab.current!.channelObject.clusterName)
         if(!cluster) return
         
-        let instanceConfig:InstanceConfig = {
+        let instanceConfig:IInstanceConfig = {
             channel: selectedTab.current.channel.channelId,
             objects: InstanceConfigObjectEnum.PODS,
             action: InstanceMessageActionEnum.PAUSE,
@@ -740,11 +748,13 @@ const App: React.FC = () => {
             selectedTab.current.channelPaused = false
             colorizeTab(selectedTab.current)
             instanceConfig.action = InstanceMessageActionEnum.CONTINUE
+            if (selectedTab.current.channel.continueChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
         }
         else {
             selectedTab.current.channelPaused = true
             colorizeTab(selectedTab.current)
             instanceConfig.action = InstanceMessageActionEnum.PAUSE
+            if (selectedTab.current.channel.pauseChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
         }
         selectedTab.current.ws.send(JSON.stringify(instanceConfig))
     }
@@ -857,7 +867,7 @@ const App: React.FC = () => {
         }
     }
 
-    const saveBoard = (name:string, description:string) => {
+    const saveWorkspace = (name:string, description:string) => {
         let newTabs:ITabObject[] = []
         for (let tab of tabs.current) {
             let newTab:ITabObject = {
@@ -877,72 +887,72 @@ const App: React.FC = () => {
                 newTabs.push(newTab)
             }
             else {
-                console.log('Channel not supported on saveBoard:',tab.channel.channelId)
+                console.log('Channel not supported on saveWorkspace:',tab.channel.channelId)
             }
         }
-        let board:IBoard = {
+        let workspace:IWorkspace = {
             name,
             description,
             tabs: newTabs
         }
-        let payload=JSON.stringify( board )
+        let payload=JSON.stringify( workspace )
         fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addPostAuthorization(accessString, payload))
 
-        if (currentBoardName !== name) {
-            setCurrentBoardName(name)
-            setCurrentBoardDescription(description)
+        if (currentWorkspaceName !== name) {
+            setCurrentWorkspaceName(name)
+            setCurrentWorkspaceDescription(description)
             
-            let newLastBoards=[{name: board.name, description:board.description}, ...lastBoards]
-            setLastBoards(newLastBoards)
-            localStorage.setItem('lastBoards', JSON.stringify(newLastBoards))
+            let newLastWorkspaces=[{name: workspace.name, description:workspace.description}, ...lastWorkspaces]
+            setLastWorkspaces(newLastWorkspaces)
+            localStorage.setItem('lastWorkspaces', JSON.stringify(newLastWorkspaces))
         }
     }
 
-    const onSaveBoardClosed = (name?:string, description?:string) => {
-        setShowSaveBoard(false)
-        if (name) saveBoard(name, description||'No description')
+    const onSaveWorkspaceClosed = (name?:string, description?:string) => {
+        setShowSaveWorkspace(false)
+        if (name) saveWorkspace(name, description||'No description')
     }
 
-    const onSelectBoardClosed = async (action:string, name?:string) => {
-        setShowSelectBoard(false)
+    const onSelectWorkspaceClosed = async (action:string, name?:string) => {
+        setShowSelectWorkspace(false)
         if (name) {
             if (action === 'delete') {
-                setMsgBox(MsgBoxYesNo('Delete board',`Are you sure you want to delete board ${name} (you cannot undo this action)?`, setMsgBox, (button) => {
+                setMsgBox(MsgBoxYesNo('Delete workspace',`Are you sure you want to delete workspace ${name} (you cannot undo this action)?`, setMsgBox, (button) => {
                     if (button===MsgBoxButtons.Yes) {
                         fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addDeleteAuthorization(accessString))
-                        if (name === currentBoardName) {
-                            setCurrentBoardName('untitled')
-                            setCurrentBoardDescription('No description yet')                            
+                        if (name === currentWorkspaceName) {
+                            setCurrentWorkspaceName('untitled')
+                            setCurrentWorkspaceDescription('No description yet')                            
                         }
-                        let newLastBoards=[...lastBoards.filter(b => b.name!==name)]
-                        setLastBoards(newLastBoards)
-                        localStorage.setItem('lastBoards', JSON.stringify(newLastBoards))
+                        let newLastWorkspaces=[...lastWorkspaces.filter(b => b.name!==name)]
+                        setLastWorkspaces(newLastWorkspaces)
+                        localStorage.setItem('lastWorkspaces', JSON.stringify(newLastWorkspaces))
                     }
                 }))
             }
             else if (action === 'load') {
-                loadBoard(name)
+                loadWorkspace(name)
             }
         }
     }
 
-    const loadBoard = async (name: string) => {
+    const loadWorkspace = async (name: string) => {
         let errors = ''
         clearTabs()
 
-        let boardDef = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
-        let newBoard:IBoard = JSON.parse(boardDef)
-        if (newBoard && newBoard.tabs && newBoard.tabs.length>0) {
-            for (let t of newBoard.tabs) {
+        let workspaceDef = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
+        let newWorkspace:IWorkspace = JSON.parse(workspaceDef)
+        if (newWorkspace && newWorkspace.tabs && newWorkspace.tabs.length>0) {
+            for (let t of newWorkspace.tabs) {
                 let clusterName = t.channelObject.clusterName
                 if (!clusters.find(c => c.name === clusterName)) {
                     errors += `Cluster '${clusterName}' used in tab ${t.name} does not exsist<br/><br/>`
                 }
             }
-            if (errors!=='') setMsgBox(MsgBoxOkError('Kwirth',`Some errors have been detected when loading board:<br/><br/>${errors}`, setMsgBox))
-            setCurrentBoardName(name)
-            setCurrentBoardDescription(newBoard.description)
-            for (let t of newBoard.tabs) {
+            if (errors!=='') setMsgBox(MsgBoxOkError('Kwirth',`Some errors have been detected when loading workspace:<br/><br/>${errors}`, setMsgBox))
+            setCurrentWorkspaceName(name)
+            setCurrentWorkspaceDescription(newWorkspace.description)
+            for (let t of newWorkspace.tabs) {
                 let res:IResourceSelected = {
                     channelId: t.channel.channelId,
                     clusterName: t.channelObject.clusterName,
@@ -953,33 +963,33 @@ const App: React.FC = () => {
                     containers: t.channelObject.container.split(','),
                     name: t.name
                 }
-                onResourceSelectorAdd(res)
+                onResourceSelectorAdd(res, false, undefined)
             }
 
-            if (!lastBoards.some(board => board.name === newBoard.name)) {
-                let newLastBoards = lastBoards
-                if (newLastBoards.length>5) newLastBoards= newLastBoards.slice(0,4)
-                setLastBoards([newBoard, ...newLastBoards])
-                localStorage.setItem('lastBoards', JSON.stringify([newBoard, ...newLastBoards]))
+            if (!lastWorkspaces.some(workspace => workspace.name === newWorkspace.name)) {
+                let newLastWorkspaces = lastWorkspaces
+                if (newLastWorkspaces.length>5) newLastWorkspaces= newLastWorkspaces.slice(0,4)
+                setLastWorkspaces([newWorkspace, ...newLastWorkspaces])
+                localStorage.setItem('lastWorkspaces', JSON.stringify([newWorkspace, ...newLastWorkspaces]))
             }
         }
     }
 
-    const showNoBoards = () => {
-        setMsgBox(MsgBoxOk('Board management','You have no boards stored in your personal Kwirth space', setMsgBox))
+    const showNoWorkspaces = () => {
+        setMsgBox(MsgBoxOk('Workspace management','You have no workspaces stored in your personal Kwirth space', setMsgBox))
     }
 
-    const getBoards = async () => {
-        let allBoards:IBoard[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
-        if (allBoards.length===0) {
-            showNoBoards()
+    const getWorkspaces = async () => {
+        let allWorkspaces:IWorkspace[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards?full=true`, addGetAuthorization(accessString))).json()
+        if (allWorkspaces.length===0) {
+            showNoWorkspaces()
             return undefined
         }
         else {
-            let values = allBoards.map( b => {
+            let values = allWorkspaces.map( b => {
                 let name=Object.keys(b)[0]
-                let board = JSON.parse((b as any)[name]) as IBoard
-                return { name: board.name,  description: board.description }
+                let workspace = JSON.parse((b as any)[name]) as IWorkspace
+                return { name: workspace.name,  description: workspace.description }
             })
             return values
         }
@@ -995,40 +1005,40 @@ const App: React.FC = () => {
     const menuDrawerOptionSelected = async (option:MenuDrawerOption) => {
         setMenuDrawerOpen(false)
         switch(option) {
-            case MenuDrawerOption.NewBoard:
+            case MenuDrawerOption.NewWorkspace:
                 clearTabs()
-                setCurrentBoardName('untitled')
-                setCurrentBoardDescription('No description yet')
+                setCurrentWorkspaceName('untitled')
+                setCurrentWorkspaceDescription('No description yet')
                 selectedTab.current = undefined
                 break
-            case MenuDrawerOption.SaveBoard:
-                if (currentBoardName !== '' && currentBoardName !== 'untitled')
-                    saveBoard(currentBoardName, currentBoardDescription)
+            case MenuDrawerOption.SaveWorkspace:
+                if (currentWorkspaceName !== '' && currentWorkspaceName !== 'untitled')
+                    saveWorkspace(currentWorkspaceName, currentWorkspaceDescription)
                 else {
-                    setShowSaveBoard(true)
+                    setShowSaveWorkspace(true)
                 }
                 break
-            case MenuDrawerOption.SaveBoardAs: {
-                    let values = await getBoards()
+            case MenuDrawerOption.SaveWorkspaceAs: {
+                    let values = await getWorkspaces()
                     if (values) {
-                        setBoards(values)
-                        setShowSaveBoard(true)
+                        setWorkspaces(values)
+                        setShowSaveWorkspace(true)
                 }}
                 break
-            case MenuDrawerOption.LoadBoard: {
-                let values = await getBoards()
+            case MenuDrawerOption.LoadWorkspace: {
+                let values = await getWorkspaces()
                 if (values) {
-                    setBoards(values)
-                    setSelectBoardAction ('load')
-                    setShowSelectBoard(true)
+                    setWorkspaces(values)
+                    setSelectWorkspaceAction ('load')
+                    setShowSelectWorkspace(true)
                 }}
                 break
-            case MenuDrawerOption.DeleteBoard: {
-                let values = await getBoards()
+            case MenuDrawerOption.DeleteWorkspace: {
+                let values = await getWorkspaces()
                 if (values) {
-                    setBoards( values )
-                    setSelectBoardAction ('delete')
-                    setShowSelectBoard(true)
+                    setWorkspaces( values )
+                    setSelectWorkspaceAction ('delete')
+                    setShowSelectWorkspace(true)
                 }}
                 break
             case MenuDrawerOption.ManageCluster:
@@ -1040,21 +1050,21 @@ const App: React.FC = () => {
             case MenuDrawerOption.UserSecurity:
                 setShowUserSecurity(true)
                 break
-            case MenuDrawerOption.ExportBoards:
-                let boardsToExport:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
-                if (boardsToExport.length===0) {
-                    showNoBoards()
+            case MenuDrawerOption.ExportWorkspaces:
+                let workspacesToExport:string[] = await (await fetch (`${backendUrl}/store/${user?.id}/boards`, addGetAuthorization(accessString))).json()
+                if (workspacesToExport.length===0) {
+                    showNoWorkspaces()
                 }
                 else {
                     let content:any={}
-                    for (let boardName of boardsToExport) {
-                        let readBoard = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addGetAuthorization(accessString))).json()
-                        content[boardName]=JSON.parse(readBoard)
+                    for (let workspaceName of workspacesToExport) {
+                        let readWorkspace = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${workspaceName}`, addGetAuthorization(accessString))).json()
+                        content[workspaceName]=JSON.parse(readWorkspace)
                     }
                     handleDownload(JSON.stringify(content),`${user?.id}-export-${new Date().toLocaleDateString()+'-'+new Date().toLocaleTimeString()}.kwirth.json`)
                 }
                 break
-            case MenuDrawerOption.ImportBoards:
+            case MenuDrawerOption.ImportWorkspaces:
                 // nothing to do, the menuitem launches the handleUpload
                 break
             case MenuDrawerOption.SettingsUser:
@@ -1098,10 +1108,10 @@ const App: React.FC = () => {
         if (file) {
             const reader = new FileReader()
             reader.onload = (event:any) => {
-                let allBoards=JSON.parse(event.target.result)
-                for (let boardName of Object.keys(allBoards)) {
-                    let payload=JSON.stringify(allBoards[boardName])
-                    fetch (`${backendUrl}/store/${user?.id}/boards/${boardName}`, addPostAuthorization(accessString, payload))
+                let allWorkspaces=JSON.parse(event.target.result)
+                for (let workspaceName of Object.keys(allWorkspaces)) {
+                    let payload=JSON.stringify(allWorkspaces[workspaceName])
+                    fetch (`${backendUrl}/store/${user?.id}/boards/${workspaceName}`, addPostAuthorization(accessString, payload))
                 }
             }
             reader.readAsText(file)
@@ -1160,8 +1170,8 @@ const App: React.FC = () => {
             setFirstLogin(firstTime)
             setUser(user)
             setAccessString(user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources)
-            setCurrentBoardName('untitled')
-            setCurrentBoardDescription('No description yet')
+            setCurrentWorkspaceName('untitled')
+            setCurrentWorkspaceDescription('No description yet')
             clearTabs()
         }
     }
@@ -1191,13 +1201,13 @@ const App: React.FC = () => {
         if (cluster) {
             let clonedTab:ITabSummary = await JSON.parse(JSON.stringify(tab))
             await fillTabSummary(clonedTab)
-            populateTabObject(clonedTab.name, clonedTab.channel, cluster, clonedTab.channelObject.view, clonedTab.channelObject.namespace, clonedTab.channelObject.group, clonedTab.channelObject.pod, clonedTab.channelObject.container)
+            populateTabObject(clonedTab.name, clonedTab.channel, cluster, clonedTab.channelObject.view, clonedTab.channelObject.namespace, clonedTab.channelObject.group, clonedTab.channelObject.pod, clonedTab.channelObject.container, false, undefined)
             onClickChannelStart()
         }
     }
 
-    const onHomepageBoard = (board: IBoardSummary): void => {
-        loadBoard(board.name)
+    const onHomepageWorkspace = (workspace: IWorkspaceSummary): void => {
+        loadWorkspace(workspace.name)
     }
     
     const onHomepageUpdateTabs = (last: ITabSummary[], fav: ITabSummary[]): void => {
@@ -1207,11 +1217,11 @@ const App: React.FC = () => {
         setFavTabs(fav)
     }
     
-    const onHomepageUpdateBoards = (last: IBoardSummary[], fav: IBoardSummary[]): void => {
-        localStorage.setItem('lastBoards', JSON.stringify(last))
-        localStorage.setItem('favBoards', JSON.stringify(fav))
-        setLastBoards(last)
-        setFavBoards(fav)
+    const onHomepageUpdateWorkspaces = (last: IWorkspaceSummary[], fav: IWorkspaceSummary[]): void => {
+        localStorage.setItem('lastWorkspaces', JSON.stringify(last))
+        localStorage.setItem('favWorkspaces', JSON.stringify(fav))
+        setLastWorkspaces(last)
+        setFavWorkspaces(fav)
     }
     
     if (!logged) return (<>
@@ -1224,7 +1234,7 @@ const App: React.FC = () => {
 
     const onSelectHome = () => {
         selectedTab.current = undefined
-        setRefreshTabContent(Math.random())
+        setChannelMessageAction({action : ChannelRefresh.REFRESH})
     }
 
     return (
@@ -1233,8 +1243,8 @@ const App: React.FC = () => {
                 <Toolbar>
                     <IconButton size='large' edge='start' color='inherit' sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
                     <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth</Typography>
-                    <Tooltip title={<div style={{textAlign:'center'}}>{currentBoardName}<br/><br/>{currentBoardDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
-                        <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentBoardName}</Typography>
+                    <Tooltip title={<div style={{textAlign:'center'}}>{currentWorkspaceName}<br/><br/>{currentWorkspaceDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
+                        <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentWorkspaceName}</Typography>
                     </Tooltip>
                     <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user && parseResources(user.accessKey.resources).map(r=>r.scopes).join(',')}]</div>} sx={{ mr:2 }} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -6]}}]}}}>
                         <Person/>
@@ -1249,7 +1259,7 @@ const App: React.FC = () => {
                 </Stack>
             </Drawer>
 
-            <ResourceSelector clusters={clusters} backChannels={backChannels} onAdd={onResourceSelectorAdd} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }} tabs={tabs.current} data-refresh={refreshTabContent} resourceSelected={resourceSelected}/>
+            <ResourceSelector clusters={clusters} backChannels={backChannels} onAdd={(res) => onResourceSelectorAdd(res, false, undefined)} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }} tabs={tabs.current} data-refresh={channelMessageAction} resourceSelected={resourceSelected}/>
             
             <Stack direction={'column'}>
                 <Stack direction={'row'} alignItems={'end'} sx={{mb:1, borderBottom: 1, borderColor: 'divider'}}>                    
@@ -1257,31 +1267,42 @@ const App: React.FC = () => {
                         <Tab key={'0'} label={<Home/>} value={0} onClick={onSelectHome} sx={{height:'60px'}}/>
                     </Tabs>
                     { tabs.current.length>0 &&
-                        <Tabs value={selectedTab.current? tabs.current.indexOf(selectedTab.current) : false} onChange={onChangeTab} variant='scrollable' scrollButtons='auto'>
-                            {  tabs.current.map((tab:ITabObject, index) => {
-                                    return <Tab component='span' ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={tab === selectedTab.current ? <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton> : <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{ mb:-1, mt:-1}}/>
-                            })}
+                        <Tabs value={selectedTab.current? tabs.current.indexOf(selectedTab.current) : false} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' TabIndicatorProps={{ style: { display: 'none' } }} sx={{ml:"-16px"}}>
+                            {   tabs.current.map((tab:ITabObject, index) => {
+                                    return <Tab component='span' ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={
+                                                tab === selectedTab.current ? 
+                                                    <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>
+                                                    :
+                                                    <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{
+                                                        borderRadius: '10px 10px 0 0',
+                                                        backgroundColor:'#ebebeb',
+                                                        '& .MuiTouchRipple-root': {
+                                                            borderTopLeftRadius: '8px',
+                                                            borderTopRightRadius: '8px',
+                                                        }}}/>
+                                })
+                            }
                         </Tabs>
                     }
                     <Typography sx={{ flexGrow: 1 }}></Typography>
                 </Stack>
-                { !selectedTab.current && 
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastBoards={lastBoards} favBoards={favBoards} onSelectTab={onHomepageTab} onSelectBoard={onHomepageBoard} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateBoards={onHomepageUpdateBoards}/>
-                    </Box>
-                }
                 { selectedTab.current &&
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs.current} selectedTab={selectedTab.current} selectedTabIndex={selectedTab.current? tabs.current.indexOf(selectedTab.current) : -1} backChannels={backChannels}/>}
-                        <TabContent channel={selectedTab.current?.channel} webSocket={selectedTab.current?.ws} channelObject={selectedTab.current?.channelObject} refreshTabContent={refreshTabContent} />
+                        <TabContent key={selectedTab.current?.name} channel={selectedTab.current?.channel} webSocket={selectedTab.current?.ws} channelObject={selectedTab.current?.channelObject} channelMessageAction={channelMessageAction} />
                     </Box>
-                }   
+                }
+                { !selectedTab.current && 
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onSelectTab={onHomepageTab} onSelectWorkspace={onHomepageWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces}/>
+                    </Box>
+                }
 
             </Stack>
 
             { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs.current} oldname={selectedTab.current?.name}/> }
-            { showSaveBoard && <SaveBoard onClose={onSaveBoardClosed} name={currentBoardName} description={currentBoardDescription} values={boards} /> }
-            { showSelectBoard && <SelectBoard onSelect={onSelectBoardClosed} values={boards} action={selectBoardAction}/> }
+            { showSaveWorkspace && <SaveWorkspace onClose={onSaveWorkspaceClosed} name={currentWorkspaceName} description={currentWorkspaceDescription} values={workspaces} /> }
+            { showSelectWorkspace && <SelectWorkspace onSelect={onSelectWorkspaceClosed} values={workspaces} action={selectWorkspaceAction}/> }
             { showManageClusters && <ManageClusters onClose={onManageClustersClosed} clusters={clusters}/> }
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }

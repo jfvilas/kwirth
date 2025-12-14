@@ -1,4 +1,4 @@
-import { AssetMetrics, MetricsMessage, InstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, IInstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources, accessKeyDeserialize, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common'
+import { AssetMetrics, MetricsMessage, IInstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, IInstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, IInstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources, accessKeyDeserialize, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { AssetData } from '../../tools/MetricsTools'
 import { IChannel } from '../IChannel'
@@ -10,7 +10,7 @@ interface IInstance {
     working: boolean
     paused: boolean
     assets: AssetData[]
-    instanceConfig: InstanceConfig
+    instanceConfig: IInstanceConfig
     interval: number
 }
 
@@ -36,6 +36,7 @@ class MetricsChannel implements IChannel {
             modifyable: true,
             reconnectable: true,
             metrics: true,
+            events: false,
             sources: [ ClusterTypeEnum.KUBERNETES ],
             endpoints: [],
             websocket: false
@@ -44,6 +45,9 @@ class MetricsChannel implements IChannel {
 
     getChannelScopeLevel(scope: string): number {
         return ['','snapshot','stream','cluster'].indexOf(scope)
+    }
+
+    processEvent(type:string, obj:any) : void {
     }
 
     async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
@@ -73,17 +77,17 @@ class MetricsChannel implements IChannel {
         return false
     }
 
-    checkScopes = (instanceConfig:InstanceConfig, scope: InstanceConfigScopeEnum) => {
+    checkScopes = (instanceConfig:IInstanceConfig, scope: InstanceConfigScopeEnum) => {
         let resources = parseResources (accessKeyDeserialize(instanceConfig.accessKey).resources)
         let requiredLevel = this.getChannelScopeLevel(scope)
         let canPerform = resources.some(r => r.scopes.split(',').some(sc => this.getChannelScopeLevel(sc)>= requiredLevel))
         return canPerform
     }
 
-    async addObject (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async addObject (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
-            const podResponse = await this.clusterInfo.coreApi.readNamespacedPod(podName, podNamespace)
-            const owner = podResponse.body.metadata?.ownerReferences?.find(or => or.controller)
+            const podResponse = await this.clusterInfo.coreApi.readNamespacedPod({ name:podName, namespace:podNamespace })
+            const owner = podResponse.metadata?.ownerReferences?.find(owner => owner.controller)
             if (!owner) {
                 console.log('No owner found')
                 this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `No owner found for starting instance ${instanceConfig.instance}: ${podNamespace}/${podName}/${containerName}`, instanceConfig)
@@ -91,7 +95,7 @@ class MetricsChannel implements IChannel {
             }
             const gtype = owner.kind.toLocaleLowerCase()  // deployment, replicaset, daemonset or statefulset
             const podGroup = gtype + '+' + owner.name
-            const podNode = podResponse.body.spec?.nodeName
+            const podNode = podResponse.spec?.nodeName
             
             switch ((instanceConfig.data as MetricsConfig).mode) {
                 case MetricsConfigModeEnum.SNAPSHOT:
@@ -193,11 +197,11 @@ class MetricsChannel implements IChannel {
         }
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
         
     }
     
-    stopInstance (webSocket: WebSocket, instanceConfig: InstanceConfig): void {
+    stopInstance (webSocket: WebSocket, instanceConfig: IInstanceConfig): void {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             this.removeInstance (webSocket,instanceConfig.instance)
@@ -208,7 +212,7 @@ class MetricsChannel implements IChannel {
         }
     }
 
-    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
+    modifyInstance (webSocket:WebSocket, instanceConfig: IInstanceConfig): void {
         let instance = this.getInstance(webSocket, instanceConfig.instance)        
         if (instance) {
             // only modifiable properties of the metrics config
@@ -223,7 +227,7 @@ class MetricsChannel implements IChannel {
         }   
     }
 
-    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             if (action === InstanceMessageActionEnum.PAUSE) {
@@ -334,7 +338,7 @@ class MetricsChannel implements IChannel {
     // PRIVATE
     // *************************************************************************************
 
-    getAssetMetrics = (instanceConfig:InstanceConfig, assets:AssetData[], usePrevMetricSet:boolean): AssetMetrics => {
+    getAssetMetrics = (instanceConfig:IInstanceConfig, assets:AssetData[], usePrevMetricSet:boolean): AssetMetrics => {
         var assetMetrics:AssetMetrics = { assetName: this.getAssetMetricName(instanceConfig, assets), values: [] }
 
         var newAssets:AssetData[] = []
@@ -343,7 +347,7 @@ class MetricsChannel implements IChannel {
         }
         else {
             for (var a of assets) {
-                if (!newAssets.find(na => na.podName === a.podName)) {
+                if (!newAssets.find(newAsset => newAsset.podName === a.podName)) {
                     newAssets.push({
                         podNode: a.podNode,
                         podNamespace: a.podNamespace,
@@ -466,11 +470,10 @@ class MetricsChannel implements IChannel {
                     break
             }
         }
-
         return assetMetrics
     }
 
-    getAssetMetricName = (instanceConfig:InstanceConfig, assets:AssetData[]): string => {
+    getAssetMetricName = (instanceConfig:IInstanceConfig, assets:AssetData[]): string => {
         switch (instanceConfig.view) {
             case InstanceConfigViewEnum.NAMESPACE:
                 return [...new Set (assets.map (a => a.podNamespace))].join(',')
@@ -603,8 +606,8 @@ class MetricsChannel implements IChannel {
         }
     }
     
-    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
-        var resp:InstanceConfigResponse = {
+    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:IInstanceConfig, text:string): void => {
+        var resp:IInstanceConfigResponse = {
             action,
             flow,
             channel,
@@ -615,7 +618,7 @@ class MetricsChannel implements IChannel {
         ws.send(JSON.stringify(resp))
     }
 
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
+    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: IInstanceConfig): void {
         var signalMessage:ISignalMessage = {
             action: InstanceMessageActionEnum.NONE,
             flow: InstanceMessageFlowEnum.RESPONSE,

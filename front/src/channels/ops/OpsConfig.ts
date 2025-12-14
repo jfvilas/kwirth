@@ -1,11 +1,17 @@
-import { ColorModeEnum } from "./terminal/Terminal"
-
 interface IOpsConfig {
-    colorMode: ColorModeEnum
+    accessKey: AccessKeyEnum
 }
 
 class OpsConfig implements IOpsConfig{
-    colorMode = ColorModeEnum.Light
+    accessKey =  AccessKeyEnum.DISABLED
+}
+
+enum AccessKeyEnum {
+    DISABLED,
+    NONE,
+    ALT,
+    CTRL,
+    SHIFT
 }
 
 interface IOpsInstanceConfig {
@@ -17,4 +23,4 @@ class OpsInstanceConfig implements IOpsInstanceConfig{
 }
 
 export type { IOpsConfig, IOpsInstanceConfig }
-export { OpsConfig, OpsInstanceConfig }
+export { OpsConfig, OpsInstanceConfig, AccessKeyEnum }

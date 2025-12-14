@@ -11,13 +11,14 @@ declare module '@jfvilas/react-file-manager' {
         }
     }
 
-    export interface IFileData {
+    export interface IFileObject {
         name: string;
         isDirectory: boolean;
         path: string;
-        updatedAt?: string;
-        size?: number;
+        layout?: string;
         class?: string;
+        children?: string|function;
+        data?: any;
     }
 
     export interface IAction {
@@ -34,28 +35,57 @@ declare module '@jfvilas/react-file-manager' {
         default: React.JSX
     }
 
+    export interface ISpace {
+        text?:string,
+        source?:string,
+        width?:number,
+        sumSourceProperty?: string,
+        sumReducer?: number,
+        sumUnits?: srting[],
+        leftItems?: ISpaceMenuItem[]
+        properties?: ISpaceProperty[]
+    }
+
+    export interface ISpaceMenuItem {
+        name?: string,
+        icon?: any,
+        text: string,
+        permission: boolean,
+        multi?: boolean,
+        onClick?: (files:IFileObject[]) => void
+    }
+
+    export interface ISpaceProperty {
+        name: string,
+        text: string,
+        source: string|function,
+        format: 'string'|'function'|'age'|'number',
+        width: number,
+        visible: boolean
+    }
+
     const FileManager : FC<{
         actions: Map<string, IAction[]>,
-        files: IFileData[],
-        fileUploadConfig,
+        files: IFileObject[],
+        fileUploadConfig?,
         icons: Map<string, IIcon[]>,
         isLoading?: boolean,
         onCreateFolder,
-        onFileUploading : (file:IFileData, parentFolder: IFileData) => void,
+        onFileUploading? : (file:IFileObject, parentFolder: IFileObject) => void,
         onFileUploaded? : () => void,
         onCut?,
         onCopy?,
         onPaste,
         onRename,
-        onDownload,
-        onDelete : (files:IFileData[]) => void,
+        onDownload?,
+        onDelete : (files:IFileObject[]) => void,
         onLayoutChange? : () => void,
         onRefresh,
         onFileOpen? : () => void,
         onFolderChange : (folder: string) => void,
         onSelect?,
         onSelectionChange?,
-        onError? : (error: IError, file: IFileData) => void,
+        onError? : (error: IError, file: IFileObject) => void,
         layout?: string,
         enableFilePreview : boolean,
         maxFileSize? : number,
@@ -73,7 +103,11 @@ declare module '@jfvilas/react-file-manager' {
         defaultNavExpanded? : boolean,
         className? : string,
         style?,
-        formatDate?
+        formatDate?,
+        search?: string
+        searchRegex?:boolean
+        searchCasing?:boolean
+        spaces?: Map<string, ISpace>
     }>
    
 }

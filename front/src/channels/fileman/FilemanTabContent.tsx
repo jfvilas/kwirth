@@ -3,7 +3,7 @@ import { IChannelObject } from '../IChannel'
 import { FilemanCommandEnum, IFilemanMessage, IFilemanData } from './FilemanData'
 import { Box, Typography } from '@mui/material'
 import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
-import { IError, IFileData } from '@jfvilas/react-file-manager'
+import { IError, IFileObject } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
 import { IconContainer, IconNamespace, IconPod } from '../../tools/Constants-React'
 import { v4 as uuid } from 'uuid'
@@ -46,7 +46,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         {
             title: 'Namespace details',
             icon: <Typography color='green' fontWeight={600}>V</Typography>,
-            onClick: async (files : any) => {
+            onClick: async (files : IFileObject[]) => {
                 let namespace = files[0].name
                 let data = await((await fetch(`${props.channelObject.clusterUrl}/config/${namespace}/groups`, addGetAuthorization(props.channelObject.accessString!))).json())
                 let info = `Controllers inside ${namespace} namespace:<br/><br/>` + data.map((ns:any) => '<b>-</b> '+ ns.name + '<br/>').join('')
@@ -58,8 +58,8 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         {
             title: 'File details',
             icon: <Typography color='blue' fontWeight={600}>D</Typography>,
-            onClick: async (files : IFileData[]) => {
-                let info = `Details of file '${files[0].name}':<br/><br/><b>Name</b>: ${files[0].name}<br/><b>Path</b>: ${files[0].path}<br/><b>Last update</b>: ${files[0].updatedAt}<br/><b>Size (bytes)</b>: ${files[0].size}`
+            onClick: async (files : IFileObject[]) => {
+                let info = `Details of file '${files[0].name}':<br/><br/><b>Name</b>: ${files[0].name}<br/><b>Path</b>: ${files[0].path}<br/><b>Last update</b>: ${files[0].data.updatedAt}<br/><b>Size (bytes)</b>: ${files[0].data.size}`
                 setMsgBox(MsgBoxOk('File info', info, setMsgBox))
             }
         }
@@ -97,7 +97,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const onDelete = (files: IFileData[]) => {
+    const onDelete = (files: IFileObject[]) => {
         for (let file of files) {
             let [namespace,pod,container] = file.path.split('/').slice(1)
             filemanData.files = filemanData.files.filter(f => f.path !== file.path)
@@ -106,13 +106,13 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const onCreateFolder = async (name: string, parentFolder: IFileData) => {
+    const onCreateFolder = async (name: string, parentFolder: IFileObject) => {
         setRefresh(Math.random())
         let [namespace,pod,container] = parentFolder.path.split('/').slice(1)
         sendCommand(FilemanCommandEnum.CREATE, namespace, pod, container, [parentFolder.path + '/' + name])
     }
 
-    const onDownload = async (files: Array<IFileData>) => {
+    const onDownload = async (files: IFileObject[]) => {
         for (let file of files) {
             const url = `${props.channelObject.clusterUrl}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
             
@@ -145,7 +145,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const onPaste = (files: Array<IFileData>, destFolder:IFileData, operation:string) => {
+    const onPaste = (files: IFileObject[], destFolder:IFileObject, operation:string) => {
         let command = operation==='move'? FilemanCommandEnum.MOVE : FilemanCommandEnum.COPY
         for (let file of files) {
             let [namespace,pod,container] = file.path.split('/').slice(1)
@@ -153,12 +153,12 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }        
     }
 
-    const onError = (error: IError, file: IFileData) => {
+    const onError = (error: IError, file: IFileObject) => {
         let uiConfig = props.channelObject.config as IFilemanConfig
         uiConfig.notify(ENotifyLevel.ERROR, error.message)
     }
 
-    const onRename	= (file: IFileData, newName: string) => {
+    const onRename	= (file: IFileObject, newName: string) => {
         let [namespace,pod,container] = file.path.split('/').slice(1)
         filemanData.files = filemanData.files.filter (f => f.path!==file.path)
         sendCommand(FilemanCommandEnum.RENAME, namespace, pod, container, [file.path, newName])
@@ -195,7 +195,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             msgtype: 'filemanmessage'
         }
         let payload = JSON.stringify( filemanMessage )
-        if (props.channelObject.webSocket) props.channelObject.webSocket.send(payload)
+        props.channelObject.webSocket.send(payload)
     }
 
     const getLocalDir = (folder:string) => {
@@ -227,13 +227,13 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (level > 2) getLocalDir(folder)
     }
 
-    const onFileUploading = (file: IFileData, parentFolder: IFileData) => { 
+    const onFileUploading = (file: IFileObject, parentFolder: IFileObject) => { 
         return { filename: filemanData.currentPath + '/' + file.name }
     }
 
     return <>
         { filemanData.started &&
-            <Box ref={filemanBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 10px)`, paddingLeft: '5px', paddingRight:'5px'}}>
+            <Box ref={filemanBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 16px)`, paddingLeft: '5px', paddingRight:'5px', marginTop:'8px'}}>
                 <FileManager
                     files={filemanData.files}
                     actions={actions}
@@ -256,6 +256,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     fontFamily='Roboto, Helvetica, Arial, sans-serif'
                     height='100%'
                     className='custom-fm'
+                    search='auto'
                 />
                 { msgBox }
             </Box>

@@ -1,7 +1,7 @@
-import { InstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, InstanceConfigResponse, parseResources } from '@jfvilas/kwirth-common'
+import { IInstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, IInstanceConfigResponse, parseResources } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel'
-import { PassThrough, Readable, Writable } from 'stream'
+import { Readable, Writable } from 'stream'
 import { Request, Response } from 'express'
 import { v4 as uuid } from 'uuid'
 import fs from 'fs'
@@ -112,6 +112,7 @@ class FilemanChannel implements IChannel {
             modifyable: false,
             reconnectable: true,
             metrics: false,
+            events: false,
             sources: [ ClusterTypeEnum.KUBERNETES, ClusterTypeEnum.DOCKER ],
             endpoints: [
                 { name: 'download', methods: ['GET'], requiresAccessKey: true },
@@ -123,6 +124,9 @@ class FilemanChannel implements IChannel {
 
     getChannelScopeLevel = (scope: string): number => {
         return ['', 'fileman$read', 'fileman$write', 'cluster'].indexOf(scope)
+    }
+
+    processEvent(type:string, obj:any) : void {
     }
 
     async endpointRequest(endpoint:string, req:Request, res:Response, accessKey:AccessKey) : Promise<void> {
@@ -260,7 +264,7 @@ class FilemanChannel implements IChannel {
         }
     }
 
-    addObject = async (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
+    addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
 
         let socket = this.webSockets.find(s => s.ws === webSocket)
@@ -289,7 +293,7 @@ class FilemanChannel implements IChannel {
         instance.assets.push(asset)
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             instance.assets = instance.assets.filter(a => a.podNamespace!==podNamespace && a.podName!==podName && a.containerName!==containerName)
@@ -299,15 +303,15 @@ class FilemanChannel implements IChannel {
         }
     }
 
-    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void => {
+    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void => {
         console.log('Pause/Continue not supported')
     }
 
-    modifyInstance = (webSocket:WebSocket, instanceConfig: InstanceConfig): void => {
+    modifyInstance = (webSocket:WebSocket, instanceConfig: IInstanceConfig): void => {
         console.log('Modify not supported')
     }
 
-    stopInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig): void => {
+    stopInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig): void => {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             this.removeInstance(webSocket, instanceConfig.instance)
@@ -976,7 +980,7 @@ class FilemanChannel implements IChannel {
                     if (operation === FilemanCommandEnum.MOVE) this.sendUnsolicitedMessage(webSocket, instance.instanceId, FilemanCommandEnum.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))
                 }
                 else {
-                    this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.stdend + result.stderr)
+                    this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result.stdend.message + result.stderr)
                 }
             }
             else {

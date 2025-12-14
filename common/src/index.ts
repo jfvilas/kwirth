@@ -18,22 +18,22 @@ export * from './InstanceMessage'
 export * from './InstanceConfig'
 
 export * from './AlertMessage'
-export * from './AlertConfig'
+export * from './AlertInstanceConfig'
 
 export * from './EchoMessage'
-export * from './EchoConfig'
+export * from './EchoInstanceConfig'
 
-export * from './LogConfig'
+export * from './LogInstanceConfig'
 export * from './LogMessage'
 
 export * from './MetricsMessage'
-export * from './MetricsConfig'
+export * from './MetricsInstanceConfig'
 
 export * from './OpsMessage'
-export * from './OpsConfig'
+export * from './OpsInstanceConfig'
 
 export * from './TrivyMessage'
-export * from './TrivyConfig'
+export * from './TrivyInstanceConfig'
 
 export * from './RouteMessage'
 
@@ -43,5 +43,5 @@ export * from './ApiKey'
 export * from './AccessKey'
 export * from './Global'
 //export * from './KwirthData'
-export * from './LogConfig'
+export * from './LogInstanceConfig'
 export * from './Version'

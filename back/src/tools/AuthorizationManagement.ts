@@ -1,5 +1,5 @@
 import { ApiKeyApi } from '../api/ApiKeyApi'
-import { AccessKey, accessKeyDeserialize, accessKeySerialize, InstanceConfig, parseResource, parseResources, ResourceIdentifier } from '@jfvilas/kwirth-common'
+import { AccessKey, accessKeyDeserialize, accessKeySerialize, IInstanceConfig, parseResource, parseResources, ResourceIdentifier } from '@jfvilas/kwirth-common'
 import { ApiKey } from '@jfvilas/kwirth-common'
 import * as crypto from 'crypto'
 import { IChannel } from '../channels/IChannel'
@@ -141,7 +141,7 @@ export class AuthorizationManagement {
         return true
     }
 
-    public static checkAkr = (channels:Map<string, IChannel>, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) => {
+    public static checkAkr = (channels:Map<string, IChannel>, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) => {
         let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resources)
         let valid=false
         for (let akr of accessKeyResources) {
@@ -200,7 +200,7 @@ export class AuthorizationManagement {
     // }
 
 
-    public static validAuth = (req:Request, res:Response, channels:Map<string, IChannel>, reqScope:string, instanceConfig: InstanceConfig, namespace:string, group:string, pod:string, container:string): boolean => {
+    public static validAuth = (req:Request, res:Response, channels:Map<string, IChannel>, reqScope:string, instanceConfig: IInstanceConfig, namespace:string, group:string, pod:string, container:string): boolean => {
         if (!req.headers.authorization) return false
         
         let key = req.headers.authorization.replaceAll('Bearer ','').trim()
@@ -253,7 +253,7 @@ export class AuthorizationManagement {
     public static getAllowedNamespaces = async (coreApi:CoreV1Api, accessKey:AccessKey): Promise<string[]> => {
         let resources = parseResources(accessKey.resources)
         let response = await coreApi.listNamespace()
-        let clusterNamespaces = response.body.items.map (n => n!.metadata!.name!)
+        let clusterNamespaces = response.items.map (ns => ns!.metadata!.name!)
         let result:string[] = []
 
         for (let resid of resources) {
@@ -284,19 +284,19 @@ export class AuthorizationManagement {
         let groupNames:string[]
         switch (gtype) {
             case 'deployment':
-                groupNames = (await appsApi.listNamespacedDeployment(namespace)).body.items.map (n => n?.metadata?.name!)
+                groupNames = (await appsApi.listNamespacedDeployment({namespace})).items.map (n => n?.metadata?.name!)
                 result.push( ...groupNames)
                 break
             case 'replicaset':
-                groupNames = (await appsApi.listNamespacedReplicaSet(namespace)).body.items.filter(r => r.status?.replicas!>0).map (n => n?.metadata?.name!)
+                groupNames = (await appsApi.listNamespacedReplicaSet({namespace})).items.filter(rs => rs.status?.replicas!>0).map (n => n?.metadata?.name!)
                 result.push( ...groupNames)
                 break
             case 'daemonset':
-                groupNames = (await appsApi.listNamespacedDaemonSet(namespace)).body.items.map (n => n?.metadata?.name!)
+                groupNames = (await appsApi.listNamespacedDaemonSet({namespace})).items.map (ds => ds?.metadata?.name!)
                 result.push( ...groupNames)
                 break
             case 'statefulset':
-                groupNames = (await appsApi.listNamespacedStatefulSet(namespace)).body.items.filter(r => r.status?.replicas!>0).map (n => n?.metadata?.name!)
+                groupNames = (await appsApi.listNamespacedStatefulSet({namespace})).items.filter(ss => ss.status?.replicas!>0).map (n => n?.metadata?.name!)
                 result.push( ...groupNames)
                 break
         }
@@ -350,7 +350,7 @@ export class AuthorizationManagement {
     
     static readReplicaSet = async (appsApi: AppsV1Api, namespace:string, name:string) => {
         try {
-            let rs = (await appsApi.readNamespacedReplicaSet(name, namespace)).body
+            let rs = (await appsApi.readNamespacedReplicaSet({name, namespace}))
             return rs
         }
         catch (err) {
@@ -363,16 +363,16 @@ export class AuthorizationManagement {
         let result:string[]=[]
     
         let resources = parseResources(accessKey!.resources)
-        let response= await coreApi.listNamespacedPod(namespace)
+        let response= await coreApi.listNamespacedPod({namespace})
         if (gtype === 'deployment') {
-            for (let pod of response.body.items) {
+            for (let pod of response.items) {
                 let controllerName = await this.getPodControllerName(appsApi, pod, true)
                 if (controllerName === gname || pod.metadata?.name?.startsWith(gname)) pods.push(pod)
             }
         }
         else {
             // we find for pod whose controller is gname
-            let filteredPods = response.body.items.filter (pod => {
+            let filteredPods = response.items.filter (pod => {
                 let podController  = pod?.metadata?.ownerReferences?.find(cont => cont.controller)
                 if (podController && podController.name===gname) return pod
             })
@@ -401,31 +401,31 @@ export class AuthorizationManagement {
         try {
             switch (groupType) {
                 case 'deployment': {
-                        let x = await appsApi.listNamespacedDeployment(namespace)
-                        let names = x.body.items.map (rs => rs.metadata?.name)
+                        let x = await appsApi.listNamespacedDeployment({namespace})
+                        let names = x.items.map (d => d.metadata?.name)
                         if (!names.includes(groupName)) return emptyResult
-                        response = await appsApi.readNamespacedDeployment(groupName, namespace)
+                        response = await appsApi.readNamespacedDeployment({ name: groupName, namespace: namespace })
                     }
                     break
                 case'replicaset': {
-                        let x = await appsApi.listNamespacedReplicaSet(namespace)
-                        let names = x.body.items.map (rs => rs.metadata?.name)
+                        let x = await appsApi.listNamespacedReplicaSet({namespace})
+                        let names = x.items.map (rs => rs.metadata?.name)
                         if (!names.includes(groupName)) return emptyResult
-                        response = await appsApi.readNamespacedReplicaSet(groupName, namespace)
+                        response = await appsApi.readNamespacedReplicaSet({ name: groupName, namespace: namespace })
                     }
                     break
                 case'daemonset': {
-                        let x = await appsApi.listNamespacedDaemonSet(namespace)
-                        let names = x.body.items.map (rs => rs.metadata?.name)
+                        let x = await appsApi.listNamespacedDaemonSet({namespace})
+                        let names = x.items.map (ds => ds.metadata?.name)
                         if (!names.includes(groupName)) return emptyResult
-                        response = await appsApi.readNamespacedDaemonSet(groupName, namespace)
+                        response = await appsApi.readNamespacedDaemonSet({ name: groupName, namespace: namespace })
                     }
                     break
                 case'statefulset': {
-                        let x = await appsApi.listNamespacedStatefulSet(namespace)
-                        let names = x.body.items.map (rs => rs.metadata?.name)
+                        let x = await appsApi.listNamespacedStatefulSet({namespace})
+                        let names = x.items.map (ss => ss.metadata?.name)
                         if (!names.includes(groupName)) return emptyResult
-                        response = await appsApi.readNamespacedStatefulSet(groupName, namespace)
+                        response = await appsApi.readNamespacedStatefulSet({ name: groupName, namespace: namespace })
                     }
                     break
             }    
@@ -438,7 +438,8 @@ export class AuthorizationManagement {
         if (response) {
             const matchLabels = response.body.spec?.selector.matchLabels
             const labelSelector = Object.entries(matchLabels || {}).map(([key, value]) => `${key}=${value}`).join(',')
-            const pods = (await coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)).body.items
+            //const pods = (await coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)).items
+            const pods = (await coreApi.listNamespacedPod({namespace, labelSelector})).items
             return  { pods, labelSelector }
         }
         else {
@@ -469,8 +470,8 @@ export class AuthorizationManagement {
         let result:string[]=[]
     
         let resources = parseResources(accessKey!.resources)
-        let response = await coreApi.listNamespacedPod(namespace)
-        pods = response.body.items
+        let response = await coreApi.listNamespacedPod({namespace})
+        pods = response.items
     
         for (let pod of pods) {
             for (let resource of resources) {
@@ -519,7 +520,7 @@ export class AuthorizationManagement {
     
     public static getContainers = async (coreApi:CoreV1Api, namespace:string, pod:string, accessKey:AccessKey): Promise<string[]> => {
         let resources = parseResources(accessKey.resources)
-        let searchPod = (await coreApi.readNamespacedPod(pod, namespace)).body
+        let searchPod = (await coreApi.readNamespacedPod({ name: pod, namespace: namespace }))
         if (!searchPod) return []
     
         let containers = searchPod.spec?.containers.map(c => c.name)
@@ -540,7 +541,7 @@ export class AuthorizationManagement {
         let result:string[] = []    
         let resources = parseResources(accessKey!.resources)
 
-        let x = (await coreApi.readNamespacedPod(pod, namespace)).body
+        let x = (await coreApi.readNamespacedPod({ name: pod, namespace: namespace }))
         if (!x.spec) return result
     
         for (let cont of x.spec.containers) {
@@ -562,10 +563,10 @@ export class AuthorizationManagement {
         let result:string[] = []
         let allowedContainers = []
 
-        for (let ns of namespaces) {
-            let pods = (await coreApi.listNamespacedPod(ns)).body.items
+        for (let namespace of namespaces) {
+            let pods = (await coreApi.listNamespacedPod({namespace})).items
             for (let pod of pods) {
-                let x = await this.getAllowedContainers(coreApi, accessKey, ns, pod.metadata?.name!)
+                let x = await this.getAllowedContainers(coreApi, accessKey, namespace, pod.metadata?.name!)
                 allowedContainers.push(...x.map(c => pod.metadata?.name+ '+' + c))
             }
         }

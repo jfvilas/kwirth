@@ -1,21 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { IMetricsData, MetricsEventSeverityEnum } from './MetricsData'
+import { IMetricsData, IMetricsMessage, MetricsEventSeverityEnum } from './MetricsData'
 import { Alert, Box, Button, Snackbar } from '@mui/material'
 import { IContentProps } from '../IChannel'
 import { IMetricsConfig, IMetricsInstanceConfig, IMetricViewConfig, METRICSCOLOURS, MetricsConfig } from './MetricsConfig'
 import { Chart, ISample } from './Chart'
+import { IInstanceConfig, InstanceConfigObjectEnum, InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 
 const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    let metricsInstanceConfig:IMetricsInstanceConfig = props.channelObject.instanceConfig
     let metricsConfig:IMetricsConfig = props.channelObject.config
     let metricsData:IMetricsData = props.channelObject.data
+    let metricsInstanceConfig:IMetricsInstanceConfig = props.channelObject.instanceConfig
     const [alertRefresh, setAlertRefresh] = useState(false)
     const [refreshTabContent, setRefreshTabContent] = useState(0)
     const metricsBoxRef = useRef<HTMLDivElement | null>(null)
     const [metricsBoxTop, setMetricsBoxTop] = useState(0)
-
-    console.log('mtcontent cs')
-    console.log(props.channelObject.channelSettings)
 
     useEffect(() => {
         if (metricsBoxRef.current) setMetricsBoxTop(metricsBoxRef.current.getBoundingClientRect().top)
@@ -25,8 +23,6 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         console.log(props.channelObject.channelSettings)
         if (props.channelObject.onUpdateChannelSettings && props.channelObject.channelSettings) {
             if (!props.channelObject.channelSettings.channelConfig) props.channelObject.channelSettings.channelConfig = new MetricsConfig()
-            console.log('md')
-            console.log(props.channelObject.channelSettings.channelConfig.metricsDefault)
             props.channelObject.channelSettings.channelConfig.metricsDefault[name] = mvc
             props.channelObject.onUpdateChannelSettings(props.channelObject.channelSettings)
         }
@@ -49,6 +45,48 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 )
             })}
         </>
+    }
+
+    const onChartRemove = (assetNames:string[], metricName:string) => {
+        if (!props.channelObject.webSocket) return
+        
+        let metricsMessage:IInstanceConfig = {
+            channel: 'metrics',
+            data: {
+                mode: MetricsConfigModeEnum.STREAM,
+                aggregate: metricsInstanceConfig.aggregate,
+                interval: metricsInstanceConfig.interval,
+                metrics: metricsInstanceConfig.metrics.filter(m => m !== metricName)
+            },
+            objects: InstanceConfigObjectEnum.PODS,
+            accessKey: props.channelObject.accessString!,
+            scope: '',
+            view: InstanceConfigViewEnum.NONE,
+            namespace: '',
+            group: '',
+            pod: '',
+            container: '',
+            action: InstanceMessageActionEnum.MODIFY,
+            flow: InstanceMessageFlowEnum.REQUEST,
+            type: InstanceMessageTypeEnum.DATA,
+            instance: props.channelObject.instanceId
+        }
+        let payload = JSON.stringify( metricsMessage )
+        if (props.channelObject.webSocket) {
+            props.channelObject.webSocket.send(payload)
+
+            for (let amv of metricsData.assetMetricsValues) {
+                for (let assetName of assetNames) {
+                    for (let asset of amv.assets) {
+                        if (asset.assetName === assetName) {
+                            asset.values = asset.values.filter(v => v.metricName !== metricName)
+                        }
+                    }
+                }
+            }
+            setRefreshTabContent(Math.random())
+        }
+
     }
 
     const formatMetrics = () => {
@@ -82,7 +120,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     return data.get(assetName)!.get(metric)!
                 })
                 allCharts.push(
-                    <Chart key={metricDefinition.metric} metricDefinition={metricDefinition} names={assetNames} series={series} colour={''} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} tooltip={true} labels={true} onSetDefault={onSetMetricDefault} viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig}/>
+                    <Chart key={metricDefinition.metric} metricDefinition={metricDefinition} names={assetNames} series={series} colour={''} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} tooltip={true} labels={true} onSetDefault={onSetMetricDefault} viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig} onRemove={onChartRemove}/>
                 )
             }
 
@@ -104,7 +142,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 return Array.from(data.get(asset)?.keys()!).map ( metric => {
                     let metricDefinition = props.channelObject.metricsList?.get(metric)!
                     var series = data.get(asset)?.get(metric)!
-                    return <Chart key={metricDefinition.metric} metricDefinition={metricDefinition} names={[asset]} series={[series]} colour={METRICSCOLOURS[index]} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} labels={true} tooltip={true} onSetDefault={onSetMetricDefault} viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig}/>
+                    return <Chart key={metricDefinition.metric} metricDefinition={metricDefinition} names={[asset]} series={[series]} colour={METRICSCOLOURS[index]} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} labels={true} tooltip={true} onSetDefault={onSetMetricDefault} viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig} onRemove={onChartRemove}/>
                 })
             })
 
@@ -118,7 +156,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             return (<>
                 {formatMetricsError(metricsData)}
                 {rows.map((row, index) => (
-                    <div key={index} style={{ display: 'flex', justifyContent: 'space-around' }}>
+                    <div key={index} style={{ display: 'flex', justifyContent: 'space-around', marginLeft:'8px', marginRight:'8px' }}>
                         {row}
                     </div>
                 ))}

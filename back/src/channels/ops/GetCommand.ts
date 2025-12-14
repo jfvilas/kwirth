@@ -2,7 +2,7 @@ import { InstanceMessageFlowEnum, InstanceMessageTypeEnum, OpsCommandEnum, IOpsM
 import { ClusterInfo } from "../../model/ClusterInfo"
 import { IInstance } from "./OpsChannel"
 
-export async function execCommandGetDescribe(clusterInfo: ClusterInfo, instance:IInstance, opsMessage:IOpsMessage): Promise<IOpsMessageResponse> {
+export async function execCommandDescribe(clusterInfo: ClusterInfo, instance:IInstance, opsMessage:IOpsMessage): Promise<IOpsMessageResponse> {
     let execResponse: IOpsMessageResponse = {
         action: opsMessage.action,
         flow: InstanceMessageFlowEnum.RESPONSE,
@@ -25,32 +25,34 @@ export async function execCommandGetDescribe(clusterInfo: ClusterInfo, instance:
 
     try {
         if ((opsMessage.pod==='' || !opsMessage.pod) && (opsMessage.container==='' || !opsMessage.container)) {
-            let nsresp = await clusterInfo.coreApi.readNamespace(opsMessage.namespace)
-            if (opsMessage.command === OpsCommandEnum.GET)
-                execResponse.data = { name:nsresp.body.metadata?.name, creationTimestamp: nsresp.body.metadata?.creationTimestamp }
-            else 
-                execResponse.data = nsresp.body
+            let nsresp = await clusterInfo.coreApi.readNamespace({ name: opsMessage.namespace })
+            // if (opsMessage.command === OpsCommandEnum.GET)
+            //     execResponse.data = { name:nsresp.body.metadata?.name, creationTimestamp: nsresp.body.metadata?.creationTimestamp }
+            // else 
+            //     execResponse.data = nsresp.body
+            execResponse.data = nsresp
             execResponse.type = InstanceMessageTypeEnum.DATA
             return execResponse
         }
 
-        let presp = await clusterInfo.coreApi.readNamespacedPod(opsMessage.pod,opsMessage.namespace)
+        let presp = await clusterInfo.coreApi.readNamespacedPod({ name:opsMessage.pod, namespace:opsMessage.namespace })
         if (opsMessage.container==='' || !opsMessage.container) {
-            console.log(presp.body)
-            if (opsMessage.command === OpsCommandEnum.GET)
-                execResponse.data = { name:presp.body.metadata?.name, creationTimestamp: presp.body.metadata?.creationTimestamp, containers: presp.body.spec?.containers.map(c => c.name) }
-            else
-                execResponse.data = presp.body
+            // if (opsMessage.command === OpsCommandEnum.GET)
+            //     execResponse.data = { name:presp.body.metadata?.name, creationTimestamp: presp.body.metadata?.creationTimestamp, containers: presp.body.spec?.containers.map(c => c.name) }
+            // else
+            //     execResponse.data = presp.body
+            execResponse.data = presp
             execResponse.type = InstanceMessageTypeEnum.DATA
         }
         else {
-            let cont = presp.body.spec?.containers.find(c => c.name === opsMessage.container)
+            let cont = presp.spec?.containers.find(container => container.name === opsMessage.container)
             if (cont) {
-                if (opsMessage.command === OpsCommandEnum.GET)
-                    execResponse.data =  JSON.stringify({ name: cont.name, image: cont.image }, null, 2)
-                else {
-                    execResponse.data = JSON.stringify(cont,null,2)
-                }
+                // if (opsMessage.command === OpsCommandEnum.GET)
+                //     execResponse.data =  JSON.stringify({ name: cont.name, image: cont.image }, null, 2)
+                // else {
+                //     execResponse.data = JSON.stringify(cont,null,2)
+                // }
+                execResponse.data = JSON.stringify(cont,null,2)
                 execResponse.type = InstanceMessageTypeEnum.DATA
             }
             else {

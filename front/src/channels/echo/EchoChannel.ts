@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from "../IChannel";
+import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from "../IChannel";
 import { EchoInstanceConfig, EchoConfig, IEchoConfig } from "./EchoConfig";
 import { EchoSetup, EchoIcon } from './EchoSetup';
 import { IEchoMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from "@jfvilas/kwirth-common";
@@ -38,7 +38,9 @@ export class EchoChannel implements IChannel {
             case InstanceMessageTypeEnum.DATA:
                 echoData.lines.push(msg.text)
                 while (echoData.lines.length > echoConfig.maxLines) echoData.lines.shift()
-                return IChannelMessageAction.REFRESH
+                return {
+                    action: ChannelRefreshAction.REFRESH
+                }
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
                 if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
@@ -46,10 +48,14 @@ export class EchoChannel implements IChannel {
                 }
                 echoData.lines.push('*** '+msg.text+' ***')
                 while (echoData.lines.length> echoConfig.maxLines) echoData.lines.shift()
-                return IChannelMessageAction.REFRESH
+                return {
+                    action: ChannelRefreshAction.REFRESH
+                }
             default:
                 console.log(`Invalid message type ${msg.type}`)
-                return IChannelMessageAction.NONE
+                return {
+                    action: ChannelRefreshAction.NONE
+                }
         }
     }
 
@@ -73,7 +79,7 @@ export class EchoChannel implements IChannel {
     pauseChannel(channelObject:IChannelObject): boolean {
         let echoObject:IEchoData = channelObject.data
         echoObject.paused = true
-        return false
+        return true
     }
 
     continueChannel(channelObject:IChannelObject): boolean {

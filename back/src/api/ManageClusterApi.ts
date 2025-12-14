@@ -50,25 +50,30 @@ export class ManageClusterApi {
                     let data:string=req.query.data? (req.query.data as string) : 'id'  // transitional
                     switch(object) {
                         case 'pod':
-                            let podListResp:{response:IncomingMessage,body:V1PodList}
+                            //let podListResp:{response:IncomingMessage,body:V1PodList}
+                            let podListResp:V1PodList
+                            // if (namespace) 
+                            //     podListResp = await this.coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)
+                            // else
+                            //     podListResp = await this.coreApi.listPodForAllNamespaces(undefined, undefined, undefined, labelSelector)
                             if (namespace) 
-                                podListResp = await this.coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)
+                                podListResp = await this.coreApi.listNamespacedPod( { namespace, labelSelector })
                             else
-                                podListResp = await this.coreApi.listPodForAllNamespaces(undefined, undefined, undefined, labelSelector)
+                                podListResp = await this.coreApi.listPodForAllNamespaces( { labelSelector })
                             switch (data) {
                                 case 'id':
-                                    let podList = podListResp.body.items.map(pod => {
+                                    let podList = podListResp.items.map(pod => {
                                         return { namespace:pod.metadata?.namespace, name:pod.metadata?.name }
                                     })
                                     res.status(200).json(podList)
                                 case 'containers':
-                                    let podListContainer = podListResp.body.items.map(pod => {
+                                    let podListContainer = podListResp.items.map(pod => {
                                         return { namespace:pod.metadata?.namespace, name:pod.metadata?.name, containers: pod.spec?.containers.map( (c) => c.name) }
                                     })
                                     res.status(200).json(podListContainer)
                                     break
                                 case 'all':
-                                    res.status(200).json(podListResp.body.items)
+                                    res.status(200).json(podListResp.items)
                                     break   
                                 default:
                                     console.log('Invalid data spec')
@@ -77,20 +82,25 @@ export class ManageClusterApi {
                             }
                             break
                         case 'deployment':
-                            var depListResp:{response:IncomingMessage,body:V1DeploymentList}
+                            // var depListResp:{response:IncomingMessage,body:V1DeploymentList}
+                            // if (namespace) 
+                            //     depListResp = await this.appsApi.listNamespacedDeployment(namespace, undefined, undefined, undefined, undefined, labelSelector)
+                            // else
+                            //     depListResp = await this.appsApi.listDeploymentForAllNamespaces(undefined, undefined, undefined, labelSelector)
+                            var depListResp:V1DeploymentList
                             if (namespace) 
-                                depListResp = await this.appsApi.listNamespacedDeployment(namespace, undefined, undefined, undefined, undefined, labelSelector)
+                                depListResp = await this.appsApi.listNamespacedDeployment({ namespace, labelSelector })
                             else
-                                depListResp = await this.appsApi.listDeploymentForAllNamespaces(undefined, undefined, undefined, labelSelector)
+                                depListResp = await this.appsApi.listDeploymentForAllNamespaces({ labelSelector })
                             switch (data) {
                                 case 'id':
-                                    var depList=depListResp.body.items.map(deployment => {
+                                    var depList=depListResp.items.map(deployment => {
                                         return { namespace:deployment.metadata?.namespace, name:deployment.metadata?.name }
                                     })
                                     res.status(200).json(depList)
                                     break
                                 case 'all':
-                                    res.status(200).json(depListResp.body.items)
+                                    res.status(200).json(depListResp.items)
                                     break   
                                 default:
                                     console.log('Invalid data spec')

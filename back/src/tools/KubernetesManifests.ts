@@ -1,18 +1,19 @@
 //import { ApiextensionsV1Api, AppsV1Api, CoreV1Api, RbacAuthorizationV1Api } from '@kubernetes/client-node'
+import { AppsV1ApiPatchNamespacedDaemonSetRequest, AppsV1ApiPatchNamespacedDeploymentRequest, AppsV1ApiPatchNamespacedReplicaSetRequest, AppsV1ApiPatchNamespacedStatefulSetRequest, CoreV1ApiPatchNamespacedConfigMapRequest, CoreV1ApiPatchNamespacedSecretRequest, CoreV1ApiPatchNamespacedServiceRequest } from '@kubernetes/client-node'
 import { ClusterInfo } from '../model/ClusterInfo'
+const fs = require('fs')
+const yaml = require('js-yaml')
 
-// Función para aplicar todos los recursos en el archivo YAML
-async function applyAllResources(yamlContent:string, clusterInfo:ClusterInfo) {
-    const fs = require('fs')
-    const yaml = require('js-yaml')
-    const resources:any[] = []
-
-    yaml.loadAll(yamlContent, (doc: any) => {
-        resources.push(doc)
-    })
-    async function applyResource(resource:any) {
+async function applyResource(resource:any, clusterInfo:ClusterInfo) : Promise<string> {
+    try {
+        const namespace = (resource.metadata && resource.metadata.namespace) || 'default'
+        const name = resource.metadata.name
         const kind = resource.kind
-        const namespace = resource.metadata && resource.metadata.namespace
+        console.log('Apply*********************************')
+        console.log(name, namespace, kind)
+        console.log('Apply*********************************')
+
+        if (resource.metadata.managedFields) delete resource['metadata']['managedFields']
 
         switch (kind) {
             case 'Namespace':
@@ -22,12 +23,28 @@ async function applyAllResources(yamlContent:string, clusterInfo:ClusterInfo) {
 
             case 'ConfigMap':
                 console.log(`Applying ConfigMap: ${resource.metadata.name}`)
-                await clusterInfo.coreApi.createNamespacedConfigMap(namespace, resource)
+                let paramConfigMap: CoreV1ApiPatchNamespacedConfigMapRequest = {
+                    name: name,
+                    namespace: namespace,
+                    body: resource,
+                    fieldManager:'kwirth',
+                    fieldValidation: 'Ignore',
+                    force: true
+                }
+                await clusterInfo.coreApi.patchNamespacedConfigMap(paramConfigMap)
                 break
 
             case 'Secret':
                 console.log(`Applying Secret: ${resource.metadata.name}`)
-                await clusterInfo.coreApi.createNamespacedSecret(namespace, resource)
+                let paramSecret:CoreV1ApiPatchNamespacedSecretRequest = {
+                    name: name,
+                    namespace: namespace,
+                    body: resource,
+                    fieldManager:'kwirth',
+                    fieldValidation: 'Ignore',
+                    force: true
+                }
+                await clusterInfo.coreApi.patchNamespacedSecret(paramSecret)
                 break
 
             case 'CustomResourceDefinition':
@@ -37,12 +54,67 @@ async function applyAllResources(yamlContent:string, clusterInfo:ClusterInfo) {
 
             case 'Deployment':
                 console.log(`Applying Deployment: ${resource.metadata.name}`)
-                await clusterInfo.appsApi.createNamespacedDeployment(namespace, resource)
+                let paramDeployent:AppsV1ApiPatchNamespacedDeploymentRequest={
+                    name: name,
+                    namespace: namespace,
+                    body: resource,
+                    fieldManager:'kwirth',
+                    fieldValidation: 'Ignore',
+                    force: true
+                }
+                await clusterInfo.appsApi.patchNamespacedDeployment(paramDeployent)
+                break
+
+            case 'StatefulSet':
+                console.log(`Applying StatefulSet: ${resource.metadata.name}`)
+                let paramStatefulSet:AppsV1ApiPatchNamespacedStatefulSetRequest = {
+                    name: name,
+                    namespace: namespace,
+                    body: resource,
+                    fieldManager:'kwirth',
+                    fieldValidation: 'Ignore',
+                    force: true
+                }
+                await clusterInfo.appsApi.patchNamespacedStatefulSet(paramStatefulSet)
+                break
+
+            case 'DaemonSet':
+                console.log(`Applying DaemonSet: ${resource.metadata.name}`)
+                let paramDaemonSet:AppsV1ApiPatchNamespacedDaemonSetRequest = {
+                    name: name,
+                    namespace: namespace,
+                    body: resource,
+                    fieldManager:'kwirth',
+                    fieldValidation: 'Ignore',
+                    force: true
+                }
+                await clusterInfo.appsApi.patchNamespacedDaemonSet(paramDaemonSet)
+                break
+
+            case 'ReplicaSet':
+                console.log(`Applying ReplicaSet: ${resource.metadata.name}`)
+                let paramReplicaSet:AppsV1ApiPatchNamespacedReplicaSetRequest = {
+                    name: name,
+                    namespace: namespace,
+                    body: resource,
+                    fieldManager:'kwirth',
+                    fieldValidation: 'Ignore',
+                    force: true
+                }
+                await clusterInfo.appsApi.patchNamespacedReplicaSet(paramReplicaSet)
                 break
 
             case 'Service':
                 console.log(`Applying Service: ${resource.metadata.name}`)
-                await clusterInfo.coreApi.createNamespacedService(namespace, resource)
+                let paramService:CoreV1ApiPatchNamespacedServiceRequest = {
+                    name: name,
+                    namespace: namespace,
+                    body: resource,
+                    fieldManager:'kwirth',
+                    fieldValidation: 'Ignore',
+                    force: true
+                }
+                await clusterInfo.coreApi.patchNamespacedService(paramService)
                 break
 
             case 'ClusterRole':
@@ -76,11 +148,28 @@ async function applyAllResources(yamlContent:string, clusterInfo:ClusterInfo) {
         }
 
         console.log(`${kind} applied succesfully.`)
+        return ''
     }
+    catch (err:any) {
+        console.log('Error applying:*********************')
+        console.log(err.response.body)
+        return 'Error applying: '+err.response?.body?.message
+    }
+}
+
+
+// Función para aplicar todos los recursos en el archivo YAML
+async function applyAllResources(yamlContent:string, clusterInfo:ClusterInfo) {
+    const resources:any[] = []
+
+    yaml.loadAll(yamlContent, (doc: any) => {
+        resources.push(doc)
+    })
 
     for (const resource of resources) {
         try {
-            await applyResource(resource)
+            let result = await applyResource(resource, clusterInfo)
+            if (result!=='') console.error(result)
         }
         catch (err) {
             console.log('Error applying resource:', err)
@@ -174,4 +263,4 @@ async function deleteAllResources(yamlContent: string, clusterInfo:ClusterInfo) 
 }
 
 
-export { applyAllResources, deleteAllResources } 
+export { applyResource, applyAllResources, deleteAllResources } 

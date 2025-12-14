@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { AlertSeverityEnum, IAlertMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage } from '@jfvilas/kwirth-common'
 import { AlertIcon, AlertSetup } from './AlertSetup'
 import { AlertTabContent } from './AlertTabContent'
@@ -29,7 +29,7 @@ export class AlertChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        let action = IChannelMessageAction.NONE
+        let action = ChannelRefreshAction.NONE
         let msg:IAlertMessage = JSON.parse(wsEvent.data)
         let alertData:IAlertData = channelObject.data
         let alertConfig:IAlertConfig = channelObject.config
@@ -46,7 +46,7 @@ export class AlertChannel implements IChannel {
                     container: msg.container
                 })
                 if (alertData.firedAlerts.length > alertConfig.maxAlerts) alertData.firedAlerts.splice(0, alertData.firedAlerts.length - alertConfig.maxAlerts)
-                if (!alertData.paused) action = IChannelMessageAction.REFRESH
+                if (!alertData.paused) action = ChannelRefreshAction.REFRESH
                 break
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
@@ -60,14 +60,16 @@ export class AlertChannel implements IChannel {
                         severity: AlertSeverityEnum.INFO,
                         text: signalMessage.text || ''
                     })
-                    action = IChannelMessageAction.REFRESH
+                    action = ChannelRefreshAction.REFRESH
                 }
                 break
             default:
                 console.log(`Invalid message type ${msg.type}`)
                 break
         }
-        return action
+        return {
+            action
+        }
     }
 
     initChannel(channelObject:IChannelObject): boolean {

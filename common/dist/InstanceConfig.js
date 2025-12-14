@@ -32,7 +32,6 @@ var InstanceConfigScopeEnum;
     // OPS
     InstanceConfigScopeEnum["GET"] = "get";
     InstanceConfigScopeEnum["EXECUTE"] = "execute";
-    InstanceConfigScopeEnum["SHELL"] = "shell";
     InstanceConfigScopeEnum["RESTART"] = "restart";
     // TRIVY
     InstanceConfigScopeEnum["WORKLOAD"] = "workload";

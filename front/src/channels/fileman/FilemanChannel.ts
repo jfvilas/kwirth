@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { FilemanInstanceConfig, FilemanConfig } from './FilemanConfig'
 import { FilemanSetup, FilemanIcon } from './FilemanSetup'
 import { IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
@@ -7,6 +7,7 @@ import { FilemanCommandEnum, FilemanData, IFilemanMessageResponse, IFilemanData 
 import { FilemanTabContent } from './FilemanTabContent'
 import { v4 as uuid } from 'uuid'
 import { ENotifyLevel } from '../../tools/Global'
+import { IFileObject } from '@jfvilas/react-file-manager'
 
 interface IFilemanMessage extends IInstanceMessage {
     msgtype: 'filemanmessage'
@@ -73,7 +74,9 @@ export class FilemanChannel implements IChannel {
                                     })
                                 })
                                 filemanData.files=[...filemanData.files]
-                                return IChannelMessageAction.REFRESH
+                                return {
+                                    action: ChannelRefreshAction.REFRESH
+                                }
                             case FilemanCommandEnum.DIR:
                                 let content = JSON.parse(response.data)
                                 if (content.status!=='Success') {
@@ -82,25 +85,31 @@ export class FilemanChannel implements IChannel {
                                 else {
                                     for (let o of content.metadata.object) {
                                         let name = o.name.split('/')[o.name.split('/').length-1]
-                                        let e = { 
+                                        let e:IFileObject = { 
                                             name,
                                             isDirectory: (o.type===1),
                                             path: o.name,
-                                            updatedAt: new Date(+o.time).toISOString(),
-                                            size: +o.size,
-                                            ...(o.type===0? {class:'file'}:{})
+                                            data: {
+                                                updatedAt: new Date(+o.time).toISOString(),
+                                                size: +o.size,
+                                                ...(o.type===0? {class:'file'}:{})
+                                            }
                                         }
                                         filemanData.files = filemanData.files.filter(f => f.path !== e.path)
                                         filemanData.files.push (e)
                                     }
                                 }
-                                return IChannelMessageAction.REFRESH
+                                return {
+                                    action: ChannelRefreshAction.REFRESH
+                                }
                             case FilemanCommandEnum.RENAME: {
                                 let content = JSON.parse(response.data)
                                 if (content.status!=='Success') {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
-                                return IChannelMessageAction.REFRESH
+                                return {
+                                    action: ChannelRefreshAction.REFRESH
+                                }
                             }
                             case FilemanCommandEnum.DELETE: {
                                 let content = JSON.parse(response.data)
@@ -112,7 +121,9 @@ export class FilemanChannel implements IChannel {
                                 else {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
-                                return IChannelMessageAction.REFRESH
+                                return {
+                                    action: ChannelRefreshAction.REFRESH
+                                }
                             }
                             case FilemanCommandEnum.MOVE:
                             case FilemanCommandEnum.COPY:
@@ -120,25 +131,31 @@ export class FilemanChannel implements IChannel {
                                 let content = JSON.parse(response.data)
                                 if (content.status==='Success') {
                                     filemanData.files = filemanData.files.filter(f => f.path !== content.metadata.object)
-                                    let f = { 
+                                    let e:IFileObject = { 
                                         name: (content.metadata.object as string).split('/').slice(-1)[0],
                                         isDirectory: (content.metadata.type===1),
                                         path: content.metadata.object,
-                                        updatedAt: new Date(+content.metadata.time).toISOString(), 
-                                        size: +content.metadata.size,
-                                        ...(content.metadata.type.type===0? {class:'file'}:{})
+                                        data: {
+                                            updatedAt: new Date(+content.metadata.time).toISOString(), 
+                                            size: +content.metadata.size,
+                                            ...(content.metadata.type.type===0? {class:'file'}:{})
+                                        }
                                     }
-                                    filemanData.files.push(f)
+                                    filemanData.files.push(e)
                                 }
                                 else {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
-                                return IChannelMessageAction.REFRESH
+                                return {
+                                    action: ChannelRefreshAction.REFRESH
+                                }
                             }
                         }
                     }
                 }
-                return IChannelMessageAction.NONE
+                return {
+                    action: ChannelRefreshAction.NONE
+                }
             }
             case InstanceMessageTypeEnum.SIGNAL:
                 let signalMessage = JSON.parse(wsEvent.data) as ISignalMessage
@@ -147,7 +164,7 @@ export class FilemanChannel implements IChannel {
                         channelObject.instanceId = signalMessage.instance
                     }
                     else if (signalMessage.action === InstanceMessageActionEnum.COMMAND) {
-                        if (signalMessage.text) this.notify(ENotifyLevel.INFO, signalMessage.text)
+                        if (signalMessage.text) this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                 }
                 if (signalMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
@@ -172,18 +189,22 @@ export class FilemanChannel implements IChannel {
                         let payload = JSON.stringify( filemanMessage )
                         channelObject.webSocket!.send(payload)
 
-                        if (signalMessage.text) this.notify(ENotifyLevel.INFO, signalMessage.text)
+                        if (signalMessage.text) this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                     if (signalMessage.event === SignalMessageEventEnum.DELETE) {
                         filemanData.files = filemanData.files.filter(f => !f.path.startsWith('/'+signalMessage.namespace+'/'+signalMessage.pod+'/'))
                         filemanData.files = filemanData.files.filter(f => f.path!=='/'+signalMessage.namespace+'/'+signalMessage.pod)
-                        if (signalMessage.text) this.notify(ENotifyLevel.INFO, signalMessage.text)
+                        if (signalMessage.text) this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                 }
-                return IChannelMessageAction.REFRESH
+                return {
+                    action: ChannelRefreshAction.REFRESH
+                }
             default:
                 console.log(`Invalid message type ${msg.type}`)
-                return IChannelMessageAction.NONE
+                return {
+                    action: ChannelRefreshAction.NONE
+                }
         }
     }
 

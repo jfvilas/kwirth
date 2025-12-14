@@ -1,14 +1,14 @@
 import { ITabObject } from "./ITabObject"
 
-interface IBoard {
+interface IWorkspace {
     name: string
     description:string
     tabs:ITabObject[]
 }
 
-interface IBoardSummary {
+interface IWorkspaceSummary {
     name: string
     description:string
 }
 
-export type { IBoard,  IBoardSummary }
+export type { IWorkspace,  IWorkspaceSummary }

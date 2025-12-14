@@ -1,11 +1,11 @@
 import { InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
-import { IChannel, IChannelObject, IContentProps } from '../channels/IChannel'
+import { IChannel, IChannelMessageAction, IChannelObject, IContentProps } from '../channels/IChannel'
 
 interface IProps {
     channel?:IChannel
     channelId?: InstanceMessageChannelEnum
     channelObject?: IChannelObject
-    refreshTabContent?: number
+    channelMessageAction: IChannelMessageAction
     webSocket?: WebSocket
 }
 

@@ -1,14 +1,9 @@
 import { IInstanceMessage } from "./InstanceMessage"
 
 export enum OpsCommandEnum {
-    GET = 'get',
     DESCRIBE = 'describe',
-    LIST = 'list',
 
     EXECUTE = 'execute',
-
-    SHELL = 'shell',
-    INPUT = 'input',
 
     RESTART = 'restart',
     RESTARTPOD = 'restartpod',

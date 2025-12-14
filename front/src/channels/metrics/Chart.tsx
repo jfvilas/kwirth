@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Alert, Stack, Typography } from '@mui/material'
+import { Alert, Card, CardContent, CardHeader, Stack, Typography } from '@mui/material'
 import { MetricDefinition } from './MetricDefinition'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, Treemap, XAxis, YAxis } from 'recharts'
 import { IMetricViewConfig, METRICSCOLOURS } from './MetricsConfig'
@@ -24,7 +24,8 @@ export interface IChartProps {
     labels: boolean
     numSeries: number
     viewConfig : IMetricViewConfig
-    onSetDefault: (name:string, mvc: IMetricViewConfig) => void
+    onSetDefault?: (name:string, mvc: IMetricViewConfig) => void
+    onRemove: (assetNames:string[], metricName:string) => void
 }
 
 export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
@@ -96,7 +97,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 setStack(!stack)
                 break
             case MenuChartOption.Remove:
-                //+++ pending implementation on parent
+                if (props.onRemove) props.onRemove(props.names, props.metricDefinition.metric)
                 break
             case MenuChartOption.Export:
                 if (!props.names?.length || !props.series?.length) return
@@ -123,13 +124,15 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 setLabels(!labels)
                 break
             case MenuChartOption.Default:
-                props.onSetDefault(props.metricDefinition.metric, {
-                    displayName: props.metricDefinition.metric,
-                    chartType: chartType,
-                    stack: stack,
-                    tooltip: tooltip,
-                    labels: labels
-                })
+                if (props.onSetDefault) {
+                    props.onSetDefault(props.metricDefinition.metric, {
+                        displayName: props.metricDefinition.metric,
+                        chartType: chartType,
+                        stack: stack,
+                        tooltip: tooltip,
+                        labels: labels
+                    })
+                }
                 break
             default:
                 setChartType(data as ChartType)
@@ -146,29 +149,30 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     switch (chartType) {
         case ChartType.ValueChart:
             result = (
-                <div style={{padding:'30px', height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex'}}>
-                <Stack direction={'row'} alignItems={'center'} justifyContent={'center'} spacing={2} sx={{ flexWrap: 'wrap'}}>
-                    { props.series.map( (serie,index) => {
-                        let value = serie[serie.length-1].value
-                        let valueStr = value.toString()
-                        if (value) {
-                            valueStr = value.toFixed(3)
-                            if (value>10) valueStr=value.toFixed(2)
-                            if (value>100) valueStr=value.toFixed(1)
-                            if (value>1000) valueStr=value.toFixed(0)
-                        }
-                        return (
-                            <Stack key={index} direction={'column'}>
-                                <Typography mt={2} textAlign={'center'} width={'100%'} fontSize={Math.min(48, 192/props.series.length)} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
-                                    {valueStr}
-                                </Typography>
-                                <Typography textAlign={'center'} width={'100%'} fontSize={12} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
-                                    {props.names[index]}
-                                </Typography>
-                            </Stack>
-                        )
-                    })}
-                </Stack>
+                <div style={{height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex', width:'100%'}}>
+                    <Stack direction={'row'} alignItems={'center'} justifyContent={'center'} spacing={2} sx={{ flexWrap: 'wrap', width:'100%'}}>
+                        { props.series.map( (serie,index) => {
+                            let value = serie[serie.length-1].value
+                            let valueStr = '0'
+                            if (value) {
+                                valueStr = value.toFixed(3)
+                                if (value>10) valueStr=value.toFixed(2)
+                                if (value>100) valueStr=value.toFixed(1)
+                                if (value>1000) valueStr=value.toFixed(0)
+                            }
+
+                            return (
+                                <Stack key={index} direction={'column'} alignItems={'center'}>
+                                    <Typography mt={2} textAlign={'center'} width={'100%'} fontSize={Math.min(48, 192/props.series.length)} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
+                                        {valueStr}
+                                    </Typography>
+                                    <Typography textAlign={'center'} width={'100%'} fontSize={12} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
+                                        {props.names[index]}
+                                    </Typography>
+                                </Stack>
+                            )
+                        })}
+                    </Stack>
                 </div>
             )
             break
@@ -248,7 +252,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
             })
             result = (
                 <div style={{paddingLeft:'32px', height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex'}}>
-                    <ResponsiveContainer width='100%' onResize={() => {}}>
+                    <ResponsiveContainer width='100%'>
                         <Treemap data={dataSummarized} dataKey='value' nameKey='name' aspectRatio={4 / 3} stroke="#ffffff" fill="#6e5bb8" content={React.createElement(CustomizedContent)}>
                             { tooltip && <Tooltip /> }
                         </Treemap>
@@ -273,17 +277,27 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     title = title.replaceAll('mbps', 'Mbps')
 
     return (
-        <Stack direction='column' alignItems='center' width='100%' sx={{mb:'32px'}}>
-            <Stack direction={'row'} alignItems={'center'}>
-                <MUITooltip key={'tooltip'+props.metricDefinition.metric+JSON.stringify(props.names)} title={<Typography style={{fontSize:12}}><b>{props.metricDefinition.metric}</b><br/><br/>{props.metricDefinition.help}</Typography>}>
-                        <Typography align='center'>{title}</Typography>
-                </MUITooltip>
-                <IconButton onClick={(event) => setAnchorMenuChart(event.currentTarget)}><MoreVert fontSize='small'/></IconButton> 
-                { anchorMenuChart && <MenuChart onClose={() => setAnchorMenuChart(null)} optionSelected={menuChartOptionSelected} anchorMenu={anchorMenuChart} selected={chartType} stacked={stack} tooltip={tooltip} labels={labels} numSeries={props.numSeries} />}
-            </Stack>
-            <ResponsiveContainer width='100%' height={height} key={props.metricDefinition.metric+JSON.stringify(props.names)}>
-                {result}
-            </ResponsiveContainer>
-        </Stack>
+        <Card sx={{margin:'6px', width:'100%'}}>
+            <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0'}} title= {
+                <Stack direction={'column'} alignItems={'center'}>
+                    <Stack direction={'row'} alignItems={'center'}>
+                        <MUITooltip key={'tooltip'+props.metricDefinition.metric+JSON.stringify(props.names)} title={<Typography style={{fontSize:12}}><b>{props.metricDefinition.metric}</b><br/><br/>{props.metricDefinition.help}</Typography>}>
+                                <Typography  width='100%'>{title.length>40?title.substring(0,40)+'...':title}</Typography>
+                        </MUITooltip>
+                        <IconButton onClick={(event) => setAnchorMenuChart(event.currentTarget)}><MoreVert fontSize='small'/></IconButton> 
+                        { anchorMenuChart && <MenuChart onClose={() => setAnchorMenuChart(null)} onOptionSelected={menuChartOptionSelected} anchorMenu={anchorMenuChart} selected={chartType} stacked={stack} tooltip={tooltip} labels={labels} numSeries={props.numSeries} setDefault/>}
+                    </Stack>
+                </Stack>
+            } />
+            <CardContent sx={{backgroundColor:'#f0f0f0'}}>
+                <Stack direction='column' alignItems='center'>
+                    <div style={{width:'100%'}}>
+                        <ResponsiveContainer height={height} key={props.metricDefinition.metric+JSON.stringify(props.names)}>
+                            {result}
+                        </ResponsiveContainer>
+                    </div>
+                </Stack>
+            </CardContent>
+        </Card>
     )
 }

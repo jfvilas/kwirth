@@ -3,13 +3,13 @@ import { Divider, MenuItem, MenuList } from "@mui/material"
 import { BrowserUpdated, CreateNewFolderTwoTone, DeleteTwoTone, Edit, ExitToApp, FileOpenTwoTone, ImportExport, Key, Person, SaveAsTwoTone, SaveTwoTone, Settings } from '@mui/icons-material';
 
 enum MenuDrawerOption {
-    NewBoard,
-    LoadBoard,
-    SaveBoard,
-    SaveBoardAs,
-    DeleteBoard,
-    ImportBoards,
-    ExportBoards,
+    NewWorkspace,
+    LoadWorkspace,
+    SaveWorkspace,
+    SaveWorkspaceAs,
+    DeleteWorkspace,
+    ImportWorkspaces,
+    ExportWorkspaces,
     SettingsUser,
     SettingsCluster,
     ManageCluster,
@@ -35,14 +35,14 @@ const MenuDrawer: React.FC<IProps> = (props:IProps) => {
 
     const menu=(
         <MenuList sx={{height:'85vh'}}>
-            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.NewBoard)}><CreateNewFolderTwoTone/>&nbsp;New board</MenuItem>
-            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.LoadBoard)}><FileOpenTwoTone/>&nbsp;Load board</MenuItem>
-            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.SaveBoard)}><SaveTwoTone/>&nbsp;Save board</MenuItem>
-            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveBoardAs)}><SaveAsTwoTone/>&nbsp;Save board as...</MenuItem>
-            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.DeleteBoard)}><DeleteTwoTone/>&nbsp;Delete board...</MenuItem>
+            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.NewWorkspace)}><CreateNewFolderTwoTone/>&nbsp;New workspace</MenuItem>
+            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.LoadWorkspace)}><FileOpenTwoTone/>&nbsp;Load workspace</MenuItem>
+            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.SaveWorkspace)}><SaveTwoTone/>&nbsp;Save workspace</MenuItem>
+            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveWorkspaceAs)}><SaveAsTwoTone/>&nbsp;Save workspace as...</MenuItem>
+            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.DeleteWorkspace)}><DeleteTwoTone/>&nbsp;Delete workspace...</MenuItem>
             <Divider/>
-            <MenuItem key='boardexp' onClick={() => optionSelected(MenuDrawerOption.ExportBoards)}><ImportExport/>&nbsp;Export all boards (to downloadable file)</MenuItem>
-            <MenuItem key='boardimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new boards from file (and merge overwriting)</MenuItem>
+            <MenuItem key='workspaceexp' onClick={() => optionSelected(MenuDrawerOption.ExportWorkspaces)}><ImportExport/>&nbsp;Export all workspaces (to downloadable file)</MenuItem>
+            <MenuItem key='workspaceimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new workspaces from file (and merge overwriting)</MenuItem>
             <MenuItem key='settingsu' onClick={() => optionSelected(MenuDrawerOption.SettingsUser)}><Settings/>&nbsp;User settings</MenuItem>
             <MenuItem key='settingsc' onClick={() => optionSelected(MenuDrawerOption.SettingsCluster)} disabled={props.selectedClusterName===undefined}><Settings/>&nbsp;Cluster Settings</MenuItem>
             <Divider/>

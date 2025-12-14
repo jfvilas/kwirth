@@ -4,8 +4,9 @@ import { ClusterInfo } from '../model/ClusterInfo'
 import { IChannel } from '../channels/IChannel'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import Docker from 'dockerode'
-import { applyAllResources, deleteAllResources } from '../tools/Trivy'
+import { applyAllResources, deleteAllResources } from '../tools/KubernetesManifests'
 import { ClusterTypeEnum, KwirthData } from '@jfvilas/kwirth-common'
+import { AppsV1ApiPatchNamespacedDeploymentRequest, CoreV1ApiReadNamespacedConfigMapRequest, CoreV1ApiReplaceNamespacedConfigMapRequest } from '@kubernetes/client-node'
 
 export class ConfigApi {
     public route = express.Router()
@@ -37,11 +38,11 @@ export class ConfigApi {
                 next()
             })
             .get( async (req:Request, res:Response) => {
-                const versionInfo = (await this.clusterInfo.versionApi.getCode()).body
+                const versionInfo = await this.clusterInfo.versionApi.getCode()
                 const clusterInfo = this.clusterInfo.kubeConfig.getCurrentCluster()
 
-                const nodes = await this.clusterInfo.coreApi.listNode();
-                const nodeNames = nodes.body.items.map((node:any) => node.metadata.name);
+                const nodes = await this.clusterInfo.coreApi.listNode()
+                const nodeNames = nodes.items.map((node:any) => node.metadata.name)
 
                 try {
                     res.status(200).json({
@@ -88,22 +89,21 @@ export class ConfigApi {
                             }
                         case 'configfs':
                             try {
-                                let cttoconfig = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnametoconfig, ns)
-                                if (cttoconfig.body.data===undefined) {
+                                let cttoconfig = await this.clusterInfo.coreApi?.readNamespacedConfigMap({ name: cmnametoconfig, namespace: ns })
+                                if (cttoconfig.data===undefined) {
                                     res.status(500).send('No Trivy config map exist')
                                     return
                                 }
                                 else {
-                                    let cmtoconfig = cttoconfig.body
+                                    let cmtoconfig = cttoconfig
                                     cmtoconfig.data!['trivy.command'] = 'filesystem'
                                     cmtoconfig.data!['trivy.ignoreUnfixed'] = 'true'
-                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap(cmnametoconfig, ns, cmtoconfig)
+                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap({name: cmnametoconfig, namespace: ns, body: cmtoconfig})
 
-
-                                    let ctto = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnameto, ns)
-                                    let cmto = ctto.body
+                                    let ctto = await this.clusterInfo.coreApi?.readNamespacedConfigMap({name: cmnameto, namespace: ns})
+                                    let cmto = ctto
                                     cmto.data!['scanJob.podTemplateContainerSecurityContext'] = `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true,"runAsUser":0}`
-                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap(cmnameto, ns, cmto)
+                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap({ name: cmnameto, namespace: ns, body: cmto})
 
                                     this.restartDeployment('trivy-system', 'trivy-operator')
 
@@ -117,21 +117,21 @@ export class ConfigApi {
                             }
                         case 'configimg':
                             try {
-                                let ct = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnametoconfig,ns)
-                                if (ct.body.data===undefined) {
+                                let ct = await this.clusterInfo.coreApi?.readNamespacedConfigMap({ name: cmnametoconfig, namespace: ns })
+                                if (ct.data===undefined) {
                                     res.status(500).send('No Trivy config map exist')
                                     return
                                 }
                                 else {
-                                    let cmtoconfig = ct.body
+                                    let cmtoconfig = ct
                                     cmtoconfig.data!['trivy.command'] = 'image'
                                     if (cmtoconfig.data && cmtoconfig.data['trivy.ignoreUnfixed']) delete cmtoconfig.data['trivy.ignoreUnfixed']
-                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap(cmnametoconfig, ns, cmtoconfig)
+                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap({ name: cmnametoconfig, namespace: ns, body: cmtoconfig })
 
-                                    let ctto = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnameto, ns)
-                                    let cmto = ctto.body
+                                    let ctto = await this.clusterInfo.coreApi?.readNamespacedConfigMap({ name: cmnameto, namespace: ns })
+                                    let cmto = ctto
                                     if (cmto.data && cmto.data['scanJob.podTemplateContainerSecurityContext']) delete cmto.data['scanJob.podTemplateContainerSecurityContext']
-                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap(cmnameto, ns, cmto)
+                                    await this.clusterInfo.coreApi?.replaceNamespacedConfigMap({ name: cmnameto, namespace: ns, body:  cmto })
 
                                     this.restartDeployment('trivy-system', 'trivy-operator')
 
@@ -156,13 +156,13 @@ export class ConfigApi {
                             break
                         case 'status':
                             try {
-                                let cttoconfig = await this.clusterInfo.coreApi?.readNamespacedConfigMap(cmnametoconfig,ns)
-                                if (cttoconfig.body.data===undefined) {
+                                let cttoconfig = await this.clusterInfo.coreApi?.readNamespacedConfigMap({ name: cmnametoconfig, namespace: ns })
+                                if (cttoconfig.data===undefined) {
                                     res.status(500).send('No Trivy config map exist, Trivy seems not to be installed.')
                                     return
                                 }
                                 else {
-                                    let cmtoconfig = cttoconfig.body
+                                    let cmtoconfig = cttoconfig
                                     let command = cmtoconfig.data!['trivy.command']
                                     return res.status(200).send(`Installed [mode: ${command}]`)
                                 }
@@ -314,14 +314,12 @@ export class ConfigApi {
             }
         }
 
-        await this.clusterInfo.appsApi.patchNamespacedDeployment(
-        name,
-        namespace,
-        patch,
-        undefined,
-        undefined,
-        undefined
-        )
+        let param:AppsV1ApiPatchNamespacedDeploymentRequest = {
+            name: name,
+            namespace: namespace,
+            body: patch
+        }
+        await this.clusterInfo.appsApi.patchNamespacedDeployment( param, {})  //+++ test
     }
     
 }

@@ -20,13 +20,13 @@ export class KubernetesConfigMaps implements IConfigMaps {
                 data: { data: JSON.stringify(data) }
             };
             try {
-                await this.coreApi?.replaceNamespacedConfigMap(name,this.namespace, configMap)
+                await this.coreApi?.replaceNamespacedConfigMap({ name: name, namespace: this.namespace, body: configMap })
                 return {}
             }
             catch (err:any) {
                 console.log(`Error replacing (${err.response.body.message}) try to create`)
                 try {
-                    await this.coreApi?.createNamespacedConfigMap(this.namespace, configMap)
+                    await this.coreApi?.createNamespacedConfigMap({ namespace: this.namespace, body: configMap })
                     return {}
                 }
                 catch (err:any) {
@@ -45,9 +45,9 @@ export class KubernetesConfigMaps implements IConfigMaps {
     
     public read = async (name:string, defaultValue:any=undefined): Promise<any> => {
         try {
-            var ct = await this.coreApi?.readNamespacedConfigMap(name,this.namespace)
-            if (ct.body.data===undefined) ct.body.data={ data: defaultValue }
-            return JSON.parse(ct.body.data.data)
+            var ct = await this.coreApi?.readNamespacedConfigMap({ name: name, namespace: this.namespace })
+            if (ct.data===undefined) ct.data={ data: defaultValue }
+            return JSON.parse(ct.data.data)
         }
         catch(err:any){
             if (err.statusCode===404) {

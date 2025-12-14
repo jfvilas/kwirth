@@ -1,9 +1,9 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, IOpsMessage, IOpsMessageResponse, OpsCommandEnum, IRouteMessageResponse, AccessKey, accessKeyDeserialize, parseResources, BackChannelData, ClusterTypeEnum, ResourceIdentifier } from '@jfvilas/kwirth-common';
+import { IInstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, IInstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, IOpsMessage, IOpsMessageResponse, OpsCommandEnum, IRouteMessageResponse, AccessKey, accessKeyDeserialize, parseResources, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common';
 import { WebSocket as NonNativeWebSocket } from 'ws'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
-import { Readable, Writable } from 'stream';
-import { execCommandGetDescribe } from './GetCommand';
+import { PassThrough, Readable, Writable } from 'stream';
+import { execCommandDescribe } from './GetCommand';
 import { execCommandRestart } from './RestartCommand';
 import { AuthorizationManagement } from '../../tools/AuthorizationManagement';
 import { Request, Response } from 'express'
@@ -14,6 +14,8 @@ export interface IAsset {
     containerName: string
     inShellMode: boolean
     shellSocket: NonNativeWebSocket|undefined
+    termSocket: NonNativeWebSocket|undefined
+    wsterm:WebSocket|undefined
     stdin: Readable|undefined
     stdout: Writable|undefined
     stderr: Writable|undefined
@@ -28,7 +30,7 @@ export interface IInstance {
 
 class OpsChannel implements IChannel {    
     clusterInfo : ClusterInfo
-    webSocket: {
+    webSockets: {
         ws:WebSocket,
         lastRefresh: number,
         instances: IInstance[] 
@@ -46,6 +48,7 @@ class OpsChannel implements IChannel {
             modifyable: false,
             reconnectable: false,
             metrics: false,
+            events: false,
             sources: [ ClusterTypeEnum.KUBERNETES ],
             endpoints: [],
             websocket: true
@@ -56,14 +59,71 @@ class OpsChannel implements IChannel {
         return ['', 'ops$get', 'ops$execute', 'ops$shell', 'ops$restart', 'cluster'].indexOf(scope)
     }
 
+    processEvent(type:string, obj:any) : void {
+    }
+
     async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
     }
 
-    async websocketRequest(newWebSocket:WebSocket) : Promise<void> {
+    async websocketRequest(wso:WebSocket, instanceId:string, instanceConfig:IInstanceConfig) : Promise<void> {
+        let instance = this.getInstance(instanceId)
+        if (!instance) {
+            console.log('ops no instance')
+            return
+        }
+        let asset = instance.assets.find(a => a.podNamespace === instanceConfig.namespace && a.podName === instanceConfig.pod && a.containerName === instanceConfig.container)
+        if (!asset) {
+            console.log('ops no asset')
+            return
+        }
+        const namespace=asset.podNamespace
+        const podName=asset.podName
+        const containerName=asset.containerName
+
+        const stdoutStream = new PassThrough()
+        const stderrStream = new PassThrough()
+        const stdinStream = new PassThrough()
+
+        wso.onmessage = async (event) => {
+            const data = (typeof event.data === 'string') ? event.data : Buffer.from(await event.data.arrayBuffer())
+            stdinStream.write(data)
+        }
+
+        wso.onclose = () => {
+            console.log('Client disconnected')
+            stdinStream.end()
+        }
+
+        stdoutStream.on('data', (chunk) => wso.send(chunk.toString('utf-8')))
+        stderrStream.on('data', (chunk) => wso.send(chunk.toString('utf-8')))
+
+        await this.clusterInfo.execApi.exec(
+            namespace,
+            podName,
+            containerName,
+            ['/bin/sh'],
+            stdoutStream,
+            stderrStream,
+            stdinStream,
+            true,
+            (status) => {
+                wso.send('Connection to pod has been interrupted\r\n')
+                wso.close()
+                let socket = this.webSockets.find(s => s.instances.some(i => i.instanceId === instanceId))
+                if (socket?.ws) {
+                    if(status.status === 'Success') {
+                        this.sendSignalMessage(socket.ws,InstanceMessageActionEnum.NONE, InstanceMessageFlowEnum.UNSOLICITED, SignalMessageLevelEnum.INFO, instanceConfig.instance, `XTerm session to ${namespace}/${podName}/${containerName} ended`)
+                    }
+                    else {
+                        this.sendSignalMessage(socket.ws,InstanceMessageActionEnum.NONE, InstanceMessageFlowEnum.UNSOLICITED, SignalMessageLevelEnum.ERROR, instanceConfig.instance, status.message || 'Error launching shell')
+                    }
+                }
+            }
+        )
     }
 
     containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
-        let socket = this.webSocket.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             let instances = socket.instances
             if (instances) return instances.some(i => i.assets.some(a => a.podNamespace===podNamespace && a.podName===podName && a.containerName===containerName))
@@ -72,7 +132,7 @@ class OpsChannel implements IChannel {
     }
 
     containsInstance(instanceId: string): boolean {
-        return this.webSocket.some(socket => socket.instances.find(i => i.instanceId === instanceId))
+        return this.webSockets.some(socket => socket.instances.find(i => i.instanceId === instanceId))
     }
 
     async processCommand (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> {
@@ -83,7 +143,7 @@ class OpsChannel implements IChannel {
             return Boolean(resp)
         }
         else {
-            let socket = this.webSocket.find(s => s.ws === webSocket)
+            let socket = this.webSockets.find(s => s.ws === webSocket)
             if (!socket) {
                 console.log('Socket not found')
                 return false
@@ -103,13 +163,13 @@ class OpsChannel implements IChannel {
         }
     }
 
-    async addObject (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async addObject (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
 
-        let socket = this.webSocket.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) {
-            let len = this.webSocket.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-            socket = this.webSocket[len-1]
+            let len = this.webSockets.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
+            socket = this.webSockets[len-1]
         }
 
         let instances = socket.instances
@@ -131,25 +191,27 @@ class OpsChannel implements IChannel {
             stdin: undefined,
             stdout: undefined,
             stderr: undefined,
-            shellId: ''
+            shellId: '',
+            termSocket: undefined,
+            wsterm: undefined
         }
         instance.assets.push(asset)
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
         
     }
     
-    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void {
         console.log('Pause/Continue not supported')
     }
 
-    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
+    modifyInstance (webSocket:WebSocket, instanceConfig: IInstanceConfig): void {
         console.log('Modify not supported')
     }
 
-    stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
-        let socket = this.webSocket.find(s => s.ws === webSocket)
+    stopInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig): void {
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) return
 
         if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
@@ -162,7 +224,7 @@ class OpsChannel implements IChannel {
     }
 
     removeInstance(webSocket: WebSocket, instanceId: string): void {
-        let socket = this.webSocket.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             var instances = socket.instances
             if (instances) {
@@ -191,17 +253,17 @@ class OpsChannel implements IChannel {
     }
 
     containsConnection (webSocket:WebSocket) : boolean {
-        return Boolean (this.webSocket.find(s => s.ws === webSocket))
+        return Boolean (this.webSockets.find(s => s.ws === webSocket))
     }
 
     removeConnection(webSocket: WebSocket): void {
-        let socket = this.webSocket.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             for (let instance of socket.instances) {
                 this.removeInstance (webSocket, instance.instanceId)
             }
-            let pos = this.webSocket.findIndex(s => s.ws === webSocket)
-            this.webSocket.splice(pos,1)
+            let pos = this.webSockets.findIndex(s => s.ws === webSocket)
+            this.webSockets.splice(pos,1)
         }
         else {
             console.log('WebSocket not found on ops for remove')
@@ -209,7 +271,7 @@ class OpsChannel implements IChannel {
     }
 
     refreshConnection(webSocket: WebSocket): boolean {
-        let socket = this.webSocket.find(s => s.ws === webSocket)
+        let socket = this.webSockets.find(s => s.ws === webSocket)
         if (socket) {
             socket.lastRefresh = Date.now()
             return true
@@ -243,32 +305,13 @@ class OpsChannel implements IChannel {
     }
 
     private sendDataMessage = (ws:WebSocket, instanceId:string, text:string): void => {
-        var resp: InstanceConfigResponse = {
+        var resp: IInstanceConfigResponse = {
             action: InstanceMessageActionEnum.NONE,
             flow: InstanceMessageFlowEnum.UNSOLICITED,
             channel: InstanceMessageChannelEnum.OPS,
             instance: instanceId,
             type: InstanceMessageTypeEnum.DATA,
             text
-        }
-        ws.send(JSON.stringify(resp))
-    }
-
-    private sendOpsResponse = (ws:WebSocket, instance:IInstance, asset:IAsset, id:string, text:string): void => {
-        var resp: IOpsMessageResponse = {
-            action: InstanceMessageActionEnum.NONE,
-            flow: InstanceMessageFlowEnum.UNSOLICITED,
-            channel: InstanceMessageChannelEnum.OPS,
-            instance: instance.instanceId,
-            type: InstanceMessageTypeEnum.DATA,
-            id,
-            command: OpsCommandEnum.GET,
-            namespace: asset.podNamespace,
-            group: '',
-            pod: asset.podName,
-            container: asset.containerName,
-            data: text,
-            msgtype: 'opsmessageresponse'
         }
         ws.send(JSON.stringify(resp))
     }
@@ -288,7 +331,7 @@ class OpsChannel implements IChannel {
                 instance: instance.instanceId,
                 type: InstanceMessageTypeEnum.DATA,
                 id,
-                command: OpsCommandEnum.GET,
+                command: OpsCommandEnum.EXECUTE,
                 namespace: podNamespace,
                 group: '',
                 pod: podName,
@@ -297,7 +340,6 @@ class OpsChannel implements IChannel {
                 msgtype: 'opsmessageresponse'
             }
             webSocket.send(JSON.stringify(resp))
-    
         }
         shellSocket.onclose = (event) => {
             this.sendDataMessage(webSocket, instance.instanceId, 'Connection to container has been interrupted')
@@ -332,7 +374,9 @@ class OpsChannel implements IChannel {
                 stdin: undefined,
                 stdout: undefined,
                 stderr: undefined,
-                shellId: ''
+                shellId: '',
+                termSocket: undefined,
+                wsterm: undefined
             } ]
         }
 
@@ -353,14 +397,13 @@ class OpsChannel implements IChannel {
         }
 
         switch (opsMessage.command) {
-            case OpsCommandEnum.GET:
             case OpsCommandEnum.DESCRIBE:
-                //if (this.checkScopes(instance, 'ops$get'))
                 if (this.checkAssetScope(instance, instance.assets[0], 'ops$get'))
-                    resp = await execCommandGetDescribe(this.clusterInfo, instance, opsMessage)
+                    resp = await execCommandDescribe(this.clusterInfo, instance, opsMessage)
                 else
                     resp.data = `Insufficient scope for GET`
                 break
+            case OpsCommandEnum.RESTARTPOD:
             case OpsCommandEnum.RESTARTPOD:
             case OpsCommandEnum.RESTARTNS:
                 if (this.checkAssetScope(instance, instance.assets[0], 'ops$restart'))
@@ -407,25 +450,6 @@ class OpsChannel implements IChannel {
         }
 
         switch (opsMessage.command) {
-            case OpsCommandEnum.INPUT: {
-                console.log(`Send command '${opsMessage.command}' to ${opsMessage.namespace}/${opsMessage.pod}/${opsMessage.container}`)
-                let asset = instance.assets.find (a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod && a.containerName === opsMessage.container)
-                if (!asset) {
-                    console.log(`Asset ${opsMessage.namespace}/${opsMessage.pod}/${opsMessage.container} not found`)
-                    execResponse.data = `Asset ${opsMessage.namespace}/${opsMessage.pod}/${opsMessage.container} not found`
-                    return execResponse
-                }
-                asset.stdin?.push(opsMessage.params?.join(' ') + '\n')
-                return
-            }
-            case OpsCommandEnum.LIST:
-                execResponse.data = ''
-                for (let asset of instance.assets) {
-                    execResponse.data += `${asset.podNamespace}/${asset.podName}/${asset.containerName}\n`
-                }
-                execResponse.type = InstanceMessageTypeEnum.DATA
-                break
-            case OpsCommandEnum.GET:
             case OpsCommandEnum.DESCRIBE: {
                 let asset = instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod && a.containerName === opsMessage.container)
                 if (!asset) {
@@ -436,80 +460,29 @@ class OpsChannel implements IChannel {
                     execResponse.data = `Insuffcient scope for GET/DESCRIBE`
                     return execResponse
                 }
-                execResponse = await execCommandGetDescribe(this.clusterInfo, instance, opsMessage)
+                execResponse = await execCommandDescribe(this.clusterInfo, instance, opsMessage)
                 break
             }
-            case OpsCommandEnum.EXECUTE: {
-                    if (opsMessage.namespace==='' || opsMessage.pod==='' || opsMessage.container==='' || !opsMessage.namespace || !opsMessage.pod || !opsMessage.container) {
-                        execResponse.data = `Namespace, pod and container must be specified (format 'ns/pod/container')`
-                        return execResponse
-                    }
-                    let asset = instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod && a.containerName === opsMessage.container)
-                    if (!asset) {
-                        execResponse.data = 'Asset not found or not autorized'
-                        return execResponse
-                    }
+            // case OpsCommandEnum.EXECUTE: {
+            //         if (opsMessage.namespace==='' || opsMessage.pod==='' || opsMessage.container==='' || !opsMessage.namespace || !opsMessage.pod || !opsMessage.container) {
+            //             execResponse.data = `Namespace, pod and container must be specified (format 'ns/pod/container')`
+            //             return execResponse
+            //         }
+            //         let asset = instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod && a.containerName === opsMessage.container)
+            //         if (!asset) {
+            //             execResponse.data = 'Asset not found or not autorized'
+            //             return execResponse
+            //         }
 
-                    if (!this.checkAssetScope(instance, asset, 'ops$execute')) {
-                        execResponse.data = `Insuffcient scope for EXECUTE`
-                        return execResponse
-                    }
+            //         if (!this.checkAssetScope(instance, asset, 'ops$execute')) {
+            //             execResponse.data = `Insuffcient scope for EXECUTE`
+            //             return execResponse
+            //         }
 
-                    this.executeLinuxCommand(webSocket, instance, asset.podNamespace, asset.podName, asset.containerName, opsMessage.id, opsMessage.params!.join(' '))
-                    execResponse.type = InstanceMessageTypeEnum.DATA
-                    break
-                }
-            case OpsCommandEnum.SHELL: {
-                    if (opsMessage.namespace==='' || opsMessage.pod==='' || opsMessage.container==='' || !opsMessage.namespace || !opsMessage.pod || !opsMessage.container) {
-                        execResponse.data = `Namespace, pod and container must be specified (format 'ns/pod/container')`
-                        return execResponse
-                    }
-
-                    let asset = instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod && a.containerName === opsMessage.container)
-                    if (!asset) {
-                        execResponse.data = 'Asset not found or not autorized'
-                        return execResponse
-                    }
-
-                    if (!this.checkAssetScope(instance, asset, 'ops$shell')) {
-                        execResponse.data = 'Insufficent scope to SHELL'
-                        return execResponse
-                    }
-
-                    asset.shellId = opsMessage.id
-                    asset.stdout = new Writable({})
-                    asset.stderr = new Writable({})
-                    asset.stdin = new Readable({ read() {} })
-
-                    try {
-                        asset.shellSocket = await this.clusterInfo.execApi.exec(opsMessage.namespace, opsMessage.pod, opsMessage.container, ['/bin/sh', '-i'], asset.stdout, asset.stderr, asset.stdin, true, (st) => { console.log('st',st) })
-                        asset.shellSocket.on('end', () => console.log('end'))
-                        asset.shellSocket.onmessage = (event) => {
-                            let text = event.data.toString('utf8').substring(1)
-                            this.sendOpsResponse(webSocket, instance, asset, asset.shellId, text)
-                        }
-                        asset.shellSocket.onclose = (event) => {
-                            asset.inShellMode = false
-                            execResponse.data = 'Connection to container has been interrupted'
-                            execResponse.command = OpsCommandEnum.SHELL
-                            execResponse.type = InstanceMessageTypeEnum.SIGNAL
-                            webSocket.send(JSON.stringify(execResponse))
-                            return execResponse
-                        }
-                        asset.shellSocket.onerror = (event) => {
-                            this.sendDataMessage(webSocket, instance.instanceId, 'Error detected con connection to container')
-                        }
-                        asset.inShellMode = true
-                        execResponse.type = InstanceMessageTypeEnum.DATA
-                    }
-                    catch (err) {
-                        console.log('Error launching shell')
-                        console.log(err)
-                        execResponse.data = 'Error detected when launching shell'
-                        return execResponse
-                    }
-                }
-                break
+            //         this.executeLinuxCommand(webSocket, instance, asset.podNamespace, asset.podName, asset.containerName, opsMessage.id, opsMessage.params!.join(' '))
+            //         execResponse.type = InstanceMessageTypeEnum.DATA
+            //         break
+            //     }
             case OpsCommandEnum.RESTART: {
                     if (opsMessage.namespace==='' || opsMessage.pod==='' || opsMessage.container==='' || !opsMessage.namespace || !opsMessage.pod || !opsMessage.container) {
                         execResponse.data = `Namespace, pod and container must be specified (format 'ns/pod/container')`
@@ -527,13 +500,12 @@ class OpsChannel implements IChannel {
                         return execResponse
                     }
 
-
                     try {
-                        this.executeLinuxCommand(webSocket, instance, asset.podNamespace, asset.podName, asset.containerName, opsMessage.id, '/usr/sbin/killall5')
-                        this.sendDataMessage(webSocket, instance.instanceId, `Container ${asset.podNamespace}/${asset.podName}/${asset.containerName} restarted`)
+                        await this.executeLinuxCommand(webSocket, instance, asset.podNamespace, asset.podName, asset.containerName, opsMessage.id, '/usr/sbin/killall5')
+                        this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.INFO, instance.instanceId, `Container ${asset.podNamespace}/${asset.podName}/${asset.containerName} restarted`)
                     }
                     catch (err) {
-                        this.sendDataMessage(webSocket, instance.instanceId, `Error restarting container ${asset.podNamespace}/${asset.podName}/${asset.containerName}: ${err}`)
+                        this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, `Error restarting container ${asset.podNamespace}/${asset.podName}/${asset.containerName}: ${err}`)
                     }
                     execResponse.type = InstanceMessageTypeEnum.DATA
                 }
@@ -546,7 +518,6 @@ class OpsChannel implements IChannel {
                         return execResponse
                     }
                 }
-
                 execResponse = await execCommandRestart(this.clusterInfo, instance, opsMessage)
                 break
 
@@ -577,6 +548,24 @@ class OpsChannel implements IChannel {
         return execResponse
     }
 
+    getInstance(instanceId: string) : IInstance | undefined{
+        let socket = this.webSockets.find(s => s.instances.some(i => i.instanceId === instanceId))
+        if (socket) {
+            let instances = socket.instances
+            if (instances) {
+                let instance = instances.find(i => i.instanceId === instanceId)
+                if (instance) return instance
+                console.log('Instance not found')
+            }
+            else {
+                console.log('There are no Instances on websocket')
+            }
+        }
+        else {
+            console.log('WebSocket not found')
+        }
+        return undefined
+    }
 }
 
 export { OpsChannel }

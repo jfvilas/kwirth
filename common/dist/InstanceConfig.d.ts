@@ -23,12 +23,11 @@ export declare enum InstanceConfigScopeEnum {
     SUBSCRIBE = "subscribe",
     GET = "get",
     EXECUTE = "execute",
-    SHELL = "shell",
     RESTART = "restart",
     WORKLOAD = "workload",
     KUBERNETES = "kubernetes"
 }
-export interface InstanceConfig extends IInstanceMessage {
+export interface IInstanceConfig extends IInstanceMessage {
     objects: InstanceConfigObjectEnum;
     accessKey: string;
     scope: string;
@@ -39,6 +38,7 @@ export interface InstanceConfig extends IInstanceMessage {
     container: string;
     data?: any;
 }
-export interface InstanceConfigResponse extends IInstanceMessage {
-    text: string;
+export interface IInstanceConfigResponse extends IInstanceMessage {
+    text?: string;
+    data?: any;
 }

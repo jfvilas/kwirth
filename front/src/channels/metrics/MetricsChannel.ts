@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { MetricsIcon, MetricsSetup } from './MetricsSetup'
 import { MetricsTabContent } from './MetricsTabContent'
@@ -17,9 +17,9 @@ export class MetricsChannel implements IChannel {
     requiresSetup() { return true }
     requiresSettings() { return true }
     requiresMetrics() { return true }
-    requiresAccessString() { return false }
+    requiresAccessString() { return true }
     requiresClusterUrl() { return false }
-    requiresWebSocket() { return false }
+    requiresWebSocket() { return true }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return InstanceConfigScopeEnum.STREAM }
@@ -29,7 +29,7 @@ export class MetricsChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        let action = IChannelMessageAction.NONE
+        let action = ChannelRefreshAction.NONE
         var metricsMessage:IMetricsMessage = JSON.parse(wsEvent.data)
         let metricsData:IMetricsData = channelObject.data
         let metricsConfig:IMetricsConfig = channelObject.config
@@ -47,7 +47,7 @@ export class MetricsChannel implements IChannel {
                     metricsData.assetMetricsValues.push(metricsMessage)
                     if (metricsData.assetMetricsValues.length > metricsConfig.depth) metricsData.assetMetricsValues.shift()
                 }
-                if (!metricsData.paused) action = IChannelMessageAction.REFRESH
+                if (!metricsData.paused) action = ChannelRefreshAction.REFRESH
                 break
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
@@ -65,7 +65,7 @@ export class MetricsChannel implements IChannel {
                         if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
                             if (signalMessage.text) {
                                 metricsData.events.push( { severity: MetricsEventSeverityEnum.ERROR, text: signalMessage.text })
-                                action = IChannelMessageAction.REFRESH
+                                action = ChannelRefreshAction.REFRESH
                             }
                         }
                     }
@@ -75,7 +75,9 @@ export class MetricsChannel implements IChannel {
                 console.log(`Invalid message type ${metricsMessage.type}`)
                 break
         }
-        return action
+        return {
+            action
+        }
     }
 
     initChannel(channelObject:IChannelObject): boolean {

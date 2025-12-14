@@ -1,7 +1,7 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, TrivyCommandEnum, TrivyConfig, BackChannelData, ClusterTypeEnum, IKnown, IUnknown } from '@jfvilas/kwirth-common';
+import { IInstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, TrivyCommandEnum, TrivyConfig, BackChannelData, ClusterTypeEnum, IKnown, IUnknown } from '@jfvilas/kwirth-common';
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
-import { KubernetesObject, makeInformer } from '@kubernetes/client-node';
+import { CustomObjectsApiListNamespacedCustomObjectRequest, KubernetesObject, makeInformer } from '@kubernetes/client-node';
 import { Request, Response } from 'express'
 
 const TRIVY_API_VERSION = 'v1alpha1'
@@ -46,6 +46,7 @@ class TrivyChannel implements IChannel {
             modifyable: false,
             reconnectable: false,
             metrics: false,
+            events: false, 
             sources: [ ClusterTypeEnum.KUBERNETES ],
             endpoints: [],
             websocket: false
@@ -54,6 +55,9 @@ class TrivyChannel implements IChannel {
 
     getChannelScopeLevel = (scope: string): number => {
         return ['', 'trivy$workload', 'trivy$kubernetes', 'cluster'].indexOf(scope)
+    }
+
+    processEvent(type:string, obj:any) : void {
     }
 
     async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
@@ -96,7 +100,7 @@ class TrivyChannel implements IChannel {
         return Boolean(resp)
     }
 
-    addObject = async (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
+    addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
 
         let socket = this.webSockets.find(s => s.ws === webSocket)
@@ -157,19 +161,19 @@ class TrivyChannel implements IChannel {
         asset.informer.start()
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
         
     }
     
-    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void => {
+    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void => {
         console.log('Pause/Continue not supported')
     }
 
-    modifyInstance = (webSocket:WebSocket, instanceConfig: InstanceConfig): void => {
+    modifyInstance = (webSocket:WebSocket, instanceConfig: IInstanceConfig): void => {
         console.log('Modify not supported')
     }
 
-    stopInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig): void => {
+    stopInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig): void => {
         let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) return
 
@@ -271,18 +275,23 @@ class TrivyChannel implements IChannel {
         const plural = 'vulnerabilityreports'
         const path = `/apis/${TRIVY_API_GROUP}/${TRIVY_API_VERSION}/namespaces/${asset.podNamespace}/${plural}`
 
+        // const listFn = () =>
+        //     this.clusterInfo.crdApi.listNamespacedCustomObject(TRIVY_API_GROUP, TRIVY_API_VERSION, asset.podNamespace, plural).then((res) => {
+        //         const typedBody = res.body as { items:KubernetesObject[] }
+        //         return {
+        //             response: res.response,
+        //             body: typedBody,
+        //         }
+        //     })
         const listFn = () =>
-            this.clusterInfo.crdApi.listNamespacedCustomObject(TRIVY_API_GROUP, TRIVY_API_VERSION, asset.podNamespace, plural).then((res) => {
-                const typedBody = res.body as { items:KubernetesObject[] }
-                return {
-                    response: res.response,
-                    body: typedBody,
-                }
+            this.clusterInfo.crdApi.listNamespacedCustomObject({ group: TRIVY_API_GROUP, version: TRIVY_API_VERSION, namespace: asset.podNamespace, plural: plural }).then((res) => {
+                const typedBody = res as { items:KubernetesObject[] }
+                return typedBody
             })
         const informer = makeInformer(this.clusterInfo.kubeConfig, path, listFn )
-        informer.on('add', (obj:any) => this.processEvent(webSocket, instance, 'add', obj, asset))
-        informer.on('update', (obj:any) => this.processEvent(webSocket, instance, 'update', obj, asset))
-        informer.on('delete', (obj:any) => this.processEvent(webSocket, instance, 'delete', obj, asset))
+        informer.on('add', (obj:any) => this.processInformerEvent(webSocket, instance, 'add', obj, asset))
+        informer.on('update', (obj:any) => this.processInformerEvent(webSocket, instance, 'update', obj, asset))
+        informer.on('delete', (obj:any) => this.processInformerEvent(webSocket, instance, 'delete', obj, asset))
         informer.on('error', (err:any) => {
             console.error('Error in informer:', err)
             setTimeout(() => { informer.start(); console.log('informer restarterd')}, 5000)
@@ -306,11 +315,12 @@ class TrivyChannel implements IChannel {
         }
         let score = 0
         try {
-            let pod = (await this.clusterInfo.coreApi.readNamespacedPod(asset.podName, asset.podNamespace)).body
+            let pod = (await this.clusterInfo.coreApi.readNamespacedPod({ name:asset.podName, namespace:asset.podNamespace }))
             let ctrl = pod.metadata?.ownerReferences?.find(or => or.controller)
             let kind = ctrl?.kind.toLowerCase()
             let crdName = `${kind}-${ctrl?.name}-${asset.containerName}`
-            let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject(TRIVY_API_GROUP,TRIVY_API_VERSION, asset.podNamespace, TRIVY_API_PLURAL, crdName)
+            //let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject(TRIVY_API_GROUP,TRIVY_API_VERSION, asset.podNamespace, TRIVY_API_PLURAL, crdName)
+            let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject({ group: TRIVY_API_GROUP, version: TRIVY_API_VERSION, namespace: asset.podNamespace, plural: TRIVY_API_PLURAL, name: crdName })
             if (crdObject.response.statusCode === 200) {
                 console.log('Got report for', crdName)
                 let summary = (crdObject.body as any).report.summary
@@ -395,14 +405,14 @@ class TrivyChannel implements IChannel {
                 resp.data = { score }
                 break
             case TrivyCommandEnum.RESCAN:
-                let pod = (await this.clusterInfo.coreApi.readNamespacedPod(instanceMessage.pod, instanceMessage.namespace)).body
+                let pod = (await this.clusterInfo.coreApi.readNamespacedPod({ name:instanceMessage.pod, namespace:instanceMessage.namespace }))
                 let ctrl = pod.metadata?.ownerReferences?.find(or => or.controller)
                 let kind = ctrl?.kind.toLowerCase()
                 let crdName = `${kind}-${ctrl?.name}-${instanceMessage.container}`
-                let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject(TRIVY_API_GROUP,TRIVY_API_VERSION, instanceMessage.namespace, TRIVY_API_PLURAL, crdName)
+                let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject({ group:TRIVY_API_GROUP, version: TRIVY_API_VERSION, namespace:instanceMessage.namespace, plural: TRIVY_API_PLURAL, name:crdName })
                 if (crdObject.response.statusCode === 200) {
                     try {
-                        await this.clusterInfo.crdApi.deleteNamespacedCustomObject(TRIVY_API_GROUP, TRIVY_API_VERSION, instanceMessage.namespace, TRIVY_API_PLURAL, crdName)
+                        await this.clusterInfo.crdApi.deleteNamespacedCustomObject({ group:TRIVY_API_GROUP, version:TRIVY_API_VERSION, namespace:instanceMessage.namespace, plural:TRIVY_API_PLURAL, name:crdName })
                     }
                     catch (err) {
                         console.log(err)
@@ -421,7 +431,7 @@ class TrivyChannel implements IChannel {
         return resp
     }
 
-    private processEvent = async (webSocket:WebSocket, instance:IInstance, event:string, obj:any, asset:any) => {
+    private processInformerEvent = async (webSocket:WebSocket, instance:IInstance, event:string, obj:any, asset:any) => {
         if (obj.metadata.labels['trivy-operator.resource.namespace'] === asset.podNamespace &&
             asset.podName.startsWith(obj.metadata.labels['trivy-operator.resource.name']) &&
             obj.metadata.labels['trivy-operator.container.name']  === asset.containerName) {

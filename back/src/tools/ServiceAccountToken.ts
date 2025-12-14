@@ -25,7 +25,7 @@ export class ServiceAccountToken {
 
         // we firt delete it if it exists, we cannot use a previous token, it may be expired
         try {
-            await this.coreApi.readNamespacedSecret(serviceAccountName+'-kwirthtoken', namespace)
+            await this.coreApi.readNamespacedSecret({ name:serviceAccountName+'-kwirthtoken', namespace })
             await this.deleteToken(serviceAccountName, namespace)
         }
         catch (err) {
@@ -34,7 +34,7 @@ export class ServiceAccountToken {
 
         // we now create it
         try {
-            await this.coreApi.createNamespacedSecret(namespace, secret)
+            await this.coreApi.createNamespacedSecret({namespace, body:secret})
             console.log('SA token created')
         }
         catch (err:any) {
@@ -47,8 +47,8 @@ export class ServiceAccountToken {
     
     public extractToken = async (serviceAccountName: string, namespace: string) => {
         try {
-            const response = await this.coreApi.readNamespacedSecret(serviceAccountName+'-kwirthtoken', namespace)
-            const token = Buffer.from(response.body.data!.token, 'base64').toString('utf-8')
+            const response = await this.coreApi.readNamespacedSecret({ name:serviceAccountName+'-kwirthtoken', namespace })
+            const token = Buffer.from(response.data!.token, 'base64').toString('utf-8')
             return token
         }
         catch (err) {
@@ -60,7 +60,7 @@ export class ServiceAccountToken {
     
     public deleteToken = async (serviceAccountName: string, namespace: string) => {
         try {
-            const response = await this.coreApi.deleteNamespacedSecret(serviceAccountName+'-kwirthtoken', namespace)
+            const response = await this.coreApi.deleteNamespacedSecret({ name:serviceAccountName+'-kwirthtoken', namespace })
             console.log('SA token deleted')
         }
         catch (err) {

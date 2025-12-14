@@ -11,17 +11,17 @@ interface IValue {
     description:string
 }
 
-const SelectBoard: React.FC<IProps> = (props:IProps) => {
+const SelectWorkspace: React.FC<IProps> = (props:IProps) => {
    return (
         <Dialog open={true}>
             <DialogTitle>
-                Select board
+                Select workspace
             </DialogTitle>
             <DialogContent>
                 <DialogContentText>
                     <Stack direction='column' sx={{width:'50vh'}}>
                         <Typography>{
-                            props.action === 'delete'? 'Select board to delete' : 'Select board to load'
+                            props.action === 'delete'? 'Select workspace to delete' : 'Select workspace to load'
                         }</Typography>
                         <List>
                             {props.values?.map(v => <ListItemButton onClick={() => props.onSelect(props.action, v.name)} key={v.name}>
@@ -43,4 +43,4 @@ const SelectBoard: React.FC<IProps> = (props:IProps) => {
     )
 }
 
-export { SelectBoard }
+export { SelectWorkspace }

@@ -6,7 +6,7 @@ const FilemanIcon = <FolderCopyTwoTone />
 
 const FilemanSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     let filemanInstanceConfig:IFilemanInstanceConfig = props.setupConfig?.channelInstanceConfig || new FilemanInstanceConfig()
-    let logConfig:IFilemanConfig = props.setupConfig?.channelConfig || new FilemanConfig()
+    let filemanConfig:IFilemanConfig = props.setupConfig?.channelConfig || new FilemanConfig()
 
     return <></>
 }

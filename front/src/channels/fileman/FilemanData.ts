@@ -1,10 +1,10 @@
 import { IInstanceMessage } from "@jfvilas/kwirth-common"
-import { IFileData } from "@jfvilas/react-file-manager"
+import { IFileObject } from "@jfvilas/react-file-manager"
 
 export interface IFilemanData {
     paused: boolean
     started: boolean
-    files: IFileData[]
+    files: IFileObject[]
     currentPath: string
 }
 

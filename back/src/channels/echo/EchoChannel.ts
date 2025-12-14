@@ -1,4 +1,4 @@
-import { InstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, IEchoConfig, IEchoMessageResponse } from '@jfvilas/kwirth-common'
+import { IInstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, IEchoConfig, IEchoMessageResponse } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
 import { Request, Response } from 'express'
@@ -38,6 +38,7 @@ class EchoChannel implements IChannel {
             modifyable: false,
             reconnectable: true,
             metrics: false,
+            events: false,
             sources: [ ClusterTypeEnum.KUBERNETES, ClusterTypeEnum.DOCKER ],
             endpoints: [],
             websocket: false
@@ -46,6 +47,9 @@ class EchoChannel implements IChannel {
 
     getChannelScopeLevel = (scope: string): number => {
         return ['', 'none', 'cluster'].indexOf(scope)
+    }
+
+    processEvent(type:string, obj:any) : void {
     }
 
     async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
@@ -82,7 +86,7 @@ class EchoChannel implements IChannel {
         }
     }
 
-    addObject = async (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
+    addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
 
         let socket = this.webSockets.find(s => s.ws === webSocket)
@@ -112,11 +116,11 @@ class EchoChannel implements IChannel {
         instance.assets.push(asset)
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
         
     }
     
-    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void => {
+    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void => {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             if (action === InstanceMessageActionEnum.PAUSE) instance.paused = true
@@ -127,11 +131,11 @@ class EchoChannel implements IChannel {
         }
     }
 
-    modifyInstance = (webSocket:WebSocket, instanceConfig: InstanceConfig): void => {
+    modifyInstance = (webSocket:WebSocket, instanceConfig: IInstanceConfig): void => {
         console.log('Modify not supported')
     }
 
-    stopInstance = (webSocket: WebSocket, instanceConfig: InstanceConfig): void => {
+    stopInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig): void => {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             this.removeInstance(webSocket, instanceConfig.instance)

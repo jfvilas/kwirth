@@ -2,8 +2,7 @@ import React, { useRef, useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Select, Stack, Switch, Typography, Checkbox } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { Terminal } from '@mui/icons-material'
-import { IOpsInstanceConfig, IOpsConfig, OpsInstanceConfig, OpsConfig } from './OpsConfig'
-import { ColorModeEnum } from './terminal/Terminal'
+import { IOpsInstanceConfig, IOpsConfig, OpsInstanceConfig, OpsConfig, AccessKeyEnum } from './OpsConfig'
 
 const OpsIcon = <Terminal />
 
@@ -12,12 +11,12 @@ const OpsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     let opsConfig:IOpsConfig = props.setupConfig?.channelConfig || new OpsConfig()
     
     const [sessionKeepAlive, setSessionKeepAlive] = useState(opsInstanceConfig.sessionKeepAlive)
-    const [colorMode, setColorMode] = useState<ColorModeEnum>(opsConfig.colorMode)
+    const [accessKey, setAccessKey] = useState(opsConfig.accessKey || AccessKeyEnum.DISABLED)
     const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () => {
         opsInstanceConfig.sessionKeepAlive = sessionKeepAlive
-        opsConfig.colorMode = colorMode
+        opsConfig.accessKey = accessKey
         props.onChannelSetupClosed(props.channel,
         {
             channelId: props.channel.channelId,
@@ -44,13 +43,15 @@ const OpsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                     <Switch checked={sessionKeepAlive} onChange={(e) => setSessionKeepAlive(e.target.checked)}/>
                 </Stack>
                 <Stack direction={'row'} alignItems={'center'}>
-                    <Typography style={{width:'100%'}}>Color mode</Typography>
-                    <Select value={colorMode} onChange={(e) => setColorMode(e.target.value as ColorModeEnum)} variant='standard' sx={{width:'150px', textAlign: 'center'}}>
-                        <MenuItem value={ColorModeEnum.Dark}>Dark</MenuItem>
-                        <MenuItem value={ColorModeEnum.Light}>Light</MenuItem>
-                        <MenuItem value={ColorModeEnum.Terminal3270}>3270</MenuItem>
+                    <Typography style={{width:'100%'}}>Function access key</Typography>
+                    <Select value={accessKey} onChange={(e) => setAccessKey(e.target.value as AccessKeyEnum)} variant='standard' sx={{width:'150px', textAlign: 'center'}}>
+                        <MenuItem value={AccessKeyEnum.DISABLED}>Disabled</MenuItem>
+                        <MenuItem value={AccessKeyEnum.NONE}>None</MenuItem>
+                        <MenuItem value={AccessKeyEnum.ALT}>Alt</MenuItem>
+                        <MenuItem value={AccessKeyEnum.CTRL}>Control</MenuItem>
+                        <MenuItem value={AccessKeyEnum.SHIFT}>Shift</MenuItem>
                     </Select>
-                </Stack>
+                </Stack>                
             </DialogContent>
             <DialogActions>
                 <FormControlLabel control={<Checkbox slotProps={{ input: { ref: defaultRef } }}/>} label='Set as default' sx={{width:'100%', ml:'8px'}}/>

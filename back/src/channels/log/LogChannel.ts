@@ -1,4 +1,4 @@
-import { InstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, InstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, LogConfig, BackChannelData, ILogMessage } from '@jfvilas/kwirth-common';
+import { IInstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, IInstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, LogConfig, BackChannelData, ILogMessage } from '@jfvilas/kwirth-common';
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../../model/ClusterInfo'
@@ -36,6 +36,9 @@ class LogChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
+    processEvent(type:string, obj:any) : void {
+    }
+
     async processCommand (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> {
         return false
     }
@@ -54,6 +57,7 @@ class LogChannel implements IChannel {
             modifyable: false,
             reconnectable: true,
             metrics: false,
+            events: false,
             sources: [ ClusterTypeEnum.DOCKER, ClusterTypeEnum.KUBERNETES ],
             endpoints: [],
             websocket: false
@@ -77,8 +81,8 @@ class LogChannel implements IChannel {
         return false
     }
 
-    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:InstanceConfig, text:string): void => {
-        let resp:InstanceConfigResponse = {
+    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:IInstanceConfig, text:string): void => {
+        let resp:IInstanceConfigResponse = {
             action,
             flow,
             channel,
@@ -89,7 +93,7 @@ class LogChannel implements IChannel {
         ws.send(JSON.stringify(resp))
     }
 
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: InstanceConfig): void {
+    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: IInstanceConfig): void {
         let signalMessage:ISignalMessage = {
             action: InstanceMessageActionEnum.NONE,
             flow: InstanceMessageFlowEnum.RESPONSE,
@@ -126,7 +130,7 @@ class LogChannel implements IChannel {
         }
     }
 
-    async startDockerStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async startDockerStream (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             let id = await this.clusterInfo.dockerTools.getContainerId(podName, containerName)
             if (!id) {
@@ -190,7 +194,7 @@ class LogChannel implements IChannel {
         }
     }
 
-    async startKubernetesStream (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async startKubernetesStream (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         try {
             let socket = this.webSockets.find(s => s.ws === webSocket)
             if (!socket) {
@@ -314,7 +318,7 @@ class LogChannel implements IChannel {
         }
     }
 
-    async addObject (webSocket: WebSocket, instanceConfig: InstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    async addObject (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
         if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
             this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName)
         }
@@ -323,7 +327,7 @@ class LogChannel implements IChannel {
         }
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             instance.assets = instance.assets.filter(a => a.podNamespace!==podNamespace && a.podName!==podName && a.containerName!==containerName)
@@ -333,7 +337,7 @@ class LogChannel implements IChannel {
         }
     }
     
-    stopInstance(webSocket: WebSocket, instanceConfig: InstanceConfig): void {
+    stopInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig): void {
         let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) return
 
@@ -350,7 +354,7 @@ class LogChannel implements IChannel {
         return ['', 'filter', 'view', 'cluster'].indexOf(scope)
     }
 
-    pauseContinueInstance(webSocket: WebSocket, instanceConfig: InstanceConfig, action: InstanceMessageActionEnum): void {
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void {
         let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) {
             console.log('No socket found for pci')
@@ -374,7 +378,7 @@ class LogChannel implements IChannel {
         }
     }
 
-    modifyInstance (webSocket:WebSocket, instanceConfig: InstanceConfig): void {
+    modifyInstance (webSocket:WebSocket, instanceConfig: IInstanceConfig): void {
 
     }
 

@@ -9,14 +9,14 @@ interface IColors {
 }
 
 const TABBASECOLORS: IColors = {
-    stop: '#f7f7f7',
+    stop: '#ebebeb',
     start: '#28a745',
     pause: '#6c757d',
     pending: '#ffc107'
 }
 
 const TABBRIGHTCOLORS: IColors = {
-    stop: '#f1f1f1',
+    stop: '#ebebeb',
     start: '#34d058',
     pause: '#dfd7df',
     pending: '#ffca2c',
@@ -34,8 +34,10 @@ const OPSHELPMESSAGE:string[] = [
     'DESCRIBE   obtain detailed info on object (same formats as GET)',
     'LIST       get a list of your authorized objects (according to your accessKey)',
     'EXECUTE    launch a command to a container object (format: EXECUTE ns/pod/cont command)',
-    'SHELL      launch a shell console against object (format: SHELL ns/pod/cont) ',
-    '             You can switch between shell sessions using F1-F10 keys, use F11 to show all shells and F12 to return here',
+    'XTERM      launch an x-terminal console against object (format: XTERM ns/pod/cont) ',
+    '             You can switch between shell sessions using Alt+F1-F10 keys',
+    '             Use Alt+F11 to show all active shells shells',
+    '             Use Alt+F12 to return here (an dhid shells)',
     'RESTART    You can restart a container inside a pod (format: RESTART ns/pod/cont)',
     'RESTARTPOD You can also restart a specific pod (format: RESTARTPOD ns/pod)',
     'RESTARTNS  Or you can even restart a whoooooole namespace (format: RESTARTNS ns) ',

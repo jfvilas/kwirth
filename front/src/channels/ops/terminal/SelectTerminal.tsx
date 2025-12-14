@@ -1,26 +1,28 @@
-import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography, List, ListItemButton, ListItem } from '@mui/material'
-import { IShell } from '../OpsData'
+import { Stack, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, List, ListItemButton, ListItem } from '@mui/material'
+import { IOpsData } from '../OpsData'
 import { useEffect, useState } from 'react'
 
 interface IProps {
-    onSelect:(index:number) => void
-    current: number
-    shells: IShell[]
+    onSelect:(id?:string) => void
+    current: string
+    opsData:IOpsData
 }
 
 const SelectTerminal: React.FC<IProps> = (props:IProps) => {
-    const [selectedIndex, setSelectedIndex] = useState(props.current)
+    const [selectedIndex, setSelectedIndex] = useState(Array.from(props.opsData.terminalManager.terminals.keys()).indexOf(props.current))
     
     const handleKeyDown = (event: KeyboardEvent) => {
         event.stopPropagation()
         if (event.key === 'ArrowDown') {
-            setSelectedIndex(prev => (prev + 1) % props.shells.length)
+            setSelectedIndex(prev => (prev + 1) % props.opsData.terminalManager.terminals.size)
         }
         else if (event.key === 'ArrowUp') {
-            setSelectedIndex(prev => (prev - 1 + props.shells.length) % props.shells.length)
+            setSelectedIndex(prev => (prev - 1 + props.opsData.terminalManager.terminals.size) % props.opsData.terminalManager.terminals.size)
         }
         else if (event.key === 'Enter') {
-            if (props.shells[selectedIndex] && props.shells[selectedIndex].connected) props.onSelect(selectedIndex)
+            let terms = Array.from(props.opsData.terminalManager.terminals.keys())
+            let selected = terms[selectedIndex]
+            if (terms) props.onSelect(selected)
         }
     }
 
@@ -30,31 +32,29 @@ const SelectTerminal: React.FC<IProps> = (props:IProps) => {
     }, [selectedIndex])
       
    return (
-        <Dialog open={true}>
+        <Dialog open={true} onClose={() => props.onSelect(undefined)}>
             <DialogTitle>
                 Select terminal
             </DialogTitle>
             <DialogContent>
-                <DialogContentText>
-                    <Stack direction='column' sx={{width:'50vh'}}>
-                        <Typography>
-                            Select terminal to switch to
-                        </Typography>
-                        <List>
-                            {props.shells?.map( (shell,index) => <ListItemButton onClick={() => props.onSelect(index)} key={shell.namespace+'/'+shell.pod+'/'+shell.container} selected={index === selectedIndex} disabled={!shell.connected}>
-                                <ListItem>
-                                    <Stack direction={'row'} sx={{width:'100%'}}>
-                                        <Typography flex={1}>{shell.namespace+'/'+shell.pod+'/'+shell.container}</Typography>
-                                        { (index<10) && <Typography>{'F'+(index+1).toString()}</Typography> }
-                                    </Stack>
-                                </ListItem>
-                            </ListItemButton>)}
-                        </List>
-                    </Stack>
-                </DialogContentText>
+                <Stack direction='column' sx={{width:'50vh'}}>
+                    <Typography>
+                        Select terminal to switch to
+                    </Typography>
+                    <List>
+                        {Array.from(props.opsData.terminalManager.terminals.keys()).map( (key,index) => <ListItemButton onClick={() => props.onSelect(key)} key={key} selected={index === selectedIndex} disabled={false}>
+                            <ListItem>
+                                <Stack direction={'row'} sx={{width:'100%'}}>
+                                    <Typography flex={1}>{key}</Typography>
+                                    {props.opsData.terminalManager.terminals.get(key)!.index > 0 && <Typography>{'F'+props.opsData.terminalManager.terminals.get(key)!.index}</Typography>}
+                                </Stack>
+                            </ListItem>
+                        </ListItemButton>)}
+                    </List>
+                </Stack>
             </DialogContent>
             <DialogActions>
-                <Button onClick={() => props.onSelect(-1)}>CANCEL</Button>
+                <Button onClick={() => props.onSelect(undefined)}>CANCEL</Button>
             </DialogActions>
         </Dialog>
     )

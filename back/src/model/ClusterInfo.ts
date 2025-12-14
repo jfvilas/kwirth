@@ -1,9 +1,10 @@
-import { ApiextensionsV1Api, AppsV1Api, CoreV1Api, CustomObjectsApi, Exec, KubeConfig, Log, RbacAuthorizationV1Api, V1Node, VersionApi } from "@kubernetes/client-node";
+import { ApiextensionsV1Api, AppsV1Api, CoreV1Api, CustomObjectsApi, DiscoveryApi, DiscoveryV1Api, Exec, KubeConfig, Log, NetworkingV1Api, RbacAuthorizationV1Api, StorageV1Api, V1Node, VersionApi } from "@kubernetes/client-node";
 import { MetricsTools } from "../tools/MetricsTools";
 import { ClusterTypeEnum } from "@jfvilas/kwirth-common";
 import Docker from 'dockerode'
 import { DockerTools } from "../tools/KwirthApi";
 import { NodeMetrics } from "./INodeMetrics";
+import { EventsTools } from "../tools/EventsTools";
 
 export interface INodeInfo {
     [x: string]: any;
@@ -35,8 +36,11 @@ export class ClusterInfo {
     public crdApi!: CustomObjectsApi
     public rbacApi!: RbacAuthorizationV1Api
     public extensionApi!: ApiextensionsV1Api
+    public storageApi!: StorageV1Api
+    public networkApi!: NetworkingV1Api
     public token: string = ''
-    public metrics!: MetricsTools;
+    public metrics!: MetricsTools
+    public events!: EventsTools
     public metricsInterval: number = 15
     public metricsIntervalRef: number = -1
     public vcpus: number = 0
@@ -44,9 +48,9 @@ export class ClusterInfo {
     public type: ClusterTypeEnum = ClusterTypeEnum.KUBERNETES
     public flavour: string ='unknown'
 
-    stopInterval = () => clearTimeout(this.metricsIntervalRef)
+    stopMetricsInterval = () => clearTimeout(this.metricsIntervalRef)
 
-    startInterval = (seconds: number) => {
+    startMetricsInterval = (seconds: number) => {
         this.metricsInterval = seconds
         this.metricsIntervalRef = setInterval(() => {
             this.metrics.readClusterMetrics(this)
@@ -56,9 +60,9 @@ export class ClusterInfo {
     loadKubernetesClusterName = async() => {
         if (this.name !== '') return
         var resp = await this.coreApi.listNode()
-        if (!resp.body.items || resp.body.items.length===0) return 'unnamed'
+        if (!resp.items || resp.items.length===0) return 'unnamed'
 
-        let node = resp.body.items[0]
+        let node = resp.items[0]
         if (node.metadata?.labels && node.metadata?.labels['kubernetes.azure.com/cluster']) {
             this.flavour = 'aks'
             this.name = node.metadata?.labels['kubernetes.azure.com/cluster']
@@ -80,7 +84,7 @@ export class ClusterInfo {
                     }
                 }
                 if (this.name==='') {
-                    for (let node of resp.body.items) {
+                    for (let node of resp.items) {
                         if (node.metadata?.labels) {
                             if (node.metadata.labels['alpha.eksctl.io/cluster-name']) {
                                 this.name=node.metadata.labels['alpha.eksctl.io/cluster-name']
@@ -109,14 +113,14 @@ export class ClusterInfo {
         // load nodes
         var resp = await this.coreApi.listNode()
         var nodes:Map<string, INodeInfo> = new Map()
-        for (var node of resp.body.items) {
+        for (var node of resp.items) {
             if (node.spec?.unschedulable) {
                 console.log(`WARNING: Node ${node.metadata?.name} is unschedulable`)
             }
             else {
                 var nodeData:INodeInfo = {
                     name: node.metadata?.name!,
-                    ip: node.status?.addresses!.find(a => a.type === 'InternalIP')?.address!,
+                    ip: node.status?.addresses!.find(address => address.type === 'InternalIP')?.address!,
                     kubernetesNode: node,
                     containerMetricValues: new Map(),
                     prevContainerMetricValues: new Map(),

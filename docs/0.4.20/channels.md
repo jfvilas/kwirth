@@ -263,7 +263,7 @@ This way of referring objects is common to all commands inside Ops Channel. Avai
   - RESTARTPOD, restarts a pod.
   - RESTARTNS, restarts **a whole namespace**.
   - DELETE, delete a pod, that is, if there is a controller in place, this is the same action as restarting a pod, but, if there is no controller controlling this pod, the pod will disapear.
-  - SHELL, well, you can start shell sessions to containers. This Kwirth version includes just TTY sessions, but we have strong plans to include ssh sessions via web... just keep an eye on us.
+  - XTERM, well, you can **start shell sessions** to containers.
 
 What follows are some screen shots of the commands.
 

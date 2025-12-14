@@ -13,7 +13,7 @@ interface IValue {
     description:string
 }
 
-const SaveBoard: React.FC<IProps> = (props:IProps) => {
+const SaveWorkspace: React.FC<IProps> = (props:IProps) => {
     const [newname, setNewname] = useState(props.name)
     const [desc, setDesc] = useState(props.description)
 
@@ -38,4 +38,4 @@ const SaveBoard: React.FC<IProps> = (props:IProps) => {
     )
 }
 
-export { SaveBoard }
+export { SaveWorkspace }

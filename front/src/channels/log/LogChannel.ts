@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { ILogMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage } from '@jfvilas/kwirth-common'
 import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
@@ -29,7 +29,7 @@ export class LogChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        let action = IChannelMessageAction.NONE
+        let action = ChannelRefreshAction.NONE
         let logData:ILogData = channelObject.data
         let logConfig:ILogConfig = channelObject.config
 
@@ -41,7 +41,7 @@ export class LogChannel implements IChannel {
 
         switch (logMessage.type) {
             case InstanceMessageTypeEnum.DATA:
-                action = IChannelMessageAction.REFRESH
+                action = ChannelRefreshAction.REFRESH
 
                 let bname = logMessage.namespace+'/'+logMessage.pod+'/'+logMessage.container
                 let text = logMessage.text
@@ -90,11 +90,11 @@ export class LogChannel implements IChannel {
                                 logData.counters.set(bname, ++cnt)
                             }
                             if ([...logData.counters.values()].reduce((prev,acc) => prev+acc, 0) > logConfig.maxMessages) {
-                                action = IChannelMessageAction.STOP
+                                action = ChannelRefreshAction.STOP
                             }
                         }
                         else {
-                            action = IChannelMessageAction.STOP
+                            action = ChannelRefreshAction.STOP
                         }
                     }
                     else {
@@ -120,7 +120,7 @@ export class LogChannel implements IChannel {
                 }
                 else {
                     logData.messages.push(logMessage)
-                    action = IChannelMessageAction.REFRESH
+                    action = ChannelRefreshAction.REFRESH
                 }
                 break
             default:
@@ -128,7 +128,9 @@ export class LogChannel implements IChannel {
                 break
         }
 
-        return action
+        return {
+            action
+        }
     }
 
     initChannel(channelObject:IChannelObject): boolean {

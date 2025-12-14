@@ -17,6 +17,7 @@ interface BackChannelData {
     reconnectable: boolean  // instance supports client reconnect requests
     sources: string[]  // array of sources (kubernetes, docker...)
     metrics: boolean  // this channel requires metrics
+    events: boolean  // this channel receives events
     endpoints: IEndpointConfig[]  // array of specific endpoints the channel requires (usually this would be empty)
     websocket: boolean  // this channel allows websocket creation (aside from main websocket communication)
 }

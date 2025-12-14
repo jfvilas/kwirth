@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Box,  Card, CardContent, CardHeader, Collapse, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
-import { IBoardSummary } from '../model/IBoard'
+import { IWorkspaceSummary } from '../model/IWorkspace'
 import { ITabSummary } from '../model/ITabObject'
 import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { Delete, ExpandLess, ExpandMore, OpenInBrowser, Star } from '@mui/icons-material'
@@ -19,12 +19,12 @@ interface IProps {
     frontChannels: Map<string, ChannelConstructor>
     lastTabs:ITabSummary[]
     favTabs:ITabSummary[]
-    lastBoards:IBoardSummary[]
-    favBoards:IBoardSummary[]
+    lastWorkspaces:IWorkspaceSummary[]
+    favWorkspaces:IWorkspaceSummary[]
     onSelectTab: (tab:ITabSummary) => void
-    onSelectBoard: (board:IBoardSummary) => void
+    onSelectWorkspace: (workspace:IWorkspaceSummary) => void
     onUpdateTabs: (last:ITabSummary[], fav:ITabSummary[]) => void
-    onUpdateBoards: (last:IBoardSummary[], fav:IBoardSummary[]) => void
+    onUpdateWorkspaces: (last:IWorkspaceSummary[], fav:IWorkspaceSummary[]) => void
 }
 
 enum ListTypeEnum {
@@ -33,13 +33,13 @@ enum ListTypeEnum {
 }
 
 const Homepage: React.FC<IProps> = (props:IProps) => {
-    const [refresh, setRefresh] = useState(0)
+    //const [refresh, setRefresh] = useState(0)
     const [cpu, setCpu] = useState(0)
     const [memory, setMemory] = useState(0)
     const [txmbps, setTxmbps] = useState(0)
     const [rxmbps, setRxmbps] = useState(0)
-    const homepageBoxRef = useRef<HTMLDivElement | null>(null)
-    const [homepageBoxTop, setHomepageBoxTop] = useState(0)
+    //const homepageBoxRef = useRef<HTMLDivElement | null>(null)
+    //const [homepageBoxTop, setHomepageBoxTop] = useState(0)
     const [cardExpanded, setCardExpanded] = useState(false)
     const [dataCpu, setDataCpu]  = useState<any[]>([])
     const [dataMemory, setDataMemory]  = useState<any[]>([])
@@ -57,9 +57,9 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         setCardExpanded((prev) => !prev)
     }
 
-    useEffect(() => {
-        if (homepageBoxRef.current) setHomepageBoxTop(homepageBoxRef.current.getBoundingClientRect().top)
-    })
+    // useEffect(() => {
+    //     if (homepageBoxRef.current) setHomepageBoxTop(homepageBoxRef.current.getBoundingClientRect().top)
+    // })
     
     useEffect( () => {
         let i = setInterval( () => {
@@ -90,19 +90,19 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
             props.favTabs.push(tab)
             let i = props.lastTabs.findIndex(t => t.name !== tab.name || t.channel !== tab.channel)
             props.lastTabs.splice(i,1)
-            setRefresh(Math.random())
+            //setRefresh(Math.random())
             props.onUpdateTabs([...props.lastTabs], [...props.favTabs])
         }
     }
 
-    const toFavBoards = (board:IBoardSummary) => {
-        if (!props.favBoards.some(b => b.name === board.name)) {
+    const toFavWorkspaces = (workspace:IWorkspaceSummary) => {
+        if (!props.favWorkspaces.some(b => b.name === workspace.name)) {
             // from last to fav
-            props.favBoards.push(board)
-            let i = props.lastBoards.findIndex(b => b.name === board.name)
-            props.lastBoards.splice(i,1)
-            setRefresh(Math.random())
-            props.onUpdateBoards([...props.lastBoards], [...props.favBoards])
+            props.favWorkspaces.push(workspace)
+            let i = props.lastWorkspaces.findIndex(b => b.name === workspace.name)
+            props.lastWorkspaces.splice(i,1)
+            //setRefresh(Math.random())
+            props.onUpdateWorkspaces([...props.lastWorkspaces], [...props.favWorkspaces])
         }
     }
 
@@ -111,16 +111,16 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         if (i>=0) {
             list.splice(i,1)
             props.onUpdateTabs([...props.lastTabs], [...props.favTabs])
-            setRefresh(Math.random())
+            //setRefresh(Math.random())
         }
     }
 
-    const deleteFromBoardsList = (list:IBoardSummary[], board:IBoardSummary) => {
-        let i = list.findIndex(b => b.name === board.name)
+    const deleteFromWorkspacesList = (list:IWorkspaceSummary[], workspace:IWorkspaceSummary) => {
+        let i = list.findIndex(w => w.name === workspace.name)
         if (i>=0) {
             list.splice(i,1)
-            props.onUpdateBoards([...props.lastBoards], [...props.favBoards])
-            setRefresh(Math.random())
+            props.onUpdateWorkspaces([...props.lastWorkspaces], [...props.favWorkspaces])
+            //setRefresh(Math.random())
         }
     }
 
@@ -128,8 +128,8 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         props.onSelectTab(tab)
     }
 
-    const openBoard = (board:IBoardSummary) => {
-        props.onSelectBoard(board)
+    const openWorkspace = (workspace:IWorkspaceSummary) => {
+        props.onSelectWorkspace(workspace)
     }
 
     const drawTabCard = (tabList:ITabSummary[], listType:ListTypeEnum) => {
@@ -196,25 +196,25 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         </>
     }
 
-    const drawBoardCard = (boardList:IBoardSummary[], listType:ListTypeEnum) => {
+    const drawWorkspaceCard = (workspaceList:IWorkspaceSummary[], listType:ListTypeEnum) => {
         return <>
             <Card sx={{flex:1}}>
-                <CardHeader title={`${listType === ListTypeEnum.LAST? 'Last':'Fav'} boards`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
+                <CardHeader title={`${listType === ListTypeEnum.LAST? 'Last':'Fav'} workspaces`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
                 <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>
-                    { boardList.map (board => {
-                        return <Stack key={listType+board.name} direction={'row'} spacing={1} alignItems={'baseline'}>
-                            <Typography>{board.name}</Typography>
-                            <Typography color='gray' fontSize={'12px'}>{board.description}</Typography>                            
+                    { workspaceList.map (workspace => {
+                        return <Stack key={listType+workspace.name} direction={'row'} spacing={1} alignItems={'baseline'}>
+                            <Typography>{workspace.name}</Typography>
+                            <Typography color='gray' fontSize={'12px'}>{workspace.description}</Typography>                            
                             <Typography flexGrow={1}/>
-                            <IconButton onClick={() => openBoard(board)}>
+                            <IconButton onClick={() => openWorkspace(workspace)}>
                                 <OpenInBrowser/>
                             </IconButton>
                             { listType !== ListTypeEnum.FAV && 
-                                <IconButton onClick={() => toFavBoards(board)}>
+                                <IconButton onClick={() => toFavWorkspaces(workspace)}>
                                     <Star sx={{ color: 'gray' }} /> 
                                 </IconButton>
                             }
-                            <IconButton onClick={() => deleteFromBoardsList(boardList, board)}>
+                            <IconButton onClick={() => deleteFromWorkspacesList(workspaceList, workspace)}>
                                 <Delete/>
                             </IconButton>
                         </Stack>
@@ -433,8 +433,8 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                         {drawTabCard(props.favTabs, ListTypeEnum.FAV)}
                     </Stack>
                     <Stack direction={'column'} width='100%' spacing={2} height='100%'>
-                        {drawBoardCard(props.lastBoards, ListTypeEnum.LAST)}
-                        {drawBoardCard(props.favBoards, ListTypeEnum.FAV)}
+                        {drawWorkspaceCard(props.lastWorkspaces, ListTypeEnum.LAST)}
+                        {drawWorkspaceCard(props.favWorkspaces, ListTypeEnum.FAV)}
                     </Stack>
                 </Stack>
 

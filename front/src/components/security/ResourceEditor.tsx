@@ -31,7 +31,7 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
         SUBSCRIBE = 'subscribe',
         OPS_GET = 'ops$get',
         OPS_EXECUTE = 'ops$execute',
-        OPS_SHELL = 'ops$shell',
+        OPS_XTERM = 'ops$xterm',
         OPS_RESTART = 'ops$restart',
         TRIVY_WORKLOAD = 'trivy$workload',
         TRIVY_KUBERNETES = 'trivy$kubernetes'

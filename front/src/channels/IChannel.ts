@@ -2,11 +2,17 @@ import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { MetricDefinition } from './metrics/MetricDefinition'
 import { ENotifyLevel } from '../tools/Global'
 import { IChannelSettings } from '../model/Settings'
+import { IResourceSelected } from '../components/ResourceSelector'
 
-enum IChannelMessageAction {
+enum ChannelRefreshAction {
     NONE,
     REFRESH,
     STOP
+}
+
+interface IChannelMessageAction {
+    action: ChannelRefreshAction
+    data?:any
 }
 
 interface ISetupProps {
@@ -37,6 +43,7 @@ interface IChannelObject {
     webSocket?: WebSocket
     clusterUrl?: string
     onUpdateChannelSettings?: (channelSettings:IChannelSettings) => void
+    onCreateTab?: (resource:IResourceSelected, start:boolean, settings:any) => void
     channelSettings?: IChannelSettings
 }
 
@@ -68,5 +75,5 @@ interface IChannel {
 
 type ChannelConstructor = (new () => IChannel)|undefined
 
-export { IChannelMessageAction }
-export type { IChannel, IChannelObject, ISetupProps, IContentProps, ChannelConstructor }
+export { ChannelRefreshAction }
+export type { IChannel, IChannelObject, ISetupProps, IContentProps, ChannelConstructor, IChannelMessageAction }

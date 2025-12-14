@@ -1,13 +1,13 @@
 import { FC } from 'react'
-import { IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessageResponse, OpsCommandEnum, ISignalMessage } from '@jfvilas/kwirth-common'
+import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessageResponse, OpsCommandEnum, ISignalMessage, IInstanceConfigResponse, SignalMessageEventEnum, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { OpsIcon, OpsSetup } from './OpsSetup'
 import { OpsTabContent } from './OpsTabContent'
-import { OpsData, IOpsData } from './OpsData'
+import { OpsData, IOpsData, IXTerm } from './OpsData'
 import { OpsInstanceConfig, OpsConfig } from './OpsConfig'
 import { OPSHELPMESSAGE, OPSWELCOMEMESSAGE } from '../../tools/Constants'
-import { cleanANSI } from './OpsTools'
 import { ENotifyLevel } from '../../tools/Global'
+import 'xterm/css/xterm.css'
 
 export class OpsChannel implements IChannel {
     private setupVisible = false
@@ -20,7 +20,7 @@ export class OpsChannel implements IChannel {
     requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return true }
-    requiresClusterUrl() { return false }
+    requiresClusterUrl() { return true }
     requiresWebSocket() { return true }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
@@ -31,101 +31,121 @@ export class OpsChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        let action = IChannelMessageAction.NONE
+        let refresh:IChannelMessageAction = {
+            action : ChannelRefreshAction.NONE
+        }
         let opsData:IOpsData = channelObject.data
 
-        let opsMessage:IOpsMessageResponse = JSON.parse(wsEvent.data)
-
-        switch (opsMessage.type) {
-            case InstanceMessageTypeEnum.DATA:
-                if (opsMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
-                    switch (opsMessage.command) {
-                        case OpsCommandEnum.SHELL:
-                            // it's a response for a shell session start, so we add shell session to shells array
-                            let newShell = {
-                                namespace: opsMessage.namespace,
-                                pod: opsMessage.pod,
-                                container: opsMessage.container,
-                                lines: [],
-                                connected: true,
-                                id: opsMessage.id,
-                                pending: ''
-                            }
-                            let index = opsData.shells.findIndex(s => s.connected === false)
-                            if (index>=0)
-                                opsData.shells[index] = newShell
-                            else
-                                opsData.shells.push (newShell)
-                            opsData.shell = opsData.shells[opsData.shells.length-1]
-                            action = IChannelMessageAction.REFRESH
-                            break
-                        case OpsCommandEnum.EXECUTE:
-                            opsData.messages.push(cleanANSI(opsMessage.data))
-                            action = IChannelMessageAction.REFRESH
-                            break
-                        default:
-                            if (typeof opsMessage.data !== 'string')
-                                opsData.messages.push(JSON.stringify(opsMessage.data))
-                            else
-                                opsData.messages.push(opsMessage.data)
-                                action = IChannelMessageAction.REFRESH
+        let instanceConfigResponse:IInstanceConfigResponse = JSON.parse(wsEvent.data) as IInstanceConfigResponse
+        if (instanceConfigResponse.flow === InstanceMessageFlowEnum.RESPONSE && instanceConfigResponse.action === InstanceMessageActionEnum.WEBSOCKET) {
+            let newXterm:IXTerm = {
+                namespace: opsData.websocketRequest.namespace,
+                pod: opsData.websocketRequest.pod,
+                container: opsData.websocketRequest.container,
+                connected: true,
+                selected: false,  // on opsTabContent this will be set to true and the rest of the terminal config will be done
+                id: instanceConfigResponse.instance,
+                socket: new WebSocket(channelObject.clusterUrl + '?challenge='+(instanceConfigResponse.data as string)),
+                terminal: undefined
+            }
+            console.log(channelObject.clusterUrl)
+            opsData.terminalManager.createTerminal(`${newXterm.namespace+'/'+newXterm.pod+'/'+newXterm.container}`, newXterm.socket!)
+            refresh.action = ChannelRefreshAction.REFRESH
+        }
+        else {
+            let opsMessage:IOpsMessageResponse = JSON.parse(wsEvent.data)
+            switch (opsMessage.type) {
+                case InstanceMessageTypeEnum.DATA:
+                    if (opsMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
+                        switch (opsMessage.command) {
+                            case OpsCommandEnum.DESCRIBE:
+                                let so = opsData.scopedObjects.find(so => so.namespace === opsMessage.namespace && so.pod === opsMessage.pod && so.container === opsMessage.container)
+                                if (so) {
+                                    refresh.data = JSON.parse(opsMessage.data)
+                                }
+                                else {
+                                    this.notify(ENotifyLevel.INFO, 'Data received of non-scoped object')
+                                }
+                                refresh.action = ChannelRefreshAction.REFRESH
+                                if (opsData.onAsyncData) opsData.onAsyncData({event:'describe', data:refresh.data})
                                 break
-                        }
-                }
-                else {
-                    let shell = opsData.shells.find (s => s.id === opsMessage.id)
-                    if (shell) {
-                        let data = (shell.pending + cleanANSI(opsMessage.data)).trim().replaceAll('\r','').split('\n')
-                        shell.lines.push(...data)
-                        shell.pending = ''
+                            case OpsCommandEnum.XTERM:
+                                // it's a response for a xterm session start, so we add a new xterm session to xterms array
+                                //action = ChannelRefreshAction.REFRESH
+                                break
+                            case OpsCommandEnum.EXECUTE:
+                                opsData.messages.push(this.cleanANSI(opsMessage.data))
+                                refresh.action = ChannelRefreshAction.REFRESH
+                                break
+                            default:
+                                if (typeof opsMessage.data !== 'string')
+                                    opsData.messages.push(JSON.stringify(opsMessage.data))
+                                else
+                                    opsData.messages.push(opsMessage.data)
+                                    refresh.action = ChannelRefreshAction.REFRESH
+                                    break
+                            }
                     }
                     else {
-                        opsData.messages.push(opsMessage.data)
+                        console.log('*************unhandled', opsMessage)
+                        refresh.action = ChannelRefreshAction.REFRESH
                     }
-                    action = IChannelMessageAction.REFRESH
-                }
-                break
-            case InstanceMessageTypeEnum.SIGNAL:
-                if (opsMessage.flow === InstanceMessageFlowEnum.RESPONSE && opsMessage.action === InstanceMessageActionEnum.COMMAND) {
-                    if (opsMessage.command === OpsCommandEnum.SHELL) {
-                        opsData.shell = undefined
-                        opsData.messages.push(`Shell session to ${opsMessage.namespace}/${opsMessage.pod}/${opsMessage.container} ended`)
-                        if (opsMessage.data) opsData.messages.push(opsMessage.data)
-                        let shell = opsData.shells.find (c => c.namespace === opsMessage.namespace && c.pod === opsMessage.pod && c.container === opsMessage.container)
-                        if (shell) shell.connected = false
-                    }
-                    else {
-                        opsData.messages.push(opsMessage.data)
-                    }
-                    action = IChannelMessageAction.REFRESH
-                }
-                else if (opsMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
+                    break
+                case InstanceMessageTypeEnum.SIGNAL:
                     let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
-                    if (signalMessage.text) {
-                        opsData.messages.push(signalMessage.text)
-                        action = IChannelMessageAction.REFRESH
+                    if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.COMMAND) {
+                        //opsData.messages.push(opsMessage.data)
+                        this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text||'No info')
+                        refresh.action = ChannelRefreshAction.REFRESH
                     }
-                }
-                else {
-                    let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
-                    if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
-                        channelObject.instanceId = signalMessage.instance
+                    else if (opsMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
                         if (signalMessage.text) {
                             opsData.messages.push(signalMessage.text)
-                            action = IChannelMessageAction.REFRESH
+                            if (signalMessage.level === SignalMessageLevelEnum.WARNING) this.notify(ENotifyLevel.WARNING, signalMessage.text)
+                            else if (signalMessage.level === SignalMessageLevelEnum.ERROR) this.notify(ENotifyLevel.ERROR, signalMessage.text)
+                            else this.notify(ENotifyLevel.INFO, signalMessage.text)
+                            
+                            refresh.action = ChannelRefreshAction.REFRESH
+                        }
+                        if (signalMessage.event === SignalMessageEventEnum.ADD) {
+                            opsData.scopedObjects.push( {
+                                namespace: signalMessage.namespace!,
+                                pod: signalMessage.pod!,
+                                container: signalMessage.container!
+                            })
+                            refresh.action = ChannelRefreshAction.REFRESH
+                        }
+                        else if (signalMessage.event === SignalMessageEventEnum.DELETE) {
+                            let i = opsData.scopedObjects.findIndex(so => so.namespace === signalMessage.namespace && so.pod === signalMessage.pod && (!signalMessage.container || so.container === signalMessage.container))
+                            while (i>=0) {
+                                opsData.scopedObjects.splice(i,1)
+                                i = opsData.scopedObjects.findIndex(so => so.namespace === signalMessage.namespace && so.pod === signalMessage.pod && (!signalMessage.container || so.container === signalMessage.container))
+                            }
+                            refresh.action = ChannelRefreshAction.REFRESH
                         }
                     }
                     else {
-                        console.log('wsEvent.data on ops')
-                        console.log(wsEvent.data)                    
+                        let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
+                        if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
+                            channelObject.instanceId = signalMessage.instance
+                            if (signalMessage.text) {
+                                opsData.messages.push(signalMessage.text)
+                                refresh.action = ChannelRefreshAction.REFRESH
+                            }
+                        }
+                        else {
+                            console.log('wsEvent.data on ops')
+                            console.log(wsEvent.data)                    
+                        }
                     }
-                }
-                break
-            default:
-                console.log(`Invalid message type ${opsMessage.type}`)
-                break
+                    break
+                default:
+                    console.log(`Invalid message type ${opsMessage.type}`)
+                    break
+            }
         }
-        return action
+
+        return refresh
     }
 
     initChannel(channelObject:IChannelObject): boolean {
@@ -140,8 +160,6 @@ export class OpsChannel implements IChannel {
         opsData.paused = false
         opsData.started = true
         opsData.messages = [...OPSWELCOMEMESSAGE, ...OPSHELPMESSAGE]
-        opsData.shell = undefined
-        opsData.shells = []
         return true
     }
 
@@ -171,6 +189,11 @@ export class OpsChannel implements IChannel {
 
     socketReconnect(channelObject: IChannelObject): boolean {
         return false
+    }
+
+    cleanANSI(text: string): string {
+        const regexAnsi = /\x1b\[[0-9;]*[mKHVfJrcegH]|\x1b\[\d*n/g;
+        return text.replace(regexAnsi, '') // replace all matches with empty strings
     }
 
 }    

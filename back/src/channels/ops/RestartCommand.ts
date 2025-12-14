@@ -4,7 +4,7 @@ import { IInstance } from "./OpsChannel"
 
 export async function restartPod(clusterInfo: ClusterInfo, podNamespace:string, podName:string) {
     try {
-        await clusterInfo.coreApi.deleteNamespacedPod(podName, podNamespace)
+        await clusterInfo.coreApi.deleteNamespacedPod({ name:podName, namespace:podNamespace })
         return `Pod ${podNamespace}/${podName} restarted`
     }
     catch (err) {
@@ -28,7 +28,6 @@ export async function execCommandRestart(clusterInfo: ClusterInfo, instance:IIns
         msgtype: 'opsmessageresponse'
     }
 
-    console.log('opsMessage', opsMessage)
     switch(opsMessage.command) {
         case OpsCommandEnum.RESTARTPOD:
             if (opsMessage.namespace==='' || opsMessage.pod==='' || !opsMessage.namespace || !opsMessage.pod) {
