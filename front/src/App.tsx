@@ -376,7 +376,7 @@ const App: React.FC = () => {
             onResourceSelectorAdd(xresource, sstart, ssettings)
         }
         startSocket(newTab, cluster, () => {
-            console.log(`WebSocket connected: ${newTab.ws?.url}`, new Date().toTimeString())
+            console.log(`WebSocket connected: ${newTab.ws?.url}`, new Date().toISOString())
             setKeepAlive(newTab)
             if (newTab.channel.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
             if (newTab && (newTab.channelStarted || start)) {
@@ -576,7 +576,7 @@ const App: React.FC = () => {
     }
 
     const socketDisconnect = (wsEvent:any) => {
-        console.log('WebSocket disconnected', new Date().toString())
+        console.log('WebSocket disconnected', new Date().toISOString())
         let tab = tabs.current.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
         const reconnectable = backChannels.find(c => c.id === tab!.channel.channelId && c.reconnectable)
