@@ -1,31 +1,37 @@
 import { IInstanceMessage } from "@jfvilas/kwirth-common"
 import { IFileObject } from "@jfvilas/react-file-manager"
 
-export interface ILensData {
+export interface IMagnifyData {
+    clusterInfo: any
     paused: boolean
     started: boolean
     files: IFileObject[]
     currentPath: string
 }
 
-export class LensData implements ILensData {
-    lines: string[] = []
+export class MagnifyData implements IMagnifyData {
+    clusterInfo = undefined
     paused = false
     started = false
     files = []
     currentPath = '/'
 }
 
-export enum LensCommandEnum {
+export enum MagnifyCommandEnum {
     CREATE = 'create',
     DELETE = 'delete',
+    CLUSTERINFO = 'clusterinfo',
     LIST = 'list',
+    LISTCRD = 'listcrd',
     WATCH = 'watch',
-    K8EVENT = 'k8event'
+    K8EVENT = 'k8event',
+    NODECORDON = 'nodecordon',
+    NODEUNCORDON = 'nodeuncordon',
+    NODEDRAIN = 'nodedrainn'
 }
 
-export interface ILensMessage extends IInstanceMessage {
-    msgtype: 'lensmessage'
+export interface IMagnifyMessage extends IInstanceMessage {
+    msgtype: 'magnifymessage'
     id: string
     accessKey: string
     instance: string
@@ -33,14 +39,14 @@ export interface ILensMessage extends IInstanceMessage {
     group: string
     pod: string
     container: string
-    command: LensCommandEnum
+    command: MagnifyCommandEnum
     params?: string[]
 }
 
-export interface ILensMessageResponse extends IInstanceMessage {
-    msgtype: 'lensmessageresponse'
+export interface IMagnifyMessageResponse extends IInstanceMessage {
+    msgtype: 'magnifymessageresponse'
     id: string
-    command: LensCommandEnum
+    command: MagnifyCommandEnum
     namespace: string
     group: string
     pod: string

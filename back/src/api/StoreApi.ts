@@ -28,7 +28,7 @@ export class StoreApi {
                         if (data===undefined)
                             res.status(200).json([])
                         else {
-                            var allGroupNames=Object.keys(data).map(k => k.substring(0,k.indexOf('-')))
+                            let allGroupNames=Object.keys(data).map(k => k.substring(0,k.indexOf('-')))
                             let uniqueGroups = [...new Set(allGroupNames)]
                             res.status(200).json(uniqueGroups)
                         }
@@ -83,7 +83,7 @@ export class StoreApi {
                 StoreApi.semaphore.use ( async () => {
                     try {
                         let data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
-                        if (data[req.params.group+'-'+req.params.key] === undefined) {
+                        if (!data || data[req.params.group+'-'+req.params.key]===undefined) {
                             res.status(404).json()
                         }
                         else {
@@ -99,7 +99,8 @@ export class StoreApi {
             .delete( async (req:Request, res:Response) => {
                 StoreApi.semaphore.use ( async () => {
                     try {
-                        var data:any= await this.configMaps.read('kwirth.store.'+req.params.user)
+                        let data:any= await this.configMaps.read('kwirth.store.'+req.params.user)
+                        if (!data) data = {}
                         delete data[req.params.group+'-'+req.params.key]
                         await this.configMaps.write('kwirth.store.'+req.params.user,data)
                         res.status(200).json()
@@ -113,7 +114,8 @@ export class StoreApi {
             .post( async (req:Request, res:Response) => {
                 StoreApi.semaphore.use ( async () => {
                     try {
-                        var data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
+                        let data:any= await this.configMaps.read('kwirth.store.'+req.params.user,{})
+                        if (!data) data={}
                         data[req.params.group+'-'+req.params.key]=JSON.stringify(req.body)
                         await this.configMaps.write('kwirth.store.'+req.params.user,data)
                         res.status(200).json()

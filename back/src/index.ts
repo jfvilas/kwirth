@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, VersionApi, DiscoveryApi, DiscoveryV1Api, NetworkingV1Api, CoreV1ApiListNamespacedPodRequest, StorageV1Api } from '@kubernetes/client-node'
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, VersionApi, DiscoveryApi, DiscoveryV1Api, NetworkingV1Api, CoreV1ApiListNamespacedPodRequest, StorageV1Api, BatchApi, BatchV1Api } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -33,7 +33,7 @@ import { ISecrets } from './tools/ISecrets'
 import { IConfigMaps } from './tools/IConfigMap'
 import { DockerSecrets } from './tools/DockerSecrets'
 import { DockerConfigMaps } from './tools/DockerConfigMaps'
-import { DockerTools } from './tools/KwirthApi'
+import { DockerTools } from './tools/DockerTools'
 import { OpsChannel } from './channels/ops/OpsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { IChannel } from './channels/IChannel'
@@ -42,14 +42,13 @@ import { FilemanChannel } from './channels/fileman/FilemanChannel'
 
 import fileUpload from 'express-fileupload'
 import { IncomingMessage } from 'http'
-import { LensChannel } from './channels/lens/LensChannel'
+import { MagnifyChannel } from './channels/magnify/MagnifyChannel'
 import { EventsTools } from './tools/EventsTools'
 
 const v8 = require('node:v8')
 const http = require('http')
 const cors = require('cors')
 const bodyParser = require('body-parser')
-//const requestIp = require ('request-ip')
 const PORT = 3883
 
 const channels : Map<string, IChannel> = new Map()
@@ -65,6 +64,7 @@ const crdApi = kubeConfig.makeApiClient(CustomObjectsApi)
 const rbacApi = kubeConfig.makeApiClient(RbacAuthorizationV1Api)
 const extensionApi = kubeConfig.makeApiClient(ApiextensionsV1Api)
 const storageApi = kubeConfig.makeApiClient(StorageV1Api)
+const batchApi = kubeConfig.makeApiClient(BatchV1Api)
 const execApi = new Exec(kubeConfig)
 const logApi = new Log(kubeConfig)
 var dockerApi: Docker = new Docker()
@@ -83,7 +83,7 @@ const channelOpsEnabled = (process.env.CHANNEL_OPS || 'true').toLowerCase() === 
 const channelTrivyEnabled = (process.env.CHANNEL_TRIVY || 'true').toLowerCase() === 'true'
 const channelEchoEnabled = (process.env.CHANNEL_ECHO || 'true').toLowerCase() === 'true'
 const channelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLowerCase() === 'true'
-const channelLensEnabled = (process.env.CHANNEL_LENS || 'true').toLowerCase() === 'true'
+const channelMagnifyEnabled = (process.env.CHANNEL_MAGNIFY || 'true').toLowerCase() === 'true'
 const pendingWebsocket:{channel:string, instance:string, challenge:string, instanceConfig: IInstanceConfig}[] = []
 
 // discover where we are running in: docker, kubernetes...
@@ -1045,6 +1045,7 @@ const initKubernetesCluster = async (token:string, metricsRequired:boolean, even
     clusterInfo.extensionApi = extensionApi
     clusterInfo.storageApi = storageApi
     clusterInfo.networkApi = networkApi
+    clusterInfo.batchApi = batchApi
     clusterInfo.dockerTools = new DockerTools(clusterInfo)
 
     await clusterInfo.loadKubernetesClusterName()
@@ -1101,7 +1102,7 @@ const launchKubernetes = async() => {
                     if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
                     if (channelEchoEnabled) channels.set('echo', new EchoChannel(clusterInfo))
                     if (channelFilemanEnabled) channels.set('fileman', new FilemanChannel(clusterInfo))
-                    if (channelLensEnabled) channels.set('lens', new LensChannel(clusterInfo))
+                    if (channelMagnifyEnabled) channels.set('magnify', new MagnifyChannel(clusterInfo))
 
                     kwirthData.channels =  Array.from(channels.keys()).map(k => {
                         return channels.get(k)?.getChannelData()!

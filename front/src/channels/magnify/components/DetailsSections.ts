@@ -1,4 +1,4 @@
-import { IDetailsSection } from "./ObjectDetails";
+import { IDetailsSection } from './MagnifyObjectDetails'
 
 export const objectSections = new Map<string,IDetailsSection[]>()
 
@@ -672,3 +672,123 @@ objectSections.set('Pod', [
         ]
     },
 ])
+
+objectSections.set('ServiceAccount', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: ['metadata.namespace'],
+                format: 'string'
+            },
+            {
+                name: 'labels',
+                text: 'Labels',
+                source: ['metadata.labels'],
+                format: 'objectprops',
+                style: ['column']
+            },
+            {
+                name: 'annotations',
+                text: 'Annotations',
+                source: ['metadata.annotations'],
+                format: 'objectprops',
+                style: ['column']
+            },
+        ]
+    }
+])
+
+objectSections.set('ClusterRole', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'labels',
+                text: 'Labels',
+                source: ['metadata.labels'],
+                format: 'objectprops',
+                style: ['column']
+            },
+            {
+                name: 'annotations',
+                text: 'Annotations',
+                source: ['metadata.annotations'],
+                format: 'objectprops',
+                style: ['column']
+            },
+        ]
+    },
+    {
+        name: 'rules',
+        text: 'Rules',
+        items: [
+            {
+                name: 'rules',
+                text: 'Rules',
+                source: ['rules'],
+                format: 'objectobject',
+                content: [
+                    {
+                        name: 'Rule',
+                        text: '',  
+                        source: ['$Rule'],
+                        format: 'string',
+                        style:['bold']
+                    },
+                    {
+                        name: 'verbs',
+                        text: 'Verbs',  
+                        source: ['verbs'],
+                        format: 'stringlist',
+                        style:['column']
+                    },
+                    {
+                        name: 'apiGroups',
+                        text: 'API Groups',  
+                        source: ['apiGroups'],
+                        format: 'stringlist',
+                        style: ['column']
+                    },
+                    {
+                        name: 'resources',
+                        text: 'Resources',  
+                        source: ['resources'],
+                        format: 'stringlist',
+                        style: ['column']
+                    }
+                ],
+                style: ['column']
+            },
+        ]
+    }
+])
+

@@ -4,9 +4,8 @@ import { ClusterInfo } from '../model/ClusterInfo'
 import { IChannel } from '../channels/IChannel'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import Docker from 'dockerode'
-import { applyAllResources, deleteAllResources } from '../tools/KubernetesManifests'
+import { applyAllResources, deleteAllResources } from '../tools/KubernetesTools'
 import { ClusterTypeEnum, KwirthData } from '@jfvilas/kwirth-common'
-import { AppsV1ApiPatchNamespacedDeploymentRequest, CoreV1ApiReadNamespacedConfigMapRequest, CoreV1ApiReplaceNamespacedConfigMapRequest } from '@kubernetes/client-node'
 
 export class ConfigApi {
     public route = express.Router()
@@ -314,12 +313,11 @@ export class ConfigApi {
             }
         }
 
-        let param:AppsV1ApiPatchNamespacedDeploymentRequest = {
+        await this.clusterInfo.appsApi.patchNamespacedDeployment( {
             name: name,
             namespace: namespace,
             body: patch
-        }
-        await this.clusterInfo.appsApi.patchNamespacedDeployment( param, {})  //+++ test
+        })  //+++ test
     }
     
 }

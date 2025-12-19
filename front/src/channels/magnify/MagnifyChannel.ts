@@ -1,16 +1,16 @@
 import { FC } from 'react'
 import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { LensInstanceConfig, LensConfig } from './LensConfig'
-import { LensSetup, LensIcon } from './LensSetup'
+import { MagnifyInstanceConfig, MagnifyConfig } from './MagnifyConfig'
+import { MagnifySetup, MagnifyIcon } from './MagnifySetup'
 import { IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
-import { LensCommandEnum, LensData, ILensMessageResponse, ILensData } from './LensData'
-import { LensTabContent } from './LensTabContent'
+import { MagnifyCommandEnum, MagnifyData, IMagnifyMessageResponse, IMagnifyData } from './MagnifyData'
+import { MagnifyTabContent } from './MagnifyTabContent'
 import { v4 as uuid } from 'uuid'
 import { ENotifyLevel } from '../../tools/Global'
 import { IFileObject } from '@jfvilas/react-file-manager'
 
-interface ILensMessage extends IInstanceMessage {
-    msgtype: 'lensmessage'
+interface IMagnifyMessage extends IInstanceMessage {
+    msgtype: 'magnifymessage'
     id: string
     accessKey: string
     instance: string
@@ -18,17 +18,17 @@ interface ILensMessage extends IInstanceMessage {
     group: string
     pod: string
     container: string
-    command: LensCommandEnum
+    command: MagnifyCommandEnum
     params?: string[]
     data?: any
 }
 
-export class LensChannel implements IChannel {
+export class MagnifyChannel implements IChannel {
     private setupVisible = false
     private notify: (level:ENotifyLevel, message:string) => void = (level:ENotifyLevel, message:string) => {}
-    SetupDialog: FC<ISetupProps> = LensSetup
-    TabContent: FC<IContentProps> = LensTabContent
-    channelId = 'lens'
+    SetupDialog: FC<ISetupProps> = MagnifySetup
+    TabContent: FC<IContentProps> = MagnifyTabContent
+    channelId = 'magnify'
     
     requiresSetup() { return false }
     requiresSettings() { return false }
@@ -38,55 +38,60 @@ export class LensChannel implements IChannel {
     requiresWebSocket() { return true }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
-    getScope() { return 'lens$read'}
-    getChannelIcon(): JSX.Element { return LensIcon }
+    getScope() { return 'magnify$read'}
+    getChannelIcon(): JSX.Element { return MagnifyIcon }
 
     getSetupVisibility(): boolean { return this.setupVisible }
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        let msg:ILensMessage = JSON.parse(wsEvent.data)
+        let msg:IMagnifyMessage = JSON.parse(wsEvent.data)
 
-        let lensData:ILensData = channelObject.data
+        let magnifyData:IMagnifyData = channelObject.data
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA: {
-                let response = JSON.parse(wsEvent.data) as ILensMessageResponse
+                let response = JSON.parse(wsEvent.data) as IMagnifyMessageResponse
                 switch(response.action) {
                     case InstanceMessageActionEnum.COMMAND: {
                         switch(response.command) {
-                            case LensCommandEnum.LIST:
+                            case MagnifyCommandEnum.CLUSTERINFO:
+                                let cInfo = JSON.parse(response.data)
+                                magnifyData.clusterInfo = cInfo
+                                break
+                            case MagnifyCommandEnum.LIST:
+                            case MagnifyCommandEnum.LISTCRD:
                                 let content = JSON.parse(response.data)
                                 if (content.kind.endsWith('List')) {
-                                    content.items.forEach((o:any) => this.loadObject(content.kind.replace('List',''), lensData, o))
+                                    content.items.forEach( (item:any) => this.loadObject(channelObject, content.kind.replace('List',''), magnifyData, item) )
                                 }
                                 else {
                                     this.notify(ENotifyLevel.ERROR, 'Unexpected list: '+ content.kind)
                                 }
+                                magnifyData.files = [...magnifyData.files]
                                 return {
                                     action: ChannelRefreshAction.REFRESH
                                 }
-                            case LensCommandEnum.K8EVENT:
-                                //console.log('k8Event:', response.event, response.data.metadata.namespace, response.data.metadata.name)
+                            case MagnifyCommandEnum.K8EVENT:
                                 switch(response.event) {
                                     case 'ADDED':
                                     case 'MODIFIED':
-                                        this.loadObject(response.data.kind, lensData, response.data)
+                                        this.loadObject(channelObject, response.data.kind, magnifyData, response.data)
                                         break
                                     case 'DELETED':
                                         let path=this.buildPath(response.data.kind, response.data)
-                                        lensData.files = lensData.files.filter (f => f.path !== path)
+                                        magnifyData.files = magnifyData.files.filter (f => f.path !== path)
                                         break
                                 }
-                                lensData.files = [...lensData.files]
+                                magnifyData.files = [...magnifyData.files]
                                 return {
                                     action: ChannelRefreshAction.REFRESH
                                 }
-                            case LensCommandEnum.DELETE: {
+                            case MagnifyCommandEnum.DELETE: {
                                 let content = JSON.parse(response.data)
                                 if (content.status==='Success') {
                                     // let fname = content.metadata.object
-                                    // lensData.files = lensData.files.filter(f => f.path !== fname)
-                                    // lensData.files = lensData.files.filter(f => !f.path.startsWith(fname+'/'))
+                                    // magnifyData.files = magnifyData.files.filter(f => f.path !== fname)
+                                    // magnifyData.files = magnifyData.files.filter(f => !f.path.startsWith(fname+'/'))
                                 }
                                 else {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
@@ -95,10 +100,10 @@ export class LensChannel implements IChannel {
                                     action: ChannelRefreshAction.REFRESH
                                 }
                             }
-                            case LensCommandEnum.CREATE: {
+                            case MagnifyCommandEnum.CREATE: {
                                 let content = JSON.parse(response.data)
                                 if (content.status==='Success') {
-                                    // lensData.files = lensData.files.filter(f => f.path !== content.metadata.object)
+                                    // magnifyData.files = magnifyData.files.filter(f => f.path !== content.metadata.object)
                                     // let f = { 
                                     //     name: (content.metadata.object as string).split('/').slice(-1)[0],
                                     //     isDirectory: (content.metadata.type===1),
@@ -107,7 +112,7 @@ export class LensChannel implements IChannel {
                                     //     size: +content.metadata.size,
                                     //     ...(content.metadata.type.type===0? {class:'file'}:{})
                                     // }
-                                    // lensData.files.push(f)
+                                    // magnifyData.files.push(f)
                                 }
                                 else {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
@@ -130,8 +135,8 @@ export class LensChannel implements IChannel {
                         channelObject.instanceId = signalMessage.instance
                         // +++ improve timeout
                         setTimeout( () => {
-                            let lensMessage:ILensMessage = {
-                                msgtype: 'lensmessage',
+                            let magnifyMessage:IMagnifyMessage = {
+                                msgtype: 'magnifymessage',
                                 accessKey: channelObject.accessString!,
                                 instance: channelObject.instanceId,
                                 id: uuid(),
@@ -139,21 +144,27 @@ export class LensChannel implements IChannel {
                                 group: '',
                                 pod: '',
                                 container: '',
-                                command: LensCommandEnum.LIST,
+                                command: MagnifyCommandEnum.LIST,
                                 action: InstanceMessageActionEnum.COMMAND,
                                 flow: InstanceMessageFlowEnum.REQUEST,
                                 type: InstanceMessageTypeEnum.DATA,
-                                channel: 'lens',
+                                channel: 'magnify',
                                 params: [
                                     'namespace', 'node',
-                                    'service', 'ingress',
-                                    'pod', 'deployment', 'daemonset', 'replicaset', 'statefulset',
+                                    'service', 'ingress', 'ingressclass',
+                                    'pod', 'deployment', 'daemonset', 'replicaset', 'statefulset', 'job', 'cronjob',
                                     'configmap', 'secret', 
                                     'persistentvolumeclaim', 'persistentvolume', 'storageclass',
-                                    'serviceaccount', 'clusterrole', 'role', 'clusterrolebinding', 'rolebinding'
+                                    'serviceaccount', 'clusterrole', 'role', 'clusterrolebinding', 'rolebinding',
+                                    'customresourcedefinition'
                                 ]
                             }
-                            channelObject.webSocket!.send(JSON.stringify( lensMessage ))
+                            channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+
+                            magnifyMessage.command = MagnifyCommandEnum.CLUSTERINFO
+                            magnifyMessage.id = uuid()
+                            magnifyMessage.params = []
+                            channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
                         }, 300)
                     }
                     else if (signalMessage.action === InstanceMessageActionEnum.COMMAND) {
@@ -181,39 +192,39 @@ export class LensChannel implements IChannel {
     }
 
     initChannel(channelObject:IChannelObject): boolean {        
-        let config = new LensConfig()
+        let config = new MagnifyConfig()
         config.notify = this.notify
 
-        channelObject.instanceConfig = new LensInstanceConfig()
+        channelObject.instanceConfig = new MagnifyInstanceConfig()
         channelObject.config = config
-        channelObject.data = new LensData()
+        channelObject.data = new MagnifyData()
         return false
     }
 
     startChannel(channelObject:IChannelObject): boolean {
-        let lensData:ILensData = channelObject.data
-        lensData.paused = false
-        lensData.started = true;
-        lensData.currentPath='/overview'
+        let magnifyData:IMagnifyData = channelObject.data
+        magnifyData.paused = false
+        magnifyData.started = true;
+        magnifyData.currentPath='/overview'
         return true
     }
 
     pauseChannel(channelObject:IChannelObject): boolean {
-        let lensData:ILensData = channelObject.data
-        lensData.paused = true
+        let magnifyData:IMagnifyData = channelObject.data
+        magnifyData.paused = true
         return false
     }
 
     continueChannel(channelObject:IChannelObject): boolean {
-        let lensData:ILensData = channelObject.data
-        lensData.paused = false
+        let magnifyData:IMagnifyData = channelObject.data
+        magnifyData.paused = false
         return true
     }
 
     stopChannel(channelObject: IChannelObject): boolean {
-        let lensData:ILensData = channelObject.data
-        lensData.paused = false
-        lensData.started = false
+        let magnifyData:IMagnifyData = channelObject.data
+        magnifyData.paused = false
+        magnifyData.started = false
         return true
     }
 
@@ -225,63 +236,69 @@ export class LensChannel implements IChannel {
         return false
     }
 
-    loadObject (kind:string, lensData:ILensData, obj:any): void {
-        if (kind==='Pod') this.loadPod(lensData, obj)
-        else if (kind==='ConfigMap') this.loadConfigMap(lensData, obj)
-        else if (kind==='Secret') this.loadSecret(lensData, obj)
-        else if (kind==='Namespace') this.loadNamespace(lensData, obj)
-        else if (kind==='Node') this.loadNode(lensData, obj)
-        else if (kind==='Service') this.loadService(lensData, obj)
-        else if (kind==='Ingress') this.loadIngress(lensData, obj)
-        else if (kind==='Deployment') this.loadDeployment(lensData, obj)
-        else if (kind==='DaemonSet') this.loadDaemonSet(lensData, obj)
-        else if (kind==='ReplicaSet') this.loadReplicaSet(lensData, obj)
-        else if (kind==='StatefulSet') this.loadStatefulSet(lensData, obj)
-        else if (kind==='StorageClass') this.loadStorageClass(lensData, obj)
-        else if (kind==='PersistentVolumeClaim') this.loadPersistentVolumeClaim(lensData, obj)
-        else if (kind==='PersistentVolume') this.loadPersistentVolume(lensData, obj)
-        else if (kind==='ServiceAccount') this.loadServiceAccount(lensData, obj)
-        else if (kind==='ClusterRole') this.loadClusterRole(lensData, obj)
-        else if (kind==='Role') this.loadRole(lensData, obj)
-        else if (kind==='ClusterRoleBinding') this.loadClusterRoleBinding(lensData, obj)
-        else if (kind==='RoleBinding') this.loadRoleBinding(lensData, obj)
+    loadObject (channelObject:IChannelObject, kind:string, magnifyData:IMagnifyData, obj:any): void {
+        if (kind==='Pod') this.loadPod(magnifyData, obj)
+        else if (kind==='ConfigMap') this.loadConfigMap(magnifyData, obj)
+        else if (kind==='Secret') this.loadSecret(magnifyData, obj)
+        else if (kind==='Namespace') this.loadNamespace(magnifyData, obj)
+        else if (kind==='Node') this.loadNode(magnifyData, obj)
+        else if (kind==='Service') this.loadService(magnifyData, obj)
+        else if (kind==='Ingress') this.loadIngress(magnifyData, obj)
+        else if (kind==='IngressClass') this.loadIngressClass(magnifyData, obj)
+        else if (kind==='Deployment') this.loadDeployment(magnifyData, obj)
+        else if (kind==='DaemonSet') this.loadDaemonSet(magnifyData, obj)
+        else if (kind==='ReplicaSet') this.loadReplicaSet(magnifyData, obj)
+        else if (kind==='StatefulSet') this.loadStatefulSet(magnifyData, obj)
+        else if (kind==='Job') this.loadJob(magnifyData, obj)
+        else if (kind==='CronJob') this.loadCronJob(magnifyData, obj)
+        else if (kind==='StorageClass') this.loadStorageClass(magnifyData, obj)
+        else if (kind==='PersistentVolumeClaim') this.loadPersistentVolumeClaim(magnifyData, obj)
+        else if (kind==='PersistentVolume') this.loadPersistentVolume(magnifyData, obj)
+        else if (kind==='ServiceAccount') this.loadServiceAccount(magnifyData, obj)
+        else if (kind==='ClusterRole') this.loadClusterRole(magnifyData, obj)
+        else if (kind==='Role') this.loadRole(magnifyData, obj)
+        else if (kind==='ClusterRoleBinding') this.loadClusterRoleBinding(magnifyData, obj)
+        else if (kind==='RoleBinding') this.loadRoleBinding(magnifyData, obj)
+        else if (kind==='CustomResourceDefinition') this.loadCustomResourceDefinition(channelObject, magnifyData, obj)
         else {
-            console.log('*** ERR INVALID Kind:', kind)
+            if (!this.loadCustomResourceDefinitionInstance(magnifyData, obj)) {
+                console.log('*** ERR INVALID Kind:', kind)
+            }
         }
     }
 
-    updateObject(lensData:ILensData, obj:IFileObject): void {
-        let i=lensData.files.findIndex(f => f.path === obj.path)
+    updateObject(magnifyData:IMagnifyData, obj:IFileObject): void {
+        let i=magnifyData.files.findIndex(f => f.path === obj.path)
         if (i>=0)
-            lensData.files[i]=obj
+            magnifyData.files[i]=obj
         else
-            lensData.files.push(obj)
+            magnifyData.files.push(obj)
     }
 
-    loadPod(lensData:ILensData, obj:any): void {
+    loadPod(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'v1'
         obj.kind = 'Pod'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: '/workload/pod/'+obj.metadata.name,
             class: 'pod',
             data: {
                 namespace: obj.metadata.namespace,
-                controller: obj.metadata.ownerReferences[0].kind,
+                controller: obj.metadata.ownerReferences && obj.metadata.ownerReferences.length>0? obj.metadata.ownerReferences[0].kind : '-',
                 node: obj.spec.nodeName,
                 startTime: obj.status.startTime,
-                status: obj.status.phase,
+                status: obj.metadata.deletionTimestamp? 'Terminating' : obj.status.phase,
                 restartCount: obj.status.containerStatuses?.reduce((ac:number,c:any) => ac+=c.restartCount, 0) || 0,
                 origin: obj
             }
         })
     }
 
-    loadNamespace(lensData:ILensData, obj:any): void {
+    loadNamespace(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'v1'
         obj.kind = 'Namespace'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: '/cluster/namespace/'+obj.metadata.name,
@@ -295,10 +312,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadConfigMap(lensData:ILensData, obj:any): void {
+    loadConfigMap(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'v1'
         obj.kind = 'ConfigMap'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: '/config/configmap/'+obj.metadata.name,
@@ -312,10 +329,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadSecret(lensData:ILensData, obj:any): void {
+    loadSecret(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'v1'
         obj.kind = 'Secret'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: '/config/secret/'+obj.metadata.name,
@@ -330,7 +347,7 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadNode(lensData:ILensData, obj:any): void {
+    loadNode(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'v1'
         obj.kind = 'Node'
         let roles:string[] = []
@@ -339,7 +356,7 @@ export class LensChannel implements IChannel {
                 if (obj.metadata.labels[c]==='true') roles.push(c.substring(24))
             }
         })
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Node', obj),
@@ -354,10 +371,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadService(lensData:ILensData, obj:any): void {
+    loadService(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'v1'
         obj.kind = 'Service'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Service', obj),
@@ -375,10 +392,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadIngress(lensData:ILensData, obj:any): void {
+    loadIngress(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'networking.k8s.io/v1'
         obj.kind = 'Ingress'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Ingress', obj),
@@ -393,10 +410,27 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadDeployment(lensData:ILensData, obj:any): void {
+    loadIngressClass(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'networking.k8s.io/v1'
+        obj.kind = 'IngressClass'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('IngressClass', obj),
+            class: 'ingressclass',
+            data: {
+                namespace: obj.metadata.namespace,
+                controller: obj.spec.controller,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadDeployment(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'apps/v1'
         obj.kind = 'Deployment'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Deployment', obj),
@@ -412,10 +446,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadDaemonSet(lensData:ILensData, obj:any): void {
+    loadDaemonSet(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'apps/v1'
         obj.kind = 'DaemonSet'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('DaemonSet', obj),
@@ -434,10 +468,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadReplicaSet(lensData:ILensData, obj:any): void {
+    loadReplicaSet(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'apps/v1'
         obj.kind = 'ReplicaSet'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('ReplicaSet', obj),
@@ -453,10 +487,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadStatefulSet(lensData:ILensData, obj:any): void {
+    loadStatefulSet(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'apps/v1'
         obj.kind = 'StatefulSet'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('StatefulSet', obj),
@@ -471,10 +505,50 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadStorageClass(lensData:ILensData, obj:any): void {
+    loadJob(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'apps/v1'
+        obj.kind = 'Job'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('Job', obj),
+            class: 'job',
+            data: {
+                namespace: obj.metadata.namespace,
+                completions: obj.spec.completions + '/' + obj.spec.parallelism,
+                conditions: obj.status.conditions? obj.status.conditions.filter((c:any) => c.status.toLowerCase()==='true').map ((c:any) => c.name): '-',
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadCronJob(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'apps/v1'
+        obj.kind = 'CronJob'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('CronJob', obj),
+            class: 'cronjob',
+            data: {
+                namespace: obj.metadata.namespace,
+                schedule: obj.spec.schedule,
+                suspend: obj.spec.suspend,
+                active: '0',
+                lastSchedule: obj.status.lastScheduleTime,
+                nextExecution: '-',
+                timezone: '-',
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadStorageClass(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'storage.k8s.io/v1'
         obj.kind = 'StorageClass'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('StorageClass', obj),
@@ -489,10 +563,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadPersistentVolumeClaim(lensData:ILensData, obj:any): void {
+    loadPersistentVolumeClaim(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'storage.k8s.io/v1'
         obj.kind = 'PersistentVolumeClaim'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('PersistentVolumeClaim', obj),
@@ -509,10 +583,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadPersistentVolume(lensData:ILensData, obj:any): void {
+    loadPersistentVolume(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'storage.k8s.io/v1'
         obj.kind = 'PersistentVolume'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('PersistentVolume', obj),
@@ -528,10 +602,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadServiceAccount(lensData:ILensData, obj:any): void {
+    loadServiceAccount(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'v1'
         obj.kind = 'ServiceAccount'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('ServiceAccount', obj),
@@ -544,10 +618,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadClusterRole(lensData:ILensData, obj:any): void {
+    loadClusterRole(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'rbac.authorization.k8s.io/v1'
         obj.kind = 'ClusterRole'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('ClusterRole', obj),
@@ -559,10 +633,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadRole(lensData:ILensData, obj:any): void {
+    loadRole(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'rbac.authorization.k8s.io/v1'
         obj.kind = 'Role'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Role', obj),
@@ -575,10 +649,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadClusterRoleBinding(lensData:ILensData, obj:any): void {
+    loadClusterRoleBinding(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'rbac.authorization.k8s.io/v1'
         obj.kind = 'ClusterRoleBinding'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('ClusterRoleBinding', obj),
@@ -591,10 +665,10 @@ export class LensChannel implements IChannel {
         })
     }
 
-    loadRoleBinding(lensData:ILensData, obj:any): void {
+    loadRoleBinding(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'rbac.authorization.k8s.io/v1'
         obj.kind = 'RoleBinding'
-        this.updateObject(lensData, {
+        this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('RoleBinding', obj),
@@ -608,14 +682,153 @@ export class LensChannel implements IChannel {
         })
     }
 
+    // loadCustomResourceDefinition(channelObject:IChannelObject, magnifyData:IMagnifyData, obj:any): void {
+    //     obj.apiVersion = 'apiextensions.k8s.io/v1'
+    //     obj.kind = 'CustomResourceDefinition'
+    //     this.updateObject(magnifyData, {
+    //         name: obj.metadata.name,
+    //         isDirectory: false,
+    //         path: this.buildPath('CustomResourceDefinition', obj),
+    //         class: 'customresourcedefinition',
+    //         data: {
+    //             namespace: obj.metadata.namespace,
+    //             group: obj.spec.group,
+    //             version: obj.spec.versions && obj.spec.versions.length>0? obj.spec.versions[0].name : '-',
+    //             scope: obj.spec.scope,
+    //             creationTimestamp: obj.metadata.creationTimestamp,
+    //             origin: obj
+    //         }
+    //     })
+
+    //     // for each CRD, we request the exsitent objects in that CRD
+    //     if (obj.spec.versions && obj.spec.versions.length>0) {
+    //         let magnifyMessage:IMagnifyMessage = {
+    //             msgtype: 'magnifymessage',
+    //             accessKey: channelObject.accessString!,
+    //             instance: channelObject.instanceId,
+    //             id: uuid(),
+    //             namespace: '',
+    //             group: '',
+    //             pod: '',
+    //             container: '',
+    //             command: MagnifyCommandEnum.LISTCRD,
+    //             action: InstanceMessageActionEnum.COMMAND,
+    //             flow: InstanceMessageFlowEnum.REQUEST,
+    //             type: InstanceMessageTypeEnum.DATA,
+    //             channel: 'magnify',
+    //             params: [ obj.spec.group, obj.spec.versions[0].name, obj.spec.names.plural ]
+    //         }
+    //         channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+    //     }
+    // }
+
+    // loadCustomResourceDefinitionInstance(magnifyData:IMagnifyData, obj:any): boolean {
+    //     let groupName = obj.apiVersion.replace('/','-')+'-'+obj.kind.toLowerCase()
+    //     if (!magnifyData.files.some(f => f.path ==='/crd/'+groupName)) {
+    //         magnifyData.files.push( {
+    //             name: `${obj.apiVersion} (${obj.kind})`,
+    //             isDirectory: true,
+    //             path: '/crd/'+groupName,
+    //             class: 'crdgroup',
+    //             children: 'crdinstance'
+    //         })
+    //     }
+
+    //     this.updateObject(magnifyData, {
+    //         name: obj.metadata.name,
+    //         isDirectory: false,
+    //         path: '/crd/'+groupName+'/'+obj.metadata.name,
+    //         class: 'crdinstance',
+    //         data: {
+    //             namespace: obj.metadata.namespace,
+    //             source: obj.spec.source,
+    //             checksum: obj.spec.checksum,
+    //             creationTimestamp: obj.metadata.creationTimestamp,
+    //             origin: obj
+    //         }
+    //     })
+    //     return true
+    // }
+
+    loadCustomResourceDefinition(channelObject:IChannelObject, magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'apiextensions.k8s.io/v1'
+        obj.kind = 'CustomResourceDefinition'
+        let version = obj.spec.versions && obj.spec.versions.length>0? obj.spec.versions[0].name : '-'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('CustomResourceDefinition', obj),
+            class: 'customresourcedefinition',
+            data: {
+                namespace: obj.metadata.namespace,
+                group: obj.spec.group,
+                version: version,
+                scope: obj.spec.scope,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+
+        // for each CRD, we create an entry in the navigation pane for each group
+        let groupName = obj.spec.group + (version?'-'+version:'') + '-' + obj.spec.names.kind.toLowerCase()
+        magnifyData.files.push( {
+            name: `${obj.spec.group}${(version?'/'+version:'')} (${obj.spec.names.kind.toLowerCase()})`,
+            isDirectory: true,
+            path: '/crd/'+groupName,
+            class: 'crdgroup',
+            children: 'crdinstance'
+        })
+
+        // for each CRD, we request the exsistent objects in that CRD
+        if (obj.spec.versions && obj.spec.versions.length>0) {
+            let magnifyMessage:IMagnifyMessage = {
+                msgtype: 'magnifymessage',
+                accessKey: channelObject.accessString!,
+                instance: channelObject.instanceId,
+                id: uuid(),
+                namespace: '',
+                group: '',
+                pod: '',
+                container: '',
+                command: MagnifyCommandEnum.LISTCRD,
+                action: InstanceMessageActionEnum.COMMAND,
+                flow: InstanceMessageFlowEnum.REQUEST,
+                type: InstanceMessageTypeEnum.DATA,
+                channel: 'magnify',
+                params: [ obj.spec.group, obj.spec.versions[0].name, obj.spec.names.plural ]
+            }
+            channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+        }
+    }
+
+    loadCustomResourceDefinitionInstance(magnifyData:IMagnifyData, obj:any): boolean {
+        let groupName = obj.apiVersion.replace('/','-')+'-'+obj.kind.toLowerCase()
+
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: '/crd/'+groupName+'/'+obj.metadata.name,
+            class: 'crdinstance',
+            data: {
+                namespace: obj.metadata.namespace,
+                source: obj.spec.source,
+                checksum: obj.spec.checksum,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+        return true
+    }
+
     buildPath(kind:string, obj:any) {
         let section=''
-        if ('Node Namespace'.includes(kind)) section='cluster'
-        if ('ConfigMap Secret'.includes(kind)) section='config'
-        if ('Ingress Service'.includes(kind)) section='network'
-        if ('Pod Deployment DaemonSet ReplicaSet StatefulSet'.includes(kind)) section='workload'
-        if ('StorageClass PersistentVolumeClaim PersistentVolume'.includes(kind)) section='storage'
-        if ('ServiceAccount ClusterRole Role ClusterRoleBinding RoleBinding '.includes(kind)) section='access'
+        if (' Node Namespace '.includes(' '+kind+' ')) section='cluster'
+        if (' ConfigMap Secret '.includes(' '+kind+' ')) section='config'
+        if (' Ingress IngressClass Service '.includes(' '+kind+' ')) section='network'
+        if (' Pod Deployment DaemonSet ReplicaSet StatefulSet Job CronJob '.includes(' '+kind+' ')) section='workload'
+        if (' StorageClass PersistentVolumeClaim PersistentVolume '.includes(' '+kind+' ')) section='storage'
+        if (' ServiceAccount ClusterRole Role ClusterRoleBinding RoleBinding '.includes(' '+kind+' ')) section='access'
+        if (' CustomResourceDefinition '.includes(' '+kind+' ')) section='crd'
         return '/'+section+'/'+kind.toLowerCase()+'/'+obj.metadata.name
     }
 }    

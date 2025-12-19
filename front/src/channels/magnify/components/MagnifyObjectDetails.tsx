@@ -16,16 +16,16 @@ interface IDetailsSection {
     items: IDetailsItem[]
 }
 
-interface ILensObjectDetailsProps {
+interface IMagnifyObjectDetailsProps {
     sections: IDetailsSection[]
     object: any
     onChangeData: (src:string,data:any) => void
 }
 
-const LensObjectDetails: React.FC<ILensObjectDetailsProps> = (props:ILensObjectDetailsProps) => {
+const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjectDetailsProps) => {
 
     const renderValue = (srcobj:any, src:string, format:string, style:string[], content:any) : JSX.Element => {
-        if (src.startsWith('$')) return <Typography>{src.substring(1)}</Typography>
+        if (src.startsWith('$')) return <Typography fontWeight={style.includes('bold')?'700':''}>{src.substring(1)}</Typography>
 
         let obj = JSON.parse(JSON.stringify(srcobj))
         if (src.includes('|') && src.includes(':')) {  
@@ -57,7 +57,7 @@ const LensObjectDetails: React.FC<ILensObjectDetailsProps> = (props:ILensObjectD
                 else {
                     let st = style.filter(s => s.startsWith(value+':'))
                     if (st.length>0)
-                        return <Typography color={st[0].split(':')[1]}>{ value }</Typography>
+                        return <Typography color={st[0].split(':')[1]} fontWeight={style.includes('bold')?'700':''}>{ value }</Typography>
                     else
                         return <>{ value }</>
                 }
@@ -75,12 +75,20 @@ const LensObjectDetails: React.FC<ILensObjectDetailsProps> = (props:ILensObjectD
 
             case 'stringlist':
                 if (!_.get(obj,src)) return <></>
-                let val = _.get(obj,src).join(',')
-                let st2 = style.filter(s => s.startsWith(val+':'))
-                if (st2.length>0)
-                    return <Typography color={st2[0].split(':')[1]}>{ val }</Typography>
-                else
-                    return <>{ val }</>
+                if (style.includes('column')) {
+                    return <Stack direction={'column'}>
+                        { _.get(obj,src).map((item:any, index:number) => <Typography>{renderValue(obj, src+'['+index+']', 'string', style, undefined)}</Typography>) }
+                    </Stack>
+                }
+                else {
+                    let val = _.get(obj,src).join(',')
+                    let st2 = style.filter(s => s.startsWith(val+':'))
+                    if (st2.length>0)
+                        return <Typography color={st2[0].split(':')[1]}>{ val }</Typography>
+                    else
+                        return <>{ val }</>
+                }
+                    
 
             case 'objectlist':
                 if (!_.get(obj,src)) return <></>
@@ -204,5 +212,5 @@ const LensObjectDetails: React.FC<ILensObjectDetailsProps> = (props:ILensObjectD
     }</>
 }
 
-export type { ILensObjectDetailsProps, IDetailsSection, IDetailsItem }
-export { LensObjectDetails }
+export type { IMagnifyObjectDetailsProps, IDetailsSection, IDetailsItem }
+export { MagnifyObjectDetails }

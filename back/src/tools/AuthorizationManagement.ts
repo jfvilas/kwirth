@@ -8,7 +8,8 @@ import { AppsV1Api, CoreV1Api, V1Pod } from '@kubernetes/client-node'
 
 export class AuthorizationManagement {
     public static cleanApiKeys = (apiKeys:ApiKey[]) => {
-        apiKeys=apiKeys.filter(a => a.expire >= Date.now())
+        if (!apiKeys) return []
+        apiKeys = apiKeys.filter(a => a.expire >= Date.now())
         return apiKeys
     }    
 

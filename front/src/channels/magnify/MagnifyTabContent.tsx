@@ -1,22 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { IChannelObject } from '../IChannel'
-import { LensCommandEnum, ILensMessage, ILensData } from './LensData'
-import { Box, Button, Card, CardContent, CardHeader, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, Typography } from '@mui/material'
+import { MagnifyCommandEnum, IMagnifyMessage, IMagnifyData } from './MagnifyData'
+import { Box, Button, Card, CardContent, CardHeader, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, Stack, Typography } from '@mui/material'
 import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
 import { IError, IFileObject, ISpace } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
 import { v4 as uuid } from 'uuid'
-import { ILensConfig } from './LensConfig'
+import { IMagnifyConfig } from './MagnifyConfig'
 import { ENotifyLevel } from '../../tools/Global'
 import '@jfvilas/react-file-manager/dist/style.css'
 import './custom-fm.css'
-import { menu, spaces } from './RFMConfig'
+import { icons, menu, spaces } from './RFMConfig'
 import { IResourceSelected } from '../../components/ResourceSelector'
 import { ILogConfig, ILogInstanceConfig, LogSortOrderEnum } from '../log/LogConfig'
 import CodeMirror from '@uiw/react-codemirror';
 import { yaml } from '@codemirror/lang-yaml'
 import React from 'react'
-import { IDetailsSection, LensObjectDetails } from './components/ObjectDetails'
+import { IDetailsSection, MagnifyObjectDetails } from './components/MagnifyObjectDetails'
 import { objectSections } from './components/DetailsSections'
 import { Close, ContentCopy, Delete, Edit } from '@mui/icons-material'
 import { MsgBoxButtons, MsgBoxYesNo } from '../../tools/MsgBox'
@@ -30,9 +30,9 @@ interface IContentProps {
     channelObject: IChannelObject
 }
 
-const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    const lensBoxRef = useRef<HTMLDivElement | null>(null)
-    const [lensBoxTop, setLensBoxTop] = useState(0)
+const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
+    const magnifyBoxRef = useRef<HTMLDivElement | null>(null)
+    const [magnifyBoxTop, setMagnifyBoxTop] = useState(0)
     const [msgBox, setMsgBox] =useState(<></>)
     const [editorVisible, setEditorVisible] = useState(false)
     const [editorContent, setEditorContent] = useState<{code:string, source?:IFileObject}>({code:''})
@@ -41,7 +41,7 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [detailsSections, setDetailsSections] = useState<IDetailsSection[]>([])
     const [detailsChanges, setDetailsChanges] = useState({})
 
-    let lensData:ILensData = props.channelObject.data
+    let magnifyData:IMagnifyData = props.channelObject.data
     let permissions={
         create: false,
         delete: false,
@@ -51,21 +51,41 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         rename: false,
         upload: false
     }
-    let icons = new Map()
     let actions = new Map()
 
     useEffect(() => {
-        if (lensBoxRef.current) setLensBoxTop(lensBoxRef.current.getBoundingClientRect().top)
+        if (magnifyBoxRef.current) setMagnifyBoxTop(magnifyBoxRef.current.getBoundingClientRect().top)
     })
 
     useEffect(() => {
-        if (!lensData.files.some(f => f.path ==='/overview')) {
-            lensData.files.push(...menu)
+        if (!magnifyData.files.some(f => f.path ==='/overview')) {
+            magnifyData.files.push(...menu)
 
             setPathFunction('/overview', showOverview)
-            setPathFunction('/workload', showWorkloadOverview)
-            setPathFunction('/config', showConfigOverview)
+            setPathFunction('/cluster/overview', showClusterOverview)
+            setPathFunction('/workload/overview', showWorkloadOverview)
+            setPathFunction('/network/overview', showNetworkOverview)
+            setPathFunction('/config/overview', showConfigOverview)
+            setPathFunction('/storage/overview', showStorageOverview)
 
+            // magnifyData.files.push({
+            //     name: 'un grupo',
+            //     isDirectory: true,
+            //     path: '/crd/ungrupo',
+            //     class: 'crdgroup'
+            // })
+            // magnifyData.files.push({
+            //     name: 'unainst',
+            //     isDirectory: false,
+            //     path: '/crd/ungrupo/unainst',
+            //     class: 'crdinstance'
+            // })
+            // magnifyData.files.push({
+            //     name: 'otrainst',
+            //     isDirectory: false,
+            //     path: '/crd/ungrupo/otrainst',
+            //     class: 'crdinstance'
+            // })
             // let sampleFiles = [
             //         {
             //             name: "users-svc",
@@ -86,9 +106,9 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             //             class: 'service'
             //         },
             //         {
-            //             name: "eulen-ingress",
+            //             name: "ingress",
             //             isDirectory: false,
-            //             path: "/network/ingress/eulen-ingress",
+            //             path: "/network/ingress/ingress",
             //             class: 'ingress'
             //         },
             //         {
@@ -98,16 +118,12 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             //             class: 'ingress'
             //         }
             // ]
-            //lensData.files.push(...sampleFiles)
-
-        // Workload
-
-            // Deployment
-            let spcDeployment = spaces.get('deployment')!
-            setLeftItem(spcDeployment,'edit', launchEdit)
+            //magnifyData.files.push(...sampleFiles)
 
         // Workload
             // Pod
+            let spcClassPod = spaces.get('classpod')!
+            setLeftItem(spcClassPod, 'create', () => launchCreate('pod'))
             let spcPod = spaces.get('pod')!
             setPropertyFunction(spcPod, 'container', showPodContainers)
             setPropertyFunction(spcPod, 'cpu', showPodCpu)
@@ -115,14 +131,30 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcPod,'viewlog', launchLog)
             setLeftItem(spcPod,'details', launchDetails)
             setLeftItem(spcPod,'delete', launchDelete)
+            let spcDeployment = spaces.get('deployment')!
+            setLeftItem(spcDeployment,'edit', launchEdit)
+            let spcJob = spaces.get('job')!
+            setLeftItem(spcJob,'details', launchDetails)
+            setLeftItem(spcJob,'edit', launchEdit)
+            setLeftItem(spcJob,'delete', launchDelete)
+            let spcCronJob = spaces.get('cronjob')!
+            setLeftItem(spcCronJob,'trigger', launchCronJobTrigger)
+            setLeftItem(spcCronJob,'suspend', launchCronJobSuspend)
+            setLeftItem(spcCronJob,'details', launchDetails)
+            setLeftItem(spcCronJob,'edit', launchEdit)
+            setLeftItem(spcCronJob,'delete', launchDelete)
+
 
         // Cluster
 
             // Node
             let spcNode = spaces.get('node')!
             setLeftItem(spcNode,'details', launchDetails)
-            setLeftItem(spcNode,'drain', launchNodeDrain)
             setLeftItem(spcNode,'cordon', launchNodeCordon)
+            setLeftItem(spcNode,'uncordon', launchNodeUnCordon)
+            setLeftItem(spcNode,'drain', launchNodeDrain)
+            setLeftItem(spcNode,'edit', launchEdit)
+            setLeftItem(spcNode,'delete', launchDelete)
 
             // Namespace
             let spcClassNamespace = spaces.get('classnamespace')!
@@ -191,6 +223,39 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcPersistentVolume,'edit', launchEdit)
             setLeftItem(spcPersistentVolume,'delete', launchDelete)
 
+        // Access
+
+            // ServiceAccount
+            let spcClassServiceAccount = spaces.get('classserviceaccount')!
+            setLeftItem(spcClassServiceAccount, 'create', () => launchCreate('serviceaccount'))
+            let spcServiceAccount = spaces.get('serviceaccount')!
+            setLeftItem(spcServiceAccount,'details', launchDetails)
+            setLeftItem(spcServiceAccount,'edit', launchEdit)
+            setLeftItem(spcServiceAccount,'delete', launchDelete)
+
+            // ClusterRole
+            let spcClassClusterRole = spaces.get('classclusterrole')!
+            setLeftItem(spcClassClusterRole, 'create', () => launchCreate('clusterrole'))
+            let spcClusterRole = spaces.get('clusterrole')!
+            setLeftItem(spcClusterRole,'details', launchDetails)
+            setLeftItem(spcClusterRole,'edit', launchEdit)
+            setLeftItem(spcClusterRole,'delete', launchDelete)
+
+
+        // Custom
+
+            // CustomResourceDefinition
+            let spcClassCustomResourceDefinition = spaces.get('classcustomresourcedefinition')!
+            setLeftItem(spcClassCustomResourceDefinition, 'create', () => launchCreate('customresourcedefinition'))
+            let spcCustomResourceDefinition = spaces.get('customresourcedefinition')!
+            setLeftItem(spcCustomResourceDefinition,'details', launchDetails)
+            setLeftItem(spcCustomResourceDefinition,'edit', launchEdit)
+            setLeftItem(spcCustomResourceDefinition,'delete', launchDelete)
+
+            // crd instance
+            let spcCrdInstance = spaces.get('crdinstance')!
+            setLeftItem(spcCrdInstance, 'delete', launchDelete)
+
         }
     }, [])
 
@@ -236,7 +301,7 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const applyEditorChanges = () => {
         setEditorVisible(false)
-        sendCommand(LensCommandEnum.CREATE, [editorContent.code])
+        sendCommand(MagnifyCommandEnum.CREATE, [editorContent.code])
     }
 
     const updateEditorValue= (newCode:any) => {
@@ -252,7 +317,7 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const launchDelete = (f:IFileObject[]) => {
-        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<>Are you sure you want to delete {f[0].data.origin.kind.toLowerCase()}&nbsp;<b>{f[0].name}</b>?</>, setMsgBox, (a) => {
+        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<>Are you sure you want to delete &nbsp;<b>{f[0].name}</b>?</>, setMsgBox, (a) => {
             if (a === MsgBoxButtons.Yes) {
                 console.log('delete')
             }
@@ -273,14 +338,14 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (x) x.onClick = invoke
     }
 
-    const launchLog = (x:IFileObject[]) => {
+    const launchLog = (f:IFileObject[]) => {
         let logResource:IResourceSelected = {
             channelId: 'log',
             clusterName: props.channelObject.clusterName,
             view: 'pod',
-            namespaces: [x[0].data.origin.metadata.namespace],
+            namespaces: [f[0].data.origin.metadata.namespace],
             groups: [],
-            pods: [x[0].data.origin.metadata.name],
+            pods: [f[0].data.origin.metadata.name],
             containers: [],
             name: `logname`
         }
@@ -303,18 +368,33 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (props.channelObject.onCreateTab) props.channelObject.onCreateTab(logResource, true, logSettings)
     }
 
-    const launchDetails = (x:IFileObject[]) => {
-        setDetailsContent(x[0])
-        setDetailsSections(objectSections.get(x[0].data.origin.kind)!)
+    const launchDetails = (f:IFileObject[]) => {
+        setDetailsContent(f[0])
+        setDetailsSections(objectSections.get(f[0].data.origin.kind)!)
         setDetailsVisible(true)
     }
 
-    const launchNodeDrain = (x:IFileObject[]) => {
-        console.log('drain node ',x[0].name)
+    const launchNodeDrain = (f:IFileObject[]) => {
+        console.log('drain node ',f[0].name)
+        sendCommand(MagnifyCommandEnum.NODEDRAIN, [f[0].name])
     }
 
-    const launchNodeCordon = (x:IFileObject[]) => {
-        console.log('cordon node ',x[0].name)
+    const launchNodeCordon = (f:IFileObject[]) => {
+        console.log('cordon node ',f[0].name)
+        sendCommand(MagnifyCommandEnum.NODECORDON, [f[0].name])
+    }
+
+    const launchNodeUnCordon = (f:IFileObject[]) => {
+        console.log('uncordon node ',f[0].name)
+        sendCommand(MagnifyCommandEnum.NODEUNCORDON, [f[0].name])
+    }
+
+    const launchCronJobTrigger = (f:IFileObject[]) => {
+        console.log('trigger cj ',f[0].name)
+    }
+
+    const launchCronJobSuspend = (f:IFileObject[]) => {
+        console.log('suspend cj ',f[0].name)
     }
 
     const updateSource = () => {
@@ -322,7 +402,18 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const showOverview = () => {
-        return 'Cluster date time: ' + new Date().toISOString()
+        if (!magnifyData.clusterInfo) return <></>
+        return <Box sx={{m:1}}>
+            <Card>
+                <CardHeader title={'Cluser Info'} />
+                <CardContent>
+                    <Typography>Version: {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
+                    <Typography>Platform: {magnifyData.clusterInfo.platform}</Typography>
+                </CardContent>
+
+            </Card>
+        </Box>
+
     }
 
     const showWorkloadOverview = () => {
@@ -332,7 +423,15 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
                 </CardHeader>
                 <CardContent>
-                    <Typography>Pods: {lensData.files.filter(f => f.class==='pod').length}</Typography>
+                    <Typography>Pods: {magnifyData.files.filter(f => f.class==='pod').length}</Typography>
+                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography>Deployments: {magnifyData.files.filter(f => f.class==='deployment').length}</Typography>
+                    <Typography>Daemon sets: {magnifyData.files.filter(f => f.class==='daemonset').length}</Typography>
+                    <Typography>Replica sets: {magnifyData.files.filter(f => f.class==='replicaset').length}</Typography>
+                    <Typography>Stateful sets: {magnifyData.files.filter(f => f.class==='statefulset').length}</Typography>
+                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography>Jobs: {magnifyData.files.filter(f => f.class==='job').length}</Typography>
+                    <Typography>Cron jobs: {magnifyData.files.filter(f => f.class==='cronjob').length}</Typography>
                 </CardContent>
 
             </Card>
@@ -340,24 +439,153 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const showConfigOverview = () => {
-        console.log(lensData.files)
         return <Box sx={{m:1}}>
             <Card>
-                <CardHeader title={'Workload overview'}>
+                <CardHeader title={'Config overview'}>
 
                 </CardHeader>
                 <CardContent>
-                    <Typography>ConfigMap: {lensData.files.filter(f => f.class==='configmap').length}</Typography>
-                    <Typography>Secret: {lensData.files.filter(f => f.class==='secret').length}</Typography>
+                    <Typography>ConfigMap: {magnifyData.files.filter(f => f.class==='configmap').length}</Typography>
+                    <Typography>Secret: {magnifyData.files.filter(f => f.class==='secret').length}</Typography>
                 </CardContent>
 
             </Card>
         </Box>
     }
 
-    const setPathFunction = (path:string, f:any) => {
-        let x = lensData.files.find(f => f.path===path)
-        if (x) x.children = f
+    function convertBytesToSize(bytes: number, decimals: number = 2): string {
+        // Si el valor no es un número válido o es 0, simplemente devuelve "0 Bytes"
+        if (!Number.isFinite(bytes) || bytes === 0) {
+            return '0 Bytes';
+        }
+
+        const k = 1024; // Base binaria (IEC)
+        const dm = decimals < 0 ? 0 : decimals; // Asegura que los decimales no sean negativos
+
+        // Prefijos de unidades binarias (IEC)
+        const units = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+
+        // Calcula el índice de la unidad más grande que cabe en el número de bytes
+        // Math.floor(Math.log(bytes) / Math.log(k))
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        // Si el resultado de i es 0, no dividimos, y si es mayor, dividimos por 1024^i
+        const calculatedValue = parseFloat((bytes / Math.pow(k, i)).toFixed(dm));
+
+        // Retorna el valor calculado y la unidad correspondiente
+        return calculatedValue + ' ' + units[i];
+    }        
+
+    function convertSizeToBytes(fileSizeString: string): number {
+        // 1. Extraer el número y la unidad
+        // La RegEx busca: (Número con decimales) + Espacios opcionales + (Unidad con prefijo opcional 'i' y 'B' opcional)
+        const match = fileSizeString.trim().match(/^([\d.]+)\s*([KMGTPE]i?)B?$/i);
+
+        if (!match) {
+            console.error(`Formato de tamaño de archivo no reconocido: ${fileSizeString}`);
+            return NaN;
+        }
+
+        const value: number = parseFloat(match[1]); // El valor numérico (ej: 1, 23, 1.5)
+        
+        // Obtener la unidad base, quitando 'B' si existe y convirtiendo a mayúsculas.
+        // Ej: "Gi" -> "GI", "MiB" -> "MI"
+        const unitUpper: string = match[2].toUpperCase().replace(/B$/, ''); 
+        
+        // 2. Determinar el multiplicador (Base 1024)
+        let multiplier: number;
+        const base = 1024;
+
+        switch (unitUpper) {
+            case 'EI': // Exbibyte
+            case 'E':
+                multiplier = base ** 6;
+                break;
+            case 'PI': // Pebibyte
+            case 'P':
+                multiplier = base ** 5;
+                break;
+            case 'TI': // Tebibyte
+            case 'T':
+                multiplier = base ** 4;
+                break;
+            case 'GI': // Gibibyte
+            case 'G':
+                multiplier = base ** 3;
+                break;
+            case 'MI': // Mebibyte
+            case 'M':
+                multiplier = base ** 2;
+                break;
+            case 'KI': // Kibibyte
+            case 'K':
+                multiplier = base ** 1;
+                break;
+            case '': // Si solo era un número sin unidad (asume Bytes)
+            case 'B': // Bytes
+                multiplier = 1;
+                break;
+            default:
+                console.warn(`Unidad desconocida '${unitUpper}'. Asumiendo Bytes.`);
+                multiplier = 1;
+                break;
+        }
+
+        // 3. Calcular el resultado final
+        return value * multiplier;
+    }
+
+    const showStorageOverview = () => {
+
+        return <Box sx={{m:1}}>
+            <Card>
+                <CardHeader title={'Storage overview'}>
+
+                </CardHeader>
+                <CardContent>
+                    <Typography>Total PVC's: {magnifyData.files.filter(f => f.class==='persistentvolumeclaim').length}</Typography>
+                    <Typography>Total storage: {convertBytesToSize(magnifyData.files.filter(f => f.class==='persistentvolumeclaim').reduce((ac, v) => convertSizeToBytes(v.data.size), 0))}</Typography>
+                </CardContent>
+
+            </Card>
+        </Box>
+    }
+
+    const showClusterOverview = () => {
+        return <Box sx={{m:1}}>
+            <Card>
+                <CardHeader title={'Cluster overview'}/>
+                <CardContent>
+                    <Typography>Total CPU: {magnifyData.files.filter(f => f.class==='node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.cpu,0)}</Typography>
+                    <Typography>Total Memory: {convertBytesToSize (magnifyData.files.filter(f => f.class==='node').reduce ((ac,v) => ac + convertSizeToBytes(v.data.origin.status.capacity.memory),0))}</Typography>
+                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography>Actual pods: {magnifyData.files.filter(f => f.class==='pod').length}</Typography>
+                    <Typography>Max pods: {magnifyData.files.filter(f => f.class==='node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.pods,0)}</Typography>
+                </CardContent>
+            </Card>
+        </Box>
+    }
+
+    const showNetworkOverview = () => {
+        return <Box sx={{m:1}}>
+            <Card>
+                <CardHeader title={'Config overview'}>
+
+                </CardHeader>
+                <CardContent>
+                    <Typography>Services: {magnifyData.files.filter(f => f.class==='service').length}</Typography>
+                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography>Ingresses: {magnifyData.files.filter(f => f.class==='ingress').length}</Typography>
+                    <Typography>Ingress classes: {magnifyData.files.filter(f => f.class==='ingressclass').length}</Typography>
+                </CardContent>
+
+            </Card>
+        </Box>
+    }
+
+    const setPathFunction = (path:string, invoke:() => void) => {
+        let x = magnifyData.files.find(f => f.path===path)
+        if (x) x.children = invoke
     }
 
     const setPropertyFunction = (space:ISpace, propName:string, invoke:(f:IFileObject) => void) => {
@@ -371,14 +599,18 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const showPodContainers = (f:IFileObject) => {
         if (!f.data?.origin?.status) return <></>
         let result:JSX.Element[]=[]
-        for (let c of f.data.origin.status.containerStatuses) {
-            let color='orange'
-            if (c.started)
-                color='green'
-            else {
-                if (c.state.terminated) color = 'gray'
+        if (f.data.origin.status.containerStatuses && f.data.origin.status.containerStatuses.length>0) {
+            for (let c of f.data.origin.status.containerStatuses) {
+                let color='orange'
+                if (c.started) {
+                    color='green'
+                    if (f.data.origin.metadata.deletionTimestamp) color = 'blue'
+                }
+                else {
+                    if (c.state.terminated) color = 'gray'
+                }
+                result.push(<Box sx={{ width: '8px', height: '8px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>)
             }
-            result.push(<Box sx={{ width: '8px', height: '8px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>)
         }
         return result
     }
@@ -392,21 +624,18 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const onDelete = (files: IFileObject[]) => {
     }
 
-    const onCreateFolder = async (name: string, parentFolder: IFileObject) => {
-    }
-
     const onError = (error: IError, file: IFileObject) => {
-        let uiConfig = props.channelObject.config as ILensConfig
+        let uiConfig = props.channelObject.config as IMagnifyConfig
         uiConfig.notify(ENotifyLevel.ERROR, error.message)
     }
 
-    const sendCommand = (command: LensCommandEnum, params:string[]) => {
+    const sendCommand = (command: MagnifyCommandEnum, params:string[]) => {
         if (!props.channelObject.webSocket) return
         
-        let lensMessage:ILensMessage = {
+        let magnifyMessage:IMagnifyMessage = {
             flow: InstanceMessageFlowEnum.REQUEST,
             action: InstanceMessageActionEnum.COMMAND,
-            channel: 'lens',
+            channel: 'magnify',
             type: InstanceMessageTypeEnum.DATA,
             accessKey: props.channelObject.accessString!,
             instance: props.channelObject.instanceId,
@@ -417,17 +646,14 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             pod: '',
             container: '',
             params: params,
-            msgtype: 'lensmessage'
+            msgtype: 'magnifymessage'
         }
-        let payload = JSON.stringify( lensMessage )
+        let payload = JSON.stringify( magnifyMessage )
         props.channelObject.webSocket.send(payload)
     }
 
     const onFolderChange = (folder:string) => {
-        lensData.currentPath = folder
-        // folder +='/'
-        // let level = folder.split('/').length - 1
-        // if (level > 2) getLocalDir(folder)
+        magnifyData.currentPath = folder
     }
 
     const onChangeData = (src:string, data:any) => {
@@ -435,7 +661,7 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         console.log(detailsChanges)
     }
 
-    const editFromDetails = (f:IFileObject) => {
+    const launchEditFromDetails = (f:IFileObject) => {
         setDetailsVisible(false)
         setEditorContent({
             code: yamlParser.dump(f.data.origin, { indent: 2 }),
@@ -445,16 +671,17 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     return <>
-        { lensData.started &&
-            <Box ref={lensBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${lensBoxTop}px - 16px)`, paddingLeft: '5px', paddingRight:'5px', marginTop:'8px'}}>
+        { magnifyData.started &&
+            <Box ref={magnifyBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${magnifyBoxTop}px - 16px)`, paddingLeft: '5px', paddingRight:'5px', marginTop:'8px'}}>
                 <FileManager
-                    files={lensData.files}
+                    files={magnifyData.files}
                     spaces={spaces}
                     actions={actions}
                     icons={icons}
-                    initialPath={lensData.currentPath}
+                    initialPath={magnifyData.currentPath}
+                    layout='list'
                     enableFilePreview={false}
-                    onCreateFolder={onCreateFolder}
+                    onCreateFolder={undefined}
                     onError={onError}
                     onRename={undefined}
                     onPaste={undefined}
@@ -508,13 +735,13 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     <Typography fontSize={18}>{detailsContent?.data.origin.kind+': '+detailsContent?.data.origin.metadata?.name}</Typography>
                     <IconButton color='primary' onClick={() => copy(detailsContent?.data.origin.metadata?.name)}><ContentCopy fontSize='small'/></IconButton>
                     <Typography sx={{flexGrow:1}}/>
-                    <IconButton color='primary' onClick={() => {editFromDetails(detailsContent)}}><Edit fontSize='small'/></IconButton>
+                    <IconButton color='primary' onClick={() => {launchEditFromDetails(detailsContent)}}><Edit fontSize='small'/></IconButton>
                     <IconButton color='primary' onClick={() => {setDetailsVisible(false); launchDelete([detailsContent])}}><Delete fontSize='small'/></IconButton>
                     <IconButton color='primary' onClick={() => {setDetailsVisible(false)}}><Close fontSize='small'/></IconButton>
                 </Stack>
             </DialogTitle>
             <DialogContent>
-                <LensObjectDetails object={detailsContent} sections={detailsSections} onChangeData={onChangeData}/>
+                <MagnifyObjectDetails object={detailsContent} sections={detailsSections} onChangeData={onChangeData}/>
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => {setDetailsVisible(false); updateSource()}}>Ok</Button>
@@ -524,4 +751,4 @@ const LensTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     </>
 }
-export { LensTabContent }
+export { MagnifyTabContent }

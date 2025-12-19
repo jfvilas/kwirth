@@ -1,5 +1,6 @@
 import { ISpace } from "@jfvilas/react-file-manager"
-import { Add, BarChart, Delete, Edit, Info, PauseCircle, StopCircle, Subject, Terminal } from "@mui/icons-material"
+import { Add, BarChart, Delete, Edit, Info, PauseCircle, PlayCircle, StopCircle, Subject, Terminal } from "@mui/icons-material"
+import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Storage } from "./icons/Icons"
 
 const spaces=new Map<string, ISpace>()
 
@@ -7,9 +8,8 @@ const menu = [
     {   name: "Overview",
         isDirectory: true,
         path: "/overview",
-        class: 'classmenu',
-        layout: 'own',   
-        //children: showOverview+++
+        class: 'classoverview',
+        layout: 'own'
     },
 
 
@@ -18,7 +18,13 @@ const menu = [
     {   name: "Cluster",
         isDirectory: true,
         path: "/cluster",
-        class: 'classmenu'
+        class: 'classcluster'
+    },
+    {   name: "Overview",
+        isDirectory: true,
+        path: "/cluster/overview",
+        class: 'classmenu',
+        layout: 'own',   
     },
     {   name: "Node",
         isDirectory: true,
@@ -39,7 +45,13 @@ const menu = [
     {   name: "Network",
         isDirectory: true,
         path: "/network",
-        class: 'classmenu'
+        class: 'classnetwork'
+    },
+    {   name: "Overview",
+        isDirectory: true,
+        path: "/network/overview",
+        class: 'classmenu',
+        layout: 'own',   
     },
     {   name: "Service",
         isDirectory: true,
@@ -55,6 +67,13 @@ const menu = [
         class: 'classingress',
         children: 'ingress'
     },
+    {   name: "Ingress class",
+        isDirectory: true,
+        path: "/network/ingressclass",
+        layout: 'list',
+        class: 'classingressclass',
+        children: 'ingressclass'
+    },
 
 
 
@@ -62,14 +81,13 @@ const menu = [
     {   name: "Workload",
         isDirectory: true,
         path: "/workload",
-        class: 'classmenu'
+        class: 'classworkload'
     },
     {   name: "Overview",
         isDirectory: true,
         path: "/workload/overview",
         class: 'classmenu',
-        layout: 'own',   
-        //children: showWorkloadOverview+++
+        layout: 'own',
     },
     {   name: "Pod",
         isDirectory: true,
@@ -102,6 +120,18 @@ const menu = [
         class: 'classmenu',
         children: 'statefulset'
     },
+    {   name: "Jobs",
+        isDirectory: true,
+        path: "/workload/job",
+        class: 'classmenu',
+        children: 'job'
+    },
+    {   name: "Cron jobs",
+        isDirectory: true,
+        path: "/workload/cronjob",
+        class: 'classmenu',
+        children: 'cronjob'
+    },
 
 
 
@@ -109,7 +139,13 @@ const menu = [
     {   name: "Config",
         isDirectory: true,
         path: "/config",
-        class: 'classmenu'
+        class: 'classconfig'
+    },
+    {   name: "Overview",
+        isDirectory: true,
+        path: "/config/overview",
+        class: 'classmenu',
+        layout: 'own',   
     },
     {   name: "Config Map",
         isDirectory: true,
@@ -129,7 +165,13 @@ const menu = [
     {   name: "Storage",
         isDirectory: true,
         path: "/storage",
-        class: 'classmenu'
+        class: 'classstorage'
+    },
+    {   name: "Overview",
+        isDirectory: true,
+        path: "/storage/overview",
+        class: 'classmenu',
+        layout: 'own',   
     },
     {   name: "Persistent volume claims",
         isDirectory: true,
@@ -151,11 +193,11 @@ const menu = [
     },
 
 
-    //Storage
+    //Access
     {   name: "Access",
         isDirectory: true,
         path: "/access",
-        class: 'classmenu'
+        class: 'classaccess'
     },
     {   name: "Service accounts",
         isDirectory: true,
@@ -187,6 +229,20 @@ const menu = [
         class: 'classrolebinding',
         children: 'rolebinding'
     },
+
+    // CRD
+    {   name: "Custom Resource Definitions",
+        isDirectory: true,
+        path: "/crd",
+        class: 'classcrd'
+    },
+    {   name: "Definitions",
+        isDirectory: true,
+        path: "/crd/customresourcedefinition",
+        class: 'classcustomresourcedefinition',
+        children: 'customresourcedefinition'
+    },
+
 ]
 
 // General
@@ -194,6 +250,14 @@ spaces.set('classmenu',
     {
     }
 )
+
+spaces.set('classcluster', {})
+spaces.set('classnetwork', {})
+spaces.set('classworkload', {})
+spaces.set('classstorage', {})
+spaces.set('classaccess', {})
+spaces.set('classcrd', {})
+
 
 // Network
 spaces.set('classservice',
@@ -221,65 +285,9 @@ spaces.set('classingress',
         ]
     }
 )
-spaces.set('ingress',
+spaces.set('classingressclass',
     {
-        text:'Name',
-        source:'name',
-        width:40,
         leftItems: [
-            {
-                name: 'details',
-                icon: <Info fontSize="small"/>,
-                text: 'Details',
-                permission: true,
-            },
-            {
-                name: 'delete',
-                icon: <Delete fontSize="small"/>,
-                text: 'Delete',
-                multi: true,
-                permission: true,
-            },
-            {
-                name: 'edit',
-                icon: <Edit fontSize="small"/>,
-                text: 'Edit',
-                permission: true,
-            }
-        ],
-        properties: [
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: 'namespace',
-                format: 'string',
-                width: 15,
-                visible: true
-            },
-            {
-                name: 'loadBalancers',
-                text: 'LoadBalancers',
-                source: 'loadBalancers',
-                format: 'string',
-                width: 15,
-                visible: true
-            },
-            {
-                name: 'rules',
-                text: 'Rules',
-                source: 'rules',
-                format: 'string',
-                width: 15,
-                visible: true
-            },
-            {
-                name: 'creationTimestamp',
-                text: 'Age',
-                source: 'creationTimestamp',
-                format: 'age',
-                width: 10,
-                visible: true
-            },
         ]
     }
 )
@@ -366,6 +374,122 @@ spaces.set('service',
                 width: 10,
                 visible: true
             }
+        ]
+    }
+)
+spaces.set('ingress',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name: 'details',
+                icon: <Info fontSize="small"/>,
+                text: 'Details',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize="small"/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize="small"/>,
+                text: 'Edit',
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'loadBalancers',
+                text: 'LoadBalancers',
+                source: 'loadBalancers',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'rules',
+                text: 'Rules',
+                source: 'rules',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 10,
+                visible: true
+            },
+        ]
+    }
+)
+spaces.set('ingressclass',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name: 'details',
+                icon: <Info fontSize="small"/>,
+                text: 'Details',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize="small"/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize="small"/>,
+                text: 'Edit',
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'controller',
+                text: 'Controller',
+                source: 'controller',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 10,
+                visible: true
+            },
         ]
     }
 )
@@ -599,6 +723,13 @@ spaces.set('node',
                 multi: true,
                 permission: true,
             },
+            {   // +++ add 'visible' / 'enabled' properties as calculated invoking a function
+                name: 'uncordon',
+                icon: <PlayCircle fontSize='small' />,
+                text: 'UnCordon',
+                multi: true,
+                permission: true,
+            },
             {
                 name: 'drain',
                 icon: <StopCircle fontSize='small' />,
@@ -607,11 +738,13 @@ spaces.set('node',
                 permission: true,
             },
             {
+                name:'edit',
                 icon: <Edit fontSize="small"/>,
                 text: 'Edit',
                 permission: true,
             },
             {
+                name:'delete',
                 icon: <Delete fontSize="small"/>,
                 text: 'Delete',
                 multi: true,
@@ -660,10 +793,10 @@ spaces.set('classpod',
     {
         leftItems: [
             {
+                name: 'create',
                 icon: <Add fontSize="small"/>,
                 text: 'New pod',
                 permission: true,
-                onClick: () => console.log('create pod'),
             }
         ]
     }
@@ -727,7 +860,6 @@ spaces.set('pod',
             {
                 name: 'container',
                 text: 'Container',
-                //source: showPodContainers, +++
                 source: 'na',
                 format: 'function',
                 width: 10,
@@ -736,7 +868,6 @@ spaces.set('pod',
             {
                 name: 'cpu',
                 text: 'CPU',
-                //source: showPodCpu,+++
                 source: 'na',
                 format: 'function',
                 width: 10,
@@ -745,7 +876,6 @@ spaces.set('pod',
             {
                 name: 'memory',
                 text: 'Memory',
-                //source: showPodMemory,+++
                 source: 'na',
                 format: 'function',
                 width: 10,
@@ -1005,6 +1135,122 @@ spaces.set('statefulset',
                 source: 'replicas',
                 format: 'number',
                 width: 15,
+                visible: true
+            },
+            {
+                name: 'age',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            },
+        ]
+    }
+)
+spaces.set('job',
+    {
+        text:'Name',
+        source:'name',
+        width:25,
+        leftItems: [],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'completions',
+                text: 'Completions',
+                source: 'completions',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'conditions',
+                text: 'Conditions',
+                source: 'conditions',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'age',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            },
+        ]
+    }
+)
+spaces.set('cronjob',
+    {
+        text:'Name',
+        source:'name',
+        width:25,
+        leftItems: [],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'schedule',
+                text: 'Schedule',
+                source: 'schedule',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'suspend',
+                text: 'Suspend',
+                source: 'suspend',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'active',
+                text: 'Active',
+                source: 'active',
+                format: 'number',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'lastSchedule',
+                text: 'Last schedule',
+                source: 'lastSchedule',
+                format: 'age',
+                width: 20,
+                visible: true
+            },
+            {
+                name: 'nextExecution',
+                text: 'Next execution',
+                source: 'nextExecution',
+                format: 'age',
+                width: 20,
+                visible: true
+            },
+            {
+                name: 'timeZone',
+                text: 'Time zone',
+                source: 'timezone',
+                format: 'string',
+                width: 20,
                 visible: true
             },
             {
@@ -1535,4 +1781,166 @@ spaces.set('rolebinding',
     }
 )
 
-export { spaces, menu }
+// Custom
+spaces.set('classcrd',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize="small"/>,
+                text: 'Create',
+                permission: true,
+            }
+        ]
+    }
+)
+
+spaces.set('classcustomresourcedefinition',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize="small"/>,
+                text: 'Create',
+                permission: true,
+            }
+        ]
+    }
+)
+
+spaces.set('customresourcedefinition',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize="small"/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize="small"/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize="small"/>,
+                text: 'Edit',
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'group',
+                text: 'Group',
+                source: 'group',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'version',
+                text: 'Version',
+                source: 'version',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'scope',
+                text: 'Scope',
+                source: 'scope',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 10,
+                visible: true
+            }
+        ]
+    }
+)
+
+spaces.set('crdgroup',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+        ],
+        properties: []
+    }
+)
+
+spaces.set('crdinstance',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name: 'delete',
+                icon: <Delete fontSize="small"/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'source',
+                text: 'Source',
+                source: 'source',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'Checksum',
+                text: 'checksum',
+                source: 'checksum',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 10,
+                visible: true
+            }
+        ]
+    }
+)
+
+//
+// Open source icons: https://iconbuddy.com/
+//
+const icons = new Map()
+icons.set('classoverview', { default: <Kubernetes size={'16'}/> } )
+icons.set('classcluster', { default: <Cluster size={'16'}/> } )
+icons.set('classnetwork', { default: <Network size={'16'}/> } )
+icons.set('classworkload', { default: <Pod size={'16'}/> } )
+icons.set('classstorage', { default: <Storage size={'16'}/> } )
+icons.set('classaccess', { default: <Security size={'16'}/> } )
+icons.set('classconfig', { default: <Config size={'16'}/> } )
+icons.set('classcrd', { default: <Customize size={'16'}/> } )
+
+export { spaces, menu, icons }

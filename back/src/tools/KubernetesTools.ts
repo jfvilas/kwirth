@@ -1,5 +1,4 @@
-//import { ApiextensionsV1Api, AppsV1Api, CoreV1Api, RbacAuthorizationV1Api } from '@kubernetes/client-node'
-import { AppsV1ApiPatchNamespacedDaemonSetRequest, AppsV1ApiPatchNamespacedDeploymentRequest, AppsV1ApiPatchNamespacedReplicaSetRequest, AppsV1ApiPatchNamespacedStatefulSetRequest, CoreV1ApiPatchNamespacedConfigMapRequest, CoreV1ApiPatchNamespacedSecretRequest, CoreV1ApiPatchNamespacedServiceRequest } from '@kubernetes/client-node'
+import { AppsV1ApiPatchNamespacedDaemonSetRequest, AppsV1ApiPatchNamespacedDeploymentRequest, AppsV1ApiPatchNamespacedReplicaSetRequest, AppsV1ApiPatchNamespacedStatefulSetRequest, CoreV1Api, CoreV1ApiListPodForAllNamespacesRequest, CoreV1ApiPatchNamespacedConfigMapRequest, CoreV1ApiPatchNamespacedSecretRequest, CoreV1ApiPatchNamespacedServiceRequest, V1Eviction } from '@kubernetes/client-node'
 import { ClusterInfo } from '../model/ClusterInfo'
 const fs = require('fs')
 const yaml = require('js-yaml')
@@ -157,7 +156,6 @@ async function applyResource(resource:any, clusterInfo:ClusterInfo) : Promise<st
     }
 }
 
-
 // Función para aplicar todos los recursos en el archivo YAML
 async function applyAllResources(yamlContent:string, clusterInfo:ClusterInfo) {
     const resources:any[] = []
@@ -177,7 +175,6 @@ async function applyAllResources(yamlContent:string, clusterInfo:ClusterInfo) {
         }
     }
 }
-
 
 async function deleteAllResources(yamlContent: string, clusterInfo:ClusterInfo) {
     const yaml = require('js-yaml')
@@ -262,5 +259,97 @@ async function deleteAllResources(yamlContent: string, clusterInfo:ClusterInfo) 
 
 }
 
+async function nodeSetSchedulable(coreApi: CoreV1Api, nodeName: string, unschedulable: boolean): Promise<void> {
+    const patch = [
+        {
+            op: "replace",
+            path: "/spec/unschedulable",
+            value: unschedulable
+        }
+    ]
+    try {
+        await coreApi.patchNode({
+            name: nodeName,
+            body: patch
+        })
+        console.log(`Node ${nodeName}: unschedulable = ${unschedulable}`);
+    }
+    catch (err: any) {
+        console.error(`Error in patchNode: ${err.body?.message || err.message}`)
+        throw err
+    }
+}
 
-export { applyResource, applyAllResources, deleteAllResources } 
+async function nodeCordon(coreApi: CoreV1Api, nodeName: string): Promise<void> {
+    await nodeSetSchedulable(coreApi, nodeName, true)
+}
+
+async function nodeUnCordon(coreApi: CoreV1Api, nodeName: string): Promise<void> {
+    await nodeSetSchedulable(coreApi, nodeName, false)
+}
+
+async function nodeDrain(coreApi: CoreV1Api, nodeName: string): Promise<void> {
+    try {
+        await nodeSetSchedulable(coreApi, nodeName, true);
+
+        let result = await coreApi.listPodForAllNamespaces({ fieldSelector: `spec.nodeName=${nodeName}` })
+
+        const evictionPromises = result.items.map(async (pod) => {
+            const name = pod.metadata?.name
+            const namespace = pod.metadata?.namespace
+
+            if (!name || !namespace) return
+
+            // omissions
+            const isDaemonSet = pod.metadata?.ownerReferences?.some( ref => ref.kind === 'DaemonSet' )
+            const isStaticPod = pod.metadata?.annotations?.['kubernetes.io/config.mirror']
+            
+            if (isDaemonSet || isStaticPod) {
+                console.log(`Omit system pod: ${name}`)
+                return
+            }
+
+            const eviction: V1Eviction = {
+                apiVersion: 'policy/v1',
+                kind: 'Eviction',
+                metadata: { name, namespace }
+            }
+
+            try {
+                await coreApi.createNamespacedPodEviction({ name, namespace, body: eviction })
+                console.log(`Evcition succesfully requested for: ${name}`);
+            }
+            catch (e: any) {
+                console.error(`Error evicting ${name}: ${e.body?.message || e.message}`);
+            }
+        })
+
+        await Promise.all(evictionPromises)
+        console.log(`Drain completed for node ${nodeName}`)
+
+    }
+    catch (err: any) {
+        console.error(`Error draininig node ${nodeName}: ${err.message}`)
+    }
+}
+
+async function throttleExcute(invoke:any): Promise<void> {
+    let repeat = true
+    while (repeat) {
+        repeat = false
+        try {
+            invoke()
+        }
+        catch (err:any) {
+            if (err.code === 429) {
+                repeat = true
+                await new Promise ( (resolve) => { setTimeout(resolve, (+err.headers['retry-after']||1)*1000)})
+            }
+            else {
+                throw (err)
+            }
+        }
+    }
+}
+
+export { applyResource, applyAllResources, deleteAllResources, nodeDrain, nodeCordon, nodeUnCordon, throttleExcute }

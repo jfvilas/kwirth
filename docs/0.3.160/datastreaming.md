@@ -120,7 +120,7 @@ If everything is ok, the Kwirth server would start sending log messages. What fo
 "instance": "812afcd2-e8fd-4f3b-b157-08127707b677",
 "namespace": "ingress-nginx",
 "pod": "ingress-nginx-controller-7f6c7c5b59-tsls7",
-"text: "87.58.88.174 - - [25/Mar/2025:19:23:32 +0000] \"GET /api/logout HTTP/2.0\" 200 0 \"https://eulensecure.eulensecure.com/reports\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36\" 68 0.154 [pro-eulen-gateway-platform-svc-8080] [] 10.0.5.123:8080 0 0.154 200 2b79e96150faecc9b9694c7ad851079b",
+"text: "87.58.88.174 - - [25/Mar/2025:19:23:32 +0000] \"GET /api/logout HTTP/2.0\" 200 0 \"https://secure.secure.com/reports\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36\" 68 0.154 [pro-gateway-platform-svc-8080] [] 10.0.5.123:8080 0 0.154 200 2b79e96150faecc9b9694c7ad851079b",
 "type": "data"  
 }
 ```

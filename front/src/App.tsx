@@ -40,7 +40,7 @@ import { AlertChannel } from './channels/alert/AlertChannel'
 import { MetricsChannel } from './channels/metrics/MetricsChannel'
 import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { OpsChannel } from './channels/ops/OpsChannel'
-import { LensChannel } from './channels/lens/LensChannel'
+import { MagnifyChannel } from './channels/magnify/MagnifyChannel'
 import { getMetricsNames, ENotifyLevel, readClusterInfo } from './tools/Global'
 import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
@@ -125,7 +125,7 @@ const App: React.FC = () => {
         frontChannels.set('trivy', TrivyChannel)
         frontChannels.set('ops', OpsChannel)
         frontChannels.set('fileman', FilemanChannel)
-        frontChannels.set('lens', LensChannel)
+        frontChannels.set('magnify', MagnifyChannel)
     },[])
 
     const onNotifyClose = (event?: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
@@ -330,7 +330,7 @@ const App: React.FC = () => {
         if (newTab.channel.requiresMetrics()) newTab.channelObject.metricsList = cluster.metricsList
         if (newTab.channel.requiresClusterUrl()) newTab.channelObject.clusterUrl = cluster.url
         if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
-        newTab.channelObject.config = settingsRef.current?.channelSettings.find(c => c,channelId === newTab.channel.channelId)
+        newTab.channelObject.config = settingsRef.current?.channelSettings.find(c => c.channelId === newTab.channel.channelId)
         if (newTab.channel.initChannel(newTab.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
         if (tab) newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
         if (newTab.channel.requiresSettings()) {
@@ -372,7 +372,6 @@ const App: React.FC = () => {
             }
         }
         newTab.channelObject.onCreateTab = (xresource:IResourceSelected, sstart:boolean, ssettings:any) => {
-            console.log('xresource', sstart, ssettings)
             onResourceSelectorAdd(xresource, sstart, ssettings)
         }
         startSocket(newTab, cluster, () => {
@@ -380,7 +379,6 @@ const App: React.FC = () => {
             setKeepAlive(newTab)
             if (newTab.channel.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
             if (newTab && (newTab.channelStarted || start)) {
-                console.log(newTab, newTab?.channelStarted, start)
                 newTab.channelObject.config = settings.config
                 newTab.channelObject.instanceConfig = settings.instanceConfig
                 startTabChannel(newTab)
