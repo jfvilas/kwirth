@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { IKnown, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, IUnknown, ISignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
 import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
@@ -18,6 +18,7 @@ export class TrivyChannel implements IChannel {
     requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return true }
+    requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return true }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
@@ -29,7 +30,7 @@ export class TrivyChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject:IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        let action = ChannelRefreshAction.NONE
+        let action = EChannelRefreshAction.NONE
         let trivyData:ITrivyData = channelObject.data
         let trivyMessageResponse:ITrivyMessageResponse = JSON.parse(wsEvent.data)
 
@@ -37,7 +38,7 @@ export class TrivyChannel implements IChannel {
             case InstanceMessageTypeEnum.DATA:
                 if (trivyMessageResponse.flow === InstanceMessageFlowEnum.RESPONSE && trivyMessageResponse.action === InstanceMessageActionEnum.COMMAND) {
                     if (trivyMessageResponse.data) {
-                        action = ChannelRefreshAction.REFRESH
+                        action = EChannelRefreshAction.REFRESH
                         trivyData.score = trivyMessageResponse.data.score
                     }
                 }
@@ -60,7 +61,7 @@ export class TrivyChannel implements IChannel {
                             console.log('Invalid msgsubtype: ', trivyMessageResponse.msgsubtype)
                     }
                     trivyData.known = [...trivyData.known]
-                    action = ChannelRefreshAction.REFRESH
+                    action = EChannelRefreshAction.REFRESH
                 }
                 break
             case InstanceMessageTypeEnum.SIGNAL:

@@ -1,10 +1,10 @@
 import { FC } from 'react'
-import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { ILogMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage } from '@jfvilas/kwirth-common'
 import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
 import { LogData, ILogLine, ILogData } from './LogData'
-import { ILogConfig, LogInstanceConfig, LogSortOrderEnum, LogConfig } from './LogConfig'
+import { ILogConfig, LogInstanceConfig, ELogSortOrderEnum, LogConfig } from './LogConfig'
 import { ENotifyLevel } from '../../tools/Global'
 
 export class LogChannel implements IChannel {
@@ -18,6 +18,7 @@ export class LogChannel implements IChannel {
     requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return false }
+    requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
@@ -29,7 +30,7 @@ export class LogChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        let action = ChannelRefreshAction.NONE
+        let action = EChannelRefreshAction.NONE
         let logData:ILogData = channelObject.data
         let logConfig:ILogConfig = channelObject.config
 
@@ -41,7 +42,7 @@ export class LogChannel implements IChannel {
 
         switch (logMessage.type) {
             case InstanceMessageTypeEnum.DATA:
-                action = ChannelRefreshAction.REFRESH
+                action = EChannelRefreshAction.REFRESH
 
                 let bname = logMessage.namespace+'/'+logMessage.pod+'/'+logMessage.container
                 let text = logMessage.text
@@ -75,11 +76,11 @@ export class LogChannel implements IChannel {
                             }
                             if (cnt < logConfig.maxPerPodMessages) {
                                 switch (logConfig.sortOrder) {
-                                    case LogSortOrderEnum.POD:
+                                    case ELogSortOrderEnum.POD:
                                         let podIndex = logData.messages.findLastIndex(m => m.container===logLine.container && m.pod===logLine.pod && m.namespace===logLine.namespace)
                                         logData.messages.splice(podIndex+1,0,logLine)
                                         break
-                                    case LogSortOrderEnum.TIME:
+                                    case ELogSortOrderEnum.TIME:
                                         let timeIndex = logData.messages.findLastIndex(m => getMsgEpoch(m) < getMsgEpoch(logLine))
                                         logData.messages.splice(timeIndex+1,0,logLine)
                                         break
@@ -90,11 +91,11 @@ export class LogChannel implements IChannel {
                                 logData.counters.set(bname, ++cnt)
                             }
                             if ([...logData.counters.values()].reduce((prev,acc) => prev+acc, 0) > logConfig.maxMessages) {
-                                action = ChannelRefreshAction.STOP
+                                action = EChannelRefreshAction.STOP
                             }
                         }
                         else {
-                            action = ChannelRefreshAction.STOP
+                            action = EChannelRefreshAction.STOP
                         }
                     }
                     else {
@@ -120,7 +121,7 @@ export class LogChannel implements IChannel {
                 }
                 else {
                     logData.messages.push(logMessage)
-                    action = ChannelRefreshAction.REFRESH
+                    action = EChannelRefreshAction.REFRESH
                 }
                 break
             default:

@@ -321,7 +321,7 @@ class TrivyChannel implements IChannel {
             let crdName = `${kind}-${ctrl?.name}-${asset.containerName}`
             //let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject(TRIVY_API_GROUP,TRIVY_API_VERSION, asset.podNamespace, TRIVY_API_PLURAL, crdName)
             let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject({ group: TRIVY_API_GROUP, version: TRIVY_API_VERSION, namespace: asset.podNamespace, plural: TRIVY_API_PLURAL, name: crdName })
-            if (crdObject.response.statusCode === 200) {
+            if (crdObject.response.statusCode === 200) { //+++
                 console.log('Got report for', crdName)
                 let summary = (crdObject.body as any).report.summary
                 score +=
@@ -338,7 +338,7 @@ class TrivyChannel implements IChannel {
                 return {score, known, unknown:undefined}
             }
             else {
-                console.log(`VulnReport not found for ${crdName} (${crdObject.response.statusCode}-${crdObject.response.statusMessage})`)
+                console.log(`VulnReport not found for ${crdName} (${crdObject.response.statusCode}-${crdObject.response.statusMessage})`) //+++
                 unknown = {
                     container: asset.containerName,
                     name: asset.podName,
@@ -410,7 +410,7 @@ class TrivyChannel implements IChannel {
                 let kind = ctrl?.kind.toLowerCase()
                 let crdName = `${kind}-${ctrl?.name}-${instanceMessage.container}`
                 let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject({ group:TRIVY_API_GROUP, version: TRIVY_API_VERSION, namespace:instanceMessage.namespace, plural: TRIVY_API_PLURAL, name:crdName })
-                if (crdObject.response.statusCode === 200) {
+                if (crdObject.response.statusCode === 200) { //+++
                     try {
                         await this.clusterInfo.crdApi.deleteNamespacedCustomObject({ group:TRIVY_API_GROUP, version:TRIVY_API_VERSION, namespace:instanceMessage.namespace, plural:TRIVY_API_PLURAL, name:crdName })
                     }

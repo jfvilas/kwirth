@@ -33,7 +33,7 @@ import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } fro
 import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, IInstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources, KwirthData, BackChannelData, IUser } from '@jfvilas/kwirth-common'
 import { ITabObject, ITabSummary } from './model/ITabObject'
 
-import { ChannelConstructor, ChannelRefreshAction as ChannelRefresh, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
+import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
 import { LogChannel } from './channels/log/LogChannel'
 import { EchoChannel } from './channels/echo/EchoChannel'
 import { AlertChannel } from './channels/alert/AlertChannel'
@@ -45,6 +45,7 @@ import { getMetricsNames, ENotifyLevel, readClusterInfo } from './tools/Global'
 import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
 import { DEFAULTLASTTABS, IColors, TABBASECOLORS, TABBRIGHTCOLORS } from './tools/Constants'
+import { createChannelInstance } from './tools/Channel'
 
 const App: React.FC = () => {
     let backendUrl='http://localhost:3883'
@@ -52,7 +53,7 @@ const App: React.FC = () => {
     if ( process.env.NODE_ENV==='production') backendUrl=window.location.protocol+'//'+window.location.host
     backendUrl=backendUrl+rootPath
 
-    const [frontChannels] = useState<Map<string, ChannelConstructor>>(new Map())
+    const [frontChannels] = useState<Map<string, TChannelConstructor>>(new Map())
     const [user, setUser] = useState<IUser>()
     const [logged,setLogged]=useState(false)
     const [firstLogin,setFirstLogin]=useState(false)
@@ -66,7 +67,7 @@ const App: React.FC = () => {
 
     const tabs = useRef<ITabObject[]>([])
     const selectedTab = useRef<ITabObject>()
-    const [channelMessageAction, setChannelMessageAction] = useState<IChannelMessageAction>({action: ChannelRefresh.NONE})
+    const [channelMessageAction, setChannelMessageAction] = useState<IChannelMessageAction>({action: EChannelRefreshAction.NONE})
 
     const settingsRef = useRef<Settings|null>(null)
 
@@ -109,12 +110,12 @@ const App: React.FC = () => {
     
     const [resourceSelected, setResourceSelected] = useState<IResourceSelected|undefined>(undefined)
 
-    const createChannelInstance = (type: string): IChannel | null => {
-        const channelClass = frontChannels.get(type)
-        let channel = channelClass ? new channelClass() : null
-        if (channel) channel.setNotifier(notify)
-        return channel
-    }
+    // const createChannelInstance = (type: string): IChannel | null => {
+    //     const channelClass = frontChannels.get(type)
+    //     let channel = channelClass ? new channelClass() : null
+    //     if (channel) channel.setNotifier(notify)
+    //     return channel
+    // }
 
     useEffect( () => {
         // only first time
@@ -127,17 +128,6 @@ const App: React.FC = () => {
         frontChannels.set('fileman', FilemanChannel)
         frontChannels.set('magnify', MagnifyChannel)
     },[])
-
-    const onNotifyClose = (event?: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
-        if (reason === 'clickaway') return
-        setNotifyOpen(false)
-    }
-
-    const notify = (level:ENotifyLevel, msg:string) => {
-        setNotifyOpen(true)
-        setNotifyMessage(msg)
-        setNotifyLevel(level)
-    }
 
     useEffect ( () => {
         // only when user logs on / off
@@ -170,6 +160,17 @@ const App: React.FC = () => {
         let c = clusters.find(c => c.source)
         if (c) onChangeCluster(c.name)
     }, [clusters])
+
+    const onNotifyClose = (event?: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
+        if (reason === 'clickaway') return
+        setNotifyOpen(false)
+    }
+
+    const notify = (level:ENotifyLevel, msg:string) => {
+        setNotifyOpen(true)
+        setNotifyMessage(msg)
+        setNotifyLevel(level)
+    }
 
     const fillTabSummary = async (tab:ITabSummary) => {
         let namespacesArray:string[] = []
@@ -239,10 +240,10 @@ const App: React.FC = () => {
             clusterList = clusterList.filter (c => c.name !== srcCluster.name)
         }
         for (let cluster of clusterList)
-            readClusterInfo(cluster).then( () => { setChannelMessageAction({action : ChannelRefresh.REFRESH}) })
+            readClusterInfo(cluster).then( () => { setChannelMessageAction({action : EChannelRefreshAction.REFRESH}) })
         clusterList.push(srcCluster)
         setClusters(clusterList)
-        setChannelMessageAction({action : ChannelRefresh.REFRESH})
+        setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
     }
 
     const readSettings = async () => {
@@ -302,7 +303,11 @@ const App: React.FC = () => {
     }
 
     const populateTabObject = (name:string, channelId:string, cluster:Cluster, view:string, namespaces:string, groups:string, pods:string, containers:string, start:boolean, settings:any, tab?:ITabObject) : ITabObject => {
-        let newChannel = createChannelInstance(channelId)!
+        //let newChannel = createChannelInstance(channelId)!
+        let newChannel = createChannelInstance(frontChannels.get(channelId), notify)
+        if (!newChannel) {
+            throw 'Invalid channel instance'
+        }
         let newTab:ITabObject = {
             name: name,
             ws: undefined,
@@ -330,11 +335,12 @@ const App: React.FC = () => {
         if (newTab.channel.requiresMetrics()) newTab.channelObject.metricsList = cluster.metricsList
         if (newTab.channel.requiresClusterUrl()) newTab.channelObject.clusterUrl = cluster.url
         if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
+        if (newTab.channel.requiresFrontChannels()) newTab.channelObject.frontChannels = frontChannels
         newTab.channelObject.config = settingsRef.current?.channelSettings.find(c => c.channelId === newTab.channel.channelId)
-        if (newTab.channel.initChannel(newTab.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
+        if (newTab.channel.initChannel(newTab.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         if (tab) newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
         if (newTab.channel.requiresSettings()) {
-            // this 'requires' must be executed after managing config and instanceConfig
+            // this 'requiresSettings' must be executed after managing config and instanceConfig
             if (settingsRef.current) {
                 let thisChannnel = settingsRef.current.channelSettings.find(c => c.channelId === newTab.channel.channelId)
                 if (thisChannnel) {
@@ -382,12 +388,12 @@ const App: React.FC = () => {
                 newTab.channelObject.config = settings.config
                 newTab.channelObject.instanceConfig = settings.instanceConfig
                 startTabChannel(newTab)
-                setChannelMessageAction({action : ChannelRefresh.REFRESH})  // we force rendering
+                setChannelMessageAction({action : EChannelRefreshAction.REFRESH})  // we force rendering
             }
         })
         selectedTab.current = newTab
         tabs.current.push(newTab)
-        setChannelMessageAction({action : ChannelRefresh.REFRESH})  // force re-render for showing new tab
+        setChannelMessageAction({action : EChannelRefreshAction.REFRESH})  // force re-render for showing new tab
         return newTab
     }
 
@@ -414,7 +420,7 @@ const App: React.FC = () => {
         channel.setSetupVisibility(false)
         if (!selectedTab.current || !settingsRef.current) return
         if (!start) {
-            setChannelMessageAction({action : ChannelRefresh.REFRESH})
+            setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
             return
         }
 
@@ -431,7 +437,7 @@ const App: React.FC = () => {
 
         selectedTab.current.channelObject.config = channelSettings.channelConfig
         selectedTab.current.channelObject.instanceConfig = channelSettings.channelInstanceConfig
-        setChannelMessageAction({action : ChannelRefresh.REFRESH})  // we force rendering
+        setChannelMessageAction({action : EChannelRefreshAction.REFRESH})  // we force rendering
         startTabChannel(selectedTab.current)
     }
 
@@ -476,7 +482,7 @@ const App: React.FC = () => {
             let newTab = tabs.current[tabNumber]
             if (newTab.channelObject) {
                 newTab.channelPending = false
-                setChannelMessageAction({action : ChannelRefresh.REFRESH})
+                setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
                 if (selectedTab.current) colorizeTab(selectedTab.current)
                 colorizeTab(newTab)
                 let cluster = clusters.find(c => c.name === newTab.channelObject.clusterName)
@@ -486,7 +492,7 @@ const App: React.FC = () => {
         }
         else {
             selectedTab.current = undefined
-            setChannelMessageAction({action : ChannelRefresh.REFRESH})
+            setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         }
     }
 
@@ -506,9 +512,9 @@ const App: React.FC = () => {
             let tab = tabs.current.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
             if (!tab || !tab.channel || !tab.channelObject) return
             let refresh = tab.channel.processChannelMessage(tab.channelObject, wsEvent)
-            if (refresh.action === ChannelRefresh.REFRESH) {
+            if (refresh.action === EChannelRefreshAction.REFRESH) {
                 if (selectedTab?.current?.name === tab.name) {
-                    setChannelMessageAction({action : ChannelRefresh.REFRESH})
+                    setChannelMessageAction({action: EChannelRefreshAction.REFRESH})
                 }
                 else {
                     if (!tab.channelPending) {
@@ -517,7 +523,7 @@ const App: React.FC = () => {
                     }
                 }
             }
-            else if (refresh.action === ChannelRefresh.STOP) {
+            else if (refresh.action === EChannelRefreshAction.STOP) {
                 stopTabChannel(tab)
             }
         }
@@ -590,12 +596,12 @@ const App: React.FC = () => {
             if (!cluster) return
 
             if (selectedTab.current && selectedTab.current.channel) {
-                if (selectedTab.current.channel.socketDisconnected(selectedTab.current.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
+                if (selectedTab.current.channel.socketDisconnected(selectedTab.current.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
             }
             else {
                 console.log('Unsuppported channel on disconnect:', tab.channel.channelId)
             }
-            setChannelMessageAction({action : ChannelRefresh.REFRESH})
+            setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
 
             let selfId = setInterval( (url, tab) => {
                 console.log(`Trying to reconnect using ${url} and ${tab.channelObject.instanceId}`)
@@ -709,7 +715,7 @@ const App: React.FC = () => {
             type: InstanceMessageTypeEnum.SIGNAL
         }
         if (selectedTab.current && selectedTab.current.channel) {
-            if (selectedTab.current.channel.stopChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
+            if (selectedTab.current.channel.stopChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
             if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
             tab.channelStarted = false
             tab.channelPaused = false
@@ -746,13 +752,13 @@ const App: React.FC = () => {
             selectedTab.current.channelPaused = false
             colorizeTab(selectedTab.current)
             instanceConfig.action = InstanceMessageActionEnum.CONTINUE
-            if (selectedTab.current.channel.continueChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
+            if (selectedTab.current.channel.continueChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         }
         else {
             selectedTab.current.channelPaused = true
             colorizeTab(selectedTab.current)
             instanceConfig.action = InstanceMessageActionEnum.PAUSE
-            if (selectedTab.current.channel.pauseChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : ChannelRefresh.REFRESH})
+            if (selectedTab.current.channel.pauseChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         }
         selectedTab.current.ws.send(JSON.stringify(instanceConfig))
     }
@@ -1194,7 +1200,7 @@ const App: React.FC = () => {
         return resources.some(r => r.scopes.split(',').includes('cluster'))
     }
 
-    const onHomepageTab = async (tab: ITabSummary): Promise<void> => {
+    const onHomepageSelectTab = async (tab: ITabSummary): Promise<void> => {
         let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
         if (cluster) {
             let clonedTab:ITabSummary = await JSON.parse(JSON.stringify(tab))
@@ -1204,7 +1210,7 @@ const App: React.FC = () => {
         }
     }
 
-    const onHomepageWorkspace = (workspace: IWorkspaceSummary): void => {
+    const onHomepageSelectWorkspace = (workspace: IWorkspaceSummary): void => {
         loadWorkspace(workspace.name)
     }
     
@@ -1222,6 +1228,11 @@ const App: React.FC = () => {
         setFavWorkspaces(fav)
     }
     
+    const onSelectHome = () => {
+        selectedTab.current = undefined
+        setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
+    }
+
     if (!logged) return (<>
         <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
             <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
@@ -1229,11 +1240,6 @@ const App: React.FC = () => {
             </SessionContext.Provider>
         </div>
     </>)
-
-    const onSelectHome = () => {
-        selectedTab.current = undefined
-        setChannelMessageAction({action : ChannelRefresh.REFRESH})
-    }
 
     return (
         <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
@@ -1287,12 +1293,12 @@ const App: React.FC = () => {
                 { selectedTab.current &&
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs.current} selectedTab={selectedTab.current} selectedTabIndex={selectedTab.current? tabs.current.indexOf(selectedTab.current) : -1} backChannels={backChannels}/>}
-                        <TabContent key={selectedTab.current?.name} channel={selectedTab.current?.channel} webSocket={selectedTab.current?.ws} channelObject={selectedTab.current?.channelObject} channelMessageAction={channelMessageAction} />
+                        <TabContent key={selectedTab.current?.name} channel={selectedTab.current?.channel} channelObject={selectedTab.current?.channelObject} />
                     </Box>
                 }
                 { !selectedTab.current && 
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onSelectTab={onHomepageTab} onSelectWorkspace={onHomepageWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces}/>
+                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onSelectTab={onHomepageSelectTab} onSelectWorkspace={onHomepageSelectWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces}/>
                     </Box>
                 }
 
@@ -1310,7 +1316,7 @@ const App: React.FC = () => {
             { showSettingsTrivy && selectedClusterName && <SettingsTrivy onClose={onSettingsTrivyClosed} cluster={clusters.find(c => c.name===selectedClusterName)!}/> }
             { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
-            <Snackbar open={notifyOpen} autoHideDuration={2000} onClose={onNotifyClose} anchorOrigin={{vertical: 'bottom', horizontal:'center'}}>
+            <Snackbar open={notifyOpen} autoHideDuration={3000} onClose={onNotifyClose} anchorOrigin={{vertical: 'bottom', horizontal:'center'}}>
                 <Alert severity={notifyLevel} variant="filled" sx={{ width: '100%' }}>{notifyMessage}</Alert>
             </Snackbar>
             { msgBox }

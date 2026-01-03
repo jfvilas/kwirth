@@ -1,4 +1,4 @@
-import { IDetailsSection } from './MagnifyObjectDetails'
+import { IDetailsSection } from "./DetailsObject"
 
 export const objectSections = new Map<string,IDetailsSection[]>()
 
@@ -792,3 +792,103 @@ objectSections.set('ClusterRole', [
     }
 ])
 
+objectSections.set('ResourceQuota', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: ['metadata.namespace'],
+                format: 'string'
+            },
+            {
+                name: 'labels',
+                text: 'Labels',
+                source: ['metadata.labels'],
+                format: 'objectprops',
+                style: ['column']
+            },
+            {
+                name: 'annotations',
+                text: 'Annotations',
+                source: ['metadata.annotations'],
+                format: 'objectprops',
+                style: ['column']
+            },
+        ]
+    },
+    {
+        name: 'quotas',
+        text: 'Quotas',
+        items: [
+            {
+                name: 'limitcpu',
+                text: 'Limit CPU',
+                source: ['status.used[\'limits.cpu\']','status.hard[\'limits.cpu\']'],
+                format: 'bar'
+            },
+            {
+                name: 'limitmemory',
+                text: 'Limit Memory',
+                source: ['status.used[\'limits.memory\']','status.hard[\'limits.memory\']'],
+                format: 'bar'
+            },
+            {
+                name: 'requestcpu',
+                text: 'Request CPU',
+                source: ['status.used[\'requests.cpu\']','status.hard[\'requests.cpu\']'],
+                format: 'bar'
+            },
+            {
+                name: 'requestmemory',
+                text: 'Request Memory',
+                source: ['status.used[\'requests.memory\']','status.hard[\'requests.memory\']'],
+                format: 'bar'
+            },
+            {
+                name: 'pods',
+                text: 'Pods',
+                source: ['status.used[\'count/pods\']','status.hard[\'count/pods\']'],
+                format: 'bar'
+            },
+            {
+                name: 'persistentvolumeclaims',
+                text: 'PVCs',
+                source: ['status.used[\'count/persistentvolumeclaims\']','status.hard[\'count/persistentvolumeclaims\']'],
+                format: 'bar'
+            },
+            {
+                name: 'services',
+                text: 'Services',
+                source: ['status.used[\'count/services\']','status.hard[\'count/services\']'],
+                format: 'bar'
+            },
+            {
+                name: 'configmaps',
+                text: 'ConfigMaps',
+                source: ['status.used[\'count/configmaps\']','status.hard[\'count/configmaps\']'],
+                format: 'bar'
+            },
+            {
+                name: 'secrets',
+                text: 'Secrets',
+                source: ['status.used[\'count/secrets\']','status.hard[\'count/secrets\']'],
+                format: 'bar'
+            },
+        ]
+    },
+])

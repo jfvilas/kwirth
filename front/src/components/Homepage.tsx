@@ -4,7 +4,7 @@ import { IWorkspaceSummary } from '../model/IWorkspace'
 import { ITabSummary } from '../model/ITabObject'
 import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { Delete, ExpandLess, ExpandMore, OpenInBrowser, Star } from '@mui/icons-material'
-import { ChannelConstructor } from '../channels/IChannel'
+import { TChannelConstructor } from '../channels/IChannel'
 import { Cluster } from '../model/Cluster'
 import { GaugeComponent } from 'react-gauge-component'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
@@ -16,7 +16,7 @@ import { Area, AreaChart } from 'recharts'
 interface IProps {
     cluster:Cluster|undefined,
     clusters:Cluster[]
-    frontChannels: Map<string, ChannelConstructor>
+    frontChannels: Map<string, TChannelConstructor>
     lastTabs:ITabSummary[]
     favTabs:ITabSummary[]
     lastWorkspaces:IWorkspaceSummary[]

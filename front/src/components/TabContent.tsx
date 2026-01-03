@@ -3,10 +3,11 @@ import { IChannel, IChannelMessageAction, IChannelObject, IContentProps } from '
 
 interface IProps {
     channel?:IChannel
-    channelId?: InstanceMessageChannelEnum
+    // channelId?: InstanceMessageChannelEnum
+    // channelObject?: IChannelObject
+    //channelMessageAction: IChannelMessageAction
+    // webSocket?: WebSocket
     channelObject?: IChannelObject
-    channelMessageAction: IChannelMessageAction
-    webSocket?: WebSocket
 }
 
 const TabContent: React.FC<IProps> = (props:IProps) => {
@@ -14,7 +15,8 @@ const TabContent: React.FC<IProps> = (props:IProps) => {
         if (!props.channel) return
         let ChannelTabContent = props.channel.TabContent
         let channelProps:IContentProps = {
-            channelObject: props.channelObject!
+            channelObject: props.channelObject!,
+            maxHeight: -1
         }
         return <ChannelTabContent {...channelProps}/>
     }

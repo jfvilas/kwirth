@@ -13,7 +13,7 @@ import { defaultStyles, JsonView } from 'react-json-view-lite'
 import 'react-json-view-lite/dist/index.css';
 import { MenuObject, MenuObjectOption } from './MenuObject'
 import { IResourceSelected } from '../../components/ResourceSelector'
-import { ILogConfig, ILogInstanceConfig, LogSortOrderEnum } from '../log/LogConfig'
+import { ILogConfig, ILogInstanceConfig, ELogSortOrderEnum } from '../log/LogConfig'
 import { IMetricsConfig, IMetricsInstanceConfig } from '../metrics/MetricsConfig'
 import { ChartType } from '../metrics/MenuChart'
 
@@ -212,6 +212,11 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
                 if (props.channelObject.webSocket) props.channelObject.webSocket.send(JSON.stringify( opsMessageInfo ))
                 break
+
+            case MenuObjectOption.RESTARTCONTAINER:
+                launch (LaunchActionEnum.RESTART, so)
+                break
+                
             case MenuObjectOption.RESTARTPOD:
                 setMsgBox(MsgBoxYesNo('Restart pod',`Are you sure you want to restart pod '${so.pod}' in '${so.namespace}' namespace?`, setMsgBox, (button) => {
                     if (button===MsgBoxButtons.Yes) {
@@ -303,7 +308,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     follow: true,
                     maxMessages: 5000,
                     maxPerPodMessages: 5000,
-                    sortOrder: LogSortOrderEnum.TIME
+                    sortOrder: ELogSortOrderEnum.TIME
                 }
                 let logInstanceConfig:ILogInstanceConfig = {
                     previous: false,
@@ -358,9 +363,11 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                                             <Typography>{scopedObject.namespace+'/'+scopedObject.pod+'/'+scopedObject.container}</Typography>
                                             <Typography flex={1}></Typography>
                                             <Stack direction={'row'} alignItems={'center'}>
-                                                <IconButton onClick={() => launch (LaunchActionEnum.RESTART, scopedObject)}>
-                                                    <RestartAlt/>
-                                                </IconButton>
+                                                <Tooltip title={'Restart container'}>
+                                                    <IconButton onClick={() => launch (LaunchActionEnum.RESTART, scopedObject)}>
+                                                        <RestartAlt/>
+                                                    </IconButton>
+                                                </Tooltip>
                                                 <IconButton onClick={() => launch (LaunchActionEnum.TERMINAL, scopedObject)} disabled={opsData.terminalManager.terminals.has(scopedObject.namespace+'/'+scopedObject.pod+'/'+scopedObject.container)}>
                                                     <Terminal/>
                                                 </IconButton>
@@ -385,7 +392,6 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
                             { opsData.terminalManager.terminals.size>0 &&
                                 Array.from(opsData.terminalManager.terminals.keys()).map( (key) => {
-                                // return <ListItemButton onClick={() => onSelectNewTerm(key)} key={key} selected={false} disabled={false}>
 
                                 return    <ListItem>
                                         <Stack direction={'row'} sx={{width:'100%'}} alignItems={'center'}>

@@ -1,5 +1,6 @@
 import { IInstanceMessage } from "@jfvilas/kwirth-common"
 import { IFileObject } from "@jfvilas/react-file-manager"
+import { IExternalContentObject } from "./components/ExternalContent"
 
 export interface IMagnifyData {
     clusterInfo: any
@@ -7,6 +8,8 @@ export interface IMagnifyData {
     started: boolean
     files: IFileObject[]
     currentPath: string
+
+    externalContent : IExternalContentObject[]    
 }
 
 export class MagnifyData implements IMagnifyData {
@@ -15,6 +18,7 @@ export class MagnifyData implements IMagnifyData {
     started = false
     files = []
     currentPath = '/'
+    externalContent = []
 }
 
 export enum MagnifyCommandEnum {

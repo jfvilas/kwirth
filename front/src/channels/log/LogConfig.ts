@@ -1,4 +1,4 @@
-enum LogSortOrderEnum {
+enum ELogSortOrderEnum {
     NONE = 'none',
     TIME = 'time',
     POD = 'pod'
@@ -13,7 +13,7 @@ interface ILogConfig {
 
     // for start diagnostics
     maxPerPodMessages: number
-    sortOrder: LogSortOrderEnum
+    sortOrder: ELogSortOrderEnum
 }
 
 class LogConfig implements ILogConfig{
@@ -21,7 +21,7 @@ class LogConfig implements ILogConfig{
     follow = true
     maxMessages = 5000
     maxPerPodMessages = 1000
-    sortOrder = LogSortOrderEnum.TIME
+    sortOrder = ELogSortOrderEnum.TIME
 }
 
 interface ILogInstanceConfig {
@@ -39,4 +39,4 @@ class LogInstanceConfig implements ILogInstanceConfig{
 }
 
 export type { ILogConfig, ILogInstanceConfig }
-export { LogConfig, LogInstanceConfig, LogSortOrderEnum }
+export { LogConfig, LogInstanceConfig, ELogSortOrderEnum }

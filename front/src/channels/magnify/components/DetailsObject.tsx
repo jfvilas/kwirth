@@ -1,11 +1,11 @@
-import { Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
+import { LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
 const _ = require('lodash')
 
 interface IDetailsItem {
     name: string
     text: string
     source: string[]
-    format: 'string'|'stringlist'|'table'|'objectprops'|'objectlist'|'objectobject'|'booleankeyname'|'keylist'|'edit'
+    format: 'string'|'stringlist'|'table'|'objectprops'|'objectlist'|'objectobject'|'booleankeyname'|'keylist'|'edit'|'bar'
     style?: string[]
     content?: IDetailsItem[]
 }
@@ -92,8 +92,6 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
 
             case 'objectlist':
                 if (!_.get(obj,src)) return <></>
-                console.log('_.get(obj,src)', src)
-                console.log(_.get(obj,src))
                 return  <>{_.get(obj,src).map((row:any) => {
                     return <Stack direction={'row'}>{content.map((c:IDetailsItem) => <>{renderValues(row, c)}<>{style.includes('column')?'':',\u00a0'}</></>)}</Stack>
                 })}</>
@@ -178,22 +176,36 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
     }
 
     const renderValues = (obj:any, item:IDetailsItem) => {
-        return (
-            <Stack direction={item.style?.includes('column')?'column':'row'}>
-                {item.source.map(source => renderValue(obj, source, item.format, item.style||[], item.content))}
+        if (item.format==='bar') {
+            let value = _.get(obj,item.source[0])
+            let max = _.get(obj,item.source[1])
+            if (!value || !max) return <></>
+
+            let progreso=+value/+max*100
+            return <Stack direction={'row'} width={'100%'} alignItems={'center'}>
+                <LinearProgress variant="determinate" value={progreso > 100 ? 100 : progreso} sx={{width:'90%'}} />
+                    &nbsp;
+                <Typography>{value? value: 0}/{max? max:0}</Typography>
             </Stack>
-        )
+        }
+        else {
+            return (
+                <Stack direction={item.style?.includes('column')?'column':'row'}>
+                    {item.source.map(source => renderValue(obj, source, item.format, item.style||[], item.content))}
+                </Stack>
+            )
+        }
     }
 
     const renderItem = (obj:any, item:IDetailsItem, width:number) => {
         return <>
-            <Stack direction={'row'} >
+            <Stack direction={'row'} alignItems={'baseline'}>
                 {item.text==='' && <>
                     <Typography width={`${width}%`} sx={{fontWeight:item.style?.includes('bold')?'700':''}}>{renderValues(obj, item)}</Typography>
                 </>}
                 {item.text!=='' && <>
                     <Typography width={`${width}%`}>{item.text}</Typography>
-                    <Typography width={'100%'}>{renderValues(obj, item)}</Typography>
+                    {renderValues(obj, item)}
                 </>}
             </Stack>
         </>
@@ -207,9 +219,10 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
     }
 
 
-    return <>{
-        props.sections.map((section:IDetailsSection, index) => renderSection(props.object.data.origin, section))
-    }</>
+    if (props.sections)
+        return <>{ props.sections.map((section:IDetailsSection, index) => renderSection(props.object.data.origin, section)) }</>
+    else
+        return <><pre>{JSON.stringify(props.object.data.origin,undefined, 2)}</pre></>
 }
 
 export type { IMagnifyObjectDetailsProps, IDetailsSection, IDetailsItem }

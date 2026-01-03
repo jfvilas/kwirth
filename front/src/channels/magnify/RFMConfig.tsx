@@ -1,13 +1,13 @@
-import { ISpace } from "@jfvilas/react-file-manager"
-import { Add, BarChart, Delete, Edit, Info, PauseCircle, PlayCircle, StopCircle, Subject, Terminal } from "@mui/icons-material"
-import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Storage } from "./icons/Icons"
+import { ISpace } from '@jfvilas/react-file-manager'
+import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, Info, Iso, PauseCircle, PlayCircle, RestartAlt, StopCircle, Subject, Terminal } from '@mui/icons-material'
+import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Storage } from './icons/Icons'
 
-const spaces=new Map<string, ISpace>()
+const spaces = new Map<string, ISpace>()
 
 const menu = [
-    {   name: "Overview",
+    {   name: 'Overview',
         isDirectory: true,
-        path: "/overview",
+        path: '/overview',
         class: 'classoverview',
         layout: 'own'
     },
@@ -15,283 +15,328 @@ const menu = [
 
 
     // Cluster
-    {   name: "Cluster",
+    {   name: 'Cluster',
         isDirectory: true,
-        path: "/cluster",
+        path: '/cluster',
         class: 'classcluster'
     },
-    {   name: "Overview",
+    {   name: 'Overview',
         isDirectory: true,
-        path: "/cluster/overview",
+        path: '/cluster/overview',
         class: 'classmenu',
         layout: 'own',   
     },
-    {   name: "Node",
+    {   name: 'Nodes',
         isDirectory: true,
-        path: "/cluster/node",
+        path: '/cluster/Node',
         class: 'classmenu',
-        children: 'node'
+        children: 'Node'
     },
-    {   name: "Namespace",
+    {   name: 'Namespaces',
         isDirectory: true,
-        path: "/cluster/namespace",
-        class: 'classnamespace',
-        children: 'namespace'
+        path: '/cluster/Namespace',
+        class: 'classNamespace',
+        children: 'Namespace'
     },
 
 
 
     // Network
-    {   name: "Network",
+    {   name: 'Network',
         isDirectory: true,
-        path: "/network",
+        path: '/network',
         class: 'classnetwork'
     },
-    {   name: "Overview",
+    {   name: 'Overview',
         isDirectory: true,
-        path: "/network/overview",
+        path: '/network/overview',
         class: 'classmenu',
         layout: 'own',   
     },
-    {   name: "Service",
+    {   name: 'Services',
         isDirectory: true,
-        path: "/network/service",
+        path: '/network/Service',
         layout: 'list',  
-        class: 'classservice',
-        children: 'service'
+        class: 'classService',
+        children: 'Service'
     },
-    {   name: "Ingress",
+    {   name: 'End points',
         isDirectory: true,
-        path: "/network/ingress",
+        path: '/network/Endpoints',
         layout: 'list',  
-        class: 'classingress',
-        children: 'ingress'
+        class: 'classEndpoints',
+        children: 'Endpoints'
     },
-    {   name: "Ingress class",
+    {   name: 'Ingresses',
         isDirectory: true,
-        path: "/network/ingressclass",
+        path: '/network/Ingress',
+        layout: 'list',  
+        class: 'classIngress',
+        children: 'Ingress'
+    },
+    {   name: 'Ingress classes',
+        isDirectory: true,
+        path: '/network/IngressClass',
         layout: 'list',
-        class: 'classingressclass',
-        children: 'ingressclass'
+        class: 'classIngressClass',
+        children: 'IngressClass'
+    },
+    {   name: 'Network policies',
+        isDirectory: true,
+        path: '/network/NetworkPolicy',
+        layout: 'list',
+        class: 'classNetworkPolicy',
+        children: 'NetworkPolicy'
     },
 
 
 
     // Workload
-    {   name: "Workload",
+    {   name: 'Workload',
         isDirectory: true,
-        path: "/workload",
+        path: '/workload',
         class: 'classworkload'
     },
-    {   name: "Overview",
+    {   name: 'Overview',
         isDirectory: true,
-        path: "/workload/overview",
+        path: '/workload/overview',
         class: 'classmenu',
         layout: 'own',
     },
-    {   name: "Pod",
+    {   name: 'Pods',
         isDirectory: true,
-        path: "/workload/pod",
+        path: '/workload/Pod',
         layout: 'list',  
-        class: 'classpod',
-        children: 'pod'
+        class: 'classPod',
+        children: 'Pod'
     },
-    {   name: "Deployment",
+    {   name: 'Deployments',
         isDirectory: true,
-        path: "/workload/deployment",
-        class: 'classmenu',
-        children: 'deployment'
+        path: '/workload/Deployment',
+        class: 'classDeployment',
+        children: 'Deployment'
     },
-    {   name: "Daemon Set",
+    {   name: 'Daemon Sets',
         isDirectory: true,
-        path: "/workload/daemonset",
-        class: 'classmenu',
-        children: 'daemonset'
+        path: '/workload/DaemonSet',
+        class: 'classDaemonSet',
+        children: 'DaemonSet'
     },
-    {   name: "Replica Set",
+    {   name: 'Replica Sets',
         isDirectory: true,
-        path: "/workload/replicaset",
-        class: 'classmenu',
-        children: 'replicaset'
+        path: '/workload/ReplicaSet',
+        class: 'classReplicaSet',
+        children: 'ReplicaSet'
     },
-    {   name: "Stateful Set",
+    {   name: 'Stateful Sets',
         isDirectory: true,
-        path: "/workload/statefulset",
-        class: 'classmenu',
-        children: 'statefulset'
+        path: '/workload/StatefulSet',
+        class: 'classStatefulSet',
+        children: 'StatefulSet'
     },
-    {   name: "Jobs",
+    {   name: 'Jobs',
         isDirectory: true,
-        path: "/workload/job",
-        class: 'classmenu',
-        children: 'job'
+        path: '/workload/Job',
+        class: 'classJob',
+        children: 'Job'
     },
-    {   name: "Cron jobs",
+    {   name: 'Cron jobs',
         isDirectory: true,
-        path: "/workload/cronjob",
-        class: 'classmenu',
-        children: 'cronjob'
+        path: '/workload/CronJob',
+        class: 'classCronJob',
+        children: 'CronJob'
     },
 
 
 
     //Config
-    {   name: "Config",
+    {   name: 'Config',
         isDirectory: true,
-        path: "/config",
+        path: '/config',
         class: 'classconfig'
     },
-    {   name: "Overview",
+    {   name: 'Overview',
         isDirectory: true,
-        path: "/config/overview",
+        path: '/config/overview',
         class: 'classmenu',
         layout: 'own',   
     },
-    {   name: "Config Map",
+    {   name: 'Config Maps',
         isDirectory: true,
-        path: "/config/configmap",
-        class: 'classconfigmap',
-        children: 'configmap'
+        path: '/config/ConfigMap',
+        class: 'classConfigMap',
+        children: 'ConfigMap'
     },
-    {   name: "Secret",
+    {   name: 'Secret',
         isDirectory: true,
-        path: "/config/secret",
-        class: 'classmenu',
-        children: 'secret'
+        path: '/config/Secret',
+        class: 'classSecret',
+        children: 'Secret'
+    },
+    {   name: 'Resource Quota',
+        isDirectory: true,
+        path: '/config/ResourceQuota',
+        class: 'classResourceQuota',
+        children: 'ResourceQuota'
+    },
+    {   name: 'Limit Range',
+        isDirectory: true,
+        path: '/config/LimitRange',
+        class: 'classLimitRange',
+        children: 'LimitRange'
+    },
+    {   name: 'Horizontal Pod Autoscaler',
+        isDirectory: true,
+        path: '/config/HorizontalPodAutoscaler',
+        class: 'classHorizontalPodAutoscaler',
+        children: 'HorizontalPodAutoscaler'
+    },
+    {   name: 'Pod Disruption Budget',
+        isDirectory: true,
+        path: '/config/PodDisruptionBudget',
+        class: 'classPodDisruptionBudget',
+        children: 'PodDisruptionBudget'
+    },
+    {   name: 'Priority Classes',
+        isDirectory: true,
+        path: '/config/PriorityClass',
+        class: 'classPriorityClass',
+        children: 'PriorityClass'
+    },
+    {   name: 'Runtime Classes',
+        isDirectory: true,
+        path: '/config/RuntimeClass',
+        class: 'classRuntimeClass',
+        children: 'RuntimeClass'
+    },
+    {   name: 'Leases',
+        isDirectory: true,
+        path: '/config/Lease',
+        class: 'classLease',
+        children: 'Lease'
+    },
+    {   name: 'Validating webhooks',
+        isDirectory: true,
+        path: '/config/ValidatingWebhookConfiguration',
+        class: 'classValidatingWebhookConfiguration',
+        children: 'ValidatingWebhookConfiguration'
+    },
+    {   name: 'Mutating webhooks',
+        isDirectory: true,
+        path: '/config/MutatingWebhookConfiguration',
+        class: 'classMutatingWebhookConfiguration',
+        children: 'MutatingWebhookConfiguration'
     },
 
 
     //Storage
-    {   name: "Storage",
+    {   name: 'Storage',
         isDirectory: true,
-        path: "/storage",
+        path: '/storage',
         class: 'classstorage'
     },
-    {   name: "Overview",
+    {   name: 'Overview',
         isDirectory: true,
-        path: "/storage/overview",
+        path: '/storage/overview',
         class: 'classmenu',
         layout: 'own',   
     },
-    {   name: "Persistent volume claims",
+    {   name: 'Persistent volume claims',
         isDirectory: true,
-        path: "/storage/persistentvolumeclaim",
-        class: 'classpersistentvolumeclaim',
-        children: 'persistentvolumeclaim'
+        path: '/storage/PersistentVolumeClaim',
+        class: 'classPersistentVolumeClaim',
+        children: 'PersistentVolumeClaim'
     },
-    {   name: "Persistent volumes",
+    {   name: 'Persistent volumes',
         isDirectory: true,
-        path: "/storage/persistentvolume",
-        class: 'classpersistentvolume',
-        children: 'persistentvolume'
+        path: '/storage/PersistentVolume',
+        class: 'classPersistentVolume',
+        children: 'PersistentVolume'
     },
-    {   name: "Storage classes",
+    {   name: 'Storage classes',
         isDirectory: true,
-        path: "/storage/storageclass",
-        class: 'classstorageclass',
-        children: 'storageclass'
+        path: '/storage/StorageClass',
+        class: 'classStorageClass',
+        children: 'StorageClass'
     },
 
 
     //Access
-    {   name: "Access",
+    {   name: 'Access',
         isDirectory: true,
-        path: "/access",
+        path: '/access',
         class: 'classaccess'
     },
-    {   name: "Service accounts",
+    {   name: 'Service accounts',
         isDirectory: true,
-        path: "/access/serviceaccount",
-        class: 'classserviceaccount',
-        children: 'serviceaccount'
+        path: '/access/ServiceAccount',
+        class: 'classServiceAccount',
+        children: 'ServiceAccount'
     },
-    {   name: "Cluster roles",
+    {   name: 'Cluster roles',
         isDirectory: true,
-        path: "/access/clusterrole",
-        class: 'classclusterrole',
-        children: 'clusterrole'
+        path: '/access/ClusterRole',
+        class: 'classClusterRole',
+        children: 'ClusterRole'
     },
-    {   name: "Roles",
+    {   name: 'Roles',
         isDirectory: true,
-        path: "/access/role",
-        class: 'classrole',
-        children: 'role'
+        path: '/access/Role',
+        class: 'classRole',
+        children: 'Role'
     },
-    {   name: "Cluster role bindings",
+    {   name: 'Cluster role bindings',
         isDirectory: true,
-        path: "/access/clusterrolebinding",
-        class: 'classclusterrolebinding',
-        children: 'clusterrolebinding'
+        path: '/access/ClusterRoleBinding',
+        class: 'classClusterRoleBinding',
+        children: 'ClusterRoleBinding'
     },
-    {   name: "Role bindings",
+    {   name: 'Role bindings',
         isDirectory: true,
-        path: "/access/rolebinding",
-        class: 'classrolebinding',
-        children: 'rolebinding'
+        path: '/access/RoleBinding',
+        class: 'classRoleBinding',
+        children: 'RoleBinding'
     },
 
     // CRD
-    {   name: "Custom Resource Definitions",
+    {   name: 'Custom',
         isDirectory: true,
-        path: "/crd",
-        class: 'classcrd'
+        path: '/custom',
+        class: 'classcustom'
     },
-    {   name: "Definitions",
+    {   name: 'Definitions',
         isDirectory: true,
-        path: "/crd/customresourcedefinition",
-        class: 'classcustomresourcedefinition',
-        children: 'customresourcedefinition'
+        path: '/custom/CustomResourceDefinition',
+        class: 'classCustomResourceDefinition',
+        children: 'CustomResourceDefinition'
     },
 
 ]
 
-// General
-spaces.set('classmenu',
-    {
-    }
-)
-
+// General  (these empty classes are needed for showing icons)
+spaces.set('classmenu', {})
 spaces.set('classcluster', {})
 spaces.set('classnetwork', {})
 spaces.set('classworkload', {})
 spaces.set('classstorage', {})
 spaces.set('classaccess', {})
-spaces.set('classcrd', {})
+spaces.set('classcustom', {})
 
 
 // Network
-spaces.set('classservice',
+spaces.set('classService',
     {
         leftItems: [
             {
                 name:'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'New service',
-                permission: true,
-                //onClick: () => {}
+                permission: true
             }
         ]
     }
 )
-spaces.set('classingress',
-    {
-        leftItems: [
-            {
-                name: 'create',
-                icon: <Add fontSize="small"/>,
-                text: 'New ingress',
-                permission: true,
-            }
-        ]
-    }
-)
-spaces.set('classingressclass',
-    {
-        leftItems: [
-        ]
-    }
-)
-spaces.set('service',
+spaces.set('Service',
     {
         text:'Service name',
         source:'name',
@@ -299,20 +344,20 @@ spaces.set('service',
         leftItems: [
             {
                 name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {
                 name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
             {
                 name: 'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit service',
                 permission: true,
             }
@@ -377,7 +422,85 @@ spaces.set('service',
         ]
     }
 )
-spaces.set('ingress',
+spaces.set('classEndpoints',
+    {
+        leftItems: [
+            {
+                name:'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('Endpoints',
+    {
+        text:'Name',
+        source:'name',
+        width:30,
+        leftItems: [
+            {
+                name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'endpoints',
+                text: 'Endpoints',
+                source: 'endpoints',
+                format: 'string',
+                width: 45,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 10,
+                visible: true
+            }
+        ]
+    }
+)
+spaces.set('classIngress',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'New ingress',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('Ingress',
     {
         text:'Name',
         source:'name',
@@ -385,23 +508,23 @@ spaces.set('ingress',
         leftItems: [
             {
                 name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
                 name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
-            {
-                name: 'edit',
-                icon: <Edit fontSize="small"/>,
-                text: 'Edit',
-                permission: true,
-            }
         ],
         properties: [
             {
@@ -439,7 +562,13 @@ spaces.set('ingress',
         ]
     }
 )
-spaces.set('ingressclass',
+spaces.set('classIngressClass',
+    {
+        leftItems: [
+        ]
+    }
+)
+spaces.set('IngressClass',
     {
         text:'Name',
         source:'name',
@@ -447,23 +576,29 @@ spaces.set('ingressclass',
         leftItems: [
             {
                 name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {
-                name: 'delete',
-                icon: <Delete fontSize="small"/>,
-                text: 'Delete',
-                multi: true,
+                name: 'default',
+                icon: <CheckCircle fontSize='small'/>,
+                text: 'Set Default',
                 permission: true,
             },
             {
                 name: 'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
                 permission: true,
-            }
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
         ],
         properties: [
             {
@@ -493,31 +628,87 @@ spaces.set('ingressclass',
         ]
     }
 )
+spaces.set('classNetworkPolicy',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('NetworkPolicy',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'policyTypes',
+                text: 'Policy Types',
+                source: 'policyTypes',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 10,
+                visible: true
+            },
+        ]
+    }
+)
 
 // Config
-spaces.set('classconfigmap',
+spaces.set('classConfigMap',
     {
         leftItems: [
             {
-                icon: <Add fontSize="small"/>,
+                name: 'create',
+                icon: <Add fontSize='small'/>,
                 text: 'Create',
                 permission: true
             }
         ]
     }
 )
-spaces.set('classsecret',
-    {
-        leftItems: [
-            {
-                icon: <Add fontSize="small"/>,
-                text: 'Create',
-                permission: true
-            }
-        ]
-    }
-)
-spaces.set('configmap',
+spaces.set('ConfigMap',
     {
         text:'Config Map name',
         source:'name',
@@ -572,7 +763,19 @@ spaces.set('configmap',
         ]
     }
 )
-spaces.set('secret',
+spaces.set('classSecret',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true
+            }
+        ]
+    }
+)
+spaces.set('Secret',
     {
         text:'Secret name',
         source:'name',
@@ -635,21 +838,640 @@ spaces.set('secret',
         ]
     }
 )
+spaces.set('classResourceQuota',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true
+            }
+        ]
+    }
+)
+spaces.set('ResourceQuota',
+    {
+        text:'Quota name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            }
+        ]
+    }
+)
+spaces.set('classLimitRange',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true
+            }
+        ]
+    }
+)
+spaces.set('LimitRange',
+    {
+        text:'Limit name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            }
+        ]
+    }
+)
+spaces.set('classHorizontalPodAutoscaler',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true
+            }
+        ]
+    }
+)
+spaces.set('HorizontalPodAutoscaler',
+    {
+        text:'HPA name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'metrics',
+                text: 'Metrics',
+                source: 'metrics',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'minpods',
+                text: 'Min Pods',
+                source: 'minpods',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'maxpods',
+                text: 'Max Pods',
+                source: 'maxpods',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'replicas',
+                text: 'Replicas',
+                source: 'replicas',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'status',
+                text: 'Status',
+                source: 'status',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            }
+        ]
+    }
+)
+spaces.set('classPodDisruptionBudget',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true
+            }
+        ]
+    }
+)
+spaces.set('PodDisruptionBudget',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'minAvailable',
+                text: 'Min available',
+                source: 'minAvailable',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'maxUnavailable',
+                text: 'Max unavailable',
+                source: 'maxUnavailable',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'currentHealthy',
+                text: 'Current Healthy',
+                source: 'currentHealthy',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'desiredHealthy',
+                text: 'Desired Healthy',
+                source: 'desiredHealthy',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            }
+        ]
+    }
+)
+spaces.set('classPriorityClass',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true
+            }
+        ]
+    }
+)
+spaces.set('PriorityClass',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'value',
+                text: 'Value',
+                source: 'value',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'globalDefault',
+                text: 'Global default',
+                source: 'globalDefault',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            }
+        ]
+    }
+)
+spaces.set('classRuntimeClass',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true
+            }
+        ]
+    }
+)
+spaces.set('RuntimeClass',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'handler',
+                text: 'Handler',
+                source: 'handler',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            }
+        ]
+    }
+)
+spaces.set('classLease',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true
+            }
+        ]
+    }
+)
+spaces.set('Lease',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'holder',
+                text: 'Holder',
+                source: 'holder',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            }
+        ]
+    }
+)
+spaces.set('classValidatingWebhookConfiguration',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true
+            }
+        ]
+    }
+)
+spaces.set('ValidatingWebhookConfiguration',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'webhooks',
+                text: 'Webhooks',
+                source: 'webhooks',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            }
+        ]
+    }
+)
+spaces.set('classMutatingWebhookConfiguration',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true
+            }
+        ]
+    }
+)
+spaces.set('MutatingWebhookConfiguration',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                multi: true,
+                permission: true,
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'webhooks',
+                text: 'Webhooks',
+                source: 'webhooks',
+                format: 'string',
+                width: 40,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 20,
+                visible: true
+            }
+        ]
+    }
+)
 
 // Cluster
-spaces.set('classnamespace',
+spaces.set('classNamespace',
     {
         leftItems: [
             {
                 name:'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'New namespace',
                 permission: true,
             }
         ]
     }
 )
-spaces.set('namespace',
+spaces.set('Namespace',
     {
         text:'Name',
         source:'name',
@@ -657,20 +1479,20 @@ spaces.set('namespace',
         leftItems: [
             {
                 name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {
                 name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
             {
                 name: 'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
                 permission: true,
             }
@@ -703,7 +1525,7 @@ spaces.set('namespace',
         ]
     }
 )
-spaces.set('node',
+spaces.set('Node',
     {
         text:'Name',
         source:'name',
@@ -711,7 +1533,7 @@ spaces.set('node',
         leftItems: [
             {
                 name:'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 multi: true,
                 permission: true,
@@ -739,13 +1561,13 @@ spaces.set('node',
             },
             {
                 name:'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
                 permission: true,
             },
             {
                 name:'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
@@ -777,6 +1599,14 @@ spaces.set('node',
                 visible: true
             },
             {
+                name: 'conditions',
+                text: 'Conditions',
+                source: 'conditions',
+                format: 'string',
+                width: 10,
+                visible: true
+            },
+            {
                 name: 'age',
                 text: 'Age',
                 source: 'creationTimestamp',
@@ -789,19 +1619,19 @@ spaces.set('node',
 )
 
 // Workload
-spaces.set('classpod',
+spaces.set('classPod',
     {
         leftItems: [
             {
                 name: 'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'New pod',
                 permission: true,
             }
         ]
     }
 )
-spaces.set('pod',
+spaces.set('Pod',
     {
         text:'Name',
         source:'name',
@@ -810,12 +1640,12 @@ spaces.set('pod',
             {
                 name:'details',
                 text: 'Pod details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 multi: false,
                 permission: true,
             },
             {
-                icon: <Terminal fontSize="small"/>,
+                icon: <Terminal fontSize='small'/>,
                 text: 'Shell',
                 permission: true,
                 onClick: () => console.log('shell'),
@@ -823,26 +1653,26 @@ spaces.set('pod',
             {
                 name:'viewlog',
                 text: 'Log',
-                icon: <Subject fontSize="small"/>,
+                icon: <Subject fontSize='small'/>,
                 multi: false,
                 permission: true,
             },
             {
-                icon: <BarChart fontSize="small"/>,
+                icon: <BarChart fontSize='small'/>,
                 text: 'Metrics',
                 multi: true,
                 permission: true,
                 onClick: () => console.log('metr'),
             },
             {
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete pod',
                 multi: true,
                 permission: true,
                 onClick: () => console.log('delete pod'),
             },
             {
-                icon: <>{'E'}</>,
+                icon: <DeleteSweep fontSize='small'/>,
                 text: 'Evict',
                 permission: true,
                 onClick: () => console.log('evit'),
@@ -924,17 +1754,53 @@ spaces.set('pod',
         ]
     }
 )
-spaces.set('deployment',
+spaces.set('classDeployment',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('Deployment',
     {
         text:'Name',
         source:'name',
         width:30,
         leftItems: [
-            {
-                name:'edit',
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'scale',
+                icon: <Iso fontSize='small'/>,
+                text: 'Scale',
+                permission: true,
+            },
+            {   name: 'restart',
+                icon: <RestartAlt fontSize='small'/>,
+                text: 'Restart',
+                permission: true,
+            },
+            {   name: 'logs',
+                icon: <Subject fontSize='small'/>,
+                text: 'Logs',
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
-                icon: <Edit fontSize="small"/>,
-                multi: false,
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
                 permission: true,
             },
         ],
@@ -982,12 +1848,51 @@ spaces.set('deployment',
         ]
     }
 )
-spaces.set('daemonset',
+spaces.set('classDaemonSet',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true,
+            }
+        ],
+    }
+)
+spaces.set('DaemonSet',
     {
         text:'Name',
         source:'name',
         width:25,
-        leftItems: [],
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'restart',
+                icon: <RestartAlt fontSize='small'/>,
+                text: 'Restart',
+                permission: true,
+            },
+            {   name: 'logs',
+                icon: <Subject fontSize='small'/>,
+                text: 'Logs',
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+        ],
         properties: [
             {
                 name: 'namespace',
@@ -1056,12 +1961,51 @@ spaces.set('daemonset',
         ]
     }
 )
-spaces.set('replicaset',
+spaces.set('classReplicaSet',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('ReplicaSet',
     {
         text:'Name',
         source:'name',
         width:30,
-        leftItems: [],
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'scale',
+                icon: <Iso fontSize='small'/>,
+                text: 'Scale',
+                permission: true,
+            },
+            {   name: 'logs',
+                icon: <Subject fontSize='small'/>,
+                text: 'Logs',
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+        ],
         properties: [
             {
                 name: 'namespace',
@@ -1106,12 +2050,56 @@ spaces.set('replicaset',
         ]
     }
 )
-spaces.set('statefulset',
+spaces.set('classStatefulSet',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('StatefulSet',
     {
         text:'Name',
         source:'name',
         width:25,
-        leftItems: [],
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'scale',
+                icon: <Iso fontSize='small'/>,
+                text: 'Scale',
+                permission: true,
+            },
+            {   name: 'restart',
+                icon: <RestartAlt fontSize='small'/>,
+                text: 'Restart',
+                permission: true,
+            },
+            {   name: 'logs',
+                icon: <Subject fontSize='small'/>,
+                text: 'Logs',
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+        ],
         properties: [
             {
                 name: 'namespace',
@@ -1148,12 +2136,46 @@ spaces.set('statefulset',
         ]
     }
 )
-spaces.set('job',
+spaces.set('classJob',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('Job',
     {
         text:'Name',
         source:'name',
         width:25,
-        leftItems: [],
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'logs',
+                icon: <Subject fontSize='small'/>,
+                text: 'Logs',
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+        ],
         properties: [
             {
                 name: 'namespace',
@@ -1190,12 +2212,46 @@ spaces.set('job',
         ]
     }
 )
-spaces.set('cronjob',
+spaces.set('classCronJob',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('CronJob',
     {
         text:'Name',
         source:'name',
         width:25,
-        leftItems: [],
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'logs',
+                icon: <Subject fontSize='small'/>,
+                text: 'Logs',
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+        ],
         properties: [
             {
                 name: 'namespace',
@@ -1266,37 +2322,37 @@ spaces.set('cronjob',
 )
 
 // Storage
-spaces.set('classstorageclass',
+spaces.set('classStorageClass',
     {
         leftItems: [
             {
                 name: 'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'New storage class',
                 permission: true,
             }
         ]
     }
 )
-spaces.set('storageclass',
+spaces.set('StorageClass',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
             {   name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {   name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
             {   name: 'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
                 permission: true,
             }
@@ -1337,37 +2393,37 @@ spaces.set('storageclass',
         ]
     }
 )
-spaces.set('classpersistentvolumeclaim',
+spaces.set('classPersistentVolumeClaim',
     {
         leftItems: [
             {
                 name: 'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'New PVC',
                 permission: true,
             }
         ]
     }
 )
-spaces.set('persistentvolumeclaim',
+spaces.set('PersistentVolumeClaim',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
             {   name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {   name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
             {   name: 'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
                 permission: true,
             }
@@ -1424,40 +2480,40 @@ spaces.set('persistentvolumeclaim',
         ]
     }
 )
-spaces.set('classpersistentvolume',
+spaces.set('classPersistentVolume',
     {
         leftItems: [
             {
                 name: 'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'New PV',
                 permission: true,
             }
         ]
     }
 )
-spaces.set('persistentvolume',
+spaces.set('PersistentVolume',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
             {   name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
             {   name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
-            {   name: 'edit',
-                icon: <Edit fontSize="small"/>,
-                text: 'Edit',
-                permission: true,
-            }
         ],
         properties: [
             {
@@ -1505,37 +2561,37 @@ spaces.set('persistentvolume',
 )
 
 // Access
-spaces.set('classserviceaccount',
+spaces.set('classServiceAccount',
     {
         leftItems: [
             {
                 name: 'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'Create',
                 permission: true,
             }
         ]
     }
 )
-spaces.set('serviceaccount',
+spaces.set('ServiceAccount',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
             {   name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {   name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
             {   name: 'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
                 permission: true,
             }
@@ -1560,37 +2616,37 @@ spaces.set('serviceaccount',
         ]
     }
 )
-spaces.set('classclusterrole',
+spaces.set('classClusterRole',
     {
         leftItems: [
             {
                 name: 'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'Create',
                 permission: true,
             }
         ]
     }
 )
-spaces.set('clusterrole',
+spaces.set('ClusterRole',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
             {   name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {   name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
             {   name: 'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
                 permission: true,
             }
@@ -1607,37 +2663,37 @@ spaces.set('clusterrole',
         ]
     }
 )
-spaces.set('classrole',
+spaces.set('classRole',
     {
         leftItems: [
             {
                 name: 'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'Create',
                 permission: true,
             }
         ]
     }
 )
-spaces.set('role',
+spaces.set('Role',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
             {   name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {   name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
             {   name: 'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
                 permission: true,
             }
@@ -1662,37 +2718,37 @@ spaces.set('role',
         ]
     }
 )
-spaces.set('classclusterrolebinding',
+spaces.set('classClusterRoleBinding',
     {
         leftItems: [
             {
                 name: 'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'Create',
                 permission: true,
             }
         ]
     }
 )
-spaces.set('clusterrolebinding',
+spaces.set('ClusterRoleBinding',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
             {   name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {   name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
             {   name: 'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
                 permission: true,
             }
@@ -1717,37 +2773,37 @@ spaces.set('clusterrolebinding',
         ]
     }
 )
-spaces.set('classrolebinding',
+spaces.set('classRoleBinding',
     {
         leftItems: [
             {
                 name: 'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'Create',
                 permission: true,
             }
         ]
     }
 )
-spaces.set('rolebinding',
+spaces.set('RoleBinding',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
             {   name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
             {   name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
             },
             {   name: 'edit',
-                icon: <Edit fontSize="small"/>,
+                icon: <Edit fontSize='small'/>,
                 text: 'Edit',
                 permission: true,
             }
@@ -1782,52 +2838,38 @@ spaces.set('rolebinding',
 )
 
 // Custom
-spaces.set('classcrd',
+spaces.set('classCustomResourceDefinition',
     {
         leftItems: [
             {
                 name: 'create',
-                icon: <Add fontSize="small"/>,
+                icon: <Add fontSize='small'/>,
                 text: 'Create',
                 permission: true,
             }
         ]
     }
 )
-
-spaces.set('classcustomresourcedefinition',
-    {
-        leftItems: [
-            {
-                name: 'create',
-                icon: <Add fontSize="small"/>,
-                text: 'Create',
-                permission: true,
-            }
-        ]
-    }
-)
-
-spaces.set('customresourcedefinition',
+spaces.set('CustomResourceDefinition',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
             {   name: 'details',
-                icon: <Info fontSize="small"/>,
+                icon: <Info fontSize='small'/>,
                 text: 'Details',
                 permission: true,
             },
-            {   name: 'delete',
-                icon: <Delete fontSize="small"/>,
-                text: 'Delete',
-                multi: true,
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
                 permission: true,
             },
-            {   name: 'edit',
-                icon: <Edit fontSize="small"/>,
-                text: 'Edit',
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
                 permission: true,
             }
         ],
@@ -1867,7 +2909,6 @@ spaces.set('customresourcedefinition',
         ]
     }
 )
-
 spaces.set('crdgroup',
     {
         text:'Name',
@@ -1878,7 +2919,6 @@ spaces.set('crdgroup',
         properties: []
     }
 )
-
 spaces.set('crdinstance',
     {
         text:'Name',
@@ -1887,7 +2927,7 @@ spaces.set('crdinstance',
         leftItems: [
             {
                 name: 'delete',
-                icon: <Delete fontSize="small"/>,
+                icon: <Delete fontSize='small'/>,
                 text: 'Delete',
                 multi: true,
                 permission: true,
@@ -1941,6 +2981,6 @@ icons.set('classworkload', { default: <Pod size={'16'}/> } )
 icons.set('classstorage', { default: <Storage size={'16'}/> } )
 icons.set('classaccess', { default: <Security size={'16'}/> } )
 icons.set('classconfig', { default: <Config size={'16'}/> } )
-icons.set('classcrd', { default: <Customize size={'16'}/> } )
+icons.set('classcustom', { default: <Customize size={'16'}/> } )
 
 export { spaces, menu, icons }

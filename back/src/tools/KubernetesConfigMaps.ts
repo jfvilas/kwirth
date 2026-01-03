@@ -24,13 +24,13 @@ export class KubernetesConfigMaps implements IConfigMaps {
                 return {}
             }
             catch (err:any) {
-                console.log(`Error replacing (${err.response.message}) try to create`)
+                console.log(`Error replacing, try to create.`, err)
                 try {
                     await this.coreApi?.createNamespacedConfigMap({ namespace: this.namespace, body: configMap })
                     return {}
                 }
                 catch (err:any) {
-                    console.log(`Error creating (${err.response.message}).`)
+                    console.log(`Error creating`)
                     console.log(err)
                     return {}
                 }
@@ -50,7 +50,7 @@ export class KubernetesConfigMaps implements IConfigMaps {
             return JSON.parse(ct.data.data)
         }
         catch(err:any){
-            if (err.statusCode===404) {
+            if (err.code===404) {
                 return defaultValue
             }
             else {

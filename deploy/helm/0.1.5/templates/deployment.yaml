@@ -23,6 +23,8 @@ spec:
           value: {{ quote .Values.kwirth.config.rootpath }}
         - name: MASTERKEY
           value: {{ quote .Values.kwirth.config.masterkey }}
+        - name: METRICSINTERVAL
+          value: {{ quote .Values.kwirth.config.metricsInterval }}
         - name: CHANNEL_LOG
           value: {{ quote .Values.kwirth.config.channelLog }}
         - name: CHANNEL_METRICS

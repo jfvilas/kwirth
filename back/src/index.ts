@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, VersionApi, DiscoveryApi, DiscoveryV1Api, NetworkingV1Api, CoreV1ApiListNamespacedPodRequest, StorageV1Api, BatchApi, BatchV1Api } from '@kubernetes/client-node'
+import { CoreV1Api, AppsV1Api, KubeConfig, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, VersionApi, DiscoveryApi, DiscoveryV1Api, NetworkingV1Api, CoreV1ApiListNamespacedPodRequest, StorageV1Api, BatchApi, BatchV1Api, AutoscalingV2Api, NodeV1Api, SchedulingV1Api, CoordinationV1Api, AdmissionregistrationV1Api, PolicyV1Api } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -65,6 +65,12 @@ const rbacApi = kubeConfig.makeApiClient(RbacAuthorizationV1Api)
 const extensionApi = kubeConfig.makeApiClient(ApiextensionsV1Api)
 const storageApi = kubeConfig.makeApiClient(StorageV1Api)
 const batchApi = kubeConfig.makeApiClient(BatchV1Api)
+const autoscalingApi = kubeConfig.makeApiClient(AutoscalingV2Api)
+const schedulingApi = kubeConfig.makeApiClient(SchedulingV1Api)
+const coordinationApi = kubeConfig.makeApiClient(CoordinationV1Api)
+const admissionApi = kubeConfig.makeApiClient(AdmissionregistrationV1Api)
+const policyApi = kubeConfig.makeApiClient(PolicyV1Api)
+const nodeApi = kubeConfig.makeApiClient(NodeV1Api)
 const execApi = new Exec(kubeConfig)
 const logApi = new Log(kubeConfig)
 var dockerApi: Docker = new Docker()
@@ -74,16 +80,17 @@ var clusterInfo: ClusterInfo = new ClusterInfo()
 var saToken: ServiceAccountToken
 var secrets: ISecrets
 var configMaps: IConfigMaps
-const rootPath = process.env.ROOTPATH || ''
-const masterKey = process.env.MASTERKEY || 'Kwirth4Ever'
-const channelLogEnabled = (process.env.CHANNEL_LOG || 'true').toLowerCase() === 'true'
-const channelMetricsEnabled = (process.env.CHANNEL_METRICS || 'true').toLowerCase() === 'true'
-const channelAlertEnabled = (process.env.CHANNEL_ALERT || 'true').toLowerCase() === 'true'
-const channelOpsEnabled = (process.env.CHANNEL_OPS || 'true').toLowerCase() === 'true'
-const channelTrivyEnabled = (process.env.CHANNEL_TRIVY || 'true').toLowerCase() === 'true'
-const channelEchoEnabled = (process.env.CHANNEL_ECHO || 'true').toLowerCase() === 'true'
-const channelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLowerCase() === 'true'
-const channelMagnifyEnabled = (process.env.CHANNEL_MAGNIFY || 'true').toLowerCase() === 'true'
+const envRootPath = process.env.ROOTPATH || ''
+const envMasterKey = process.env.MASTERKEY || 'Kwirth4Ever'
+const envMetricsInterval = process.env.METRICSINTERVAL? +process.env.METRICSINTERVAL : 15
+const envChannelLogEnabled = (process.env.CHANNEL_LOG || 'true').toLowerCase() === 'true'
+const envChannelMetricsEnabled = (process.env.CHANNEL_METRICS || 'true').toLowerCase() === 'true'
+const envChannelAlertEnabled = (process.env.CHANNEL_ALERT || 'true').toLowerCase() === 'true'
+const envChannelOpsEnabled = (process.env.CHANNEL_OPS || 'true').toLowerCase() === 'true'
+const envChannelTrivyEnabled = (process.env.CHANNEL_TRIVY || 'true').toLowerCase() === 'true'
+const envChannelEchoEnabled = (process.env.CHANNEL_ECHO || 'true').toLowerCase() === 'true'
+const envChannelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLowerCase() === 'true'
+const envChannelMagnifyEnabled = (process.env.CHANNEL_MAGNIFY || 'true').toLowerCase() === 'true'
 const pendingWebsocket:{channel:string, instance:string, challenge:string, instanceConfig: IInstanceConfig}[] = []
 
 // discover where we are running in: docker, kubernetes...
@@ -166,7 +173,7 @@ const sendChannelSignal = (webSocket: WebSocket, level: SignalMessageLevelEnum, 
         webSocket.send(JSON.stringify(signalMessage))
     }
     else {
-        console.log(`Unsupported channel ${instanceMessage.channel}`)
+        console.log(`Unsupported channel '${instanceMessage.channel}' for sending signals`)
     }
 }
 
@@ -188,7 +195,8 @@ const sendChannelSignalAsset = (webSocket: WebSocket, level: SignalMessageLevelE
         webSocket.send(JSON.stringify(signalMessage))
     }
     else {
-        console.log(`Unsupported channel ${instanceMessage.channel}`)
+        console.log(`Channel '${instanceMessage.channel}' is unsupported sneding asset info`)
+        sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Channel '${instanceMessage.channel}' is unsupported sneding asset info`, instanceMessage)
     }
 }
 
@@ -741,7 +749,7 @@ const processClientMessage = async (webSocket:WebSocket, message:string) => {
 
     let accessKey = accessKeyDeserialize(instanceConfig.accessKey)
     if (accessKey.type.toLowerCase().startsWith('bearer:')) {
-        if (!AuthorizationManagement.validBearerKey(masterKey, accessKey)) {
+        if (!AuthorizationManagement.validBearerKey(envMasterKey, accessKey)) {
             sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid bearer access key: ${instanceConfig.accessKey}`, instanceConfig)
             return
         }       
@@ -927,37 +935,37 @@ const runKubernetes = async () => {
     if (lastVersion) kwirthData.lastVersion = lastVersion
 
     // serve front
-    console.log(`SPA is available at: ${rootPath}/front`)
-    app.get(`/`, (_req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
+    console.log(`SPA is available at: ${envRootPath}/front`)
+    app.get(`/`, (_req:Request,res:Response) => { res.redirect(`${envRootPath}/front`) })
 
     app.get(`/healthz`, (_req:Request,res:Response) => { res.status(200).send() })
 
-    app.get(`${rootPath}`, (_req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
-    app.use(`${rootPath}/front`, express.static('./dist/front'))
+    app.get(`${envRootPath}`, (_req:Request,res:Response) => { res.redirect(`${envRootPath}/front`) })
+    app.use(`${envRootPath}/front`, express.static('./dist/front'))
 
     // serve config API
-    let ka:ApiKeyApi = new ApiKeyApi(configMaps, masterKey)
-    app.use(`${rootPath}/key`, ka.route)
+    let ka:ApiKeyApi = new ApiKeyApi(configMaps, envMasterKey)
+    app.use(`${envRootPath}/key`, ka.route)
     let va:ConfigApi = new ConfigApi(ka, kwirthData, clusterInfo, channels)
-    app.use(`${rootPath}/config`, va.route)
+    app.use(`${envRootPath}/config`, va.route)
     let sa:StoreApi = new StoreApi(configMaps, ka)
-    app.use(`${rootPath}/store`, sa.route)
+    app.use(`${envRootPath}/store`, sa.route)
     let ua:UserApi = new UserApi(secrets, ka)
-    app.use(`${rootPath}/user`, ua.route)
+    app.use(`${envRootPath}/user`, ua.route)
     let la:LoginApi = new LoginApi(secrets, configMaps)
-    app.use(`${rootPath}/login`, la.route)
+    app.use(`${envRootPath}/login`, la.route)
     let mk:ManageKwirthApi = new ManageKwirthApi(coreApi, appsApi, ka, kwirthData)
-    app.use(`${rootPath}/managekwirth`, mk.route)
+    app.use(`${envRootPath}/managekwirth`, mk.route)
     let mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi, ka, channels)
-    app.use(`${rootPath}/managecluster`, mc.route)
+    app.use(`${envRootPath}/managecluster`, mc.route)
     let ma:MetricsApi = new MetricsApi(clusterInfo, ka)
-    app.use(`${rootPath}/metrics`, ma.route)
+    app.use(`${envRootPath}/metrics`, ma.route)
 
     for (let channel of channels.values()) {
         let cdata = channel.getChannelData()
         if (cdata.endpoints.length>0) {
             for (let endpoint of cdata.endpoints) {
-                console.log(`Will listen on ${rootPath}/channel/${cdata.id}/${endpoint.name}`)
+                console.log(`Will listen on ${envRootPath}/channel/${cdata.id}/${endpoint.name}`)
                 const router = express.Router()
                 router.route('*')
                     .all( async (req:Request,res:Response, next) => {
@@ -990,7 +998,7 @@ const runKubernetes = async () => {
                         else
                             res.status(405).send()
                     })
-                app.use(`${rootPath}/channel/${cdata.id}/${endpoint.name}`, router)
+                app.use(`${envRootPath}/channel/${cdata.id}/${endpoint.name}`, router)
             }
         }
     }
@@ -1046,6 +1054,12 @@ const initKubernetesCluster = async (token:string, metricsRequired:boolean, even
     clusterInfo.storageApi = storageApi
     clusterInfo.networkApi = networkApi
     clusterInfo.batchApi = batchApi
+    clusterInfo.autoscalingApi = autoscalingApi
+    clusterInfo.schedulingApi = schedulingApi
+    clusterInfo.coordinationApi = coordinationApi
+    clusterInfo.admissionApi = admissionApi
+    clusterInfo.policyApi = policyApi
+    clusterInfo.nodeApi = nodeApi
     clusterInfo.dockerTools = new DockerTools(clusterInfo)
 
     await clusterInfo.loadKubernetesClusterName()
@@ -1060,8 +1074,7 @@ const initKubernetesCluster = async (token:string, metricsRequired:boolean, even
 
     if (metricsRequired) {
         clusterInfo.metrics = new MetricsTools(clusterInfo)
-        clusterInfo.metricsInterval = 15
-        //+++await clusterInfo.metrics.startMetrics()
+        clusterInfo.metricsInterval = envMetricsInterval
         clusterInfo.metrics.startMetrics()
         console.log('  vCPU:', clusterInfo.vcpus)
         console.log('  Memory (GB):', clusterInfo.memory/1024/1024/1024)
@@ -1095,14 +1108,14 @@ const launchKubernetes = async() => {
                     console.log('SA token obtained succesfully')
 
                     // load channel extensions
-                    if (channelLogEnabled) channels.set('log', new LogChannel(clusterInfo))
-                    if (channelAlertEnabled) channels.set('alert', new AlertChannel(clusterInfo))
-                    if (channelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
-                    if (channelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
-                    if (channelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
-                    if (channelEchoEnabled) channels.set('echo', new EchoChannel(clusterInfo))
-                    if (channelFilemanEnabled) channels.set('fileman', new FilemanChannel(clusterInfo))
-                    if (channelMagnifyEnabled) channels.set('magnify', new MagnifyChannel(clusterInfo))
+                    if (envChannelLogEnabled) channels.set('log', new LogChannel(clusterInfo))
+                    if (envChannelAlertEnabled) channels.set('alert', new AlertChannel(clusterInfo))
+                    if (envChannelMetricsEnabled) channels.set('metrics', new MetricsChannel(clusterInfo))
+                    if (envChannelOpsEnabled) channels.set('ops', new OpsChannel(clusterInfo))
+                    if (envChannelTrivyEnabled) channels.set('trivy', new TrivyChannel(clusterInfo))
+                    if (envChannelEchoEnabled) channels.set('echo', new EchoChannel(clusterInfo))
+                    if (envChannelFilemanEnabled) channels.set('fileman', new FilemanChannel(clusterInfo))
+                    if (envChannelMagnifyEnabled) channels.set('magnify', new MagnifyChannel(clusterInfo))
 
                     kwirthData.channels =  Array.from(channels.keys()).map(k => {
                         return channels.get(k)?.getChannelData()!
@@ -1149,28 +1162,28 @@ const runDocker = async () => {
     if (lastVersion) kwirthData.lastVersion = lastVersion
     
     //serve front
-    console.log(`SPA is available at: ${rootPath}/front`)
-    app.get(`/`, (_req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
+    console.log(`SPA is available at: ${envRootPath}/front`)
+    app.get(`/`, (_req:Request,res:Response) => { res.redirect(`${envRootPath}/front`) })
 
-    app.get(`${rootPath}`, (_req:Request,res:Response) => { res.redirect(`${rootPath}/front`) })
-    app.use(`${rootPath}/front`, express.static('./dist/front'))
+    app.get(`${envRootPath}`, (_req:Request,res:Response) => { res.redirect(`${envRootPath}/front`) })
+    app.use(`${envRootPath}/front`, express.static('./dist/front'))
 
     // serve config API
-    let ka:ApiKeyApi = new ApiKeyApi(configMaps, masterKey)
-    app.use(`${rootPath}/key`, ka.route)
+    let ka:ApiKeyApi = new ApiKeyApi(configMaps, envMasterKey)
+    app.use(`${envRootPath}/key`, ka.route)
     let ca:ConfigApi = new ConfigApi(ka, kwirthData, clusterInfo, channels)
     ca.setDockerApi(dockerApi)
-    app.use(`${rootPath}/config`, ca.route)
+    app.use(`${envRootPath}/config`, ca.route)
     let sa:StoreApi = new StoreApi(configMaps, ka)
-    app.use(`${rootPath}/store`, sa.route)
+    app.use(`${envRootPath}/store`, sa.route)
     let ua:UserApi = new UserApi(secrets, ka)
-    app.use(`${rootPath}/user`, ua.route)
+    app.use(`${envRootPath}/user`, ua.route)
     let la:LoginApi = new LoginApi(secrets, configMaps)
-    app.use(`${rootPath}/login`, la.route)
+    app.use(`${envRootPath}/login`, la.route)
     let mk:ManageKwirthApi = new ManageKwirthApi(coreApi, appsApi, ka, kwirthData)
-    app.use(`${rootPath}/managekwirth`, mk.route)
+    app.use(`${envRootPath}/managekwirth`, mk.route)
     let mc:ManageClusterApi = new ManageClusterApi(coreApi, appsApi, ka, channels)
-    app.use(`${rootPath}/managecluster`, mc.route)
+    app.use(`${envRootPath}/managecluster`, mc.route)
 
     // obtain remote ip
     //app.use(requestIp.mw())

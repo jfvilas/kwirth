@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { FilemanInstanceConfig, FilemanConfig } from './FilemanConfig'
 import { FilemanSetup, FilemanIcon } from './FilemanSetup'
 import { IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
@@ -33,6 +33,7 @@ export class FilemanChannel implements IChannel {
     requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return true }
+    requiresFrontChannels() { return true }
     requiresClusterUrl() { return true }
     requiresWebSocket() { return true }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
@@ -75,7 +76,7 @@ export class FilemanChannel implements IChannel {
                                 })
                                 filemanData.files=[...filemanData.files]
                                 return {
-                                    action: ChannelRefreshAction.REFRESH
+                                    action: EChannelRefreshAction.REFRESH
                                 }
                             case FilemanCommandEnum.DIR:
                                 let content = JSON.parse(response.data)
@@ -100,7 +101,7 @@ export class FilemanChannel implements IChannel {
                                     }
                                 }
                                 return {
-                                    action: ChannelRefreshAction.REFRESH
+                                    action: EChannelRefreshAction.REFRESH
                                 }
                             case FilemanCommandEnum.RENAME: {
                                 let content = JSON.parse(response.data)
@@ -108,7 +109,7 @@ export class FilemanChannel implements IChannel {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return {
-                                    action: ChannelRefreshAction.REFRESH
+                                    action: EChannelRefreshAction.REFRESH
                                 }
                             }
                             case FilemanCommandEnum.DELETE: {
@@ -122,7 +123,7 @@ export class FilemanChannel implements IChannel {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return {
-                                    action: ChannelRefreshAction.REFRESH
+                                    action: EChannelRefreshAction.REFRESH
                                 }
                             }
                             case FilemanCommandEnum.MOVE:
@@ -147,14 +148,14 @@ export class FilemanChannel implements IChannel {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return {
-                                    action: ChannelRefreshAction.REFRESH
+                                    action: EChannelRefreshAction.REFRESH
                                 }
                             }
                         }
                     }
                 }
                 return {
-                    action: ChannelRefreshAction.NONE
+                    action: EChannelRefreshAction.NONE
                 }
             }
             case InstanceMessageTypeEnum.SIGNAL:
@@ -198,12 +199,12 @@ export class FilemanChannel implements IChannel {
                     }
                 }
                 return {
-                    action: ChannelRefreshAction.REFRESH
+                    action: EChannelRefreshAction.REFRESH
                 }
             default:
                 console.log(`Invalid message type ${msg.type}`)
                 return {
-                    action: ChannelRefreshAction.NONE
+                    action: EChannelRefreshAction.NONE
                 }
         }
     }

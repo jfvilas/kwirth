@@ -4,6 +4,7 @@ import { IScopedObject } from './OpsData'
 
 enum MenuObjectOption {
     DESCRIBE,
+    RESTARTCONTAINER,
     RESTARTPOD,
     RESTARTNS,
     DELETEPOD,
@@ -27,6 +28,7 @@ const MenuObject: React.FC<IProps> = (props:IProps) => {
             <MenuItem key='log' onClick={() => props.onOptionSelected(MenuObjectOption.VIEWLOG, props.scopedObject)}>&nbsp;View container log</MenuItem>
             <MenuItem key='metrics' onClick={() => props.onOptionSelected(MenuObjectOption.VIEWMETRICS, props.scopedObject)}>&nbsp;View container metrics</MenuItem>
             <Divider/>
+            <MenuItem key='restartcontainer' onClick={() => props.onOptionSelected(MenuObjectOption.RESTARTCONTAINER, props.scopedObject)}>&nbsp;Restart pod</MenuItem>
             <MenuItem key='restartpod' onClick={() => props.onOptionSelected(MenuObjectOption.RESTARTPOD, props.scopedObject)}>&nbsp;Restart pod</MenuItem>
             <MenuItem key='restartns' onClick={() => props.onOptionSelected(MenuObjectOption.RESTARTNS, props.scopedObject)}>&nbsp;Restart namespace</MenuItem>
         </MenuList>

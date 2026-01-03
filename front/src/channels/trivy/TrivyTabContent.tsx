@@ -12,7 +12,7 @@ import { Error as ErrorIcon } from '@mui/icons-material'
 import { MsgBoxOkError } from '../../tools/MsgBox'
 
 // +++ add filters to trivy content: name, namespace...
-// +++ ad info (number of vuln analysis)
+// +++ add info (number of vuln analysis)
 // +++ add download report
 // +++ add more sort options
 // +++ add avatars for common containers plus kwirth (azure, aws...)

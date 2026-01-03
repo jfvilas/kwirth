@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 import { MetricsIcon, MetricsSetup } from './MetricsSetup'
 import { MetricsTabContent } from './MetricsTabContent'
@@ -16,6 +16,7 @@ export class MetricsChannel implements IChannel {
     
     requiresSetup() { return true }
     requiresSettings() { return true }
+    requiresFrontChannels() { return true }
     requiresMetrics() { return true }
     requiresAccessString() { return true }
     requiresClusterUrl() { return false }
@@ -29,7 +30,7 @@ export class MetricsChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        let action = ChannelRefreshAction.NONE
+        let action = EChannelRefreshAction.NONE
         var metricsMessage:IMetricsMessage = JSON.parse(wsEvent.data)
         let metricsData:IMetricsData = channelObject.data
         let metricsConfig:IMetricsConfig = channelObject.config
@@ -47,7 +48,7 @@ export class MetricsChannel implements IChannel {
                     metricsData.assetMetricsValues.push(metricsMessage)
                     if (metricsData.assetMetricsValues.length > metricsConfig.depth) metricsData.assetMetricsValues.shift()
                 }
-                if (!metricsData.paused) action = ChannelRefreshAction.REFRESH
+                if (!metricsData.paused) action = EChannelRefreshAction.REFRESH
                 break
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
@@ -65,7 +66,7 @@ export class MetricsChannel implements IChannel {
                         if (signalMessage.level === SignalMessageLevelEnum.ERROR) {
                             if (signalMessage.text) {
                                 metricsData.events.push( { severity: MetricsEventSeverityEnum.ERROR, text: signalMessage.text })
-                                action = ChannelRefreshAction.REFRESH
+                                action = EChannelRefreshAction.REFRESH
                             }
                         }
                     }

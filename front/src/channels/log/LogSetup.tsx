@@ -2,7 +2,7 @@ import React, { useState, ChangeEvent, useRef } from 'react'
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, FormLabel, Radio, RadioGroup, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { Subject } from '@mui/icons-material'
-import { ILogInstanceConfig, ILogConfig, LogSortOrderEnum, LogInstanceConfig, LogConfig } from './LogConfig'
+import { ILogInstanceConfig, ILogConfig, ELogSortOrderEnum, LogInstanceConfig, LogConfig } from './LogConfig'
 import { DateTimePicker, LocalizationProvider, renderTimeViewClock } from '@mui/x-date-pickers'
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment'
 import moment from 'moment'
@@ -95,7 +95,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                             <TextField value={maxPerPodMessages} onChange={onChangeMaxPerPodMessages} variant='standard'label='Max per Pod messages' SelectProps={{native: true}} type='number' fullWidth />
                             <Stack spacing={1}>
                                 <FormLabel >Message sort order:</FormLabel>
-                                <RadioGroup defaultValue={'none'} value={sortOrder} onChange={(event) => setSortOrder(event.target.value as LogSortOrderEnum)}>
+                                <RadioGroup defaultValue={'none'} value={sortOrder} onChange={(event) => setSortOrder(event.target.value as ELogSortOrderEnum)}>
                                     <Stack spacing={-1}>
                                         <Typography><Radio value='none'/>Show messages as they arrive</Typography>
                                         <Typography><Radio value='pod' />Keep together messages from the same pod</Typography>

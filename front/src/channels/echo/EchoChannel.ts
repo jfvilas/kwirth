@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from "../IChannel";
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from "../IChannel";
 import { EchoInstanceConfig, EchoConfig, IEchoConfig } from "./EchoConfig";
 import { EchoSetup, EchoIcon } from './EchoSetup';
 import { IEchoMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from "@jfvilas/kwirth-common";
@@ -19,6 +19,7 @@ export class EchoChannel implements IChannel {
     requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return false }
+    requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
@@ -39,7 +40,7 @@ export class EchoChannel implements IChannel {
                 echoData.lines.push(msg.text)
                 while (echoData.lines.length > echoConfig.maxLines) echoData.lines.shift()
                 return {
-                    action: ChannelRefreshAction.REFRESH
+                    action: EChannelRefreshAction.REFRESH
                 }
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
@@ -49,12 +50,12 @@ export class EchoChannel implements IChannel {
                 echoData.lines.push('*** '+msg.text+' ***')
                 while (echoData.lines.length> echoConfig.maxLines) echoData.lines.shift()
                 return {
-                    action: ChannelRefreshAction.REFRESH
+                    action: EChannelRefreshAction.REFRESH
                 }
             default:
                 console.log(`Invalid message type ${msg.type}`)
                 return {
-                    action: ChannelRefreshAction.NONE
+                    action: EChannelRefreshAction.NONE
                 }
         }
     }

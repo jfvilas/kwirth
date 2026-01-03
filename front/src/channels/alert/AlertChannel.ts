@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { AlertSeverityEnum, IAlertMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage } from '@jfvilas/kwirth-common'
 import { AlertIcon, AlertSetup } from './AlertSetup'
 import { AlertTabContent } from './AlertTabContent'
@@ -18,6 +18,7 @@ export class AlertChannel implements IChannel {
     requiresSettings() { return false }
     requiresMetrics() { return false }
     requiresAccessString() { return false }
+    requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
@@ -29,7 +30,7 @@ export class AlertChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        let action = ChannelRefreshAction.NONE
+        let action = EChannelRefreshAction.NONE
         let msg:IAlertMessage = JSON.parse(wsEvent.data)
         let alertData:IAlertData = channelObject.data
         let alertConfig:IAlertConfig = channelObject.config
@@ -46,7 +47,7 @@ export class AlertChannel implements IChannel {
                     container: msg.container
                 })
                 if (alertData.firedAlerts.length > alertConfig.maxAlerts) alertData.firedAlerts.splice(0, alertData.firedAlerts.length - alertConfig.maxAlerts)
-                if (!alertData.paused) action = ChannelRefreshAction.REFRESH
+                if (!alertData.paused) action = EChannelRefreshAction.REFRESH
                 break
             case InstanceMessageTypeEnum.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
@@ -60,7 +61,7 @@ export class AlertChannel implements IChannel {
                         severity: AlertSeverityEnum.INFO,
                         text: signalMessage.text || ''
                     })
-                    action = ChannelRefreshAction.REFRESH
+                    action = EChannelRefreshAction.REFRESH
                 }
                 break
             default:

@@ -317,7 +317,7 @@ export class ConfigApi {
             name: name,
             namespace: namespace,
             body: patch
-        })  //+++ test
+        })
     }
     
 }

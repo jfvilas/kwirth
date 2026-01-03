@@ -56,6 +56,16 @@ export class EventsTools {
 
     startEvents() {
         console.log('Event reception started...')
+        this.startResourceWatcher('/api/v1/nodes', this.handleEvent)
+        this.startResourceWatcher('/apis/autoscaling/v2/horizontalpodautoscalers', this.handleEvent)
+        this.startResourceWatcher('/apis/scheduling.k8s.io/v1/priorityclasses', this.handleEvent)
+        this.startResourceWatcher('/apis/node.k8s.io/v1/runtimeclasses', this.handleEvent)
+        this.startResourceWatcher('/apis/coordination.k8s.io/v1/leases', this.handleEvent)
+        this.startResourceWatcher('/apis/admissionregistration.k8s.io/v1/validatingwebhookconfigurations', this.handleEvent)
+        this.startResourceWatcher('/apis/admissionregistration.k8s.io/v1/mutatingwebhookconfigurations', this.handleEvent)
+        this.startResourceWatcher('/apis/policy/v1/poddisruptionbudgets', this.handleEvent)
+
+        
         this.startResourceWatcher('/api/v1/pods', this.handleEvent)
         this.startResourceWatcher('/api/v1/configmaps', this.handleEvent)
         this.startResourceWatcher('/api/v1/secrets', this.handleEvent)

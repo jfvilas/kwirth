@@ -587,36 +587,6 @@ class FilemanChannel implements IChannel {
 
     }
 
-    // downloadFile = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string, localPath: string) => {
-    //     const writeStream = fs.createWriteStream(localPath);
-    //     let ready=false
-        
-    //     await this.clusterInfo.execApi.exec(
-    //         srcNamespace,
-    //         srcPod,
-    //         srcContainer,
-    //         ['cat', remotePath],
-    //         writeStream, 
-    //         process.stderr,   // +++
-    //         null, 
-    //         false, 
-    //         async (status) => {
-    //             writeStream.end()
-    //             while (!writeStream.closed) {
-    //                 await new Promise ( (resolve) => { setTimeout(resolve, 5)})
-    //             }
-    //             ready=true
-    //         }
-    //     )
-    //     while (!ready) {
-    //         await new Promise ( (resolve) => { setTimeout(resolve, 5)})
-    //     }
-    //     if (!writeStream.closed) {
-    //         console.error('****** forcing close ******')
-    //         writeStream.end()
-    //     }
-    // }
-
     downloadFolder = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string, localPath: string) => {
         const writeStream = fs.createWriteStream(localPath)
         let ready=false
@@ -644,39 +614,6 @@ class FilemanChannel implements IChannel {
         }
     }
 
-
-    // uploadFileOld = async (ns: string, pod: string, c: string, localPath: string, remotePath: string) => {
-    //     const fs = require('fs')
-    //     const readStream = fs.createReadStream(localPath)
-
-    //     return new Promise((resolve, reject) => {
-    //         readStream.on('error', (err:any) => {
-    //             console.error('Error al leer el archivo local:', err)
-    //             reject(err)
-    //         })
-
-    //         let parentFolder = remotePath.split('/').slice(0,-1).join('/').trim()
-    //         let mkdir = `mkdir -p ${parentFolder} ;`
-    //         if (parentFolder === '') mkdir = ''
-    //         const execPromise = this.clusterInfo.execApi.exec(
-    //             ns,
-    //             pod,
-    //             c,
-    //             ['sh', '-c', `${mkdir} cat > "${remotePath}" && exit`],
-    //             process.stdout,  //+++
-    //             process.stderr,  //+++
-    //             readStream,
-    //             false
-    //         )
-
-    //         execPromise.then(x => {                
-    //             x.onclose = (event) => { resolve({ metadata: {}, status: ExecutionStatus.SUCCESS }) }
-    //             x.onerror = (event) => { reject(new Error(`Upload socket error: ${JSON.stringify(event)}`)) }
-    //         })
-    //         .catch(err => { reject(err) })
-    //     })
-    // }
-    
     private launchCommand (ns:string, pod:string, c:string, cmd:string[]): Promise<{stdout:string, stderr:string, stdend:IExecutionResult}> {
         return new Promise( async (resolve, reject) => {
             let accumulatedOut: Buffer = Buffer.alloc(0)
@@ -790,7 +727,6 @@ class FilemanChannel implements IChannel {
                 pod,
                 c,
                 ['sh', '-c', `cat > "${remotePath}" && exit`],
-                //[`cat > "${remotePath}"`],
                 stdout,
                 stderr,
                 readStream,
@@ -799,8 +735,7 @@ class FilemanChannel implements IChannel {
 
             shellSocket.onmessage = (event) => {
                 let data = event.data as Buffer
-                //console.log('data', data[0], data.slice(1).toString())
-                //+++ stdout should send a \n when the copy ois finished, since the cat is redirected. we should try this way and forget '&& exit'
+                //+++ stdout should send a \n when the copy is finished, since the cat is redirected. we should try this way and forget '&& exit'
                 if (data[0]===2) accumulatedErr = Buffer.concat([accumulatedErr, data.slice(1)])
                 if (data[0]===3) accumulatedEnd = Buffer.concat([accumulatedEnd, data.slice(1)])
             }
@@ -831,62 +766,7 @@ class FilemanChannel implements IChannel {
         }
     }
     
-    // downloadFile = async (srcNamespace:string, srcPod:string, srcContainer:string, remotePath: string, localPath: string) : Promise<IExecutionResult> => {
-    //     const writeStream = fs.createWriteStream(localPath)
-    //     let ready=false
-    //     const errorStream = new PassThrough()
-    //     let errorString = ''
-
-    //     errorStream.on('data', (chunk:any) => {
-    //         errorString += chunk.toString()
-    //         console.log('downloadFile error', errorString)
-    //     })
-        
-    //     await this.clusterInfo.execApi.exec(
-    //         srcNamespace,
-    //         srcPod,
-    //         srcContainer,
-    //         ['cat', remotePath],
-    //         writeStream, 
-    //         errorStream,
-    //         null, 
-    //         false, 
-    //         async (status) => {
-    //             writeStream.end()
-    //             while (!writeStream.closed) {
-    //                 await new Promise ( (resolve) => { setTimeout(resolve, 5)})
-    //             }
-    //             ready=true
-    //         }
-    //     )
-    //     while (!ready) {
-    //         await new Promise ( (resolve) => { setTimeout(resolve, 5)})
-    //     }
-    //     if (!writeStream.closed) {
-    //         console.error('****** forcing close ******')
-    //         writeStream.end()
-    //     }
-
-    //     if (errorString==='') {
-    //         return {
-    //             metadata: {},
-    //             message: '',
-    //             status: ExecutionStatus.SUCCESS
-    //         }
-    //     }
-    //     else {
-    //         return {
-    //             metadata: {},
-    //             message: errorString,
-    //             status: ExecutionStatus.FAILURE
-    //         }
-    //     }
-
-    // }
-
     clusterCopyOrMove = async (operation:FilemanCommandEnum, srcNamespace:string, srcPod:string, srcContainer:string, srcLocalPath:string, dstNamespace:string, dstPod:string, dstContainer:string, dstLocalPath:string) : Promise<IExecutionResult> => {
-        //const tempLocalFile = `/tmp/${srcNamespace}-${srcPod}-${srcContainer}-${dstNamespace}-${dstPod}-${dstContainer}`
-
         let result = await this.downloadFile(srcNamespace, srcPod, srcContainer, srcLocalPath)
         let tempLocalFile = result.metadata.filename
         if (result.status !== ExecutionStatus.SUCCESS) return result            

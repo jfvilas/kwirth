@@ -4,14 +4,16 @@ import { ENotifyLevel } from '../tools/Global'
 import { IChannelSettings } from '../model/Settings'
 import { IResourceSelected } from '../components/ResourceSelector'
 
-enum ChannelRefreshAction {
+type TChannelConstructor = (new () => IChannel)|undefined
+
+enum EChannelRefreshAction {
     NONE,
     REFRESH,
     STOP
 }
 
 interface IChannelMessageAction {
-    action: ChannelRefreshAction
+    action: EChannelRefreshAction
     data?:any
 }
 
@@ -25,6 +27,7 @@ interface ISetupProps {
 
 interface IContentProps {
     channelObject: IChannelObject
+    maxHeight: number
 }
 
 interface IChannelObject {
@@ -40,6 +43,7 @@ interface IChannelObject {
     data: any
     metricsList?: Map<string, MetricDefinition>
     accessString?: string
+    frontChannels?: Map<string, TChannelConstructor>
     webSocket?: WebSocket
     clusterUrl?: string
     onUpdateChannelSettings?: (channelSettings:IChannelSettings) => void
@@ -54,6 +58,7 @@ interface IChannel {
 
     requiresSetup(): boolean
     requiresSettings(): boolean
+    requiresFrontChannels(): boolean
     requiresMetrics(): boolean
     requiresClusterUrl(): boolean
     requiresAccessString(): boolean
@@ -73,7 +78,5 @@ interface IChannel {
     socketReconnect(channelObject: IChannelObject): boolean
 }
 
-type ChannelConstructor = (new () => IChannel)|undefined
-
-export { ChannelRefreshAction }
-export type { IChannel, IChannelObject, ISetupProps, IContentProps, ChannelConstructor, IChannelMessageAction }
+export { EChannelRefreshAction }
+export type { IChannel, IChannelObject, ISetupProps, IContentProps, TChannelConstructor, IChannelMessageAction }

@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { ChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { MagnifyInstanceConfig, MagnifyConfig } from './MagnifyConfig'
 import { MagnifySetup, MagnifyIcon } from './MagnifySetup'
 import { IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
@@ -32,8 +32,9 @@ export class MagnifyChannel implements IChannel {
     
     requiresSetup() { return false }
     requiresSettings() { return false }
-    requiresMetrics() { return false }
+    requiresMetrics() { return true }
     requiresAccessString() { return true }
+    requiresFrontChannels() { return true }
     requiresClusterUrl() { return true }
     requiresWebSocket() { return true }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
@@ -69,7 +70,7 @@ export class MagnifyChannel implements IChannel {
                                 }
                                 magnifyData.files = [...magnifyData.files]
                                 return {
-                                    action: ChannelRefreshAction.REFRESH
+                                    action: EChannelRefreshAction.REFRESH
                                 }
                             case MagnifyCommandEnum.K8EVENT:
                                 switch(response.event) {
@@ -84,7 +85,7 @@ export class MagnifyChannel implements IChannel {
                                 }
                                 magnifyData.files = [...magnifyData.files]
                                 return {
-                                    action: ChannelRefreshAction.REFRESH
+                                    action: EChannelRefreshAction.REFRESH
                                 }
                             case MagnifyCommandEnum.DELETE: {
                                 let content = JSON.parse(response.data)
@@ -97,7 +98,7 @@ export class MagnifyChannel implements IChannel {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return {
-                                    action: ChannelRefreshAction.REFRESH
+                                    action: EChannelRefreshAction.REFRESH
                                 }
                             }
                             case MagnifyCommandEnum.CREATE: {
@@ -118,14 +119,14 @@ export class MagnifyChannel implements IChannel {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return {
-                                    action: ChannelRefreshAction.REFRESH
+                                    action: EChannelRefreshAction.REFRESH
                                 }
                             }
                         }
                     }
                 }
                 return {
-                    action: ChannelRefreshAction.NONE
+                    action: EChannelRefreshAction.NONE
                 }
             }
             case InstanceMessageTypeEnum.SIGNAL:
@@ -133,7 +134,7 @@ export class MagnifyChannel implements IChannel {
                 if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
                     if (signalMessage.action === InstanceMessageActionEnum.START) {
                         channelObject.instanceId = signalMessage.instance
-                        // +++ improve timeout
+                        // +++ improve setTimeout mechanism (find something better!!!)
                         setTimeout( () => {
                             let magnifyMessage:IMagnifyMessage = {
                                 msgtype: 'magnifymessage',
@@ -150,13 +151,13 @@ export class MagnifyChannel implements IChannel {
                                 type: InstanceMessageTypeEnum.DATA,
                                 channel: 'magnify',
                                 params: [
-                                    'namespace', 'node',
-                                    'service', 'ingress', 'ingressclass',
-                                    'pod', 'deployment', 'daemonset', 'replicaset', 'statefulset', 'job', 'cronjob',
-                                    'configmap', 'secret', 
-                                    'persistentvolumeclaim', 'persistentvolume', 'storageclass',
-                                    'serviceaccount', 'clusterrole', 'role', 'clusterrolebinding', 'rolebinding',
-                                    'customresourcedefinition'
+                                    'Namespace', 'Node',
+                                    'Service', 'Endpoints', 'Ingress', 'IngressClass', 'NetworkPolicy',
+                                    'Pod', 'Deployment', 'DaemonSet', 'ReplicaSet', 'StatefulSet', 'Job', 'CronJob',
+                                    'ConfigMap', 'Secret', 'ResourceQuota', 'LimitRange', 'HorizontalPodAutoscaler', 'PodDisruptionBudget', 'PriorityClass','RuntimeClass', 'Lease', 'ValidatingWebhookConfiguration', 'MutatingWebhookConfiguration',
+                                    'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass',
+                                    'ServiceAccount', 'ClusterRole', 'Role', 'ClusterRoleBinding', 'RoleBinding',
+                                    'CustomResourceDefinition'
                                 ]
                             }
                             channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
@@ -181,12 +182,12 @@ export class MagnifyChannel implements IChannel {
                     }
                 }
                 return {
-                    action: ChannelRefreshAction.REFRESH
+                    action: EChannelRefreshAction.REFRESH
                 }
             default:
                 console.log(`Invalid message type ${msg.type}`)
                 return {
-                    action: ChannelRefreshAction.NONE
+                    action: EChannelRefreshAction.NONE
                 }
         }
     }
@@ -240,11 +241,22 @@ export class MagnifyChannel implements IChannel {
         if (kind==='Pod') this.loadPod(magnifyData, obj)
         else if (kind==='ConfigMap') this.loadConfigMap(magnifyData, obj)
         else if (kind==='Secret') this.loadSecret(magnifyData, obj)
+        else if (kind==='ResourceQuota') this.loadResourceQuota(magnifyData, obj)
+        else if (kind==='LimitRange') this.loadLimitRange(magnifyData, obj)
+        else if (kind==='HorizontalPodAutoscaler') this.loadHorizontalPodAutoscaler(magnifyData, obj)
+        else if (kind==='PodDisruptionBudget') this.loadPodDisruptionBudget(magnifyData, obj)
+        else if (kind==='PriorityClass') this.loadPriorityClass(magnifyData, obj)
+        else if (kind==='RuntimeClass') this.loadRuntimeClass(magnifyData, obj)
+        else if (kind==='Lease') this.loadLease(magnifyData, obj)
+        else if (kind==='ValidatingWebhookConfiguration') this.loadValidatingWebhookConfiguration(magnifyData, obj)
+        else if (kind==='MutatingWebhookConfiguration') this.loadMutatingWebhookConfiguration(magnifyData, obj)
         else if (kind==='Namespace') this.loadNamespace(magnifyData, obj)
         else if (kind==='Node') this.loadNode(magnifyData, obj)
         else if (kind==='Service') this.loadService(magnifyData, obj)
+        else if (kind==='Endpoints') this.loadEndpoints(magnifyData, obj)
         else if (kind==='Ingress') this.loadIngress(magnifyData, obj)
         else if (kind==='IngressClass') this.loadIngressClass(magnifyData, obj)
+        else if (kind==='NetworkPolicy') this.loadNetworkPolicy(magnifyData, obj)
         else if (kind==='Deployment') this.loadDeployment(magnifyData, obj)
         else if (kind==='DaemonSet') this.loadDaemonSet(magnifyData, obj)
         else if (kind==='ReplicaSet') this.loadReplicaSet(magnifyData, obj)
@@ -281,8 +293,8 @@ export class MagnifyChannel implements IChannel {
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
-            path: '/workload/pod/'+obj.metadata.name,
-            class: 'pod',
+            path: this.buildPath('Pod', obj),
+            class: 'Pod',
             data: {
                 namespace: obj.metadata.namespace,
                 controller: obj.metadata.ownerReferences && obj.metadata.ownerReferences.length>0? obj.metadata.ownerReferences[0].kind : '-',
@@ -301,8 +313,8 @@ export class MagnifyChannel implements IChannel {
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
-            path: '/cluster/namespace/'+obj.metadata.name,
-            class: 'namespace',
+            path: this.buildPath('Namespace', obj),
+            class: 'Namespace',
             data: {
                 labels: '...',
                 creationTimestamp: obj.metadata.creationTimestamp,
@@ -318,8 +330,8 @@ export class MagnifyChannel implements IChannel {
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
-            path: '/config/configmap/'+obj.metadata.name,
-            class: 'configmap',
+            path: this.buildPath('ConfigMap', obj),
+            class: 'ConfigMap',
             data: {
                 namespace: obj.metadata.namespace,
                 keys: obj.data? Object.keys(obj.data).join(', ') : '',
@@ -335,13 +347,162 @@ export class MagnifyChannel implements IChannel {
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
-            path: '/config/secret/'+obj.metadata.name,
-            class: 'secret',
+            path: this.buildPath('Secret', obj),
+            class: 'Secret',
             data: {
                 namespace: obj.metadata.namespace,
                 keys: obj.data? Object.keys(obj.data).join(', ') : '',
                 creationTimestamp: obj.metadata.creationTimestamp,
                 type: obj.type,
+                origin: obj
+            }
+        })
+    }
+
+    loadResourceQuota(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'v1'
+        obj.kind = 'ResourceQuota'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: '/config/ResourceQuota/'+obj.metadata.name,
+            class: 'ResourceQuota',
+            data: {
+                namespace: obj.metadata.namespace,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadLimitRange(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'v1'
+        obj.kind = 'LimitRange'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: '/config/LimitRange/'+obj.metadata.name,
+            class: 'LimitRange',
+            data: {
+                namespace: obj.metadata.namespace,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadHorizontalPodAutoscaler(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'autoscaling/v2'
+        obj.kind = 'HorizontalPodAutoscaler'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('HorizontalPodAutoscaler', obj),
+            class: 'HorizontalPodAutoscaler',
+            data: {
+                namespace: obj.metadata.namespace,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadPodDisruptionBudget(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'policy/v1'
+        obj.kind = 'PodDisruptionBudget'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('PodDisruptionBudget', obj),
+            class: 'PodDisruptionBudget',
+            data: {
+                namespace: obj.metadata.namespace,
+                minAvailable: obj.spec.minAvailable || 'N/A',
+                maxUnavailable: obj.spec.maxUnavailable || 'N/A',
+                currentHealthy: obj.status.currentHealthy,
+                desiredHealthy: obj.status.desiredHealthy,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadPriorityClass(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'scheduling.k8s.io/v1'
+        obj.kind = 'PriorityClass'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('PriorityClass', obj),
+            class: 'PriorityClass',
+            data: {
+                namespace: obj.metadata.namespace,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadRuntimeClass(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'node.k8s.io/v1'
+        obj.kind = 'RuntimeClass'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('RuntimeClass', obj),
+            class: 'RuntimeClass',
+            data: {
+                namespace: obj.metadata.namespace,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadLease(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'node.k8s.io/v1'
+        obj.kind = 'Lease'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('Lease', obj),
+            class: 'Lease',
+            data: {
+                namespace: obj.metadata.namespace,
+                holder: obj.spec.holderIdentity,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadValidatingWebhookConfiguration(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'admissionregistration.k8s.io/v1'
+        obj.kind = 'ValidatingWebhookConfiguration'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('ValidatingWebhookConfiguration', obj),
+            class: 'ValidatingWebhookConfiguration',
+            data: {
+                webhooks: obj.webhooks.length,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadMutatingWebhookConfiguration(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'admissionregistration.k8s.io/v1'
+        obj.kind = 'MutatingWebhookConfiguration'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('MutatingWebhookConfiguration', obj),
+            class: 'MutatingWebhookConfiguration',
+            data: {
+                webhooks: obj.webhooks.length,
+                creationTimestamp: obj.metadata.creationTimestamp,
                 origin: obj
             }
         })
@@ -360,11 +521,13 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Node', obj),
-            class: 'node',
+            class: 'Node',
             data: {
                 creationTimestamp: obj.metadata.creationTimestamp,
-                taints: '',
+                //taints: obj.spec.taints? obj.spec.taints.map((t:any) => t.key).map((t:string) => t.includes('/')? t.split('/')[1] : t) : '',
+                taints: obj.spec.taints? obj.spec.taints.length : 0,
                 roles: roles.join(','),
+                conditions: obj.spec.unschedulable === true? 'Unschedulable' : obj.status.conditions.filter((c:any) => c.status==='True').map((c:any) => c.type).join(' '),
                 version: obj.status.nodeInfo.kubeletVersion,
                 origin: obj
             }
@@ -378,7 +541,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Service', obj),
-            class: 'service',
+            class: 'Service',
             data: {
                 namespace: obj.metadata.namespace,
                 type: obj.spec.type,
@@ -392,6 +555,23 @@ export class MagnifyChannel implements IChannel {
         })
     }
 
+    loadEndpoints(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'v1'
+        obj.kind = 'Endpoints'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('Endpoints', obj),
+            class: 'Endpoints',
+            data: {
+                namespace: obj.metadata.namespace,
+                endpoints: obj.subsets ? obj.subsets.map((subset:any) => subset.addresses.map((a:any) => subset.ports.map((p:any) => a.ip+':'+p.port)).join(',')) :'',
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
     loadIngress(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'networking.k8s.io/v1'
         obj.kind = 'Ingress'
@@ -399,7 +579,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Ingress', obj),
-            class: 'ingress',
+            class: 'Ingress',
             data: {
                 namespace: obj.metadata.namespace,
                 loadBalancers: obj.status?.loadBalancer?.ingress?.map((x:any)=> x.ip).join(','),
@@ -417,10 +597,27 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('IngressClass', obj),
-            class: 'ingressclass',
+            class: 'IngressClass',
             data: {
                 namespace: obj.metadata.namespace,
                 controller: obj.spec.controller,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
+    loadNetworkPolicy(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'networking.k8s.io/v1'
+        obj.kind = 'NetworkPolicy'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: this.buildPath('NetworkPolicy', obj),
+            class: 'NetworkPolicy',
+            data: {
+                namespace: obj.metadata.namespace,
+                policyTypes: obj.spec.policyTypes?obj.spec.policyTypes.join(',') : '',
                 creationTimestamp: obj.metadata.creationTimestamp,
                 origin: obj
             }
@@ -434,7 +631,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Deployment', obj),
-            class: 'deployment',
+            class: 'Deployment',
             data: {
                 namespace: obj.metadata.namespace,
                 pods: 0,
@@ -453,7 +650,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('DaemonSet', obj),
-            class: 'daemonset',
+            class: 'DaemonSet',
             data: {
                 namespace: obj.metadata.namespace,
                 desired: obj.status.desiredNumberScheduled,
@@ -475,7 +672,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('ReplicaSet', obj),
-            class: 'replicaset',
+            class: 'ReplicaSet',
             data: {
                 namespace: obj.metadata.namespace,
                 desired: obj.status.replicas,
@@ -494,7 +691,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('StatefulSet', obj),
-            class: 'statefulset',
+            class: 'StatefulSet',
             data: {
                 namespace: obj.metadata.namespace,
                 pods: 0,
@@ -512,7 +709,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Job', obj),
-            class: 'job',
+            class: 'Job',
             data: {
                 namespace: obj.metadata.namespace,
                 completions: obj.spec.completions + '/' + obj.spec.parallelism,
@@ -530,7 +727,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('CronJob', obj),
-            class: 'cronjob',
+            class: 'CronJob',
             data: {
                 namespace: obj.metadata.namespace,
                 schedule: obj.spec.schedule,
@@ -552,7 +749,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('StorageClass', obj),
-            class: 'storageclass',
+            class: 'StorageClass',
             data: {
                 provisioner: obj.provisioner,
                 reclaimPolicy: obj.reclaimPolicy,
@@ -570,7 +767,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('PersistentVolumeClaim', obj),
-            class: 'persistentvolumeclaim',
+            class: 'PersistentVolumeClaim',
             data: {
                 namespace: obj.metadata.namespace,
                 storageClass: obj.spec.storageClassName,
@@ -590,7 +787,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('PersistentVolume', obj),
-            class: 'persistentvolume',
+            class: 'PersistentVolume',
             data: {
                 storageClass: obj.spec.storageClassName,
                 capacity: obj.spec.capacity.storage,
@@ -609,7 +806,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('ServiceAccount', obj),
-            class: 'serviceaccount',
+            class: 'ServiceAccount',
             data: {
                 namespace: obj.metadata.namespace,
                 creationTimestamp: obj.metadata.creationTimestamp,
@@ -625,7 +822,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('ClusterRole', obj),
-            class: 'clusterrole',
+            class: 'ClusterRole',
             data: {
                 creationTimestamp: obj.metadata.creationTimestamp,
                 origin: obj
@@ -640,7 +837,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('Role', obj),
-            class: 'role',
+            class: 'Role',
             data: {
                 namespace: obj.metadata.namespace,
                 creationTimestamp: obj.metadata.creationTimestamp,
@@ -656,7 +853,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('ClusterRoleBinding', obj),
-            class: 'clusterrolebinding',
+            class: 'ClusterRoleBinding',
             data: {
                 bindings: obj.subjects? obj.subjects.map((s:any) => s.name).join(',') : 'n/a',
                 creationTimestamp: obj.metadata.creationTimestamp,
@@ -672,7 +869,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('RoleBinding', obj),
-            class: 'rolebinding',
+            class: 'RoleBinding',
             data: {
                 namespace: obj.metadata.namespace,
                 bindings: obj.subjects? obj.subjects.map((s:any) => s.name).join(',') : 'n/a',
@@ -682,74 +879,6 @@ export class MagnifyChannel implements IChannel {
         })
     }
 
-    // loadCustomResourceDefinition(channelObject:IChannelObject, magnifyData:IMagnifyData, obj:any): void {
-    //     obj.apiVersion = 'apiextensions.k8s.io/v1'
-    //     obj.kind = 'CustomResourceDefinition'
-    //     this.updateObject(magnifyData, {
-    //         name: obj.metadata.name,
-    //         isDirectory: false,
-    //         path: this.buildPath('CustomResourceDefinition', obj),
-    //         class: 'customresourcedefinition',
-    //         data: {
-    //             namespace: obj.metadata.namespace,
-    //             group: obj.spec.group,
-    //             version: obj.spec.versions && obj.spec.versions.length>0? obj.spec.versions[0].name : '-',
-    //             scope: obj.spec.scope,
-    //             creationTimestamp: obj.metadata.creationTimestamp,
-    //             origin: obj
-    //         }
-    //     })
-
-    //     // for each CRD, we request the exsitent objects in that CRD
-    //     if (obj.spec.versions && obj.spec.versions.length>0) {
-    //         let magnifyMessage:IMagnifyMessage = {
-    //             msgtype: 'magnifymessage',
-    //             accessKey: channelObject.accessString!,
-    //             instance: channelObject.instanceId,
-    //             id: uuid(),
-    //             namespace: '',
-    //             group: '',
-    //             pod: '',
-    //             container: '',
-    //             command: MagnifyCommandEnum.LISTCRD,
-    //             action: InstanceMessageActionEnum.COMMAND,
-    //             flow: InstanceMessageFlowEnum.REQUEST,
-    //             type: InstanceMessageTypeEnum.DATA,
-    //             channel: 'magnify',
-    //             params: [ obj.spec.group, obj.spec.versions[0].name, obj.spec.names.plural ]
-    //         }
-    //         channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
-    //     }
-    // }
-
-    // loadCustomResourceDefinitionInstance(magnifyData:IMagnifyData, obj:any): boolean {
-    //     let groupName = obj.apiVersion.replace('/','-')+'-'+obj.kind.toLowerCase()
-    //     if (!magnifyData.files.some(f => f.path ==='/crd/'+groupName)) {
-    //         magnifyData.files.push( {
-    //             name: `${obj.apiVersion} (${obj.kind})`,
-    //             isDirectory: true,
-    //             path: '/crd/'+groupName,
-    //             class: 'crdgroup',
-    //             children: 'crdinstance'
-    //         })
-    //     }
-
-    //     this.updateObject(magnifyData, {
-    //         name: obj.metadata.name,
-    //         isDirectory: false,
-    //         path: '/crd/'+groupName+'/'+obj.metadata.name,
-    //         class: 'crdinstance',
-    //         data: {
-    //             namespace: obj.metadata.namespace,
-    //             source: obj.spec.source,
-    //             checksum: obj.spec.checksum,
-    //             creationTimestamp: obj.metadata.creationTimestamp,
-    //             origin: obj
-    //         }
-    //     })
-    //     return true
-    // }
-
     loadCustomResourceDefinition(channelObject:IChannelObject, magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'apiextensions.k8s.io/v1'
         obj.kind = 'CustomResourceDefinition'
@@ -758,7 +887,7 @@ export class MagnifyChannel implements IChannel {
             name: obj.metadata.name,
             isDirectory: false,
             path: this.buildPath('CustomResourceDefinition', obj),
-            class: 'customresourcedefinition',
+            class: 'CustomResourceDefinition',
             data: {
                 namespace: obj.metadata.namespace,
                 group: obj.spec.group,
@@ -774,7 +903,7 @@ export class MagnifyChannel implements IChannel {
         magnifyData.files.push( {
             name: `${obj.spec.group}${(version?'/'+version:'')} (${obj.spec.names.kind.toLowerCase()})`,
             isDirectory: true,
-            path: '/crd/'+groupName,
+            path: '/custom/'+groupName,
             class: 'crdgroup',
             children: 'crdinstance'
         })
@@ -807,7 +936,7 @@ export class MagnifyChannel implements IChannel {
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
-            path: '/crd/'+groupName+'/'+obj.metadata.name,
+            path: '/custom/'+groupName+'/'+obj.metadata.name,
             class: 'crdinstance',
             data: {
                 namespace: obj.metadata.namespace,
@@ -823,12 +952,12 @@ export class MagnifyChannel implements IChannel {
     buildPath(kind:string, obj:any) {
         let section=''
         if (' Node Namespace '.includes(' '+kind+' ')) section='cluster'
-        if (' ConfigMap Secret '.includes(' '+kind+' ')) section='config'
-        if (' Ingress IngressClass Service '.includes(' '+kind+' ')) section='network'
+        if (' ConfigMap Secret ResourceQuota LimitRange HorizontalPodAutoscaler PodDisruptionBudget PriorityClass RuntimeClass Lease ValidatingWebhookConfiguration MutatingWebhookConfiguration '.includes(' '+kind+' ')) section='config'
+        if (' Service Endpoints Ingress IngressClass NetworkPolicy '.includes(' '+kind+' ')) section='network'
         if (' Pod Deployment DaemonSet ReplicaSet StatefulSet Job CronJob '.includes(' '+kind+' ')) section='workload'
         if (' StorageClass PersistentVolumeClaim PersistentVolume '.includes(' '+kind+' ')) section='storage'
         if (' ServiceAccount ClusterRole Role ClusterRoleBinding RoleBinding '.includes(' '+kind+' ')) section='access'
-        if (' CustomResourceDefinition '.includes(' '+kind+' ')) section='crd'
-        return '/'+section+'/'+kind.toLowerCase()+'/'+obj.metadata.name
+        if (' CustomResourceDefinition '.includes(' '+kind+' ')) section='custom'
+        return '/'+section+'/'+kind+'/'+obj.metadata.name
     }
 }    
