@@ -1,6 +1,5 @@
 import { Terminal } from "xterm"
 import { TerminalManager } from "./Terminal/TerminalManager"
-import { IChannelMessageAction } from "../IChannel"
 
 export interface IXTerm {
     namespace: string
@@ -27,13 +26,12 @@ export interface IScopedObject {
 
 export interface IOpsData {
     scopedObjects: IScopedObject[]
-    messages: string[]
     paused: boolean
     started: boolean
     websocketRequest: IWebsocketRequest
     terminalManager: TerminalManager
     selectedTerminal: string | undefined
-    onAsyncData?: (data:any) => void
+    onDescribeResponse?: (data:any) => void
 }
 
 export class OpsData implements IOpsData {

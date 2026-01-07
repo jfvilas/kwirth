@@ -2,6 +2,290 @@ import { IDetailsSection } from "./DetailsObject"
 
 export const objectSections = new Map<string,IDetailsSection[]>()
 
+objectSections.set('PersistentVolumeClaim', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: ['metadata.namespace'],
+                format: 'string'
+            },
+            {
+                name: 'labels',
+                text: 'Labels',
+                source: ['metadata.labels'],
+                format: 'objectprops',
+                style: ['column', 'ifpresent']
+            },
+            {
+                name: 'annotations',
+                text: 'Annotations',
+                source: ['metadata.annotations'],
+                format: 'objectprops',
+                style: ['column','char50','ifpresent']
+            },
+            {
+                name: 'finalizers',
+                text: 'Finalizers',
+                source: ['metadata.finalizers'],
+                format: 'stringlist',
+           },
+           {
+                name: 'accessModes',
+                text: 'Access Modes',
+                source: ['spec.accessModes'],
+                format: 'stringlist',
+           },
+           {
+                name: 'storageClassName',
+                text: 'Storage Class',
+                source: ['spec.storageClassName'],
+                format: 'string',
+           },
+
+           {
+                name: 'storage',
+                text: 'Storage',
+                source: ['spec.resources.requests.storage'],
+                format: 'string',
+           },
+           {
+                name: 'pods',
+                text: 'Pods',
+                source: ['$n/a'],
+                format: 'string',
+           },
+           {
+                name: 'status',
+                text: 'Status',
+                source: ['status.phase'],
+                format: 'string',
+           }
+        ]
+    },
+    {
+        name: 'selector',
+        text: 'Selector',
+        items: [
+            {
+                name: 'matchLabels',
+                text: 'Labels',
+                source: ['$n/a'],
+                format: 'string'
+            },
+            {
+                name: 'matchExpressions',
+                text: 'Expressions',
+                source: ['$n/a'],
+                format: 'string'
+            },
+        ]
+    }
+])
+
+objectSections.set('PersistentVolume', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'labels',
+                text: 'Labels',
+                source: ['metadata.labels'],
+                format: 'objectprops',
+                style: ['column', 'ifpresent']
+            },
+            {
+                name: 'annotations',
+                text: 'Annotations',
+                source: ['metadata.annotations'],
+                format: 'objectprops',
+                style: ['column','char50','ifpresent']
+            },
+            {
+                name: 'finalizers',
+                text: 'Finalizers',
+                source: ['metadata.finalizers'],
+                format: 'stringlist',
+           },
+            {
+                name: 'capacity',
+                text: 'Capacity',
+                source: ['spec.capacity.storage'],
+                format: 'string',
+           },
+           {
+                name: 'accessModes',
+                text: 'Access Modes',
+                source: ['spec.accessModes'],
+                format: 'stringlist',
+           },
+           {
+                name: 'persistentVolumeReclaimPolicy',
+                text: 'Reclaim Policy',
+                source: ['spec.persistentVolumeReclaimPolicy'],
+                format: 'string',
+           },
+           {
+                name: 'storageClassName',
+                text: 'Storage Class',
+                source: ['spec.storageClassName'],
+                format: 'string',
+           },
+           {
+                name: 'status',
+                text: 'Status',
+                source: ['status.phase'],
+                format: 'string',
+           }
+        ]
+    },
+])
+
+objectSections.set('StorageClass', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'labels',
+                text: 'Labels',
+                source: ['metadata.labels'],
+                format: 'objectprops',
+                style: ['column', 'ifpresent']
+            },
+            {
+                name: 'annotations',
+                text: 'Annotations',
+                source: ['metadata.annotations'],
+                format: 'objectprops',
+                style: ['column','char50','ifpresent']
+            },
+            {
+                name: 'provisioner',
+                text: 'Provisioner',
+                source: ['provisioner'],
+                format: 'string',
+           },
+            {
+                name: 'volumeBindingMode',
+                text: 'Binding Mode',
+                source: ['volumeBindingMode'],
+                format: 'string',
+           },
+            {
+                name: 'reclaimPolicy',
+                text: 'Reclaim Policy',
+                source: ['reclaimPolicy'],
+                format: 'string',
+           }           
+        ]
+    },
+])
+
+objectSections.set('Endpoints', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: ['metadata.namespace'],
+                format: 'string'
+            },
+        ]
+    },
+    {
+        name: 'subsets',
+        text: 'Subsets',
+        items: [
+            {
+                name: 'subsetlist',
+                text: '',
+                source: ['subsets'],
+                format: 'objectlist',
+                content: [
+                    {
+                        name: 'address',
+                        text: 'Address',
+                        source: ['addresses'],
+                        format: 'objectlist',
+                        style:['table'],
+                        content: [
+                            {
+                                name: 'ip',
+                                text: 'IP',
+                                source: ['ip'],
+                                format: 'string'
+                            },
+                            {
+                                name: 'target',
+                                text: 'Target',
+                                source: ['targetRef'],
+                                format: 'objectprops',
+                                style:['column']
+                            }
+                        ]
+                    },                    
+                ]
+            },
+
+        ]
+    }
+])
+
 objectSections.set('Ingress', [
     {
         name: 'properties',
@@ -30,14 +314,14 @@ objectSections.set('Ingress', [
                 text: 'Labels',
                 source: ['metadata.labels'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column', 'ifpresent']
             },
             {
                 name: 'annotations',
                 text: 'Annotations',
                 source: ['metadata.annotations'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column','char50','ifpresent']
             },
             {
                 name: 'ingressClass',
@@ -99,6 +383,94 @@ objectSections.set('Ingress', [
     }
 ])
 
+objectSections.set('IngressClass', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: ['metadata.namespace'],
+                format: 'string'
+            },
+            {
+                name: 'labels',
+                text: 'Labels',
+                source: ['metadata.labels'],
+                format: 'objectprops',
+                style: ['column', 'ifpresent']
+            },
+            {
+                name: 'annotations',
+                text: 'Annotations',
+                source: ['metadata.annotations'],
+                format: 'objectprops',
+                style: ['column','char50','ifpresent']
+            },
+            {
+                name: 'controller',
+                text: 'Controller',
+                source: ['spec.controller'],
+                format: 'string'
+            },
+        ]
+    }
+])
+
+objectSections.set('NetworkPolicy', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'labels',
+                text: 'Labels',
+                source: ['metadata.labels'],
+                format: 'objectprops',
+                style: ['column', 'ifpresent']
+            },
+            {
+                name: 'annotations',
+                text: 'Annotations',
+                source: ['metadata.annotations'],
+                format: 'objectprops',
+                style: ['column','char50','ifpresent']
+            },
+            {
+                name: 'podSelector',
+                text: 'Pod Selector',
+                source: ['spec.podSelector.matchLabels'],
+                format: 'objectprops'
+            },
+        ]
+    }
+])
+
 objectSections.set('Service', [
     {
         name: 'properties',
@@ -127,14 +499,14 @@ objectSections.set('Service', [
                 text: 'Labels',
                 source: ['metadata.labels'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column', 'ifpresent']
             },
             {
                 name: 'annotations',
                 text: 'Annotations',
                 source: ['metadata.annotations'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column','char50','ifpresent']
             },
             {
                 name: 'selector',
@@ -213,14 +585,14 @@ objectSections.set('Namespace', [
                 text: 'Labels',
                 source: ['metadata.labels'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column', 'ifpresent']
             },
             {
                 name: 'annotations',
                 text: 'Annotations',
                 source: ['metadata.annotations'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column','char50','ifpresent']
             },
             {
                 name: 'status',
@@ -255,14 +627,14 @@ objectSections.set('Node', [
                 text: 'Labels',
                 source: ['metadata.labels'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column', 'ifpresent']
             },
             {
                 name: 'annotations',
                 text: 'Annotations',
                 source: ['metadata.annotations'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column','char50','ifpresent']
             },
             {
                 name: 'finallizers',
@@ -377,14 +749,14 @@ objectSections.set('ConfigMap', [
                 text: 'Labels',
                 source: ['metadata.labels'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column', 'ifpresent']
             },
             {
                 name: 'annotations',
                 text: 'Annotations',
                 source: ['metadata.annotations'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column','char50','ifpresent']
             },
         ]
     },
@@ -425,14 +797,14 @@ objectSections.set('Pod', [
                 text: 'Labels',
                 source: ['metadata.labels'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column', 'ifpresent']
             },
             {
                 name: 'annotations',
                 text: 'Annotations',
                 source: ['metadata.annotations'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column','char50','ifpresent']
             },
             {
                 name: 'controlledby',
@@ -600,7 +972,7 @@ objectSections.set('Pod', [
                         text: 'Image',
                         source: ['image'],
                         format: 'string',
-                        style: ['edit', 'editline']
+                        style: ['edit']
                     },
                     {
                         name: 'ports',
@@ -658,7 +1030,8 @@ objectSections.set('Pod', [
                         name: 'requests',
                         text: 'Requests',
                         source: ['resources.requests'],
-                        format: 'objectprops'
+                        format: 'objectprops',
+                        style: ['table']    
                     },
                     {
                         name: 'limits',
@@ -701,14 +1074,14 @@ objectSections.set('ServiceAccount', [
                 text: 'Labels',
                 source: ['metadata.labels'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column', 'ifpresent']
             },
             {
                 name: 'annotations',
                 text: 'Annotations',
                 source: ['metadata.annotations'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column','char50','ifpresent']
             },
         ]
     }
@@ -736,14 +1109,14 @@ objectSections.set('ClusterRole', [
                 text: 'Labels',
                 source: ['metadata.labels'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column', 'ifpresent']
             },
             {
                 name: 'annotations',
                 text: 'Annotations',
                 source: ['metadata.annotations'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column','char50','ifpresent']
             },
         ]
     },
@@ -792,6 +1165,172 @@ objectSections.set('ClusterRole', [
     }
 ])
 
+objectSections.set('Role', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: ['metadata.namespace'],
+                format: 'string'
+            },
+            {
+                name: 'labels',
+                text: 'Labels',
+                source: ['metadata.labels'],
+                format: 'objectprops',
+                style: ['column', 'ifpresent']
+            },
+            {
+                name: 'annotations',
+                text: 'Annotations',
+                source: ['metadata.annotations'],
+                format: 'objectprops',
+                style: ['column','char50','ifpresent']
+            },
+        ]
+    },
+    {
+        name: 'rules',
+        text: 'Rules',
+        items: [
+            {
+                name: 'rules',
+                text: 'Rules',
+                source: ['rules'],
+                format: 'objectlist',
+                content: [
+                    {
+                        name: 'verbs',
+                        text: 'Verbs',  
+                        source: ['verbs'],
+                        format: 'stringlist'
+                    },
+                    {
+                        name: 'apiGroups',
+                        text: 'API Groups',  
+                        source: ['apiGroups'],
+                        format: 'stringlist'
+                    },
+                    {
+                        name: 'resources',
+                        text: 'Resources',
+                        source: ['resources'],
+                        format: 'stringlist'
+                    },
+                ],
+                style: ['table']
+            },
+        ]
+    }
+])
+
+objectSections.set('ClusterRoleBinding', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            {
+                name: 'created',
+                text: 'Created',
+                source: ['metadata.creationTimestamp'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['metadata.name'],
+                format: 'string'
+            },
+            {
+                name: 'labels',
+                text: 'Labels',
+                source: ['metadata.labels'],
+                format: 'objectprops',
+                style: ['column', 'ifpresent']
+            },
+            {
+                name: 'annotations',
+                text: 'Annotations',
+                source: ['metadata.annotations'],
+                format: 'objectprops',
+                style: ['column','char50','ifpresent']
+            },
+        ]
+    },
+    {
+        name: 'reference',
+        text: 'Reference',
+        items: [
+            {
+                name: 'kind',
+                text: 'Kind',
+                source: ['roleRef.kind'],
+                format: 'string'
+            },
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['roleRef.name'],
+                format: 'string'
+            },
+            {
+                name: 'apiGroup',
+                text: 'API Group',
+                source: ['roleRef.apiGroup'],
+                format: 'string'
+            },
+        ]
+    },
+    {
+        name: 'subjects',
+        text: 'Subjects',
+        items: [
+            {
+                name: 'bindings',
+                text: 'Bindings',
+                source: ['subjects'],
+                format: 'objectlist',
+                content: [
+                    {
+                        name: 'kind',
+                        text: 'Kind',
+                        source: ['kind'],
+                        format: 'string'
+                    },                    
+                    {
+                        name: 'name',
+                        text: 'Name',
+                        source: ['name'],
+                        format: 'string'
+                    },                    
+                    {
+                        name: 'namespace',
+                        text: 'Namespace',
+                        source: ['namespace'],
+                        format: 'string'
+                    },                    
+                ],
+                style: ['table']
+            },
+        ]
+    }
+])
+
 objectSections.set('ResourceQuota', [
     {
         name: 'properties',
@@ -820,14 +1359,14 @@ objectSections.set('ResourceQuota', [
                 text: 'Labels',
                 source: ['metadata.labels'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column', 'ifpresent']
             },
             {
                 name: 'annotations',
                 text: 'Annotations',
                 source: ['metadata.annotations'],
                 format: 'objectprops',
-                style: ['column']
+                style: ['column','char50','ifpresent']
             },
         ]
     },

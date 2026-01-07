@@ -16,13 +16,26 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const adornmentSelected= { margin: 0, borderWidth:1, borderStyle:'solid', borderColor:'gray', paddingLeft:3, paddingRight:3, backgroundColor:'gray', cursor: 'pointer', color:'white'}
     const adornmentNotSelected = { margin: 0, borderWidth:1, borderStyle: 'solid', borderColor:'#f0f0f0', backgroundColor:'#f0f0f0', paddingLeft:3, paddingRight:3, cursor:'pointer'}
 
+    // useLayoutEffect(() => {
+    //     const observer = new ResizeObserver(() => {
+    //         console.log('yyyy')
+    //         if (!logBoxRef.current) return
+    //         const { top } = logBoxRef.current.getBoundingClientRect()
+    //         let a = window.innerHeight - top - 24
+    //         if (props.maxHeight>=0 && a > props.maxHeight) a = props.maxHeight
+    //         setLogBoxHeight(a)
+    //     })
+    //     observer.observe(document.body)
+
+    //     return () => observer.disconnect()
+    // }, [logBoxRef.current])
 
     useLayoutEffect(() => {
         const observer = new ResizeObserver(() => {
             if (!logBoxRef.current) return
             const { top } = logBoxRef.current.getBoundingClientRect()
-            let a = window.innerHeight - top - 45
-            if (props.maxHeight>=0 && a > props.maxHeight) a = props.maxHeight
+            let a = window.innerHeight - top
+            //if (props.maxHeight>=0 && a > props.maxHeight) a = props.maxHeight
             setLogBoxHeight(a)
         })
         observer.observe(document.body)
@@ -83,8 +96,18 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     if (lastLineRef.current) (lastLineRef.current as any).scrollIntoView({ behavior: 'instant', block: 'start' })
 
     return (<>
+        <Box sx={{ display:'flex', flexDirection:'column', flexGrow:1, height: `${logBoxHeight}px`, ml:1, mr:1}}>
         { //logData.started && 
-        <Card sx={{flex:1, width:'98%', alignSelf:'center', marginTop:'8px'}} data-refresh={logData.messages.length}>
+        // <Card sx={{flex:1, width:'98%', alignSelf:'center', marginTop:'8px'}} data-refresh={logData.messages.length}>
+        <Card sx={{
+    display: 'flex',          // <--- Fundamental
+    flexDirection: 'column', // <--- Header arriba, Content abajo
+    flex: 1, 
+    width: '98%', 
+    alignSelf: 'center', 
+    marginTop: '8px',
+    minHeight: 0             // <--- Permite que el Card se encoja
+}}>
             <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0'}} title={
                 <Stack direction={'row'} alignItems={'center'}>
                     <Typography marginRight={'32px'}><b>Lines:</b> {logData.messages.length}</Typography>
@@ -105,9 +128,19 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     />
                 </Stack>}>
             </CardHeader>
-            <CardContent sx={{backgroundColor:'#f0f0f0'}}>
+            {/* <CardContent sx={{backgroundColor:'#f0f0f0'}}> */}
+            <CardContent sx={{
+        backgroundColor: '#f0f0f0',
+        flex: 1,              // <--- Toma todo el espacio restante
+        display: 'flex',      // <--- Hace que el Box interno sea flexible
+        flexDirection: 'column',
+        minHeight: 0,         // <--- Importante
+        p: 0,                 // Opcional: quita padding para más espacio de log
+        "&:last-child": { pb: 0 } // Fix de MUI para padding inferior
+    }}>
                 {/* <Box ref={logBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 45px)`}}> */}
-                <Box ref={logBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `${logBoxHeight}px`}}>
+                {/* <Box ref={logBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `${logBoxHeight}px`}}> */}
+                <Box ref={logBoxRef} sx={{ display:'flex', flexDirection:'column', width:'100%', overflowY:'auto', flexGrow:1, height: `100%`}}>
                     <pre>
                         {logData.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })}
                     </pre>
@@ -116,6 +149,7 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 </Box>
             </CardContent>
         </Card>}
+        </Box>
     </>)
 }
 

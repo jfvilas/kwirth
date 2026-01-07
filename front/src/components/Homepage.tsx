@@ -33,13 +33,10 @@ enum ListTypeEnum {
 }
 
 const Homepage: React.FC<IProps> = (props:IProps) => {
-    //const [refresh, setRefresh] = useState(0)
     const [cpu, setCpu] = useState(0)
     const [memory, setMemory] = useState(0)
     const [txmbps, setTxmbps] = useState(0)
     const [rxmbps, setRxmbps] = useState(0)
-    //const homepageBoxRef = useRef<HTMLDivElement | null>(null)
-    //const [homepageBoxTop, setHomepageBoxTop] = useState(0)
     const [cardExpanded, setCardExpanded] = useState(false)
     const [dataCpu, setDataCpu]  = useState<any[]>([])
     const [dataMemory, setDataMemory]  = useState<any[]>([])
@@ -134,7 +131,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
 
     const drawTabCard = (tabList:ITabSummary[], listType:ListTypeEnum) => {
         return <>
-            <Card sx={{flex:1}}>
+            <Card>
                 <CardHeader title={`${listType=== ListTypeEnum.LAST? 'Last':'Fav'} tabs`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
                 <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>                                    
                     {
@@ -198,7 +195,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
 
     const drawWorkspaceCard = (workspaceList:IWorkspaceSummary[], listType:ListTypeEnum) => {
         return <>
-            <Card sx={{flex:1}}>
+            <Card>
                 <CardHeader title={`${listType === ListTypeEnum.LAST? 'Last':'Fav'} workspaces`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
                 <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>
                     { workspaceList.map (workspace => {
@@ -310,137 +307,139 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         return <Stack flexDirection={'row'} fontSize={12} alignItems={'center'}>{content}</Stack>
     }
     
-    return (<>
-    
-        <Card sx={{flex:1, width:'95%', alignSelf:'center', marginTop:'8px', transition: 'all 0.3s ease'}}>
-            <CardHeader sx={{borderBottom:(cardExpanded?1:0), borderColor:'divider', backgroundColor:'#e0e0e0'}}
-                title={<>
-                    {cardExpanded && <Typography variant="h6">Cluster details</Typography>}
-                    {!cardExpanded && <Stack direction={'row'}>
-                        <Typography><b>Cluster: </b>{props.cluster?.clusterInfo?.name}</Typography>
-                        <Typography sx={{ml:'32px'}}><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes.length}</Typography>
-                        <Typography sx={{ml:'32px'}}><b>Resources: </b>{props.cluster?.clusterInfo?.vcpu} vCPU / {((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)} GB</Typography>
+    return (
+        <Box sx={{ display:'flex', flexDirection:'column', ml:1, mr:1}}>
+            <Card sx={{width:'95%', alignSelf:'center', marginTop:'8px', transition: 'all 0.3s ease'}}>
+                <CardHeader sx={{borderBottom:(cardExpanded?1:0), borderColor:'divider', backgroundColor:'#e0e0e0'}}
+                    title={<>
+                        {cardExpanded && <Typography variant="h6">Cluster details</Typography>}
+                        {!cardExpanded && <Stack direction={'row'}>
+                            <Typography><b>Cluster: </b>{props.cluster?.clusterInfo?.name}</Typography>
+                            <Typography sx={{ml:'32px'}}><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes.length}</Typography>
+                            <Typography sx={{ml:'32px'}}><b>Resources: </b>{props.cluster?.clusterInfo?.vcpu} vCPU / {((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)} GB</Typography>
 
-                        <Typography flexGrow={1}></Typography>
+                            <Typography flexGrow={1}></Typography>
 
-                        <Stack sx={{ml:'32px'}} direction={'row'} alignItems={'center'}>
-                            {
-                                props.clusters && props.cluster && frontChannels.split(',').map ((c,ci) => {
-                                    const channelClass = props.frontChannels.get(c.trim())
-                                    if (channelClass) {
-                                        let icon = new channelClass()!.getChannelIcon()
-                                        let color = '#333333'
-                                        if ( ! props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData!.channels.some(ch => ch.id === c.trim())) color = '#b4b4b4'
-                                        let newElement = React.cloneElement(icon, { fontSize: 'small', sx:{ color } })
-                                        return <Tooltip key={ci} title={c.trim()}>{newElement}</Tooltip>
-                                    }
-                                    return <></>
-                                })
-                            }
-                        </Stack>
+                            <Stack sx={{ml:'32px'}} direction={'row'} alignItems={'center'}>
+                                {
+                                    props.clusters && props.cluster && frontChannels.split(',').map ((c,ci) => {
+                                        const channelClass = props.frontChannels.get(c.trim())
+                                        if (channelClass) {
+                                            let icon = new channelClass()!.getChannelIcon()
+                                            let color = '#333333'
+                                            if ( ! props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData!.channels.some(ch => ch.id === c.trim())) color = '#b4b4b4'
+                                            let newElement = React.cloneElement(icon, { fontSize: 'small', sx:{ color } })
+                                            return <Tooltip key={ci} title={c.trim()}>{newElement}</Tooltip>
+                                        }
+                                        return <></>
+                                    })
+                                }
+                            </Stack>
 
-                        <Typography flexGrow={1}></Typography>
+                            <Typography flexGrow={1}></Typography>
 
-                        <Tooltip title={`${(cpu||0).toFixed(2)}%`}>
-                            <Stack direction={'column'} alignItems={'center'}>
-                                <Typography fontSize={8} mb={-1}>CPU</Typography>
-                                <AreaChart width={120} height={20} data={dataCpu} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                                    <Area type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill={'#bbbbdd'}/>
-                                </AreaChart>
+                            <Tooltip title={`${(cpu||0).toFixed(2)}%`}>
+                                <Stack direction={'column'} alignItems={'center'}>
+                                    <Typography fontSize={8} mb={-1}>CPU</Typography>
+                                    <AreaChart width={120} height={20} data={dataCpu} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                                        <Area type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} fill={'#bbbbdd'}/>
+                                    </AreaChart>
+                                </Stack>
+                            </Tooltip>
+                            <Tooltip title={`${(memory||0).toFixed()}GB / ${((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed()}GB`}>
+                                <Stack direction={'column'} alignItems={'center'}>
+                                    <Typography fontSize={8} mb={-1}>Mem</Typography>
+                                    <AreaChart width={120} height={20} data={dataMemory} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                                        <Area type="monotone" dataKey="value" stroke="#d88488" strokeWidth={2} dot={false} fill={'#ddbbbb'}/>
+                                    </AreaChart>
+                                </Stack>
+                            </Tooltip>
+                            <Tooltip title={`${(txmbps||0).toFixed(2)}Mbps / ${(rxmbps||0).toFixed(2)}Mbps`}>
+                                <Stack direction={'column'} alignItems={'center'}>                            
+                                    <Typography fontSize={8} mb={-1}>Net</Typography>
+                                    <AreaChart width={120} height={20} data={dataNetwork} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                                        <Area type="monotone" dataKey="value" stroke="#88d884" strokeWidth={2} dot={false} fill={'#bbddbb'}/>
+                                    </AreaChart>
+                                </Stack>
+                            </Tooltip>
+                        </Stack>}
+                    </>}
+                    action={
+                        <IconButton onClick={handleCardToggle} aria-label="expandir/colapsar">
+                            {cardExpanded ? <ExpandLess /> : <ExpandMore />}
+                        </IconButton>
+                    }
+                />
+                <Collapse in={cardExpanded} timeout="auto" unmountOnExit>
+                    <CardContent sx={{backgroundColor:'#f0f0f0'}}>
+                        <Stack direction={'row'} spacing={2} sx={{mt:'4px'}}>
+                            <Stack width={'30%'}> 
+                                <Typography fontSize={20}><b>Context</b></Typography>
+                                <Typography><b>Home cluster: </b>{homeCluster} [{clusterUrl}]</Typography>
+                                <Typography><b>Selected cluster: </b>{props.cluster?.clusterInfo?.name}</Typography>
+                                <Typography><b>Cluster channels: </b>{homeChannels}</Typography>
+                                <Typography><b>Front channels: </b>{frontChannels}</Typography>
                             </Stack>
-                        </Tooltip>
-                        <Tooltip title={`${(memory||0).toFixed()}GB / ${((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed()}GB`}>
-                            <Stack direction={'column'} alignItems={'center'}>
-                                <Typography fontSize={8} mb={-1}>Mem</Typography>
-                                <AreaChart width={120} height={20} data={dataMemory} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                                    <Area type="monotone" dataKey="value" stroke="#d88488" strokeWidth={2} dot={false} fill={'#ddbbbb'}/>
-                                </AreaChart>
+                            <Divider orientation='vertical' flexItem/>
+                            <Stack width={'20%'}>
+                                <Typography fontSize={20}><b>Kwirth Info</b></Typography>
+                                <Typography><b>Kwirth version: </b>{kwirthVersion}</Typography>
+                                <Typography><b>Namespace: </b>{kwrithNamespace}</Typography>
+                                <Typography><b>Deployment: </b>{kwrithDeployment}</Typography>
+                                <Typography><b>Clusters: </b>{props.clusters.map (c => c.name).join(', ')}</Typography>
+                                <Typography><b>Type: </b>{props.cluster?.clusterInfo?.type}</Typography>
                             </Stack>
-                        </Tooltip>
-                        <Tooltip title={`${(txmbps||0).toFixed(2)}Mbps / ${(rxmbps||0).toFixed(2)}Mbps`}>
-                            <Stack direction={'column'} alignItems={'center'}>                            
-                                <Typography fontSize={8} mb={-1}>Net</Typography>
-                                <AreaChart width={120} height={20} data={dataNetwork} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                                    <Area type="monotone" dataKey="value" stroke="#88d884" strokeWidth={2} dot={false} fill={'#bbddbb'}/>
-                                </AreaChart>
+                            <Divider orientation='vertical' flexItem/>
+                            <Stack width={'20%'}>
+                                <Typography fontSize={20}><b>Cluster Info</b></Typography>
+                                <Typography><b>Name: </b>{props.cluster?.clusterInfo?.name}</Typography>
+                                <Stack direction={'row'} alignItems={'center'}>
+                                    <Typography><b>Flavour: &nbsp;</b></Typography>
+                                    {distributionIcon(props.cluster?.clusterInfo?.flavour)}
+                                </Stack>
+                                <Typography><b>Version: </b>{props.cluster?.clusterInfo?.version}</Typography>
+                                <Typography><b>Platform: </b>{props.cluster?.clusterInfo?.platform}</Typography>
+                                <Typography><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes.length}</Typography>
+                                <Typography><b>Total vCPU: </b>{props.cluster?.clusterInfo?.vcpu}</Typography>
+                                <Typography><b>Total Memory: </b>{((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)}GB</Typography>
                             </Stack>
-                        </Tooltip>
-                    </Stack>}
-                </>}
-                action={
-                    <IconButton onClick={handleCardToggle} aria-label="expandir/colapsar">
-                        {cardExpanded ? <ExpandLess /> : <ExpandMore />}
-                    </IconButton>
-                }
-            />
-            <Collapse in={cardExpanded} timeout="auto" unmountOnExit>
-                <CardContent sx={{backgroundColor:'#f0f0f0'}}>
-                    <Stack direction={'row'} spacing={2} sx={{mt:'4px'}}>
-                        <Stack width={'30%'}> 
-                            <Typography fontSize={20}><b>Context</b></Typography>
-                            <Typography><b>Home cluster: </b>{homeCluster} [{clusterUrl}]</Typography>
-                            <Typography><b>Selected cluster: </b>{props.cluster?.clusterInfo?.name}</Typography>
-                            <Typography><b>Cluster channels: </b>{homeChannels}</Typography>
-                            <Typography><b>Front channels: </b>{frontChannels}</Typography>
-                        </Stack>
-                        <Divider orientation='vertical' flexItem/>
-                        <Stack width={'20%'}>
-                            <Typography fontSize={20}><b>Kwirth Info</b></Typography>
-                            <Typography><b>Kwirth version: </b>{kwirthVersion}</Typography>
-                            <Typography><b>Namespace: </b>{kwrithNamespace}</Typography>
-                            <Typography><b>Deployment: </b>{kwrithDeployment}</Typography>
-                            <Typography><b>Clusters: </b>{props.clusters.map (c => c.name).join(', ')}</Typography>
-                            <Typography><b>Type: </b>{props.cluster?.clusterInfo?.type}</Typography>
-                        </Stack>
-                        <Divider orientation='vertical' flexItem/>
-                        <Stack width={'20%'}>
-                            <Typography fontSize={20}><b>Cluster Info</b></Typography>
-                            <Typography><b>Name: </b>{props.cluster?.clusterInfo?.name}</Typography>
-                            <Stack direction={'row'} alignItems={'center'}>
-                                <Typography><b>Flavour: &nbsp;</b></Typography>
-                                {distributionIcon(props.cluster?.clusterInfo?.flavour)}
+                            <Divider orientation='vertical' flexItem/>
+                            <Stack width={'10%'} direction={'column'} alignItems={'center'}>
+                                {drawRadial(cpu,'CPU')}
                             </Stack>
-                            <Typography><b>Version: </b>{props.cluster?.clusterInfo?.version}</Typography>
-                            <Typography><b>Platform: </b>{props.cluster?.clusterInfo?.platform}</Typography>
-                            <Typography><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes.length}</Typography>
-                            <Typography><b>Total vCPU: </b>{props.cluster?.clusterInfo?.vcpu}</Typography>
-                            <Typography><b>Total Memory: </b>{((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)}GB</Typography>
+                            <Stack width={'10%'} direction={'column'} alignItems={'center'}>
+                                {drawRadial(memory,'Memory')}
+                            </Stack>
+                            <Stack width={'10%'} direction={'column'} alignItems={'center'}>
+                                {drawSemicircle(txmbps,'Tx', 0, 10)}
+                                {drawSemicircle(rxmbps,'Rx', 0, 10)}
+                            </Stack>
                         </Stack>
-                        <Divider orientation='vertical' flexItem/>
-                        <Stack width={'10%'} direction={'column'} alignItems={'center'}>
-                            {drawRadial(cpu,'CPU')}
+                    </CardContent>
+
+                </Collapse>
+                
+            </Card>
+
+            <Box sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', marginTop:'16px', alignItems: 'center', justifyContent: 'center'}}>
+            {/* <Box sx={{ width:'100%', marginTop:'16px', alignItems: 'center', justifyContent: 'center'}}> */}
+                <Stack direction={'column'} spacing={2} width={'95%'} mb={'4px'}>
+
+                    <Stack direction={'row'} spacing={2} sx={{width:'100%'}}>
+                        <Stack direction={'column'} width='100%' spacing={2} height='100%'>
+                            {drawTabCard(props.lastTabs, ListTypeEnum.LAST)}
+                            {drawTabCard(props.favTabs, ListTypeEnum.FAV)}
                         </Stack>
-                        <Stack width={'10%'} direction={'column'} alignItems={'center'}>
-                            {drawRadial(memory,'Memory')}
-                        </Stack>
-                        <Stack width={'10%'} direction={'column'} alignItems={'center'}>
-                            {drawSemicircle(txmbps,'Tx', 0, 10)}
-                            {drawSemicircle(rxmbps,'Rx', 0, 10)}
+                        <Stack direction={'column'} width='100%' spacing={2} height='100%'>
+                            {drawWorkspaceCard(props.lastWorkspaces, ListTypeEnum.LAST)}
+                            {drawWorkspaceCard(props.favWorkspaces, ListTypeEnum.FAV)}
                         </Stack>
                     </Stack>
-                </CardContent>
 
-            </Collapse>
-            
-        </Card>
-
-        <Box sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, marginTop:'16px', alignItems: 'center', justifyContent: 'center'}}>
-            <Stack direction={'column'} spacing={2} width={'95%'} mb={'4px'}>
-
-                <Stack direction={'row'} spacing={2} sx={{width:'100%'}}>
-                    <Stack direction={'column'} width='100%' spacing={2} height='100%'>
-                        {drawTabCard(props.lastTabs, ListTypeEnum.LAST)}
-                        {drawTabCard(props.favTabs, ListTypeEnum.FAV)}
-                    </Stack>
-                    <Stack direction={'column'} width='100%' spacing={2} height='100%'>
-                        {drawWorkspaceCard(props.lastWorkspaces, ListTypeEnum.LAST)}
-                        {drawWorkspaceCard(props.favWorkspaces, ListTypeEnum.FAV)}
-                    </Stack>
                 </Stack>
-
-            </Stack>
+            </Box>
         </Box>
-    </>)
+    )
 }
 
 export { Homepage }

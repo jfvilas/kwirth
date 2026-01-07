@@ -2,7 +2,7 @@ import React from 'react'
 import { Divider, Menu, MenuItem, MenuList } from '@mui/material'
 import { Analytics, AreaChart, BarChart, Delete, DoneAll, ImportExport, Info, LocalOffer, PieChart, ShowChart, StackedLineChart, ThirtyFps } from '@mui/icons-material'
 
-enum ChartType {
+enum EChartType {
     LineChart='line',
     BarChart='bar',
     AreaChart='area',
@@ -25,7 +25,7 @@ interface IProps {
     onClose:() => void
     onOptionSelected: (opt:MenuChartOption, data?:string) => void
     anchorMenu: Element
-    selected: ChartType
+    selected: EChartType
     stacked: boolean
     tooltip: boolean
     labels: boolean
@@ -37,14 +37,14 @@ const MenuChart: React.FC<IProps> = (props:IProps) => {
 
     return <Menu id='menu-logs' anchorEl={props.anchorMenu} open={Boolean(props.anchorMenu)} onClose={props.onClose}>
         <MenuList dense sx={{width:'180px'}}>
-            <MenuItem key='chartline' onClick={() => props.onOptionSelected(MenuChartOption.Chart, ChartType.LineChart)} selected={props.selected===ChartType.LineChart}><ShowChart/>&nbsp;Line chart</MenuItem>
-            <MenuItem key='chartarea' onClick={() => props.onOptionSelected(MenuChartOption.Chart, ChartType.AreaChart)} selected={props.selected===ChartType.AreaChart}><AreaChart/>&nbsp;Area chart</MenuItem>
-            <MenuItem key='chartbar' onClick={() => props.onOptionSelected(MenuChartOption.Chart, ChartType.BarChart)} selected={props.selected===ChartType.BarChart}><BarChart/>&nbsp;Bar chart</MenuItem>
-            <MenuItem key='chartpie' onClick={() => props.onOptionSelected(MenuChartOption.Chart, ChartType.PieChart)} selected={props.selected===ChartType.PieChart} disabled={props.numSeries<2}><PieChart/>&nbsp;Pie chart</MenuItem>
-            <MenuItem key='chartvalue' onClick={() => props.onOptionSelected(MenuChartOption.Chart, ChartType.ValueChart)} selected={props.selected===ChartType.ValueChart}><ThirtyFps/>&nbsp;Show value</MenuItem>
-            <MenuItem key='charttreemap' onClick={() => props.onOptionSelected(MenuChartOption.Chart, ChartType.TreemapChart)} selected={props.selected===ChartType.TreemapChart}><Analytics/>&nbsp;Tree map</MenuItem>
+            <MenuItem key='chartline' onClick={() => props.onOptionSelected(MenuChartOption.Chart, EChartType.LineChart)} selected={props.selected===EChartType.LineChart}><ShowChart/>&nbsp;Line chart</MenuItem>
+            <MenuItem key='chartarea' onClick={() => props.onOptionSelected(MenuChartOption.Chart, EChartType.AreaChart)} selected={props.selected===EChartType.AreaChart}><AreaChart/>&nbsp;Area chart</MenuItem>
+            <MenuItem key='chartbar' onClick={() => props.onOptionSelected(MenuChartOption.Chart, EChartType.BarChart)} selected={props.selected===EChartType.BarChart}><BarChart/>&nbsp;Bar chart</MenuItem>
+            <MenuItem key='chartpie' onClick={() => props.onOptionSelected(MenuChartOption.Chart, EChartType.PieChart)} selected={props.selected===EChartType.PieChart} disabled={props.numSeries<2}><PieChart/>&nbsp;Pie chart</MenuItem>
+            <MenuItem key='chartvalue' onClick={() => props.onOptionSelected(MenuChartOption.Chart, EChartType.ValueChart)} selected={props.selected===EChartType.ValueChart}><ThirtyFps/>&nbsp;Show value</MenuItem>
+            <MenuItem key='charttreemap' onClick={() => props.onOptionSelected(MenuChartOption.Chart, EChartType.TreemapChart)} selected={props.selected===EChartType.TreemapChart}><Analytics/>&nbsp;Tree map</MenuItem>
             <Divider/>
-            <MenuItem key='chartstack' onClick={() => props.onOptionSelected(MenuChartOption.Stack)} selected={props.stacked} disabled={props.selected!==ChartType.AreaChart && props.selected!==ChartType.BarChart}><StackedLineChart/>&nbsp;Stack values</MenuItem>
+            <MenuItem key='chartstack' onClick={() => props.onOptionSelected(MenuChartOption.Stack)} selected={props.stacked} disabled={props.selected!==EChartType.AreaChart && props.selected!==EChartType.BarChart}><StackedLineChart/>&nbsp;Stack values</MenuItem>
             <MenuItem key='charttooltip' onClick={() => props.onOptionSelected(MenuChartOption.Tooltip)} selected={props.tooltip}><Info/>&nbsp;Show tooltip</MenuItem>
             <MenuItem key='chartlabel' onClick={() => props.onOptionSelected(MenuChartOption.Labels)} selected={props.labels}><LocalOffer/>&nbsp;Show labels</MenuItem>
             { props.setDefault && <MenuItem key='chartdefault' onClick={() => props.onOptionSelected(MenuChartOption.Default)}><DoneAll/>&nbsp;Set default</MenuItem>}
@@ -56,4 +56,4 @@ const MenuChart: React.FC<IProps> = (props:IProps) => {
     </Menu>
 }
 
-export { MenuChart, MenuChartOption, ChartType }
+export { MenuChart, MenuChartOption, EChartType }

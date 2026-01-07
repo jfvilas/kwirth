@@ -52,7 +52,7 @@ declare module '@jfvilas/react-file-manager' {
         text: string,
         permission: boolean,
         multi?: boolean,
-        onClick?: (files:IFileObject[]) => void
+        onClick?: (files:IFileObject[], currentTraget:Element) => void
     }
 
     export interface ISpaceProperty {

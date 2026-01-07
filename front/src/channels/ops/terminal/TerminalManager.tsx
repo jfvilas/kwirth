@@ -29,10 +29,8 @@ export class TerminalManager {
         if (existing) return existing
 
         const term = new Terminal({
-            //convertEol: true,
-            //fontFamily: "monospace",
             fontSize: 14,
-            scrollback: 10000
+            scrollback: 10000            
         })
 
         const fitAddon = new FitAddon()
@@ -53,9 +51,9 @@ export class TerminalManager {
             if (socket) socket.send(data)
         })
 
-        const managed: ManagedTerminal = { term, fitAddon, started:false, index:0 }
-        this.terminals.set(id, managed)
-        return managed
+        const managedTerminal: ManagedTerminal = { term, fitAddon, started:false, index:0 }
+        this.terminals.set(id, managedTerminal)
+        return managedTerminal
     }
 
     getTerminal(id: string): ManagedTerminal | undefined {

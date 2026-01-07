@@ -1,9 +1,9 @@
 import { MetricsConfigModeEnum } from "@jfvilas/kwirth-common"
-import { ChartType } from "./MenuChart"
+import { EChartType } from "./MenuChart"
 
 interface IMetricViewConfig {
     displayName: string
-    chartType: ChartType
+    chartType: EChartType
     tooltip: boolean
     labels: boolean
     stack: boolean
@@ -14,7 +14,7 @@ interface IMetricsConfig {
     width: number
     merge: boolean 
     stack: boolean
-    chart: ChartType
+    chart: EChartType
     // although we like Map's, we prefer using a JSON  beacuse of serialization to backend
     metricsDefault: { [key:string]: IMetricViewConfig }
 }
@@ -24,7 +24,7 @@ class MetricsConfig implements IMetricsConfig{
     width = 3
     merge = false
     stack = false
-    chart = ChartType.LineChart
+    chart = EChartType.LineChart
     metricsDefault = {}
 }
 

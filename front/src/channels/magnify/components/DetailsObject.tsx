@@ -1,4 +1,4 @@
-import { LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
+import { Box, LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
 const _ = require('lodash')
 
 interface IDetailsItem {
@@ -30,7 +30,7 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
         let obj = JSON.parse(JSON.stringify(srcobj))
         if (src.includes('|') && src.includes(':')) {  
             // xxx|yyyy:clave 
-            // merge los items de xxx y los de yyy que tengana e mismo cvalor de clave y deja el resultado en xxx
+            // merge los items de xxx y los de yyy que tengan el mismo valor de clave y deja el resultado en xxx
             let key = src.split(':')[1]
             let parts = src.split(':')[0].split('|')
             let keys = _.get(obj,parts[0]).map((o:any) => o[key])
@@ -52,18 +52,24 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
             case 'string':
                 let value = _.get(obj,src)
                 if (style.includes('edit')) {
-                    return <>{renderValue(srcobj, src, 'edit', style, [])}</>
+                    return renderValue(srcobj, src, 'edit', style, [])
                 }
                 else {
+                    let v = value
+                    let charLimit = style.find(s => s.startsWith('char'))
+                    if (charLimit) {
+                        let limit = +charLimit.substring(4)
+                        if (v.length>limit) v = v.substring(0,limit)+'...'
+                    }
                     let st = style.filter(s => s.startsWith(value+':'))
                     if (st.length>0)
-                        return <Typography color={st[0].split(':')[1]} fontWeight={style.includes('bold')?'700':''}>{ value }</Typography>
+                        return <Typography color={st[0].split(':')[1]} fontWeight={style.includes('bold')?'700':''}>{ v }</Typography>
                     else
-                        return <>{ value }</>
+                        return <>{ v }</>
                 }
 
             case 'edit':
-                return <TextField maxRows={5} name={src} defaultValue={_.get(obj,src)} fullWidth sx={{width:'100%'}} multiline onChange={(e) => props.onChangeData(src,e.target.value)} size='small' variant={style.includes('editline')?'standard':'outlined'}/>
+                return <TextField maxRows={5} name={src} defaultValue={_.get(obj,src)} fullWidth sx={{width:'100%'}} multiline onChange={(e) => props.onChangeData(src,e.target.value)} size='small' variant={style.includes('edit')?'standard':'outlined'}/>
 
             case 'booleankey':
                 if (_.get(obj,src)===true) return <>{src}</>
@@ -92,14 +98,50 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
 
             case 'objectlist':
                 if (!_.get(obj,src)) return <></>
-                return  <>{_.get(obj,src).map((row:any) => {
-                    return <Stack direction={'row'}>{content.map((c:IDetailsItem) => <>{renderValues(row, c)}<>{style.includes('column')?'':',\u00a0'}</></>)}</Stack>
-                })}</>
+                let items = _.get(obj,src)
+                if (style.includes('table')) {
+                    return <TableContainer component={Paper} elevation={0} sx={{border: '1px solid #e0e0e0'}}>
+                        <Table size='small' sx={{width:'100%'}}>
+                            <TableHead>
+                                <TableRow>
+                                    {Object.keys(items[0]).map(k => <TableCell>{k}</TableCell>)}
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                { items.map((row:any) => {
+                                    return <TableRow>
+                                        {Object.keys(items[0]).map((key) => <TableCell>{
+                                            typeof _.get(row,key) === 'object'?
+                                                (Array.isArray(_.get(row,key))? 
+                                                    renderValue(row,key,'stringlist',[],[]) //+++ should detect array item type
+                                                    :
+                                                    renderValue(row,key,'object',[],[])  //+++ not tested
+                                                )
+                                                :
+                                                renderValue(row,key,'string',[],[])
+                                        }</TableCell>)}                                        
+                                    </TableRow>
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                }
+                else {
+                    return  <>{items.map((row:any, rowIndex:number) => {
+                        return (
+                            <Stack direction={'row'}>
+                                { style.includes('column')?
+                                    content.map((c:IDetailsItem) => <>{renderValues(row, c)}</>)
+                                    :
+                                    content.map((c:IDetailsItem) => <>{renderValues(row, c)} <>{rowIndex<items.length-1?',\u00a0':''}</> </>) 
+                                }
+                            </Stack>
+                        )
+                    })}</>
+                }
 
             case 'objectobject':
                 if (style.includes('table')) {
-                    console.log('src,obj')
-                    console.log(src,obj)
                     return <TableContainer component={Paper} elevation={0} sx={{border: '1px solid #e0e0e0'}}>
                         <Table size='small'>
                             <TableHead>
@@ -109,10 +151,6 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
                             </TableHead>
                             <TableBody>
                             { _.get(obj,src).map((row:any) => {
-                                console.log('***********************************************')
-                                console.log(row)
-                                console.log(src)
-                                console.log(content)
                                 return <TableRow>
                                     {Object.keys(_.get(obj,src)[0]).map(key => <TableCell>{renderValue(row,src,'string',[],[])}</TableCell>)}
                                 </TableRow>
@@ -147,7 +185,10 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
                 }
                 else {
                     return <>{Object.keys(_.get(obj,src)).map(key => {
-                        return <Stack direction={'row'}><Typography fontWeight={style.includes('keybold')?'700':''}>{key}:</Typography>{renderValue(obj,src+'.[\''+key+'\']',style.includes('edit')?'edit':'string',style,[])}</Stack>
+                        return <Stack direction={'row'}>
+                            <Typography fontWeight={style.includes('keybold')?'700':''}>{key}:&nbsp;</Typography>
+                            {renderValue(obj,src+'.[\''+key+'\']',style.includes('edit')?'edit':'string',style,[])}
+                        </Stack>
                     })}</>
                 }
 
@@ -190,7 +231,7 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
         }
         else {
             return (
-                <Stack direction={item.style?.includes('column')?'column':'row'}>
+                <Stack direction={item.style?.includes('column')?'column':'row'} width={'100%'}>
                     {item.source.map(source => renderValue(obj, source, item.format, item.style||[], item.content))}
                 </Stack>
             )
@@ -198,17 +239,19 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
     }
 
     const renderItem = (obj:any, item:IDetailsItem, width:number) => {
-        return <>
+        if (item.style?.includes('ifpresent') &&!_.get(obj,item.source)) return <></>
+
+        return (
             <Stack direction={'row'} alignItems={'baseline'}>
                 {item.text==='' && <>
-                    <Typography width={`${width}%`} sx={{fontWeight:item.style?.includes('bold')?'700':''}}>{renderValues(obj, item)}</Typography>
+                    <Typography width={`${100}%`} sx={{fontWeight:item.style?.includes('bold')?'700':''}}>{renderValues(obj, item)}</Typography>
                 </>}
                 {item.text!=='' && <>
                     <Typography width={`${width}%`}>{item.text}</Typography>
                     {renderValues(obj, item)}
                 </>}
             </Stack>
-        </>
+        )
     }
 
     const renderSection = (obj:any, section:IDetailsSection) => {
@@ -220,7 +263,7 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
 
 
     if (props.sections)
-        return <>{ props.sections.map((section:IDetailsSection, index) => renderSection(props.object.data.origin, section)) }</>
+        return <>{ props.sections.map((section:IDetailsSection) => renderSection(props.object.data.origin, section)) }</>
     else
         return <><pre>{JSON.stringify(props.object.data.origin,undefined, 2)}</pre></>
 }

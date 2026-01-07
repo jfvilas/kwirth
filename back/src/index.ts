@@ -537,6 +537,8 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
         case InstanceConfigViewEnum.CONTAINER:
             for (let container of instanceConfig.container.split(',')) {
                 let [podName, containerName] = container.split('+')
+                console.log('check', podName, containerName)
+                console.log('against', requestedValidatedPods)
                 let validPod = requestedValidatedPods.find(p => p.metadata?.name === podName)
                 if (validPod) {
                     let metadataLabels = validPod.metadata?.labels
@@ -557,7 +559,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
                     }
                 }
                 else {
-                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to pod '${podName}' (or pod does not exsist) for container access`, instanceConfig)
+                    sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Access denied: your accesskey has no access to container '${podName}' (or pod does not exsist) for container access`, instanceConfig)
                 }
             }
             break
@@ -651,11 +653,11 @@ const processChannelRoute = async (webSocket: WebSocket, instanceMessage: IInsta
                     processClientMessage (webSocket, JSON.stringify(routeMessage.data))
                 }
                 else {
-                    console.log(`Dest channel (${routeMessage.destChannel}) for 'route' command doesn't support routing`)
+                    console.log(`Destination channel (${routeMessage.destChannel}) for 'route' command doesn't support routing`)
                 }
             }
             else {
-                console.log(`Dest channel '${routeMessage.destChannel}' does not exist for instance '${instanceMessage.instance}'`)
+                console.log(`Destination channel '${routeMessage.destChannel}' does not exist for instance '${instanceMessage.instance}'`)
                 sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceMessage.channel, instanceMessage, `Dest channel ${routeMessage.destChannel} does not exist`)
             }
         }
@@ -694,7 +696,7 @@ const processChannelWebsocket = async (webSocket: WebSocket, instanceConfig: IIn
         }
         else {
             console.log(`Instance '${instanceConfig.instance}' not found on channel ${channel.getChannelData().id} for route`)
-            sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance has not been found for routing')
+            sendInstanceConfigSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance has not been found for WEBSOCKET request')
         }   
     }
     else {

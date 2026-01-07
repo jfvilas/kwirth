@@ -9,7 +9,8 @@ export interface IMagnifyData {
     files: IFileObject[]
     currentPath: string
 
-    externalContent : IExternalContentObject[]    
+    externalContent : IExternalContentObject[]
+    leftMenuAnchorParent: Element | undefined
 }
 
 export class MagnifyData implements IMagnifyData {
@@ -19,6 +20,7 @@ export class MagnifyData implements IMagnifyData {
     files = []
     currentPath = '/'
     externalContent = []
+    leftMenuAnchorParent: undefined
 }
 
 export enum MagnifyCommandEnum {

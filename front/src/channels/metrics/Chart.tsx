@@ -4,7 +4,7 @@ import { MetricDefinition } from './MetricDefinition'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, Treemap, XAxis, YAxis } from 'recharts'
 import { IMetricViewConfig, METRICSCOLOURS } from './MetricsConfig'
 import { Tooltip as MUITooltip, IconButton } from '@mui/material'
-import { MenuChart, MenuChartOption, ChartType } from './MenuChart'
+import { MenuChart, MenuChartOption, EChartType } from './MenuChart'
 import { MoreVert } from '@mui/icons-material'
 import { TreemapNode } from 'recharts/types/util/types'
 
@@ -18,7 +18,7 @@ export interface IChartProps {
     names: string[],
     series: ISample[][],
     colour: string,
-    chartType: ChartType,
+    chartType: EChartType,
     stack: boolean
     tooltip: boolean
     labels: boolean
@@ -30,7 +30,7 @@ export interface IChartProps {
 
 export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     const [anchorMenuChart, setAnchorMenuChart] = useState<null | HTMLElement>(null)
-    const [chartType, setChartType] = useState<ChartType>(props.viewConfig?.chartType? props.viewConfig.chartType : props.chartType)
+    const [chartType, setChartType] = useState<EChartType>(props.viewConfig?.chartType? props.viewConfig.chartType : props.chartType)
     const [stack, setStack] = useState<boolean>(props.viewConfig?.stack? props.viewConfig.stack : props.stack)
     const [tooltip, setTooltip] = useState<boolean>(props.viewConfig?.tooltip? props.viewConfig.tooltip : props.tooltip)
     const [labels, setLabels] = useState<boolean>(props.viewConfig?.labels? props.viewConfig.labels : props.labels)
@@ -135,7 +135,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 }
                 break
             default:
-                setChartType(data as ChartType)
+                setChartType(data as EChartType)
                 break
         } 
     }
@@ -147,7 +147,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     }
 
     switch (chartType) {
-        case ChartType.ValueChart:
+        case EChartType.ValueChart:
             result = (
                 <div style={{height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex', width:'100%'}}>
                     <Stack direction={'row'} alignItems={'center'} justifyContent={'center'} spacing={2} sx={{ flexWrap: 'wrap', width:'100%'}}>
@@ -176,7 +176,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </div>
             )
             break
-        case ChartType.LineChart:
+        case EChartType.LineChart:
             result = (
                 <LineChart data={mergeSeries(props.names, props.series)}>
                     <CartesianGrid strokeDasharray='3 3'/>
@@ -188,7 +188,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </LineChart>
             )
             break
-        case ChartType.AreaChart:
+        case EChartType.AreaChart:
             result = (
                 <AreaChart data={mergeSeries(props.names, props.series)}>
                     <defs>
@@ -214,7 +214,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </AreaChart>
             )
             break
-        case ChartType.BarChart:
+        case EChartType.BarChart:
             result = (
                 <BarChart data={mergeSeries(props.names, props.series)}>
                     <CartesianGrid strokeDasharray='3 3'/>
@@ -230,7 +230,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </BarChart>
             )
             break
-        case ChartType.PieChart:
+        case EChartType.PieChart:
             dataSummarized= props.names.map( (name,index) => {
                 return { name, value:(props.series[index] as ISample[]).reduce((ac,val) => ac+val.value,0)}
             })
@@ -246,7 +246,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </PieChart>
             )
             break
-        case ChartType.TreemapChart:
+        case EChartType.TreemapChart:
             dataSummarized = props.names.map( (name,index) => {
                 return { name, value:(props.series[index] as ISample[]).reduce((ac,val) => ac+val.value,0)}
             })

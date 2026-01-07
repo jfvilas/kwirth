@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { IMetricsData, IMetricsMessage, MetricsEventSeverityEnum } from './MetricsData'
+import { IMetricsData, MetricsEventSeverityEnum } from './MetricsData'
 import { Alert, Box, Button, Snackbar } from '@mui/material'
 import { IContentProps } from '../IChannel'
 import { IMetricsConfig, IMetricsInstanceConfig, IMetricViewConfig, METRICSCOLOURS, MetricsConfig } from './MetricsConfig'

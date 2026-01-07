@@ -1,6 +1,6 @@
 import { ISpace } from '@jfvilas/react-file-manager'
 import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, Info, Iso, PauseCircle, PlayCircle, RestartAlt, StopCircle, Subject, Terminal } from '@mui/icons-material'
-import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Storage } from './icons/Icons'
+import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from './icons/Icons'
 
 const spaces = new Map<string, ISpace>()
 
@@ -37,56 +37,6 @@ const menu = [
         path: '/cluster/Namespace',
         class: 'classNamespace',
         children: 'Namespace'
-    },
-
-
-
-    // Network
-    {   name: 'Network',
-        isDirectory: true,
-        path: '/network',
-        class: 'classnetwork'
-    },
-    {   name: 'Overview',
-        isDirectory: true,
-        path: '/network/overview',
-        class: 'classmenu',
-        layout: 'own',   
-    },
-    {   name: 'Services',
-        isDirectory: true,
-        path: '/network/Service',
-        layout: 'list',  
-        class: 'classService',
-        children: 'Service'
-    },
-    {   name: 'End points',
-        isDirectory: true,
-        path: '/network/Endpoints',
-        layout: 'list',  
-        class: 'classEndpoints',
-        children: 'Endpoints'
-    },
-    {   name: 'Ingresses',
-        isDirectory: true,
-        path: '/network/Ingress',
-        layout: 'list',  
-        class: 'classIngress',
-        children: 'Ingress'
-    },
-    {   name: 'Ingress classes',
-        isDirectory: true,
-        path: '/network/IngressClass',
-        layout: 'list',
-        class: 'classIngressClass',
-        children: 'IngressClass'
-    },
-    {   name: 'Network policies',
-        isDirectory: true,
-        path: '/network/NetworkPolicy',
-        layout: 'list',
-        class: 'classNetworkPolicy',
-        children: 'NetworkPolicy'
     },
 
 
@@ -229,6 +179,56 @@ const menu = [
     },
 
 
+    // Network
+    {   name: 'Network',
+        isDirectory: true,
+        path: '/network',
+        class: 'classnetwork'
+    },
+    {   name: 'Overview',
+        isDirectory: true,
+        path: '/network/overview',
+        class: 'classmenu',
+        layout: 'own',   
+    },
+    {   name: 'Services',
+        isDirectory: true,
+        path: '/network/Service',
+        layout: 'list',  
+        class: 'classService',
+        children: 'Service'
+    },
+    {   name: 'End points',
+        isDirectory: true,
+        path: '/network/Endpoints',
+        layout: 'list',  
+        class: 'classEndpoints',
+        children: 'Endpoints'
+    },
+    {   name: 'Ingresses',
+        isDirectory: true,
+        path: '/network/Ingress',
+        layout: 'list',  
+        class: 'classIngress',
+        children: 'Ingress'
+    },
+    {   name: 'Ingress classes',
+        isDirectory: true,
+        path: '/network/IngressClass',
+        layout: 'list',
+        class: 'classIngressClass',
+        children: 'IngressClass'
+    },
+    {   name: 'Network policies',
+        isDirectory: true,
+        path: '/network/NetworkPolicy',
+        layout: 'list',
+        class: 'classNetworkPolicy',
+        children: 'NetworkPolicy'
+    },
+
+
+
     //Storage
     {   name: 'Storage',
         isDirectory: true,
@@ -311,6 +311,13 @@ const menu = [
         children: 'CustomResourceDefinition'
     },
 
+    // Setttings
+    {   name: 'Settings',
+        isDirectory: true,
+        path: '/settings',
+        class: 'classsettings',
+        layout: 'own'
+    },
 ]
 
 // General  (these empty classes are needed for showing icons)
@@ -321,6 +328,7 @@ spaces.set('classworkload', {})
 spaces.set('classstorage', {})
 spaces.set('classaccess', {})
 spaces.set('classcustom', {})
+spaces.set('classsettings', {})
 
 
 // Network
@@ -1645,10 +1653,10 @@ spaces.set('Pod',
                 permission: true,
             },
             {
+                name: 'shell',
                 icon: <Terminal fontSize='small'/>,
                 text: 'Shell',
-                permission: true,
-                onClick: () => console.log('shell'),
+                permission: true
             },
             {
                 name:'viewlog',
@@ -1658,11 +1666,11 @@ spaces.set('Pod',
                 permission: true,
             },
             {
+                name:'viewmetrics',
                 icon: <BarChart fontSize='small'/>,
                 text: 'Metrics',
                 multi: true,
-                permission: true,
-                onClick: () => console.log('metr'),
+                permission: true
             },
             {
                 icon: <Delete fontSize='small'/>,
@@ -2982,5 +2990,9 @@ icons.set('classstorage', { default: <Storage size={'16'}/> } )
 icons.set('classaccess', { default: <Security size={'16'}/> } )
 icons.set('classconfig', { default: <Config size={'16'}/> } )
 icons.set('classcustom', { default: <Customize size={'16'}/> } )
+icons.set('classsettings', { default: <Settings size={'16'}/> } )
 
-export { spaces, menu, icons }
+
+const actions = new Map()
+
+export { spaces, menu, icons, actions }

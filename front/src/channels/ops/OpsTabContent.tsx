@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box, Button, Card, CardContent, CardHeader, IconButton, ListItem, ListItemButton, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import { IOpsData, IScopedObject } from './OpsData'
 import { IInstanceConfig, InstanceConfigObjectEnum, InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessage, MetricsConfigModeEnum, OpsCommandEnum } from '@jfvilas/kwirth-common'
 import { IContentProps } from '../IChannel'
-import { AccessKeyEnum, IOpsConfig } from './OpsConfig'
+import { ESwitchKeyEnum, IOpsConfig } from './OpsConfig'
 import { v4 as uuid } from 'uuid'
 import { TerminalInstance } from './Terminal/TerminalInstance'
 import { SelectTerminal } from './Terminal/SelectTerminal'
@@ -15,38 +15,46 @@ import { MenuObject, MenuObjectOption } from './MenuObject'
 import { IResourceSelected } from '../../components/ResourceSelector'
 import { ILogConfig, ILogInstanceConfig, ELogSortOrderEnum } from '../log/LogConfig'
 import { IMetricsConfig, IMetricsInstanceConfig } from '../metrics/MetricsConfig'
-import { ChartType } from '../metrics/MenuChart'
+import { EChartType } from '../metrics/MenuChart'
 
 const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
+    let opsData:IOpsData = props.channelObject.data
+    let opsConfig:IOpsConfig = props.channelObject.config
+
+    const opsBoxRef = useRef<HTMLDivElement | null>(null)
+    const [opsBoxHeight, setOpsBoxHeight] = useState(0)
+
     const [showSelector, setShowSelector] = useState(false)
     const [selectedScopedObject, setSelectedScopedObject] = useState<IScopedObject|null>(null)
     const [anchorMenuChart, setAnchorMenuChart] = useState<null | HTMLElement>(null)
-    const [opsBoxTop, setOpsBoxTop] = useState(0)
     const [selectedTerminal, setSelectedTerminal] = useState<string | undefined>(undefined)
-    const [msgBox, setMsgBox] =useState(<></>)
-    const commandRef = useRef<HTMLInputElement>()
-    const opsBoxRef = useRef<HTMLDivElement | null>(null)
+    const [msgBox, setMsgBox] = useState(<></>)
     const [refresh,setRefresh] = useState(0)
     const [filter, setFilter] = useState<string>('')
 
     enum LaunchActionEnum {
-        TERMINAL,
         INFO,
+        TERMINAL,
         RESTART
     }
     
-    let opsData:IOpsData = props.channelObject.data
-    let opsConfig:IOpsConfig = props.channelObject.config
+    useLayoutEffect(() => {
+        const observer = new ResizeObserver(() => {
+            if (!opsBoxRef.current) return
+            const { top } = opsBoxRef.current.getBoundingClientRect()
+            let a = window.innerHeight - top -16
+            setOpsBoxHeight(a)
+        })
+        observer.observe(document.body)
+
+        return () => observer.disconnect()
+    }, [opsBoxRef.current])
 
     const closeTerminal = (_id:string) => {
         setSelectedTerminal(undefined)
         opsData.selectedTerminal = undefined
         setRefresh(Math.random())
     }
-
-    useEffect(() => {
-        if (opsBoxRef.current) setOpsBoxTop(opsBoxRef.current.getBoundingClientRect().top)
-    })
 
     const onAsyncData = (data:any) => {
         switch(data.event) {
@@ -62,7 +70,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     useEffect(() => {
-        if (!opsData.onAsyncData) opsData.onAsyncData = onAsyncData
+        if (!opsData.onDescribeResponse) opsData.onDescribeResponse = onAsyncData
         window.addEventListener('keydown', onKeyDown)
 
         if (opsData.selectedTerminal) {
@@ -84,7 +92,6 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 case 'F12':
                     setSelectedTerminal(undefined)
                     opsData.selectedTerminal = undefined
-                    setTimeout(() => commandRef.current?.focus(),100)
                     break
                 case 'F11':
                     if (opsData.terminalManager.terminals.size===0)
@@ -136,11 +143,11 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         let manterm = opsData.terminalManager.terminals.get(newTerm)!
         manterm.index = assignIndex(newTerm)
         manterm.term.attachCustomKeyEventHandler((event) => {
-            if (opsConfig.accessKey !== AccessKeyEnum.DISABLED && event.key.startsWith('F') && event.key.length>1) {
-                if (opsConfig.accessKey === AccessKeyEnum.NONE && !event.altKey && !event.ctrlKey && !event.shiftKey) return false
-                if (opsConfig.accessKey === AccessKeyEnum.ALT && event.altKey && !event.ctrlKey && !event.shiftKey) return false
-                if (opsConfig.accessKey === AccessKeyEnum.CTRL && !event.altKey && event.ctrlKey && !event.shiftKey) return false
-                if (opsConfig.accessKey === AccessKeyEnum.SHIFT && !event.altKey && !event.ctrlKey && event.shiftKey) return false
+            if (opsConfig.accessKey !== ESwitchKeyEnum.DISABLED && event.key.startsWith('F') && event.key.length>1) {
+                if (opsConfig.accessKey === ESwitchKeyEnum.NONE && !event.altKey && !event.ctrlKey && !event.shiftKey) return false
+                if (opsConfig.accessKey === ESwitchKeyEnum.ALT && event.altKey && !event.ctrlKey && !event.shiftKey) return false
+                if (opsConfig.accessKey === ESwitchKeyEnum.CTRL && !event.altKey && event.ctrlKey && !event.shiftKey) return false
+                if (opsConfig.accessKey === ESwitchKeyEnum.SHIFT && !event.altKey && !event.ctrlKey && event.shiftKey) return false
             }
             return true
         })
@@ -166,7 +173,10 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     view: InstanceConfigViewEnum.NONE
                 }
                 opsData.websocketRequest = { namespace:so.namespace, pod:so.pod, container:so.container }
-                if (props.channelObject.webSocket) props.channelObject.webSocket.send(JSON.stringify( instanceConfig ))
+                if (props.channelObject.webSocket) 
+                    props.channelObject.webSocket.send(JSON.stringify( instanceConfig ))
+                else
+                    console.log('No webSocket for terminal launch')
                 break
             case LaunchActionEnum.RESTART:
                 let opsMessage:IOpsMessage = {
@@ -185,7 +195,10 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     params: [],
                     msgtype: 'opsmessage'
                 }
-                if (props.channelObject.webSocket) props.channelObject.webSocket.send(JSON.stringify( opsMessage ))
+                if (props.channelObject.webSocket)
+                    props.channelObject.webSocket.send(JSON.stringify( opsMessage ))
+                else
+                    console.log('No webSocket for restart')
                 break
         }
     }
@@ -277,7 +290,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     width: 3,
                     merge: false,
                     stack: false,
-                    chart: ChartType.LineChart,
+                    chart: EChartType.LineChart,
                     metricsDefault: {}
                 }
                 let metricsInstanceConfig:IMetricsInstanceConfig = {
@@ -341,10 +354,10 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     return (<>
-        <Box ref={opsBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${opsBoxTop}px - 25px)`, ml:1, mr:1, p:1 }}>
-            { showSelector && formatSelector() }
+        <Box ref={opsBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `${opsBoxHeight}px`, ml:1, mr:1}}>
+            { showSelector && !opsConfig.launchShell && formatSelector() }
 
-            { opsData.started &&  !selectedTerminal &&
+            { opsData.started && !opsConfig.launchShell && !selectedTerminal &&
                 <Stack direction={'row'} spacing={2} alignItems={'start'}>
                     <Card sx={{width:'60%'}}>
                         <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0'}} title={
@@ -393,7 +406,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             { opsData.terminalManager.terminals.size>0 &&
                                 Array.from(opsData.terminalManager.terminals.keys()).map( (key) => {
 
-                                return    <ListItem>
+                                    return <ListItem>
                                         <Stack direction={'row'} sx={{width:'100%'}} alignItems={'center'}>
                                             <ListItemButton onClick={() => onSelectNewTerm(key)}>
                                                 <Typography flex={1}>{key}</Typography>
@@ -407,6 +420,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                                             <IconButton onClick={() => deleteSession(key)}>
                                                 <Delete />
                                             </IconButton>
+
                                         </Stack>
                                     </ListItem>
                                 })
@@ -418,27 +432,31 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 </Stack> }
 
             { opsData.started &&  opsData.selectedTerminal!==undefined && selectedTerminal && (
-                <div style={{ display:'flex', flexDirection:'column', height: '100%', position: "relative", overflow:'hidden' }}>
-                    <Box>
-                        <Button onClick={() => {setSelectedTerminal(undefined); opsData.selectedTerminal=undefined; setTimeout(() => commandRef.current?.focus(),100)}}>
-                            <Home fontSize='small' sx={{mb:'2px'}}/>HOME
-                        </Button>
-                        {Array.from(opsData.terminalManager.terminals.keys()).map(key => {               
-                            return (
-                                <Tooltip key={key} title={key}>
-                                    <Button onClick={() => {setSelectedTerminal(key); opsData.selectedTerminal=key}} sx={{background: selectedTerminal===key? 'lightgray':'white', borderBottomRightRadius:0, borderBottomLeftRadius:0}}>
-                                        {key.split('/')[2]}{opsData.terminalManager.terminals.get(key)!.index>0 && <Typography fontSize={10} fontWeight={'900'}>&nbsp;&nbsp;F{opsData.terminalManager.terminals.get(key)?.index}</Typography>}
-                                    </Button>
-                                </Tooltip>
-                            )
-                        })}
-                    </Box>
+                <Stack sx={{ display:'flex', flex:1,  flexDirection:'column', height: '100%', position: 'relative', overflow:'hidden' }}>
+                    {
+                       !opsConfig.launchShell &&
+                       <Box>
+                            <Button onClick={() => {setSelectedTerminal(undefined); opsData.selectedTerminal=undefined}} sx={{borderBottomRightRadius:0, borderBottomLeftRadius:0}}>
+                                <Home fontSize='small' sx={{mb:'2px'}}/>HOME
+                            </Button>
+                            {Array.from(opsData.terminalManager.terminals.keys()).map(key => {               
+                                return (
+                                    <Tooltip key={key} title={key}>
+                                        <Button onClick={() => {setSelectedTerminal(key); opsData.selectedTerminal=key}} sx={{background: selectedTerminal===key? 'lightgray':'white', borderBottomRightRadius:0, borderBottomLeftRadius:0}}>
+                                            {key.split('/')[2]}{opsData.terminalManager.terminals.get(key)!.index>0 && <Typography fontSize={10} fontWeight={'900'}>&nbsp;&nbsp;F{opsData.terminalManager.terminals.get(key)?.index}</Typography>}
+                                        </Button>
+                                    </Tooltip>
+                                )
+                            })}
+                        </Box>
+                    }
 
                     <TerminalInstance id={selectedTerminal} terminalManager={opsData.terminalManager} data-refresh={refresh}/>
-                </div>)
+                </Stack>
+            )
             }
             { msgBox }
-            { anchorMenuChart && selectedScopedObject && <MenuObject onClose={() => setAnchorMenuChart(null)} onOptionSelected={menuObjectOptionSelected} anchorMenu={anchorMenuChart} scopedObject={selectedScopedObject}/> }
+            { anchorMenuChart && selectedScopedObject && <MenuObject onClose={() => setAnchorMenuChart(null)} onOptionSelected={menuObjectOptionSelected} anchorParent={anchorMenuChart} scopedObject={selectedScopedObject}/> }
         </Box>
     </>)
 }

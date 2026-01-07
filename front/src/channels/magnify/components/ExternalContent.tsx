@@ -1,16 +1,25 @@
-import { IInstanceConfig, IInstanceMessage, InstanceConfigObjectEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
+import { IInstanceConfig, IInstanceMessage, InstanceConfigObjectEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelObject, IContentProps } from '../../IChannel'
 import { Dialog, DialogContent, DialogTitle, IconButton, Stack, Typography } from '@mui/material'
-import { Close, Maximize, Minimize, PauseCircle, PlayCircle, StopCircle } from '@mui/icons-material'
+import { Close, Fullscreen, FullscreenExit, Maximize, Minimize, PauseCircle, PlayCircle, StopCircle } from '@mui/icons-material'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { ELogSortOrderEnum, ILogConfig, ILogInstanceConfig } from '../../log/LogConfig'
 import { ILogData } from '../../log/LogData'
 import { useEffect, useRef, useState } from 'react'
 import { createChannelInstance } from '../../../tools/Channel'
 import { ENotifyLevel } from '../../../tools/Global'
+import { IMetricsConfig, IMetricsInstanceConfig } from '../../metrics/MetricsConfig'
+import { IMetricsData } from '../../metrics/MetricsData'
+import { EChartType } from '../../metrics/MenuChart'
+import { IOpsData } from '../../ops/OpsData'
+import { ESwitchKeyEnum, IOpsConfig, IOpsInstanceConfig } from '../../ops/OpsConfig'
+import { TerminalManager } from '../../ops/Terminal/TerminalManager'
+import { MagnifyUserSettings } from '../MagnifyUserSettings'
 
 interface IExternalContentProps {
+    title: string
     channelId?: string
+    settings: MagnifyUserSettings
     frontChannels: Map<string, TChannelConstructor>
     selectedFiles:IFileObject[]
     notify: (level: ENotifyLevel, msg: string) => void
@@ -19,19 +28,24 @@ interface IExternalContentProps {
     doRefresh: () => void
     content?: IExternalContentObject
     channelObject?: IChannelObject
+    contentView: InstanceConfigViewEnum
+    container?: string
 }
 
 export interface IExternalContentObject {
     ws: WebSocket | undefined
+    settings: MagnifyUserSettings
     channel: IChannel
     channelObject: IChannelObject
     channelStarted: boolean
     channelPaused: boolean
     channelPending: boolean
+    windowMaximized: boolean
 }
 
 const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContentProps) => {
     const content = useRef<IExternalContentObject>()
+    const [ percent, setPercent] = useState<number>(70)
    
     useEffect( () => {
         // if we receive content, we show content (we don't create a new content)
@@ -39,8 +53,7 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
             content.current = props.content
         }
         else if (props.channelObject) {
-            console.log('create********************')
-            content.current = createContent(props.channelId!,props.selectedFiles)
+            content.current = createContent(props.channelId!,props.container)
             if (!content.current) return
             switch(props.channelId) {
                 case 'log':
@@ -49,34 +62,40 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
                 case 'metrics':
                     setMetricsConfig(content.current)
                     break
+                case 'ops':
+                    setOpsConfig(content.current)
+                    break
             }
         }
+        setPercent(content.current?.windowMaximized? 100 : 70)
     },[])
 
-    const createContent = (channelId:string, f:IFileObject[]) => {
+    const createContent = (channelId:string, container?:string) => {
         let newChannel = createChannelInstance(props.frontChannels.get(channelId), props.notify)
         if (!newChannel) {
             console.log('Invaid channel instance created')
             return undefined
         }
         let newContent:IExternalContentObject = {
-            ws:undefined,
+            ws: undefined,
             channel: newChannel,
             channelObject: {
                 clusterName: props.channelObject?.clusterName!,
                 instanceId: '',
-                view: InstanceConfigViewEnum.POD,  //+++
-                namespace: props.selectedFiles[0].data.origin.metadata.namespace,   //+++
+                view: props.contentView,
+                namespace: props.selectedFiles[0].data.origin.metadata.namespace,
                 group: '',
-                pod: props.selectedFiles[0].data.origin.metadata.name,  //+++
-                container: '',
+                pod: props.selectedFiles[0].data.origin.metadata.name,
+                container: container || '',
                 config: undefined,
                 data: undefined,
                 instanceConfig: undefined
             },
             channelStarted: false,
             channelPaused: false,
-            channelPending: false
+            channelPending: false,
+            windowMaximized: false,
+            settings: props.settings
         }
 
         if (newChannel.requiresMetrics()) newContent.channelObject.metricsList = props.channelObject?.metricsList
@@ -123,7 +142,7 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
         let logConfig:ILogConfig = {
             startDiagnostics: false,
             follow: true,
-            maxMessages: 5000,
+            maxMessages: props.settings.logLines,
             maxPerPodMessages: 5000,
             sortOrder: ELogSortOrderEnum.TIME
         }
@@ -147,6 +166,62 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
     }
 
     const setMetricsConfig = (c:IExternalContentObject) => {
+        let metricsData:IMetricsData = {
+            assetMetricsValues: [],
+            events: [],
+            paused: false,
+            started: false
+        }
+        let metricsConfig:IMetricsConfig = {
+            depth: 50,
+            width: 2,
+            merge: false,
+            stack: false,
+            chart: EChartType.LineChart,
+            metricsDefault: {}
+        }
+        let metricsInstanceConfig:IMetricsInstanceConfig = {
+            mode: MetricsConfigModeEnum.STREAM,
+            aggregate: false,
+            interval: 15,
+            metrics: ['kwirth_container_cpu_percentage','kwirth_container_memory_percentage', 'kwirth_container_transmit_mbps', 'kwirth_container_receive_mbps', 'kwirth_container_write_mbps', 'kwirth_container_read_mbps']
+        }
+
+        c.channelObject!.data = metricsData
+        c.channelObject!.config = metricsConfig
+        c.channelObject!.instanceConfig = metricsInstanceConfig
+    }
+
+    const setOpsConfig = (c:IExternalContentObject) => {
+        let opsData:IOpsData = {
+            scopedObjects: [],
+            paused: false,
+            started: false,
+            websocketRequest: {
+                namespace: '',
+                pod: '',
+                container: ''
+            },
+            terminalManager: new TerminalManager(),
+            selectedTerminal: undefined
+        }
+        let opsConfig:IOpsConfig = {
+            accessKey: ESwitchKeyEnum.DISABLED,
+            launchShell: true,
+            shell: {
+                namespace: c.channelObject.namespace,
+                pod: c.channelObject.pod,
+                container: c.channelObject.container
+            }
+        }
+        let opsInstanceConfig:IOpsInstanceConfig = {
+            sessionKeepAlive: false
+        }
+
+        c.channelObject!.webSocket = content.current!.ws
+        c.channelObject!.data = opsData
+        c.channelObject!.config = opsConfig
+        c.channelObject!.instanceConfig = opsInstanceConfig
     }
 
     const play = () => {
@@ -161,7 +236,7 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
                 flow: InstanceMessageFlowEnum.REQUEST,
                 instance: content.current.channelObject.instanceId,
                 accessKey: props.channelObject!.accessString!,
-                view: content.current.channelObject.view,
+                view: props.contentView,
                 scope: InstanceConfigScopeEnum.NONE,
                 namespace: '',
                 group: '',
@@ -183,11 +258,11 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
                 instance: '',
                 accessKey: props.channelObject!.accessString!,
                 scope: InstanceConfigScopeEnum.NONE,
-                view: InstanceConfigViewEnum.POD,
+                view: props.contentView,
                 namespace: props.selectedFiles[0].data.origin.metadata.namespace,   //+++
                 group: '',
                 pod: props.selectedFiles[0].data.origin.metadata.name,   //+++
-                container: '',
+                container: props.selectedFiles[0].data.origin.metadata.name + '+' + props.container,
                 type: InstanceMessageTypeEnum.SIGNAL,
             }
             instanceConfig.scope = content.current.channel.getScope() || ''
@@ -252,7 +327,15 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
         props.minimize(content.current!)
     }
 
-    const maximize = () => {
+    const maximizeOrRestore = () => {
+        if (content.current!.windowMaximized) {
+            content.current!.windowMaximized = false
+            setPercent(70)
+        }
+        else {
+            content.current!.windowMaximized = true
+            setPercent(100)
+        }
     }
 
     const close = () => {
@@ -266,17 +349,25 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
         let ChannelTabContent = content.current.channel.TabContent
         let channelProps:IContentProps = {
             channelObject: content.current.channelObject!,
-            maxHeight: 450
+            //maxHeight: 300
         }
+        // switch(content.current.channel.channelId) {
+        //     case 'log':
+        //         channelProps.maxHeight = 450
+        //         break
+        //     case 'ops':
+        //         channelProps.maxHeight = 560
+        //         break
+        // }
         return <ChannelTabContent {...channelProps}/>
     }
 
     return (
         <Dialog open={true} sx={{ '& .MuiDialog-paper': {
-                                    width: `70vw`,
-                                    height: `70vh`,
-                                    maxWidth: `70vw`,
-                                    maxHeight: `70vh`
+                                    width: `${percent}vw`,
+                                    height: `${percent}vh`,
+                                    maxWidth: `${percent}vw`,
+                                    maxHeight: `${percent}vh`
                                 }}
         }>
             <DialogTitle>
@@ -291,21 +382,23 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
                         <StopCircle/>
                     </IconButton>
                     <Typography sx={{flexGrow:1}}></Typography>
-                    <IconButton onClick={maximize}>
-                        <Maximize />
-                    </IconButton>
+                    <Typography>{content.current?.channel.getChannelIcon()}&nbsp;{props.title}</Typography>
+                    <Typography sx={{flexGrow:1}}></Typography>
                     <IconButton onClick={minimize}>
                         <Minimize />
+                    </IconButton>
+                    <IconButton onClick={maximizeOrRestore}>
+                        { content.current?.windowMaximized? <FullscreenExit/> : <Fullscreen/> }
                     </IconButton>
                     <IconButton onClick={close}>
                         <Close />
                     </IconButton>
                 </Stack>
             </DialogTitle>
-            <DialogContent>
+
+            <DialogContent sx={{ display: 'flex', flexDirection: 'column', p: 0, overflow: 'hidden', height: '100%', minHeight: 0, paddingBottom: 1}}>
                 {showContent()}
             </DialogContent>
-
         </Dialog>        
     )
 }

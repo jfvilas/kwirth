@@ -1,3 +1,5 @@
+// https://iconbuddy.com/search?q=settings
+
 type IconProps = {
     size: string;
 }
@@ -11,7 +13,6 @@ const Customize = ({ size }: IconProps) => (
 )
 
 const Config = ({ size }: IconProps) => (
-    //<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 512 512"><path fill="#000000" d="M36.571 475.429h73.143V365.714H36.571V475.43zM109.714 36.57H36.571v182.86h73.143V36.57zm182.857 0H219.43v73.143h73.142V36.571zM0 329.143h146.286V256H0v73.143zm219.429 146.286h73.142V256H219.43v219.429zm-36.572-256h146.286v-73.143H182.857v73.143zM475.43 36.57h-73.143V256h73.143V36.571zm-109.715 256v73.143H512V292.57H365.714zm36.572 182.858h73.143v-73.143h-73.143v73.143z"/></svg>
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"><path fill="none" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7.05 6.462a2 2 0 0 0 2.63-1.519l.32-1.72a9 9 0 0 1 3.998 0l.322 1.72a2 2 0 0 0 2.63 1.519l1.649-.58a9 9 0 0 1 2.001 3.46l-1.33 1.14a2 2 0 0 0 0 3.037l1.33 1.139a9 9 0 0 1-2.001 3.46l-1.65-.58a2 2 0 0 0-2.63 1.519L14 20.777a9 9 0 0 1-3.998 0l-.322-1.72a2 2 0 0 0-2.63-1.519l-1.649.58a9 9 0 0 1-2.001-3.46l1.33-1.14a2 2 0 0 0 0-3.036L3.4 9.342a9 9 0 0 1 2-3.46zM12 9a3 3 0 1 1 0 6a3 3 0 0 1 0-6" clipRule="evenodd"/></svg>
 )
 
@@ -35,5 +36,9 @@ const Cluster = ({ size }: IconProps) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"><path fill="#000000" d="M1 13v10h22V13Zm12 6H4v-2h9Zm3 0a1 1 0 1 1 1-1a1 1 0 0 1-1 1Zm3 0a1 1 0 1 1 1-1a1 1 0 0 1-1 1ZM1 1v10h22V1Zm12 6H4V5h9Zm3 0a1 1 0 1 1 1-1a1 1 0 0 1-1 1Zm3 0a1 1 0 1 1 1-1a1 1 0 0 1-1 1Z"/></svg>
 )
 
-export { Cluster, Pod, Network, Storage, Security, Config, Customize, Kubernetes }
+const Settings = ({ size }: IconProps) => (
+    <svg width={size} height={size} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fillRule="evenodd" d="M4 7H3V2h1v5zm-1 7h1v-3H3v3zm5 0h1V8H8v6zm5 0h1v-2h-1v2zm1-12h-1v6h1V2zM9 2H8v2h1V2zM5 8H2c-.55 0-1 .45-1 1s.45 1 1 1h3c.55 0 1-.45 1-1s-.45-1-1-1zm5-3H7c-.55 0-1 .45-1 1s.45 1 1 1h3c.55 0 1-.45 1-1s-.45-1-1-1zm5 4h-3c-.55 0-1 .45-1 1s.45 1 1 1h3c.55 0 1-.45 1-1s-.45-1-1-1z" fill="#000000"/></svg>
+)
+      
+export { Cluster, Pod, Network, Storage, Security, Config, Customize, Kubernetes, Settings }
       

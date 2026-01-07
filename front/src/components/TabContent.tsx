@@ -16,7 +16,7 @@ const TabContent: React.FC<IProps> = (props:IProps) => {
         let ChannelTabContent = props.channel.TabContent
         let channelProps:IContentProps = {
             channelObject: props.channelObject!,
-            maxHeight: -1
+            //maxHeight: -1
         }
         return <ChannelTabContent {...channelProps}/>
     }

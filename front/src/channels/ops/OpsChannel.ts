@@ -1,11 +1,10 @@
 import { FC } from 'react'
 import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessageResponse, OpsCommandEnum, ISignalMessage, IInstanceConfigResponse, SignalMessageEventEnum, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessageResponse, OpsCommandEnum, ISignalMessage, IInstanceConfigResponse, SignalMessageEventEnum, SignalMessageLevelEnum, IInstanceConfig, InstanceMessageChannelEnum, InstanceConfigObjectEnum, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { OpsIcon, OpsSetup } from './OpsSetup'
 import { OpsTabContent } from './OpsTabContent'
-import { OpsData, IOpsData, IXTerm } from './OpsData'
-import { OpsInstanceConfig, OpsConfig } from './OpsConfig'
-import { OPSHELPMESSAGE, OPSWELCOMEMESSAGE } from '../../tools/Constants'
+import { OpsData, IOpsData, IXTerm, IScopedObject } from './OpsData'
+import { OpsInstanceConfig, OpsConfig, IOpsConfig } from './OpsConfig'
 import { ENotifyLevel } from '../../tools/Global'
 import 'xterm/css/xterm.css'
 
@@ -49,7 +48,6 @@ export class OpsChannel implements IChannel {
                 socket: new WebSocket(channelObject.clusterUrl + '?challenge='+(instanceConfigResponse.data as string)),
                 terminal: undefined
             }
-            console.log(channelObject.clusterUrl)
             opsData.terminalManager.createTerminal(`${newXterm.namespace+'/'+newXterm.pod+'/'+newXterm.container}`, newXterm.socket!)
             refresh.action = EChannelRefreshAction.REFRESH
         }
@@ -60,31 +58,14 @@ export class OpsChannel implements IChannel {
                     if (opsMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
                         switch (opsMessage.command) {
                             case OpsCommandEnum.DESCRIBE:
-                                let so = opsData.scopedObjects.find(so => so.namespace === opsMessage.namespace && so.pod === opsMessage.pod && so.container === opsMessage.container)
-                                if (so) {
+                                let scopedObject = opsData.scopedObjects.find(so => so.namespace === opsMessage.namespace && so.pod === opsMessage.pod && so.container === opsMessage.container)
+                                if (scopedObject)
                                     refresh.data = JSON.parse(opsMessage.data)
-                                }
-                                else {
-                                    this.notify(ENotifyLevel.INFO, 'Data received of non-scoped object')
-                                }
-                                refresh.action = EChannelRefreshAction.REFRESH
-                                if (opsData.onAsyncData) opsData.onAsyncData({event:'describe', data:refresh.data})
-                                break
-                            case OpsCommandEnum.XTERM:
-                                // it's a response for a xterm session start, so we add a new xterm session to xterms array
-                                //action = ChannelRefreshAction.REFRESH
-                                break
-                            case OpsCommandEnum.EXECUTE:
-                                opsData.messages.push(this.cleanANSI(opsMessage.data))
-                                refresh.action = EChannelRefreshAction.REFRESH
-                                break
-                            default:
-                                if (typeof opsMessage.data !== 'string')
-                                    opsData.messages.push(JSON.stringify(opsMessage.data))
                                 else
-                                    opsData.messages.push(opsMessage.data)
-                                    refresh.action = EChannelRefreshAction.REFRESH
-                                    break
+                                    this.notify(ENotifyLevel.INFO, 'Data received for a non-scoped object')
+                                if (opsData.onDescribeResponse) opsData.onDescribeResponse({event:'describe', data:refresh.data})
+                                refresh.action = EChannelRefreshAction.REFRESH
+                                break
                             }
                     }
                     else {
@@ -95,13 +76,11 @@ export class OpsChannel implements IChannel {
                 case InstanceMessageTypeEnum.SIGNAL:
                     let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
                     if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.COMMAND) {
-                        //opsData.messages.push(opsMessage.data)
                         this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text||'No info')
                         refresh.action = EChannelRefreshAction.REFRESH
                     }
                     else if (opsMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
                         if (signalMessage.text) {
-                            opsData.messages.push(signalMessage.text)
                             if (signalMessage.level === SignalMessageLevelEnum.WARNING) this.notify(ENotifyLevel.WARNING, signalMessage.text)
                             else if (signalMessage.level === SignalMessageLevelEnum.ERROR) this.notify(ENotifyLevel.ERROR, signalMessage.text)
                             else this.notify(ENotifyLevel.INFO, signalMessage.text)
@@ -130,13 +109,12 @@ export class OpsChannel implements IChannel {
                         if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
                             channelObject.instanceId = signalMessage.instance
                             if (signalMessage.text) {
-                                opsData.messages.push(signalMessage.text)
                                 refresh.action = EChannelRefreshAction.REFRESH
+                                this.notify(ENotifyLevel.INFO, signalMessage.text)
                             }
                         }
                         else {
-                            console.log('wsEvent.data on ops')
-                            console.log(wsEvent.data)                    
+                            console.log('wsEvent.data on ops', wsEvent.data)
                         }
                     }
                     break
@@ -149,6 +127,41 @@ export class OpsChannel implements IChannel {
         return refresh
     }
 
+    waitForInstanceAndStart = async (channelObject:IChannelObject, shell:IScopedObject) : Promise<void> => {
+        if (!channelObject.webSocket) {
+            console.log('No webSocket for terminal launch')
+            return
+        }
+
+        let opsData:IOpsData = channelObject.data
+        let opsConfig:IOpsConfig= channelObject.config
+
+        while (channelObject.instanceId === '') {
+            await new Promise(resolve => setTimeout(resolve, 10))
+        }
+        let instanceConfig:IInstanceConfig = {
+            flow: InstanceMessageFlowEnum.REQUEST,
+            action: InstanceMessageActionEnum.WEBSOCKET,
+            channel: InstanceMessageChannelEnum.OPS,
+            type: InstanceMessageTypeEnum.DATA,
+            accessKey: channelObject.accessString!,
+            instance: channelObject.instanceId,
+            namespace: shell.namespace,
+            group: '',
+            pod: shell.pod,
+            container: shell.container,
+            objects: InstanceConfigObjectEnum.PODS,
+            scope: '',
+            view: InstanceConfigViewEnum.CONTAINER
+        }
+        opsData.websocketRequest = {
+            namespace: shell.namespace,
+            pod: shell.pod,
+            container: shell.container
+        }
+        channelObject.webSocket.send(JSON.stringify( instanceConfig ))
+    }
+    
     initChannel(channelObject:IChannelObject): boolean {
         channelObject.config = new OpsConfig()
         channelObject.data = new OpsData()
@@ -158,9 +171,12 @@ export class OpsChannel implements IChannel {
 
     startChannel(channelObject:IChannelObject): boolean {
         let opsData:IOpsData = channelObject.data
+        let opsConfig:IOpsConfig= channelObject.config
+        opsData.scopedObjects = []
+        opsData.selectedTerminal = undefined
         opsData.paused = false
         opsData.started = true
-        opsData.messages = [...OPSWELCOMEMESSAGE, ...OPSHELPMESSAGE]
+        if (opsConfig.launchShell && opsConfig.shell) this.waitForInstanceAndStart(channelObject, opsConfig.shell)
         return true
     }
 
@@ -180,7 +196,6 @@ export class OpsChannel implements IChannel {
         let opsData:IOpsData = channelObject.data
         opsData.paused = false
         opsData.started = false
-        opsData.messages.push('=========================================================================')
         return false
     }
 
@@ -192,9 +207,9 @@ export class OpsChannel implements IChannel {
         return false
     }
 
-    cleanANSI(text: string): string {
-        const regexAnsi = /\x1b\[[0-9;]*[mKHVfJrcegH]|\x1b\[\d*n/g;
-        return text.replace(regexAnsi, '') // replace all matches with empty strings
-    }
+    // cleanANSI(text: string): string {
+    //     const regexAnsi = /\x1b\[[0-9;]*[mKHVfJrcegH]|\x1b\[\d*n/g;
+    //     return text.replace(regexAnsi, '') // replace all matches with empty strings
+    // }
 
 }    

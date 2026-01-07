@@ -27,7 +27,7 @@ interface ISetupProps {
 
 interface IContentProps {
     channelObject: IChannelObject
-    maxHeight: number
+    //maxHeight: number
 }
 
 interface IChannelObject {
