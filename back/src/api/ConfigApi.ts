@@ -30,7 +30,7 @@ export class ConfigApi {
                 }
             })
             
-        // return kwirth version information
+        // return kwirth and cluster version information
         this.route.route('/cluster')
             .all( async (req:Request,res:Response, next) => {
                 if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return

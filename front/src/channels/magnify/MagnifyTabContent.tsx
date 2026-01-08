@@ -122,7 +122,35 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcDeployment,'logs', launchDeploymentLogs)
             setLeftItem(spcDeployment,'edit', launchObjectEdit)
             setLeftItem(spcDeployment,'delete', launchObjectDelete)
+            let objDeployment = objectSections.get('Deployment')
+            if (objDeployment) {
+                let item = objDeployment[0].items.find(item => item.name === 'status')
+                if (item) {
+                    item.invoke = (obj) => { 
+                        return ['running']
+                    }
+                }
+                item = objDeployment[1].items.find(item => item.name === 'pods')
+                if (item) {
+                    item.invoke = (obj) => { 
+                        const selectors = obj.spec?.selector?.matchLabels
+                        if (!selectors) return []
+
+                        let allPods = magnifyData.files.filter(f => f.path.startsWith('/workload/Pod/'))
+                        allPods = allPods.filter(f => {
+                            const podLabels = f.data.origin.metadata?.labels || {}
+                            return Object.entries(selectors).every(([key, value]) => {
+                                return podLabels[key] === value
+                            })
+                        })
+                        allPods = allPods.map(f => f.data.origin)
+                        console.log('justpods',allPods)
+                        return allPods
+                    }
+                }
+            }
             
+
             let spcClassDaemonSet = spaces.get('classDaemonSet')!
             setLeftItem(spcClassDaemonSet, 'create', () => launchCreate('classDaemonSet'))
             let spcDaemonSet = spaces.get('DaemonSet')!
@@ -131,6 +159,35 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcDaemonSet,'logs', launchDaemonSetLogs)
             setLeftItem(spcDaemonSet,'edit', launchObjectEdit)
             setLeftItem(spcDaemonSet,'delete', launchObjectDelete)
+            let objDaemonSet = objectSections.get('DaemonSet')
+            if (objDaemonSet) {
+                //+++ esto mismo se hace en la custom function de los Deployment
+                let item = objDaemonSet[0].items.find(item => item.name === 'status')
+                if (item) {
+                    item.invoke = (obj) => { 
+                        return ['running']
+                    }
+                }
+                item = objDaemonSet[1].items.find(item => item.name === 'pods')
+                if (item) {
+                    item.invoke = (obj) => { 
+                        const selectors = obj.spec?.selector?.matchLabels
+                        if (!selectors) return []
+
+                        let allPods = magnifyData.files.filter(f => f.path.startsWith('/workload/Pod/'))
+                        allPods = allPods.filter(f => {
+                            const podLabels = f.data.origin.metadata?.labels || {}
+                            return Object.entries(selectors).every(([key, value]) => {
+                                return podLabels[key] === value
+                            })
+                        })
+                        allPods = allPods.map(f => f.data.origin)
+                        console.log('justpods',allPods)
+                        return allPods
+                    }
+                }
+            }
+            
             
             let spcClassReplicaSet = spaces.get('classReplicaSet')!
             setLeftItem(spcClassReplicaSet, 'create', () => launchCreate('classReplicaSet'))
@@ -140,6 +197,34 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcReplicaSet,'logs', launchReplicaSetLogs)
             setLeftItem(spcReplicaSet,'edit', launchObjectEdit)
             setLeftItem(spcReplicaSet,'delete', launchObjectDelete)
+            let objReplicaSet = objectSections.get('ReplicaSet')
+            if (objReplicaSet) {
+                //+++ esto mismo se hace en la custom function de los Deployment
+                let item = objReplicaSet[0].items.find(item => item.name === 'status')
+                if (item) {
+                    item.invoke = (obj) => { 
+                        return ['running']
+                    }
+                }
+                item = objReplicaSet[1].items.find(item => item.name === 'pods')
+                if (item) {
+                    item.invoke = (obj) => { 
+                        const selectors = obj.spec?.selector?.matchLabels
+                        if (!selectors) return []
+
+                        let allPods = magnifyData.files.filter(f => f.path.startsWith('/workload/Pod/'))
+                        allPods = allPods.filter(f => {
+                            const podLabels = f.data.origin.metadata?.labels || {}
+                            return Object.entries(selectors).every(([key, value]) => {
+                                return podLabels[key] === value
+                            })
+                        })
+                        allPods = allPods.map(f => f.data.origin)
+                        console.log('justpods',allPods)
+                        return allPods
+                    }
+                }
+            }
             
             let spcClassJob = spaces.get('classJob')!
             setLeftItem(spcClassJob, 'create', () => launchCreate('classJob'))
@@ -148,6 +233,16 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcJob,'logs', launchJobLogs)
             setLeftItem(spcJob,'edit', launchObjectEdit)
             setLeftItem(spcJob,'delete', launchObjectDelete)
+            let objJob = objectSections.get('Job')
+            if (objJob) {
+                //+++ esto mismo se hace en la custom function de los Deployment
+                let item = objJob[0].items.find(item => item.name === 'status')
+                if (item) {
+                    item.invoke = (obj) => { 
+                        return ['running']
+                    }
+                }
+            }
 
             let spcClassCronJob = spaces.get('classCronJob')!
             setLeftItem(spcClassCronJob, 'create', () => launchCreate('classCronJob'))
@@ -232,6 +327,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcConfigMap,'edit', launchObjectEdit)
             setLeftItem(spcConfigMap,'delete', launchObjectDelete)
 
+            // Secret
             let spcClassSecret = spaces.get('classSecret')!
             setLeftItem(spcClassSecret, 'create', () => launchCreate('Secret'))
             let spcSecret = spaces.get('Secret')!
@@ -239,6 +335,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcSecret,'edit', launchObjectEdit)
             setLeftItem(spcSecret,'delete', launchObjectDelete)
 
+            // ResourceQuota
             let spcClassResourceQuota = spaces.get('classResourceQuota')!
             setLeftItem(spcClassResourceQuota, 'create', () => launchCreate('ResourceQuota'))
             let spcResourceQuota = spaces.get('ResourceQuota')!
@@ -246,6 +343,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcResourceQuota,'edit', launchObjectEdit)
             setLeftItem(spcResourceQuota,'delete', launchObjectDelete)
 
+            // Limir Range
             let spcClassLimitRange = spaces.get('classLimitRange')!
             setLeftItem(spcClassLimitRange, 'create', () => launchCreate('LimitRange'))
             let spcLimitRange = spaces.get('LimitRange')!
@@ -253,6 +351,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcLimitRange,'edit', launchObjectEdit)
             setLeftItem(spcLimitRange,'delete', launchObjectDelete)
 
+            // HorizontalPodAutoscaler
             let spcClassHorizontalPodAutoscaler = spaces.get('classHorizontalPodAutoscaler')!
             setLeftItem(spcClassHorizontalPodAutoscaler, 'create', () => launchCreate('HorizontalPodAutoscaler'))
             let spcHorizontalPodAutoscaler = spaces.get('HorizontalPodAutoscaler')!
@@ -260,6 +359,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcHorizontalPodAutoscaler,'edit', launchObjectEdit)
             setLeftItem(spcHorizontalPodAutoscaler,'delete', launchObjectDelete)
 
+            // PodDisruptionBudget
             let spcClassPodDisruptionBudget = spaces.get('classPodDisruptionBudget')!
             setLeftItem(spcClassPodDisruptionBudget, 'create', () => launchCreate('PodDisruptionBudget'))
             let spcPodDisruptionBudget = spaces.get('PodDisruptionBudget')!
@@ -267,6 +367,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcPodDisruptionBudget,'edit', launchObjectEdit)
             setLeftItem(spcPodDisruptionBudget,'delete', launchObjectDelete)
 
+            // PriorityClass
             let spcClassPriorityClass = spaces.get('classPriorityClass')!
             setLeftItem(spcClassPriorityClass, 'create', () => launchCreate('PriorityClass'))
             let spcPriorityClass = spaces.get('PriorityClass')!
@@ -274,6 +375,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcPriorityClass,'edit', launchObjectEdit)
             setLeftItem(spcPriorityClass,'delete', launchObjectDelete)
 
+            // RuntimeClass
             let spcClassRuntimeClass = spaces.get('classRuntimeClass')!
             setLeftItem(spcClassRuntimeClass, 'create', () => launchCreate('RuntimeClass'))
             let spcRuntimeClass = spaces.get('RuntimeClass')!
@@ -281,6 +383,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcRuntimeClass,'edit', launchObjectEdit)
             setLeftItem(spcRuntimeClass,'delete', launchObjectDelete)
 
+            // Lease
             let spcClassLease = spaces.get('classLease')!
             setLeftItem(spcClassLease, 'create', () => launchCreate('Lease'))
             let spcLease = spaces.get('Lease')!
@@ -288,6 +391,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcLease,'edit', launchObjectEdit)
             setLeftItem(spcLease,'delete', launchObjectDelete)
 
+            // ValidatingWebhookConfiguration
             let spcClassValidatingWebhookConfiguration = spaces.get('classValidatingWebhookConfiguration')!
             setLeftItem(spcClassValidatingWebhookConfiguration, 'create', () => launchCreate('ValidatingWebhookConfiguration'))
             let spcValidatingWebhookConfiguration = spaces.get('ValidatingWebhookConfiguration')!
@@ -295,6 +399,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcValidatingWebhookConfiguration,'edit', launchObjectEdit)
             setLeftItem(spcValidatingWebhookConfiguration,'delete', launchObjectDelete)
             
+            // MutatingWebhookConfiguration
             let spcClassMutatingWebhookConfiguration = spaces.get('classMutatingWebhookConfiguration')!
             setLeftItem(spcClassMutatingWebhookConfiguration, 'create', () => launchCreate('MutatingWebhookConfiguration'))
             let spcMutatingWebhookConfiguration = spaces.get('MutatingWebhookConfiguration')!
@@ -385,6 +490,17 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let spcCrdInstance = spaces.get('crdinstance')!
             setLeftItem(spcCrdInstance, 'delete', launchObjectDelete)
 
+        let objSectionServiceAccount = objectSections.get('ServiceAccount')
+        if (objSectionServiceAccount) {
+            let item = objSectionServiceAccount[0].items.find(item => item.name === 'tokens')
+            if (item) {
+                item.invoke = (obj) => { 
+                    let x = magnifyData.files.filter(f => f.data?.origin?.metadata?.annotations && f.data?.origin?.metadata?.namespace && f.data?.origin?.metadata?.annotations['kubernetes.io/service-account.name'] === "kwirth-sa" && f.data?.origin?.metadata?.namespace === obj.metadata.namespace)
+                    return x.map(o => o.data.origin.metadata.name)
+                }
+            }
+        }
+        
 
         return () => {
             // unmount actions

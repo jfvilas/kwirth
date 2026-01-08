@@ -637,7 +637,7 @@ export class MagnifyChannel implements IChannel {
                 pods: 0,
                 replicas: obj.spec.replicas,
                 creationTimestamp: obj.metadata.creationTimestamp,
-                status: 'running',
+                status: 'running',  //+++
                 origin: obj
             }
         })

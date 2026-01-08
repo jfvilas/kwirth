@@ -90,6 +90,9 @@ class MagnifyChannel implements IChannel {
     }
 
     processEvent(type:string, obj:any) : void {
+        // +++
+        // +++ very important: modifying 'files' re-renders, so it is important to decide if it necesary (it depends on current view in file manager)
+        // +++
         console.log('****', type, obj.kind, obj.metadata.namespace, obj.metadata.name)
         for (let socket of this.webSockets) {
             for (let instance of socket.instances) {
