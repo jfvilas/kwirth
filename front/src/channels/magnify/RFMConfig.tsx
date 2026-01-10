@@ -1649,7 +1649,6 @@ spaces.set('Pod',
                 name:'details',
                 text: 'Pod details',
                 icon: <Info fontSize='small'/>,
-                multi: false,
                 permission: true,
             },
             {
@@ -1659,14 +1658,13 @@ spaces.set('Pod',
                 permission: true
             },
             {
-                name:'viewlog',
+                name:'logs',
                 text: 'Log',
                 icon: <Subject fontSize='small'/>,
-                multi: false,
                 permission: true,
             },
             {
-                name:'viewmetrics',
+                name:'metrics',
                 icon: <BarChart fontSize='small'/>,
                 text: 'Metrics',
                 multi: true,
@@ -1798,7 +1796,15 @@ spaces.set('Deployment',
             {   name: 'logs',
                 icon: <Subject fontSize='small'/>,
                 text: 'Logs',
+                multi: true,
                 permission: true,
+            },
+            {
+                name:'viewmetrics',
+                icon: <BarChart fontSize='small'/>,
+                text: 'Metrics',
+                multi: true,
+                permission: true
             },
             {   name: 'edit',
                 icon: <Edit fontSize='small'/>,
@@ -2927,12 +2933,18 @@ spaces.set('crdgroup',
         properties: []
     }
 )
+
 spaces.set('crdinstance',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
             {
                 name: 'delete',
                 icon: <Delete fontSize='small'/>,

@@ -437,7 +437,9 @@ export class AuthorizationManagement {
         }
     
         if (response) {
-            const matchLabels = response.body.spec?.selector.matchLabels
+            console.log("response")
+            console.log(response)
+            const matchLabels = response.spec?.selector.matchLabels
             const labelSelector = Object.entries(matchLabels || {}).map(([key, value]) => `${key}=${value}`).join(',')
             //const pods = (await coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)).items
             const pods = (await coreApi.listNamespacedPod({namespace, labelSelector})).items

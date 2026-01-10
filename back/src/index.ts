@@ -500,7 +500,7 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
             for (let namespace of validNamespaces) {
                 for (let gTypeName of instanceConfig.group.split(',')) {
                     let groupPods = await AuthorizationManagement.getPodLabelSelectorsFromGroup(coreApi, appsApi, namespace, gTypeName)
-                    if (groupPods.pods.length > 0) {
+                   if (groupPods.pods.length > 0) {
                         let specificInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
                         specificInstanceConfig.group = gTypeName
                         watchPods(`/api/v1/namespaces/${namespace}/${instanceConfig.objects}`, { labelSelector: groupPods.labelSelector }, webSocket, specificInstanceConfig)

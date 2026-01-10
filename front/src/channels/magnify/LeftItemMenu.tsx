@@ -6,11 +6,11 @@ interface IProps {
     f: any
     onClose?:() => void
     onOptionSelected: (container:string) => void
-    includeAll: boolean
+    includeAllContainers: boolean
     anchorParent: Element
 }
 
-const LeftItemMenu: React.FC<IProps> = (props:IProps) => {
+const LeftItemContainersMenu: React.FC<IProps> = (props:IProps) => {
     let result:JSX.Element[]=[]
     if (props.f.data.origin.status.containerStatuses && props.f.data.origin.status.containerStatuses.length>0) {
         for (let c of props.f.data.origin.status.containerStatuses) {
@@ -39,7 +39,7 @@ const LeftItemMenu: React.FC<IProps> = (props:IProps) => {
                     </MenuItem>
                 })
             }
-            { props.includeAll && 
+            { props.includeAllContainers && 
                 <>
                     <Divider/>
                     <MenuItem key={'all'} onClick={() => props.onOptionSelected('*all')}>
@@ -51,4 +51,4 @@ const LeftItemMenu: React.FC<IProps> = (props:IProps) => {
     </Menu>
 }
 
-export { LeftItemMenu }
+export { LeftItemContainersMenu as LeftItemMenu }

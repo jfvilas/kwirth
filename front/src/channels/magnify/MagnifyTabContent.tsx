@@ -16,13 +16,14 @@ import { yaml } from '@codemirror/lang-yaml'
 import React from 'react'
 import { IDetailsSection, MagnifyObjectDetails } from './components/DetailsObject'
 import { objectSections } from './components/DetailsSections'
-import { Close, ContentCopy, Delete, Edit, ExpandMore } from '@mui/icons-material'
-import { MsgBoxButtons, MsgBoxYesNo } from '../../tools/MsgBox'
+import { Close, ContentCopy, Delete, Edit } from '@mui/icons-material'
+import { MsgBoxButtons, MsgBoxOkError, MsgBoxYesNo } from '../../tools/MsgBox'
 import { ExternalContent, IExternalContentObject } from './components/ExternalContent'
 import { flushSync } from 'react-dom'
 import { LeftItemMenu } from './LeftItemMenu'
 import { MagnifyUserSettings } from './MagnifyUserSettings'
 import { UserSettings } from './components/UserSettings'
+import { buildPath } from './MagnifyChannel'
 
 const _ = require('lodash')
 const copy = require('clipboard-copy')
@@ -83,9 +84,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }, [magnifyBoxRef.current])
 
     useEffect(() => {
-        console.log('FIRST MOUNT')
         if (!magnifyData.files.some(f => f.path ==='/overview')) {
-            console.log('FIRST TIME')
             magnifyData.files.push(...menu)
         }
 
@@ -106,20 +105,22 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setPropertyFunction(spcPod, 'container', showPodContainers)
             setPropertyFunction(spcPod, 'cpu', showPodCpu)
             setPropertyFunction(spcPod, 'memory', showPodMemory)
-            setLeftItem(spcPod,'viewlog', launchPodLog)
-            setLeftItem(spcPod,'viewmetrics', launchPodMetrics)
+            setLeftItem(spcPod,'logs', launchPodLogs)
+            setLeftItem(spcPod,'metrics', launchPodMetrics)
             setLeftItem(spcPod,'shell', launchPodShell)
             setLeftItem(spcPod,'details', launchObjectDetails)
             setLeftItem(spcPod,'delete', launchObjectDelete)
             setLeftItem(spcPod,'evict', launchPodEvict)
 
+            // Deployment
             let spcClassDeployment = spaces.get('classDeployment')!
             setLeftItem(spcClassDeployment, 'create', () => launchCreate('classDeployment'))
             let spcDeployment = spaces.get('Deployment')!
             setLeftItem(spcDeployment,'details', launchObjectDetails)
-            setLeftItem(spcDeployment,'scale', launchDeploymentScale)
-            setLeftItem(spcDeployment,'restart', launchDeploymentRestart)
-            setLeftItem(spcDeployment,'logs', launchDeploymentLogs)
+            setLeftItem(spcDeployment,'scale', launchGroupScale)
+            setLeftItem(spcDeployment,'restart', launchGroupRestart)
+            setLeftItem(spcDeployment,'logs', launchGroupLogs)
+            setLeftItem(spcDeployment,'viewmetrics', launchGroupMetrics)
             setLeftItem(spcDeployment,'edit', launchObjectEdit)
             setLeftItem(spcDeployment,'delete', launchObjectDelete)
             let objDeployment = objectSections.get('Deployment')
@@ -144,19 +145,19 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             })
                         })
                         allPods = allPods.map(f => f.data.origin)
-                        console.log('justpods',allPods)
                         return allPods
                     }
                 }
             }
             
-
+            // DaemonSet
             let spcClassDaemonSet = spaces.get('classDaemonSet')!
             setLeftItem(spcClassDaemonSet, 'create', () => launchCreate('classDaemonSet'))
             let spcDaemonSet = spaces.get('DaemonSet')!
             setLeftItem(spcDaemonSet,'details', launchObjectDetails)
             setLeftItem(spcDaemonSet,'restart', launchDaemonSetRestart)
-            setLeftItem(spcDaemonSet,'logs', launchDaemonSetLogs)
+            setLeftItem(spcDaemonSet,'logs', launchGroupLogs)
+            setLeftItem(spcDaemonSet,'viewmetrics', launchGroupMetrics)
             setLeftItem(spcDaemonSet,'edit', launchObjectEdit)
             setLeftItem(spcDaemonSet,'delete', launchObjectDelete)
             let objDaemonSet = objectSections.get('DaemonSet')
@@ -182,19 +183,19 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             })
                         })
                         allPods = allPods.map(f => f.data.origin)
-                        console.log('justpods',allPods)
                         return allPods
                     }
                 }
             }
-            
-            
+
+            // ResplicaSet
             let spcClassReplicaSet = spaces.get('classReplicaSet')!
             setLeftItem(spcClassReplicaSet, 'create', () => launchCreate('classReplicaSet'))
             let spcReplicaSet = spaces.get('ReplicaSet')!
             setLeftItem(spcReplicaSet,'details', launchObjectDetails)
             setLeftItem(spcReplicaSet,'scale', launchReplicaSetScale)
-            setLeftItem(spcReplicaSet,'logs', launchReplicaSetLogs)
+            setLeftItem(spcDeployment,'logs', launchGroupLogs)
+            setLeftItem(spcReplicaSet,'metrics', launchGroupMetrics)
             setLeftItem(spcReplicaSet,'edit', launchObjectEdit)
             setLeftItem(spcReplicaSet,'delete', launchObjectDelete)
             let objReplicaSet = objectSections.get('ReplicaSet')
@@ -220,12 +221,50 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             })
                         })
                         allPods = allPods.map(f => f.data.origin)
-                        console.log('justpods',allPods)
                         return allPods
                     }
                 }
             }
-            
+
+            // StatefulSet
+            let spcClassStatefulSet = spaces.get('classStatefulSet')!
+            setLeftItem(spcClassStatefulSet, 'create', () => launchCreate('classStatefulSet'))
+            let spcStatefulSet = spaces.get('StatefulSet')!
+            setLeftItem(spcStatefulSet,'details', launchObjectDetails)
+            setLeftItem(spcStatefulSet,'scale', launchGroupScale)
+            setLeftItem(spcStatefulSet,'restart', launchGroupRestart)
+            setLeftItem(spcStatefulSet,'logs', launchGroupLogs)
+            setLeftItem(spcStatefulSet,'metrics', launchGroupMetrics)
+            setLeftItem(spcStatefulSet,'edit', launchObjectEdit)
+            setLeftItem(spcStatefulSet,'delete', launchObjectDelete)
+            let objStatefulSet = objectSections.get('StatefulSet')
+            if (objStatefulSet) {
+                //+++ esto mismo se hace en la custom function de los Deployment
+                let item = objStatefulSet[0].items.find(item => item.name === 'status')
+                if (item) {
+                    item.invoke = (obj) => { 
+                        return ['running']
+                    }
+                }
+                // item = objStatefulSet[1].items.find(item => item.name === 'pods')
+                // if (item) {
+                //     item.invoke = (obj) => { 
+                //         const selectors = obj.spec?.selector?.matchLabels
+                //         if (!selectors) return []
+
+                //         let allPods = magnifyData.files.filter(f => f.path.startsWith('/workload/Pod/'))
+                //         allPods = allPods.filter(f => {
+                //             const podLabels = f.data.origin.metadata?.labels || {}
+                //             return Object.entries(selectors).every(([key, value]) => {
+                //                 return podLabels[key] === value
+                //             })
+                //         })
+                //         allPods = allPods.map(f => f.data.origin)
+                //         return allPods
+                //     }
+                // }
+            }
+
             let spcClassJob = spaces.get('classJob')!
             setLeftItem(spcClassJob, 'create', () => launchCreate('classJob'))
             let spcJob = spaces.get('Job')!
@@ -252,6 +291,21 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcCronJob,'details', launchObjectDetails)
             setLeftItem(spcCronJob,'edit', launchObjectEdit)
             setLeftItem(spcCronJob,'delete', launchObjectDelete)
+            let objCronJob = objectSections.get('CronJob')
+            if (objCronJob) {
+                let item = objCronJob[1].items.find(item => item.name === 'jobs')
+                if (item) {
+                    item.invoke = (obj) => { 
+                        let allJobs = magnifyData.files.filter(f => f.path.startsWith('/workload/Job/'))
+                        allJobs = allJobs.filter(f => {
+                            const owners = f.data.origin.metadata.ownerReferences || []
+                            return owners.some((owner:any) => owner.name === obj.metadata.name && owner.kind === 'CronJob')
+                        })
+                        allJobs = allJobs.map(f => f.data.origin)
+                        return allJobs
+                    }
+                }
+            }
 
 
         // Cluster
@@ -489,6 +543,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             // crd instance
             let spcCrdInstance = spaces.get('crdinstance')!
             setLeftItem(spcCrdInstance, 'delete', launchObjectDelete)
+            setLeftItem(spcCrdInstance, 'details', launchObjectDetails)
 
         let objSectionServiceAccount = objectSections.get('ServiceAccount')
         if (objSectionServiceAccount) {
@@ -504,7 +559,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
         return () => {
             // unmount actions
-            console.log('UNMOUNT')
             setLeftMenuAnchorParent(undefined)
         }
     }, [])
@@ -556,7 +610,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (x) x.onClick = invoke
     }
 
-    const launchPodLog = (f:IFileObject[], currentTarget:Element) => {
+    const launchPodLogs = (f:IFileObject[], currentTarget:Element) => {
         setSelectedFiles(f)
         setExternalContentView(InstanceConfigViewEnum.CONTAINER)
         setExternalContentTitle(f[0].name)
@@ -601,40 +655,52 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const launchObjectDetails = (f:IFileObject[]) => {
         setDetailsContent(f[0])
-        setDetailsSections(objectSections.get(f[0].data.origin.kind)!)
+        if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/'))
+            setDetailsSections(objectSections.get('#crdinstance#')!)
+        else
+            setDetailsSections(objectSections.get(f[0].data.origin.kind)!)
         setDetailsVisible(true)
     }
 
-    const launchDeploymentScale = (f:IFileObject[]) => {
+    const launchGroupScale = (f:IFileObject[]) => {
         console.log('set sca')
     }
 
-    const launchDeploymentRestart = (f:IFileObject[]) => {
+    const launchGroupRestart = (f:IFileObject[]) => {
         console.log('set rest')
     }
 
-    const launchDeploymentLogs = (f:IFileObject[]) => {
-        console.log('set logs')
+    const launchGroupLogs = (f:IFileObject[]) => {
+        setExternalContentView(InstanceConfigViewEnum.GROUP)
+        setExternalContentTitle(f[0].name)
+        setSelectedFiles(f)
+        setExternalContentType('log')
+        setExternalContentVisible(true)
+    }
+
+    const launchGroupMetrics = (f:IFileObject[]) => {
+        //+++ falta decidir si nada, group o merge: neceistamos un pequeño menu en externlaContent
+        setExternalContentView(InstanceConfigViewEnum.GROUP)
+        setExternalContentTitle(f[0].name)
+        setSelectedFiles(f)
+        setExternalContentType('metrics')
+        setExternalContentVisible(true)
     }
 
     const launchDaemonSetRestart = (f:IFileObject[]) => {
         console.log('set rest')
     }
 
-    const launchDaemonSetLogs = (f:IFileObject[]) => {
-        console.log('set logs')
-    }
-
     const launchReplicaSetScale = (f:IFileObject[]) => {
         console.log('set sca')
     }
 
-    const launchReplicaSetLogs = (f:IFileObject[]) => {
-        console.log('set logs')
-    }
-
     const launchJobLogs = (f:IFileObject[]) => {
-        console.log(' logs')
+        setExternalContentView(InstanceConfigViewEnum.POD)
+        setExternalContentTitle(f[0].name)
+        setSelectedFiles(f)
+        setExternalContentType('log')
+        setExternalContentVisible(true)
     }
 
     const launchIngressClassDefault = (f:IFileObject[]) => {
@@ -927,9 +993,22 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         magnifyData.currentPath = folder
     }
 
-    const onChangeData = (src:string, data:any) => {
+    const onMagnifyObjectDetailsChangeData = (src:string, data:any) => {
         setDetailsChanges( _.set(detailsChanges, src, data))
         console.log(detailsChanges)
+    }
+
+    const onMagnifyObjectDetailsLink = (kind:string, name:string) => {
+        setDetailsVisible(false)
+        console.log('kind, name******************')
+        console.log(kind, name)
+        let path = buildPath(kind, name)
+        console.log(path)
+        let f = magnifyData.files.find(f => f.path === path)
+        if (f)
+            launchObjectDetails([f])
+        else
+            setMsgBox(MsgBoxOkError('Object details',<Box>Object with name '<b>{name}</b>' of kind '{kind}'' has not been found on artifacts database.</Box>, setMsgBox))
     }
 
     const launchEditFromDetails = (f:IFileObject) => {
@@ -997,7 +1076,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     searchCasing={true}
                 />
                 {
-                    leftMenuAnchorParent && <LeftItemMenu f={leftMenuContent} onClose={onLeftMenuClose} onOptionSelected={onLeftMenuOptionSelected} anchorParent={leftMenuAnchorParent} includeAll={leftMenuIncludeAll} />
+                    leftMenuAnchorParent && <LeftItemMenu f={leftMenuContent} onClose={onLeftMenuClose} onOptionSelected={onLeftMenuOptionSelected} anchorParent={leftMenuAnchorParent} includeAllContainers={leftMenuIncludeAll} />
                 }
                 <Stack direction={'row'} sx={{mt:1}}>
                     {
@@ -1059,7 +1138,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     </Stack>
                 </DialogTitle>
                 <DialogContent >
-                    <MagnifyObjectDetails object={detailsContent} sections={detailsSections} onChangeData={onChangeData}/>
+                    <MagnifyObjectDetails object={detailsContent} sections={detailsSections} onChangeData={onMagnifyObjectDetailsChangeData} onLink={onMagnifyObjectDetailsLink}/>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => {setDetailsVisible(false); updateSource()}}>Ok</Button>

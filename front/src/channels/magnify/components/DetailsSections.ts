@@ -1,44 +1,97 @@
-import { IDetailsSection } from "./DetailsObject"
+import { IDetailsItem, IDetailsSection } from "./DetailsObject"
 
 export const objectSections = new Map<string,IDetailsSection[]>()
+
+// common properties and attributes to use in sections
+let basicCluster:IDetailsItem[] = [
+    {
+        name: 'created',
+        text: 'Created',
+        source: ['metadata.creationTimestamp'],
+        format: 'string'
+    },
+    {
+        name: 'name',
+        text: 'Name',
+        source: ['metadata.name'],
+        format: 'string'
+    },
+    {
+        name: 'labels',
+        text: 'Labels',
+        source: ['metadata.labels'],
+        format: 'objectprops',
+        style: ['column', 'ifpresent']
+    },
+    {
+        name: 'annotations',
+        text: 'Annotations',
+        source: ['metadata.annotations'],
+        format: 'objectprops',
+        style: ['column','char:50','ifpresent']
+    }
+]
+
+let basicNamespaced:IDetailsItem[] = [
+    {
+        name: 'created',
+        text: 'Created',
+        source: ['metadata.creationTimestamp'],
+        format: 'string'
+    },
+    {
+        name: 'name',
+        text: 'Name',
+        source: ['metadata.name'],
+        format: 'string'
+    },
+    {
+        name: 'namespace',
+        text: 'Namespace',
+        source: ['#metadata.namespace'],
+        format: 'string',
+        style: ['link:$Namespace:metadata.namespace']
+    },
+    {
+        name: 'labels',
+        text: 'Labels',
+        source: ['metadata.labels'],
+        format: 'objectprops',
+        style: ['column', 'ifpresent']
+    },
+    {
+        name: 'annotations',
+        text: 'Annotations',
+        source: ['metadata.annotations'],
+        format: 'objectprops',
+        style: ['column','char:50','ifpresent']
+    }
+]
+
+let conditions:IDetailsItem = {
+    name: 'conditions',
+    text: 'Conditions',
+    source: ['status.conditions'],
+    format: 'objectlist',
+    content: [
+        {
+            name: 'type',
+            text: 'Type',
+            source: ['type'],
+            format: 'string',
+            style: ['property:status:True:green', 'property:status:False:red']
+            //source: ['type', '$\u00a0(', 'status', '$)'],
+            //style: ['False:red', 'True:green']
+        },
+    ]
+}
 
 objectSections.set('PersistentVolumeClaim', [
     {
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
             {
                 name: 'finalizers',
                 text: 'Finalizers',
@@ -54,8 +107,9 @@ objectSections.set('PersistentVolumeClaim', [
            {
                 name: 'storageClassName',
                 text: 'Storage Class',
-                source: ['spec.storageClassName'],
+                source: ['#spec.storageClassName'],
                 format: 'string',
+                style: ['link:$StorageClass:spec.storageClassName']
            },
 
            {
@@ -77,24 +131,6 @@ objectSections.set('PersistentVolumeClaim', [
                 format: 'string',
            }
         ]
-    },
-    {
-        name: 'selector',
-        text: 'Selector',
-        items: [
-            {
-                name: 'matchLabels',
-                text: 'Labels',
-                source: ['$n/a'],
-                format: 'string'
-            },
-            {
-                name: 'matchExpressions',
-                text: 'Expressions',
-                source: ['$n/a'],
-                format: 'string'
-            },
-        ]
     }
 ])
 
@@ -103,32 +139,7 @@ objectSections.set('PersistentVolume', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicCluster,
             {
                 name: 'finalizers',
                 text: 'Finalizers',
@@ -156,8 +167,9 @@ objectSections.set('PersistentVolume', [
            {
                 name: 'storageClassName',
                 text: 'Storage Class',
-                source: ['spec.storageClassName'],
+                source: ['#spec.storageClassName'],
                 format: 'string',
+                style: ['link:$StorageClass:spec.storageClassName']
            },
            {
                 name: 'status',
@@ -174,32 +186,7 @@ objectSections.set('StorageClass', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicCluster,
             {
                 name: 'provisioner',
                 text: 'Provisioner',
@@ -222,239 +209,12 @@ objectSections.set('StorageClass', [
     },
 ])
 
-objectSections.set('Endpoints', [
-    {
-        name: 'properties',
-        text: 'Properties',
-        items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-        ]
-    },
-    {
-        name: 'subsets',
-        text: 'Subsets',
-        items: [
-            {
-                name: 'subsetlist',
-                text: '',
-                source: ['subsets'],
-                format: 'objectlist',
-                content: [
-                    {
-                        name: 'address',
-                        text: 'Address',
-                        source: ['addresses'],
-                        format: 'objectlist',
-                        style:['table'],
-                        content: [
-                            {
-                                name: 'ip',
-                                text: 'IP',
-                                source: ['ip'],
-                                format: 'string'
-                            },
-                            {
-                                name: 'target',
-                                text: 'Target',
-                                source: ['targetRef'],
-                                format: 'objectprops',
-                                style:['column']
-                            }
-                        ]
-                    },                    
-                ]
-            },
-
-        ]
-    }
-])
-
-objectSections.set('Ingress', [
-    {
-        name: 'properties',
-        text: 'Properties',
-        items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
-            {
-                name: 'ingressClass',
-                text: 'Ingress class',
-                source: ['spec.ingressClassName'],
-                format: 'string',
-                style: ['bold']
-            },
-        ]
-    },
-    {
-        name: 'rules',
-        text: 'Rules',
-        items: [
-            {
-                name: 'host',
-                text: 'Host',
-                source: ['spec.rules'],
-                format: 'objectobject',
-                content: [
-                    {
-                        name: 'host',
-                        text: '',   // no text header => show property value as header
-                        source: ['host'],
-                        format: 'string',
-                        style:['bold']
-                    },
-                    {
-                        name: 'paths',
-                        text: '',   // no text header => show property value as header
-                        source: ['http.paths'],
-                        format: 'objectobject',
-                        content: [
-                            {
-                                name: 'path',
-                                text: 'Path',   // no text header => show property value as header
-                                source: ['path'],
-                                format: 'string'
-                            },
-                            {
-                                name: 'pathType',
-                                text: 'Type',   // no text header => show property value as header
-                                source: ['pathType'],
-                                format: 'string'
-                            },
-                            {
-                                name: 'backend',
-                                text: 'Backend',
-                                source: ['backend.service.name', '$:', 'backend.service.port.number'],
-                                format: 'string'
-                            }
-                        ],
-                        style: ['table']
-                    }
-                ],
-                style: ['column']
-            },
-        ]
-    }
-])
-
-objectSections.set('IngressClass', [
-    {
-        name: 'properties',
-        text: 'Properties',
-        items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
-            {
-                name: 'controller',
-                text: 'Controller',
-                source: ['spec.controller'],
-                format: 'string'
-            },
-        ]
-    }
-])
-
 objectSections.set('NetworkPolicy', [
     {
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicCluster,
             {
                 name: 'podSelector',
                 text: 'Pod Selector',
@@ -470,38 +230,7 @@ objectSections.set('Service', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
             {
                 name: 'selector',
                 text: 'Selector',
@@ -557,37 +286,130 @@ objectSections.set('Service', [
     }
 ])
 
+objectSections.set('Endpoints', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            //...basicNamespaced
+        ]
+    },
+    {
+        name: 'subsets',
+        text: 'Subsets',
+        items: [
+            {
+                name: 'subsetlist',
+                text: '',
+                source: ['subsets'],
+                format: 'objectlist',
+                content: [
+                    {
+                        name: 'address',
+                        text: 'Address',
+                        source: ['addresses'],
+                        format: 'objectlist',
+                        style:['table'],
+                        content: [
+                            {
+                                name: 'ip',
+                                text: 'IP',
+                                source: ['ip'],
+                                format: 'string'
+                            },
+                            {
+                                name: 'target',
+                                text: 'Target',
+                                source: ['targetRef.kind', '$\u00a0', '#targetRef.name', '$\u00a0(', 'targetRef.namespace', '$)'],
+                                format: 'string',
+                                style: ['link:targetRef.kind:targetRef.name']
+                            }
+                        ]
+                    },                    
+                ]
+            },
+
+        ]
+    }
+])
+
+objectSections.set('Ingress', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicNamespaced,
+            {
+                name: 'ingressClass',
+                text: 'Ingress class',
+                source: ['#spec.ingressClassName'],
+                format: 'string',
+                style: ['bold', 'link:$IngressClass:spec.ingressClassName']
+            },
+        ]
+    },
+    {
+        name: 'rules',
+        text: 'Rules',
+        items: [
+            {
+                name: 'host',
+                text: 'Host',
+                source: ['spec.rules'],
+                format: 'objectlist',
+                style: ['table'],
+                content: [
+                    {
+                        name: 'host',
+                        text: 'Host',  
+                        source: ['host'],
+                        format: 'string',
+                        style:['bold']
+                    },
+                    {
+                        name: 'paths',
+                        text: 'Paths',  
+                        source: ['http.paths'],
+                        format: 'objectlist',
+                        style: ['column'],
+                        content: [
+                            {
+                                name: 'path',
+                                text: 'Path',  
+                                source: ['path', '$\u00a0(', '#backend.service.name', '$:', 'backend.service.port.number', '$)', ],
+                                format: 'string',
+                                style: [ 'link:$Service:backend.service.name']
+                            },
+                        ]
+                    }
+                ],
+            },
+        ]
+    }
+])
+
+objectSections.set('IngressClass', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicCluster,
+            {
+                name: 'controller',
+                text: 'Controller',
+                source: ['spec.controller'],
+                format: 'string'
+            },
+        ]
+    }
+])
+
 objectSections.set('Namespace', [
     {
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicCluster,
             {
                 name: 'status',
                 text: 'Status',
@@ -604,32 +426,7 @@ objectSections.set('Node', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'creation',
-                text: 'Creation',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicCluster,
             {
                 name: 'finallizers',
                 text: 'Finalizers',
@@ -682,21 +479,7 @@ objectSections.set('Node', [
                 source: ['status.nodeInfo.kubeletVersion'],
                 format: 'string',
             },
-            {
-                name: 'conditions',
-                text: 'Conditions',
-                source: ['status.conditions'],
-                format: 'objectlist',
-                content: [
-                    {
-                        name: 'type',
-                        text: 'Type',
-                        source: ['type', '$\u00a0(', 'status', '$)'],
-                        format: 'string',
-                        style: ['False:red', 'True:green']
-                    },
-                ]
-            },
+            conditions
         ]
     },
     {
@@ -726,32 +509,7 @@ objectSections.set('ConfigMap', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
         ]
     },
     {
@@ -774,38 +532,7 @@ objectSections.set('Secret', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
             {
                 name: 'type',
                 text: 'Type',
@@ -834,38 +561,7 @@ objectSections.set('LimitRange', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
         ]
     },
     {
@@ -980,38 +676,7 @@ objectSections.set('HorizontalPodAutoscaler', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
             {
                 name: 'reference',
                 text: 'Reference',
@@ -1035,13 +700,7 @@ objectSections.set('HorizontalPodAutoscaler', [
                 text: 'Replicas',
                 source: ['status.desiredReplicas'],
                 format: 'string'
-            },
-            {
-                name: 'status',
-                text: 'Status',
-                source: ['$n/a'],
-                format: 'string'
-            },
+            }
         ]
     },
     {
@@ -1103,48 +762,296 @@ objectSections.set('HorizontalPodAutoscaler', [
     },
 ])
 
+objectSections.set('PodDisruptionBudget', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicNamespaced,
+            {
+                name: 'minAvailable',
+                text: 'Min Available',
+                source: ['spec.minAvailable'],
+                format: 'string'
+            },
+            {
+                name: 'selector',
+                text: 'Selector',
+                source: ['spec.selector.matchLabels'],
+                format: 'objectprops'
+            },
+        ]
+    },
+    //+++ more
+])
+
+objectSections.set('PriorityClass', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicCluster,
+            {
+                name: 'preemptionPolicy',
+                text: 'Policy',
+                source: ['preemptionPolicy'],
+                format: 'string'
+            },
+        ]
+    },
+])
+
+objectSections.set('RuntimeClass', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicCluster,
+            {
+                name: 'handler',
+                text: 'Handler',
+                source: ['handler'],
+                format: 'string'
+            },
+        ]
+    },
+])
+
+objectSections.set('Lease', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicNamespaced,
+            {
+                name: 'holderIdentity',
+                text: 'Holder',
+                source: ['#spec.holderIdentity'],
+                format: 'string',
+                style: ['link:$Pod:spec.holderIdentity']
+            },
+            {
+                name: 'leaseDurationSeconds',
+                text: 'Duration',
+                source: ['spec.leaseDurationSeconds'],
+                format: 'string'
+            },
+            {
+                name: 'acquireTime',
+                text: 'Acquire',
+                source: ['spec.acquireTime'],
+                format: 'string'
+            },
+            {
+                name: 'renewTime',
+                text: 'Renew',
+                source: ['spec.renewTime'],
+                format: 'string'
+            },
+            {
+                name: 'leaseTransitions',
+                text: 'Transitions',
+                source: ['spec.leaseTransitions'],
+                format: 'string'
+            },
+        ]
+    },
+])
+
+objectSections.set('ValidatingWebhookConfiguration', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicCluster,
+            {
+                name: 'webhooks',
+                text: 'Webhooks',
+                source: ['webhooks'],
+                format: 'objectlist',
+                style: ['table'],
+                content: [
+                    {
+                        name: 'name',
+                        text: 'Name',
+                        source: ['name'],
+                        format: 'string'
+                    },
+                    {
+                        name: 'clientConfig',
+                        text: 'Client Config',
+                        source: ['clientConfig.service'],
+                        format: 'objectprops',
+                        content: [
+                            {
+                                name: 'name',
+                                text: 'Name',
+                                source: ['name'],
+                                format: 'string'
+                            },
+                            {
+                                name: 'namespace',
+                                text: 'Namespace',
+                                source: ['#namespace'],
+                                format: 'string',
+                                style: ['link:$Namespace:namespace']
+                            },
+                        ],
+                    },
+                    {
+                        name: 'rules',
+                        text: 'Rules',
+                        source: ['rules'],
+                        format: 'objectlist',
+                        style: ['column'],
+                        content: [
+                            {
+                                name: 'scope',
+                                text: 'Scope',
+                                source: ['scope'],
+                                format: 'string',
+                                style: ['header']
+                            },
+                            {
+                                name: 'operations',
+                                text: 'operations',
+                                source: ['operations'],
+                                format: 'stringlist',
+                                style:['header']
+                            },
+                            {
+                                name: 'apiGroups',
+                                text: 'Gruoups',
+                                source: ['apiGroups'],
+                                format: 'stringlist',
+                                style:['header']
+                            },
+                            {
+                                name: 'apiVersions',
+                                text: 'API Versions',
+                                source: ['apiVersions'],
+                                format: 'stringlist',
+                                style:['header']
+                            },
+                            {
+                                name: 'resources',
+                                text: 'Resources',
+                                source: ['resources'],
+                                format: 'stringlist',
+                                style:['header']
+                            },
+                          
+                        ],
+                    },
+                ],
+            },
+        ]
+    },
+])
+
+objectSections.set('MutatingWebhookConfiguration', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicCluster,
+            {
+                name: 'webhooks',
+                text: 'Webhooks',
+                source: ['webhooks'],
+                format: 'objectlist',
+                content: [
+                    {
+                        name: 'name',
+                        text: 'Name',
+                        source: ['name'],
+                        format: 'string'
+                    },
+                    {
+                        name: 'clientConfig',
+                        text: 'Client Config',
+                        source: ['clientConfig.service'],
+                        format: 'objectprops',
+                        content: [
+                            {
+                                name: 'name',
+                                text: 'Name',
+                                source: ['name'],
+                                format: 'string'
+                            },
+                            {
+                                name: 'namespace',
+                                text: 'Namespace',
+                                source: ['#namespace'],
+                                format: 'string',
+                                style: ['link:$Namespace:namespace']
+                            },
+                        ],
+                    },
+                    {
+                        name: 'rules',
+                        text: 'Rules',
+                        source: ['rules'],
+                        format: 'objectlist',
+                        style: ['column'],
+                        content: [
+                            {
+                                name: 'scope',
+                                text: 'Scope',
+                                source: ['scope'],
+                                format: 'string',
+                                style: ['header']
+                            },
+                            {
+                                name: 'operations',
+                                text: 'operations',
+                                source: ['operations'],
+                                format: 'stringlist',
+                                style:['header']
+                            },
+                            {
+                                name: 'apiGroups',
+                                text: 'Gruoups',
+                                source: ['apiGroups'],
+                                format: 'stringlist',
+                                style:['header']
+                            },
+                            {
+                                name: 'apiVersions',
+                                text: 'API Versions',
+                                source: ['apiVersions'],
+                                format: 'stringlist',
+                                style:['header']
+                            },
+                            {
+                                name: 'resources',
+                                text: 'Resources',
+                                source: ['resources'],
+                                format: 'stringlist',
+                                style:['header']
+                            },
+                          
+                        ],
+                    },
+                ],
+                style: ['table']
+            },
+        ]
+    },
+])
+
 objectSections.set('Pod', [
     {
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
             {
                 name: 'controlledby',
                 text: 'Controlled By',
-                source: ['metadata.ownerReferences.0.kind', '$\u00A0', 'metadata.ownerReferences.0.name'],
-                format: 'string'
+                source: ['metadata.ownerReferences.0.kind', '$\u00A0', '#metadata.ownerReferences.0.name'],
+                format: 'string',
+                style: ['link:metadata.ownerReferences.0.kind:metadata.ownerReferences.0.name']
             },
             {
                 name: 'status',
@@ -1156,8 +1063,9 @@ objectSections.set('Pod', [
             {
                 name: 'node',
                 text: 'Node',
-                source: ['spec.nodeName'],
-                format: 'string'
+                source: ['#spec.nodeName'],
+                format: 'string',
+                style: ['link:$Node:spec.nodeName']
             },
             {
                 name: 'podip',
@@ -1182,8 +1090,9 @@ objectSections.set('Pod', [
             {
                 name: 'sa',
                 text: 'Service Account',
-                source: ['spec.serviceAccount'],
-                format: 'string'
+                source: ['#spec.serviceAccount'],
+                format: 'string',
+                style: ['link:$ServiceAccount:spec.serviceAccount']
             },
             {
                 name: 'qosclass',
@@ -1191,20 +1100,7 @@ objectSections.set('Pod', [
                 source: ['status.qosClass'],
                 format: 'string'
             },
-            {
-                name: 'conditions',
-                text: 'Conditions',
-                source: ['status.conditions'],
-                format: 'objectlist',
-                content: [
-                    {
-                        name: 'type',
-                        text: 'Type',
-                        source: ['type'],
-                        format: 'string'
-                    },
-                ]
-            },
+            conditions,
             {
                 name: 'tolerations',
                 text: 'Tolerations',
@@ -1365,13 +1261,14 @@ objectSections.set('Pod', [
                         text: 'Requests',
                         source: ['resources.requests'],
                         format: 'objectprops',
-                        style: ['table']    
+                        style: ['table', 'ifpresent']
                     },
                     {
                         name: 'limits',
                         text: 'Limits',
                         source: ['resources.limits'],
-                        format: 'objectprops'
+                        format: 'objectprops',
+                        style: ['table','ifpresent']
                     },
                 ],
                 style: ['column']
@@ -1385,38 +1282,7 @@ objectSections.set('Deployment', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
             {
                 name: 'selector',
                 text: 'Selector',
@@ -1437,21 +1303,7 @@ objectSections.set('Deployment', [
                 format: 'string',
                 style: ['running:green']
             },
-            {
-                name: 'conditions',
-                text: 'Conditions',
-                source: ['status.conditions'],
-                format: 'objectlist',
-                content: [
-                    {
-                        name: 'type',
-                        text: 'Type',
-                        source: ['type', '$\u00a0(', 'status', '$)'],
-                        format: 'string',
-                        style: ['False:red', 'True:green']
-                    },
-                ]
-            },
+            conditions
         ]
     },
     {
@@ -1469,14 +1321,16 @@ objectSections.set('Deployment', [
                     {
                         name: 'name',
                         text: 'Name',
-                        source: ['metadata.name'],
-                        format: 'string'
+                        source: ['#metadata.name'],
+                        format: 'string',
+                        style: ['link:$Pod:metadata.name']
                     },
                     {
                         name: 'node',
                         text: 'Node',
-                        source: ['spec.nodeName'],
+                        source: ['#spec.nodeName'],
                         format: 'string',
+                        style: ['link:$Node:spec.nodeName']
                     }
                 ]
             }
@@ -1490,38 +1344,7 @@ objectSections.set('DaemonSet', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
             {
                 name: 'selector',
                 text: 'Selector',
@@ -1594,14 +1417,16 @@ objectSections.set('DaemonSet', [
                     {
                         name: 'name',
                         text: 'Name',
-                        source: ['metadata.name'],
-                        format: 'string'
+                        source: ['#metadata.name'],
+                        format: 'string',
+                        style: ['link:$Pod:metadata.name']
                     },
                     {
                         name: 'node',
                         text: 'Node',
-                        source: ['spec.nodeName'],
+                        source: ['#spec.nodeName'],
                         format: 'string',
+                        style: ['link:$Node:spec.nodeName']
                     }
                 ]
             }
@@ -1615,51 +1440,13 @@ objectSections.set('ReplicaSet', [
         name: 'properties',
         text: 'Properties',
         items: [
+            ...basicNamespaced,
             {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
-            {
-                name: 'controlledBy',
-                text: 'Controlled by',
-                source: ['metadata.ownerReferences'],
-                format: 'objectlist',
-                content: [
-                    {
-                        name: 'image',
-                        text: '',
-                        source: ['kind', '$:\u00A0', 'name'],
-                        format: 'string'
-                    },
-                ],
+                name: 'controlledby',
+                text: 'Controlled By',
+                source: ['metadata.ownerReferences.0.kind', '$\u00A0', '#metadata.ownerReferences.0.name'],
+                format: 'string',
+                style: ['link:metadata.ownerReferences.0.kind:metadata.ownerReferences.0.name']
             },
             {
                 name: 'images',
@@ -1699,14 +1486,16 @@ objectSections.set('ReplicaSet', [
                     {
                         name: 'name',
                         text: 'Name',
-                        source: ['metadata.name'],
-                        format: 'string'
+                        source: ['#metadata.name'],
+                        format: 'string',
+                        style: ['link:$Pod:metadata.name']
                     },
                     {
                         name: 'node',
                         text: 'Node',
-                        source: ['spec.nodeName'],
+                        source: ['#spec.nodeName'],
                         format: 'string',
+                        style: ['link:$Node:spec.nodeName']
                     }
                 ]
             }
@@ -1715,43 +1504,29 @@ objectSections.set('ReplicaSet', [
 
 ])
 
+objectSections.set('StatefulSet', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicNamespaced,
+            {
+                name: 'controlledby',
+                text: 'Controlled By',
+                source: ['metadata.ownerReferences.0.kind', '$\u00A0', '#metadata.ownerReferences.0.name'],
+                format: 'string',
+                style: ['link:metadata.ownerReferences.0.kind:metadata.ownerReferences.0.name']
+            }
+        ]
+    }
+])
+
 objectSections.set('Job', [
     {
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
             {
                 name: 'selector',
                 text: 'Selector',
@@ -1763,6 +1538,7 @@ objectSections.set('Job', [
                 text: 'Node Selector',
                 source: ['spec.template.spec.nodeSelector'],
                 format: 'objectprops',
+                style: ['ifpresent']
             },
             {
                 name: 'images',
@@ -1779,20 +1555,7 @@ objectSections.set('Job', [
                 ],
                 style:['column']
             },
-            {
-                name: 'conditions',
-                text: 'Conditions',
-                source: ['status.conditions'],
-                format: 'objectlist',
-                content: [
-                    {
-                        name: 'type',
-                        text: '',
-                        source: ['type'],
-                        format: 'string'
-                    },
-                ]
-            },
+            conditions,
             {
                 name: 'completions',
                 text: 'Completions',
@@ -1807,6 +1570,72 @@ objectSections.set('Job', [
             },
         ]
     },
+])
+
+objectSections.set('CronJob', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicNamespaced,
+            {
+                name: 'schedule',
+                text: 'Schedule',
+                source: ['spec.schedule'],
+                format: 'string',
+            },
+            {
+                name: 'suspend',
+                text: 'Suspend',
+                source: ['spec.suspend'],
+                format: 'string',
+                style: ['ifpresent']
+            },
+            {
+                name: 'lastSchedule',
+                text: 'Last Schedule',
+                source: ['status.lastScheduleTime'],
+                format: 'string',
+                style: ['ifpresent']
+            },
+            {
+                name: 'lastSuccessful',
+                text: 'Last Success',
+                source: ['status.lastSuccessfulTime'],
+                format: 'string',
+                style: ['ifpresent']
+            },
+        ]
+    },
+    {
+        name: 'history',
+        text: 'History',
+        items: [
+            {
+                name: 'jobs',
+                text: 'Jobs',
+                source: ['#'],
+                //invoke: () => { return ['aa',`bb`]},
+                format: 'objectlist',
+                style: ['table'],
+                content: [
+                    {
+                        name: 'name',
+                        text: 'Name',
+                        source: ['#metadata.name'],
+                        format: 'string',
+                        style: ['link:$Job:metadata.name']
+                    },
+                    {
+                        name: 'age',
+                        text: 'Age',
+                        source: ['status.startTime'],
+                        format: 'age',
+                    }
+                ]
+            }
+        ]
+    }
 
 ])
 
@@ -1815,45 +1644,14 @@ objectSections.set('ServiceAccount', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char30','ifpresent']
-            },
+            ...basicCluster,
             {
                 name: 'tokens',
                 text: 'Tokens',
                 source: ['#'],
                 //invoke: () => { return ['aa',`bb`]},
                 format: 'stringlist',
-                style: ['column', 'char30']
+                style: ['column', 'char:30', 'ifpresent']
             },
         ]
     }
@@ -1864,32 +1662,7 @@ objectSections.set('ClusterRole', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicCluster
         ]
     },
     {
@@ -1935,38 +1708,7 @@ objectSections.set('Role', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced
         ]
     },
     {
@@ -2012,32 +1754,7 @@ objectSections.set('ClusterRoleBinding', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicCluster
         ]
     },
     {
@@ -2089,8 +1806,9 @@ objectSections.set('ClusterRoleBinding', [
                     {
                         name: 'namespace',
                         text: 'Namespace',
-                        source: ['namespace'],
-                        format: 'string'
+                        source: ['#namespace'],
+                        format: 'string',
+                        style: ['link:$Namespace:namespace']
                     }
                 ],
                 style: ['table']
@@ -2104,38 +1822,7 @@ objectSections.set('RoleBinding', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
         ]
     },
     {
@@ -2187,8 +1874,9 @@ objectSections.set('RoleBinding', [
                     {
                         name: 'namespace',
                         text: 'Namespace',
-                        source: ['namespace'],
-                        format: 'string'
+                        source: ['#namespace'],
+                        format: 'string',
+                        style: ['link:$Namespace:namespace']
                     },                    
                 ],
                 style: ['table']
@@ -2202,38 +1890,7 @@ objectSections.set('ResourceQuota', [
         name: 'properties',
         text: 'Properties',
         items: [
-            {
-                name: 'created',
-                text: 'Created',
-                source: ['metadata.creationTimestamp'],
-                format: 'string'
-            },
-            {
-                name: 'name',
-                text: 'Name',
-                source: ['metadata.name'],
-                format: 'string'
-            },
-            {
-                name: 'namespace',
-                text: 'Namespace',
-                source: ['metadata.namespace'],
-                format: 'string'
-            },
-            {
-                name: 'labels',
-                text: 'Labels',
-                source: ['metadata.labels'],
-                format: 'objectprops',
-                style: ['column', 'ifpresent']
-            },
-            {
-                name: 'annotations',
-                text: 'Annotations',
-                source: ['metadata.annotations'],
-                format: 'objectprops',
-                style: ['column','char50','ifpresent']
-            },
+            ...basicNamespaced,
         ]
     },
     {
@@ -2244,55 +1901,161 @@ objectSections.set('ResourceQuota', [
                 name: 'limitcpu',
                 text: 'Limit CPU',
                 source: ['status.used[\'limits.cpu\']','status.hard[\'limits.cpu\']'],
-                format: 'bar'
+                format: 'bar',
+                style: ['ifpresent']
             },
             {
                 name: 'limitmemory',
                 text: 'Limit Memory',
                 source: ['status.used[\'limits.memory\']','status.hard[\'limits.memory\']'],
-                format: 'bar'
+                format: 'bar',
+                style: ['ifpresent']
             },
             {
                 name: 'requestcpu',
                 text: 'Request CPU',
                 source: ['status.used[\'requests.cpu\']','status.hard[\'requests.cpu\']'],
-                format: 'bar'
+                format: 'bar',
+                style: ['ifpresent']
             },
             {
                 name: 'requestmemory',
                 text: 'Request Memory',
                 source: ['status.used[\'requests.memory\']','status.hard[\'requests.memory\']'],
-                format: 'bar'
+                format: 'bar',
+                style: ['ifpresent']
             },
             {
                 name: 'pods',
                 text: 'Pods',
                 source: ['status.used[\'count/pods\']','status.hard[\'count/pods\']'],
-                format: 'bar'
+                format: 'bar',
+                style: ['ifpresent']
             },
             {
                 name: 'persistentvolumeclaims',
                 text: 'PVCs',
                 source: ['status.used[\'count/persistentvolumeclaims\']','status.hard[\'count/persistentvolumeclaims\']'],
-                format: 'bar'
+                format: 'bar',
+                style: ['ifpresent']
             },
             {
                 name: 'services',
                 text: 'Services',
                 source: ['status.used[\'count/services\']','status.hard[\'count/services\']'],
-                format: 'bar'
+                format: 'bar',
+                style: ['ifpresent']
             },
             {
                 name: 'configmaps',
                 text: 'ConfigMaps',
                 source: ['status.used[\'count/configmaps\']','status.hard[\'count/configmaps\']'],
-                format: 'bar'
+                format: 'bar',
+                style: ['ifpresent']
             },
             {
                 name: 'secrets',
                 text: 'Secrets',
                 source: ['status.used[\'count/secrets\']','status.hard[\'count/secrets\']'],
-                format: 'bar'
+                format: 'bar',
+                style: ['ifpresent']
+            },
+        ]
+    },
+])
+
+objectSections.set('CustomResourceDefinition', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicCluster,
+            {
+                name: 'group',
+                text: 'Group',
+                source: ['spec.group'],
+                format: 'string',
+            },
+            {
+                name: 'versions',
+                text: 'Versions',
+                source: ['spec.versions'],
+                format: 'objectlist',
+                style: ['table'],
+                content: [
+                    {
+                        name: 'name',
+                        text: 'Name',
+                        source: ['name'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'served',
+                        text: 'Served',
+                        source: ['served'],
+                        format: 'boolean',
+                    },
+                    {
+                        name: 'storage',
+                        text: 'Storage',
+                        source: ['storage'],
+                        format: 'boolean',
+                    },
+                ]
+            },
+            conditions
+        ]
+    },
+    {
+        name: 'names',
+        text: 'Names',
+        items: [
+            {
+                name: 'singular',
+                text: 'Singular',
+                source: ['spec.names.singular'],
+                format: 'string',
+            },
+            {
+                name: 'plural',
+                text: 'Plural',
+                source: ['spec.names.plural'],
+                format: 'string',
+            },
+            {
+                name: 'kind',
+                text: 'Kind',
+                source: ['spec.names.kind'],
+                format: 'string',
+            },
+            {
+                name: 'listKind',
+                text: 'List Kind',
+                source: ['spec.names.listKind'],
+                format: 'string',
+            },
+        ]
+    }
+])
+
+objectSections.set('#crdinstance#', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        items: [
+            ...basicNamespaced,
+            {
+                name: 'source',
+                text: 'Source',
+                source: ['spec.source'],
+                format: 'string',
+            },
+            {
+                name: 'checksum',
+                text: 'checksum',
+                source: ['spec.checksum'],
+                format: 'string',
+                style: ['char:80']
             },
         ]
     },

@@ -83,10 +83,17 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
                 clusterName: props.channelObject?.clusterName!,
                 instanceId: '',
                 view: props.contentView,
-                namespace: props.selectedFiles[0].data.origin.metadata.namespace,
-                group: '',
-                pod: props.selectedFiles[0].data.origin.metadata.name,
-                container: container || '',
+                // namespace: props.selectedFiles[0].data.origin.metadata.namespace,
+                // group: '',
+                // pod: props.selectedFiles[0].data.origin.metadata.name,
+                // container: container || '',
+                //namespace: props.selectedFiles[0].data.origin.metadata.namespace,   //+++
+                namespace: [...new Set(props.selectedFiles.map(n => n.data.origin.metadata.namespace))].join(','),
+                //group: props.contentView === InstanceConfigViewEnum.GROUP? 'Deployment+'+props.selectedFiles[0].data.origin.metadata.name : '',
+                group: props.contentView === InstanceConfigViewEnum.GROUP? props.selectedFiles.map(g => 'Deployment+'+g.data.origin.metadata.name).join(',') : '',
+                //pod: props.contentView === InstanceConfigViewEnum.POD? props.selectedFiles[0].data.origin.metadata.name : '',
+                pod: props.contentView === InstanceConfigViewEnum.POD? props.selectedFiles.map(p => p.data.origin.metadata.name).join(',') : '',
+                container: props.contentView === InstanceConfigViewEnum.CONTAINER? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
                 config: undefined,
                 data: undefined,
                 instanceConfig: undefined
@@ -259,10 +266,17 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
                 accessKey: props.channelObject!.accessString!,
                 scope: InstanceConfigScopeEnum.NONE,
                 view: props.contentView,
-                namespace: props.selectedFiles[0].data.origin.metadata.namespace,   //+++
-                group: '',
-                pod: props.selectedFiles[0].data.origin.metadata.name,   //+++
-                container: props.selectedFiles[0].data.origin.metadata.name + '+' + props.container,
+                // namespace: props.selectedFiles[0].data.origin.metadata.namespace,   //+++
+                // group: '',
+                // pod: props.selectedFiles[0].data.origin.metadata.name,   //+++
+                // container: props.selectedFiles[0].data.origin.metadata.name + '+' + props.container,
+                //namespace: props.selectedFiles[0].data.origin.metadata.namespace,   //+++
+                namespace: [...new Set(props.selectedFiles.map(n => n.data.origin.metadata.namespace))].join(','),
+                //group: props.contentView === InstanceConfigViewEnum.GROUP? 'Deployment+'+props.selectedFiles[0].data.origin.metadata.name : '',
+                group: props.contentView === InstanceConfigViewEnum.GROUP? props.selectedFiles.map(g => g.data.origin.kind+'+'+g.data.origin.metadata.name).join(',') : '',
+                //pod: props.contentView === InstanceConfigViewEnum.POD? props.selectedFiles[0].data.origin.metadata.name : '',
+                pod: props.contentView === InstanceConfigViewEnum.POD? props.selectedFiles.map(p => p.data.origin.metadata.name).join(',') : '',
+                container: props.contentView === InstanceConfigViewEnum.CONTAINER? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
                 type: InstanceMessageTypeEnum.SIGNAL,
             }
             instanceConfig.scope = content.current.channel.getScope() || ''
