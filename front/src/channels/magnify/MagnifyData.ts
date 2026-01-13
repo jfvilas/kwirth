@@ -1,6 +1,7 @@
-import { IInstanceMessage } from "@jfvilas/kwirth-common"
-import { IFileObject } from "@jfvilas/react-file-manager"
-import { IExternalContentObject } from "./components/ExternalContent"
+import { IInstanceMessage } from '@jfvilas/kwirth-common'
+import { IFileObject } from '@jfvilas/react-file-manager'
+import { IContentExternalObject } from './components/ContentExternal'
+import { IContentEditObject } from './components/ContentEdit'
 
 export interface IMagnifyData {
     clusterInfo: any
@@ -9,7 +10,7 @@ export interface IMagnifyData {
     files: IFileObject[]
     currentPath: string
 
-    externalContent : IExternalContentObject[]
+    contentWindows : (IContentExternalObject|IContentEditObject)[]
     leftMenuAnchorParent: Element | undefined
 }
 
@@ -19,7 +20,7 @@ export class MagnifyData implements IMagnifyData {
     started = false
     files = []
     currentPath = '/'
-    externalContent = []
+    contentWindows = []
     leftMenuAnchorParent: undefined
 }
 

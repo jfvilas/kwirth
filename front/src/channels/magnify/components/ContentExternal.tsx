@@ -1,7 +1,7 @@
 import { IInstanceConfig, IInstanceMessage, InstanceConfigObjectEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelObject, IContentProps } from '../../IChannel'
 import { Dialog, DialogContent, DialogTitle, IconButton, Stack, Typography } from '@mui/material'
-import { Close, Fullscreen, FullscreenExit, Maximize, Minimize, PauseCircle, PlayCircle, SettingsApplicationsOutlined, StopCircle } from '@mui/icons-material'
+import { Close, Fullscreen, FullscreenExit, Maximize, Minimize, PauseCircle, PlayCircle, Settings, SettingsApplicationsOutlined, StopCircle } from '@mui/icons-material'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { ELogSortOrderEnum, ILogConfig, ILogInstanceConfig } from '../../log/LogConfig'
 import { ILogData } from '../../log/LogData'
@@ -16,23 +16,24 @@ import { ESwitchKeyEnum, IOpsConfig, IOpsInstanceConfig } from '../../ops/OpsCon
 import { TerminalManager } from '../../ops/Terminal/TerminalManager'
 import { MagnifyUserSettings } from '../MagnifyUserSettings'
 
-interface IExternalContentProps {
+interface IContentExternalProps {
     title: string
     channelId?: string
     settings: MagnifyUserSettings
     frontChannels: Map<string, TChannelConstructor>
     selectedFiles:IFileObject[]
     notify: (level: ENotifyLevel, msg: string) => void
-    minimize: (content:IExternalContentObject) => void
-    close: (content:IExternalContentObject) => void
+    minimize: (content:IContentExternalObject) => void
+    close: (content:IContentExternalObject) => void
     doRefresh: () => void
-    content?: IExternalContentObject
+    content?: IContentExternalObject
     channelObject?: IChannelObject
     contentView: InstanceConfigViewEnum
     container?: string
 }
 
-export interface IExternalContentObject {
+export interface IContentExternalObject {
+    type: 'external'
     ws: WebSocket | undefined
     settings: MagnifyUserSettings
     channel: IChannel
@@ -43,8 +44,8 @@ export interface IExternalContentObject {
     windowMaximized: boolean
 }
 
-const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContentProps) => {
-    const content = useRef<IExternalContentObject>()
+const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternalProps) => {
+    const content = useRef<IContentExternalObject>()
     const [ percent, setPercent] = useState<number>(70)
    
     useEffect( () => {
@@ -76,7 +77,8 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
             console.log('Invaid channel instance created')
             return undefined
         }
-        let newContent:IExternalContentObject = {
+        let newContent:IContentExternalObject = {
+            type: 'external',
             ws: undefined,
             channel: newChannel,
             channelObject: {
@@ -145,7 +147,7 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
         }
     }
 
-    const setLogConfig = (c:IExternalContentObject) => {
+    const setLogConfig = (c:IContentExternalObject) => {
         let logConfig:ILogConfig = {
             startDiagnostics: false,
             follow: true,
@@ -172,7 +174,7 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
         c.channelObject!.instanceConfig = logInstanceConfig
     }
 
-    const setMetricsConfig = (c:IExternalContentObject) => {
+    const setMetricsConfig = (c:IContentExternalObject) => {
         let metricsData:IMetricsData = {
             assetMetricsValues: [],
             events: [],
@@ -199,7 +201,7 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
         c.channelObject!.instanceConfig = metricsInstanceConfig
     }
 
-    const setOpsConfig = (c:IExternalContentObject) => {
+    const setOpsConfig = (c:IContentExternalObject) => {
         let opsData:IOpsData = {
             scopedObjects: [],
             paused: false,
@@ -363,16 +365,7 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
         let ChannelTabContent = content.current.channel.TabContent
         let channelProps:IContentProps = {
             channelObject: content.current.channelObject!,
-            //maxHeight: 300
         }
-        // switch(content.current.channel.channelId) {
-        //     case 'log':
-        //         channelProps.maxHeight = 450
-        //         break
-        //     case 'ops':
-        //         channelProps.maxHeight = 560
-        //         break
-        // }
         return <ChannelTabContent {...channelProps}/>
     }
 
@@ -396,7 +389,7 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
                         <StopCircle/>
                     </IconButton>
                     <IconButton>
-                        <SettingsApplicationsOutlined/>
+                        <Settings/>
                     </IconButton>
                     
                     <Typography sx={{flexGrow:1}}></Typography>
@@ -420,4 +413,4 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
         </Dialog>        
     )
 }
-export { ExternalContent }
+export { ContentExternal }

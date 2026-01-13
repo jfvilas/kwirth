@@ -78,12 +78,9 @@ class MagnifyChannel implements IChannel {
                                 }
                             case MagnifyCommandEnum.EVENTS:
                                 let events:any[] = JSON.parse(response.data)
-                                console.log(events)
-                                events = events.sort( (a,b) => Date.parse(b.lastTimestamp)-Date.parse(a.lastTimestamp))
-                                console.log(events)
+                                events = events.sort( (a,b) => Date.parse(b.lastTimestamp)-Date.parse(a.lastTimestamp))  //+++ review
                                 for (let event of events) {
                                     let path = buildPath(event.involvedObject.kind, event.involvedObject.name)
-                                    console.log(event.involvedObject.kind, event.involvedObject.name, event.involvedObject.namespace, path)
                                     let obj = magnifyData.files.find(f => f.path === path)
                                     if ((obj && obj?.data.origin.metadata.namespace === event.involvedObject.namespace) || (obj && !event.involvedObject.namespace)) {
                                         if (!obj.data.events) {
@@ -178,7 +175,7 @@ class MagnifyChannel implements IChannel {
                                 params: [
                                     'Namespace', 'Node',
                                     'Service', 'Endpoints', 'Ingress', 'IngressClass', 'NetworkPolicy',
-                                    'Pod', 'Deployment', 'DaemonSet', 'ReplicaSet', 'StatefulSet', 'Job', 'CronJob',
+                                    'Pod', 'Deployment', 'DaemonSet', 'ReplicaSet', 'ReplicationController', 'StatefulSet', 'Job', 'CronJob',
                                     'ConfigMap', 'Secret', 'ResourceQuota', 'LimitRange', 'HorizontalPodAutoscaler', 'PodDisruptionBudget', 'PriorityClass','RuntimeClass', 'Lease', 'ValidatingWebhookConfiguration', 'MutatingWebhookConfiguration',
                                     'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass',
                                     'ServiceAccount', 'ClusterRole', 'Role', 'ClusterRoleBinding', 'RoleBinding',
@@ -286,6 +283,7 @@ class MagnifyChannel implements IChannel {
         else if (kind==='Deployment') this.loadDeployment(magnifyData, obj)
         else if (kind==='DaemonSet') this.loadDaemonSet(magnifyData, obj)
         else if (kind==='ReplicaSet') this.loadReplicaSet(magnifyData, obj)
+        else if (kind==='ReplicationController') this.loadReplicationController(magnifyData, obj)
         else if (kind==='StatefulSet') this.loadStatefulSet(magnifyData, obj)
         else if (kind==='Job') this.loadJob(magnifyData, obj)
         else if (kind==='CronJob') this.loadCronJob(magnifyData, obj)
@@ -404,8 +402,6 @@ class MagnifyChannel implements IChannel {
     loadLimitRange(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'v1'
         obj.kind = 'LimitRange'
-        console.log('++++++++++++++++++++++++')
-        console.log(obj)
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
@@ -711,6 +707,24 @@ class MagnifyChannel implements IChannel {
         })
     }
 
+    loadReplicationController(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'v1'
+        obj.kind = 'ReplicationController'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: buildPath('ReplicationController', obj.metadata.name),
+            class: 'ReplicationController',
+            data: {
+                namespace: obj.metadata.namespace,
+                replicas: obj.status.replicas,
+                desired: obj.spec.replicas,
+                creationTimestamp: obj.metadata.creationTimestamp,
+                origin: obj
+            }
+        })
+    }
+
     loadStatefulSet(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'apps/v1'
         obj.kind = 'StatefulSet'
@@ -981,7 +995,7 @@ class MagnifyChannel implements IChannel {
 const buildPath = (kind:string, name:string) => {
     let section=''
     if (' Node Namespace '.includes(' '+kind+' ')) section='cluster'
-    if (' Pod Deployment DaemonSet ReplicaSet StatefulSet Job CronJob '.includes(' '+kind+' ')) section='workload'
+    if (' Pod Deployment DaemonSet ReplicaSet ReplicationController StatefulSet Job CronJob '.includes(' '+kind+' ')) section='workload'
     if (' ConfigMap Secret ResourceQuota LimitRange HorizontalPodAutoscaler PodDisruptionBudget PriorityClass RuntimeClass Lease ValidatingWebhookConfiguration MutatingWebhookConfiguration '.includes(' '+kind+' ')) section='config'
     if (' Service Endpoints Ingress IngressClass NetworkPolicy '.includes(' '+kind+' ')) section='network'
     if (' StorageClass PersistentVolumeClaim PersistentVolume '.includes(' '+kind+' ')) section='storage'

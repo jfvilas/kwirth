@@ -84,6 +84,7 @@ export class EventsTools {
         this.startResourceWatcher('/apis/apps/v1/daemonsets', this.handleEvent)
         this.startResourceWatcher('/apis/apps/v1/statefulsets', this.handleEvent)
         this.startResourceWatcher('/apis/apps/v1/replicasets', this.handleEvent)
+        this.startResourceWatcher('/api/v1/replicationcontrollers', this.handleEvent)
         this.startResourceWatcher('/apis/batch/v1/jobs', this.handleEvent)
         this.startResourceWatcher('/apis/batch/v1/cronjobs', this.handleEvent)
 

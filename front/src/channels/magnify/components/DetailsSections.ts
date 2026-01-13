@@ -1543,6 +1543,68 @@ objectSections.set('ReplicaSet', [
     events
 ])
 
+objectSections.set('ReplicationController', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        root: 'origin',
+        items: [
+            ...basicNamespaced,
+        ]
+    },
+    {
+        name: 'spec',
+        text: 'Spec',
+        root: 'origin',
+        items: [
+            {
+                name: 'replicas',
+                text: 'Replicas',
+                source: ['spec.replicas'],
+                format: 'string'
+            },
+            {
+                name: 'selector',
+                text: 'Selector',
+                source: ['spec.selector'],
+                format: 'objectprops'
+            },
+        ]
+    },
+    {
+        name: 'status',
+        text: 'Status',
+        root: 'origin',
+        items: [
+            {
+                name: 'replicas',
+                text: 'Replicas',
+                source: ['spec.replicas'],
+                format: 'string'
+            },
+            {
+                name: 'availableReplicas',
+                text: 'Available',
+                source: ['status.availableReplicas'],
+                format: 'string'
+            },
+            {
+                name: 'labelled',
+                text: 'Labelled',
+                source: ['status.fullyLabeledReplicas'],
+                format: 'string'
+            },
+            {
+                name: 'generation',
+                text: 'Generation',
+                source: ['status.observedGeneration'],
+                format: 'string'
+            },
+        ]
+    },
+    events
+])
+
 objectSections.set('StatefulSet', [
     {
         name: 'properties',

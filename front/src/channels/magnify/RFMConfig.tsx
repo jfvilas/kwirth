@@ -78,6 +78,12 @@ const menu = [
         class: 'classReplicaSet',
         children: 'ReplicaSet'
     },
+    {   name: 'Replication Controllers',
+        isDirectory: true,
+        path: '/workload/ReplicationController',
+        class: 'classReplicationController',
+        children: 'ReplicationController'
+    },
     {   name: 'Stateful Sets',
         isDirectory: true,
         path: '/workload/StatefulSet',
@@ -2070,6 +2076,74 @@ spaces.set('ReplicaSet',
                 width: 20,
                 visible: true
             },
+        ]
+    }
+)
+spaces.set('classReplicationController',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('ReplicationController',
+    {
+        text: 'Name',
+        source: 'name',
+        width: 60,
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'logs',
+                icon: <Subject fontSize='small'/>,
+                text: 'Logs',
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 20,
+                visible: true
+            },
+            {
+                name: 'replicas',
+                text: 'Replicas',
+                source: 'replicas',
+                format: 'number',
+                width: 10,
+                visible: true
+            },
+            {
+                name: 'desired',
+                text: 'Desired',
+                source: 'desired',
+                format: 'number',
+                width: 10,
+                visible: true
+            }
         ]
     }
 )

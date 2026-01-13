@@ -11,14 +11,12 @@ import { ENotifyLevel } from '../../tools/Global'
 import '@jfvilas/react-file-manager/dist/style.css'
 import './custom-fm.css'
 import { actions, icons, menu, spaces } from './RFMConfig'
-import CodeMirror from '@uiw/react-codemirror';
-import { yaml } from '@codemirror/lang-yaml'
 import React from 'react'
 import { IDetailsSection, DetailsObject } from './components/DetailsObject'
 import { objectSections } from './components/DetailsSections'
 import { Close, ContentCopy, Delete, Edit } from '@mui/icons-material'
 import { MsgBoxButtons, MsgBoxOkError, MsgBoxYesNo } from '../../tools/MsgBox'
-import { ExternalContent, IExternalContentObject } from './components/ExternalContent'
+import { ContentExternal, IContentExternalObject } from './components/ContentExternal'
 import { flushSync } from 'react-dom'
 import { LeftItemMenu } from './LeftItemMenu'
 import { MagnifyUserSettings } from './MagnifyUserSettings'
@@ -26,6 +24,9 @@ import { UserSettings } from './components/UserSettings'
 import { buildPath } from './MagnifyChannel'
 import { InputBox } from '../../tools/FrontTools'
 import cronParser from 'cron-parser';
+import { ContentEdit, IContentEditObject } from './components/ContentEdit'
+import { reorderJsonYamlObject } from './Tools'
+import { templates } from './components/Templates'
 
 const _ = require('lodash')
 const copy = require('clipboard-copy')
@@ -90,16 +91,16 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [magnifyBoxHeight, setMagnifyBoxHeight] = useState(0)
     const [msgBox, setMsgBox] =useState(<></>)
 
-    const [editorVisible, setEditorVisible] = useState(false)
-    const [editorContent, setEditorContent] = useState<{code:string, source?:IFileObject}>({code:''})
-    const [editorContentUnChanged, setEditorContentUnChanged] = useState<boolean>(true)
+    const [contentEditVisible, setContentEditVisible] = useState(false)
+    //const [contentEdit, setContentEdit] = useState<{code:string, source?:IFileObject, maximize?:boolean}>({code:''})
+    const [contentEditNew, setContentEditNew] = useState<string>('')
+    const contentWindowId = useRef<number>(-1)
 
-    const externalContentId = useRef<number>(-1)
-    const [externalContentVisible, setExternalContentVisible] = useState<boolean>(false)
-    const [externalContentType, setExternalContentType] = useState<string>('')
-    const [externalContentView, setExternalContentView] = useState<InstanceConfigViewEnum>(InstanceConfigViewEnum.POD)
-    const [externalContentTitle, setExternalContentTitle] = useState<string>('n/a')
-    const [externalContentContainer, setExternalContentContainer] = useState<string>('')
+    const [contentExternalVisible, setContentExternalVisible] = useState<boolean>(false)
+    const [contentExternalType, setContentExternalType] = useState<string>('')
+    const [contentExternalView, setContentExternalView] = useState<InstanceConfigViewEnum>(InstanceConfigViewEnum.POD)
+    const [contentExternalTitle, setContentExternalTitle] = useState<string>('n/a')
+    const [contentExternalContainer, setContentExternalContainer] = useState<string>('')
 
     const [ibTitle, setIbTitle] = useState<any>()
     const [ibMessage, setIbMessage] = useState<any>()
@@ -174,7 +175,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // Deployment
             let spcClassDeployment = spaces.get('classDeployment')!
-            setLeftItem(spcClassDeployment, 'create', () => launchObjectCreate('classDeployment'))
+            setLeftItem(spcClassDeployment, 'create', () => launchObjectCreate('Deployment'))
             let spcDeployment = spaces.get('Deployment')!
             setLeftItem(spcDeployment,'details', launchObjectDetails)
             setLeftItem(spcDeployment,'scale', launchGroupScale)
@@ -212,7 +213,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             
             // DaemonSet
             let spcClassDaemonSet = spaces.get('classDaemonSet')!
-            setLeftItem(spcClassDaemonSet, 'create', () => launchObjectCreate('classDaemonSet'))
+            setLeftItem(spcClassDaemonSet, 'create', () => launchObjectCreate('DaemonSet'))
             let spcDaemonSet = spaces.get('DaemonSet')!
             setLeftItem(spcDaemonSet,'details', launchObjectDetails)
             setLeftItem(spcDaemonSet,'restart', launchDaemonSetRestart)
@@ -248,13 +249,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
             }
 
-            // ResplicaSet
+            // ReplicaSet
             let spcClassReplicaSet = spaces.get('classReplicaSet')!
-            setLeftItem(spcClassReplicaSet, 'create', () => launchObjectCreate('classReplicaSet'))
+            setLeftItem(spcClassReplicaSet, 'create', () => launchObjectCreate('ReplicaSet'))
             let spcReplicaSet = spaces.get('ReplicaSet')!
             setLeftItem(spcReplicaSet,'details', launchObjectDetails)
             setLeftItem(spcReplicaSet,'scale', launchReplicaSetScale)
-            setLeftItem(spcDeployment,'logs', launchGroupLogs)
+            setLeftItem(spcReplicaSet,'logs', launchGroupLogs)
             setLeftItem(spcReplicaSet,'metrics', launchGroupMetrics)
             setLeftItem(spcReplicaSet,'edit', launchObjectEdit)
             setLeftItem(spcReplicaSet,'delete', launchObjectDelete)
@@ -286,9 +287,19 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
             }
 
+            // ReplicationController
+            let spcClassReplicationController = spaces.get('classReplicationController')!
+            setLeftItem(spcClassReplicationController, 'create', () => launchObjectCreate('ReplicationController'))
+            let spcReplicationController = spaces.get('ReplicationController')!
+            setLeftItem(spcReplicationController,'details', launchObjectDetails)
+            setLeftItem(spcReplicationController,'logs', launchGroupLogs)
+            setLeftItem(spcReplicationController,'metrics', launchGroupMetrics)
+            setLeftItem(spcReplicationController,'edit', launchObjectEdit)
+            setLeftItem(spcReplicationController,'delete', launchObjectDelete)
+
             // StatefulSet
             let spcClassStatefulSet = spaces.get('classStatefulSet')!
-            setLeftItem(spcClassStatefulSet, 'create', () => launchObjectCreate('classStatefulSet'))
+            setLeftItem(spcClassStatefulSet, 'create', () => launchObjectCreate('StatefulSet'))
             let spcStatefulSet = spaces.get('StatefulSet')!
             setLeftItem(spcStatefulSet,'details', launchObjectDetails)
             setLeftItem(spcStatefulSet,'scale', launchGroupScale)
@@ -327,7 +338,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             }
 
             let spcClassJob = spaces.get('classJob')!
-            setLeftItem(spcClassJob, 'create', () => launchObjectCreate('classJob'))
+            setLeftItem(spcClassJob, 'create', () => launchObjectCreate('Job'))
             let spcJob = spaces.get('Job')!
             setLeftItem(spcJob,'details', launchObjectDetails)
             setLeftItem(spcJob,'logs', launchJobLogs)
@@ -345,7 +356,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             }
 
             let spcClassCronJob = spaces.get('classCronJob')!
-            setLeftItem(spcClassCronJob, 'create', () => launchObjectCreate('classCronJob'))
+            setLeftItem(spcClassCronJob, 'create', () => launchObjectCreate('CronJob'))
             let spcCronJob = spaces.get('CronJob')!
             setPropertyFunction(spcCronJob, 'nextExecution', showCronJobNextExecution)
             setLeftItem(spcCronJob,'trigger', launchCronJobTrigger)
@@ -431,7 +442,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 if (item) {
                     item.invoke = (obj) => {
                         return [
-                            'Pod+Pod','Deployment+Deployment','DaemonSet+DaemonSet','ReplicaSet+ReplicaSet','StatefulSet+StatefulSet','Job+Job','CronJob+CronJob',
+                            'Pod+Pod','Deployment+Deployment','DaemonSet+DaemonSet','ReplicaSet+ReplicaSet','ReplicationController+ReplicationController','StatefulSet+StatefulSet','Job+Job','CronJob+CronJob',
                             'PersistentVolumeClaim+PVC','PersistentVolume+PV',
                             'ConfigMap+ConfigMap','Secret+Secret',
                             'Service+Service','Endpoints+Endpoints','Ingress+Ingress',
@@ -677,45 +688,15 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }, [])
 
-    const reorderJsonYamlObject = (objetoJson: any): any => {
-        try {
-            const priorityOrder = ['apiVersion', 'kind', 'metadata', 'status', 'spec']
-            const orderedObject: any = {}
-            priorityOrder.forEach(key => {
-                if (objetoJson && Object.prototype.hasOwnProperty.call(objetoJson, key)) orderedObject[key] = objetoJson[key]
-            })
-            Object.keys(objetoJson).forEach(key => {
-                if (!priorityOrder.includes(key)) orderedObject[key] = objetoJson[key]
-            })
-            return orderedObject
-        }
-        catch (e) {
-            console.error("Error al convertir JSON a YAML:", e);
-            return {}
-        }
-    }
-
     const launchObjectEdit = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        let obj = f[0].data.origin
-        let reorderObj = reorderJsonYamlObject(obj)
-
-        setEditorContent({
-            code: yamlParser.dump(reorderObj),
-            source: f[0]
-        })
-        setEditorContentUnChanged(true)
-        setEditorVisible(true)
+        setSelectedFiles([f[0]])
+        setContentEditVisible(true)
     }
 
-    const applyEditorChanges = () => {
-        setEditorVisible(false)
-        sendCommand(MagnifyCommandEnum.APPLY, [editorContent.code])
-    }
-
-    const updateEditorValue= (newCode:any) => {
-        editorContent.code=newCode
-        setEditorContentUnChanged(objectEqual(yamlParser.load(editorContent.code),editorContent.source?.data.origin))
+    const onContentEditOk = (content:{code:string, source?:IFileObject}) => {
+        setContentEditVisible(false)
+        sendCommand(MagnifyCommandEnum.APPLY, [content.code])
     }
 
     const launchObjectDelete = (p:string[]) => {
@@ -730,19 +711,15 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const launchPodEvict = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to evict {f[0].data.origin.kind} <b>{f[0].name}</b>?</Box>, setMsgBox, (a) => {
-            if (a === MsgBoxButtons.Yes) {
-                console.log('evict')
-            }
+            if (a === MsgBoxButtons.Yes) console.log('evict')
         }))
     }
 
-    const launchObjectCreate = (obj:string) => {
-        setEditorContent({
-            code: `apiVersion: v1\nKind: ${obj}\nejemplo: true`,
-            source: undefined
-        })
-        setEditorContentUnChanged(true)
-        setEditorVisible(true)
+    const launchObjectCreate = (kind:string) => {
+        let template = templates.get(kind) || `apiVersion: v1\nKind: ${kind}\nejemplo: true`
+        setSelectedFiles([])
+        setContentEditNew(template.trim())
+        setContentEditVisible(true)
     }
 
     const launchNamespaceCreate = (p:string[]) => {
@@ -774,21 +751,21 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setLeftMenuAnchorParent(undefined)
 
         if (container==='*all') {
-            setExternalContentView(InstanceConfigViewEnum.POD)
+            setContentExternalView(InstanceConfigViewEnum.POD)
         }
         else {
-            setExternalContentTitle(externalContentTitle+'+'+container)
-            setExternalContentContainer(container)
+            setContentExternalTitle(contentExternalTitle+'+'+container)
+            setContentExternalContainer(container)
         }
-        setExternalContentVisible(true)
+        setContentExternalVisible(true)
     }
 
     const launchPodLogs = (p:string[], currentTarget:Element) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         setSelectedFiles(f)
-        setExternalContentView(InstanceConfigViewEnum.CONTAINER)
-        setExternalContentTitle(f[0].name)
-        setExternalContentType('log')
+        setContentExternalView(InstanceConfigViewEnum.CONTAINER)
+        setContentExternalTitle(f[0].name)
+        setContentExternalType('log')
         setLeftMenuContent(f[0])
         setLeftMenuIncludeAll(true)
         setLeftMenuAnchorParent(currentTarget)
@@ -797,9 +774,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const launchPodShell = (p:string[], currentTarget:Element) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         setSelectedFiles(f)
-        setExternalContentView(InstanceConfigViewEnum.CONTAINER)
-        setExternalContentTitle(f[0].name)
-        setExternalContentType('ops')
+        setContentExternalView(InstanceConfigViewEnum.CONTAINER)
+        setContentExternalTitle(f[0].name)
+        setContentExternalType('ops')
         setLeftMenuContent(f[0])
         setLeftMenuIncludeAll(false)
         setLeftMenuAnchorParent(currentTarget)
@@ -809,9 +786,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const launchPodMetrics = (p:string[], currentTarget:Element) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         setSelectedFiles(f)
-        setExternalContentView(InstanceConfigViewEnum.CONTAINER)
-        setExternalContentTitle(f[0].name)
-        setExternalContentType('metrics')
+        setContentExternalView(InstanceConfigViewEnum.CONTAINER)
+        setContentExternalTitle(f[0].name)
+        setContentExternalType('metrics')
         setLeftMenuContent(f[0])
         setLeftMenuIncludeAll(true)
         setLeftMenuAnchorParent(currentTarget)
@@ -841,21 +818,21 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const launchGroupLogs = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        setExternalContentView(InstanceConfigViewEnum.GROUP)
-        setExternalContentTitle(f[0].name)
+        setContentExternalView(InstanceConfigViewEnum.GROUP)
+        setContentExternalTitle(f[0].name)
         setSelectedFiles(f)
-        setExternalContentType('log')
-        setExternalContentVisible(true)
+        setContentExternalType('log')
+        setContentExternalVisible(true)
     }
 
     const launchGroupMetrics = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         //+++ falta decidir si nada, group o merge: neceistamos un pequeño menu en externlaContent
-        setExternalContentView(InstanceConfigViewEnum.GROUP)
-        setExternalContentTitle(f[0].name)
+        setContentExternalView(InstanceConfigViewEnum.GROUP)
+        setContentExternalTitle(f[0].name)
         setSelectedFiles(f)
-        setExternalContentType('metrics')
-        setExternalContentVisible(true)
+        setContentExternalType('metrics')
+        setContentExternalVisible(true)
     }
 
     const launchDaemonSetRestart = (p:string[]) => {
@@ -870,11 +847,11 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const launchJobLogs = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        setExternalContentView(InstanceConfigViewEnum.GROUP)
-        setExternalContentTitle(f[0].name)
+        setContentExternalView(InstanceConfigViewEnum.GROUP)
+        setContentExternalTitle(f[0].name)
         setSelectedFiles(f)
-        setExternalContentType('log')
-        setExternalContentVisible(true)
+        setContentExternalType('log')
+        setContentExternalVisible(true)
     }
 
     const launchIngressClassDefault = (p:string[]) => {
@@ -899,24 +876,21 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const launchCronJobTrigger = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        console.log('trigger cj ',f[0].name)
         sendCommand(MagnifyCommandEnum.CRONJOB, ['trigger', f[0].data.origin.metadata.namespace, f[0].data.origin.metadata.name])
     }
 
     const launchCronJobSuspend = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        console.log('suspend cj ',f[0].name)
         sendCommand(MagnifyCommandEnum.CRONJOB, ['suspend', f[0].data.origin.metadata.namespace, f[0].data.origin.metadata.name])
     }
 
     const launchCronJobResume = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        console.log('resume cj ',f[0].name)
         sendCommand(MagnifyCommandEnum.CRONJOB, ['resume', f[0].data.origin.metadata.namespace, f[0].data.origin.metadata.name])
     }
 
     const updateSource = () => {
-        console.log(detailsContent)
+        //+++ pending
     }
 
     const showOverview = () => {
@@ -952,6 +926,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     <Typography>Deployments: {magnifyData.files.filter(f => f.class==='Deployment').length}</Typography>
                     <Typography>Daemon sets: {magnifyData.files.filter(f => f.class==='DaemonSet').length}</Typography>
                     <Typography>Replica sets: {magnifyData.files.filter(f => f.class==='ReplicaSet').length}</Typography>
+                    <Typography>Replication Controllers: {magnifyData.files.filter(f => f.class==='ReplicationController').length}</Typography>
                     <Typography>Stateful sets: {magnifyData.files.filter(f => f.class==='StatefulSet').length}</Typography>
                     <Divider sx={{mt:2, mb:2}}/>
                     <Typography>Jobs: {magnifyData.files.filter(f => f.class==='Job').length}</Typography>
@@ -1189,7 +1164,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const onMagnifyObjectDetailsChangeData = (src:string, data:any) => {
         setDetailsChanges( _.set(detailsChanges, src, data))
-        console.log(detailsChanges)
     }
 
     const onMagnifyObjectDetailsLink = (kind:string, name:string) => {
@@ -1206,61 +1180,60 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         let f = magnifyData.files.find(x => p===x.path)
         if (!f) return
 
-        setDetailsVisible(false)
-        // console.log(f.data.origin)
-        // console.log('**************************')
-        let reorderObj = reorderJsonYamlObject(f.data.origin)
-        // console.log(reorderObj)
-        // console.log('**************************')
+        setSelectedFiles([f])
+        setContentEditVisible(true)
+        // setDetailsVisible(false)
+        // let reorderObj = reorderJsonYamlObject(f.data.origin)
 
-        setEditorContent({
-            code: yamlParser.dump(reorderObj, { indent: 2 }),
-            source: f
-        })
-        setEditorContentUnChanged(true)
-        setEditorVisible(true)
+        // setContentEdit({
+        //     code: yamlParser.dump(reorderObj, { indent: 2 }),
+        //     source: f
+        // })
+        // setContentEditVisible(true)
     }
 
-    const externalContentClose = (content:IExternalContentObject) => {
-        let i = magnifyData.externalContent.indexOf(content)
-        if (i>=0) magnifyData.externalContent.splice(i,1)
-        externalContentId.current = -1
-        setExternalContentContainer('')
-        setExternalContentType('')
-        setExternalContentVisible(false)
+    const onContentExternalClose = (content:IContentExternalObject) => {
+        let i = magnifyData.contentWindows.indexOf(content)
+        if (i>=0) magnifyData.contentWindows.splice(i,1)
+        contentWindowId.current = -1
+        setContentExternalContainer('')
+        setContentExternalType('')
+        setContentExternalVisible(false)
     }
 
-    const externalContentMinimize = (content:IExternalContentObject) => {
-        if (!magnifyData.externalContent.includes(content)) magnifyData.externalContent.push(content)
-        externalContentId.current = -1
-        setExternalContentContainer('')
-        setExternalContentType('')
-        setExternalContentVisible(false)
+    const onContentEditClose = (content:IContentEditObject) => {
+        let i = magnifyData.contentWindows.indexOf(content)
+        if (i>=0) magnifyData.contentWindows.splice(i,1)
+        setContentEditVisible(false)
     }
 
-    const externalContentRestore = (index:number) => {
-        externalContentId.current = index
-        flushSync(() => setExternalContentVisible(true) )
+    const onContentExternalMinimize = (content:IContentExternalObject) => {
+        if (!magnifyData.contentWindows.includes(content)) magnifyData.contentWindows.push(content)
+        contentWindowId.current = -1
+        setContentExternalContainer('')
+        setContentExternalType('')
+        setContentExternalVisible(false)
+    }
+
+    const onContentEditMinimize = (content:IContentEditObject) => {
+        if (!magnifyData.contentWindows.includes(content)) magnifyData.contentWindows.push(content)
+        contentWindowId.current = -1
+        setContentEditVisible(false)
+    }
+
+    const onContentExternalRestore = (index:number) => {
+        contentWindowId.current = index
+        flushSync(() => setContentExternalVisible(true) )
         setRefresh(Math.random())
     }
 
-    const externalContentRefresh = () => {
-        setRefresh(Math.random())
+    const onContentEditRestore = (index:number) => {
+        contentWindowId.current = index
+        setContentEditVisible(true)
     }
 
-    function objectEqual(obj1: any, obj2: any): boolean {
-        if (obj1 === obj2) return true
-
-        if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) return false
-
-        const keys1 = Object.keys(obj1)
-        const keys2 = Object.keys(obj2)
-        if (keys1.length !== keys2.length) return false
-
-        for (const key of keys1) {
-            if (!keys2.includes(key) || !objectEqual(obj1[key], obj2[key])) return false
-        }
-        return true
+    const onContentExternalRefresh = () => {
+        setRefresh(Math.random())
     }
 
     return <>
@@ -1296,15 +1269,37 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
                 <Stack direction={'row'} sx={{mt:1}}>
                     {
-                        magnifyData.externalContent.map((ec, index) => {
-                            let text=ec.channelObject.container
-                            if (text.length>20) text = text.substring(0,10) + '...' + text.substring(text.length-10)
-                            // +++ add a preview of terminal using: https://www.npmjs.com/package/html-to-image
-                            return (
-                                <Tooltip key={index} title={<>Pod: {ec.channelObject.pod}{ec.channelObject.container!==''? <><br/>Container: {ec.channelObject.container}</>: <></>}</>}>
-                                    <Button onClick={() => externalContentRestore(index)}>{ec.channel.getChannelIcon()}{text}</Button>
-                                </Tooltip>
-                            )
+                        magnifyData.contentWindows.map((ec, index) => {
+                            switch (ec.type) {
+                                case 'external':
+                                    let extcon = ec as IContentExternalObject
+                                    let text = extcon.channelObject.container
+                                    if (text.length>20) text = text.substring(0,10) + '...' + text.substring(text.length-10)
+                                    // +++ add a preview of terminal using: https://www.npmjs.com/package/html-to-image
+                                    return (
+                                        <Tooltip key={index} title={<>Pod: {extcon.channelObject.pod}{extcon.channelObject.container!==''? <><br/>Container: {extcon.channelObject.container}</>: <></>}</>}>
+                                            <Button onClick={() => onContentExternalRestore(index)}>
+                                                {extcon.channel.getChannelIcon()}
+                                                {text}
+                                            </Button>
+                                        </Tooltip>
+                                    )
+                                case 'edit':
+                                    let extconed = ec as IContentEditObject
+                                    let texted = extconed.editorContent.title ||''
+                                    let short = texted
+                                    if (short.length>20) short = short.substring(0,10) + '...' + short.substring(short.length-10)
+                                    return (
+                                        <Tooltip key={index} title={texted}>
+                                            <Button onClick={() => onContentEditRestore(index)}>
+                                                <Edit/>
+                                                {short}
+                                            </Button>
+                                        </Tooltip>
+                                    )
+                                default:
+                                    return <></>
+                            }
                         })
                     }
                 </Stack>
@@ -1312,28 +1307,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 <InputBox title={ibTitle} message={ibMessage} onClose={() => setIbTitle(undefined)} onResult={ibResult}/>
             </Box>
         }
-        { editorVisible &&
-            <Dialog open={editorVisible} 
-                sx={{
-                '& .MuiDialog-paper': {
-                    width: '70vw',
-                    height: '70vh',
-                    maxWidth: '70vw',
-                    maxHeight: '70vh', 
-                },
-                }}>
-                <DialogTitle>
-                    <Typography>{(editorContent.source?.data.origin.metadata.namespace? editorContent.source?.data.origin.metadata.namespace+'/': '')+editorContent.source?.data.origin.metadata.name}</Typography>
-                </DialogTitle>
-                <DialogContent>
-                    <CodeMirror value={editorContent.code} onChange={updateEditorValue} extensions={[yaml()]} />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={applyEditorChanges} disabled={editorContentUnChanged}>Ok</Button>
-                    <Button onClick={() => setEditorVisible(false)}>Cancel</Button>
-                </DialogActions>
-            </Dialog>
-        }
+
         { detailsVisible &&
             <Dialog open={true} 
                 sx={{
@@ -1364,12 +1338,24 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             </Dialog>
         }
 
-        { externalContentVisible && 
-            (externalContentId.current<0 ?
-                <ExternalContent channelObject={props.channelObject} channelId={externalContentType} selectedFiles={selectedFiles} close={externalContentClose} frontChannels={props.channelObject.frontChannels!} notify={() => {}} minimize={externalContentMinimize} doRefresh={externalContentRefresh} contentView={externalContentView} title={externalContentTitle} data-refresh={refresh} container={externalContentContainer} settings={settings}/>
+        { contentExternalVisible && 
+            (contentWindowId.current<0 ?
+                <ContentExternal channelObject={props.channelObject} channelId={contentExternalType} selectedFiles={selectedFiles} close={onContentExternalClose} frontChannels={props.channelObject.frontChannels!} notify={() => {}} minimize={onContentExternalMinimize} doRefresh={onContentExternalRefresh} contentView={contentExternalView} title={contentExternalTitle} data-refresh={refresh} container={contentExternalContainer} settings={settings}/>
             :
-                <ExternalContent content={magnifyData.externalContent[externalContentId.current]} channelObject={props.channelObject} selectedFiles={selectedFiles} close={externalContentClose} frontChannels={props.channelObject.frontChannels!} notify={() => {}} minimize={externalContentMinimize} doRefresh={externalContentRefresh} contentView={externalContentView} title={externalContentTitle} data-refresh={refresh} container={externalContentContainer} settings={settings}/>
+                <ContentExternal content={magnifyData.contentWindows[contentWindowId.current] as IContentExternalObject} channelObject={props.channelObject} selectedFiles={selectedFiles} close={onContentExternalClose} frontChannels={props.channelObject.frontChannels!} notify={() => {}} minimize={onContentExternalMinimize} doRefresh={onContentExternalRefresh} contentView={contentExternalView} title={contentExternalTitle} data-refresh={refresh} container={contentExternalContainer} settings={settings}/>
             )
+        }
+
+        { contentEditVisible &&
+            <ContentEdit 
+                content={contentWindowId.current<0? undefined : magnifyData.contentWindows[contentWindowId.current] as IContentEditObject}
+                selectedFile={selectedFiles.length>0? selectedFiles[0]: undefined}
+                newContent={contentEditNew}
+                onMinimize={onContentEditMinimize}
+                onClose={onContentEditClose}
+                onRefresh={() => {}}
+                onOk={onContentEditOk}
+            />
         }
 
     </>

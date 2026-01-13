@@ -66,7 +66,7 @@ class MagnifyChannel implements IChannel {
         instances: IInstance[] 
     }[] = []
 
-    // +++ convert to abstrract and implement common code like this
+    // +++ convert to abstract and implement common code like this
     /*
 
         abstract class BaseChannel implements IChannel {
@@ -156,7 +156,6 @@ class MagnifyChannel implements IChannel {
     }
 
     containsInstance = (instanceId: string): boolean => {
-        console.log('ws', this.webSockets.length)
         return this.webSockets.some(socket => socket.instances.find(i => i.instanceId === instanceId))
     }
 
@@ -193,10 +192,8 @@ class MagnifyChannel implements IChannel {
     addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<boolean> => {
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
 
-        ///+++check that namnespace and deployment and pod are  the ones of kwirth, return false otherwise
         if (instanceConfig.namespace === this.kwirthData.namespace) {
-            console.log('***********************************')
-            console.log(instanceConfig)
+            ///+++check that namnespace and deployment and pod are  the ones of kwirth, return false otherwise
         }
 
         let socket = this.webSockets.find(s => s.ws === webSocket)
@@ -555,6 +552,9 @@ class MagnifyChannel implements IChannel {
                         case 'ReplicaSet':
                             this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listReplicaSetForAllNamespaces())))
                             break
+                        case 'ReplicationController':
+                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listReplicationControllerForAllNamespaces())))
+                            break
                         case 'StatefulSet':
                             this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listStatefulSetForAllNamespaces())))
                             break
@@ -665,16 +665,6 @@ class MagnifyChannel implements IChannel {
     }
 
     getEventsForObject = async (namespace:string,  objectKind:string, objectName:string) => {
-        // try {
-        //     const res = await this.clusterInfo.coreApi.listNamespacedEvent({
-        //         namespace: namespace,
-        //         fieldSelector: `involvedObject.name=${objectName},involvedObject.kind=${objectKind}`
-        //     })
-        //     return res.items
-        // }
-        // catch (err) {
-        //     console.error('Error obteniendo eventos:', err);
-        // }
         try {
             const res = await this.clusterInfo.coreApi.listEventForAllNamespaces( {
                 fieldSelector: `involvedObject.name=${objectName},involvedObject.kind=${objectKind}`

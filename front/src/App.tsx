@@ -158,10 +158,7 @@ const App: React.FC = () => {
     }, [clusters])
 
     const onNotifyClose = (event?: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
-        console.log(notifications)
-        console.log(notifyLevel, notifyMessage)
         setNotifications(notifications.filter(n => n.level===notifyLevel && n.message === notifyMessage))
-        console.log(notifications.length)
         if (reason === 'clickaway') return
         setNotifyOpen(false)
     }
@@ -361,7 +358,6 @@ const App: React.FC = () => {
             }
             newTab.channelObject.onUpdateChannelSettings = (channelSettings:IChannelSettings) => {
                 if (settingsRef.current) {
-                    console.log('sccb', settingsRef.current.channelSettings)
                     let thisChannnel = settingsRef.current.channelSettings.find(c => c.channelId === newTab.channel.channelId)
                     if (!thisChannnel) {
                         thisChannnel = {
@@ -522,7 +518,6 @@ const App: React.FC = () => {
 
         if (instanceMessage.type === InstanceMessageTypeEnum.SIGNAL && instanceMessage.action === InstanceMessageActionEnum.RECONNECT && instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
             let msg:ISignalMessage = JSON.parse(wsEvent.data) as ISignalMessage
-            console.log('RECC')
             if (msg.data!==undefined) {
                 if (msg.data===false) {
                     notify( ENotifyLevel.ERROR, msg.text||'Error reconnecting')
@@ -1374,7 +1369,7 @@ const App: React.FC = () => {
             { showSettingsTrivy && selectedClusterName && <SettingsTrivy onClose={onSettingsTrivyClosed} cluster={clusters.find(c => c.name===selectedClusterName)!}/> }
             { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
-            <Snackbar open={notifyOpen} autoHideDuration={3000} anchorOrigin={{vertical: 'bottom', horizontal:'center'}}>
+            <Snackbar open={notifyOpen} autoHideDuration={3000} anchorOrigin={{vertical: 'bottom', horizontal:'center'}} onClose={onNotifyClose}>
                 <Alert severity={notifyLevel} variant="filled" onClose={onNotifyClose} sx={{ width: '100%' }}>{notifyMessage}</Alert>
             </Snackbar>
             { msgBox }
