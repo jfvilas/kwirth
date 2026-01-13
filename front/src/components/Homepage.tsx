@@ -3,7 +3,7 @@ import { Box,  Card, CardContent, CardHeader, Collapse, Divider, IconButton, Sta
 import { IWorkspaceSummary } from '../model/IWorkspace'
 import { ITabSummary } from '../model/ITabObject'
 import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
-import { Delete, ExpandLess, ExpandMore, OpenInBrowser, Star } from '@mui/icons-material'
+import { Delete, ExpandLess, ExpandMore, FactCheck, OpenInBrowser, Star } from '@mui/icons-material'
 import { TChannelConstructor } from '../channels/IChannel'
 import { Cluster } from '../model/Cluster'
 import { GaugeComponent } from 'react-gauge-component'
@@ -21,6 +21,7 @@ interface IProps {
     favTabs:ITabSummary[]
     lastWorkspaces:IWorkspaceSummary[]
     favWorkspaces:IWorkspaceSummary[]
+    onRestoreTabParameters: (tab:ITabSummary) => void
     onSelectTab: (tab:ITabSummary) => void
     onSelectWorkspace: (workspace:IWorkspaceSummary) => void
     onUpdateTabs: (last:ITabSummary[], fav:ITabSummary[]) => void
@@ -87,7 +88,6 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
             props.favTabs.push(tab)
             let i = props.lastTabs.findIndex(t => t.name !== tab.name || t.channel !== tab.channel)
             props.lastTabs.splice(i,1)
-            //setRefresh(Math.random())
             props.onUpdateTabs([...props.lastTabs], [...props.favTabs])
         }
     }
@@ -98,7 +98,6 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
             props.favWorkspaces.push(workspace)
             let i = props.lastWorkspaces.findIndex(b => b.name === workspace.name)
             props.lastWorkspaces.splice(i,1)
-            //setRefresh(Math.random())
             props.onUpdateWorkspaces([...props.lastWorkspaces], [...props.favWorkspaces])
         }
     }
@@ -123,6 +122,10 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
 
     const openTab = (tab:ITabSummary) => {
         props.onSelectTab(tab)
+    }
+
+    const restoreTabParameters = (tab:ITabSummary) => {
+        props.onRestoreTabParameters(tab)
     }
 
     const openWorkspace = (workspace:IWorkspaceSummary) => {
@@ -177,6 +180,10 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                 <IconButton onClick={() => openTab(tab)}>
                                     <OpenInBrowser/>
                                 </IconButton>
+                                <IconButton onClick={() => restoreTabParameters(tab)}>
+                                    <FactCheck/>
+                                </IconButton>
+                                
                                 { listType !== ListTypeEnum.FAV && 
                                     <IconButton onClick={() => toFavTabs(tab)}>
                                         <Star sx={{ color: 'gray' }} /> 
@@ -422,7 +429,6 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
             </Card>
 
             <Box sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', marginTop:'16px', alignItems: 'center', justifyContent: 'center'}}>
-            {/* <Box sx={{ width:'100%', marginTop:'16px', alignItems: 'center', justifyContent: 'center'}}> */}
                 <Stack direction={'column'} spacing={2} width={'95%'} mb={'4px'}>
 
                     <Stack direction={'row'} spacing={2} sx={{width:'100%'}}>

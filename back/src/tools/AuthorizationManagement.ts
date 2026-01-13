@@ -4,7 +4,7 @@ import { ApiKey } from '@jfvilas/kwirth-common'
 import * as crypto from 'crypto'
 import { IChannel } from '../channels/IChannel'
 import { Request, Response } from 'express'
-import { AppsV1Api, CoreV1Api, V1Pod } from '@kubernetes/client-node'
+import { AppsV1Api, BatchV1Api, CoreV1Api, V1Pod } from '@kubernetes/client-node'
 
 export class AuthorizationManagement {
     public static cleanApiKeys = (apiKeys:ApiKey[]) => {
@@ -242,8 +242,7 @@ export class AuthorizationManagement {
             for (let value of values) {
                 if (regexes.some(r => new RegExp(r).test(value))) result.push(value)
             }
-            result = [...new Set(result)]
-            return result
+            return [...new Set(result)]
         }
         catch (err) {
             console.log('getValidValues error', err)
@@ -260,8 +259,7 @@ export class AuthorizationManagement {
         for (let resid of resources) {
             result.push (...AuthorizationManagement.getValidValues(clusterNamespaces, resid.namespaces.split(',')))
         }
-        result = [...new Set(result)]
-        return result
+        return [...new Set(result)]
     }
     
     public static getValidNamespaces = async (coreApi: CoreV1Api, accessKey:AccessKey, requestedNamespaces:string[]): Promise<string[]> => {
@@ -279,38 +277,43 @@ export class AuthorizationManagement {
         return result
     }
     
-    public static getGroupNames = async (appsApi:AppsV1Api, namespace:string, gtype:string): Promise<string[]> => {
+    public static getGroupNames = async (appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, gtype:string): Promise<string[]> => {
         let result:string[] = []
     
-        let groupNames:string[]
+        let groupNames:string[] = []
         switch (gtype) {
             case 'deployment':
                 groupNames = (await appsApi.listNamespacedDeployment({namespace})).items.map (n => n?.metadata?.name!)
-                result.push( ...groupNames)
+                //result.push( ...groupNames)
                 break
             case 'replicaset':
                 groupNames = (await appsApi.listNamespacedReplicaSet({namespace})).items.filter(rs => rs.status?.replicas!>0).map (n => n?.metadata?.name!)
-                result.push( ...groupNames)
+                //result.push( ...groupNames)
                 break
             case 'daemonset':
                 groupNames = (await appsApi.listNamespacedDaemonSet({namespace})).items.map (ds => ds?.metadata?.name!)
-                result.push( ...groupNames)
+                //result.push( ...groupNames)
                 break
             case 'statefulset':
                 groupNames = (await appsApi.listNamespacedStatefulSet({namespace})).items.filter(ss => ss.status?.replicas!>0).map (n => n?.metadata?.name!)
-                result.push( ...groupNames)
+                //result.push( ...groupNames)
+                break
+            case 'job':
+                //+++groupNames = (await appsApi.listNamespaced StatefulSet({namespace})).items.filter(ss => ss.status?.replicas!>0).map (n => n?.metadata?.name!)
+                //+++result.push( ...groupNames)
+                groupNames = (await batchApi.listNamespacedJob({namespace})).items.map(j => j.metadata?.name!)       
                 break
         }
-        result = [ ...new Set(result)]
-        return result
+        result.push(...groupNames)        
+        return [ ...new Set(result)]
     }
     
-    public static getAllowedGroups = async (appsApi:AppsV1Api, namespace:string, accessKey:AccessKey): Promise<{[name:string]:any}[]> => {
+    public static getAllowedGroups = async (appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, accessKey:AccessKey): Promise<{[name:string]:any}[]> => {
         let resources = parseResources(accessKey!.resources)
         let result:{[name:string]:any}[] = []
     
-        for (let gtype of ['deployment','replicaset','daemonset','statefulset']) {
-            let glist = await AuthorizationManagement.getGroupNames(appsApi, namespace, gtype)
+        for (let gtype of ['deployment','replicaset','daemonset','statefulset','job']) {
+            let glist = await AuthorizationManagement.getGroupNames(appsApi, batchApi, namespace, gtype)
 
             // we prune glist according to resources and namespaces
             for (let resource of resources) {
@@ -322,18 +325,17 @@ export class AuthorizationManagement {
                     }
                 }
             }
-            result.push (...glist.map (gname => { return { name:gname, type:gtype}}))
+            result.push (...glist.map (gname => { return { name:gname, type:gtype } }))
         }
-        result = [...new Set(result)]
-        return result
+        return [...new Set(result)]
     }
 
-    public static getValidGroups = async (appsApi: AppsV1Api, accessKey:AccessKey, namespaces:string[], requestedGroups:string[]): Promise<string[]> => {
+    public static getValidGroups = async (appsApi: AppsV1Api, batchApi:BatchV1Api, accessKey:AccessKey, namespaces:string[], requestedGroups:string[]): Promise<string[]> => {
         let result:string[] = []
         let allowedGroups:string[] =  []
 
         for (let ns of namespaces) {
-            let x:{[name:string]:any}[] = await this.getAllowedGroups(appsApi,ns, accessKey)
+            let x:{[name:string]:any}[] = await this.getAllowedGroups(appsApi, batchApi, ns, accessKey)
             let y = x.map(g => g.type+'+'+g.name)
             allowedGroups.push(...y)
         }
@@ -345,8 +347,7 @@ export class AuthorizationManagement {
             let x = this.getValidValues(allowedGroups, requestedGroups.map(g => '^'+g.replaceAll('+','\\+')+'$'))
             result.push(...x)
         }
-        result = [...new Set(result)]
-        return result
+        return [...new Set(result)]
     }
     
     static readReplicaSet = async (appsApi: AppsV1Api, namespace:string, name:string) => {
@@ -371,6 +372,12 @@ export class AuthorizationManagement {
                 if (controllerName === gname || pod.metadata?.name?.startsWith(gname)) pods.push(pod)
             }
         }
+        else if (gtype === 'job') {
+            for (let pod of response.items) {
+                let controllerName = await this.getPodControllerName(appsApi, pod, true)
+                if (controllerName === gname || pod.metadata?.name?.startsWith(gname)) pods.push(pod)
+            }
+        }
         else {
             // we find for pod whose controller is gname
             let filteredPods = response.items.filter (pod => {
@@ -389,11 +396,10 @@ export class AuthorizationManagement {
                 }
             }
         }
-        result = [...new Set(result)]
-        return result
+        return [...new Set(result)]
     }
     
-    public static getPodLabelSelectorsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, groupTypeName:string) => {
+    public static getPodLabelSelectorsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, groupTypeName:string) => {
         let response:any
         let groupName, groupType
         let emptyResult = { pods:[],labelSelector:'' };
@@ -429,6 +435,13 @@ export class AuthorizationManagement {
                         response = await appsApi.readNamespacedStatefulSet({ name: groupName, namespace: namespace })
                     }
                     break
+                case'job': {
+                        let x = await batchApi.listNamespacedJob({namespace})
+                        let names = x.items.map (j => j.metadata?.name)
+                        if (!names.includes(groupName)) return emptyResult
+                        response = await batchApi.readNamespacedJob({ name: groupName, namespace: namespace })
+                    }
+                    break
             }    
         }
         catch (error) {
@@ -437,11 +450,8 @@ export class AuthorizationManagement {
         }
     
         if (response) {
-            console.log("response")
-            console.log(response)
             const matchLabels = response.spec?.selector.matchLabels
             const labelSelector = Object.entries(matchLabels || {}).map(([key, value]) => `${key}=${value}`).join(',')
-            //const pods = (await coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)).items
             const pods = (await coreApi.listNamespacedPod({namespace, labelSelector})).items
             return  { pods, labelSelector }
         }
@@ -455,7 +465,7 @@ export class AuthorizationManagement {
         if (!pod || !pod.metadata || !pod.metadata.namespace || !pod.metadata.ownerReferences) return
         let controller = pod.metadata.ownerReferences.find(or => or.controller)
         if (controller) {
-            if (!includeDeployment || controller.kind !== 'ReplicaSet') return controller.name
+            if (!includeDeployment || controller.kind !== 'ReplicaSet') return controller.name  // we return stateful, dameon & job
 
             let rs = await AuthorizationManagement.readReplicaSet(appsApi, pod.metadata.namespace, controller.name)
             if (rs?.metadata?.ownerReferences) {
@@ -496,8 +506,7 @@ export class AuthorizationManagement {
                 }
             }
         }
-        result = [...new Set(result)]
-        return result
+        return [...new Set(result)]
     }
     
     public static getValidPods = async (coreApi: CoreV1Api, appsApi:AppsV1Api, namespaces:string[], accessKey:AccessKey, requestedPods:string[]): Promise<string[]> => {
@@ -517,8 +526,7 @@ export class AuthorizationManagement {
             let x = this.getValidValues(allowedPods, requestedPods.map(pod => '^'+pod+'$'))
             result.push(...x)
         }
-        result = [...new Set(result)]
-        return result
+        return [...new Set(result)]
     }
     
     public static getContainers = async (coreApi:CoreV1Api, namespace:string, pod:string, accessKey:AccessKey): Promise<string[]> => {
@@ -536,8 +544,7 @@ export class AuthorizationManagement {
                 result.push(...conts)
             }
         }
-        result = [...new Set(result)]
-        return result
+        return [...new Set(result)]
     }
 
     public static getAllowedContainers = async (coreApi:CoreV1Api, accessKey:AccessKey, namespace:string, pod:string): Promise<string[]> => {
@@ -558,8 +565,7 @@ export class AuthorizationManagement {
                 }
             }
         }
-        result = [...new Set(result)]
-        return result
+        return [...new Set(result)]
     }
 
     public static getValidContainers = async (coreApi:CoreV1Api, accessKey:AccessKey, namespaces:string[], pods:string[], requestedContainers:string[]): Promise<string[]> => {
@@ -581,7 +587,6 @@ export class AuthorizationManagement {
             let x = this.getValidValues(allowedContainers, requestedContainers.map(g => '^'+g.replaceAll('+','\\+')+'$'))
             result.push(...x)
         }
-        result = [...new Set(result)]
-        return result
+        return [...new Set(result)]
     }
 }

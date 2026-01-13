@@ -1,5 +1,5 @@
 import { ISpace } from '@jfvilas/react-file-manager'
-import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, Info, Iso, PauseCircle, PlayCircle, RestartAlt, StopCircle, Subject, Terminal } from '@mui/icons-material'
+import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, StopCircle, Subject, Terminal } from '@mui/icons-material'
 import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from './icons/Icons'
 
 const spaces = new Map<string, ISpace>()
@@ -117,7 +117,7 @@ const menu = [
         class: 'classConfigMap',
         children: 'ConfigMap'
     },
-    {   name: 'Secret',
+    {   name: 'Secrets',
         isDirectory: true,
         path: '/config/Secret',
         class: 'classSecret',
@@ -198,7 +198,7 @@ const menu = [
         class: 'classService',
         children: 'Service'
     },
-    {   name: 'End points',
+    {   name: 'Endpoints\u00a0',
         isDirectory: true,
         path: '/network/Endpoints',
         layout: 'list',  
@@ -1671,17 +1671,19 @@ spaces.set('Pod',
                 permission: true
             },
             {
+                name:'delete',
                 icon: <Delete fontSize='small'/>,
-                text: 'Delete pod',
+                text: 'Delete',
                 multi: true,
                 permission: true,
-                onClick: () => console.log('delete pod'),
+                //onClick: () => console.log('delete pod'),
             },
             {
+                name: 'evict',
                 icon: <DeleteSweep fontSize='small'/>,
                 text: 'Evict',
-                permission: true,
-                onClick: () => console.log('evit'),
+                multi: true,
+                permission: true
             }
         ],
         properties: [
@@ -1800,7 +1802,7 @@ spaces.set('Deployment',
                 permission: true,
             },
             {
-                name:'viewmetrics',
+                name:'metrics',
                 icon: <BarChart fontSize='small'/>,
                 text: 'Metrics',
                 multi: true,
@@ -1894,6 +1896,13 @@ spaces.set('DaemonSet',
                 icon: <Subject fontSize='small'/>,
                 text: 'Logs',
                 permission: true,
+            },
+            {
+                name:'metrics',
+                icon: <BarChart fontSize='small'/>,
+                text: 'Metrics',
+                multi: true,
+                permission: true
             },
             {   name: 'edit',
                 icon: <Edit fontSize='small'/>,
@@ -2249,9 +2258,19 @@ spaces.set('CronJob',
                 text: 'Details',
                 permission: true,
             },
-            {   name: 'logs',
-                icon: <Subject fontSize='small'/>,
-                text: 'Logs',
+            {   name: 'trigger',
+                icon: <PlayCircle fontSize='small'/>,
+                text: 'Trigger',
+                permission: true,
+            },
+            {   name: 'suspend',
+                icon: <PauseCircleOutline fontSize='small'/>,
+                text: 'Suspend',
+                permission: true,
+            },
+            {   name: 'resume',
+                icon: <PlayCircleOutline fontSize='small'/>,
+                text: 'Resume',
                 permission: true,
             },
             {   name: 'edit',
@@ -2311,7 +2330,7 @@ spaces.set('CronJob',
                 name: 'nextExecution',
                 text: 'Next execution',
                 source: 'nextExecution',
-                format: 'age',
+                format: 'function',
                 width: 20,
                 visible: true
             },

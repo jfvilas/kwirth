@@ -51,7 +51,7 @@ export class ApiKeyApi {
                         VALUES:
                         scope: cluster|api|filter|view|restart|... (or a CSV list)
                         namespace: names (comma separated name list)
-                        group: {deployment|replica|daemon|stateful}+name (type of pod group, a plus sign, name of the group). it is also comma separated name list
+                        group: {deployment|replica|daemon|stateful|job}+name (type of pod group, a plus sign, name of the group). it is also comma separated name list
                         pod: names (comma separated name list)
                         container: names (comma separated name list)
 

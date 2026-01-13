@@ -318,22 +318,25 @@ class LogChannel implements IChannel {
         }
     }
 
-    async addObject (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<boolean> => {
         if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
             this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName)
         }
         else {
             this.startKubernetesStream(webSocket, instanceConfig, podNamespace, podName, containerName)
         }
+        return true
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+    deleteObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : Promise<boolean> => {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             instance.assets = instance.assets.filter(a => a.podNamespace!==podNamespace && a.podName!==podName && a.containerName!==containerName)
+            return true
         }
         else {
             this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
+            return false
         }
     }
     

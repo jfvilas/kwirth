@@ -25,15 +25,16 @@ export class MagnifyData implements IMagnifyData {
 
 export enum MagnifyCommandEnum {
     CREATE = 'create',
+    APPLY = 'apply',
     DELETE = 'delete',
     CLUSTERINFO = 'clusterinfo',
     LIST = 'list',
     LISTCRD = 'listcrd',
     WATCH = 'watch',
+    EVENTS = 'events',
     K8EVENT = 'k8event',
-    NODECORDON = 'nodecordon',
-    NODEUNCORDON = 'nodeuncordon',
-    NODEDRAIN = 'nodedrainn'
+    CRONJOB = 'CronJob',
+    NODE = 'Node',
 }
 
 export interface IMagnifyMessage extends IInstanceMessage {

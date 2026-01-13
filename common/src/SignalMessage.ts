@@ -18,6 +18,7 @@ export interface ISignalMessage extends IInstanceMessage {
     pod?: string
     container?: string
     level: SignalMessageLevelEnum
+    data?: any
     text?: string
     event?: SignalMessageEventEnum
 }

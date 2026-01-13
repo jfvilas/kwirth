@@ -2,7 +2,6 @@ import express, { Request, Response} from 'express'
 import { AppsV1Api, V1DeploymentList, V1PodList } from '@kubernetes/client-node'
 import { CoreV1Api } from '@kubernetes/client-node'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
-import { IncomingMessage } from 'http'
 import { ApiKeyApi } from './ApiKeyApi'
 import { IChannel } from '../channels/IChannel'
 

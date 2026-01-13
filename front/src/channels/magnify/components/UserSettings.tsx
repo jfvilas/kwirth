@@ -2,10 +2,12 @@ import React, { useState } from 'react'
 import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Divider, Menu, MenuItem, MenuList, Stack, TextField, Typography } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
 import { MagnifyUserSettings } from '../MagnifyUserSettings'
+import { IFileObject } from '@jfvilas/react-file-manager'
 
 
 interface IProps {
     settings: MagnifyUserSettings
+    files: IFileObject[]
 }
 
 const UserSettings: React.FC<IProps> = (props:IProps) => {
@@ -17,6 +19,7 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
     const saveChannels = () => {
         props.settings.logLines = logLines
     }
+
     
     const changesDetectedGeneral = () => {
         return false
@@ -49,6 +52,18 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
             </AccordionDetails>
             <AccordionActions>
                 <Button onClick={saveChannels} disabled={!changesDetectedChannels()}>Save</Button>
+            </AccordionActions>
+        </Accordion>
+        <Accordion>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography component="span">Debug</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+                <Stack direction={'column'} >
+                    <Stack direction={'row'} alignItems={'center'}><Typography sx={{flexGrow:1}}>Show files collection on browser console</Typography><Button onClick={() => console.log(props.files)}>Show files</Button></Stack>
+                </Stack>
+            </AccordionDetails>
+            <AccordionActions>
             </AccordionActions>
         </Accordion>
     </Box>

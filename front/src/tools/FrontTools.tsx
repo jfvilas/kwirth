@@ -1,5 +1,6 @@
-import { InfoOutlined } from "@mui/icons-material"
-import { Box, Tooltip, Typography } from "@mui/material"
+import { Dispatch, SetStateAction, useRef } from 'react'
+import { Tooltip, Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography,  Box, TextField } from '@mui/material'
+import { InfoOutlined } from '@mui/icons-material'
 
 interface ITextToolTipProps {
     name:string,
@@ -17,4 +18,41 @@ const TextToolTip: React.FC<ITextToolTipProps> = (props:ITextToolTipProps) => {
     )
 }
 
-export {TextToolTip}
+interface IInputBoxProps {
+    title:string
+    message:string|JSX.Element
+    onClose:Dispatch<SetStateAction<JSX.Element>>
+    onResult?:(result:any) => void
+}
+
+const InputBox: React.FC<IInputBoxProps> = (props:IInputBoxProps) => {
+    const inputRef = useRef<HTMLInputElement>(null)
+
+    if (!props.title) return <></>
+
+    return (
+        <Dialog open={true} onClose={() => { props.onClose(<></>); if (props.onResult) props.onResult(undefined)}}>
+            <DialogTitle>
+                {props.title}
+            </DialogTitle>
+            <DialogContent >
+                <DialogContentText>
+                    <Stack sx={{mt:2}} direction='column' alignItems={'top'}>
+                        { typeof(props.message)==='string' ?
+                            <Typography sx={{ml:2}}><div dangerouslySetInnerHTML={{__html: props.message}}/></Typography>
+                            :
+                            props.message
+                         }
+                         <TextField inputRef={inputRef}></TextField>
+                    </Stack>
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => { props.onClose(<></>); if (props.onResult) props.onResult(inputRef.current?.value)}}>ok</Button>
+                <Button onClick={() => { props.onClose(<></>)}}>cancel</Button>
+            </DialogActions>
+        </Dialog>
+    )
+}
+
+export { InputBox, TextToolTip }

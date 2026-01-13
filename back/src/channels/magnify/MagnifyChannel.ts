@@ -1,9 +1,9 @@
-import { IInstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, IInstanceConfigResponse, parseResources } from '@jfvilas/kwirth-common'
+import { IInstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, KwirthData} from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel'
 import { Request, Response } from 'express'
 import { Watch } from '@kubernetes/client-node'
-import { applyResource, nodeCordon, nodeDrain, nodeUnCordon, throttleExcute } from '../../tools/KubernetesTools'
+import { applyResource, cronJobStatus, cronJobTrigger, nodeCordon, nodeDrain, nodeUnCordon, throttleExcute } from '../../tools/KubernetesTools'
 const yaml = require('js-yaml')
 
 export interface IMagnifyConfig {
@@ -12,15 +12,16 @@ export interface IMagnifyConfig {
 
 export enum MagnifyCommandEnum {
     CREATE = 'create',
+    APPLY = 'apply',
     DELETE = 'delete',
     LIST = 'list',
     CLUSTERINFO = 'clusterinfo',
     LISTCRD = 'listcrd',
     WATCH = 'watch',
+    EVENTS = 'events',
     K8EVENT = 'k8event',
-    NODECORDON = 'nodecordon',
-    NODEUNCORDON = 'nodeuncordon',
-    NODEDRAIN = 'nodedrainn'
+    CRONJOB = 'CronJob',
+    NODE = 'Node',
 }
 
 export interface IMagnifyMessage extends IInstanceMessage {
@@ -57,6 +58,7 @@ export interface IInstance {
 }
 
 class MagnifyChannel implements IChannel {
+    kwirthData : KwirthData
     clusterInfo : ClusterInfo
     webSockets: {
         ws:WebSocket,
@@ -64,11 +66,44 @@ class MagnifyChannel implements IChannel {
         instances: IInstance[] 
     }[] = []
 
-    constructor (clusterInfo:ClusterInfo) {
-        this.clusterInfo = clusterInfo
-    }
+    // +++ convert to abstrract and implement common code like this
+    /*
 
-    //+++ add dispose to IChannel (and implment in this channel a remove to "events subscription")
+        abstract class BaseChannel implements IChannel {
+            // 1. Constructor forzado para todos
+            constructor(
+                protected clusterInfo: ClusterInfo, 
+                protected kwirthData: KwirthData
+            ) {}
+
+            // 2. Función COMÚN con implementación por defecto
+            // Si a la clase hija le vale este código, no tiene que escribir nada.
+            containsConnection(webSocket: WebSocket): boolean {
+                console.log("Ejecutando lógica común de verificación...");
+                // Supongamos una lógica estándar que sirva para casi todos
+                return true; 
+            }
+
+            // 3. Método que el hijo PUEDE sobrescribir opcionalmente
+            removeConnection(webSocket: WebSocket): void {
+                console.log("Conexión eliminada de forma estándar");
+            }
+
+            // 4. Métodos que el hijo DEBE implementar sí o sí
+            abstract getChannelData(): BackChannelData;
+            abstract processEvent(type: string, obj: any): void;
+            
+            // ... el resto de métodos de IChannel marcados como abstract
+        }
+
+    */
+
+    //+++ add dispose/destroy (conterpart of initChannel) to IChannel (and implement in this channel a remove from "events subscription")
+
+    constructor (clusterInfo:ClusterInfo, kwirthData : KwirthData) {
+        this.clusterInfo = clusterInfo
+        this.kwirthData = kwirthData
+    }
 
     getChannelData = (): BackChannelData => {
         return {
@@ -90,10 +125,7 @@ class MagnifyChannel implements IChannel {
     }
 
     processEvent(type:string, obj:any) : void {
-        // +++
-        // +++ very important: modifying 'files' re-renders, so it is important to decide if it necesary (it depends on current view in file manager)
-        // +++
-        console.log('****', type, obj.kind, obj.metadata.namespace, obj.metadata.name)
+        // +++ debug console.log('****', type, obj.kind, obj.metadata.namespace, obj.metadata.name)
         for (let socket of this.webSockets) {
             for (let instance of socket.instances) {
                 let magnifyMessage:IMagnifyMessageResponse = {
@@ -124,10 +156,12 @@ class MagnifyChannel implements IChannel {
     }
 
     containsInstance = (instanceId: string): boolean => {
+        console.log('ws', this.webSockets.length)
         return this.webSockets.some(socket => socket.instances.find(i => i.instanceId === instanceId))
     }
 
     containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
+        //+++ review asset list and answer accordingly
         return false
     }
     
@@ -156,8 +190,14 @@ class MagnifyChannel implements IChannel {
         }
     }
 
-    addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> => {
+    addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<boolean> => {
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
+
+        ///+++check that namnespace and deployment and pod are  the ones of kwirth, return false otherwise
+        if (instanceConfig.namespace === this.kwirthData.namespace) {
+            console.log('***********************************')
+            console.log(instanceConfig)
+        }
 
         let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) {
@@ -176,11 +216,12 @@ class MagnifyChannel implements IChannel {
                 watch: new Watch(this.clusterInfo.kubeConfig)
             }
             instances.push(instance)
-            //this.startClusterEventWatcher(instance, webSocket)
         }
+        return true
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
+    deleteObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : Promise<boolean> => {
+        return true
     }
 
     pauseContinueInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void => {
@@ -269,25 +310,6 @@ class MagnifyChannel implements IChannel {
     // PRIVATE
     // *************************************************************************************
 
-    // private sendUnsolicitedMessage = (webSocket:WebSocket, instanceId:string, command: MagnifyCommandEnum, data:any): void => {
-    //     let resp: IMagnifyMessageResponse = {
-    //         action: InstanceMessageActionEnum.COMMAND,
-    //         flow: InstanceMessageFlowEnum.UNSOLICITED,
-    //         channel: 'magnify',
-    //         instance: instanceId,
-    //         type: InstanceMessageTypeEnum.DATA,
-    //         id: '1',
-    //         command,
-    //         namespace: '',
-    //         group: '',
-    //         pod: '',
-    //         container: '',
-    //         data,
-    //         msgtype: 'magnifymessageresponse'
-    //     }
-    //     webSocket.send(JSON.stringify(resp))
-    // }
-
     private sendDataMessage = (webSocket:WebSocket, instance:IInstance, command: MagnifyCommandEnum, data:any): void => {
         let resp: IMagnifyMessageResponse = {
             action: InstanceMessageActionEnum.COMMAND,
@@ -371,20 +393,21 @@ class MagnifyChannel implements IChannel {
                 return
             }
             case MagnifyCommandEnum.CLUSTERINFO:
-                console.log(await this.clusterInfo.versionApi.getCode())
                 this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.CLUSTERINFO, JSON.stringify((await this.clusterInfo.versionApi.getCode())))
                 break
 
-            case MagnifyCommandEnum.NODECORDON:
-                await nodeCordon(this.clusterInfo.coreApi, magnifyMessage.params![0])
-                break
-
-            case MagnifyCommandEnum.NODEUNCORDON:
-                await nodeUnCordon(this.clusterInfo.coreApi, magnifyMessage.params![0])
-                break
-
-            case MagnifyCommandEnum.NODEDRAIN:
-                await nodeDrain(this.clusterInfo.coreApi, magnifyMessage.params![0])
+            case MagnifyCommandEnum.NODE:
+                switch (magnifyMessage.params![0]) {
+                    case 'cordon':
+                        await nodeCordon(this.clusterInfo.coreApi, magnifyMessage.params![1])
+                        break
+                    case 'uncordon':
+                        await nodeUnCordon(this.clusterInfo.coreApi, magnifyMessage.params![1])
+                        break
+                    case 'drain':
+                        await nodeDrain(this.clusterInfo.coreApi, magnifyMessage.params![1])
+                        break
+                }
                 break
 
             case MagnifyCommandEnum.LISTCRD: {
@@ -401,81 +424,64 @@ class MagnifyChannel implements IChannel {
                 this.executeCreate(webSocket, instance, magnifyMessage.params!)
                 return
             }
+            case MagnifyCommandEnum.EVENTS: {
+                console.log(`Do EVENT`)
+                this.executeEvents(webSocket, instance, magnifyMessage.params!)
+                return
+            }
+            case MagnifyCommandEnum.APPLY: {
+                console.log(`Do APPLY`)
+                this.executeApply(webSocket, instance, magnifyMessage.params!)
+                return
+            }
             case MagnifyCommandEnum.DELETE: {
-                console.log(`Do DELETE ${magnifyMessage.params![0]} in ${magnifyMessage.namespace}/${magnifyMessage.pod}/${magnifyMessage.container}`)
-                this.executeDelete(webSocket, instance, '1', magnifyMessage.params![0])
+                console.log(`Do DELETE`)
+                this.executeDelete(webSocket, instance, magnifyMessage.params!)
                 return
             }
 
+            case MagnifyCommandEnum.CRONJOB: {
+                switch (magnifyMessage.params![0]) {
+                    case 'trigger':
+                        await cronJobTrigger(magnifyMessage.params![1], magnifyMessage.params![2], this.clusterInfo.batchApi)
+                        break
+                    case 'suspend':
+                        await cronJobStatus(magnifyMessage.params![1], magnifyMessage.params![2], true, this.clusterInfo.batchApi)
+                        break
+                    case 'resume':
+                        await cronJobStatus(magnifyMessage.params![1], magnifyMessage.params![2], false, this.clusterInfo.batchApi)
+                        break
+                }
+                break
+            }
+
             default:
-                execResponse.data = `Invalid command '${magnifyMessage.command}'. Valid commands are: ${Object.keys(MagnifyCommandEnum)}`
+                let text = `Invalid command '${magnifyMessage.command}'. Valid commands are: ${Object.keys(MagnifyCommandEnum)}`
+                this.sendSignalMessage( webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, text)
                 break
         }
         return execResponse
     }
 
-    // private startClusterEventWatcher = async (instance:IInstance, webSocket:WebSocket) => {
-    //     const path = '/api/v1/events';
-
-    //     try {
-    //         await instance.watch.watch(
-    //             path,
-    //             {},
-    //             (type, apiObj) => {
-
-    //                 if (apiObj && apiObj.kind === 'Event') {
-    //                     const eventMessage = apiObj.message || 'No message';
-    //                     const involvedObject = apiObj.involvedObject;
-    //                     const namespace = involvedObject ? involvedObject.namespace : 'N/A';
-    //                     const name = involvedObject ? involvedObject.name : 'N/A';
-                        
-    //                     console.log(`\n--- EVENTO RECIBIDO (${type}) ---`);
-    //                     console.log(`Namespace: ${namespace}`);
-    //                     console.log(`Recurso: ${involvedObject.kind}/${name}`);
-    //                     console.log(`Razón: ${apiObj.reason}`);
-    //                     console.log(`Mensaje: ${eventMessage}`);
-    //                     console.log('---------------------------------');
-    //                     if (apiObj.involvedObject.kind === 'Pod') {
-    //                         this.clusterInfo.coreApi.readNamespacedPod(apiObj.involvedObject.name, apiObj.involvedObject.namespace).then( resp => {
-    //                             let magnifyMessage:IMagnifyMessageResponse = {
-    //                                 msgtype: 'magnifymessageresponse',
-    //                                 id: '1',
-    //                                 command: MagnifyCommandEnum.WATCH,
-    //                                 namespace: '',
-    //                                 group: '',
-    //                                 pod: '',
-    //                                 container: '',
-    //                                 action: InstanceMessageActionEnum.COMMAND,
-    //                                 flow: InstanceMessageFlowEnum.UNSOLICITED,
-    //                                 type: InstanceMessageTypeEnum.DATA,
-    //                                 channel: 'magnify',
-    //                                 instance: instance.instanceId,
-    //                                 event: apiObj.reason,
-    //                                 data: resp.body
-    //                             }
-    //                             webSocket.send(JSON.stringify(magnifyMessage))
-    //                         })
-    //                         .catch(r => {
-    //                             console.log('catch')
-    //                             console.log('apiObj.involvedObject.name, apiObj.involvedObject.namespace')
-    //                             console.log(apiObj.involvedObject.name, apiObj.involvedObject.namespace)
-    //                         })
-    //                     }
-    //                 }
-    //             },
-    //             (err) => {
-    //                 console.log("Watcher finalizado o error. Reiniciando en 5 segundos...")
-    //                 setTimeout(this.startClusterEventWatcher, 5000, instance, webSocket)
-    //             }
-    //         )
-    //     }
-    //     catch (error : any) {
-    //         console.log('Error al configurar el watcher:', error.message)
-    //         console.log("Reiniciando en 5 segundos...")
-    //         setTimeout(this.startClusterEventWatcher, 5000, instance, webSocket)
-    //     }
-    // }
-
+    cleanLimitRange = (obj: any): void => {
+        //+++ maybe this is needed for other resources
+        if (obj !== null && typeof obj === 'object') {
+            
+            if (Array.isArray(obj)) {
+                for (const item of obj)
+                    this.cleanLimitRange(item)
+            }
+            else {
+                if (obj['_default'] !== undefined) {
+                    obj['default'] = obj['_default']
+                    delete obj['_default']
+                }
+                for (const key of Object.keys(obj))
+                    this.cleanLimitRange(obj[key])
+            }
+        }
+    }
+    
     private async executeList (webSocket:WebSocket, instance:IInstance, params:string[]) {
         try {
             throttleExcute(async () => {
@@ -500,7 +506,9 @@ class MagnifyChannel implements IChannel {
                             this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listResourceQuotaForAllNamespaces())))
                             break
                         case 'LimitRange':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listLimitRangeForAllNamespaces())))
+                            let result = await this.clusterInfo.coreApi.listLimitRangeForAllNamespaces()
+                            result.items.map(item => this.cleanLimitRange(item))
+                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify(result))
                             break
                         case 'HorizontalPodAutoscaler':
                             this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.autoscalingApi.listHorizontalPodAutoscalerForAllNamespaces())))
@@ -615,17 +623,22 @@ class MagnifyChannel implements IChannel {
         }
     }
 
-    private async executeDelete (webSocket:WebSocket, instance:IInstance, id:string, srcPath:string) {
+    private async executeDelete (webSocket:WebSocket, instance:IInstance, params:string[]) {
+        for (let obj of params) {
+            try {
+                await this.clusterInfo.objectsApi.delete(yaml.load(obj))
+            }
+            catch (err:any) {
+                console.log(err)
+                this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, JSON.stringify(err.body))
+            }
+        }
     }
 
     private async executeCreate (webSocket:WebSocket, instance:IInstance, params:string[]) {
         for (let param of params) {
             try {
-                const res = yaml.load(param)
-                let result = await applyResource(res, this.clusterInfo)
-                if (result!=='') {
-                    this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, result)
-                }
+                this.clusterInfo.objectsApi.create(yaml.load(param))
             }
             catch (err:any) {
                 this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, JSON.stringify(err))
@@ -633,6 +646,45 @@ class MagnifyChannel implements IChannel {
         }
     }
 
+    private async executeApply (webSocket:WebSocket, instance:IInstance, params:string[]) {
+        for (let param of params) {
+            try {
+                const res = yaml.load(param)
+                let result = await applyResource(res, this.clusterInfo)
+                this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.INFO, instance.instanceId, result)
+            }
+            catch (err:any) {
+                this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, JSON.stringify(err))
+            }
+        }
+    }
+
+    private async executeEvents (webSocket:WebSocket, instance:IInstance, params:string[]) {
+        let res = await this.getEventsForObject(params[0],params[1],params[2])
+        this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.EVENTS, JSON.stringify(res))
+    }
+
+    getEventsForObject = async (namespace:string,  objectKind:string, objectName:string) => {
+        // try {
+        //     const res = await this.clusterInfo.coreApi.listNamespacedEvent({
+        //         namespace: namespace,
+        //         fieldSelector: `involvedObject.name=${objectName},involvedObject.kind=${objectKind}`
+        //     })
+        //     return res.items
+        // }
+        // catch (err) {
+        //     console.error('Error obteniendo eventos:', err);
+        // }
+        try {
+            const res = await this.clusterInfo.coreApi.listEventForAllNamespaces( {
+                fieldSelector: `involvedObject.name=${objectName},involvedObject.kind=${objectKind}`
+            })
+            return res.items
+        }
+        catch (err) {
+            console.error('Error obteniendo eventos:', err);
+        }
+    }    
 }
 
 export { MagnifyChannel }

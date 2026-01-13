@@ -84,17 +84,17 @@ class MetricsChannel implements IChannel {
         return canPerform
     }
 
-    async addObject (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<boolean> => {
         try {
             const podResponse = await this.clusterInfo.coreApi.readNamespacedPod({ name:podName, namespace:podNamespace })
             const owner = podResponse.metadata?.ownerReferences?.find(owner => owner.controller)
             if (!owner) {
                 console.log('No owner found')
                 this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `No owner found for starting instance ${instanceConfig.instance}: ${podNamespace}/${podName}/${containerName}`, instanceConfig)
-                return
+                return false
             }
-            const gtype = owner.kind.toLocaleLowerCase()  // deployment, replicaset, daemonset or statefulset
-            const podGroup = gtype + '+' + owner.name
+            const gtype = owner.kind.toLocaleLowerCase()  // replicaset, daemonset or statefulset (this is never 'deployment', since owner of pod is replicaset)
+            const podGroup = gtype + '+' + owner.name  
             const podNode = podResponse.spec?.nodeName
             
             switch ((instanceConfig.data as MetricsConfig).mode) {
@@ -103,7 +103,7 @@ class MetricsChannel implements IChannel {
                         if (!this.checkScopes(instanceConfig, InstanceConfigScopeEnum.SNAPSHOT)) {
                             console.log('Insufficient scope for SNAPSHOT')
                             this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Insufficient scope for SNAPSHOT', instanceConfig) 
-                            return
+                            return false
                         }
                         if (podNode) {
                             console.log(`Send snapshot metrics for ${podNode}/${podNamespace}/${podGroup}/${podName}/${containerName}`)
@@ -111,23 +111,26 @@ class MetricsChannel implements IChannel {
                             let socket = this.webSockets.find(entry => entry.ws === webSocket)
                             if (!socket) {
                                 console.log('No socket found for startInstance snapshot')
-                                return
+                                return false
                             }
                             let instances = socket.instances
                             let instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
-                            if (instance)
+                            if (instance) {
                                 this.sendMetricsDataInstance(webSocket, instanceConfig.instance, false)
-                            else
+                                return true
+                            }
+                            else {
                                 this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig) 
+                                return false
+                            }
                         }
                     }
-                    break
                 case MetricsConfigModeEnum.STREAM:
                     {
                         if (!this.checkScopes(instanceConfig, InstanceConfigScopeEnum.STREAM)) {
                             console.log('Insufficient scope for STREAM')
                             this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Insufficient scope for STREAM', instanceConfig) 
-                            return
+                            return false
                         }
 
                         if (podNode) {
@@ -151,19 +154,22 @@ class MetricsChannel implements IChannel {
                                         instanceConfig: instanceConfig
                                     })
                                     this.sendMetricsDataInstance(webSocket,instanceConfig.instance, true)
-                                    return
+                                    return true
                                 }
                                 
                                 if (instanceConfig.view === InstanceConfigViewEnum.CONTAINER) {
                                     instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
                                     this.sendMetricsDataInstance(webSocket,instanceConfig.instance, true)
+                                    return true
                                 }
                                 else {
                                     if (!instance.assets.find(asset => asset.podName === podName && asset.containerName === containerName)) {
                                         instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
                                         this.sendMetricsDataInstance(webSocket,instanceConfig.instance, true)
+                                        return true
                                     }
                                 }
+                                return false
                             }
                             else {
                                 this.webSockets.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
@@ -179,26 +185,28 @@ class MetricsChannel implements IChannel {
                                     interval
                                 })
                                 this.sendMetricsDataInstance(webSocket,instanceConfig.instance, true)
+                                return true
                             }
                         }
                         else {
                             console.log(`Cannot determine node for ${podNamespace}/${podName}}, will not be added`)
+                            return false
                         }
                     }
-                    break
                 default:
                     this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid mode: ${(instanceConfig.data as MetricsConfig).mode}`, instanceConfig)
-                    break
+                    return false
             }
         }
         catch (err:any) {
             this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
             console.log('Generic error starting metrics instance', err)
+            return false
         }
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
-        
+    deleteObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : Promise<boolean> => {
+        return true
     }
     
     stopInstance (webSocket: WebSocket, instanceConfig: IInstanceConfig): void {
@@ -478,7 +486,23 @@ class MetricsChannel implements IChannel {
             case InstanceConfigViewEnum.NAMESPACE:
                 return [...new Set (assets.map (a => a.podNamespace))].join(',')
             case InstanceConfigViewEnum.GROUP:
-                return [...new Set (assets.map (a => a.podGroup))].join(',')
+                let requestedGroups = instanceConfig.group.split(',')
+                return [...new Set (assets.map (a => {
+                    if (requestedGroups.includes(a.podGroup)) {
+                        return a.podGroup
+                    }
+                    else {
+                        // we assume deployment name is derived from replicaset name prefix
+                        let deploymentName = a.podGroup.substring(0, a.podGroup.lastIndexOf('-'))
+                        let x = deploymentName.replaceAll('replicaset+','deployment+')
+                        if (requestedGroups.includes(x)) {
+                            return x
+                        }
+                        else {
+                            return undefined
+                        }
+                    }
+                }))].join(',')
             case InstanceConfigViewEnum.POD:
                 return [...new Set (assets.map (a => a.podName))].join(',')
             case InstanceConfigViewEnum.CONTAINER:

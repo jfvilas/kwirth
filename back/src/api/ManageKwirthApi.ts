@@ -1,18 +1,21 @@
 import express, { Request, Response} from 'express'
-import { AppsV1Api, CoreV1Api } from '@kubernetes/client-node'
+import { AppsV1Api, BatchV1Api, CoreV1Api } from '@kubernetes/client-node'
 import { KwirthData } from '@jfvilas/kwirth-common'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
 
 export class ManageKwirthApi {
-    public route = express.Router();
-    coreApi:CoreV1Api;
-    appsApi:AppsV1Api;
+    public route = express.Router()
+    coreApi:CoreV1Api
+    appsApi:AppsV1Api
+    batchApi:BatchV1Api
     
-    constructor (coreApi:CoreV1Api, appsApi:AppsV1Api, apiKeyApi: ApiKeyApi, kwirthData:KwirthData) {
+    constructor (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi:BatchV1Api, apiKeyApi: ApiKeyApi, kwirthData:KwirthData) {
         this.coreApi=coreApi
         this.appsApi=appsApi
+        this.batchApi=batchApi
 
+        // restart kwirth
         this.route.route('/restart')
             .all( async (req:Request,res:Response, next) => {
                 if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
@@ -20,7 +23,7 @@ export class ManageKwirthApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    this.restartGroup(this.coreApi, this.appsApi, kwirthData.namespace, 'deployment+' + kwirthData.deployment)
+                    this.restartGroup(this.coreApi, this.appsApi, this.batchApi, kwirthData.namespace, 'deployment+' + kwirthData.deployment)
                     res.status(200).json()
                 }
                 catch (err) {
@@ -31,9 +34,10 @@ export class ManageKwirthApi {
         
     }
 
-    restartGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, namespace:string, groupTypeName:string): Promise<void> => {
+    restartGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, groupTypeName:string): Promise<void> => {
         try {
-            var result = await AuthorizationManagement.getPodLabelSelectorsFromGroup(coreApi, appsApi, namespace, groupTypeName)
+            let result = await AuthorizationManagement.getPodLabelSelectorsFromGroup(coreApi, appsApi, batchApi, namespace, groupTypeName)
+            // +++ test & try if this is suitable for restarting jobs
 
             // Delete all pods, which forces kubernetes to recreate them
             for (const pod of result.pods) {

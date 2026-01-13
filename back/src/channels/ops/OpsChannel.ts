@@ -71,9 +71,11 @@ class OpsChannel implements IChannel {
             console.log('ops no instance')
             return
         }
-        let asset = instance.assets.find(a => a.podNamespace === instanceConfig.namespace && a.podName === instanceConfig.pod && a.containerName === instanceConfig.container)
+        //let asset = instance.assets.find(a => a.podNamespace === instanceConfig.namespace && a.podName === instanceConfig.pod && a.containerName === instanceConfig.container)
+        let asset = instance.assets.find(a => a.podNamespace === instanceConfig.namespace && a.podName+'+'+a.containerName === instanceConfig.container)
         if (!asset) {
-            console.log('ops no asset')
+            console.log('ops no asset for')
+            console.log(instanceConfig)
             return
         }
         const namespace=asset.podNamespace
@@ -163,7 +165,7 @@ class OpsChannel implements IChannel {
         }
     }
 
-    async addObject (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<boolean> => {
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
 
         let socket = this.webSockets.find(s => s.ws === webSocket)
@@ -196,10 +198,11 @@ class OpsChannel implements IChannel {
             wsterm: undefined
         }
         instance.assets.push(asset)
+        return true
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
-        
+    deleteObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : Promise<boolean> => {
+        return true        
     }
     
     pauseContinueInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void {

@@ -16,6 +16,7 @@ interface IDetailsSection {
     name: string
     text: string
     items: IDetailsItem[]
+    root: string
 }
 
 interface IMagnifyObjectDetailsProps {
@@ -52,7 +53,7 @@ function formatAgeCompact(duracion:{ days: number, hours: number, minutes: numbe
     return partes.slice(0, 2).join('')
 }    
 
-const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjectDetailsProps) => {
+const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjectDetailsProps) => {
 
     const renderValue = (srcobj:any, src:string, format:string, style:string[], details?:IDetailsItem[], invoke?:(obj:any) => string[], itemx?:IDetailsItem) : JSX.Element => {
         if (src.startsWith('$')) return <Typography fontWeight={style.includes('bold')?'700':''}>{src.substring(1)}</Typography>
@@ -104,18 +105,29 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
 
             case 'boolean':
                 let bvalue = false
-                if (src==='#' && invoke)
+                if (src==='@string[]' && invoke)
                     bvalue = Boolean(invoke(obj)[0])
                 else 
                     bvalue = _.get(obj,src)
-                if (bvalue)
-                    return <Typography sx={{color:'green'}}>OK</Typography>
-                else
-                    return <Typography sx={{color:'red'}}>ko</Typography>
+                let valueStyle = style.filter(s => s.startsWith(bvalue+':'))
+                if (style && valueStyle.length===1) {
+                    let parts = valueStyle[0].split(':')
+                    if (bvalue)
+                        return <Typography sx={{color:parts[2]}}>{parts[1]}</Typography>
+                    else
+                        return <Typography sx={{color:parts[2]}}>{parts[1]}</Typography>
+
+                }
+                else {
+                    if (bvalue)
+                        return <Typography sx={{color:'green'}}>OK</Typography>
+                    else
+                        return <Typography sx={{color:'red'}}>ko</Typography>
+                }
 
             case 'string':
                 let value = ''
-                if (src==='#' && invoke)
+                if (src==='@string[]' && invoke)
                     value = invoke(obj)[0]
                 else 
                     value = _.get(obj,src)
@@ -148,7 +160,8 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
                                 else
                                     linkParts[i] = linkParts[i].substring(1)
                             }
-                            jsxValue=<a href={`#/${linkParts[1]}/${v}`} onClick={() => props.onLink(linkParts[1],v)}>{v}</a>
+                            //jsxValue=<a href={`#/${linkParts[1]}/${v}`} onClick={() => props.onLink(linkParts[1],v)}>{v}</a>
+                            jsxValue=<a href={`#`} onClick={() => props.onLink(linkParts[1],v)}>{v}</a>
                         }
                     }
                     if (valueStyle.length>0)
@@ -167,7 +180,7 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
                 }
 
             case 'edit':
-                return <TextField maxRows={5} name={src} defaultValue={_.get(obj,src)} fullWidth sx={{width:'100%', mt:1, mb:1}} multiline onChange={(e) => props.onChangeData(src,e.target.value)} size='small' variant={style.includes('edit')?'standard':'outlined'}/>
+                return <TextField maxRows={5} name={src} defaultValue={_.get(obj,src)} fullWidth sx={{width:'100%', mt:1, mb:1}} multiline onChange={(e) => props.onChangeData(src,e.target.value)} size='small'/>
 
             case 'booleankey':
                 if (_.get(obj,src)===true) return <>{src}</>
@@ -179,7 +192,7 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
 
             case 'stringlist':
                 let result2:string[]=[]
-                if (src==='#' && invoke) {
+                if (src==='@string[]' && invoke) {
                     result2 = invoke(obj)
                 }
                 else
@@ -203,7 +216,7 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
 
             case 'objectlist':
                 let items:any[]=[]
-                if (src==='#' && invoke) {
+                if (src==='@string[]' && invoke) {
                     items = invoke(obj)
                 }
                 else {
@@ -233,7 +246,6 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
                                                         <>{renderValue(row,key.source[0],details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.format, details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.style||[],[subcontent], undefined)}</>
                                                     )
                                                     :
-                                                    // <>{renderValue(row,key.source[0],subcontent.format,subcontent.style||[],[], undefined)}</>
                                                     <>{renderValues(row,key)}</>
                                             }</TableCell>})
                                         }
@@ -353,6 +365,10 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
     }
 
     const renderValues = (obj:any, item:IDetailsItem) => {
+        if (item.style?.includes('ifpresent') && _.get(obj,item.source[0])===undefined) {
+            return <></>
+        }
+
         if (item.format==='bar') {
             let value = _.get(obj,item.source[0])
             let max = _.get(obj,item.source[1])
@@ -379,22 +395,37 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
     const renderItem = (obj:any, item:IDetailsItem, width:number) => {
         if (item.style?.includes('ifpresent') && !_.get(obj,item.source[0])) return <></>
 
-        return (
-            <Stack direction={'row'} alignItems={'baseline'}>
-                {item.text==='' && <>
-                    <Typography width={`${100}%`} sx={{fontWeight:item.style?.includes('bold')?'700':''}}>
+        if (item.source && item.source[0]==='@jsx[]') {
+            if (item.invoke) {
+                return (
+                    <Stack direction={item.style && item.style.includes('column')?'column':'row'} alignItems="stretch" sx={{ width: '100%' }}>
+                        {(item.invoke(obj) as JSX.Element[]).map(e => e)}
+                    </Stack>
+                )
+            }
+            else {
+                return <>Inexistent Invoke</>
+            }
+        }
+        else {
+            return (
+                <Stack direction={'row'} alignItems={'baseline'}>
+                    {item.text==='' && <>
+                        <Typography width={'100%'}>
+                            {renderValues(obj, item)}
+                        </Typography>
+                    </>}
+                    {item.text!=='' && <>
+                        <Typography width={`${width}%`}>{item.text}</Typography>
                         {renderValues(obj, item)}
-                    </Typography>
-                </>}
-                {item.text!=='' && <>
-                    <Typography width={`${width}%`}>{item.text}</Typography>
-                    {renderValues(obj, item)}
-                </>}
-            </Stack>
-        )
+                    </>}
+                </Stack>
+            )
+        }
     }
 
     const renderSection = (obj:any, section:IDetailsSection) => {
+        if (!obj) return
         return <>
             <Typography fontSize={18} sx={{mt:2, mb:1}}><b>{section.text}</b></Typography>
             {section.items.map(item => renderItem(obj, item, 15))}
@@ -403,10 +434,12 @@ const MagnifyObjectDetails: React.FC<IMagnifyObjectDetailsProps> = (props:IMagni
 
 
     if (props.sections)
-        return <>{ props.sections.map((section:IDetailsSection) => renderSection(props.object.data.origin, section)) }</>
+        return <>
+            { props.sections.map((section:IDetailsSection) => renderSection(props.object.data[section.root], section)) }
+        </>
     else
         return <><pre>{JSON.stringify(props.object.data.origin,undefined, 2)}</pre></>
 }
 
 export type { IMagnifyObjectDetailsProps, IDetailsSection, IDetailsItem }
-export { MagnifyObjectDetails }
+export { DetailsObject }

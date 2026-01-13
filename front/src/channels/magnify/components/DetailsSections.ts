@@ -73,16 +73,81 @@ let conditions:IDetailsItem = {
     text: 'Conditions',
     source: ['status.conditions'],
     format: 'objectlist',
+    style: ['column'],
     content: [
         {
             name: 'type',
             text: 'Type',
             source: ['type'],
             format: 'string',
-            style: ['property:status:True:green', 'property:status:False:red']
-            //source: ['type', '$\u00a0(', 'status', '$)'],
-            //style: ['False:red', 'True:green']
+            style: ['property:status:True:green', 'property:status:False:#ffaaaa']
         },
+    ]
+}
+
+let events: IDetailsSection = {
+    name: 'events',
+    text: 'Events',
+    root: 'events',
+    items: [
+        {
+            name: 'events',
+            text: '',
+            source: ['list'],
+            format: 'objectlist',
+            style: ['table'],
+            content: [
+                {
+                    name: 'message',
+                    text: 'Message',
+                    source: ['message'],
+                    format: 'string',
+                },
+                {
+                    name: 'count',
+                    text: 'Count',
+                    source: ['count'],
+                    format: 'string',
+                },
+                {
+                    name: 'age',
+                    text: 'Age',
+                    source: ['lastTimestamp'],
+                    format: 'age',
+                },
+            ],
+        }
+    ]
+}
+
+let pods:IDetailsSection =     {
+    name: 'pods',
+    text: 'Pods',
+    root: 'origin',
+    items: [
+        {
+            name: 'pods',
+            text: '',
+            source: ['@string[]'],
+            format: 'objectlist',
+            style: ['table'],
+            content: [
+                {
+                    name: 'name',
+                    text: 'Name',
+                    source: ['#metadata.name'],
+                    format: 'string',
+                    style: ['link:$Pod:metadata.name']
+                },
+                {
+                    name: 'node',
+                    text: 'Node',
+                    source: ['#spec.nodeName'],
+                    format: 'string',
+                    style: ['link:$Node:spec.nodeName']
+                }
+            ]
+        }
     ]
 }
 
@@ -90,6 +155,7 @@ objectSections.set('PersistentVolumeClaim', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -121,7 +187,7 @@ objectSections.set('PersistentVolumeClaim', [
            {
                 name: 'pods',
                 text: 'Pods',
-                source: ['$n/a'],
+                source: ['$n/a'],  //+++
                 format: 'string',
            },
            {
@@ -131,13 +197,15 @@ objectSections.set('PersistentVolumeClaim', [
                 format: 'string',
            }
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('PersistentVolume', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -179,12 +247,14 @@ objectSections.set('PersistentVolume', [
            }
         ]
     },
+    events
 ])
 
 objectSections.set('StorageClass', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -207,12 +277,14 @@ objectSections.set('StorageClass', [
            }           
         ]
     },
+    events
 ])
 
 objectSections.set('NetworkPolicy', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -222,13 +294,15 @@ objectSections.set('NetworkPolicy', [
                 format: 'objectprops'
             },
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('Service', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -243,6 +317,7 @@ objectSections.set('Service', [
     {
         name: 'connection',
         text: 'Connection',
+        root: 'origin',
         items: [
             {
                 name: 'clusterIp',
@@ -277,26 +352,29 @@ objectSections.set('Service', [
                     {
                         name: 'type',
                         text: '',
-                        source: ['port','$:', 'name','$/','protocol'],
+                        source: ['name','$:', 'port','$/','protocol'],
                         format: 'string'
                     },                    
                 ]
             },
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('Endpoints', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
-            //...basicNamespaced
+            ...basicNamespaced
         ]
     },
     {
         name: 'subsets',
         text: 'Subsets',
+        root: 'origin',
         items: [
             {
                 name: 'subsetlist',
@@ -320,9 +398,9 @@ objectSections.set('Endpoints', [
                             {
                                 name: 'target',
                                 text: 'Target',
-                                source: ['targetRef.kind', '$\u00a0', '#targetRef.name', '$\u00a0(', 'targetRef.namespace', '$)'],
+                                source: ['targetRef.kind', '$\u00a0', '#targetRef.name', '$\u00a0(namespace:\u00a0', 'targetRef.namespace', '$)'],
                                 format: 'string',
-                                style: ['link:targetRef.kind:targetRef.name']
+                                style: ['link:targetRef.kind:targetRef.name', 'ifpresent']
                             }
                         ]
                     },                    
@@ -330,13 +408,15 @@ objectSections.set('Endpoints', [
             },
 
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('Ingress', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -351,6 +431,7 @@ objectSections.set('Ingress', [
     {
         name: 'rules',
         text: 'Rules',
+        root: 'origin',
         items: [
             {
                 name: 'host',
@@ -385,13 +466,15 @@ objectSections.set('Ingress', [
                 ],
             },
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('IngressClass', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -401,13 +484,15 @@ objectSections.set('IngressClass', [
                 format: 'string'
             },
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('Namespace', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -419,12 +504,28 @@ objectSections.set('Namespace', [
             },
         ]
     },
+    {
+        name: 'content',
+        text: 'Content',
+        root: 'origin',
+        items: [
+            {
+                name: 'content',
+                text: 'Content',
+                source: ['@jsx[]'],
+                format: 'string',  // ignored
+                style: ['column']
+            },
+        ]
+    },
+    events
 ])
 
 objectSections.set('Node', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -485,6 +586,7 @@ objectSections.set('Node', [
     {
         name: 'compute',
         text: 'Compute',
+        root: 'origin',
         items: [
             {
                 name: 'capacity',
@@ -502,12 +604,14 @@ objectSections.set('Node', [
             },
         ]
     },
+    events
 ])
 
 objectSections.set('ConfigMap', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
         ]
@@ -515,22 +619,25 @@ objectSections.set('ConfigMap', [
     {
         name: 'data',
         text: 'Data',
+        root: 'origin',
         items: [
             {
                 name: 'item',
                 text: '',
                 source: ['data'],
                 format: 'objectprops',
-                style: ['column', 'edit', 'keybold']
+                style: ['column', 'edit', 'keybold' ]
             },
         ]
     },
+    events
 ])
 
 objectSections.set('Secret', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -544,6 +651,7 @@ objectSections.set('Secret', [
     {
         name: 'data',
         text: 'Data',
+        root: 'origin',
         items: [
             {
                 name: 'item',
@@ -554,12 +662,14 @@ objectSections.set('Secret', [
             },
         ]
     },
+    events
 ])
 
 objectSections.set('LimitRange', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
         ]
@@ -567,6 +677,7 @@ objectSections.set('LimitRange', [
     {
         name: 'limits',
         text: 'Limits',
+        root: 'origin',
         items: [
             {
                 name: 'limits',
@@ -669,12 +780,14 @@ objectSections.set('LimitRange', [
             },
         ]
     },
+    events
 ])
 
 objectSections.set('HorizontalPodAutoscaler', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -706,12 +819,14 @@ objectSections.set('HorizontalPodAutoscaler', [
     {
         name: 'metrics',
         text: 'Metrics',
+        root: 'origin',
         items: [
             {
                 name: 'limits',
                 text: 'Limits',
                 source: ['spec.metrics'],
                 format: 'objectlist',
+                style: ['table'],
                 content: [
                     {
                         name: 'type',
@@ -755,17 +870,18 @@ objectSections.set('HorizontalPodAutoscaler', [
                             }
                         ]
                     },
-                ],
-                style: ['table']
+                ]
             },
         ]
     },
+    events
 ])
 
 objectSections.set('PodDisruptionBudget', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -782,13 +898,14 @@ objectSections.set('PodDisruptionBudget', [
             },
         ]
     },
-    //+++ more
+    events
 ])
 
 objectSections.set('PriorityClass', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -799,12 +916,14 @@ objectSections.set('PriorityClass', [
             },
         ]
     },
+    events
 ])
 
 objectSections.set('RuntimeClass', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -815,12 +934,14 @@ objectSections.set('RuntimeClass', [
             },
         ]
     },
+    events
 ])
 
 objectSections.set('Lease', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -856,12 +977,14 @@ objectSections.set('Lease', [
             },
         ]
     },
+    events
 ])
 
 objectSections.set('ValidatingWebhookConfiguration', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -888,15 +1011,8 @@ objectSections.set('ValidatingWebhookConfiguration', [
                                 text: 'Name',
                                 source: ['name'],
                                 format: 'string'
-                            },
-                            {
-                                name: 'namespace',
-                                text: 'Namespace',
-                                source: ['#namespace'],
-                                format: 'string',
-                                style: ['link:$Namespace:namespace']
-                            },
-                        ],
+                            }
+                        ]
                     },
                     {
                         name: 'rules',
@@ -947,12 +1063,14 @@ objectSections.set('ValidatingWebhookConfiguration', [
             },
         ]
     },
+    events
 ])
 
 objectSections.set('MutatingWebhookConfiguration', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -1038,12 +1156,14 @@ objectSections.set('MutatingWebhookConfiguration', [
             },
         ]
     },
+    events
 ])
 
 objectSections.set('Pod', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -1144,6 +1264,7 @@ objectSections.set('Pod', [
     {
         name: 'volumes',
         text: 'Volumes',
+        root: 'origin',
         items: [
             {
                 name: 'volume',
@@ -1176,6 +1297,7 @@ objectSections.set('Pod', [
     {
         name: 'containers',
         text: 'Containers',
+        root: 'origin',
         items: [
             {
                 name: 'container',
@@ -1275,12 +1397,14 @@ objectSections.set('Pod', [
             }
         ]
     },
+    events
 ])
 
 objectSections.set('Deployment', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -1299,50 +1423,22 @@ objectSections.set('Deployment', [
             {
                 name: 'status',
                 text: 'Status',
-                source: ['#'],
+                source: ['@string[]'],
                 format: 'string',
                 style: ['running:green']
             },
             conditions
         ]
     },
-    {
-        name: 'pods',
-        text: 'Pods',
-        items: [
-            {
-                name: 'pods',
-                text: 'Pods',
-                source: ['#'],
-                //invoke: () => { return ['aa',`bb`]},
-                format: 'objectlist',
-                style: ['table'],
-                content: [
-                    {
-                        name: 'name',
-                        text: 'Name',
-                        source: ['#metadata.name'],
-                        format: 'string',
-                        style: ['link:$Pod:metadata.name']
-                    },
-                    {
-                        name: 'node',
-                        text: 'Node',
-                        source: ['#spec.nodeName'],
-                        format: 'string',
-                        style: ['link:$Node:spec.nodeName']
-                    }
-                ]
-            }
-        ]
-    }
-
+    pods,
+    events
 ])
 
 objectSections.set('DaemonSet', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -1402,43 +1498,15 @@ objectSections.set('DaemonSet', [
             },
         ]
     },
-    {
-        name: 'pods',
-        text: 'Pods',
-        items: [
-            {
-                name: 'pods',
-                text: 'Pods',
-                source: ['#'],
-                //invoke: () => { return ['aa',`bb`]},
-                format: 'objectlist',
-                style: ['table'],
-                content: [
-                    {
-                        name: 'name',
-                        text: 'Name',
-                        source: ['#metadata.name'],
-                        format: 'string',
-                        style: ['link:$Pod:metadata.name']
-                    },
-                    {
-                        name: 'node',
-                        text: 'Node',
-                        source: ['#spec.nodeName'],
-                        format: 'string',
-                        style: ['link:$Node:spec.nodeName']
-                    }
-                ]
-            }
-        ]
-    }
-
+    pods,
+    events
 ])
 
 objectSections.set('ReplicaSet', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -1471,60 +1539,49 @@ objectSections.set('ReplicaSet', [
             },
         ]
     },
-    {
-        name: 'pods',
-        text: 'Pods',
-        items: [
-            {
-                name: 'pods',
-                text: 'Pods',
-                source: ['#'],
-                //invoke: () => { return ['aa',`bb`]},
-                format: 'objectlist',
-                style: ['table'],
-                content: [
-                    {
-                        name: 'name',
-                        text: 'Name',
-                        source: ['#metadata.name'],
-                        format: 'string',
-                        style: ['link:$Pod:metadata.name']
-                    },
-                    {
-                        name: 'node',
-                        text: 'Node',
-                        source: ['#spec.nodeName'],
-                        format: 'string',
-                        style: ['link:$Node:spec.nodeName']
-                    }
-                ]
-            }
-        ]
-    }
-
+    pods,
+    events
 ])
 
 objectSections.set('StatefulSet', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
-                name: 'controlledby',
-                text: 'Controlled By',
-                source: ['metadata.ownerReferences.0.kind', '$\u00A0', '#metadata.ownerReferences.0.name'],
-                format: 'string',
-                style: ['link:metadata.ownerReferences.0.kind:metadata.ownerReferences.0.name']
-            }
+                name: 'selector',
+                text: 'Selector',
+                source: ['spec.selector.matchLabels'],
+                format: 'objectprops'
+            },
+            {
+                name: 'images',
+                text: 'Images',
+                source: ['spec.template.spec.containers'],
+                format: 'objectlist',
+                content: [
+                    {
+                        name: 'image',
+                        text: '',
+                        source: ['image'],
+                        format: 'string'
+                    },
+                ],
+                style:['column']
+            },
         ]
-    }
+    },
+    pods,
+    events
 ])
 
 objectSections.set('Job', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -1570,12 +1627,14 @@ objectSections.set('Job', [
             },
         ]
     },
+    events
 ])
 
 objectSections.set('CronJob', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -1588,8 +1647,8 @@ objectSections.set('CronJob', [
                 name: 'suspend',
                 text: 'Suspend',
                 source: ['spec.suspend'],
-                format: 'string',
-                style: ['ifpresent']
+                format: 'boolean',
+                style: ['true:Suspended:red','false:Running:green']
             },
             {
                 name: 'lastSchedule',
@@ -1605,16 +1664,29 @@ objectSections.set('CronJob', [
                 format: 'string',
                 style: ['ifpresent']
             },
+            {
+                name: 'nextExecution',
+                text: 'Next Execution',
+                source: ['@string[]'],
+                format: 'string'
+            },
+            {
+                name: 'timeLeft',
+                text: 'Time Left',
+                source: ['@string[]'],
+                format: 'string'
+            },
         ]
     },
     {
         name: 'history',
         text: 'History',
+        root: 'origin',
         items: [
             {
                 name: 'jobs',
                 text: 'Jobs',
-                source: ['#'],
+                source: ['@string[]'],
                 //invoke: () => { return ['aa',`bb`]},
                 format: 'objectlist',
                 style: ['table'],
@@ -1635,32 +1707,35 @@ objectSections.set('CronJob', [
                 ]
             }
         ]
-    }
-
+    },
+    events
 ])
 
 objectSections.set('ServiceAccount', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
                 name: 'tokens',
                 text: 'Tokens',
-                source: ['#'],
+                source: ['@string[]'],
                 //invoke: () => { return ['aa',`bb`]},
                 format: 'stringlist',
                 style: ['column', 'char:30', 'ifpresent']
             },
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('ClusterRole', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster
         ]
@@ -1668,6 +1743,7 @@ objectSections.set('ClusterRole', [
     {
         name: 'rules',
         text: 'Rules',
+        root: 'origin',
         items: [
             {
                 name: 'rules',
@@ -1700,13 +1776,15 @@ objectSections.set('ClusterRole', [
                 style: ['table']
             },
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('Role', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced
         ]
@@ -1714,6 +1792,7 @@ objectSections.set('Role', [
     {
         name: 'rules',
         text: 'Rules',
+        root: 'origin',
         items: [
             {
                 name: 'rules',
@@ -1753,6 +1832,7 @@ objectSections.set('ClusterRoleBinding', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster
         ]
@@ -1760,6 +1840,7 @@ objectSections.set('ClusterRoleBinding', [
     {
         name: 'reference',
         text: 'Reference',
+        root: 'origin',
         items: [
             {
                 name: 'kind',
@@ -1784,6 +1865,7 @@ objectSections.set('ClusterRoleBinding', [
     {
         name: 'subjects',
         text: 'Subjects',
+        root: 'origin',
         items: [
             {
                 name: 'bindings',
@@ -1814,13 +1896,15 @@ objectSections.set('ClusterRoleBinding', [
                 style: ['table']
             },
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('RoleBinding', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
         ]
@@ -1828,6 +1912,7 @@ objectSections.set('RoleBinding', [
     {
         name: 'reference',
         text: 'Reference',
+        root: 'origin',
         items: [
             {
                 name: 'kind',
@@ -1852,6 +1937,7 @@ objectSections.set('RoleBinding', [
     {
         name: 'subjects',
         text: 'Subjects',
+        root: 'origin',
         items: [
             {
                 name: 'bindings',
@@ -1882,13 +1968,15 @@ objectSections.set('RoleBinding', [
                 style: ['table']
             },
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('ResourceQuota', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
         ]
@@ -1896,6 +1984,7 @@ objectSections.set('ResourceQuota', [
     {
         name: 'quotas',
         text: 'Quotas',
+        root: 'origin',
         items: [
             {
                 name: 'limitcpu',
@@ -1962,12 +2051,14 @@ objectSections.set('ResourceQuota', [
             },
         ]
     },
+    events
 ])
 
 objectSections.set('CustomResourceDefinition', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicCluster,
             {
@@ -1994,12 +2085,14 @@ objectSections.set('CustomResourceDefinition', [
                         text: 'Served',
                         source: ['served'],
                         format: 'boolean',
+                        style: ['true:Yes:green', 'false:No:red']
                     },
                     {
                         name: 'storage',
                         text: 'Storage',
                         source: ['storage'],
                         format: 'boolean',
+                        style: ['true:Yes:green', 'false:No:red']
                     },
                 ]
             },
@@ -2009,6 +2102,7 @@ objectSections.set('CustomResourceDefinition', [
     {
         name: 'names',
         text: 'Names',
+        root: 'origin',
         items: [
             {
                 name: 'singular',
@@ -2035,13 +2129,15 @@ objectSections.set('CustomResourceDefinition', [
                 format: 'string',
             },
         ]
-    }
+    },
+    events
 ])
 
 objectSections.set('#crdinstance#', [
     {
         name: 'properties',
         text: 'Properties',
+        root: 'origin',
         items: [
             ...basicNamespaced,
             {
@@ -2059,4 +2155,5 @@ objectSections.set('#crdinstance#', [
             },
         ]
     },
+    events
 ])

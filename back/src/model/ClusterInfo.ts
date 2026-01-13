@@ -1,4 +1,4 @@
-import { AdmissionregistrationApi, AdmissionregistrationV1Api, ApiextensionsV1Api, AppsV1Api, AutoscalingApi, AutoscalingV2Api, BatchV1Api, CoordinationV1Api, CoreV1Api, CustomObjectsApi, DiscoveryApi, DiscoveryV1Api, Exec, KubeConfig, Log, NetworkingV1Api, NodeV1Api, PolicyV1Api, RbacAuthorizationV1Api, SchedulingV1Api, StorageV1Api, V1Node, VersionApi } from '@kubernetes/client-node'
+import { AdmissionregistrationV1Api, ApiextensionsV1Api, AppsV1Api, AutoscalingV2Api, BatchV1Api, CoordinationV1Api, CoreV1Api, CustomObjectsApi, Exec, KubeConfig, KubernetesObjectApi, Log, NetworkingV1Api, NodeV1Api, PolicyV1Api, RbacAuthorizationV1Api, SchedulingV1Api, StorageV1Api, V1Node, VersionApi } from '@kubernetes/client-node'
 import { MetricsTools } from "../tools/MetricsTools"
 import { ClusterTypeEnum } from "@jfvilas/kwirth-common"
 import Docker from 'dockerode'
@@ -45,6 +45,7 @@ export class ClusterInfo {
     public admissionApi!: AdmissionregistrationV1Api
     public policyApi!: PolicyV1Api
     public nodeApi!: NodeV1Api
+    public objectsApi!: KubernetesObjectApi
     public token: string = ''
     public metrics!: MetricsTools
     public events!: EventsTools

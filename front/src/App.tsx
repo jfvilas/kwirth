@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 // material & icons
 import { Alert, AppBar, Box, Drawer, IconButton, Snackbar, SnackbarCloseReason, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
-import { Settings as SettingsIcon, Menu, Person, Home } from '@mui/icons-material'
+import { Settings as SettingsIcon, Menu, Person, Home, Notifications, NotificationsActive } from '@mui/icons-material'
 
 // model
 import { Cluster, IClusterInfo } from './model/Cluster'
@@ -30,7 +30,7 @@ import { IWorkspace, IWorkspaceSummary } from './model/IWorkspace'
 import { VERSION } from './version'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, IInstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources, KwirthData, BackChannelData, IUser } from '@jfvilas/kwirth-common'
+import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, IInstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources, KwirthData, BackChannelData, IUser, ISignalMessage } from '@jfvilas/kwirth-common'
 import { ITabObject, ITabSummary } from './model/ITabObject'
 
 import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
@@ -46,6 +46,7 @@ import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
 import { DEFAULTLASTTABS, IColors, TABBASECOLORS, TABBRIGHTCOLORS } from './tools/Constants'
 import { createChannelInstance } from './tools/Channel'
+import { color } from '@uiw/react-codemirror'
 
 const App: React.FC = () => {
     let backendUrl='http://localhost:3883'
@@ -107,15 +108,10 @@ const App: React.FC = () => {
     const [notifyOpen, setNotifyOpen] = useState(false)
     const [notifyMessage, setNotifyMessage] = useState('')
     const [notifyLevel, setNotifyLevel] = useState<ENotifyLevel>(ENotifyLevel.INFO)
+    const [notifications, setNotifications] = useState<{level:ENotifyLevel, message:string}[]>([])
     
     const [resourceSelected, setResourceSelected] = useState<IResourceSelected|undefined>(undefined)
 
-    // const createChannelInstance = (type: string): IChannel | null => {
-    //     const channelClass = frontChannels.get(type)
-    //     let channel = channelClass ? new channelClass() : null
-    //     if (channel) channel.setNotifier(notify)
-    //     return channel
-    // }
 
     useEffect( () => {
         // only first time
@@ -162,14 +158,19 @@ const App: React.FC = () => {
     }, [clusters])
 
     const onNotifyClose = (event?: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
+        console.log(notifications)
+        console.log(notifyLevel, notifyMessage)
+        setNotifications(notifications.filter(n => n.level===notifyLevel && n.message === notifyMessage))
+        console.log(notifications.length)
         if (reason === 'clickaway') return
         setNotifyOpen(false)
     }
 
-    const notify = (level:ENotifyLevel, msg:string) => {
+    const notify = (level:ENotifyLevel, message:string) => {
         setNotifyOpen(true)
-        setNotifyMessage(msg)
+        setNotifyMessage(message)
         setNotifyLevel(level)
+        setNotifications([...notifications, {level,message}])
     }
 
     const fillTabSummary = async (tab:ITabSummary) => {
@@ -465,10 +466,21 @@ const App: React.FC = () => {
                 tab.headerEl.style.backgroundColor = colorTable.pause
             }
             else {
-                if (tab.channelPending)
+                if (tab.channelPending) {
                     tab.headerEl.style.backgroundColor = colorTable.pending
+                }
                 else {
-                    tab.headerEl.style.backgroundColor = colorTable.start
+                    if (selectedTab.current?.ws?.readyState) {
+                        if (selectedTab.current?.ws?.readyState === 1) {
+                            tab.headerEl.style.backgroundColor = colorTable.start
+                        }
+                        else {
+                            tab.headerEl.style.backgroundColor = colorTable.interrupt
+                        }
+                    }
+                    else {
+                        tab.headerEl.style.backgroundColor = colorTable.start
+                    }
                 }
             }
         }
@@ -507,6 +519,18 @@ const App: React.FC = () => {
             return
         }
         if (instanceMessage.action === InstanceMessageActionEnum.PING || instanceMessage.channel === InstanceMessageChannelEnum.NONE) return
+
+        if (instanceMessage.type === InstanceMessageTypeEnum.SIGNAL && instanceMessage.action === InstanceMessageActionEnum.RECONNECT && instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
+            let msg:ISignalMessage = JSON.parse(wsEvent.data) as ISignalMessage
+            console.log('RECC')
+            if (msg.data!==undefined) {
+                if (msg.data===false) {
+                    notify( ENotifyLevel.ERROR, msg.text||'Error reconnecting')
+                    let tab = tabs.current.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
+                    if (tab) stopTabChannel(tab)
+                }
+            }
+        }
 
         if (frontChannels.has(instanceMessage.channel)) {
             let tab = tabs.current.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
@@ -552,6 +576,7 @@ const App: React.FC = () => {
         let tab = tabs.current.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
 
+        colorizeTab(tab)
         let instanceConfig:IInstanceConfig = {
             channel: tab.channel.channelId,
             objects: InstanceConfigObjectEnum.PODS,
@@ -583,6 +608,9 @@ const App: React.FC = () => {
         console.log('WebSocket disconnected', new Date().toISOString())
         let tab = tabs.current.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
+
+        notify(ENotifyLevel.ERROR, `Websocket for channel '${tab.channel.channelId}' has been interrupted`)
+        colorizeTab(tab)
         const reconnectable = backChannels.find(c => c.id === tab!.channel.channelId && c.reconnectable)
         if (reconnectable) {
             console.log(`Trying to reconnect...`)
@@ -1210,6 +1238,22 @@ const App: React.FC = () => {
         }
     }
 
+    const onHomepageRestoreParameters = async (tab: ITabSummary): Promise<void> => {
+        let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
+        if (cluster) {
+            setResourceSelected( {
+                view:tab.channelObject.view,
+                name: tab.name,
+                groups: tab.channelObject.group.split(','),
+                clusterName: tab.channelObject.clusterName,
+                containers: tab.channelObject.container.split(','),
+                pods:tab.channelObject.pod.split(','),
+                namespaces: tab.channelObject.namespace.split(','),
+                channelId: tab.channel
+            })
+        }
+    }
+
     const onHomepageSelectWorkspace = (workspace: IWorkspaceSummary): void => {
         loadWorkspace(workspace.name)
     }
@@ -1250,6 +1294,19 @@ const App: React.FC = () => {
                     <Tooltip title={<div style={{textAlign:'center'}}>{currentWorkspaceName}<br/><br/>{currentWorkspaceDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
                         <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentWorkspaceName}</Typography>
                     </Tooltip>
+                    <Tooltip title={<>Notifications</>}>
+                        {notifications.length>0? 
+                            <IconButton onClick={() => setNotifications([])}>
+                                <NotificationsActive sx={{color:'red'}}/>
+                                {/* +++ show a list of pending notifications */}
+                            </IconButton>
+                            :
+                            <IconButton>
+                                <Notifications sx={{color:'lightgray'}}/>
+                            </IconButton>
+                        }
+                    </Tooltip>
+                    <Typography sx={{mr:2}}></Typography>
                     <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user && parseResources(user.accessKey.resources).map(r=>r.scopes).join(',')}]</div>} sx={{ mr:2 }} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -6]}}]}}}>
                         <Person/>
                     </Tooltip>
@@ -1299,7 +1356,7 @@ const App: React.FC = () => {
                 }
                 { !selectedTab.current && 
                     <Box sx={{ display: 'flex', flexDirection: 'column', height:'100%', minHeight:0 }}>
-                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onSelectTab={onHomepageSelectTab} onSelectWorkspace={onHomepageSelectWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces}/>
+                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onSelectTab={onHomepageSelectTab} onRestoreTabParameters={onHomepageRestoreParameters} onSelectWorkspace={onHomepageSelectWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces}/>
                     </Box>
                 }
 
@@ -1317,8 +1374,8 @@ const App: React.FC = () => {
             { showSettingsTrivy && selectedClusterName && <SettingsTrivy onClose={onSettingsTrivyClosed} cluster={clusters.find(c => c.name===selectedClusterName)!}/> }
             { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
-            <Snackbar open={notifyOpen} autoHideDuration={3000} onClose={onNotifyClose} anchorOrigin={{vertical: 'bottom', horizontal:'center'}}>
-                <Alert severity={notifyLevel} variant="filled" sx={{ width: '100%' }}>{notifyMessage}</Alert>
+            <Snackbar open={notifyOpen} autoHideDuration={3000} anchorOrigin={{vertical: 'bottom', horizontal:'center'}}>
+                <Alert severity={notifyLevel} variant="filled" onClose={onNotifyClose} sx={{ width: '100%' }}>{notifyMessage}</Alert>
             </Snackbar>
             { msgBox }
         </SessionContext.Provider>

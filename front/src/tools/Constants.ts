@@ -4,6 +4,7 @@ import { ITabSummary } from "../model/ITabObject"
 interface IColors {
     stop: string
     start: string
+    interrupt: string
     pause: string
     pending: string
 }
@@ -11,13 +12,15 @@ interface IColors {
 const TABBASECOLORS: IColors = {
     stop: '#ebebeb',
     start: '#28a745',
+    interrupt: 'salmon',
     pause: '#6c757d',
     pending: '#ffc107'
 }
 
 const TABBRIGHTCOLORS: IColors = {
-    stop: '#ebebeb',
+    stop: '#cbcbcb',
     start: '#34d058',
+    interrupt: 'red',
     pause: '#dfd7df',
     pending: '#ffca2c',
 }

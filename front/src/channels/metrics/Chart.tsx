@@ -147,35 +147,6 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     }
 
     switch (chartType) {
-        case EChartType.ValueChart:
-            result = (
-                <div style={{height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex', width:'100%'}}>
-                    <Stack direction={'row'} alignItems={'center'} justifyContent={'center'} spacing={2} sx={{ flexWrap: 'wrap', width:'100%'}}>
-                        { props.series.map( (serie,index) => {
-                            let value = serie[serie.length-1].value
-                            let valueStr = '0'
-                            if (value) {
-                                valueStr = value.toFixed(3)
-                                if (value>10) valueStr=value.toFixed(2)
-                                if (value>100) valueStr=value.toFixed(1)
-                                if (value>1000) valueStr=value.toFixed(0)
-                            }
-
-                            return (
-                                <Stack key={index} direction={'column'} alignItems={'center'}>
-                                    <Typography mt={2} textAlign={'center'} width={'100%'} fontSize={Math.min(48, 192/props.series.length)} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
-                                        {valueStr}
-                                    </Typography>
-                                    <Typography textAlign={'center'} width={'100%'} fontSize={12} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
-                                        {props.names[index]}
-                                    </Typography>
-                                </Stack>
-                            )
-                        })}
-                    </Stack>
-                </div>
-            )
-            break
         case EChartType.LineChart:
             result = (
                 <LineChart data={mergeSeries(props.names, props.series)}>
@@ -246,12 +217,41 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 </PieChart>
             )
             break
+        case EChartType.ValueChart:
+            result = (
+                <div style={{height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex', width:'100%'}}>
+                    <Stack direction={'row'} alignItems={'center'} justifyContent={'center'} spacing={2} sx={{ flexWrap: 'wrap', width:'100%'}}>
+                        { props.series.map( (serie,index) => {
+                            let value = serie[serie.length-1].value
+                            let valueStr = '0'
+                            if (value) {
+                                valueStr = value.toFixed(3)
+                                if (value>10) valueStr=value.toFixed(2)
+                                if (value>100) valueStr=value.toFixed(1)
+                                if (value>1000) valueStr=value.toFixed(0)
+                            }
+
+                            return (
+                                <Stack key={index} direction={'column'} alignItems={'center'}>
+                                    <Typography mt={2} textAlign={'center'} width={'100%'} fontSize={Math.min(48, 192/props.series.length)} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
+                                        {valueStr}
+                                    </Typography>
+                                    <Typography textAlign={'center'} width={'100%'} fontSize={12} color={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
+                                        {props.names[index]}
+                                    </Typography>
+                                </Stack>
+                            )
+                        })}
+                    </Stack>
+                </div>
+            )
+            break
         case EChartType.TreemapChart:
             dataSummarized = props.names.map( (name,index) => {
                 return { name, value:(props.series[index] as ISample[]).reduce((ac,val) => ac+val.value,0)}
             })
             result = (
-                <div style={{paddingLeft:'32px', height:height*0.8, alignItems:'center', justifyContent:'center', display:'flex'}}>
+                <div style={{paddingLeft:'0px', height:'100%', alignItems:'center', justifyContent:'center', display:'flex'}}>
                     <ResponsiveContainer width='100%'>
                         <Treemap data={dataSummarized} dataKey='value' nameKey='name' aspectRatio={4 / 3} stroke="#ffffff" fill="#6e5bb8" content={React.createElement(CustomizedContent)}>
                             { tooltip && <Tooltip /> }

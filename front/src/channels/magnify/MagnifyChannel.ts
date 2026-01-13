@@ -46,9 +46,13 @@ class MagnifyChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        let msg:IMagnifyMessage = JSON.parse(wsEvent.data)
+        // +++
+        // +++ very important: modifying 'files' re-renders, so it is important to decide if it necesary (it depends on current view in file manager)
+        // +++
 
+        let msg:IMagnifyMessage = JSON.parse(wsEvent.data)
         let magnifyData:IMagnifyData = channelObject.data
+
         switch (msg.type) {
             case InstanceMessageTypeEnum.DATA: {
                 let response = JSON.parse(wsEvent.data) as IMagnifyMessageResponse
@@ -72,18 +76,39 @@ class MagnifyChannel implements IChannel {
                                 return {
                                     action: EChannelRefreshAction.REFRESH
                                 }
+                            case MagnifyCommandEnum.EVENTS:
+                                let events:any[] = JSON.parse(response.data)
+                                console.log(events)
+                                events = events.sort( (a,b) => Date.parse(b.lastTimestamp)-Date.parse(a.lastTimestamp))
+                                console.log(events)
+                                for (let event of events) {
+                                    let path = buildPath(event.involvedObject.kind, event.involvedObject.name)
+                                    console.log(event.involvedObject.kind, event.involvedObject.name, event.involvedObject.namespace, path)
+                                    let obj = magnifyData.files.find(f => f.path === path)
+                                    if ((obj && obj?.data.origin.metadata.namespace === event.involvedObject.namespace) || (obj && !event.involvedObject.namespace)) {
+                                        if (!obj.data.events) {
+                                            obj.data.events = {}
+                                            obj.data.events.list = []
+                                        }
+                                        obj.data.events.list.push(event)
+                                    }
+                                }
+                                magnifyData.files = [...magnifyData.files]
+                                return {
+                                    action: EChannelRefreshAction.REFRESH
+                                }
                             case MagnifyCommandEnum.K8EVENT:
                                 switch(response.event) {
                                     case 'ADDED':
                                     case 'MODIFIED':
                                         this.loadObject(channelObject, response.data.kind, magnifyData, response.data)
+                                        magnifyData.files = [...magnifyData.files]
                                         break
                                     case 'DELETED':
                                         let path=buildPath(response.data.kind, response.data.metadata.name)
                                         magnifyData.files = magnifyData.files.filter (f => f.path !== path)
                                         break
                                 }
-                                magnifyData.files = [...magnifyData.files]
                                 return {
                                     action: EChannelRefreshAction.REFRESH
                                 }
@@ -169,10 +194,10 @@ class MagnifyChannel implements IChannel {
                         }, 300)
                     }
                     else if (signalMessage.action === InstanceMessageActionEnum.COMMAND) {
-                        if (signalMessage.text) this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
+                        if (signalMessage.text)this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                 }
-                if (signalMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
+                else if (signalMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
                     if (signalMessage.event === SignalMessageEventEnum.ADD) {
                     }
                     else if (signalMessage.event === SignalMessageEventEnum.DELETE) {
@@ -205,7 +230,8 @@ class MagnifyChannel implements IChannel {
     startChannel(channelObject:IChannelObject): boolean {
         let magnifyData:IMagnifyData = channelObject.data
         magnifyData.paused = false
-        magnifyData.started = true;
+        magnifyData.started = true
+        magnifyData.files = magnifyData.files.filter(f => f.isDirectory && f.path.split('/').length-1 <= 2)
         magnifyData.currentPath='/overview'
         return true
     }
@@ -378,6 +404,8 @@ class MagnifyChannel implements IChannel {
     loadLimitRange(magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'v1'
         obj.kind = 'LimitRange'
+        console.log('++++++++++++++++++++++++')
+        console.log(obj)
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
             isDirectory: false,
@@ -564,7 +592,7 @@ class MagnifyChannel implements IChannel {
             class: 'Endpoints',
             data: {
                 namespace: obj.metadata.namespace,
-                endpoints: obj.subsets ? obj.subsets.map((subset:any) => subset.addresses.map((a:any) => subset.ports.map((p:any) => a.ip+':'+p.port)).join(',')) :'',
+                endpoints: obj.subsets ? obj.subsets?.map((subset:any) => subset.addresses?.map((a:any) => subset.ports?.map((p:any) => a.ip+':'+p.port)).join(',')) :'',
                 creationTimestamp: obj.metadata.creationTimestamp,
                 origin: obj
             }
@@ -702,7 +730,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadJob(magnifyData:IMagnifyData, obj:any): void {
-        obj.apiVersion = 'apps/v1'
+        obj.apiVersion = 'batch/v1'
         obj.kind = 'Job'
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
@@ -720,7 +748,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadCronJob(magnifyData:IMagnifyData, obj:any): void {
-        obj.apiVersion = 'apps/v1'
+        obj.apiVersion = 'batch/v1'
         obj.kind = 'CronJob'
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
@@ -752,7 +780,7 @@ class MagnifyChannel implements IChannel {
             data: {
                 provisioner: obj.provisioner,
                 reclaimPolicy: obj.reclaimPolicy,
-                default: obj.metadata.annotations['storageclass.kubernetes.io/is-default-class'] === 'true'? 'Yes':'',
+                default: (obj.metadata?.annotations && obj.metadata.annotations['storageclass.kubernetes.io/is-default-class'] === 'true'? 'Yes':'') || '',
                 creationTimestamp: obj.metadata.creationTimestamp,
                 origin: obj
             }
@@ -953,9 +981,9 @@ class MagnifyChannel implements IChannel {
 const buildPath = (kind:string, name:string) => {
     let section=''
     if (' Node Namespace '.includes(' '+kind+' ')) section='cluster'
+    if (' Pod Deployment DaemonSet ReplicaSet StatefulSet Job CronJob '.includes(' '+kind+' ')) section='workload'
     if (' ConfigMap Secret ResourceQuota LimitRange HorizontalPodAutoscaler PodDisruptionBudget PriorityClass RuntimeClass Lease ValidatingWebhookConfiguration MutatingWebhookConfiguration '.includes(' '+kind+' ')) section='config'
     if (' Service Endpoints Ingress IngressClass NetworkPolicy '.includes(' '+kind+' ')) section='network'
-    if (' Pod Deployment DaemonSet ReplicaSet StatefulSet Job CronJob '.includes(' '+kind+' ')) section='workload'
     if (' StorageClass PersistentVolumeClaim PersistentVolume '.includes(' '+kind+' ')) section='storage'
     if (' ServiceAccount ClusterRole Role ClusterRoleBinding RoleBinding '.includes(' '+kind+' ')) section='access'
     if (' CustomResourceDefinition '.includes(' '+kind+' ')) section='custom'

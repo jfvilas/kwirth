@@ -10,8 +10,8 @@ interface IChannel {
 
     processEvent(type:string, obj:any) : void
 
-    addObject (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void
-    deleteObject (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void
+    addObject (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : Promise<boolean>
+    deleteObject (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : Promise<boolean>
     
     pauseContinueInstance (webSocket: WebSocket, instanceConfig: IInstanceConfig, action:InstanceMessageActionEnum) : void
     modifyInstance (webSocket: WebSocket, instanceConfig: IInstanceConfig) : void

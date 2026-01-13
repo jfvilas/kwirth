@@ -23,13 +23,13 @@ export class ServiceAccountToken {
             type: 'kubernetes.io/service-account-token'
         }
 
-        // we firt delete it if it exists, we cannot use a previous token, it may be expired
+        // we first delete it if it exists, we cannot use a previous token, it may be expired
         try {
             await this.coreApi.readNamespacedSecret({ name:serviceAccountName+'-kwirthtoken', namespace })
             await this.deleteToken(serviceAccountName, namespace)
         }
         catch (err) {
-            console.log('Token does not exists. It will be created')
+            console.log('Token does not exists. A new one will be created')
         }
 
         // we now create it

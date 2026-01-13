@@ -11,7 +11,6 @@ export const TerminalInstance: React.FC<IProps> = (props:IProps) => {
 
     useEffect ( () => {
         if (!props.id) return
-        console.log('xx')
         const managedTerminal = props.terminalManager.attachTerminal(props.id)
         if (managedTerminal) managedTerminal.fitAddon.fit()
     })

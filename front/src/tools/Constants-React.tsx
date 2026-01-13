@@ -1,8 +1,9 @@
 // app icons 
-import SvgIconDaemonSet from'../icons/svg/ds.svg'
-import SvgIconReplicaSet from'../icons/svg/rs.svg'
-import SvgIconStatefulSet from'../icons/svg/ss.svg'
 import SvgIconDeployment from'../icons/svg/dp.svg'
+import SvgIconReplicaSet from'../icons/svg/rs.svg'
+import SvgIconDaemonSet from'../icons/svg/ds.svg'
+import SvgIconStatefulSet from'../icons/svg/ss.svg'
+import SvgIconJob from'../icons/svg/job.svg'
 
 import SvgIconKubernetesUnknown from'../icons/svg/k8s-unknown.svg'
 import SvgIconKubernetesBlank from'../icons/svg/k8s-blank.svg'
@@ -24,10 +25,11 @@ import SvgIconGroup from'../icons/svg/group.svg'
 import SvgIconContainer from'../icons/svg/docker-mark-blue.svg'
 import SvgIconBlank from'../icons/svg/k8s-blank.svg'
 
-export const IconDaemonSet = (props: {height?:number}) => <img src={SvgIconDaemonSet} alt='ds' height={`${props.height || 16}px`}/>
-export const IconReplicaSet = (props: {height?:number}) => <img src={SvgIconReplicaSet} alt='rs' height={`${props.height||16}px`}/>
-export const IconStatefulSet = (props: {height?:number}) => <img src={SvgIconStatefulSet} alt='ss' height={`${props.height||16}||16px`}/>
 export const IconDeployment = (props: {height?:number}) => <img src={SvgIconDeployment} alt='ss' height={`${props.height||16}px`}/>
+export const IconReplicaSet = (props: {height?:number}) => <img src={SvgIconReplicaSet} alt='rs' height={`${props.height||16}px`}/>
+export const IconDaemonSet = (props: {height?:number}) => <img src={SvgIconDaemonSet} alt='ds' height={`${props.height || 16}px`}/>
+export const IconStatefulSet = (props: {height?:number}) => <img src={SvgIconStatefulSet} alt='ss' height={`${props.height||16}||16px`}/>
+export const IconJob = (props: {height?:number}) => <img src={SvgIconJob} alt='ss' height={`${props.height||16}||16px`}/>
 
 export const IconKubernetesUnknown = (props: {height?:number}) => <img src={SvgIconKubernetesUnknown} alt='kubernetes' height={`${props.height||16}px`}/>
 export const IconKubernetesBlank = (props: {height?:number}) => <img src={SvgIconKubernetesBlank} alt='kubernetes' height={`${props.height||16}px`}/>

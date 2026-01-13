@@ -182,7 +182,7 @@ class AlertChannel implements IChannel {
         }
     }
 
-    async addObject (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<void> {
+    addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<boolean> => {
         let regexes: Map<AlertSeverityEnum, RegExp[]> = new Map()
 
         let regExps: RegExp[] = []
@@ -202,17 +202,20 @@ class AlertChannel implements IChannel {
 
         if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
             this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName, regexes)
+            return true
         }
         else if (this.clusterInfo.type === ClusterTypeEnum.KUBERNETES) {
             this.startKubernetesStream(webSocket, instanceConfig, podNamespace, podName, containerName, regexes)
+            return true
         }
         else {
             console.log('Unsuppoprted source')
+            return false
         }
     }
 
-    deleteObject = (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : void => {
-        
+    deleteObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : Promise<boolean> => {
+        return true        
     }
     
     pauseContinueInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void {

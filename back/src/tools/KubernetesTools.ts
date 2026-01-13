@@ -1,4 +1,4 @@
-import { AppsV1ApiPatchNamespacedDaemonSetRequest, AppsV1ApiPatchNamespacedDeploymentRequest, AppsV1ApiPatchNamespacedReplicaSetRequest, AppsV1ApiPatchNamespacedStatefulSetRequest, CoreV1Api, CoreV1ApiListPodForAllNamespacesRequest, CoreV1ApiPatchNamespacedConfigMapRequest, CoreV1ApiPatchNamespacedSecretRequest, CoreV1ApiPatchNamespacedServiceRequest, V1Eviction } from '@kubernetes/client-node'
+import { BatchV1Api, CoreV1Api, V1Eviction, V1Job } from '@kubernetes/client-node'
 import { ClusterInfo } from '../model/ClusterInfo'
 const fs = require('fs')
 const yaml = require('js-yaml')
@@ -8,156 +8,20 @@ async function applyResource(resource:any, clusterInfo:ClusterInfo) : Promise<st
         const namespace = (resource.metadata && resource.metadata.namespace) || 'default'
         const name = resource.metadata.name
         const kind = resource.kind
-        console.log('Apply*********************************')
-        console.log(name, namespace, kind)
-        console.log('Apply*********************************')
 
         if (resource.metadata.managedFields) delete resource['metadata']['managedFields']
-
-        switch (kind) {
-            case 'Namespace':
-                console.log(`Applying Namespace: ${resource.metadata.name}`)
-                await clusterInfo.coreApi.createNamespace(resource)
-                break
-
-            case 'ConfigMap':
-                console.log(`Applying ConfigMap: ${resource.metadata.name}`)
-                let paramConfigMap: CoreV1ApiPatchNamespacedConfigMapRequest = {
-                    name: name,
-                    namespace: namespace,
-                    body: resource,
-                    fieldManager:'kwirth',
-                    fieldValidation: 'Ignore',
-                    force: true
-                }
-                await clusterInfo.coreApi.patchNamespacedConfigMap(paramConfigMap)
-                break
-
-            case 'Secret':
-                console.log(`Applying Secret: ${resource.metadata.name}`)
-                let paramSecret:CoreV1ApiPatchNamespacedSecretRequest = {
-                    name: name,
-                    namespace: namespace,
-                    body: resource,
-                    fieldManager:'kwirth',
-                    fieldValidation: 'Ignore',
-                    force: true
-                }
-                await clusterInfo.coreApi.patchNamespacedSecret(paramSecret)
-                break
-
-            case 'CustomResourceDefinition':
-                console.log(`Applying CRD: ${resource.metadata.name}`)
-                await clusterInfo.extensionApi.createCustomResourceDefinition(resource)
-                break
-
-            case 'Deployment':
-                console.log(`Applying Deployment: ${resource.metadata.name}`)
-                let paramDeployent:AppsV1ApiPatchNamespacedDeploymentRequest={
-                    name: name,
-                    namespace: namespace,
-                    body: resource,
-                    fieldManager:'kwirth',
-                    fieldValidation: 'Ignore',
-                    force: true
-                }
-                await clusterInfo.appsApi.patchNamespacedDeployment(paramDeployent)
-                break
-
-            case 'StatefulSet':
-                console.log(`Applying StatefulSet: ${resource.metadata.name}`)
-                let paramStatefulSet:AppsV1ApiPatchNamespacedStatefulSetRequest = {
-                    name: name,
-                    namespace: namespace,
-                    body: resource,
-                    fieldManager:'kwirth',
-                    fieldValidation: 'Ignore',
-                    force: true
-                }
-                await clusterInfo.appsApi.patchNamespacedStatefulSet(paramStatefulSet)
-                break
-
-            case 'DaemonSet':
-                console.log(`Applying DaemonSet: ${resource.metadata.name}`)
-                let paramDaemonSet:AppsV1ApiPatchNamespacedDaemonSetRequest = {
-                    name: name,
-                    namespace: namespace,
-                    body: resource,
-                    fieldManager:'kwirth',
-                    fieldValidation: 'Ignore',
-                    force: true
-                }
-                await clusterInfo.appsApi.patchNamespacedDaemonSet(paramDaemonSet)
-                break
-
-            case 'ReplicaSet':
-                console.log(`Applying ReplicaSet: ${resource.metadata.name}`)
-                let paramReplicaSet:AppsV1ApiPatchNamespacedReplicaSetRequest = {
-                    name: name,
-                    namespace: namespace,
-                    body: resource,
-                    fieldManager:'kwirth',
-                    fieldValidation: 'Ignore',
-                    force: true
-                }
-                await clusterInfo.appsApi.patchNamespacedReplicaSet(paramReplicaSet)
-                break
-
-            case 'Service':
-                console.log(`Applying Service: ${resource.metadata.name}`)
-                let paramService:CoreV1ApiPatchNamespacedServiceRequest = {
-                    name: name,
-                    namespace: namespace,
-                    body: resource,
-                    fieldManager:'kwirth',
-                    fieldValidation: 'Ignore',
-                    force: true
-                }
-                await clusterInfo.coreApi.patchNamespacedService(paramService)
-                break
-
-            case 'ClusterRole':
-                console.log(`Applying ClusterRole: ${resource.metadata.name}`)
-                await clusterInfo.rbacApi.createClusterRole(resource)
-                break
-
-            case 'ClusterRoleBinding':
-                console.log(`Applying ClusterRoleBinding: ${resource.metadata.name}`)
-                await clusterInfo.rbacApi.createClusterRoleBinding(resource)
-                break
-
-            case 'Role':
-                console.log(`Applying Role: ${resource.metadata.name}`)
-                await clusterInfo.rbacApi.createNamespacedRole(namespace, resource)
-                break
-
-            case 'RoleBinding':
-                console.log(`Applying RoleBinding: ${resource.metadata.name}`)
-                await clusterInfo.rbacApi.createNamespacedRoleBinding(namespace, resource)
-                break
-
-            case 'ServiceAccount':
-                console.log(`Applying ServiceAccount: ${resource.metadata.name}`)
-                await clusterInfo.coreApi.createNamespacedServiceAccount(namespace, resource)
-                break
-
-            default:
-                console.log(`Resource ${kind} not implementaded.`)
-                break
-        }
-
-        console.log(`${kind} applied succesfully.`)
-        return ''
+        await clusterInfo.objectsApi.patch(resource, undefined, undefined, 'kwirth', true, 'application/apply-patch+yaml')
+        return `${kind} '${resource.metadata.name}' applied successfully.`
     }
     catch (err:any) {
         console.log('Error applying:*********************')
-        console.log(err.response.body)
-        return 'Error applying: '+err.response?.body?.message
+        console.log(err)
+        return 'Error applying: '+err
     }
 }
 
-// Función para aplicar todos los recursos en el archivo YAML
 async function applyAllResources(yamlContent:string, clusterInfo:ClusterInfo) {
+    //+++ test this with apply without spliting source
     const resources:any[] = []
 
     yaml.loadAll(yamlContent, (doc: any) => {
@@ -352,4 +216,66 @@ async function throttleExcute(invoke:any): Promise<void> {
     }
 }
 
-export { applyResource, applyAllResources, deleteAllResources, nodeDrain, nodeCordon, nodeUnCordon, throttleExcute }
+async function cronJobTrigger (namespace: string, cronJobName: string, batchApi: BatchV1Api): Promise<void> {
+        try {
+            // 1. Obtener el CronJob original
+            const cronJob = await batchApi.readNamespacedCronJob({
+                name: cronJobName,
+                namespace: namespace
+            })
+
+            if (!cronJob.spec?.jobTemplate) {
+                throw new Error("El CronJob no tiene un jobTemplate definido.");
+            }
+
+            // 2. Definir el Job manual
+            const manualJobName = `${cronJobName}-manual-${Math.floor(Date.now() / 1000)}`;
+            const jobManifest: V1Job = {
+                metadata: {
+                    name: manualJobName,
+                    labels: { 'triggered-by': 'node-client' }
+                },
+                spec: cronJob.spec.jobTemplate.spec
+            };
+
+            // 3. Crear el Job
+            await batchApi.createNamespacedJob({
+                namespace: namespace,
+                body: jobManifest
+            })
+
+            console.log(`✅ Job manual creado con éxito: ${manualJobName}`);
+        } 
+        catch (err: any) {
+            console.error('❌ Error al disparar el CronJob:', err.response?.body?.message || err.message);
+        }
+    }    
+
+    async function cronJobStatus(namespace: string, cronJobName: string, suspend: boolean, batchApi: BatchV1Api): Promise<void> {
+        try {
+            const patch = [
+                {
+                    op: "replace",
+                    path: "/spec/suspend",
+                    value: suspend
+                }
+            ]
+
+            const options = { 
+                headers: { "Content-type": "application/json-patch+json" } 
+            }
+            
+            await batchApi.patchNamespacedCronJob({
+                name: cronJobName,
+                namespace,
+                body: patch
+            })
+
+            console.log(`✅ CronJob "${cronJobName}" ${suspend ? 'suspendido' : 'activado'} correctamente.`);
+        }
+        catch (err: any) {
+            console.error('❌ Error al parchear el CronJob:', err.response?.body?.message || err.message);
+        }
+    }
+
+export { applyResource, applyAllResources, deleteAllResources, nodeDrain, nodeCordon, nodeUnCordon, throttleExcute, cronJobStatus, cronJobTrigger }

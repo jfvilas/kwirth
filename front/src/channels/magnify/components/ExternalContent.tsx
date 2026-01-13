@@ -1,7 +1,7 @@
 import { IInstanceConfig, IInstanceMessage, InstanceConfigObjectEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
 import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelObject, IContentProps } from '../../IChannel'
 import { Dialog, DialogContent, DialogTitle, IconButton, Stack, Typography } from '@mui/material'
-import { Close, Fullscreen, FullscreenExit, Maximize, Minimize, PauseCircle, PlayCircle, StopCircle } from '@mui/icons-material'
+import { Close, Fullscreen, FullscreenExit, Maximize, Minimize, PauseCircle, PlayCircle, SettingsApplicationsOutlined, StopCircle } from '@mui/icons-material'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { ELogSortOrderEnum, ILogConfig, ILogInstanceConfig } from '../../log/LogConfig'
 import { ILogData } from '../../log/LogData'
@@ -395,6 +395,10 @@ const ExternalContent: React.FC<IExternalContentProps> = (props:IExternalContent
                     <IconButton onClick={stop} disabled={!content.current?.channelStarted}>
                         <StopCircle/>
                     </IconButton>
+                    <IconButton>
+                        <SettingsApplicationsOutlined/>
+                    </IconButton>
+                    
                     <Typography sx={{flexGrow:1}}></Typography>
                     <Typography>{content.current?.channel.getChannelIcon()}&nbsp;{props.title}</Typography>
                     <Typography sx={{flexGrow:1}}></Typography>

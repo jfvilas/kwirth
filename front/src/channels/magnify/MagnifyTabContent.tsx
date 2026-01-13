@@ -14,7 +14,7 @@ import { actions, icons, menu, spaces } from './RFMConfig'
 import CodeMirror from '@uiw/react-codemirror';
 import { yaml } from '@codemirror/lang-yaml'
 import React from 'react'
-import { IDetailsSection, MagnifyObjectDetails } from './components/DetailsObject'
+import { IDetailsSection, DetailsObject } from './components/DetailsObject'
 import { objectSections } from './components/DetailsSections'
 import { Close, ContentCopy, Delete, Edit } from '@mui/icons-material'
 import { MsgBoxButtons, MsgBoxOkError, MsgBoxYesNo } from '../../tools/MsgBox'
@@ -24,6 +24,8 @@ import { LeftItemMenu } from './LeftItemMenu'
 import { MagnifyUserSettings } from './MagnifyUserSettings'
 import { UserSettings } from './components/UserSettings'
 import { buildPath } from './MagnifyChannel'
+import { InputBox } from '../../tools/FrontTools'
+import cronParser from 'cron-parser';
 
 const _ = require('lodash')
 const copy = require('clipboard-copy')
@@ -31,9 +33,50 @@ const copy = require('clipboard-copy')
 const yamlParser = require('js-yaml');
 const settings = new MagnifyUserSettings()
 
+interface NextExecution {
+  date: Date;
+  isoString: string;
+  timeLeft: {
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  };
+  description: string;
+}
+
+function getNextCronExecution(cronExpression: string): NextExecution|undefined {
+  try {
+    // 1. Parsear la expresión
+    const interval = cronParser.parse(cronExpression);
+    
+    // 2. Obtener la próxima fecha de ejecución
+    const nextDate = interval.next().toDate();
+    const now = new Date();
+
+    // 3. Calcular la diferencia en milisegundos
+    const diff = nextDate.getTime() - now.getTime();
+
+    // 4. Desglosar el tiempo restante
+    const seconds = Math.floor((diff / 1000) % 60);
+    const minutes = Math.floor((diff / (1000 * 60)) % 60);
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    return {
+      date: nextDate,
+      isoString: nextDate.toISOString(),
+      timeLeft: { days, hours, minutes, seconds },
+      description: `Faltan ${days}d ${hours}h ${minutes}m ${seconds}s`
+    };
+  } catch (err: any) {
+    return undefined
+  }
+}
+
 const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let magnifyData:IMagnifyData = props.channelObject.data
-    let permissions={
+    let permissions = {
         create: false,
         delete: false,
         download: false,
@@ -49,6 +92,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const [editorVisible, setEditorVisible] = useState(false)
     const [editorContent, setEditorContent] = useState<{code:string, source?:IFileObject}>({code:''})
+    const [editorContentUnChanged, setEditorContentUnChanged] = useState<boolean>(true)
 
     const externalContentId = useRef<number>(-1)
     const [externalContentVisible, setExternalContentVisible] = useState<boolean>(false)
@@ -56,6 +100,10 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [externalContentView, setExternalContentView] = useState<InstanceConfigViewEnum>(InstanceConfigViewEnum.POD)
     const [externalContentTitle, setExternalContentTitle] = useState<string>('n/a')
     const [externalContentContainer, setExternalContentContainer] = useState<string>('')
+
+    const [ibTitle, setIbTitle] = useState<any>()
+    const [ibMessage, setIbMessage] = useState<any>()
+    const [ibResult, setIbResult] = useState<(b:any) => void>()
 
     const [selectedFiles, setSelectedFiles] = useState<IFileObject[]>([])
 
@@ -100,7 +148,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         // Workload
             // Pod
             let spcClassPod = spaces.get('classPod')!
-            setLeftItem(spcClassPod, 'create', () => launchCreate('Pod'))
+            setLeftItem(spcClassPod, 'create', () => launchObjectCreate('Pod'))
             let spcPod = spaces.get('Pod')!
             setPropertyFunction(spcPod, 'container', showPodContainers)
             setPropertyFunction(spcPod, 'cpu', showPodCpu)
@@ -111,21 +159,33 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcPod,'details', launchObjectDetails)
             setLeftItem(spcPod,'delete', launchObjectDelete)
             setLeftItem(spcPod,'evict', launchPodEvict)
+            let objPod = objectSections.get('Pod')
+            if (objPod) {
+                let section = objPod.find(o => o.name==='events')
+                if(section) {
+                    let item = section.items.find(item => item.name === 'events')
+                    if (item) {
+                        item.invoke = (obj) => {
+                            //+++return [<>xxx</>]
+                        }
+                    }
+                }
+            }
 
             // Deployment
             let spcClassDeployment = spaces.get('classDeployment')!
-            setLeftItem(spcClassDeployment, 'create', () => launchCreate('classDeployment'))
+            setLeftItem(spcClassDeployment, 'create', () => launchObjectCreate('classDeployment'))
             let spcDeployment = spaces.get('Deployment')!
             setLeftItem(spcDeployment,'details', launchObjectDetails)
             setLeftItem(spcDeployment,'scale', launchGroupScale)
             setLeftItem(spcDeployment,'restart', launchGroupRestart)
             setLeftItem(spcDeployment,'logs', launchGroupLogs)
-            setLeftItem(spcDeployment,'viewmetrics', launchGroupMetrics)
+            setLeftItem(spcDeployment,'metrics', launchGroupMetrics)
             setLeftItem(spcDeployment,'edit', launchObjectEdit)
             setLeftItem(spcDeployment,'delete', launchObjectDelete)
             let objDeployment = objectSections.get('Deployment')
             if (objDeployment) {
-                let item = objDeployment[0].items.find(item => item.name === 'status')
+                let item = objDeployment.find(o => o.name==='properties')!.items.find(item => item.name === 'status')
                 if (item) {
                     item.invoke = (obj) => { 
                         return ['running']
@@ -152,12 +212,12 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             
             // DaemonSet
             let spcClassDaemonSet = spaces.get('classDaemonSet')!
-            setLeftItem(spcClassDaemonSet, 'create', () => launchCreate('classDaemonSet'))
+            setLeftItem(spcClassDaemonSet, 'create', () => launchObjectCreate('classDaemonSet'))
             let spcDaemonSet = spaces.get('DaemonSet')!
             setLeftItem(spcDaemonSet,'details', launchObjectDetails)
             setLeftItem(spcDaemonSet,'restart', launchDaemonSetRestart)
             setLeftItem(spcDaemonSet,'logs', launchGroupLogs)
-            setLeftItem(spcDaemonSet,'viewmetrics', launchGroupMetrics)
+            setLeftItem(spcDaemonSet,'metrics', launchGroupMetrics)
             setLeftItem(spcDaemonSet,'edit', launchObjectEdit)
             setLeftItem(spcDaemonSet,'delete', launchObjectDelete)
             let objDaemonSet = objectSections.get('DaemonSet')
@@ -190,7 +250,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // ResplicaSet
             let spcClassReplicaSet = spaces.get('classReplicaSet')!
-            setLeftItem(spcClassReplicaSet, 'create', () => launchCreate('classReplicaSet'))
+            setLeftItem(spcClassReplicaSet, 'create', () => launchObjectCreate('classReplicaSet'))
             let spcReplicaSet = spaces.get('ReplicaSet')!
             setLeftItem(spcReplicaSet,'details', launchObjectDetails)
             setLeftItem(spcReplicaSet,'scale', launchReplicaSetScale)
@@ -228,7 +288,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // StatefulSet
             let spcClassStatefulSet = spaces.get('classStatefulSet')!
-            setLeftItem(spcClassStatefulSet, 'create', () => launchCreate('classStatefulSet'))
+            setLeftItem(spcClassStatefulSet, 'create', () => launchObjectCreate('classStatefulSet'))
             let spcStatefulSet = spaces.get('StatefulSet')!
             setLeftItem(spcStatefulSet,'details', launchObjectDetails)
             setLeftItem(spcStatefulSet,'scale', launchGroupScale)
@@ -246,27 +306,28 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                         return ['running']
                     }
                 }
-                // item = objStatefulSet[1].items.find(item => item.name === 'pods')
-                // if (item) {
-                //     item.invoke = (obj) => { 
-                //         const selectors = obj.spec?.selector?.matchLabels
-                //         if (!selectors) return []
+                item = objStatefulSet[1].items.find(item => item.name === 'pods')
+                if (item) {
+                    //+++ este codigo es igual al de otros
+                    item.invoke = (obj) => { 
+                        const selectors = obj.spec?.selector?.matchLabels
+                        if (!selectors) return []
 
-                //         let allPods = magnifyData.files.filter(f => f.path.startsWith('/workload/Pod/'))
-                //         allPods = allPods.filter(f => {
-                //             const podLabels = f.data.origin.metadata?.labels || {}
-                //             return Object.entries(selectors).every(([key, value]) => {
-                //                 return podLabels[key] === value
-                //             })
-                //         })
-                //         allPods = allPods.map(f => f.data.origin)
-                //         return allPods
-                //     }
-                // }
+                        let allPods = magnifyData.files.filter(f => f.path.startsWith('/workload/Pod/'))
+                        allPods = allPods.filter(f => {
+                            const podLabels = f.data.origin.metadata?.labels || {}
+                            return Object.entries(selectors).every(([key, value]) => {
+                                return podLabels[key] === value
+                            })
+                        })
+                        allPods = allPods.map(f => f.data.origin)
+                        return allPods
+                    }
+                }
             }
 
             let spcClassJob = spaces.get('classJob')!
-            setLeftItem(spcClassJob, 'create', () => launchCreate('classJob'))
+            setLeftItem(spcClassJob, 'create', () => launchObjectCreate('classJob'))
             let spcJob = spaces.get('Job')!
             setLeftItem(spcJob,'details', launchObjectDetails)
             setLeftItem(spcJob,'logs', launchJobLogs)
@@ -284,16 +345,32 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             }
 
             let spcClassCronJob = spaces.get('classCronJob')!
-            setLeftItem(spcClassCronJob, 'create', () => launchCreate('classCronJob'))
+            setLeftItem(spcClassCronJob, 'create', () => launchObjectCreate('classCronJob'))
             let spcCronJob = spaces.get('CronJob')!
+            setPropertyFunction(spcCronJob, 'nextExecution', showCronJobNextExecution)
             setLeftItem(spcCronJob,'trigger', launchCronJobTrigger)
             setLeftItem(spcCronJob,'suspend', launchCronJobSuspend)
+            setLeftItem(spcCronJob,'resume', launchCronJobResume)
             setLeftItem(spcCronJob,'details', launchObjectDetails)
             setLeftItem(spcCronJob,'edit', launchObjectEdit)
             setLeftItem(spcCronJob,'delete', launchObjectDelete)
             let objCronJob = objectSections.get('CronJob')
             if (objCronJob) {
-                let item = objCronJob[1].items.find(item => item.name === 'jobs')
+                let item = objCronJob[0].items.find(item => item.name === 'nextExecution')
+                if (item) {
+                    item.invoke = (obj) => {
+                        let x = getNextCronExecution(obj.spec.schedule)
+                        return [x?.isoString]
+                    }
+                }
+                item = objCronJob[0].items.find(item => item.name === 'timeLeft')
+                if (item) {
+                    item.invoke = (obj) => {
+                        let x = getNextCronExecution(obj.spec.schedule)
+                        return [`${x?.timeLeft.days}d${x?.timeLeft.hours}h${x?.timeLeft.minutes}m${x?.timeLeft.seconds}s`]
+                    }
+                }
+                item = objCronJob[1].items.find(item => item.name === 'jobs')
                 if (item) {
                     item.invoke = (obj) => { 
                         let allJobs = magnifyData.files.filter(f => f.path.startsWith('/workload/Job/'))
@@ -321,17 +398,54 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // Namespace
             let spcClassNamespace = spaces.get('classNamespace')!
-            setLeftItem(spcClassNamespace, 'create', () => launchCreate('Namespace'))
+            setLeftItem(spcClassNamespace, 'create', launchNamespaceCreate)
             let spcNamespace = spaces.get('Namespace')!
             setLeftItem(spcNamespace,'details', launchObjectDetails)
             setLeftItem(spcNamespace,'edit', launchObjectEdit)
             setLeftItem(spcNamespace,'delete', launchObjectDelete)
+            let objNamespace = objectSections.get('Namespace')
+            if (objNamespace) {
+                let item = objNamespace?.find(s => s.name==='content')?.items.find(item => item.name === 'content')
+                let getElements = (namespace:string, kind:string, text:string): JSX.Element => {
+                    let elements = magnifyData.files.filter(f => f.data?.origin?.kind === kind && f.data?.origin?.metadata.namespace===namespace)?.map(f => f.data?.origin?.metadata.name)
+                    if (elements.length===0) return <></>
+                    // return (
+                    //     <Stack flexDirection={'row'} display={'flex'} width={'100%'}>
+                    //         <Typogra phy width={'15%'}>{text}:&nbsp;</Typography>  llevar a DIV
+                    //         {
+                    //             elements.map( (e) => <Stack direction={'row'}>
+                    //                 <a href={`#`} onClick={() => onMagnifyObjectDetailsLink(kind,e)}> {e} </a>&nbsp;&nbsp;
+                    //             </Stack>)
+                    //         }
+                    //     </Stack>
+                    // )
+                    return (
+                        <Stack flexDirection={'row'} display={'flex'} width={'100%'}>
+                            <Typography width={'15%'}>{text}:&nbsp;</Typography>
+                            {
+                                elements.map( (e) => <><a href={`#`} onClick={() => onMagnifyObjectDetailsLink(kind,e)}>{e}</a>&nbsp;</>)
+                            }
+                        </Stack>
+                    )
+                }
+                if (item) {
+                    item.invoke = (obj) => {
+                        return [
+                            'Pod+Pod','Deployment+Deployment','DaemonSet+DaemonSet','ReplicaSet+ReplicaSet','StatefulSet+StatefulSet','Job+Job','CronJob+CronJob',
+                            'PersistentVolumeClaim+PVC','PersistentVolume+PV',
+                            'ConfigMap+ConfigMap','Secret+Secret',
+                            'Service+Service','Endpoints+Endpoints','Ingress+Ingress',
+                            'Role+Role','RoleBinding+RoleBinding'
+                        ].map (kind => getElements(obj.metadata.name, kind.split('+')[0], kind.split('+')[1]))
+                    }
+                }
+            }
 
         // Network
 
             // Service
             let spcClassService = spaces.get('classService')!
-            setLeftItem(spcClassService, 'create', () => launchCreate('Service'))
+            setLeftItem(spcClassService, 'create', () => launchObjectCreate('Service'))
             let spcService = spaces.get('Service')!
             setLeftItem(spcService,'details', launchObjectDetails)
             setLeftItem(spcService,'edit', launchObjectEdit)
@@ -339,7 +453,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // Endpoints
             let spcClassEndpoints = spaces.get('classEndpoints')!
-            setLeftItem(spcClassEndpoints, 'create', () => launchCreate('Endpoints'))
+            setLeftItem(spcClassEndpoints, 'create', () => launchObjectCreate('Endpoints'))
             let spcEndpoints = spaces.get('Endpoints')!
             setLeftItem(spcEndpoints,'details', launchObjectDetails)
             setLeftItem(spcEndpoints,'edit', launchObjectEdit)
@@ -348,7 +462,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // Ingress
             let spcClassIngress = spaces.get('classIngress')!
-            setLeftItem(spcClassIngress, 'create', () => launchCreate('Ingress'))
+            setLeftItem(spcClassIngress, 'create', () => launchObjectCreate('Ingress'))
             let spcIngress = spaces.get('Ingress')!
             setLeftItem(spcIngress,'details', launchObjectDetails)
             setLeftItem(spcIngress,'edit', launchObjectEdit)
@@ -356,7 +470,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // IngressClass
             let spcClassIngressClass = spaces.get('classIngressClass')!
-            setLeftItem(spcClassIngressClass, 'create', () => launchCreate('IngressClass'))
+            setLeftItem(spcClassIngressClass, 'create', () => launchObjectCreate('IngressClass'))
             let spcIngressClass = spaces.get('IngressClass')!
             setLeftItem(spcIngressClass,'default', launchIngressClassDefault)
             setLeftItem(spcIngressClass,'details', launchObjectDetails)
@@ -365,7 +479,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // NetworkPolicy
             let spcClassNetworkPolicy = spaces.get('classNetworkPolicy')!
-            setLeftItem(spcClassNetworkPolicy, 'create', () => launchCreate('NetworkPolicy'))
+            setLeftItem(spcClassNetworkPolicy, 'create', () => launchObjectCreate('NetworkPolicy'))
             let spcNetworkPolicy = spaces.get('NetworkPolicy')!
             setLeftItem(spcNetworkPolicy,'details', launchObjectDetails)
             setLeftItem(spcNetworkPolicy,'edit', launchObjectEdit)
@@ -375,7 +489,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // ConfigMap
             let spcClassConfigMap = spaces.get('classConfigMap')!
-            setLeftItem(spcClassConfigMap, 'create', () => launchCreate('ConfigMap'))
+            setLeftItem(spcClassConfigMap, 'create', () => launchObjectCreate('ConfigMap'))
             let spcConfigMap = spaces.get('ConfigMap')!
             setLeftItem(spcConfigMap,'details', launchObjectDetails)
             setLeftItem(spcConfigMap,'edit', launchObjectEdit)
@@ -383,7 +497,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // Secret
             let spcClassSecret = spaces.get('classSecret')!
-            setLeftItem(spcClassSecret, 'create', () => launchCreate('Secret'))
+            setLeftItem(spcClassSecret, 'create', () => launchObjectCreate('Secret'))
             let spcSecret = spaces.get('Secret')!
             setLeftItem(spcSecret,'details', launchObjectDetails)
             setLeftItem(spcSecret,'edit', launchObjectEdit)
@@ -391,7 +505,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // ResourceQuota
             let spcClassResourceQuota = spaces.get('classResourceQuota')!
-            setLeftItem(spcClassResourceQuota, 'create', () => launchCreate('ResourceQuota'))
+            setLeftItem(spcClassResourceQuota, 'create', () => launchObjectCreate('ResourceQuota'))
             let spcResourceQuota = spaces.get('ResourceQuota')!
             setLeftItem(spcResourceQuota,'details', launchObjectDetails)
             setLeftItem(spcResourceQuota,'edit', launchObjectEdit)
@@ -399,7 +513,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // Limir Range
             let spcClassLimitRange = spaces.get('classLimitRange')!
-            setLeftItem(spcClassLimitRange, 'create', () => launchCreate('LimitRange'))
+            setLeftItem(spcClassLimitRange, 'create', () => launchObjectCreate('LimitRange'))
             let spcLimitRange = spaces.get('LimitRange')!
             setLeftItem(spcLimitRange,'details', launchObjectDetails)
             setLeftItem(spcLimitRange,'edit', launchObjectEdit)
@@ -407,7 +521,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // HorizontalPodAutoscaler
             let spcClassHorizontalPodAutoscaler = spaces.get('classHorizontalPodAutoscaler')!
-            setLeftItem(spcClassHorizontalPodAutoscaler, 'create', () => launchCreate('HorizontalPodAutoscaler'))
+            setLeftItem(spcClassHorizontalPodAutoscaler, 'create', () => launchObjectCreate('HorizontalPodAutoscaler'))
             let spcHorizontalPodAutoscaler = spaces.get('HorizontalPodAutoscaler')!
             setLeftItem(spcHorizontalPodAutoscaler,'details', launchObjectDetails)
             setLeftItem(spcHorizontalPodAutoscaler,'edit', launchObjectEdit)
@@ -415,7 +529,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // PodDisruptionBudget
             let spcClassPodDisruptionBudget = spaces.get('classPodDisruptionBudget')!
-            setLeftItem(spcClassPodDisruptionBudget, 'create', () => launchCreate('PodDisruptionBudget'))
+            setLeftItem(spcClassPodDisruptionBudget, 'create', () => launchObjectCreate('PodDisruptionBudget'))
             let spcPodDisruptionBudget = spaces.get('PodDisruptionBudget')!
             setLeftItem(spcPodDisruptionBudget,'details', launchObjectDetails)
             setLeftItem(spcPodDisruptionBudget,'edit', launchObjectEdit)
@@ -423,7 +537,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // PriorityClass
             let spcClassPriorityClass = spaces.get('classPriorityClass')!
-            setLeftItem(spcClassPriorityClass, 'create', () => launchCreate('PriorityClass'))
+            setLeftItem(spcClassPriorityClass, 'create', () => launchObjectCreate('PriorityClass'))
             let spcPriorityClass = spaces.get('PriorityClass')!
             setLeftItem(spcPriorityClass,'details', launchObjectDetails)
             setLeftItem(spcPriorityClass,'edit', launchObjectEdit)
@@ -431,7 +545,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // RuntimeClass
             let spcClassRuntimeClass = spaces.get('classRuntimeClass')!
-            setLeftItem(spcClassRuntimeClass, 'create', () => launchCreate('RuntimeClass'))
+            setLeftItem(spcClassRuntimeClass, 'create', () => launchObjectCreate('RuntimeClass'))
             let spcRuntimeClass = spaces.get('RuntimeClass')!
             setLeftItem(spcRuntimeClass,'details', launchObjectDetails)
             setLeftItem(spcRuntimeClass,'edit', launchObjectEdit)
@@ -439,7 +553,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // Lease
             let spcClassLease = spaces.get('classLease')!
-            setLeftItem(spcClassLease, 'create', () => launchCreate('Lease'))
+            setLeftItem(spcClassLease, 'create', () => launchObjectCreate('Lease'))
             let spcLease = spaces.get('Lease')!
             setLeftItem(spcLease,'details', launchObjectDetails)
             setLeftItem(spcLease,'edit', launchObjectEdit)
@@ -447,7 +561,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // ValidatingWebhookConfiguration
             let spcClassValidatingWebhookConfiguration = spaces.get('classValidatingWebhookConfiguration')!
-            setLeftItem(spcClassValidatingWebhookConfiguration, 'create', () => launchCreate('ValidatingWebhookConfiguration'))
+            setLeftItem(spcClassValidatingWebhookConfiguration, 'create', () => launchObjectCreate('ValidatingWebhookConfiguration'))
             let spcValidatingWebhookConfiguration = spaces.get('ValidatingWebhookConfiguration')!
             setLeftItem(spcValidatingWebhookConfiguration,'details', launchObjectDetails)
             setLeftItem(spcValidatingWebhookConfiguration,'edit', launchObjectEdit)
@@ -455,7 +569,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             
             // MutatingWebhookConfiguration
             let spcClassMutatingWebhookConfiguration = spaces.get('classMutatingWebhookConfiguration')!
-            setLeftItem(spcClassMutatingWebhookConfiguration, 'create', () => launchCreate('MutatingWebhookConfiguration'))
+            setLeftItem(spcClassMutatingWebhookConfiguration, 'create', () => launchObjectCreate('MutatingWebhookConfiguration'))
             let spcMutatingWebhookConfiguration = spaces.get('MutatingWebhookConfiguration')!
             setLeftItem(spcMutatingWebhookConfiguration,'details', launchObjectDetails)
             setLeftItem(spcMutatingWebhookConfiguration,'edit', launchObjectEdit)
@@ -465,7 +579,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // StorageClass
             let spcClassStorageClass = spaces.get('classStorageClass')!
-            setLeftItem(spcClassStorageClass, 'create', () => launchCreate('StorageClass'))
+            setLeftItem(spcClassStorageClass, 'create', () => launchObjectCreate('StorageClass'))
             let spcStorageClass = spaces.get('StorageClass')!
             setLeftItem(spcStorageClass,'details', launchObjectDetails)
             setLeftItem(spcStorageClass,'edit', launchObjectEdit)
@@ -473,7 +587,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // PersistentVolumeClaim
             let spcClassPersistentVolumeClaim = spaces.get('classPersistentVolumeClaim')!
-            setLeftItem(spcClassPersistentVolumeClaim, 'create', () => launchCreate('PersistentVolumeClaim'))
+            setLeftItem(spcClassPersistentVolumeClaim, 'create', () => launchObjectCreate('PersistentVolumeClaim'))
             let spcPersistentVolumeClaim = spaces.get('PersistentVolumeClaim')!
             setLeftItem(spcPersistentVolumeClaim,'details', launchObjectDetails)
             setLeftItem(spcPersistentVolumeClaim,'edit', launchObjectEdit)
@@ -481,7 +595,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // PersistentVolume
             let spcClassPersistentVolume = spaces.get('classPersistentVolume')!
-            setLeftItem(spcClassPersistentVolume, 'create', () => launchCreate('PersistentVolume'))
+            setLeftItem(spcClassPersistentVolume, 'create', () => launchObjectCreate('PersistentVolume'))
             let spcPersistentVolume = spaces.get('PersistentVolume')!
             setLeftItem(spcPersistentVolume,'details', launchObjectDetails)
             setLeftItem(spcPersistentVolume,'edit', launchObjectEdit)
@@ -491,7 +605,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // ServiceAccount
             let spcClassServiceAccount = spaces.get('classServiceAccount')!
-            setLeftItem(spcClassServiceAccount, 'create', () => launchCreate('ServiceAccount'))
+            setLeftItem(spcClassServiceAccount, 'create', () => launchObjectCreate('ServiceAccount'))
             let spcServiceAccount = spaces.get('ServiceAccount')!
             setLeftItem(spcServiceAccount,'details', launchObjectDetails)
             setLeftItem(spcServiceAccount,'edit', launchObjectEdit)
@@ -499,7 +613,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // ClusterRole
             let spcClassClusterRole = spaces.get('classClusterRole')!
-            setLeftItem(spcClassClusterRole, 'create', () => launchCreate('ClusterRole'))
+            setLeftItem(spcClassClusterRole, 'create', () => launchObjectCreate('ClusterRole'))
             let spcClusterRole = spaces.get('ClusterRole')!
             setLeftItem(spcClusterRole,'details', launchObjectDetails)
             setLeftItem(spcClusterRole,'edit', launchObjectEdit)
@@ -507,7 +621,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // Role
             let spcClassRole = spaces.get('classRole')!
-            setLeftItem(spcClassRole, 'create', () => launchCreate('Role'))
+            setLeftItem(spcClassRole, 'create', () => launchObjectCreate('Role'))
             let spcRole = spaces.get('Role')!
             setLeftItem(spcRole,'details', launchObjectDetails)
             setLeftItem(spcRole,'edit', launchObjectEdit)
@@ -515,7 +629,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // ClusterRoleBinding
             let spcClassClusterRoleBinding = spaces.get('classClusterRoleBinding')!
-            setLeftItem(spcClassClusterRoleBinding, 'create', () => launchCreate('ClusterRoleBinding'))
+            setLeftItem(spcClassClusterRoleBinding, 'create', () => launchObjectCreate('ClusterRoleBinding'))
             let spcClusterRoleBinding = spaces.get('ClusterRoleBinding')!
             setLeftItem(spcClusterRoleBinding,'details', launchObjectDetails)
             setLeftItem(spcClusterRoleBinding,'edit', launchObjectEdit)
@@ -523,7 +637,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // RoleBinding
             let spcClassRoleBinding = spaces.get('classRoleBinding')!
-            setLeftItem(spcClassRoleBinding, 'create', () => launchCreate('RoleBinding'))
+            setLeftItem(spcClassRoleBinding, 'create', () => launchObjectCreate('RoleBinding'))
             let spcRoleBinding = spaces.get('RoleBinding')!
             setLeftItem(spcRoleBinding,'details', launchObjectDetails)
             setLeftItem(spcRoleBinding,'edit', launchObjectEdit)
@@ -534,7 +648,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // CustomResourceDefinition
             let spcClassCustomResourceDefinition = spaces.get('classCustomResourceDefinition')!
-            setLeftItem(spcClassCustomResourceDefinition, 'create', () => launchCreate('CustomResourceDefinition'))
+            setLeftItem(spcClassCustomResourceDefinition, 'create', () => launchObjectCreate('CustomResourceDefinition'))
             let spcCustomResourceDefinition = spaces.get('CustomResourceDefinition')!
             setLeftItem(spcCustomResourceDefinition,'details', launchObjectDetails)
             setLeftItem(spcCustomResourceDefinition,'edit', launchObjectEdit)
@@ -563,61 +677,93 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }, [])
 
+    const reorderJsonYamlObject = (objetoJson: any): any => {
+        try {
+            const priorityOrder = ['apiVersion', 'kind', 'metadata', 'status', 'spec']
+            const orderedObject: any = {}
+            priorityOrder.forEach(key => {
+                if (objetoJson && Object.prototype.hasOwnProperty.call(objetoJson, key)) orderedObject[key] = objetoJson[key]
+            })
+            Object.keys(objetoJson).forEach(key => {
+                if (!priorityOrder.includes(key)) orderedObject[key] = objetoJson[key]
+            })
+            return orderedObject
+        }
+        catch (e) {
+            console.error("Error al convertir JSON a YAML:", e);
+            return {}
+        }
+    }
+
+    const launchObjectEdit = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        let obj = f[0].data.origin
+        let reorderObj = reorderJsonYamlObject(obj)
+
+        setEditorContent({
+            code: yamlParser.dump(reorderObj),
+            source: f[0]
+        })
+        setEditorContentUnChanged(true)
+        setEditorVisible(true)
+    }
+
     const applyEditorChanges = () => {
         setEditorVisible(false)
-        sendCommand(MagnifyCommandEnum.CREATE, [editorContent.code])
+        sendCommand(MagnifyCommandEnum.APPLY, [editorContent.code])
     }
 
     const updateEditorValue= (newCode:any) => {
         editorContent.code=newCode
+        setEditorContentUnChanged(objectEqual(yamlParser.load(editorContent.code),editorContent.source?.data.origin))
     }
 
-    const launchObjectEdit = (f:IFileObject[]) => {
-        setEditorContent({
-            code: yamlParser.dump(f[0].data.origin, { indent: 2 }),
-            source: f[0]
-        })
-        setEditorVisible(true)
-    }
-
-    const launchObjectDelete = (f:IFileObject[]) => {
-        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to delete &nbsp;<b>{f[0].name}</b>?</Box>, setMsgBox, (a) => {
+    const launchObjectDelete = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to delete {f[0].data.origin.kind}<b> {f[0].name}</b>?</Box>, setMsgBox, (a) => {
             if (a === MsgBoxButtons.Yes) {
-                console.log('delete')
+                sendCommand(MagnifyCommandEnum.DELETE, f.map(o => yamlParser.dump(o.data.origin, { indent: 2 })))
             }
         }))
     }
 
-    const launchPodEvict = (f:IFileObject[]) => {
-        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to evict &nbsp;<b>{f[0].name}</b>?</Box>, setMsgBox, (a) => {
+    const launchPodEvict = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to evict {f[0].data.origin.kind} <b>{f[0].name}</b>?</Box>, setMsgBox, (a) => {
             if (a === MsgBoxButtons.Yes) {
                 console.log('evict')
             }
         }))
     }
 
-    const launchCreate = (obj:string) => {
-        console.log('create ', obj)
+    const launchObjectCreate = (obj:string) => {
         setEditorContent({
-            code: `Kind: ${obj}\r\nejemplo: true`,
+            code: `apiVersion: v1\nKind: ${obj}\nejemplo: true`,
             source: undefined
         })
+        setEditorContentUnChanged(true)
         setEditorVisible(true)
     }
 
-    const setLeftItem = (space:ISpace, name:string, invoke:any) => {
-        let x = space.leftItems?.find(f => f.name===name)
-        if (x) x.onClick = invoke
+    const launchNamespaceCreate = (p:string[]) => {
+        setIbResult ( () => (name:any) => {
+            if (name) {
+                let obj = `
+                    apiVersion: 'v1'
+                    kind: 'Namespace'
+                    metadata:
+                        name: ${name}
+                `
+                sendCommand(MagnifyCommandEnum.CREATE, [obj])
+            }
+        })
+        setIbMessage('Enter namespace name')
+        setIbTitle('Create namespace')
     }
 
-    const launchPodLogs = (f:IFileObject[], currentTarget:Element) => {
-        setSelectedFiles(f)
-        setExternalContentView(InstanceConfigViewEnum.CONTAINER)
-        setExternalContentTitle(f[0].name)
-        setExternalContentType('log')
-        setLeftMenuContent(f[0])
-        setLeftMenuIncludeAll(true)
-        setLeftMenuAnchorParent(currentTarget)
+    const setLeftItem = (space:ISpace, name:string, invoke:(paths:string[], target?:any) => void) => {
+        let x = space.leftItems?.find(f => f.name===name)
+        if (x) x.onClick = invoke
     }
 
     const onLeftMenuClose = () => {
@@ -631,46 +777,70 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setExternalContentView(InstanceConfigViewEnum.POD)
         }
         else {
+            setExternalContentTitle(externalContentTitle+'+'+container)
             setExternalContentContainer(container)
         }
         setExternalContentVisible(true)
     }
 
-    const launchPodShell = (f:IFileObject[], currentTarget:Element) => {
+    const launchPodLogs = (p:string[], currentTarget:Element) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         setSelectedFiles(f)
         setExternalContentView(InstanceConfigViewEnum.CONTAINER)
-        setExternalContentType('ops')
         setExternalContentTitle(f[0].name)
+        setExternalContentType('log')
+        setLeftMenuContent(f[0])
+        setLeftMenuIncludeAll(true)
+        setLeftMenuAnchorParent(currentTarget)
+    }
+
+    const launchPodShell = (p:string[], currentTarget:Element) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        setSelectedFiles(f)
+        setExternalContentView(InstanceConfigViewEnum.CONTAINER)
+        setExternalContentTitle(f[0].name)
+        setExternalContentType('ops')
         setLeftMenuContent(f[0])
         setLeftMenuIncludeAll(false)
         setLeftMenuAnchorParent(currentTarget)
 
     }
 
-    const launchPodMetrics = (f:IFileObject[]) => {
+    const launchPodMetrics = (p:string[], currentTarget:Element) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         setSelectedFiles(f)
+        setExternalContentView(InstanceConfigViewEnum.CONTAINER)
+        setExternalContentTitle(f[0].name)
         setExternalContentType('metrics')
-        setExternalContentVisible(true)
+        setLeftMenuContent(f[0])
+        setLeftMenuIncludeAll(true)
+        setLeftMenuAnchorParent(currentTarget)
     }
 
-    const launchObjectDetails = (f:IFileObject[]) => {
+    const launchObjectDetails = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         setDetailsContent(f[0])
         if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/'))
             setDetailsSections(objectSections.get('#crdinstance#')!)
         else
             setDetailsSections(objectSections.get(f[0].data.origin.kind)!)
+        if (f[0].data.events) delete f[0].data.events
+        sendCommand(MagnifyCommandEnum.EVENTS, [f[0].data.origin.metadata.namespace, f[0].data.origin.kind, f[0].data.origin.metadata.name])
         setDetailsVisible(true)
     }
 
-    const launchGroupScale = (f:IFileObject[]) => {
+    const launchGroupScale = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         console.log('set sca')
     }
 
-    const launchGroupRestart = (f:IFileObject[]) => {
+    const launchGroupRestart = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         console.log('set rest')
     }
 
-    const launchGroupLogs = (f:IFileObject[]) => {
+    const launchGroupLogs = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         setExternalContentView(InstanceConfigViewEnum.GROUP)
         setExternalContentTitle(f[0].name)
         setSelectedFiles(f)
@@ -678,7 +848,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setExternalContentVisible(true)
     }
 
-    const launchGroupMetrics = (f:IFileObject[]) => {
+    const launchGroupMetrics = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         //+++ falta decidir si nada, group o merge: neceistamos un pequeño menu en externlaContent
         setExternalContentView(InstanceConfigViewEnum.GROUP)
         setExternalContentTitle(f[0].name)
@@ -687,47 +858,61 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setExternalContentVisible(true)
     }
 
-    const launchDaemonSetRestart = (f:IFileObject[]) => {
+    const launchDaemonSetRestart = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         console.log('set rest')
     }
 
-    const launchReplicaSetScale = (f:IFileObject[]) => {
+    const launchReplicaSetScale = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         console.log('set sca')
     }
 
-    const launchJobLogs = (f:IFileObject[]) => {
-        setExternalContentView(InstanceConfigViewEnum.POD)
+    const launchJobLogs = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        setExternalContentView(InstanceConfigViewEnum.GROUP)
         setExternalContentTitle(f[0].name)
         setSelectedFiles(f)
         setExternalContentType('log')
         setExternalContentVisible(true)
     }
 
-    const launchIngressClassDefault = (f:IFileObject[]) => {
+    const launchIngressClassDefault = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         console.log('set def')
     }
 
-    const launchNodeDrain = (f:IFileObject[]) => {
-        console.log('drain node ',f[0].name)
-        sendCommand(MagnifyCommandEnum.NODEDRAIN, [f[0].name])
+    const launchNodeDrain = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        sendCommand(MagnifyCommandEnum.NODE, ['drain',f[0].name])
     }
 
-    const launchNodeCordon = (f:IFileObject[]) => {
-        console.log('cordon node ',f[0].name)
-        sendCommand(MagnifyCommandEnum.NODECORDON, [f[0].name])
+    const launchNodeCordon = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        sendCommand(MagnifyCommandEnum.NODE, ['cordon', f[0].name])
     }
 
-    const launchNodeUnCordon = (f:IFileObject[]) => {
-        console.log('uncordon node ',f[0].name)
-        sendCommand(MagnifyCommandEnum.NODEUNCORDON, [f[0].name])
+    const launchNodeUnCordon = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        sendCommand(MagnifyCommandEnum.NODE, ['uncordon', f[0].name])
     }
 
-    const launchCronJobTrigger = (f:IFileObject[]) => {
+    const launchCronJobTrigger = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         console.log('trigger cj ',f[0].name)
+        sendCommand(MagnifyCommandEnum.CRONJOB, ['trigger', f[0].data.origin.metadata.namespace, f[0].data.origin.metadata.name])
     }
 
-    const launchCronJobSuspend = (f:IFileObject[]) => {
+    const launchCronJobSuspend = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
         console.log('suspend cj ',f[0].name)
+        sendCommand(MagnifyCommandEnum.CRONJOB, ['suspend', f[0].data.origin.metadata.namespace, f[0].data.origin.metadata.name])
+    }
+
+    const launchCronJobResume = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        console.log('resume cj ',f[0].name)
+        sendCommand(MagnifyCommandEnum.CRONJOB, ['resume', f[0].data.origin.metadata.namespace, f[0].data.origin.metadata.name])
     }
 
     const updateSource = () => {
@@ -752,7 +937,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const showSettings = () => {
-        return <UserSettings settings={settings}/>
+        return <UserSettings settings={settings} files={magnifyData.files}/>
     }
 
     const showWorkloadOverview = () => {
@@ -926,7 +1111,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (x) x.children = invoke
     }
 
-    const setPropertyFunction = (space:ISpace, propName:string, invoke:(f:IFileObject) => void) => {
+    const setPropertyFunction = (space:ISpace, propName:string, invoke:(p:string) => void) => {
         if (!space.properties) return
         let prop = space.properties.find(p => p.name===propName)
         if (!prop) return
@@ -934,7 +1119,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         prop.source = invoke
     }
 
-    const showPodContainers = (f:IFileObject) => {
+    const showPodContainers = (p:any) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
         if (!f.data?.origin?.status) return <></>
         let result:JSX.Element[]=[]
         if (f.data.origin.status.containerStatuses && f.data.origin.status.containerStatuses.length>0) {
@@ -952,11 +1139,18 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
         return result
     }
-    const showPodCpu = (f:IFileObject) => {
+    const showPodCpu = (p:string) => {
         return '#'
     }
-    const showPodMemory = (f:IFileObject) => {
+    const showPodMemory = (p:string) => {
         return '#'
+    }
+
+    const showCronJobNextExecution = (p:string) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
+        let x = getNextCronExecution(f.data.origin.spec.schedule)
+        return [`${x?.timeLeft.days}d${x?.timeLeft.hours}h${x?.timeLeft.minutes}m${x?.timeLeft.seconds}s`]
     }
 
     const onDelete = (files: IFileObject[]) => {}
@@ -1000,23 +1194,30 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const onMagnifyObjectDetailsLink = (kind:string, name:string) => {
         setDetailsVisible(false)
-        console.log('kind, name******************')
-        console.log(kind, name)
         let path = buildPath(kind, name)
-        console.log(path)
         let f = magnifyData.files.find(f => f.path === path)
         if (f)
-            launchObjectDetails([f])
+            launchObjectDetails([f.path])
         else
-            setMsgBox(MsgBoxOkError('Object details',<Box>Object with name '<b>{name}</b>' of kind '{kind}'' has not been found on artifacts database.</Box>, setMsgBox))
+            setMsgBox(MsgBoxOkError('Object details',<Box>Object with name '<b>{name}</b>' of kind '{kind}' has not been found on artifacts database.</Box>, setMsgBox))
     }
 
-    const launchEditFromDetails = (f:IFileObject) => {
+    const launchEditFromDetails = (p:string) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
+
         setDetailsVisible(false)
+        // console.log(f.data.origin)
+        // console.log('**************************')
+        let reorderObj = reorderJsonYamlObject(f.data.origin)
+        // console.log(reorderObj)
+        // console.log('**************************')
+
         setEditorContent({
-            code: yamlParser.dump(f.data.origin, { indent: 2 }),
+            code: yamlParser.dump(reorderObj, { indent: 2 }),
             source: f
         })
+        setEditorContentUnChanged(true)
         setEditorVisible(true)
     }
 
@@ -1045,6 +1246,21 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const externalContentRefresh = () => {
         setRefresh(Math.random())
+    }
+
+    function objectEqual(obj1: any, obj2: any): boolean {
+        if (obj1 === obj2) return true
+
+        if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) return false
+
+        const keys1 = Object.keys(obj1)
+        const keys2 = Object.keys(obj2)
+        if (keys1.length !== keys2.length) return false
+
+        for (const key of keys1) {
+            if (!keys2.includes(key) || !objectEqual(obj1[key], obj2[key])) return false
+        }
+        return true
     }
 
     return <>
@@ -1081,8 +1297,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 <Stack direction={'row'} sx={{mt:1}}>
                     {
                         magnifyData.externalContent.map((ec, index) => {
-                            let text=ec.channelObject.pod
-                            if (text.length>10) text=text.substring(0,10)+'...'
+                            let text=ec.channelObject.container
+                            if (text.length>20) text = text.substring(0,10) + '...' + text.substring(text.length-10)
                             // +++ add a preview of terminal using: https://www.npmjs.com/package/html-to-image
                             return (
                                 <Tooltip key={index} title={<>Pod: {ec.channelObject.pod}{ec.channelObject.container!==''? <><br/>Container: {ec.channelObject.container}</>: <></>}</>}>
@@ -1093,6 +1309,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     }
                 </Stack>
                 { msgBox }
+                <InputBox title={ibTitle} message={ibMessage} onClose={() => setIbTitle(undefined)} onResult={ibResult}/>
             </Box>
         }
         { editorVisible &&
@@ -1112,7 +1329,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     <CodeMirror value={editorContent.code} onChange={updateEditorValue} extensions={[yaml()]} />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={applyEditorChanges}>Ok</Button>
+                    <Button onClick={applyEditorChanges} disabled={editorContentUnChanged}>Ok</Button>
                     <Button onClick={() => setEditorVisible(false)}>Cancel</Button>
                 </DialogActions>
             </Dialog>
@@ -1132,13 +1349,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                         <Typography fontSize={18}>{detailsContent?.data.origin.kind+': '+detailsContent?.data.origin.metadata?.name}</Typography>
                         <IconButton color='primary' onClick={() => copy(detailsContent?.data.origin.metadata?.name)}><ContentCopy fontSize='small'/></IconButton>
                         <Typography sx={{flexGrow:1}}/>
-                        <IconButton color='primary' onClick={() => {launchEditFromDetails(detailsContent)}}><Edit fontSize='small'/></IconButton>
-                        <IconButton color='primary' onClick={() => {setDetailsVisible(false); launchObjectDelete([detailsContent])}}><Delete fontSize='small'/></IconButton>
+                        <IconButton color='primary' onClick={() => {launchEditFromDetails(detailsContent.path)}}><Edit fontSize='small'/></IconButton>
+                        <IconButton color='primary' onClick={() => {setDetailsVisible(false); launchObjectDelete([detailsContent.path])}}><Delete fontSize='small'/></IconButton>
                         <IconButton color='primary' onClick={() => {setDetailsVisible(false)}}><Close fontSize='small'/></IconButton>
                     </Stack>
                 </DialogTitle>
                 <DialogContent >
-                    <MagnifyObjectDetails object={detailsContent} sections={detailsSections} onChangeData={onMagnifyObjectDetailsChangeData} onLink={onMagnifyObjectDetailsLink}/>
+                    <DetailsObject object={detailsContent} sections={detailsSections} onChangeData={onMagnifyObjectDetailsChangeData} onLink={onMagnifyObjectDetailsLink}/>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => {setDetailsVisible(false); updateSource()}}>Ok</Button>
