@@ -21,14 +21,14 @@ let basicCluster:IDetailsItem[] = [
         text: 'Labels',
         source: ['metadata.labels'],
         format: 'objectprops',
-        style: ['column', 'ifpresent']
+        style: ['column', 'ifpresent', 'collapse']
     },
     {
         name: 'annotations',
         text: 'Annotations',
         source: ['metadata.annotations'],
         format: 'objectprops',
-        style: ['column','char:50','ifpresent']
+        style: ['column','ifpresent', 'char:50', 'collapse']
     }
 ]
 
@@ -57,14 +57,14 @@ let basicNamespaced:IDetailsItem[] = [
         text: 'Labels',
         source: ['metadata.labels'],
         format: 'objectprops',
-        style: ['column', 'ifpresent']
+        style: ['column', 'ifpresent', 'collapse']
     },
     {
         name: 'annotations',
         text: 'Annotations',
         source: ['metadata.annotations'],
         format: 'objectprops',
-        style: ['column','char:50','ifpresent']
+        style: ['column', 'char:50', 'ifpresent', 'collapse']
     }
 ]
 
@@ -626,7 +626,7 @@ objectSections.set('ConfigMap', [
                 text: '',
                 source: ['data'],
                 format: 'objectprops',
-                style: ['column', 'edit', 'keybold' ]
+                style: ['column', 'edit', 'keybold', 'multiline']
             },
         ]
     },
@@ -658,7 +658,7 @@ objectSections.set('Secret', [
                 text: '',
                 source: ['data'],
                 format: 'objectprops',
-                style: ['column', 'edit', 'keybold']
+                style: ['column', 'edit', 'keybold', 'multiline']
             },
         ]
     },

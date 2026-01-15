@@ -2,6 +2,7 @@ import { IInstanceMessage } from '@jfvilas/kwirth-common'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { IContentExternalObject } from './components/ContentExternal'
 import { IContentEditObject } from './components/ContentEdit'
+import { IContentDetailsObject } from './components/ContentDetails'
 
 export interface IMagnifyData {
     clusterInfo: any
@@ -10,7 +11,7 @@ export interface IMagnifyData {
     files: IFileObject[]
     currentPath: string
 
-    contentWindows : (IContentExternalObject|IContentEditObject)[]
+    contentWindows : (IContentExternalObject|IContentEditObject|IContentDetailsObject)[]
     leftMenuAnchorParent: Element | undefined
 }
 

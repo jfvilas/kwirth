@@ -1,11 +1,34 @@
-en rioja
-    colores metrics
-    fileman no arranca
-    deteccion nombre eks
-
-fav y last
-    gestion de favs
-    acabar fav y last boards
-    limitar $all
-
+KWIRTH
 crear un permiso para indicar que cosas del front puede ver el usuario
+crear un setting del usuario tipo "autoexec.bat"
+log de jobs? revisar "started &&"
+
+replication controller group support
+
+
+MAGNIFY
+contentexternal
+    configuracion
+    chartmenu
+    logfollow
+
+detail > style  
+    stringseq  **TEST**
+edit > 
+    headers ancho fijo
+    base64 en secrets
+events > revisar orden 23h59m
+pvc > pods
+
+set default ingress class
+
+channel
+reconnect
+validate addObject (kwirth/kwrith/kwirth...)
+
+overview global: graficos y ultimos eventos
+spcPoc > cpu y memoria
+    implementar timeoutts que cada x timepo soliciten metricas snapshot
+detail 
+
+💖💖💖 portforward con smart proxy

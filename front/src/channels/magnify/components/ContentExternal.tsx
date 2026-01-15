@@ -18,17 +18,17 @@ import { MagnifyUserSettings } from '../MagnifyUserSettings'
 
 interface IContentExternalProps {
     title: string
-    channelId?: string
+    channelId: string
     settings: MagnifyUserSettings
     frontChannels: Map<string, TChannelConstructor>
     selectedFiles:IFileObject[]
-    notify: (level: ENotifyLevel, msg: string) => void
-    minimize: (content:IContentExternalObject) => void
-    close: (content:IContentExternalObject) => void
-    doRefresh: () => void
+    onNotify: (level: ENotifyLevel, msg: string) => void
+    onMinimize: (content:IContentExternalObject) => void
+    onClose: (content:IContentExternalObject) => void
+    onRefresh: () => void
+    contentView: InstanceConfigViewEnum
     content?: IContentExternalObject
     channelObject?: IChannelObject
-    contentView: InstanceConfigViewEnum
     container?: string
 }
 
@@ -72,7 +72,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
     },[])
 
     const createContent = (channelId:string, container?:string) => {
-        let newChannel = createChannelInstance(props.frontChannels.get(channelId), props.notify)
+        let newChannel = createChannelInstance(props.frontChannels.get(channelId), props.onNotify)
         if (!newChannel) {
             console.log('Invaid channel instance created')
             return undefined
@@ -135,7 +135,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             let refreshAction = content.current?.channel.processChannelMessage(content.current?.channelObject!, wsEvent)
             if (refreshAction) {
                 if (refreshAction.action === EChannelRefreshAction.REFRESH) {
-                    props.doRefresh()
+                    props.onRefresh()
                 }
                 else if (refreshAction.action === EChannelRefreshAction.STOP) {
                     stop()
@@ -340,7 +340,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
     }
 
     const minimize = () => {
-        props.minimize(content.current!)
+        props.onMinimize(content.current!)
     }
 
     const maximizeOrRestore = () => {
@@ -357,7 +357,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
     const close = () => {
         if (!content.current || !content.current.ws) return
         content.current.ws.close()
-        props.close(content.current)
+        props.onClose(content.current)
     }
 
     const showContent = () => {

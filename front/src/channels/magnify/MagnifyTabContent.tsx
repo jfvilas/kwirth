@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { IContentProps } from '../IChannel'
 import { MagnifyCommandEnum, IMagnifyMessage, IMagnifyData } from './MagnifyData'
-import { Box, Button, Card, CardContent, CardHeader, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
+import { Box, Button, Card, CardContent, CardHeader, Divider, Stack, Tooltip, Typography } from '@mui/material'
 import { InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
 import { IError, IFileObject, ISpace } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
@@ -12,68 +12,26 @@ import '@jfvilas/react-file-manager/dist/style.css'
 import './custom-fm.css'
 import { actions, icons, menu, spaces } from './RFMConfig'
 import React from 'react'
-import { IDetailsSection, DetailsObject } from './components/DetailsObject'
+import { IDetailsSection } from './components/DetailsObject'
 import { objectSections } from './components/DetailsSections'
-import { Close, ContentCopy, Delete, Edit } from '@mui/icons-material'
+import { Edit, List } from '@mui/icons-material'
 import { MsgBoxButtons, MsgBoxOkError, MsgBoxYesNo } from '../../tools/MsgBox'
 import { ContentExternal, IContentExternalObject } from './components/ContentExternal'
 import { flushSync } from 'react-dom'
 import { LeftItemMenu } from './LeftItemMenu'
 import { MagnifyUserSettings } from './MagnifyUserSettings'
 import { UserSettings } from './components/UserSettings'
-import { buildPath } from './MagnifyChannel'
+import { buildPath, requestList } from './MagnifyChannel'
 import { InputBox } from '../../tools/FrontTools'
-import cronParser from 'cron-parser';
 import { ContentEdit, IContentEditObject } from './components/ContentEdit'
-import { reorderJsonYamlObject } from './Tools'
 import { templates } from './components/Templates'
+import { convertBytesToSize, convertSizeToBytes, getNextCronExecution } from './Tools'
+import { ContentDetails, IContentDetailsObject } from './components/ContentDetails'
 
 const _ = require('lodash')
-const copy = require('clipboard-copy')
 
 const yamlParser = require('js-yaml');
 const settings = new MagnifyUserSettings()
-
-interface NextExecution {
-  date: Date;
-  isoString: string;
-  timeLeft: {
-    days: number;
-    hours: number;
-    minutes: number;
-    seconds: number;
-  };
-  description: string;
-}
-
-function getNextCronExecution(cronExpression: string): NextExecution|undefined {
-  try {
-    // 1. Parsear la expresión
-    const interval = cronParser.parse(cronExpression);
-    
-    // 2. Obtener la próxima fecha de ejecución
-    const nextDate = interval.next().toDate();
-    const now = new Date();
-
-    // 3. Calcular la diferencia en milisegundos
-    const diff = nextDate.getTime() - now.getTime();
-
-    // 4. Desglosar el tiempo restante
-    const seconds = Math.floor((diff / 1000) % 60);
-    const minutes = Math.floor((diff / (1000 * 60)) % 60);
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    return {
-      date: nextDate,
-      isoString: nextDate.toISOString(),
-      timeLeft: { days, hours, minutes, seconds },
-      description: `Faltan ${days}d ${hours}h ${minutes}m ${seconds}s`
-    };
-  } catch (err: any) {
-    return undefined
-  }
-}
 
 const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let magnifyData:IMagnifyData = props.channelObject.data
@@ -92,7 +50,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [msgBox, setMsgBox] =useState(<></>)
 
     const [contentEditVisible, setContentEditVisible] = useState(false)
-    //const [contentEdit, setContentEdit] = useState<{code:string, source?:IFileObject, maximize?:boolean}>({code:''})
     const [contentEditNew, setContentEditNew] = useState<string>('')
     const contentWindowId = useRef<number>(-1)
 
@@ -102,29 +59,26 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [contentExternalTitle, setContentExternalTitle] = useState<string>('n/a')
     const [contentExternalContainer, setContentExternalContainer] = useState<string>('')
 
-    const [ibTitle, setIbTitle] = useState<any>()
-    const [ibMessage, setIbMessage] = useState<any>()
-    const [ibResult, setIbResult] = useState<(b:any) => void>()
+    const [inputBoxTitle, setInputBoxTitle] = useState<any>()
+    const [inputBoxMessage, setInputBoxMessage] = useState<any>()
+    const [inputBoxResult, setIinputBoxResult] = useState<(b:any) => void>()
 
     const [selectedFiles, setSelectedFiles] = useState<IFileObject[]>([])
 
-    const [leftMenuContent, setLeftMenuContent] = useState<any>()
-    const [leftMenuIncludeAll, setLeftMenuIncludeAll] = useState<boolean>(false)
     const [leftMenuAnchorParent, setLeftMenuAnchorParent] = useState<Element>()
+    const [leftMenuContent, setLeftMenuContent] = useState<any>()
+    const [leftMenuIncludeAllContainers, setLeftMenuIncludeAllContainers] = useState<boolean>(false)
     
-    const [detailsVisible, setDetailsVisible] = useState(false)
-    const [detailsContent, setDetailsContent] = useState<any>()
+    const [contentDetailsVisible, setContentDetailsVisible] = useState(false)
     const [detailsSections, setDetailsSections] = useState<IDetailsSection[]>([])
-    const [detailsChanges, setDetailsChanges] = useState({})
 
-    const [refresh, setRefresh] = useState<number>(0)
+    const [refresh, setRefresh] = useState<number>(Math.random())
 
     useLayoutEffect(() => {
         const observer = new ResizeObserver(() => {
             if (!magnifyBoxRef.current) return
             const { top } = magnifyBoxRef.current.getBoundingClientRect()
             let a = window.innerHeight - top - 160
-            // if (props.maxHeight>=0 && a > props.maxHeight) a = props.maxHeight
             setMagnifyBoxHeight(a)
         })
         observer.observe(document.body)
@@ -139,12 +93,12 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
         // Main menu
             setPathFunction('/overview', showOverview)
-            setPathFunction('/settings', showSettings)
             setPathFunction('/cluster/overview', showClusterOverview)
             setPathFunction('/workload/overview', showWorkloadOverview)
             setPathFunction('/network/overview', showNetworkOverview)
             setPathFunction('/config/overview', showConfigOverview)
             setPathFunction('/storage/overview', showStorageOverview)
+            setPathFunction('/settings', showSettings)
 
         // Workload
             // Pod
@@ -160,18 +114,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcPod,'details', launchObjectDetails)
             setLeftItem(spcPod,'delete', launchObjectDelete)
             setLeftItem(spcPod,'evict', launchPodEvict)
-            let objPod = objectSections.get('Pod')
-            if (objPod) {
-                let section = objPod.find(o => o.name==='events')
-                if(section) {
-                    let item = section.items.find(item => item.name === 'events')
-                    if (item) {
-                        item.invoke = (obj) => {
-                            //+++return [<>xxx</>]
-                        }
-                    }
-                }
-            }
 
             // Deployment
             let spcClassDeployment = spaces.get('classDeployment')!
@@ -681,61 +623,26 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             }
         }
         
-
         return () => {
             // unmount actions
             setLeftMenuAnchorParent(undefined)
         }
     }, [])
 
-    const launchObjectEdit = (p:string[]) => {
-        let f = magnifyData.files.filter(x => p.includes(x.path))
-        setSelectedFiles([f[0]])
-        setContentEditVisible(true)
+    // *********************************************************
+    // Convenience functions for configuring item actions
+    // *********************************************************
+    const setPathFunction = (path:string, invoke:() => void) => {
+        let x = magnifyData.files.find(f => f.path===path)
+        if (x) x.children = invoke
     }
 
-    const onContentEditOk = (content:{code:string, source?:IFileObject}) => {
-        setContentEditVisible(false)
-        sendCommand(MagnifyCommandEnum.APPLY, [content.code])
-    }
-
-    const launchObjectDelete = (p:string[]) => {
-        let f = magnifyData.files.filter(x => p.includes(x.path))
-        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to delete {f[0].data.origin.kind}<b> {f[0].name}</b>?</Box>, setMsgBox, (a) => {
-            if (a === MsgBoxButtons.Yes) {
-                sendCommand(MagnifyCommandEnum.DELETE, f.map(o => yamlParser.dump(o.data.origin, { indent: 2 })))
-            }
-        }))
-    }
-
-    const launchPodEvict = (p:string[]) => {
-        let f = magnifyData.files.filter(x => p.includes(x.path))
-        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to evict {f[0].data.origin.kind} <b>{f[0].name}</b>?</Box>, setMsgBox, (a) => {
-            if (a === MsgBoxButtons.Yes) console.log('evict')
-        }))
-    }
-
-    const launchObjectCreate = (kind:string) => {
-        let template = templates.get(kind) || `apiVersion: v1\nKind: ${kind}\nejemplo: true`
-        setSelectedFiles([])
-        setContentEditNew(template.trim())
-        setContentEditVisible(true)
-    }
-
-    const launchNamespaceCreate = (p:string[]) => {
-        setIbResult ( () => (name:any) => {
-            if (name) {
-                let obj = `
-                    apiVersion: 'v1'
-                    kind: 'Namespace'
-                    metadata:
-                        name: ${name}
-                `
-                sendCommand(MagnifyCommandEnum.CREATE, [obj])
-            }
-        })
-        setIbMessage('Enter namespace name')
-        setIbTitle('Create namespace')
+    const setPropertyFunction = (space:ISpace, propName:string, invoke:(p:string) => void) => {
+        if (!space.properties) return
+        let prop = space.properties.find(p => p.name===propName)
+        if (!prop) return
+        prop.format = 'function'
+        prop.source = invoke
     }
 
     const setLeftItem = (space:ISpace, name:string, invoke:(paths:string[], target?:any) => void) => {
@@ -743,11 +650,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (x) x.onClick = invoke
     }
 
-    const onLeftMenuClose = () => {
-        setLeftMenuAnchorParent(undefined)
-    }
-
-    const onLeftMenuOptionSelected = (container:string) => {
+    const onLeftItemMenuOptionSelected = (container:string) => {
         setLeftMenuAnchorParent(undefined)
 
         if (container==='*all') {
@@ -760,6 +663,83 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setContentExternalVisible(true)
     }
 
+    const onLeftItemMenuClose = () => {
+        setLeftMenuAnchorParent(undefined)
+    }
+
+    // *********************************************************
+    // Actions
+    // *********************************************************
+
+    const launchObjectDetails = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/'))
+            setDetailsSections(objectSections.get('#crdinstance#')!)
+        else
+            setDetailsSections(objectSections.get(f[0].data.origin.kind)!)
+
+        // we request a fresh events list
+        if (f[0].data.events) delete f[0].data.events
+        sendCommand(MagnifyCommandEnum.EVENTS, [f[0].data.origin.metadata.namespace, f[0].data.origin.kind, f[0].data.origin.metadata.name])
+
+        setSelectedFiles([f[0]])
+        setContentDetailsVisible(true)
+    }
+
+    const launchObjectCreate = (kind:string) => {
+        let template = templates.get(kind) || `apiVersion: v1\nKind: ${kind}\nejemplo: true`
+        setSelectedFiles([])
+        setContentEditNew(template.trim())
+        setContentEditVisible(true)
+    }
+
+    const launchObjectEdit = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        setSelectedFiles([f[0]])
+        setContentEditVisible(true)
+    }
+
+    const launchEditFromDetails = (p:string) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
+
+        setSelectedFiles([f])
+        setContentEditVisible(true)
+    }
+
+    const launchObjectDelete = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to delete {f[0].data.origin.kind}<b> {f[0].name}</b>?</Box>, setMsgBox, (a) => {
+            if (a === MsgBoxButtons.Yes) {
+                sendCommand(MagnifyCommandEnum.DELETE, f.map(o => yamlParser.dump(o.data.origin, { indent: 2 })))
+            }
+        }))
+    }
+
+    const launchNamespaceCreate = (p:string[]) => {
+        setIinputBoxResult ( () => (name:any) => {
+            if (name) {
+                let obj = `
+                    apiVersion: 'v1'
+                    kind: 'Namespace'
+                    metadata:
+                        name: ${name}
+                `
+                sendCommand(MagnifyCommandEnum.CREATE, [obj])
+            }
+        })
+        setInputBoxMessage('Enter namespace name')
+        setInputBoxTitle('Create namespace')
+    }
+
+    // Pod actions & info
+    const launchPodEvict = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to evict {f[0].data.origin.kind} <b>{f[0].name}</b>?</Box>, setMsgBox, (a) => {
+            if (a === MsgBoxButtons.Yes) console.log('evict')
+        }))
+    }
+
     const launchPodLogs = (p:string[], currentTarget:Element) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         setSelectedFiles(f)
@@ -767,7 +747,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setContentExternalTitle(f[0].name)
         setContentExternalType('log')
         setLeftMenuContent(f[0])
-        setLeftMenuIncludeAll(true)
+        setLeftMenuIncludeAllContainers(true)
         setLeftMenuAnchorParent(currentTarget)
     }
 
@@ -778,7 +758,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setContentExternalTitle(f[0].name)
         setContentExternalType('ops')
         setLeftMenuContent(f[0])
-        setLeftMenuIncludeAll(false)
+        setLeftMenuIncludeAllContainers(false)
         setLeftMenuAnchorParent(currentTarget)
 
     }
@@ -790,22 +770,40 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setContentExternalTitle(f[0].name)
         setContentExternalType('metrics')
         setLeftMenuContent(f[0])
-        setLeftMenuIncludeAll(true)
+        setLeftMenuIncludeAllContainers(true)
         setLeftMenuAnchorParent(currentTarget)
     }
 
-    const launchObjectDetails = (p:string[]) => {
-        let f = magnifyData.files.filter(x => p.includes(x.path))
-        setDetailsContent(f[0])
-        if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/'))
-            setDetailsSections(objectSections.get('#crdinstance#')!)
-        else
-            setDetailsSections(objectSections.get(f[0].data.origin.kind)!)
-        if (f[0].data.events) delete f[0].data.events
-        sendCommand(MagnifyCommandEnum.EVENTS, [f[0].data.origin.metadata.namespace, f[0].data.origin.kind, f[0].data.origin.metadata.name])
-        setDetailsVisible(true)
+    const showPodContainers = (p:any) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
+        if (!f.data?.origin?.status) return <></>
+        let result:JSX.Element[]=[]
+        if (f.data.origin.status.containerStatuses && f.data.origin.status.containerStatuses.length>0) {
+            for (let c of f.data.origin.status.containerStatuses) {
+                let color='orange'
+                if (c.started) {
+                    color='green'
+                    if (f.data.origin.metadata.deletionTimestamp) color = 'blue'
+                }
+                else {
+                    if (c.state.terminated) color = 'gray'
+                }
+                result.push(<Box sx={{ width: '8px', height: '8px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>)
+            }
+        }
+        return result
     }
 
+    const showPodCpu = (p:string) => {
+        return '#'
+    }
+
+    const showPodMemory = (p:string) => {
+        return '#'
+    }
+
+    // group actions
     const launchGroupScale = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         console.log('set sca')
@@ -845,6 +843,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         console.log('set sca')
     }
 
+    // Job actions
     const launchJobLogs = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         setContentExternalView(InstanceConfigViewEnum.GROUP)
@@ -854,11 +853,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setContentExternalVisible(true)
     }
 
+    // IngressClass actions
     const launchIngressClassDefault = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         console.log('set def')
     }
 
+    // Node actions
     const launchNodeDrain = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         sendCommand(MagnifyCommandEnum.NODE, ['drain',f[0].name])
@@ -874,6 +875,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         sendCommand(MagnifyCommandEnum.NODE, ['uncordon', f[0].name])
     }
 
+    // CronJob actions
     const launchCronJobTrigger = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         sendCommand(MagnifyCommandEnum.CRONJOB, ['trigger', f[0].data.origin.metadata.namespace, f[0].data.origin.metadata.name])
@@ -889,10 +891,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         sendCommand(MagnifyCommandEnum.CRONJOB, ['resume', f[0].data.origin.metadata.namespace, f[0].data.origin.metadata.name])
     }
 
-    const updateSource = () => {
-        //+++ pending
+    const showCronJobNextExecution = (p:string) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
+        let x = getNextCronExecution(f.data.origin.spec.schedule)
+        return [`${x?.timeLeft.days}d${x?.timeLeft.hours}h${x?.timeLeft.minutes}m${x?.timeLeft.seconds}s`]
     }
 
+    // handlers for showing general data inside filemanager
     const showOverview = () => {
         if (!magnifyData.clusterInfo) return <></>
         return <Box sx={{m:1}}>
@@ -910,8 +916,19 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     }
 
-    const showSettings = () => {
-        return <UserSettings settings={settings} files={magnifyData.files}/>
+    const showClusterOverview = () => {
+        return <Box sx={{m:1}}>
+            <Card>
+                <CardHeader title={'Cluster overview'}/>
+                <CardContent>
+                    <Typography>Total CPU: {magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.cpu,0)}</Typography>
+                    <Typography>Total Memory: {convertBytesToSize (magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + convertSizeToBytes(v.data.origin.status.capacity.memory),0))}</Typography>
+                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography>Actual pods: {magnifyData.files.filter(f => f.class==='Pod').length}</Typography>
+                    <Typography>Max pods: {magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.pods,0)}</Typography>
+                </CardContent>
+            </Card>
+        </Box>
     }
 
     const showWorkloadOverview = () => {
@@ -952,118 +969,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         </Box>
     }
 
-    function convertBytesToSize(bytes: number, decimals: number = 2): string {
-        // Si el valor no es un número válido o es 0, simplemente devuelve "0 Bytes"
-        if (!Number.isFinite(bytes) || bytes === 0) {
-            return '0 Bytes';
-        }
-
-        const k = 1024; // Base binaria (IEC)
-        const dm = decimals < 0 ? 0 : decimals; // Asegura que los decimales no sean negativos
-
-        // Prefijos de unidades binarias (IEC)
-        const units = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
-
-        // Calcula el índice de la unidad más grande que cabe en el número de bytes
-        // Math.floor(Math.log(bytes) / Math.log(k))
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-        // Si el resultado de i es 0, no dividimos, y si es mayor, dividimos por 1024^i
-        const calculatedValue = parseFloat((bytes / Math.pow(k, i)).toFixed(dm));
-
-        // Retorna el valor calculado y la unidad correspondiente
-        return calculatedValue + ' ' + units[i];
-    }        
-
-    function convertSizeToBytes(fileSizeString: string): number {
-        // 1. Extraer el número y la unidad
-        // La RegEx busca: (Número con decimales) + Espacios opcionales + (Unidad con prefijo opcional 'i' y 'B' opcional)
-        const match = fileSizeString.trim().match(/^([\d.]+)\s*([KMGTPE]i?)B?$/i);
-
-        if (!match) {
-            console.error(`Formato de tamaño de archivo no reconocido: ${fileSizeString}`);
-            return NaN;
-        }
-
-        const value: number = parseFloat(match[1]); // El valor numérico (ej: 1, 23, 1.5)
-        
-        // Obtener la unidad base, quitando 'B' si existe y convirtiendo a mayúsculas.
-        // Ej: "Gi" -> "GI", "MiB" -> "MI"
-        const unitUpper: string = match[2].toUpperCase().replace(/B$/, ''); 
-        
-        // 2. Determinar el multiplicador (Base 1024)
-        let multiplier: number;
-        const base = 1024;
-
-        switch (unitUpper) {
-            case 'EI': // Exbibyte
-            case 'E':
-                multiplier = base ** 6;
-                break;
-            case 'PI': // Pebibyte
-            case 'P':
-                multiplier = base ** 5;
-                break;
-            case 'TI': // Tebibyte
-            case 'T':
-                multiplier = base ** 4;
-                break;
-            case 'GI': // Gibibyte
-            case 'G':
-                multiplier = base ** 3;
-                break;
-            case 'MI': // Mebibyte
-            case 'M':
-                multiplier = base ** 2;
-                break;
-            case 'KI': // Kibibyte
-            case 'K':
-                multiplier = base ** 1;
-                break;
-            case '': // Si solo era un número sin unidad (asume Bytes)
-            case 'B': // Bytes
-                multiplier = 1;
-                break;
-            default:
-                console.warn(`Unidad desconocida '${unitUpper}'. Asumiendo Bytes.`);
-                multiplier = 1;
-                break;
-        }
-
-        // 3. Calcular el resultado final
-        return value * multiplier;
-    }
-
-    const showStorageOverview = () => {
-        return <Box sx={{m:1}}>
-            <Card>
-                <CardHeader title={'Storage overview'}>
-
-                </CardHeader>
-                <CardContent>
-                    <Typography>Total PVC's: {magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').length}</Typography>
-                    <Typography>Total storage: {convertBytesToSize(magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').reduce((ac, v) => convertSizeToBytes(v.data.size), 0))}</Typography>
-                </CardContent>
-
-            </Card>
-        </Box>
-    }
-
-    const showClusterOverview = () => {
-        return <Box sx={{m:1}}>
-            <Card>
-                <CardHeader title={'Cluster overview'}/>
-                <CardContent>
-                    <Typography>Total CPU: {magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.cpu,0)}</Typography>
-                    <Typography>Total Memory: {convertBytesToSize (magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + convertSizeToBytes(v.data.origin.status.capacity.memory),0))}</Typography>
-                    <Divider sx={{mt:2, mb:2}}/>
-                    <Typography>Actual pods: {magnifyData.files.filter(f => f.class==='Pod').length}</Typography>
-                    <Typography>Max pods: {magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.pods,0)}</Typography>
-                </CardContent>
-            </Card>
-        </Box>
-    }
-
     const showNetworkOverview = () => {
         return <Box sx={{m:1}}>
             <Card>
@@ -1081,58 +986,31 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         </Box>
     }
 
-    const setPathFunction = (path:string, invoke:() => void) => {
-        let x = magnifyData.files.find(f => f.path===path)
-        if (x) x.children = invoke
+    const showStorageOverview = () => {
+        return <Box sx={{m:1}}>
+            <Card>
+                <CardHeader title={'Storage overview'}>
+
+                </CardHeader>
+                <CardContent>
+                    <Typography>Total PVC's: {magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').length}</Typography>
+                    <Typography>Total storage: {convertBytesToSize(magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').reduce((ac, v) => convertSizeToBytes(v.data.size), 0))}</Typography>
+                </CardContent>
+
+            </Card>
+        </Box>
     }
 
-    const setPropertyFunction = (space:ISpace, propName:string, invoke:(p:string) => void) => {
-        if (!space.properties) return
-        let prop = space.properties.find(p => p.name===propName)
-        if (!prop) return
-        prop.format = 'function'
-        prop.source = invoke
+    const showSettings = () => {
+        return <UserSettings settings={settings} files={magnifyData.files} onReload={onUserSettingsReload}/>
     }
 
-    const showPodContainers = (p:any) => {
-        let f = magnifyData.files.find(x => p===x.path)
-        if (!f) return
-        if (!f.data?.origin?.status) return <></>
-        let result:JSX.Element[]=[]
-        if (f.data.origin.status.containerStatuses && f.data.origin.status.containerStatuses.length>0) {
-            for (let c of f.data.origin.status.containerStatuses) {
-                let color='orange'
-                if (c.started) {
-                    color='green'
-                    if (f.data.origin.metadata.deletionTimestamp) color = 'blue'
-                }
-                else {
-                    if (c.state.terminated) color = 'gray'
-                }
-                result.push(<Box sx={{ width: '8px', height: '8px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>)
-            }
-        }
-        return result
-    }
-    const showPodCpu = (p:string) => {
-        return '#'
-    }
-    const showPodMemory = (p:string) => {
-        return '#'
-    }
-
-    const showCronJobNextExecution = (p:string) => {
-        let f = magnifyData.files.find(x => p===x.path)
-        if (!f) return
-        let x = getNextCronExecution(f.data.origin.spec.schedule)
-        return [`${x?.timeLeft.days}d${x?.timeLeft.hours}h${x?.timeLeft.minutes}m${x?.timeLeft.seconds}s`]
-    }
-
-    const onDelete = (files: IFileObject[]) => {}
-
-    const onError = (error: IError, file: IFileObject) => {
-        let uiConfig = props.channelObject.config as IMagnifyConfig
-        uiConfig.notify(ENotifyLevel.ERROR, error.message)
+    const onUserSettingsReload = () => {
+        magnifyData.files = magnifyData.files.filter(f => f.isDirectory && f.path.split('/').length-1 <= 2)
+        magnifyData.files = magnifyData.files.filter(f => f.class!=='crdgroup')
+        console.log(magnifyData.files)
+        magnifyData.currentPath='/overview'
+        requestList(props.channelObject)
     }
 
     const sendCommand = (command: MagnifyCommandEnum, params:string[]) => {
@@ -1158,16 +1036,23 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         props.channelObject.webSocket.send(payload)
     }
 
+    // FileManager handlers
+    const onError = (error: IError, file: IFileObject) => {
+        let uiConfig = props.channelObject.config as IMagnifyConfig
+        uiConfig.notify(ENotifyLevel.ERROR, error.message)
+    }
+
     const onFolderChange = (folder:string) => {
         magnifyData.currentPath = folder
     }
 
+    // callback handlers for object details
     const onMagnifyObjectDetailsChangeData = (src:string, data:any) => {
-        setDetailsChanges( _.set(detailsChanges, src, data))
+        //setDetailsChanges( _.set(detailsChanges, src, data))
     }
 
     const onMagnifyObjectDetailsLink = (kind:string, name:string) => {
-        setDetailsVisible(false)
+        setContentDetailsVisible(false)
         let path = buildPath(kind, name)
         let f = magnifyData.files.find(f => f.path === path)
         if (f)
@@ -1176,22 +1061,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setMsgBox(MsgBoxOkError('Object details',<Box>Object with name '<b>{name}</b>' of kind '{kind}' has not been found on artifacts database.</Box>, setMsgBox))
     }
 
-    const launchEditFromDetails = (p:string) => {
-        let f = magnifyData.files.find(x => p===x.path)
-        if (!f) return
-
-        setSelectedFiles([f])
-        setContentEditVisible(true)
-        // setDetailsVisible(false)
-        // let reorderObj = reorderJsonYamlObject(f.data.origin)
-
-        // setContentEdit({
-        //     code: yamlParser.dump(reorderObj, { indent: 2 }),
-        //     source: f
-        // })
-        // setContentEditVisible(true)
-    }
-
+    // ContentExternal
     const onContentExternalClose = (content:IContentExternalObject) => {
         let i = magnifyData.contentWindows.indexOf(content)
         if (i>=0) magnifyData.contentWindows.splice(i,1)
@@ -1199,12 +1069,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setContentExternalContainer('')
         setContentExternalType('')
         setContentExternalVisible(false)
-    }
-
-    const onContentEditClose = (content:IContentEditObject) => {
-        let i = magnifyData.contentWindows.indexOf(content)
-        if (i>=0) magnifyData.contentWindows.splice(i,1)
-        setContentEditVisible(false)
     }
 
     const onContentExternalMinimize = (content:IContentExternalObject) => {
@@ -1215,25 +1079,73 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setContentExternalVisible(false)
     }
 
-    const onContentEditMinimize = (content:IContentEditObject) => {
-        if (!magnifyData.contentWindows.includes(content)) magnifyData.contentWindows.push(content)
-        contentWindowId.current = -1
-        setContentEditVisible(false)
-    }
-
     const onContentExternalRestore = (index:number) => {
         contentWindowId.current = index
         flushSync(() => setContentExternalVisible(true) )
         setRefresh(Math.random())
     }
 
+    const onContentExternalRefresh = () => {
+        setRefresh(Math.random())
+    }
+
+    // ContentEdit
+    const onContentEditClose = (content:IContentEditObject) => {
+        let i = magnifyData.contentWindows.indexOf(content)
+        if (i>=0) magnifyData.contentWindows.splice(i,1)
+        contentWindowId.current = -1
+        setContentEditVisible(false)
+    }
+
+    const onContentEditMinimize = (content:IContentEditObject) => {
+        if (!magnifyData.contentWindows.includes(content)) magnifyData.contentWindows.push(content)
+        contentWindowId.current = -1
+        setContentEditVisible(false)
+    }
+
     const onContentEditRestore = (index:number) => {
         contentWindowId.current = index
         setContentEditVisible(true)
+        setRefresh(Math.random())
     }
 
-    const onContentExternalRefresh = () => {
+    const onContentEditOk = (content:{code:string, source?:IFileObject}) => {
+        setContentEditVisible(false)
+        sendCommand(MagnifyCommandEnum.APPLY, [content.code])
+    }
+
+    // ContentDetails
+    const onContentDetailsClose = (content:IContentDetailsObject) => {
+        let i = magnifyData.contentWindows.indexOf(content)
+        if (i>=0) magnifyData.contentWindows.splice(i,1)
+        contentWindowId.current = -1
+        setContentDetailsVisible(false)
+    }
+
+    const onContentDetailsMinimize = (content:IContentDetailsObject) => {
+        if (!magnifyData.contentWindows.includes(content)) magnifyData.contentWindows.push(content)
+        contentWindowId.current = -1
+        setContentDetailsVisible(false)
+    }
+
+    const onContentDetailsRestore = (index:number) => {
+        contentWindowId.current = index
+        setContentDetailsVisible(true)
         setRefresh(Math.random())
+    }
+
+    const onContentDetailsOk = (content:{code:string, source?:IFileObject}) => {
+        setContentDetailsVisible(false)
+        sendCommand(MagnifyCommandEnum.APPLY, [content.code])
+    }
+
+    const onContentDetailsApply = () => {
+        // +++ lanzar oncontentEditOk
+    }
+
+    const onContentExternalNotify = (level: ENotifyLevel, msg: string)  => {
+        msg = 'Channel message: '+ msg;
+        (props.channelObject.config as IMagnifyConfig).notify(level, msg)
     }
 
     return <>
@@ -1251,7 +1163,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     onError={onError}
                     onRename={undefined}
                     onPaste={undefined}
-                    onDelete={onDelete}
+                    onDelete={() => {}}
                     onFolderChange={onFolderChange}
                     onRefresh={undefined}
                     permissions={permissions}
@@ -1265,7 +1177,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     searchCasing={true}
                 />
                 {
-                    leftMenuAnchorParent && <LeftItemMenu f={leftMenuContent} onClose={onLeftMenuClose} onOptionSelected={onLeftMenuOptionSelected} anchorParent={leftMenuAnchorParent} includeAllContainers={leftMenuIncludeAll} />
+                    leftMenuAnchorParent && <LeftItemMenu f={leftMenuContent} onClose={onLeftItemMenuClose} onOptionSelected={onLeftItemMenuOptionSelected} anchorParent={leftMenuAnchorParent} includeAllContainers={leftMenuIncludeAllContainers} />
                 }
                 <Stack direction={'row'} sx={{mt:1}}>
                     {
@@ -1286,7 +1198,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                                     )
                                 case 'edit':
                                     let extconed = ec as IContentEditObject
-                                    let texted = extconed.editorContent.title ||''
+                                    let texted = extconed.content.title ||''
                                     let short = texted
                                     if (short.length>20) short = short.substring(0,10) + '...' + short.substring(short.length-10)
                                     return (
@@ -1297,6 +1209,19 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                                             </Button>
                                         </Tooltip>
                                     )
+                                case 'details':
+                                    let extcondet = ec as IContentDetailsObject
+                                    let textdet = extcondet.content.title || ''
+                                    let shortdet = textdet
+                                    if (shortdet.length>20) shortdet = shortdet.substring(0,10) + '...' + shortdet.substring(shortdet.length-10)
+                                    return (
+                                        <Tooltip key={index} title={textdet}>
+                                            <Button onClick={() => onContentDetailsRestore(index)}>
+                                                <List/>
+                                                {shortdet}
+                                            </Button>
+                                        </Tooltip>
+                                    )
                                 default:
                                     return <></>
                             }
@@ -1304,56 +1229,49 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     }
                 </Stack>
                 { msgBox }
-                <InputBox title={ibTitle} message={ibMessage} onClose={() => setIbTitle(undefined)} onResult={ibResult}/>
+                <InputBox title={inputBoxTitle} message={inputBoxMessage} onClose={() => setInputBoxTitle(undefined)} onResult={inputBoxResult}/>
             </Box>
         }
 
-        { detailsVisible &&
-            <Dialog open={true} 
-                sx={{
-                '& .MuiDialog-paper': {
-                    width: '70vw',
-                    height: '70vh',
-                    maxWidth: '70vw',
-                    maxHeight: '70vh', 
-                },
-                }}>
-                <DialogTitle>
-                    <Stack direction='row' alignItems={'center'}>
-                        <Typography fontSize={18}>{detailsContent?.data.origin.kind+': '+detailsContent?.data.origin.metadata?.name}</Typography>
-                        <IconButton color='primary' onClick={() => copy(detailsContent?.data.origin.metadata?.name)}><ContentCopy fontSize='small'/></IconButton>
-                        <Typography sx={{flexGrow:1}}/>
-                        <IconButton color='primary' onClick={() => {launchEditFromDetails(detailsContent.path)}}><Edit fontSize='small'/></IconButton>
-                        <IconButton color='primary' onClick={() => {setDetailsVisible(false); launchObjectDelete([detailsContent.path])}}><Delete fontSize='small'/></IconButton>
-                        <IconButton color='primary' onClick={() => {setDetailsVisible(false)}}><Close fontSize='small'/></IconButton>
-                    </Stack>
-                </DialogTitle>
-                <DialogContent >
-                    <DetailsObject object={detailsContent} sections={detailsSections} onChangeData={onMagnifyObjectDetailsChangeData} onLink={onMagnifyObjectDetailsLink}/>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => {setDetailsVisible(false); updateSource()}}>Ok</Button>
-                    <Button onClick={() => setDetailsVisible(false)}>Cancel</Button>
-                </DialogActions>
-            </Dialog>
+        { contentDetailsVisible &&
+            <ContentDetails
+                content={contentWindowId.current>=0 ? magnifyData.contentWindows[contentWindowId.current] as IContentDetailsObject : undefined}
+                selectedFile={contentWindowId.current<0 && selectedFiles.length>0? selectedFiles[0] : undefined}
+                sections={detailsSections}
+                onMinimize={onContentDetailsMinimize}
+                onClose={onContentDetailsClose}
+                onApply={onContentDetailsApply}
+                onEdit={(path:string) => launchEditFromDetails(path)}
+                onDelete={(path:string) => launchObjectDelete([path])}
+                data-refresh={refresh}
+            />
         }
-
+        
         { contentExternalVisible && 
-            (contentWindowId.current<0 ?
-                <ContentExternal channelObject={props.channelObject} channelId={contentExternalType} selectedFiles={selectedFiles} close={onContentExternalClose} frontChannels={props.channelObject.frontChannels!} notify={() => {}} minimize={onContentExternalMinimize} doRefresh={onContentExternalRefresh} contentView={contentExternalView} title={contentExternalTitle} data-refresh={refresh} container={contentExternalContainer} settings={settings}/>
-            :
-                <ContentExternal content={magnifyData.contentWindows[contentWindowId.current] as IContentExternalObject} channelObject={props.channelObject} selectedFiles={selectedFiles} close={onContentExternalClose} frontChannels={props.channelObject.frontChannels!} notify={() => {}} minimize={onContentExternalMinimize} doRefresh={onContentExternalRefresh} contentView={contentExternalView} title={contentExternalTitle} data-refresh={refresh} container={contentExternalContainer} settings={settings}/>
-            )
+            <ContentExternal 
+                content={contentWindowId.current<0 ? undefined : magnifyData.contentWindows[contentWindowId.current] as IContentExternalObject}
+                channelObject={props.channelObject}
+                channelId={contentExternalType}
+                title={contentExternalTitle}
+                selectedFiles={selectedFiles}
+                frontChannels={props.channelObject.frontChannels!}
+                onClose={onContentExternalClose}
+                onMinimize={onContentExternalMinimize}
+                onRefresh={onContentExternalRefresh}
+                onNotify={onContentExternalNotify}
+                contentView={contentExternalView}
+                data-refresh={refresh}
+                container={contentExternalContainer}
+                settings={settings}/>
         }
 
         { contentEditVisible &&
             <ContentEdit 
                 content={contentWindowId.current<0? undefined : magnifyData.contentWindows[contentWindowId.current] as IContentEditObject}
                 selectedFile={selectedFiles.length>0? selectedFiles[0]: undefined}
-                newContent={contentEditNew}
+                newContent={contentWindowId.current>=0 || selectedFiles.length>0? undefined : contentEditNew}
                 onMinimize={onContentEditMinimize}
                 onClose={onContentEditClose}
-                onRefresh={() => {}}
                 onOk={onContentEditOk}
             />
         }

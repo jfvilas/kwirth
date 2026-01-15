@@ -158,36 +158,51 @@ class MagnifyChannel implements IChannel {
                         channelObject.instanceId = signalMessage.instance
                         // +++ improve setTimeout mechanism (find something better!!!)
                         setTimeout( () => {
-                            let magnifyMessage:IMagnifyMessage = {
-                                msgtype: 'magnifymessage',
-                                accessKey: channelObject.accessString!,
-                                instance: channelObject.instanceId,
-                                id: uuid(),
-                                namespace: '',
-                                group: '',
-                                pod: '',
-                                container: '',
-                                command: MagnifyCommandEnum.LIST,
-                                action: InstanceMessageActionEnum.COMMAND,
-                                flow: InstanceMessageFlowEnum.REQUEST,
-                                type: InstanceMessageTypeEnum.DATA,
-                                channel: 'magnify',
-                                params: [
-                                    'Namespace', 'Node',
-                                    'Service', 'Endpoints', 'Ingress', 'IngressClass', 'NetworkPolicy',
-                                    'Pod', 'Deployment', 'DaemonSet', 'ReplicaSet', 'ReplicationController', 'StatefulSet', 'Job', 'CronJob',
-                                    'ConfigMap', 'Secret', 'ResourceQuota', 'LimitRange', 'HorizontalPodAutoscaler', 'PodDisruptionBudget', 'PriorityClass','RuntimeClass', 'Lease', 'ValidatingWebhookConfiguration', 'MutatingWebhookConfiguration',
-                                    'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass',
-                                    'ServiceAccount', 'ClusterRole', 'Role', 'ClusterRoleBinding', 'RoleBinding',
-                                    'CustomResourceDefinition'
-                                ]
-                            }
-                            channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+                            // let magnifyMessage:IMagnifyMessage = {
+                            //     msgtype: 'magnifymessage',
+                            //     accessKey: channelObject.accessString!,
+                            //     instance: channelObject.instanceId,
+                            //     id: uuid(),
+                            //     namespace: '',
+                            //     group: '',
+                            //     pod: '',
+                            //     container: '',
+                            //     command: MagnifyCommandEnum.LIST,
+                            //     action: InstanceMessageActionEnum.COMMAND,
+                            //     flow: InstanceMessageFlowEnum.REQUEST,
+                            //     type: InstanceMessageTypeEnum.DATA,
+                            //     channel: 'magnify',
+                            //     params: [
+                            //         'Namespace', 'Node',
+                            //         'Service', 'Endpoints', 'Ingress', 'IngressClass', 'NetworkPolicy',
+                            //         'Pod', 'Deployment', 'DaemonSet', 'ReplicaSet', 'ReplicationController', 'StatefulSet', 'Job', 'CronJob',
+                            //         'ConfigMap', 'Secret', 'ResourceQuota', 'LimitRange', 'HorizontalPodAutoscaler', 'PodDisruptionBudget', 'PriorityClass','RuntimeClass', 'Lease', 'ValidatingWebhookConfiguration', 'MutatingWebhookConfiguration',
+                            //         'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass',
+                            //         'ServiceAccount', 'ClusterRole', 'Role', 'ClusterRoleBinding', 'RoleBinding',
+                            //         'CustomResourceDefinition'
+                            //     ]
+                            // }
+                            // channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+                            requestList(channelObject)
 
-                            magnifyMessage.command = MagnifyCommandEnum.CLUSTERINFO
-                            magnifyMessage.id = uuid()
-                            magnifyMessage.params = []
-                            channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+                            // let magnifyMessage:IMagnifyMessage = {
+                            //     msgtype: 'magnifymessage',
+                            //     accessKey: channelObject.accessString!,
+                            //     instance: channelObject.instanceId,
+                            //     id: uuid(),
+                            //     namespace: '',
+                            //     group: '',
+                            //     pod: '',
+                            //     container: '',
+                            //     command: MagnifyCommandEnum.CLUSTERINFO,
+                            //     action: InstanceMessageActionEnum.COMMAND,
+                            //     flow: InstanceMessageFlowEnum.REQUEST,
+                            //     type: InstanceMessageTypeEnum.DATA,
+                            //     channel: 'magnify',
+                            //     params: []
+                            // }
+                            // channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+                            requestClusterInfo(channelObject)
                         }, 300)
                     }
                     else if (signalMessage.action === InstanceMessageActionEnum.COMMAND) {
@@ -1004,4 +1019,52 @@ const buildPath = (kind:string, name:string) => {
     return '/'+section+'/'+kind+'/'+name
 }
 
-export { MagnifyChannel, buildPath }
+const requestClusterInfo = (channelObject: IChannelObject) => {
+    let magnifyMessage:IMagnifyMessage = {
+        msgtype: 'magnifymessage',
+        accessKey: channelObject.accessString!,
+        instance: channelObject.instanceId,
+        id: uuid(),
+        namespace: '',
+        group: '',
+        pod: '',
+        container: '',
+        command: MagnifyCommandEnum.CLUSTERINFO,
+        action: InstanceMessageActionEnum.COMMAND,
+        flow: InstanceMessageFlowEnum.REQUEST,
+        type: InstanceMessageTypeEnum.DATA,
+        channel: 'magnify',
+        params: []
+    }
+    channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+}
+
+const requestList = (channelObject: IChannelObject) => {
+    let magnifyMessage:IMagnifyMessage = {
+        msgtype: 'magnifymessage',
+        accessKey: channelObject.accessString!,
+        instance: channelObject.instanceId,
+        id: uuid(),
+        namespace: '',
+        group: '',
+        pod: '',
+        container: '',
+        command: MagnifyCommandEnum.LIST,
+        action: InstanceMessageActionEnum.COMMAND,
+        flow: InstanceMessageFlowEnum.REQUEST,
+        type: InstanceMessageTypeEnum.DATA,
+        channel: 'magnify',
+        params: [
+            'Namespace', 'Node',
+            'Service', 'Endpoints', 'Ingress', 'IngressClass', 'NetworkPolicy',
+            'Pod', 'Deployment', 'DaemonSet', 'ReplicaSet', 'ReplicationController', 'StatefulSet', 'Job', 'CronJob',
+            'ConfigMap', 'Secret', 'ResourceQuota', 'LimitRange', 'HorizontalPodAutoscaler', 'PodDisruptionBudget', 'PriorityClass','RuntimeClass', 'Lease', 'ValidatingWebhookConfiguration', 'MutatingWebhookConfiguration',
+            'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass',
+            'ServiceAccount', 'ClusterRole', 'Role', 'ClusterRoleBinding', 'RoleBinding',
+            'CustomResourceDefinition'
+        ]
+    }
+    channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+}
+
+export { MagnifyChannel, buildPath, requestList }

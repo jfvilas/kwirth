@@ -1143,7 +1143,6 @@ const launchKubernetes = async() => {
 
                     // Detect if any channel requires metrics
                     let metricsRequired = Array.from(channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)
-                    metricsRequired = false //+++
                     let eventsRequired = Array.from(channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().events}, false)
                     console.log('Metrics required: ', metricsRequired)
                     console.log('Events required: ', eventsRequired)

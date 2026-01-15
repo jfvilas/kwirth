@@ -1,4 +1,6 @@
-import { LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
+import { IFileObject } from '@jfvilas/react-file-manager'
+import { Expand, ExpandLess, ExpandMore } from '@mui/icons-material'
+import { Box, Button, Card, CardContent, IconButton, LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextareaAutosize, TextField, Typography } from '@mui/material'
 
 const _ = require('lodash')
 
@@ -21,9 +23,10 @@ interface IDetailsSection {
 
 interface IMagnifyObjectDetailsProps {
     sections: IDetailsSection[]
-    object: any
+    object: IFileObject
     onChangeData: (src:string,data:any) => void
     onLink: (kind:string, name:string) => void
+    onContainsEdit?: (val:boolean) => void
 }
 
 function formatAgeCompact(duracion:{ days: number, hours: number, minutes: number }) {
@@ -54,6 +57,8 @@ function formatAgeCompact(duracion:{ days: number, hours: number, minutes: numbe
 }    
 
 const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjectDetailsProps) => {
+    let containsEdit=false
+    let expanderId = 0
 
     const renderValue = (srcobj:any, src:string, format:string, style:string[], details?:IDetailsItem[], invoke?:(obj:any) => string[], itemx?:IDetailsItem) : JSX.Element => {
         if (src.startsWith('$')) return <Typography fontWeight={style.includes('bold')?'700':''}>{src.substring(1)}</Typography>
@@ -164,15 +169,21 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                             jsxValue=<a href={`#`} onClick={() => props.onLink(linkParts[1],v)}>{v}</a>
                         }
                     }
-                    if (valueStyle.length>0)
+                    if (valueStyle.length>0) {
                         return <Typography color={valueStyle[0].split(':')[1]} fontWeight={fontWeightStyle}>{header}{jsxValue}</Typography>
+                    }
                     else if (style) {
-                        let propertyStyle = style.filter(s => s.startsWith('property:'))
-                        if (propertyStyle.length>0) {
-                            for (let ps of propertyStyle) {
-                                let propertyParts = ps.split(':')
-                                let propertyValue = _.get(obj,propertyParts[1])
-                                if (propertyValue === propertyParts[2]) return <Typography color={propertyParts[3]} fontWeight={fontWeightStyle}>{header}{jsxValue}</Typography>
+                        if (style.includes('stringseq')) {
+                            return jsxValue
+                        }
+                        else {
+                            let propertyStyle = style.filter(s => s.startsWith('property:'))
+                            if (propertyStyle.length>0) {
+                                for (let ps of propertyStyle) {
+                                    let propertyParts = ps.split(':')
+                                    let propertyValue = _.get(obj,propertyParts[1])
+                                    if (propertyValue === propertyParts[2]) return <Typography color={propertyParts[3]} fontWeight={fontWeightStyle}>{header}{jsxValue}</Typography>
+                                }
                             }
                         }
                     }
@@ -180,7 +191,12 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 }
 
             case 'edit':
-                return <TextField maxRows={5} name={src} defaultValue={_.get(obj,src)} fullWidth sx={{width:'100%', mt:1, mb:1}} multiline onChange={(e) => props.onChangeData(src,e.target.value)} size='small'/>
+                containsEdit=true
+                //onChange={(e) => props.onChangeData(src,e.target.value)} 
+                if (style.includes('multiline'))
+                    return <TextareaAutosize name={src} defaultValue={_.get(obj,src)} minRows={3} maxRows={15} style={{width:'100%', marginTop:1, marginBottom:1}}/>
+                else
+                    return <TextField name={src} defaultValue={_.get(obj,src)} maxRows={5} sx={{width:'100%', mt:1, mb:1}} size='small'/>
 
             case 'booleankey':
                 if (_.get(obj,src)===true) return <>{src}</>
@@ -333,7 +349,10 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         return <>{Object.keys(_.get(obj,src)).map(key => {
                             return <Stack direction={'row'}>
                                 <Typography fontWeight={style.includes('keybold')?'700':''}>{key}:&nbsp;</Typography>
-                                {renderValue(obj, src+'.[\''+key+'\']', style.includes('edit')?'edit':'string', style, [], undefined)}
+                                {
+                                        renderValue(obj, src+'.[\''+key+'\']', style.includes('edit')?'edit':'string', style, [], undefined)
+                                }
+                                
                             </Stack>
                         })}</>
                     }
@@ -382,17 +401,25 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             </Stack>
         }
         else {
-            return (
-                <Stack direction={item.style?.includes('column')?'column':'row'} width={'100%'}>
-                    {item.source.map(source => {
-                        return renderValue(obj, source, item.format, item.style||[], item.content, item.invoke, item)
-                    })}
-                </Stack>
-            )
+            if (item.style && item.style.includes('stringseq')) {
+                return item.source.map(source => {
+                            return renderValue(obj, source, 'string', item.style||[], item.content, item.invoke, item)
+                        })
+                
+            }
+            else
+                return (
+                    <Stack direction={item.style?.includes('column')?'column':'row'} width={'100%'}>
+                        {item.source.map(source => {
+                            return renderValue(obj, source, item.format, item.style||[], item.content, item.invoke, item)
+                        })}
+                    </Stack>
+                )
         }
     }
 
     const renderItem = (obj:any, item:IDetailsItem, width:number) => {
+        let expander='xx'+expanderId
         if (item.style?.includes('ifpresent') && !_.get(obj,item.source[0])) return <></>
 
         if (item.source && item.source[0]==='@jsx[]') {
@@ -408,6 +435,16 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             }
         }
         else {
+            if (item.style && item.style.includes('stringseq')) {
+                return <Stack direction={'row'} alignItems={'baseline'}>
+                    {
+                        renderValues(obj,item)
+                    }
+                </Stack>
+            }
+            let numProps = 0
+            if (item.source && _.get(obj,item.source[0])) numProps = Object.keys(_.get(obj,item.source[0])).length
+            expanderId++
             return (
                 <Stack direction={'row'} alignItems={'baseline'}>
                     {item.text==='' && <>
@@ -416,8 +453,41 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         </Typography>
                     </>}
                     {item.text!=='' && <>
-                        <Typography width={`${width}%`}>{item.text}</Typography>
-                        {renderValues(obj, item)}
+                        {
+                            numProps>1 && item.style && item.style.includes('collapse')? 
+                                    <Stack direction={'row'} width={`${width-2}%`} alignItems={'center'}>
+                                        <Typography >{item.text}</Typography>
+                                        <svg className={'svg'+expander} width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"
+                                            onClick={ () => {
+                                                console.log('click', expander)
+                                                let xx = document.getElementsByClassName(expander)[0] as HTMLElement
+                                                if (xx) {
+                                                    console.log('chg')
+                                                    if (xx.style.height==='auto') {
+                                                        xx.style.height='22px'
+                                                        document.getElementsByClassName('svg'+expander)[0].innerHTML = `<path d="M16.59 8.59L12 13.17L7.41 8.59L6 10L12 16L18 10L16.59 8.59Z" />`
+                                                    }
+                                                    else {
+                                                        xx.style.height='auto'
+                                                        document.getElementsByClassName('svg'+expander)[0].innerHTML = `<path d="M12 8L6 14L7.41 15.41L12 10.83L16.59 15.41L18 14L12 8Z" />`
+                                                    }
+                                                }
+                                            }}>                                            
+                                            <path d="M16.59 8.59L12 13.17L7.41 8.59L6 10L12 16L18 10L16.59 8.59Z" />
+                                        </svg>                                        
+                                    </Stack>
+                                : <>
+                                    <Typography width={`${width}%`}>{item.text}</Typography>
+                                </>
+                        }
+                        {
+                            numProps>1 && item.style && item.style.includes('collapse')? 
+                                    <div className={expander} style={{height:'22px', overflow:'hidden'}}>
+                                        {renderValues(obj, item)}
+                                    </div>
+                                :
+                                renderValues(obj, item)
+                        }
                     </>}
                 </Stack>
             )
@@ -433,12 +503,19 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
     }
 
 
-    if (props.sections)
-        return <>
-            { props.sections.map((section:IDetailsSection) => renderSection(props.object.data[section.root], section)) }
-        </>
-    else
-        return <><pre>{JSON.stringify(props.object.data.origin,undefined, 2)}</pre></>
+    if (props.object.data) {
+        if (props.sections) {
+            let details = props.sections.map((section:IDetailsSection) => renderSection(props.object.data[section.root], section))
+            if (props.onContainsEdit) props.onContainsEdit(containsEdit)
+            return <>{ details }</>
+        }
+        else {
+            return <><pre>{JSON.stringify(props.object.data.origin,undefined, 2)}</pre></>
+        }
+    }
+    else {
+        return <>No data</>
+    }
 }
 
 export type { IMagnifyObjectDetailsProps, IDetailsSection, IDetailsItem }

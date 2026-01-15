@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Divider, Menu, MenuItem, MenuList, Stack, TextField, Typography } from '@mui/material'
+import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
 import { MagnifyUserSettings } from '../MagnifyUserSettings'
 import { IFileObject } from '@jfvilas/react-file-manager'
@@ -8,6 +8,7 @@ import { IFileObject } from '@jfvilas/react-file-manager'
 interface IProps {
     settings: MagnifyUserSettings
     files: IFileObject[]
+    onReload?: () => void
 }
 
 const UserSettings: React.FC<IProps> = (props:IProps) => {
@@ -28,6 +29,10 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
         if (props.settings.logLines !== logLines) return true
         
         return false
+    }
+    
+    const reload = () => {
+        if (props.onReload) props.onReload()
     }
     
     return <Box sx={{m:1}}>
@@ -60,7 +65,11 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
             </AccordionSummary>
             <AccordionDetails>
                 <Stack direction={'column'} >
-                    <Stack direction={'row'} alignItems={'center'}><Typography sx={{flexGrow:1}}>Show files collection on browser console</Typography><Button onClick={() => console.log(props.files)}>Show files</Button></Stack>
+                    <Stack direction={'row'} alignItems={'center'}>
+                        <Typography sx={{flexGrow:1}}>Show files collection on browser console ({props.files.length} objects, {(JSON.stringify(props.files).length/1024/1024).toFixed(2)}  MB approx.)</Typography>
+                        <Button onClick={reload}>Reload</Button> {/*+++ el reload hace que todo crezca en 4 objetos de cada vez*/}
+                        <Button onClick={() => console.log(props.files)}>Show files</Button>
+                    </Stack>
                 </Stack>
             </AccordionDetails>
             <AccordionActions>
