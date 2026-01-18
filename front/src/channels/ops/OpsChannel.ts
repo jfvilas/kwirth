@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessageResponse, OpsCommandEnum, ISignalMessage, IInstanceConfigResponse, SignalMessageEventEnum, SignalMessageLevelEnum, IInstanceConfig, InstanceMessageChannelEnum, InstanceConfigObjectEnum, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
+import { IOpsMessageResponse, EOpsCommand, ISignalMessage, IInstanceConfigResponse, IInstanceConfig, EInstanceMessageFlow, EInstanceMessageType, EInstanceMessageAction, EInstanceMessageChannel, ESignalMessageLevel, ESignalMessageEvent, EInstanceConfigObject, EInstanceConfigView } from '@jfvilas/kwirth-common'
 import { OpsIcon, OpsSetup } from './OpsSetup'
 import { OpsTabContent } from './OpsTabContent'
 import { OpsData, IOpsData, IXTerm, IScopedObject } from './OpsData'
@@ -37,7 +37,7 @@ export class OpsChannel implements IChannel {
         let opsData:IOpsData = channelObject.data
 
         let instanceConfigResponse:IInstanceConfigResponse = JSON.parse(wsEvent.data) as IInstanceConfigResponse
-        if (instanceConfigResponse.flow === InstanceMessageFlowEnum.RESPONSE && instanceConfigResponse.action === InstanceMessageActionEnum.WEBSOCKET) {
+        if (instanceConfigResponse.flow === EInstanceMessageFlow.RESPONSE && instanceConfigResponse.action === EInstanceMessageAction.WEBSOCKET) {
             let newXterm:IXTerm = {
                 namespace: opsData.websocketRequest.namespace,
                 pod: opsData.websocketRequest.pod,
@@ -54,10 +54,10 @@ export class OpsChannel implements IChannel {
         else {
             let opsMessage:IOpsMessageResponse = JSON.parse(wsEvent.data)
             switch (opsMessage.type) {
-                case InstanceMessageTypeEnum.DATA:
-                    if (opsMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
+                case EInstanceMessageType.DATA:
+                    if (opsMessage.flow === EInstanceMessageFlow.RESPONSE) {
                         switch (opsMessage.command) {
-                            case OpsCommandEnum.DESCRIBE:
+                            case EOpsCommand.DESCRIBE:
                                 let scopedObject = opsData.scopedObjects.find(so => so.namespace === opsMessage.namespace && so.pod === opsMessage.pod && so.container === opsMessage.container)
                                 if (scopedObject)
                                     refresh.data = JSON.parse(opsMessage.data)
@@ -73,21 +73,21 @@ export class OpsChannel implements IChannel {
                         refresh.action = EChannelRefreshAction.REFRESH
                     }
                     break
-                case InstanceMessageTypeEnum.SIGNAL:
+                case EInstanceMessageType.SIGNAL:
                     let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
-                    if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.COMMAND) {
+                    if (signalMessage.flow === EInstanceMessageFlow.RESPONSE && signalMessage.action === EInstanceMessageAction.COMMAND) {
                         this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text||'No info')
                         refresh.action = EChannelRefreshAction.REFRESH
                     }
-                    else if (opsMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
+                    else if (opsMessage.flow === EInstanceMessageFlow.UNSOLICITED) {
                         if (signalMessage.text) {
-                            if (signalMessage.level === SignalMessageLevelEnum.WARNING) this.notify(ENotifyLevel.WARNING, signalMessage.text)
-                            else if (signalMessage.level === SignalMessageLevelEnum.ERROR) this.notify(ENotifyLevel.ERROR, signalMessage.text)
+                            if (signalMessage.level === ESignalMessageLevel.WARNING) this.notify(ENotifyLevel.WARNING, signalMessage.text)
+                            else if (signalMessage.level === ESignalMessageLevel.ERROR) this.notify(ENotifyLevel.ERROR, signalMessage.text)
                             else this.notify(ENotifyLevel.INFO, signalMessage.text)
                             
                             refresh.action = EChannelRefreshAction.REFRESH
                         }
-                        if (signalMessage.event === SignalMessageEventEnum.ADD) {
+                        if (signalMessage.event === ESignalMessageEvent.ADD) {
                             opsData.scopedObjects.push( {
                                 namespace: signalMessage.namespace!,
                                 pod: signalMessage.pod!,
@@ -95,7 +95,7 @@ export class OpsChannel implements IChannel {
                             })
                             refresh.action = EChannelRefreshAction.REFRESH
                         }
-                        else if (signalMessage.event === SignalMessageEventEnum.DELETE) {
+                        else if (signalMessage.event === ESignalMessageEvent.DELETE) {
                             let i = opsData.scopedObjects.findIndex(so => so.namespace === signalMessage.namespace && so.pod === signalMessage.pod && (!signalMessage.container || so.container === signalMessage.container))
                             while (i>=0) {
                                 opsData.scopedObjects.splice(i,1)
@@ -106,7 +106,7 @@ export class OpsChannel implements IChannel {
                     }
                     else {
                         let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
-                        if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
+                        if (signalMessage.flow === EInstanceMessageFlow.RESPONSE && signalMessage.action === EInstanceMessageAction.START) {
                             channelObject.instanceId = signalMessage.instance
                             if (signalMessage.text) {
                                 refresh.action = EChannelRefreshAction.REFRESH
@@ -140,19 +140,19 @@ export class OpsChannel implements IChannel {
             await new Promise(resolve => setTimeout(resolve, 10))
         }
         let instanceConfig:IInstanceConfig = {
-            flow: InstanceMessageFlowEnum.REQUEST,
-            action: InstanceMessageActionEnum.WEBSOCKET,
-            channel: InstanceMessageChannelEnum.OPS,
-            type: InstanceMessageTypeEnum.DATA,
+            flow: EInstanceMessageFlow.REQUEST,
+            action: EInstanceMessageAction.WEBSOCKET,
+            channel: EInstanceMessageChannel.OPS,
+            type: EInstanceMessageType.DATA,
             accessKey: channelObject.accessString!,
             instance: channelObject.instanceId,
             namespace: shell.namespace,
             group: '',
             pod: shell.pod,
             container: shell.container,
-            objects: InstanceConfigObjectEnum.PODS,
+            objects: EInstanceConfigObject.PODS,
             scope: '',
-            view: InstanceConfigViewEnum.CONTAINER
+            view: EInstanceConfigView.CONTAINER
         }
         opsData.websocketRequest = {
             namespace: shell.namespace,

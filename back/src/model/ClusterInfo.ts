@@ -1,6 +1,6 @@
 import { AdmissionregistrationV1Api, ApiextensionsV1Api, AppsV1Api, AutoscalingV2Api, BatchV1Api, CoordinationV1Api, CoreV1Api, CustomObjectsApi, Exec, KubeConfig, KubernetesObjectApi, Log, NetworkingV1Api, NodeV1Api, PolicyV1Api, RbacAuthorizationV1Api, SchedulingV1Api, StorageV1Api, V1Node, VersionApi } from '@kubernetes/client-node'
 import { MetricsTools } from "../tools/MetricsTools"
-import { ClusterTypeEnum } from "@jfvilas/kwirth-common"
+import { EClusterType } from "@jfvilas/kwirth-common"
 import Docker from 'dockerode'
 import { DockerTools } from "../tools/DockerTools"
 import { NodeMetrics } from "./INodeMetrics"
@@ -53,7 +53,7 @@ export class ClusterInfo {
     public metricsIntervalRef: number = -1
     public vcpus: number = 0
     public memory: number = 0
-    public type: ClusterTypeEnum = ClusterTypeEnum.KUBERNETES
+    public type: EClusterType = EClusterType.KUBERNETES
     public flavour: string ='unknown'
 
     stopMetricsInterval = () => clearTimeout(this.metricsIntervalRef)

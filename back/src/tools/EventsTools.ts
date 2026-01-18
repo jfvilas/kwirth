@@ -34,8 +34,8 @@ export class EventsTools {
                         }
                     },
                     (err) => {
-                        console.log(`[${resourcePath}] Watcher ended or error (${err}). Restarting in 5 seconds...`)
-                        setTimeout(watchLoop, 5000)
+                        console.log(`[${resourcePath}] Watcher ended or error (${err}). Restarting...`)
+                        setTimeout(watchLoop, 1000)
                     }
                 );
             }
@@ -49,7 +49,7 @@ export class EventsTools {
 
     handleEvent (type: string, obj: any, subscribersList:IChannel[]) {
         for (let subscriber of subscribersList) {
-            subscriber.processEvent(type, obj)
+            subscriber.processObjectEvent(type, obj)
         }
     }
 

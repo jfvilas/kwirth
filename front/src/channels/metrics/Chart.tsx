@@ -4,7 +4,7 @@ import { MetricDefinition } from './MetricDefinition'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, Treemap, XAxis, YAxis } from 'recharts'
 import { IMetricViewConfig, METRICSCOLOURS } from './MetricsConfig'
 import { Tooltip as MUITooltip, IconButton } from '@mui/material'
-import { MenuChart, MenuChartOption, EChartType } from './MenuChart'
+import { MenuChart, EMenuChartOption, EChartType } from './MenuChart'
 import { MoreVert } from '@mui/icons-material'
 import { TreemapNode } from 'recharts/types/util/types'
 
@@ -15,10 +15,14 @@ export interface ISample {
 
 export interface IChartProps {
     metricDefinition: MetricDefinition,
-    names: string[],
-    series: ISample[][],
-    colour: string,
-    chartType: EChartType,
+    names: string[]
+    series: ISample[][]
+    colour: string
+    chartType: EChartType
+    height: number
+    configurable: boolean
+    compact: boolean
+    legend: boolean
     stack: boolean
     tooltip: boolean
     labels: boolean
@@ -34,10 +38,12 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     const [stack, setStack] = useState<boolean>(props.viewConfig?.stack? props.viewConfig.stack : props.stack)
     const [tooltip, setTooltip] = useState<boolean>(props.viewConfig?.tooltip? props.viewConfig.tooltip : props.tooltip)
     const [labels, setLabels] = useState<boolean>(props.viewConfig?.labels? props.viewConfig.labels : props.labels)
+    const [legend, setLegend] = useState<boolean>(props.viewConfig?.legend? props.viewConfig.legend : props.legend)
+    const [compact, setCompact] = useState<boolean>(props.viewConfig?.compact? props.viewConfig.compact : props.compact)
 
     let result
-    let height=300
-    let  dataSummarized:any[]
+    let height = props.height
+    let dataSummarized:any[]
 
     const mergeSeries = (names:string[], series:ISample[][]) => {
         // names is an array of names of series
@@ -90,16 +96,16 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
         )
     }
 
-    const menuChartOptionSelected = (opt:MenuChartOption, data:any) => {
+    const menuChartOptionSelected = (opt:EMenuChartOption, data:any) => {
         setAnchorMenuChart(null)
         switch (opt) {
-            case MenuChartOption.Stack:
+            case EMenuChartOption.Stack:
                 setStack(!stack)
                 break
-            case MenuChartOption.Remove:
+            case EMenuChartOption.Remove:
                 if (props.onRemove) props.onRemove(props.names, props.metricDefinition.metric)
                 break
-            case MenuChartOption.Export:
+            case EMenuChartOption.Export:
                 if (!props.names?.length || !props.series?.length) return
 
                 const headers = ["timestamp", ...props.names]
@@ -117,17 +123,20 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                 link.download = `${props.metricDefinition.metric}.csv`
                 link.click()
                 break
-            case MenuChartOption.Tooltip:
+            case EMenuChartOption.Tooltip:
                 setTooltip(!tooltip)
                 break
-            case MenuChartOption.Labels:
+            case EMenuChartOption.Labels:
                 setLabels(!labels)
                 break
-            case MenuChartOption.Default:
+            case EMenuChartOption.Default:
                 if (props.onSetDefault) {
                     props.onSetDefault(props.metricDefinition.metric, {
                         displayName: props.metricDefinition.metric,
                         chartType: chartType,
+                        configurable: props.configurable,
+                        compact: compact,
+                        legend: legend,
                         stack: stack,
                         tooltip: tooltip,
                         labels: labels
@@ -154,7 +163,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                     <XAxis dataKey='timestamp' fontSize={8}/>
                     <YAxis/>
                     { tooltip && <Tooltip /> }
-                    <Legend/>
+                    { legend && <Legend/> }
                     { props.series.map ((_serie,index) => <Line key={index} name={props.names[index]} type='monotone' dataKey={props.names[index]} stroke={props.series.length===1?props.colour:METRICSCOLOURS[index]} activeDot={{ r: 8 }} />) }
                 </LineChart>
             )
@@ -178,7 +187,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                     <XAxis dataKey='timestamp' fontSize={8}/>
                     <YAxis />
                     { tooltip && <Tooltip /> }
-                    <Legend/>
+                    { legend && <Legend/> }
                     { props.series.map ((_serie,index) => 
                         <Area key={index} name={props.names[index]} type='monotone' {...(stack? {stackId:'1'}:{})} dataKey={props.names[index]} stroke={props.series.length===1?props.colour:METRICSCOLOURS[index]} fill={`url(#color${props.series.length===1?props.colour:METRICSCOLOURS[index]})`}/> )
                     }
@@ -192,7 +201,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
                     <XAxis dataKey='timestamp' fontSize={8}/>
                     <YAxis />
                     { tooltip && <Tooltip /> }
-                    <Legend/>
+                    { legend && <Legend/> }
                     { props.series.map ((serie,index) =>
                         <Bar key={index} name={props.names[index]} {...(stack? {stackId:'1'}:{})} dataKey={props.names[index]} stroke={props.series.length===1?props.colour:METRICSCOLOURS[index]} fill={props.series.length===1?props.colour:METRICSCOLOURS[index]}>
                             { index === props.series.length-1 && props.series.length > 1 && labels ? <LabelList dataKey={props.names[index]} position='insideTop' content={renderLabel}/> : null }
@@ -208,7 +217,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
             result = (
                 <PieChart>
                     { tooltip && <Tooltip /> }
-                    <Legend layout='vertical' align='right' verticalAlign='middle'/>
+                    { legend && <Legend layout='vertical' align='right' verticalAlign='middle'/>}
                     <Pie key={'asd'} data={dataSummarized} dataKey={'value'} fill={METRICSCOLOURS[0]} innerRadius={0} outerRadius={90}>
                         {dataSummarized.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={METRICSCOLOURS[index % METRICSCOLOURS.length]} />
@@ -277,15 +286,17 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     title = title.replaceAll('mbps', 'Mbps')
 
     return (
-        <Card sx={{margin:'6px', width:'100%'}}>
-            <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0'}} title= {
+        <Card sx={{margin:compact?'3px':'6px', width:'100%'}}>
+            <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0', height:compact?'0px':'24px'}} title= {
                 <Stack direction={'column'} alignItems={'center'}>
                     <Stack direction={'row'} alignItems={'center'}>
                         <MUITooltip key={'tooltip'+props.metricDefinition.metric+JSON.stringify(props.names)} title={<Typography style={{fontSize:12}}><b>{props.metricDefinition.metric}</b><br/><br/>{props.metricDefinition.help}</Typography>}>
-                                <Typography  width='100%'>{title.length>40?title.substring(0,40)+'...':title}</Typography>
+                                <Typography width='100%' fontSize={compact?'10px':'16px'}>{title.length>40?title.substring(0,40)+'...':title}</Typography>
                         </MUITooltip>
-                        <IconButton onClick={(event) => setAnchorMenuChart(event.currentTarget)}><MoreVert fontSize='small'/></IconButton> 
-                        { anchorMenuChart && <MenuChart onClose={() => setAnchorMenuChart(null)} onOptionSelected={menuChartOptionSelected} anchorMenu={anchorMenuChart} selected={chartType} stacked={stack} tooltip={tooltip} labels={labels} numSeries={props.numSeries} setDefault/>}
+                        { props.configurable && <>
+                            <IconButton onClick={(event) => setAnchorMenuChart(event.currentTarget)}><MoreVert fontSize='small'/></IconButton>
+                            { anchorMenuChart && <MenuChart onClose={() => setAnchorMenuChart(null)} onOptionSelected={menuChartOptionSelected} anchorMenu={anchorMenuChart} selected={chartType} stacked={stack} tooltip={tooltip} labels={labels} numSeries={props.numSeries} setDefault/>}
+                        </>}                        
                     </Stack>
                 </Stack>
             } />

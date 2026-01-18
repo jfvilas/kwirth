@@ -2,8 +2,8 @@ import { FC } from 'react'
 import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { MagnifyInstanceConfig, MagnifyConfig } from './MagnifyConfig'
 import { MagnifySetup, MagnifyIcon } from './MagnifySetup'
-import { IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
-import { MagnifyCommandEnum, MagnifyData, IMagnifyMessageResponse, IMagnifyData } from './MagnifyData'
+import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageEvent, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
+import { EMagnifyCommand, MagnifyData, IMagnifyMessageResponse, IMagnifyData } from './MagnifyData'
 import { MagnifyTabContent } from './MagnifyTabContent'
 import { v4 as uuid } from 'uuid'
 import { ENotifyLevel } from '../../tools/Global'
@@ -18,7 +18,7 @@ interface IMagnifyMessage extends IInstanceMessage {
     group: string
     pod: string
     container: string
-    command: MagnifyCommandEnum
+    command: EMagnifyCommand
     params?: string[]
     data?: any
 }
@@ -53,18 +53,30 @@ class MagnifyChannel implements IChannel {
         let msg:IMagnifyMessage = JSON.parse(wsEvent.data)
         let magnifyData:IMagnifyData = channelObject.data
 
+        
+        // Implement commandAsync responses management
+        if (msg.id && magnifyData.pendingWebSocketRequests.has(msg.id)) {
+            const resolve = magnifyData.pendingWebSocketRequests.get(msg.id)
+            resolve!(wsEvent.data)
+            magnifyData.pendingWebSocketRequests.delete(msg.id)
+            return {
+                action: EChannelRefreshAction.NONE
+            }
+        }
+
+        // general message management
         switch (msg.type) {
-            case InstanceMessageTypeEnum.DATA: {
+            case EInstanceMessageType.DATA: {
                 let response = JSON.parse(wsEvent.data) as IMagnifyMessageResponse
                 switch(response.action) {
-                    case InstanceMessageActionEnum.COMMAND: {
+                    case EInstanceMessageAction.COMMAND: {
                         switch(response.command) {
-                            case MagnifyCommandEnum.CLUSTERINFO:
+                            case EMagnifyCommand.CLUSTERINFO:
                                 let cInfo = JSON.parse(response.data)
                                 magnifyData.clusterInfo = cInfo
                                 break
-                            case MagnifyCommandEnum.LIST:
-                            case MagnifyCommandEnum.LISTCRD:
+                            case EMagnifyCommand.LIST:
+                            case EMagnifyCommand.LISTCRD:
                                 let content = JSON.parse(response.data)
                                 if (content.kind.endsWith('List')) {
                                     content.items.forEach( (item:any) => this.loadObject(channelObject, content.kind.replace('List',''), magnifyData, item) )
@@ -76,25 +88,30 @@ class MagnifyChannel implements IChannel {
                                 return {
                                     action: EChannelRefreshAction.REFRESH
                                 }
-                            case MagnifyCommandEnum.EVENTS:
-                                let events:any[] = JSON.parse(response.data)
-                                events = events.sort( (a,b) => Date.parse(b.lastTimestamp)-Date.parse(a.lastTimestamp))  //+++ review
-                                for (let event of events) {
-                                    let path = buildPath(event.involvedObject.kind, event.involvedObject.name)
-                                    let obj = magnifyData.files.find(f => f.path === path)
-                                    if ((obj && obj?.data.origin.metadata.namespace === event.involvedObject.namespace) || (obj && !event.involvedObject.namespace)) {
-                                        if (!obj.data.events) {
-                                            obj.data.events = {}
-                                            obj.data.events.list = []
-                                        }
-                                        obj.data.events.list.push(event)
-                                    }
+                            case EMagnifyCommand.EVENTS:
+                                let result:{type:string, events:any} = JSON.parse(response.data)
+                                if (result.type==='cluster') {
+                                    magnifyData.clusterEvents = result.events 
                                 }
-                                magnifyData.files = [...magnifyData.files]
+                                else {
+                                    result.events = result.events.sort( (a:any,b:any) => Date.parse(b.lastTimestamp)-Date.parse(a.lastTimestamp))  //+++ review
+                                    for (let event of result.events) {
+                                        let path = buildPath(event.involvedObject.kind, event.involvedObject.name)
+                                        let obj = magnifyData.files.find(f => f.path === path)
+                                        if ((obj && obj?.data.origin.metadata.namespace === event.involvedObject.namespace) || (obj && !event.involvedObject.namespace)) {
+                                            if (!obj.data.events) {
+                                                obj.data.events = {}
+                                                obj.data.events.list = []
+                                            }
+                                            obj.data.events.list.push(event)
+                                        }
+                                    }
+                                    magnifyData.files = [...magnifyData.files]
+                                }
                                 return {
                                     action: EChannelRefreshAction.REFRESH
                                 }
-                            case MagnifyCommandEnum.K8EVENT:
+                            case EMagnifyCommand.K8EVENT:
                                 switch(response.event) {
                                     case 'ADDED':
                                     case 'MODIFIED':
@@ -109,7 +126,7 @@ class MagnifyChannel implements IChannel {
                                 return {
                                     action: EChannelRefreshAction.REFRESH
                                 }
-                            case MagnifyCommandEnum.DELETE: {
+                            case EMagnifyCommand.DELETE: {
                                 let content = JSON.parse(response.data)
                                 if (content.status==='Success') {
                                     // let fname = content.metadata.object
@@ -123,7 +140,7 @@ class MagnifyChannel implements IChannel {
                                     action: EChannelRefreshAction.REFRESH
                                 }
                             }
-                            case MagnifyCommandEnum.CREATE: {
+                            case EMagnifyCommand.CREATE: {
                                 let content = JSON.parse(response.data)
                                 if (content.status==='Success') {
                                     // magnifyData.files = magnifyData.files.filter(f => f.path !== content.metadata.object)
@@ -151,68 +168,27 @@ class MagnifyChannel implements IChannel {
                     action: EChannelRefreshAction.NONE
                 }
             }
-            case InstanceMessageTypeEnum.SIGNAL:
+            case EInstanceMessageType.SIGNAL:
                 let signalMessage = JSON.parse(wsEvent.data) as ISignalMessage
-                if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
-                    if (signalMessage.action === InstanceMessageActionEnum.START) {
+                if (signalMessage.flow === EInstanceMessageFlow.RESPONSE) {
+                    if (signalMessage.action === EInstanceMessageAction.START) {
                         channelObject.instanceId = signalMessage.instance
+                        magnifyData.timers = this.createTimers(channelObject)
+
                         // +++ improve setTimeout mechanism (find something better!!!)
                         setTimeout( () => {
-                            // let magnifyMessage:IMagnifyMessage = {
-                            //     msgtype: 'magnifymessage',
-                            //     accessKey: channelObject.accessString!,
-                            //     instance: channelObject.instanceId,
-                            //     id: uuid(),
-                            //     namespace: '',
-                            //     group: '',
-                            //     pod: '',
-                            //     container: '',
-                            //     command: MagnifyCommandEnum.LIST,
-                            //     action: InstanceMessageActionEnum.COMMAND,
-                            //     flow: InstanceMessageFlowEnum.REQUEST,
-                            //     type: InstanceMessageTypeEnum.DATA,
-                            //     channel: 'magnify',
-                            //     params: [
-                            //         'Namespace', 'Node',
-                            //         'Service', 'Endpoints', 'Ingress', 'IngressClass', 'NetworkPolicy',
-                            //         'Pod', 'Deployment', 'DaemonSet', 'ReplicaSet', 'ReplicationController', 'StatefulSet', 'Job', 'CronJob',
-                            //         'ConfigMap', 'Secret', 'ResourceQuota', 'LimitRange', 'HorizontalPodAutoscaler', 'PodDisruptionBudget', 'PriorityClass','RuntimeClass', 'Lease', 'ValidatingWebhookConfiguration', 'MutatingWebhookConfiguration',
-                            //         'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass',
-                            //         'ServiceAccount', 'ClusterRole', 'Role', 'ClusterRoleBinding', 'RoleBinding',
-                            //         'CustomResourceDefinition'
-                            //     ]
-                            // }
-                            // channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
                             requestList(channelObject)
-
-                            // let magnifyMessage:IMagnifyMessage = {
-                            //     msgtype: 'magnifymessage',
-                            //     accessKey: channelObject.accessString!,
-                            //     instance: channelObject.instanceId,
-                            //     id: uuid(),
-                            //     namespace: '',
-                            //     group: '',
-                            //     pod: '',
-                            //     container: '',
-                            //     command: MagnifyCommandEnum.CLUSTERINFO,
-                            //     action: InstanceMessageActionEnum.COMMAND,
-                            //     flow: InstanceMessageFlowEnum.REQUEST,
-                            //     type: InstanceMessageTypeEnum.DATA,
-                            //     channel: 'magnify',
-                            //     params: []
-                            // }
-                            // channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
                             requestClusterInfo(channelObject)
                         }, 300)
                     }
-                    else if (signalMessage.action === InstanceMessageActionEnum.COMMAND) {
+                    else if (signalMessage.action === EInstanceMessageAction.COMMAND) {
                         if (signalMessage.text)this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                 }
-                else if (signalMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
-                    if (signalMessage.event === SignalMessageEventEnum.ADD) {
+                else if (signalMessage.flow === EInstanceMessageFlow.UNSOLICITED) {
+                    if (signalMessage.event === ESignalMessageEvent.ADD) {
                     }
-                    else if (signalMessage.event === SignalMessageEventEnum.DELETE) {
+                    else if (signalMessage.event === ESignalMessageEvent.DELETE) {
                     }
                     else {
                         if (signalMessage.text) this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
@@ -244,6 +220,7 @@ class MagnifyChannel implements IChannel {
         magnifyData.paused = false
         magnifyData.started = true
         magnifyData.files = magnifyData.files.filter(f => f.isDirectory && f.path.split('/').length-1 <= 2)
+        magnifyData.files = magnifyData.files.filter(f => f.class!=='crdgroup')
         magnifyData.currentPath='/overview'
         return true
     }
@@ -273,6 +250,34 @@ class MagnifyChannel implements IChannel {
     
     socketReconnect(channelObject: IChannelObject): boolean {
         return false
+    }
+
+    //*************************************************************************************************
+    //*************************************************************************************************
+    //*************************************************************************************************
+
+    createTimers = (channelObject:IChannelObject) : number[] => {
+        return [
+            setInterval ( (c:IChannelObject, _forceNumberReturn:any) => {
+                let magnifyMessage:IMagnifyMessage = {
+                    msgtype: 'magnifymessage',
+                    accessKey: channelObject.accessString!,
+                    instance: channelObject.instanceId,
+                    id: uuid(),
+                    namespace: '',
+                    group: '',
+                    pod: '',
+                    container: '',
+                    command: EMagnifyCommand.EVENTS,
+                    action: EInstanceMessageAction.COMMAND,
+                    flow: EInstanceMessageFlow.REQUEST,
+                    type: EInstanceMessageType.DATA,
+                    channel: 'magnify',
+                    params: [ 'cluster', '', '', '', '10']
+                }
+                c.webSocket!.send(JSON.stringify( magnifyMessage ))
+            }, 60000, channelObject)
+        ]
     }
 
     loadObject (channelObject:IChannelObject, kind:string, magnifyData:IMagnifyData, obj:any): void {
@@ -344,6 +349,7 @@ class MagnifyChannel implements IChannel {
                 origin: obj
             }
         })
+        //+++ resquest resources snapshot
     }
 
     loadNamespace(magnifyData:IMagnifyData, obj:any): void {
@@ -355,12 +361,12 @@ class MagnifyChannel implements IChannel {
             path: buildPath('Namespace', obj.metadata.name),
             class: 'Namespace',
             data: {
-                labels: '...',
                 creationTimestamp: obj.metadata.creationTimestamp,
                 status: obj.status?.phase,
                 origin: obj
             }
         })
+        //+++ resquest namespace resources snapshot
     }
 
     loadConfigMap(magnifyData:IMagnifyData, obj:any): void {
@@ -975,10 +981,10 @@ class MagnifyChannel implements IChannel {
                 group: '',
                 pod: '',
                 container: '',
-                command: MagnifyCommandEnum.LISTCRD,
-                action: InstanceMessageActionEnum.COMMAND,
-                flow: InstanceMessageFlowEnum.REQUEST,
-                type: InstanceMessageTypeEnum.DATA,
+                command: EMagnifyCommand.LISTCRD,
+                action: EInstanceMessageAction.COMMAND,
+                flow: EInstanceMessageFlow.REQUEST,
+                type: EInstanceMessageType.DATA,
                 channel: 'magnify',
                 params: [ obj.spec.group, obj.spec.versions[0].name, obj.spec.names.plural ]
             }
@@ -1029,10 +1035,10 @@ const requestClusterInfo = (channelObject: IChannelObject) => {
         group: '',
         pod: '',
         container: '',
-        command: MagnifyCommandEnum.CLUSTERINFO,
-        action: InstanceMessageActionEnum.COMMAND,
-        flow: InstanceMessageFlowEnum.REQUEST,
-        type: InstanceMessageTypeEnum.DATA,
+        command: EMagnifyCommand.CLUSTERINFO,
+        action: EInstanceMessageAction.COMMAND,
+        flow: EInstanceMessageFlow.REQUEST,
+        type: EInstanceMessageType.DATA,
         channel: 'magnify',
         params: []
     }
@@ -1049,10 +1055,10 @@ const requestList = (channelObject: IChannelObject) => {
         group: '',
         pod: '',
         container: '',
-        command: MagnifyCommandEnum.LIST,
-        action: InstanceMessageActionEnum.COMMAND,
-        flow: InstanceMessageFlowEnum.REQUEST,
-        type: InstanceMessageTypeEnum.DATA,
+        command: EMagnifyCommand.LIST,
+        action: EInstanceMessageAction.COMMAND,
+        flow: EInstanceMessageFlow.REQUEST,
+        type: EInstanceMessageType.DATA,
         channel: 'magnify',
         params: [
             'Namespace', 'Node',

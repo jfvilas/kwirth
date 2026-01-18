@@ -1,3 +1,4 @@
+// transient
 export enum InstanceMessageChannelEnum {
     NONE = 'none',
     LOG = 'log',
@@ -8,12 +9,44 @@ export enum InstanceMessageChannelEnum {
     TRIVY = 'trivy'
 }
 
+export enum EInstanceMessageChannel {
+    NONE = 'none',
+    LOG = 'log',
+    METRICS = 'metrics',
+    AUDIT = 'audit',
+    OPS = 'ops',
+    ALERT = 'alert',
+    TRIVY = 'trivy',
+    MAGNIFY = 'magnify'
+}
+
+// transient
 export enum InstanceMessageTypeEnum {
     DATA='data',
     SIGNAL='signal'
 }
 
+export enum EInstanceMessageType {
+    DATA='data',
+    SIGNAL='signal'
+}
+
+// transient
 export enum InstanceMessageActionEnum {
+    NONE = 'none',
+    ROUTE = 'route',
+    START = 'start',
+    STOP = 'stop',
+    PAUSE = 'pause',
+    CONTINUE = 'continue',
+    MODIFY = 'modify',
+    PING = 'ping',
+    RECONNECT = 'reconnect',
+    COMMAND = 'command',
+    WEBSOCKET = 'websocket'
+}
+
+export enum EInstanceMessageAction {
     NONE = 'none',
     ROUTE = 'route',
     START = 'start',
@@ -34,10 +67,17 @@ export enum InstanceMessageFlowEnum {
     UNSOLICITED = 'unsolicited'
 }
 
+export enum EInstanceMessageFlow {
+    IMMEDIATE = 'immediate',
+    REQUEST = 'request',
+    RESPONSE = 'response',
+    UNSOLICITED = 'unsolicited'
+}
+
 export interface IInstanceMessage {
-    action: InstanceMessageActionEnum
-    flow: InstanceMessageFlowEnum
-    type: InstanceMessageTypeEnum
+    action: EInstanceMessageAction
+    flow: EInstanceMessageFlow
+    type: EInstanceMessageType
     channel: string
     instance: string
 }

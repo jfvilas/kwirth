@@ -1,9 +1,9 @@
-import { IInstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, KwirthData} from '@jfvilas/kwirth-common'
+import { IInstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, KwirthData, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageLevel} from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel'
 import { Request, Response } from 'express'
-import { Watch } from '@kubernetes/client-node'
-import { applyResource, cronJobStatus, cronJobTrigger, nodeCordon, nodeDrain, nodeUnCordon, throttleExcute } from '../../tools/KubernetesTools'
+import { CoreV1EventList, Watch } from '@kubernetes/client-node'
+import { applyResource, cronJobStatus, cronJobTrigger, nodeCordon, nodeDrain, nodeUnCordon, podEvict, setIngressClassAsDefault, throttleExcute } from '../../tools/KubernetesTools'
 const yaml = require('js-yaml')
 
 export interface IMagnifyConfig {
@@ -21,6 +21,8 @@ export enum MagnifyCommandEnum {
     EVENTS = 'events',
     K8EVENT = 'k8event',
     CRONJOB = 'CronJob',
+    INGRESSCLASS = 'IngressClass',
+    POD = 'Pod',
     NODE = 'Node',
 }
 
@@ -124,7 +126,7 @@ class MagnifyChannel implements IChannel {
         return ['', 'magnify$read', 'cluster'].indexOf(scope)
     }
 
-    processEvent(type:string, obj:any) : void {
+    processObjectEvent(type:string, obj:any) : void {
         // +++ debug console.log('****', type, obj.kind, obj.metadata.namespace, obj.metadata.name)
         for (let socket of this.webSockets) {
             for (let instance of socket.instances) {
@@ -136,9 +138,9 @@ class MagnifyChannel implements IChannel {
                     group: '',
                     pod: '',
                     container: '',
-                    action: InstanceMessageActionEnum.COMMAND,
-                    flow: InstanceMessageFlowEnum.UNSOLICITED,
-                    type: InstanceMessageTypeEnum.DATA,
+                    action: EInstanceMessageAction.COMMAND,
+                    flow: EInstanceMessageFlow.UNSOLICITED,
+                    type: EInstanceMessageType.DATA,
                     channel: 'magnify',
                     instance: instance.instanceId,
                     event: type,
@@ -165,7 +167,7 @@ class MagnifyChannel implements IChannel {
     }
     
     processCommand = async (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> => {
-        if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
+        if (instanceMessage.flow === EInstanceMessageFlow.IMMEDIATE) {
             return false
         }
         else {
@@ -178,7 +180,7 @@ class MagnifyChannel implements IChannel {
             let instances = socket.instances
             let instance = instances.find(i => i.instanceId === instanceMessage.instance)
             if (!instance) {
-                this.sendSignalMessage(webSocket, instanceMessage.action, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceMessage.instance, `Instance not found`)
+                this.sendSignalMessage(webSocket, instanceMessage.action, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instanceMessage.instance, `Instance not found`)
                 console.log(`Instance ${instanceMessage.instance} not found`)
                 return false
             }
@@ -221,7 +223,7 @@ class MagnifyChannel implements IChannel {
         return true
     }
 
-    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void => {
+    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig, action: EInstanceMessageAction): void => {
         console.log('Pause/Continue not supported')
     }
 
@@ -233,10 +235,10 @@ class MagnifyChannel implements IChannel {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             this.removeInstance(webSocket, instanceConfig.instance)
-            this.sendSignalMessage(webSocket, InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.INFO, instanceConfig.instance, 'Magnify instance stopped')
+            this.sendSignalMessage(webSocket, EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.INFO, instanceConfig.instance, 'Magnify instance stopped')
         }
         else {
-            this.sendSignalMessage(webSocket, InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceConfig.instance, `Magnify instance not found`)
+            this.sendSignalMessage(webSocket, EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instanceConfig.instance, `Magnify instance not found`)
         }
     }
 
@@ -307,14 +309,14 @@ class MagnifyChannel implements IChannel {
     // PRIVATE
     // *************************************************************************************
 
-    private sendDataMessage = (webSocket:WebSocket, instance:IInstance, command: MagnifyCommandEnum, data:any): void => {
+    private sendDataMessage = (webSocket:WebSocket, instance:IInstance, id:string, command: MagnifyCommandEnum, data:any): void => {
         let resp: IMagnifyMessageResponse = {
-            action: InstanceMessageActionEnum.COMMAND,
-            flow: InstanceMessageFlowEnum.RESPONSE,
+            action: EInstanceMessageAction.COMMAND,
+            flow: EInstanceMessageFlow.RESPONSE,
             channel: 'magnify',
             instance: instance.instanceId,
-            type: InstanceMessageTypeEnum.DATA,
-            id: '1',  //+++
+            type: EInstanceMessageType.DATA,
+            id,
             command,
             namespace: '',
             group: '',
@@ -326,13 +328,13 @@ class MagnifyChannel implements IChannel {
         webSocket.send(JSON.stringify(resp))
     }
 
-    private sendSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, level: SignalMessageLevelEnum, instanceId:string, text:string): void => {
+    private sendSignalMessage = (ws:WebSocket, action:EInstanceMessageAction, flow: EInstanceMessageFlow, level: ESignalMessageLevel, instanceId:string, text:string): void => {
         var resp:ISignalMessage = {
             action,
             flow,
             channel: 'magnify',
             instance: instanceId,
-            type: InstanceMessageTypeEnum.SIGNAL,
+            type: EInstanceMessageType.SIGNAL,
             text,
             level
         }
@@ -361,8 +363,8 @@ class MagnifyChannel implements IChannel {
     private async executeCommand (webSocket:WebSocket, instance:IInstance, magnifyMessage:IMagnifyMessage) : Promise<IMagnifyMessageResponse | undefined> {
         let execResponse: IMagnifyMessageResponse = {
             action: magnifyMessage.action,
-            flow: InstanceMessageFlowEnum.RESPONSE,
-            type: InstanceMessageTypeEnum.SIGNAL,
+            flow: EInstanceMessageFlow.RESPONSE,
+            type: EInstanceMessageType.SIGNAL,
             channel: magnifyMessage.channel,
             instance: magnifyMessage.instance,
             command: magnifyMessage.command,
@@ -386,11 +388,28 @@ class MagnifyChannel implements IChannel {
                     execResponse.data = `Insufficent parameters`
                     return execResponse
                 }
-                this.executeList(webSocket, instance, magnifyMessage.params)
+                this.executeList(webSocket, instance, magnifyMessage)
                 return
             }
+            
             case MagnifyCommandEnum.CLUSTERINFO:
-                this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.CLUSTERINFO, JSON.stringify((await this.clusterInfo.versionApi.getCode())))
+                this.sendDataMessage(webSocket, instance, '1', MagnifyCommandEnum.CLUSTERINFO, JSON.stringify((await this.clusterInfo.versionApi.getCode())))
+                break
+
+            case MagnifyCommandEnum.POD:
+                switch (magnifyMessage.params![0]) {
+                    case 'evict':
+                        await podEvict(this.clusterInfo.coreApi, magnifyMessage.params![1], magnifyMessage.params![2])
+                        break
+                }
+                break
+
+            case MagnifyCommandEnum.INGRESSCLASS:
+                switch (magnifyMessage.params![0]) {
+                    case 'default':
+                        await setIngressClassAsDefault(this.clusterInfo.networkApi, magnifyMessage.params![1])
+                        break
+                }
                 break
 
             case MagnifyCommandEnum.NODE:
@@ -413,7 +432,7 @@ class MagnifyChannel implements IChannel {
                     execResponse.data = `Insufficent parameters`
                     return execResponse
                 }
-                this.executeListCrd(webSocket, instance, magnifyMessage.params)
+                this.executeListCrd(webSocket, instance, magnifyMessage)
                 return
             }
             case MagnifyCommandEnum.CREATE: {
@@ -423,7 +442,7 @@ class MagnifyChannel implements IChannel {
             }
             case MagnifyCommandEnum.EVENTS: {
                 console.log(`Do EVENT`)
-                this.executeEvents(webSocket, instance, magnifyMessage.params!)
+                this.executeEvents(webSocket, instance, magnifyMessage)
                 return
             }
             case MagnifyCommandEnum.APPLY: {
@@ -454,7 +473,7 @@ class MagnifyChannel implements IChannel {
 
             default:
                 let text = `Invalid command '${magnifyMessage.command}'. Valid commands are: ${Object.keys(MagnifyCommandEnum)}`
-                this.sendSignalMessage( webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, text)
+                this.sendSignalMessage( webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instance.instanceId, text)
                 break
         }
         return execResponse
@@ -479,121 +498,121 @@ class MagnifyChannel implements IChannel {
         }
     }
     
-    private async executeList (webSocket:WebSocket, instance:IInstance, params:string[]) {
+    private async executeList (webSocket:WebSocket, instance:IInstance, magnifyMessage:IMagnifyMessage) {
         try {
             throttleExcute(async () => {
-                for (let param of params) {
+                for (let param of magnifyMessage.params!) {
                     switch (param) {
                         case 'Pod':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listPodForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listPodForAllNamespaces())))
                             break
                         case 'Node':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listNode())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listNode())))
                             break
                         case 'Namespace':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listNamespace())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listNamespace())))
                             break
                         case 'ConfigMap':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listConfigMapForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listConfigMapForAllNamespaces())))
                             break
                         case 'Secret':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listSecretForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listSecretForAllNamespaces())))
                             break
                         case 'ResourceQuota':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listResourceQuotaForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listResourceQuotaForAllNamespaces())))
                             break
                         case 'LimitRange':
                             let result = await this.clusterInfo.coreApi.listLimitRangeForAllNamespaces()
                             result.items.map(item => this.cleanLimitRange(item))
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify(result))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(result))
                             break
                         case 'HorizontalPodAutoscaler':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.autoscalingApi.listHorizontalPodAutoscalerForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.autoscalingApi.listHorizontalPodAutoscalerForAllNamespaces())))
                             break
                         case 'PodDisruptionBudget':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.policyApi.listPodDisruptionBudgetForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.policyApi.listPodDisruptionBudgetForAllNamespaces())))
                             break
                         case 'PriorityClass':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.schedulingApi.listPriorityClass())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.schedulingApi.listPriorityClass())))
                             break
                         case 'RuntimeClass':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.nodeApi.listRuntimeClass())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.nodeApi.listRuntimeClass())))
                             break
                         case 'Lease':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coordinationApi.listLeaseForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coordinationApi.listLeaseForAllNamespaces())))
                             break
                         case 'ValidatingWebhookConfiguration':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.admissionApi.listValidatingWebhookConfiguration())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.admissionApi.listValidatingWebhookConfiguration())))
                             break
                         case 'MutatingWebhookConfiguration':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.admissionApi.listMutatingWebhookConfiguration())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.admissionApi.listMutatingWebhookConfiguration())))
                             break
                         case 'Service':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listServiceForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listServiceForAllNamespaces())))
                             break
                         case 'Endpoints':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listEndpointsForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listEndpointsForAllNamespaces())))
                             break
                         case 'Ingress':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.networkApi.listIngressForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.networkApi.listIngressForAllNamespaces())))
                             break
                         case 'IngressClass':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.networkApi.listIngressClass())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.networkApi.listIngressClass())))
                             break
                         case 'NetworkPolicy':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.networkApi.listNetworkPolicyForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.networkApi.listNetworkPolicyForAllNamespaces())))
                             break
                         case 'Deployment':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listDeploymentForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listDeploymentForAllNamespaces())))
                             break
                         case 'DaemonSet':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listDaemonSetForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listDaemonSetForAllNamespaces())))
                             break
                         case 'ReplicaSet':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listReplicaSetForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listReplicaSetForAllNamespaces())))
                             break
                         case 'ReplicationController':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listReplicationControllerForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listReplicationControllerForAllNamespaces())))
                             break
                         case 'StatefulSet':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listStatefulSetForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listStatefulSetForAllNamespaces())))
                             break
                         case 'Job':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.batchApi.listJobForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.batchApi.listJobForAllNamespaces())))
                             break
                         case 'CronJob':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.batchApi.listCronJobForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.batchApi.listCronJobForAllNamespaces())))
                             break
                         case 'PersistentVolumeClaim':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listPersistentVolumeClaimForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listPersistentVolumeClaimForAllNamespaces())))
                             break
                         case 'PersistentVolume':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listPersistentVolume())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listPersistentVolume())))
                             break
                         case 'StorageClass':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.storageApi.listStorageClass())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.storageApi.listStorageClass())))
                             break
                         case 'ServiceAccount':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listServiceAccountForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listServiceAccountForAllNamespaces())))
                             break
                         case 'ClusterRole':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listClusterRole())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listClusterRole())))
                             break
                         case 'Role':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listRoleForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listRoleForAllNamespaces())))
                             break
                         case 'ClusterRoleBinding':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listClusterRoleBinding())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listClusterRoleBinding())))
                             break
                         case 'RoleBinding':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listRoleBindingForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listRoleBindingForAllNamespaces())))
                             break
                         case 'CustomResourceDefinition':
-                            this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.extensionApi.listCustomResourceDefinition())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.extensionApi.listCustomResourceDefinition())))
                             break
                         default:
                             console.log('invalid class: ', param)
-                            this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, 'Invalid class: '+param)
+                            this.sendSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instance.instanceId, 'Invalid class: '+param)
                             break
                     }
                 }
@@ -601,25 +620,26 @@ class MagnifyChannel implements IChannel {
         }
         catch (err:any) {
             console.log(err)
-            this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, JSON.stringify(err.body))
+            this.sendSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instance.instanceId, JSON.stringify(err.body))
         }
 
     }
 
-    private async executeListCrd (webSocket:WebSocket, instance:IInstance, params:string[]) {
+    private async executeListCrd (webSocket:WebSocket, instance:IInstance, magnifyMessage:IMagnifyMessage) {
         try {
+            let params = magnifyMessage.params!
             throttleExcute(async () => {
                 let resp = await this.clusterInfo.crdApi.listCustomObjectForAllNamespaces({
                     group: params[0],
                     version: params[1],
                     plural: params[2]
                 })
-                this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.LISTCRD, JSON.stringify(resp))
+                this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LISTCRD, JSON.stringify(resp))
             })
         }
         catch (err:any) {
             console.log(err)
-            this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, JSON.stringify(err.body))
+            this.sendSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instance.instanceId, JSON.stringify(err.body))
         }
     }
 
@@ -630,7 +650,7 @@ class MagnifyChannel implements IChannel {
             }
             catch (err:any) {
                 console.log(err)
-                this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, JSON.stringify(err.body))
+                this.sendSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instance.instanceId, JSON.stringify(err.body))
             }
         }
     }
@@ -641,7 +661,7 @@ class MagnifyChannel implements IChannel {
                 this.clusterInfo.objectsApi.create(yaml.load(param))
             }
             catch (err:any) {
-                this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, JSON.stringify(err))
+                this.sendSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instance.instanceId, JSON.stringify(err))
             }
         }
     }
@@ -651,30 +671,61 @@ class MagnifyChannel implements IChannel {
             try {
                 const res = yaml.load(param)
                 let result = await applyResource(res, this.clusterInfo)
-                this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.INFO, instance.instanceId, result)
+                this.sendSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.INFO, instance.instanceId, result)
             }
             catch (err:any) {
-                this.sendSignalMessage(webSocket, InstanceMessageActionEnum.COMMAND, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instance.instanceId, JSON.stringify(err))
+                this.sendSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instance.instanceId, JSON.stringify(err))
             }
         }
     }
 
-    private async executeEvents (webSocket:WebSocket, instance:IInstance, params:string[]) {
-        let res = await this.getEventsForObject(params[0],params[1],params[2])
-        this.sendDataMessage(webSocket, instance, MagnifyCommandEnum.EVENTS, JSON.stringify(res))
+    private async executeEvents (webSocket:WebSocket, instance:IInstance, magnifyMessage:IMagnifyMessage) {
+        let params = magnifyMessage.params!
+        let result = {
+            type: params[0],
+            events: await this.getEventsForObject(params[0], params[1],params[2],params[3], params.length>4? +params[4] : 0)
+        }
+        this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.EVENTS, JSON.stringify(result))
     }
 
-    getEventsForObject = async (namespace:string,  objectKind:string, objectName:string) => {
+    getEventsForObject = async (command:string, namespace:string,  objectKind:string, objectName:string, limit:number) => {
+        console.log(command, namespace, objectKind, objectName, limit)
+        let res: CoreV1EventList = {
+            items: []
+        }
+
         try {
-            const res = await this.clusterInfo.coreApi.listEventForAllNamespaces( {
-                fieldSelector: `involvedObject.name=${objectName},involvedObject.kind=${objectKind}`
-            })
-            return res.items
+            switch(command) {
+                case 'cluster':
+                    res = await this.clusterInfo.coreApi.listEventForAllNamespaces()
+                    break
+                case 'object':
+                    if (namespace!=='') {
+                        res = await this.clusterInfo.coreApi.listNamespacedEvent( {
+                            namespace: namespace,
+                            fieldSelector: `involvedObject.name=${objectName},involvedObject.kind=${objectKind}`
+                        })
+                    }
+                    else {
+                        res = await this.clusterInfo.coreApi.listEventForAllNamespaces( {
+                            fieldSelector: `involvedObject.name=${objectName},involvedObject.kind=${objectKind}`
+                        })
+                    }
+                    break
+            }
+
+            if (limit>0) {
+                return res.items.slice(0, limit)
+            }
+            else {
+                return res.items
+            }
         }
         catch (err) {
-            console.error('Error obteniendo eventos:', err);
+            console.error('Error getting events:', err);
         }
-    }    
+    }
+
 }
 
 export { MagnifyChannel }

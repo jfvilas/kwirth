@@ -4,7 +4,7 @@ import { Cluster } from '../model/Cluster'
 import { MsgBoxOkError } from '../tools/MsgBox'
 
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
-import { BackChannelData, ClusterTypeEnum, InstanceConfigViewEnum, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
+import { BackChannelData, EClusterType, EInstanceConfigView, EInstanceMessageChannel } from '@jfvilas/kwirth-common'
 import { ITabObject } from '../model/ITabObject'
 import { IconDaemonSet, IconDeployment, IconDocker, IconJob, IconKubernetes, IconKubernetesBlank, IconKubernetesUnknown, IconReplicaSet, IconStatefulSet } from '../tools/Constants-React'
 
@@ -49,7 +49,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     const [channel, setChannel] = useState(props.backChannels.length>0? props.backChannels[0].id : 'log')
     const [msgBox, setMsgBox] = useState(<></>)
 
-    let isDocker = cluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER
+    let isDocker = cluster.kwirthData?.clusterType === EClusterType.DOCKER
 
     const loadAllNamespaces = async (cluster:Cluster) => {
         if (cluster) {
@@ -101,7 +101,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     const onChangeCluster = (event: SelectChangeEvent) => {
         let value=event.target.value
         let cluster = props.clusters?.find(c => c.name===value)!
-        if (cluster.kwirthData?.clusterType === ClusterTypeEnum.DOCKER) {
+        if (cluster.kwirthData?.clusterType === EClusterType.DOCKER) {
             setCluster(cluster)
             setView('')
             setAllNamespaces([])
@@ -175,7 +175,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         setPods([])
         setAllContainers([])
         setContainers([])
-        if (view!==InstanceConfigViewEnum.GROUP) loadAllPods(namespaces,groups)
+        if (view!==EInstanceConfigView.GROUP) loadAllPods(namespaces,groups)
     }
 
     const onChangePod= (event: SelectChangeEvent<typeof pods>) => {
@@ -192,18 +192,18 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     }
 
     const onChangeChannel = (event: SelectChangeEvent) => {
-        setChannel(event.target.value as InstanceMessageChannelEnum)
+        setChannel(event.target.value as EInstanceMessageChannel)
     }
 
     const onAdd = () => {
         let tabName = ''
-        if (view===InstanceConfigViewEnum.NAMESPACE)
+        if (view===EInstanceConfigView.NAMESPACE)
             tabName=namespaces.join('+')
-        else if (view===InstanceConfigViewEnum.GROUP)
+        else if (view===EInstanceConfigView.GROUP)
             tabName=namespaces.join('+')+'-'+groups.join('+')
-        else if (view===InstanceConfigViewEnum.POD)
+        else if (view===EInstanceConfigView.POD)
             tabName=namespaces.join('+')+'-'+pods.join('+')
-        else if (view===InstanceConfigViewEnum.CONTAINER)
+        else if (view===EInstanceConfigView.CONTAINER)
             tabName=namespaces.join('+')+'-'+pods.join('+')+'-'+containers.join(',')
 
         let index = -1
@@ -225,14 +225,14 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
 
     const addable = () => {
         if (cluster===undefined) return false
-        if (channel === InstanceMessageChannelEnum.NONE) return false
+        if (channel === EInstanceMessageChannel.NONE) return false
         if (view==='') return false
         if (namespaces.length === 0) return false
-        if (view===InstanceConfigViewEnum.NAMESPACE) return true
+        if (view===EInstanceConfigView.NAMESPACE) return true
         if (groups.length === 0) return false
-        if (view===InstanceConfigViewEnum.GROUP) return true
+        if (view===EInstanceConfigView.GROUP) return true
         if (pods.length === 0) return false
-        if (view===InstanceConfigViewEnum.POD) return true
+        if (view===EInstanceConfigView.POD) return true
         if (containers.length === 0) return false
         return true
     }
@@ -262,7 +262,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         setAllNamespaces(alln)
         setNamespaces(props.resourceSelected!.namespaces)
 
-        if (v===InstanceConfigViewEnum.GROUP || v===InstanceConfigViewEnum.POD || v===InstanceConfigViewEnum.CONTAINER) {
+        if (v===EInstanceConfigView.GROUP || v===EInstanceConfigView.POD || v===EInstanceConfigView.CONTAINER) {
             let allg=[]
             for (let namespace of props.resourceSelected!.namespaces) {
                 let gs = await (await fetch(`${c.url}/config/${namespace}/groups`, addGetAuthorization(c.accessString))).json()
@@ -271,7 +271,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             }
             setAllGroups(allg)
             setGroups(props.resourceSelected!.groups)
-            if (v===InstanceConfigViewEnum.POD || v===InstanceConfigViewEnum.CONTAINER) {
+            if (v===EInstanceConfigView.POD || v===EInstanceConfigView.CONTAINER) {
                 let allp:string[] = []
                 for (let namespace of props.resourceSelected!.namespaces) {
                     for (let group of props.resourceSelected!.groups) {
@@ -283,7 +283,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 setAllPods(allp)
                 setPods(props.resourceSelected!.pods)
 
-                if (v===InstanceConfigViewEnum.CONTAINER) {
+                if (v===EInstanceConfigView.CONTAINER) {
                     let allc:string[]=[]
                     for (let namespace of props.resourceSelected!.namespaces) {
                         for (let pod of props.resourceSelected!.pods) {
@@ -323,10 +323,10 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={cluster.name===''}>
                 <InputLabel>View</InputLabel>
                 <Select value={view} onChange={onChangeView} >
-                    <MenuItem key={InstanceConfigViewEnum.NAMESPACE} value={InstanceConfigViewEnum.NAMESPACE} disabled={isDocker}>namespace</MenuItem>
-                    <MenuItem key={InstanceConfigViewEnum.GROUP} value={InstanceConfigViewEnum.GROUP} disabled={isDocker}>group</MenuItem>
-                    <MenuItem key={InstanceConfigViewEnum.POD} value={InstanceConfigViewEnum.POD}>pod</MenuItem>
-                    <MenuItem key={InstanceConfigViewEnum.CONTAINER} value={InstanceConfigViewEnum.CONTAINER}>container</MenuItem>
+                    <MenuItem key={EInstanceConfigView.NAMESPACE} value={EInstanceConfigView.NAMESPACE} disabled={isDocker}>namespace</MenuItem>
+                    <MenuItem key={EInstanceConfigView.GROUP} value={EInstanceConfigView.GROUP} disabled={isDocker}>group</MenuItem>
+                    <MenuItem key={EInstanceConfigView.POD} value={EInstanceConfigView.POD}>pod</MenuItem>
+                    <MenuItem key={EInstanceConfigView.CONTAINER} value={EInstanceConfigView.CONTAINER}>container</MenuItem>
                 </Select>
             </FormControl>
 
@@ -356,7 +356,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={(!isDocker && (groups.length === 0 || view===InstanceConfigViewEnum.NAMESPACE || view===InstanceConfigViewEnum.GROUP)) || (isDocker && (view ==='namespace' || namespaces.length === 0))}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={(!isDocker && (groups.length === 0 || view===EInstanceConfigView.NAMESPACE || view===EInstanceConfigView.GROUP)) || (isDocker && (view ==='namespace' || namespaces.length === 0))}>
                 <InputLabel >Pod</InputLabel>
                 <Select value={pods} onChange={onChangePod} multiple renderValue={(selected) => selected.join(', ')}>
                 { allPods && allPods.map( (value:string) =>
@@ -368,7 +368,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={pods.length === 0 || view===InstanceConfigViewEnum.NAMESPACE || view===InstanceConfigViewEnum.GROUP || view===InstanceConfigViewEnum.POD}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={pods.length === 0 || view===EInstanceConfigView.NAMESPACE || view===EInstanceConfigView.GROUP || view===EInstanceConfigView.POD}>
                 <InputLabel >Container</InputLabel>
                 <Select value={containers} onChange={onChangeContainer} multiple renderValue={(selected) => selected.join(', ')}>
                 { allContainers && allContainers.map( (value:string) => 

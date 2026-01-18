@@ -1,4 +1,4 @@
-import { InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
+import { EInstanceConfigView, InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
 import { ITabSummary } from "../model/ITabObject"
 
 interface IColors {
@@ -54,7 +54,7 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     channel: 'log',
     channelObject: {
       clusterName: 'inCluster',
-      view: InstanceConfigViewEnum.NAMESPACE,
+      view: EInstanceConfigView.NAMESPACE,
       namespace: '$all',
       group: '',
       pod: '',
@@ -67,7 +67,7 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     channel: 'fileman',
     channelObject: {
       clusterName: 'inCluster',
-      view: InstanceConfigViewEnum.GROUP,
+      view: EInstanceConfigView.GROUP,
       namespace: '$all',
       group: '$all',
       pod: '',
@@ -80,7 +80,7 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     channel: 'metrics',
     channelObject: {
       clusterName: 'inCluster',
-      view: InstanceConfigViewEnum.POD,
+      view: EInstanceConfigView.POD,
       namespace: '$all',
       group: '$all',
       pod: '$all',
@@ -93,7 +93,7 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     channel: 'ops',
     channelObject: {
       clusterName: 'inCluster',
-      view: InstanceConfigViewEnum.CONTAINER,
+      view: EInstanceConfigView.CONTAINER,
       namespace: '$all',
       group: '$all',
       pod: '$all',

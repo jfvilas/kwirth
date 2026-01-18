@@ -1,4 +1,4 @@
-import { BackChannelData, IInstanceConfig, IInstanceMessage, InstanceMessageActionEnum, AccessKey } from '@jfvilas/kwirth-common'
+import { BackChannelData, IInstanceConfig, IInstanceMessage, AccessKey, EInstanceMessageAction } from '@jfvilas/kwirth-common'
 import { Request, Response } from 'express'
 
 interface IChannel {
@@ -8,12 +8,12 @@ interface IChannel {
     endpointRequest(endpoint:string,req:Request, res:Response, accessKey?:AccessKey) : void
     websocketRequest(newWebSocket:WebSocket, instanceId:string, instanceConfig:IInstanceConfig) : void
 
-    processEvent(type:string, obj:any) : void
+    processObjectEvent(type:string, obj:any) : void
 
     addObject (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : Promise<boolean>
     deleteObject (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) : Promise<boolean>
     
-    pauseContinueInstance (webSocket: WebSocket, instanceConfig: IInstanceConfig, action:InstanceMessageActionEnum) : void
+    pauseContinueInstance (webSocket: WebSocket, instanceConfig: IInstanceConfig, action:EInstanceMessageAction) : void
     modifyInstance (webSocket: WebSocket, instanceConfig: IInstanceConfig) : void
     containsInstance (instanceId:string) : boolean
     containsAsset (webSocket: WebSocket, podNamespace:string, podName:string, containerName:string) : boolean

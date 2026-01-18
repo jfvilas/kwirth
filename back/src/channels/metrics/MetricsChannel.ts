@@ -1,4 +1,4 @@
-import { AssetMetrics, MetricsMessage, IInstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, IInstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, IInstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources, accessKeyDeserialize, BackChannelData, ClusterTypeEnum } from '@jfvilas/kwirth-common'
+import { IInstanceConfig, InstanceConfigViewEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, IInstanceConfigResponse, InstanceMessageFlowEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, IInstanceMessage, MetricsConfig, MetricsConfigModeEnum, InstanceConfigScopeEnum, parseResources, accessKeyDeserialize, BackChannelData, ClusterTypeEnum, IMetricsMessageResponse, IMetricsAssets, MetricsMessage, IMetricsMessage, InstanceConfigObjectEnum, EInstanceMessageFlow, EInstanceConfigObject, EInstanceConfigView, EInstanceMessageAction, EInstanceMessageType, ESignalMessageLevel, EInstanceMessageChannel } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { AssetData } from '../../tools/MetricsTools'
 import { IChannel } from '../IChannel'
@@ -6,7 +6,7 @@ import { Request, Response } from 'express'
 
 interface IInstance {
     instanceId: string
-    timeout: NodeJS.Timeout
+    timeout?: NodeJS.Timeout
     working: boolean
     paused: boolean
     assets: AssetData[]
@@ -47,7 +47,7 @@ class MetricsChannel implements IChannel {
         return ['','snapshot','stream','cluster'].indexOf(scope)
     }
 
-    processEvent(type:string, obj:any) : void {
+    processObjectEvent(type:string, obj:any) : void {
     }
 
     async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
@@ -57,8 +57,65 @@ class MetricsChannel implements IChannel {
     }
 
     async processCommand (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> {
-        return false
+        // we treart IMMEDIATE same as REQUEST
+        if (instanceMessage.flow === EInstanceMessageFlow.IMMEDIATE) {
+            let resp = await this.executeImmediateCommand(instanceMessage)
+            if (resp) webSocket.send(JSON.stringify(resp))
+            return Boolean(resp)
+        }
+        else {
+            return false
+        }
     }
+
+    private async executeImmediateCommand (instanceMessage:IInstanceMessage) : Promise<IMetricsMessageResponse> {
+        console.log('Immediate request received')
+        // we create a dummy instance for executnig command, and we add the asset refrenced in the immediate command received
+        let iconfig:IInstanceConfig = {
+            objects: EInstanceConfigObject.PODS,
+            accessKey: '',
+            scope: '',
+            view: EInstanceConfigView.NONE,
+            namespace: '',
+            group: '',
+            pod: '',
+            container: '',
+            action: EInstanceMessageAction.NONE,
+            flow: EInstanceMessageFlow.IMMEDIATE,
+            type: EInstanceMessageType.DATA,
+            channel: '',
+            instance: ''
+        }
+        let instance: IInstance  = {
+            instanceId: instanceMessage.instance,
+            timeout: undefined,
+            working: false,
+            paused: false,
+            assets: [],
+            instanceConfig: iconfig,
+            interval: 0
+        }
+    
+        // we prepare a base response message
+        let metricsMessageResponse:IMetricsMessageResponse = {
+            msgtype: 'metricsmessageresponse',
+            action: EInstanceMessageAction.NONE,
+            flow: EInstanceMessageFlow.UNSOLICITED,
+            channel: EInstanceMessageChannel.METRICS,
+            type: EInstanceMessageType.DATA,
+            instance: iconfig.instance,
+            assets: [],
+            namespace: iconfig.namespace,
+            group: '',
+            pod: iconfig.pod,
+            //timestamp: initial ? 0 : Date.now(),
+            timestamp: Date.now(),
+            container: ''
+        }
+        this.fillData(iconfig, instance, metricsMessageResponse)
+        return metricsMessageResponse
+    }
+
 
     containsAsset = (webSocket:WebSocket, podNamespace:string, podName:string, containerName:string): boolean => {
         let socket = this.webSockets.find(s => s.ws === webSocket)
@@ -90,7 +147,7 @@ class MetricsChannel implements IChannel {
             const owner = podResponse.metadata?.ownerReferences?.find(owner => owner.controller)
             if (!owner) {
                 console.log('No owner found')
-                this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `No owner found for starting instance ${instanceConfig.instance}: ${podNamespace}/${podName}/${containerName}`, instanceConfig)
+                this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `No owner found for starting instance ${instanceConfig.instance}: ${podNamespace}/${podName}/${containerName}`, instanceConfig)
                 return false
             }
             const gtype = owner.kind.toLocaleLowerCase()  // replicaset, daemonset or statefulset (this is never 'deployment', since owner of pod is replicaset)
@@ -102,7 +159,7 @@ class MetricsChannel implements IChannel {
                     {
                         if (!this.checkScopes(instanceConfig, InstanceConfigScopeEnum.SNAPSHOT)) {
                             console.log('Insufficient scope for SNAPSHOT')
-                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Insufficient scope for SNAPSHOT', instanceConfig) 
+                            this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, 'Insufficient scope for SNAPSHOT', instanceConfig) 
                             return false
                         }
                         if (podNode) {
@@ -120,7 +177,7 @@ class MetricsChannel implements IChannel {
                                 return true
                             }
                             else {
-                                this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig) 
+                                this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig) 
                                 return false
                             }
                         }
@@ -129,7 +186,7 @@ class MetricsChannel implements IChannel {
                     {
                         if (!this.checkScopes(instanceConfig, InstanceConfigScopeEnum.STREAM)) {
                             console.log('Insufficient scope for STREAM')
-                            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Insufficient scope for STREAM', instanceConfig) 
+                            this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, 'Insufficient scope for STREAM', instanceConfig) 
                             return false
                         }
 
@@ -157,7 +214,7 @@ class MetricsChannel implements IChannel {
                                     return true
                                 }
                                 
-                                if (instanceConfig.view === InstanceConfigViewEnum.CONTAINER) {
+                                if (instanceConfig.view === EInstanceConfigView.CONTAINER) {
                                     instance.assets.push ({podNode, podNamespace, podGroup, podName, containerName})
                                     this.sendMetricsDataInstance(webSocket,instanceConfig.instance, true)
                                     return true
@@ -194,12 +251,12 @@ class MetricsChannel implements IChannel {
                         }
                     }
                 default:
-                    this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Invalid mode: ${(instanceConfig.data as MetricsConfig).mode}`, instanceConfig)
+                    this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Invalid mode: ${(instanceConfig.data as MetricsConfig).mode}`, instanceConfig)
                     return false
             }
         }
         catch (err:any) {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err.stack, instanceConfig)
+            this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, err.stack, instanceConfig)
             console.log('Generic error starting metrics instance', err)
             return false
         }
@@ -213,10 +270,10 @@ class MetricsChannel implements IChannel {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             this.removeInstance (webSocket,instanceConfig.instance)
-            this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.METRICS, instanceConfig, 'Metrics instance stopped')
+            this.sendInstanceConfigMessage(webSocket,EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, EInstanceMessageChannel.METRICS, instanceConfig, 'Metrics instance stopped')
         }
         else {
-            this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.METRICS, instanceConfig, 'Instance not found')
+            this.sendInstanceConfigMessage(webSocket,EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, EInstanceMessageChannel.METRICS, instanceConfig, 'Instance not found')
         }
     }
 
@@ -228,27 +285,27 @@ class MetricsChannel implements IChannel {
             destConfig.metrics = (instanceConfig.data as MetricsConfig).metrics
             destConfig.interval = (instanceConfig.data as MetricsConfig).interval
             destConfig.aggregate = (instanceConfig.data as MetricsConfig).aggregate
-            this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.MODIFY, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.METRICS, instanceConfig, 'Metrics modified')
+            this.sendInstanceConfigMessage(webSocket,EInstanceMessageAction.MODIFY, EInstanceMessageFlow.RESPONSE, EInstanceMessageChannel.METRICS, instanceConfig, 'Metrics modified')
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
+            this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
         }   
     }
 
-    pauseContinueInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void {
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig, action: EInstanceMessageAction): void {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
-            if (action === InstanceMessageActionEnum.PAUSE) {
+            if (action === EInstanceMessageAction.PAUSE) {
                 instance.paused = true
-                this.sendInstanceConfigMessage(webSocket, InstanceMessageActionEnum.PAUSE, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.METRICS, instanceConfig, 'Metrics paused')
+                this.sendInstanceConfigMessage(webSocket, EInstanceMessageAction.PAUSE, EInstanceMessageFlow.RESPONSE, EInstanceMessageChannel.METRICS, instanceConfig, 'Metrics paused')
             }
-            if (action === InstanceMessageActionEnum.CONTINUE) {
+            if (action === EInstanceMessageAction.CONTINUE) {
                 instance.paused = false
-                this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.CONTINUE, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.METRICS, instanceConfig, 'Metrics continued')
+                this.sendInstanceConfigMessage(webSocket,EInstanceMessageAction.CONTINUE, EInstanceMessageFlow.RESPONSE, EInstanceMessageChannel.METRICS, instanceConfig, 'Metrics continued')
             }
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
+            this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
         }
     }
 
@@ -259,7 +316,7 @@ class MetricsChannel implements IChannel {
             if (instances) {
                 let instanceIndex = instances.findIndex(t => t.instanceId === instanceId)
                 if (instanceIndex>=0) {
-                    instances[instanceIndex].timeout.close()
+                    if (instances[instanceIndex].timeout) instances[instanceIndex].timeout.close()
                     instances.splice(instanceIndex,1)
                 }
                 else{
@@ -297,7 +354,7 @@ class MetricsChannel implements IChannel {
             if (exists) {
                 entry.ws = newWebSocket
                 for (var instance of entry.instances) {
-                    clearInterval(instance.timeout)
+                    if (instance.timeout) clearInterval(instance.timeout)
                     instance.timeout = setInterval(() => this.sendMetricsDataInstance(newWebSocket, instanceId, false), instance.interval)
                 }
                 return true
@@ -321,7 +378,9 @@ class MetricsChannel implements IChannel {
         }
     }
 
+    // *************************************************************************************
     // PRIVATE
+    // *************************************************************************************
 
     getInstance(webSocket:WebSocket, instanceId: string) : IInstance | undefined{
         let socket = this.webSockets.find(entry => entry.ws === webSocket)
@@ -342,15 +401,11 @@ class MetricsChannel implements IChannel {
         return undefined
     }
 
-    // *************************************************************************************
-    // PRIVATE
-    // *************************************************************************************
-
-    getAssetMetrics = (instanceConfig:IInstanceConfig, assets:AssetData[], usePrevMetricSet:boolean): AssetMetrics => {
-        var assetMetrics:AssetMetrics = { assetName: this.getAssetMetricName(instanceConfig, assets), values: [] }
+    getAssetMetrics = (instanceConfig:IInstanceConfig, assets:AssetData[], usePrevMetricSet:boolean): IMetricsAssets => {
+        var assetMetrics:IMetricsAssets = { assetName: this.getAssetMetricName(instanceConfig, assets), values: [] }
 
         var newAssets:AssetData[] = []
-        if (instanceConfig.view=== InstanceConfigViewEnum.CONTAINER) {
+        if (instanceConfig.view=== EInstanceConfigView.CONTAINER) {
             newAssets = assets
         }
         else {
@@ -483,9 +538,9 @@ class MetricsChannel implements IChannel {
 
     getAssetMetricName = (instanceConfig:IInstanceConfig, assets:AssetData[]): string => {
         switch (instanceConfig.view) {
-            case InstanceConfigViewEnum.NAMESPACE:
+            case EInstanceConfigView.NAMESPACE:
                 return [...new Set (assets.map (a => a.podNamespace))].join(',')
-            case InstanceConfigViewEnum.GROUP:
+            case EInstanceConfigView.GROUP:
                 let requestedGroups = instanceConfig.group.split(',')
                 return [...new Set (assets.map (a => {
                     if (requestedGroups.includes(a.podGroup)) {
@@ -503,12 +558,74 @@ class MetricsChannel implements IChannel {
                         }
                     }
                 }))].join(',')
-            case InstanceConfigViewEnum.POD:
+            case EInstanceConfigView.POD:
                 return [...new Set (assets.map (a => a.podName))].join(',')
-            case InstanceConfigViewEnum.CONTAINER:
+            case EInstanceConfigView.CONTAINER:
                 return [...new Set (assets.map (a => a.podName+'['+a.containerName+']'))].join(',')
             default:
                 return 'unnamedView'
+        }
+    }
+
+    fillData = (instanceConfig:IInstanceConfig, instance:IInstance, responseMessage:IMetricsMessageResponse) => {
+        switch(instanceConfig.view) {
+            case EInstanceConfigView.NAMESPACE:
+                if ((instanceConfig.data as MetricsConfig).aggregate) {
+                    let assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
+                    responseMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const namespaces = [...new Set(instance.assets.map(item => item.podNamespace))]
+                    for (let namespace of namespaces) {
+                        let assets = instance.assets.filter(a => a.podNamespace === namespace)
+                        let assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
+                        responseMessage.assets.push(assetMetrics)
+                    }
+
+                }
+                break
+            case EInstanceConfigView.GROUP:
+                if ((instanceConfig.data as MetricsConfig).aggregate) {
+                    var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
+                    responseMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
+                    for (let groupName of groupNames) {
+                        let assets=instance.assets.filter(a => a.podGroup === groupName)
+                        let assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
+                        responseMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            case EInstanceConfigView.POD:
+                if ((instanceConfig.data as MetricsConfig).aggregate) {
+                    var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
+                    responseMessage.assets.push(assetMetrics)
+                }
+                else {
+                    const uniquePodNames = [...new Set(instance.assets.map(asset => asset.podName))]
+                    for (var podName of uniquePodNames) {
+                        var assets = instance.assets.filter(a => a.podName === podName)
+                        var assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
+                        responseMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            case EInstanceConfigView.CONTAINER:
+                if ((instanceConfig.data as MetricsConfig).aggregate) {
+                    var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
+                    responseMessage.assets.push(assetMetrics)
+                }
+                else {
+                    for (var asset of instance.assets) {
+                        var assetMetrics = this.getAssetMetrics(instanceConfig, [asset], false)
+                        responseMessage.assets.push(assetMetrics)
+                    }
+                }
+                break
+            default:
+                console.log(`Invalid view:`, instanceConfig.view)
         }
     }
 
@@ -542,82 +659,25 @@ class MetricsChannel implements IChannel {
         let instanceConfig = instance.instanceConfig
     
         try {
-            var metricsMessage:MetricsMessage = {
-                action: InstanceMessageActionEnum.NONE,
-                flow: InstanceMessageFlowEnum.UNSOLICITED,
-                channel: InstanceMessageChannelEnum.METRICS,
-                type: InstanceMessageTypeEnum.DATA,
+            let metricsMessageResponse:IMetricsMessageResponse = {
+                msgtype: 'metricsmessageresponse',
+                action: EInstanceMessageAction.NONE,
+                flow: EInstanceMessageFlow.UNSOLICITED,
+                channel: EInstanceMessageChannel.METRICS,
+                type: EInstanceMessageType.DATA,
                 instance: instanceConfig.instance,
                 assets: [],
                 namespace: instanceConfig.namespace,
+                group: '',
                 pod: instanceConfig.pod,
-                timestamp: initial? 0: Date.now(),
-                container: '',
-                msgtype: 'metricsmessage'
+                timestamp: initial ? 0 : Date.now(),
+                container: ''
             }
-    
-            switch(instanceConfig.view) {
-                case InstanceConfigViewEnum.NAMESPACE:
-                    if ((instanceConfig.data as MetricsConfig).aggregate) {
-                        let assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
-                        metricsMessage.assets.push(assetMetrics)
-                    }
-                    else {
-                        const namespaces = [...new Set(instance.assets.map(item => item.podNamespace))]
-                        for (let namespace of namespaces) {
-                            let assets = instance.assets.filter(a => a.podNamespace === namespace)
-                            let assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
-                            metricsMessage.assets.push(assetMetrics)
-                        }
 
-                    }
-                    break
-                case InstanceConfigViewEnum.GROUP:
-                    if ((instanceConfig.data as MetricsConfig).aggregate) {
-                        var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
-                        metricsMessage.assets.push(assetMetrics)
-                    }
-                    else {
-                        const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
-                        for (let groupName of groupNames) {
-                            let assets=instance.assets.filter(a => a.podGroup === groupName)
-                            let assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
-                            metricsMessage.assets.push(assetMetrics)
-                        }
-                    }
-                    break
-                case InstanceConfigViewEnum.POD:
-                    if ((instanceConfig.data as MetricsConfig).aggregate) {
-                        var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
-                        metricsMessage.assets.push(assetMetrics)
-                    }
-                    else {
-                        const uniquePodNames = [...new Set(instance.assets.map(asset => asset.podName))]
-                        for (var podName of uniquePodNames) {
-                            var assets = instance.assets.filter(a => a.podName === podName)
-                            var assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
-                            metricsMessage.assets.push(assetMetrics)
-                        }
-                    }
-                    break
-                case InstanceConfigViewEnum.CONTAINER:
-                    if ((instanceConfig.data as MetricsConfig).aggregate) {
-                        var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
-                        metricsMessage.assets.push(assetMetrics)
-                    }
-                    else {
-                        for (var asset of instance.assets) {
-                            var assetMetrics = this.getAssetMetrics(instanceConfig, [asset], false)
-                            metricsMessage.assets.push(assetMetrics)
-                        }
-                    }
-                    break
-                default:
-                    console.log(`Invalid view:`, instanceConfig.view)
-            }
-    
+            this.fillData(instanceConfig, instance, metricsMessageResponse)
+            
             try {
-                webSocket.send(JSON.stringify(metricsMessage))
+                webSocket.send(JSON.stringify(metricsMessageResponse))
             }
             catch (err) {
                 console.log('Socket error, we should forget interval')
@@ -625,28 +685,147 @@ class MetricsChannel implements IChannel {
             instance.working=false
         }
         catch (err) {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.WARNING, `Cannot read metrics for instance ${instanceId}`, instanceConfig)
+            this.sendChannelSignal(webSocket, ESignalMessageLevel.WARNING, `Cannot read metrics for instance ${instanceId}`, instanceConfig)
             console.log('Error reading metrics', err)
         }
     }
+
+    // sendMetricsDataInstance = (webSocket:WebSocket, instanceId:string, initial:boolean): void => {
+    //     let socket = this.webSockets.find(entry => entry.ws === webSocket)
+    //     if (!socket) {
+    //         console.log('No socket found for sendLogData')
+    //         return
+    //     }
+    //     let instances = socket.instances
+
+    //     if (!instances) {
+    //         console.log('No instances found for sendMetricsData')
+    //         return
+    //     }
+    //     var instance = instances.find (i => i.instanceId === instanceId)
+    //     if (!instance) {
+    //         console.log(`No instance found for sendMetricsData instance ${instanceId}`)
+    //         return
+    //     }
+    //     if (instance.working) {
+    //         console.log(`Previous instance of ${instanceId} is still running`)
+    //         return
+    //     }
+    //     if (instance.paused) {
+    //         console.log(`Instance ${instanceId} is paused, no SMD performed`)
+    //         return
+    //     }
     
-    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:IInstanceConfig, text:string): void => {
+    //     instance.working=true
+    //     let instanceConfig = instance.instanceConfig
+    
+    //     try {
+    //         let metricsMessage:IMetricsMessageResponse = {
+    //             msgtype: 'metricsmessageresponse',
+    //             action: EInstanceMessageAction.NONE,
+    //             flow: EInstanceMessageFlow.UNSOLICITED,
+    //             channel: EInstanceMessageChannel.METRICS,
+    //             type: EInstanceMessageType.DATA,
+    //             instance: instanceConfig.instance,
+    //             assets: [],
+    //             namespace: instanceConfig.namespace,
+    //             group: '',
+    //             pod: instanceConfig.pod,
+    //             timestamp: initial ? 0 : Date.now(),
+    //             container: ''
+    //         }
+    
+    //         switch(instanceConfig.view) {
+    //             case EInstanceConfigView.NAMESPACE:
+    //                 if ((instanceConfig.data as MetricsConfig).aggregate) {
+    //                     let assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
+    //                     metricsMessage.assets.push(assetMetrics)
+    //                 }
+    //                 else {
+    //                     const namespaces = [...new Set(instance.assets.map(item => item.podNamespace))]
+    //                     for (let namespace of namespaces) {
+    //                         let assets = instance.assets.filter(a => a.podNamespace === namespace)
+    //                         let assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
+    //                         metricsMessage.assets.push(assetMetrics)
+    //                     }
+
+    //                 }
+    //                 break
+    //             case EInstanceConfigView.GROUP:
+    //                 if ((instanceConfig.data as MetricsConfig).aggregate) {
+    //                     var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
+    //                     metricsMessage.assets.push(assetMetrics)
+    //                 }
+    //                 else {
+    //                     const groupNames = [...new Set(instance.assets.map(item => item.podGroup))]
+    //                     for (let groupName of groupNames) {
+    //                         let assets=instance.assets.filter(a => a.podGroup === groupName)
+    //                         let assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
+    //                         metricsMessage.assets.push(assetMetrics)
+    //                     }
+    //                 }
+    //                 break
+    //             case EInstanceConfigView.POD:
+    //                 if ((instanceConfig.data as MetricsConfig).aggregate) {
+    //                     var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
+    //                     metricsMessage.assets.push(assetMetrics)
+    //                 }
+    //                 else {
+    //                     const uniquePodNames = [...new Set(instance.assets.map(asset => asset.podName))]
+    //                     for (var podName of uniquePodNames) {
+    //                         var assets = instance.assets.filter(a => a.podName === podName)
+    //                         var assetMetrics = this.getAssetMetrics(instanceConfig, assets, false)
+    //                         metricsMessage.assets.push(assetMetrics)
+    //                     }
+    //                 }
+    //                 break
+    //             case EInstanceConfigView.CONTAINER:
+    //                 if ((instanceConfig.data as MetricsConfig).aggregate) {
+    //                     var assetMetrics = this.getAssetMetrics(instanceConfig, instance.assets, false)
+    //                     metricsMessage.assets.push(assetMetrics)
+    //                 }
+    //                 else {
+    //                     for (var asset of instance.assets) {
+    //                         var assetMetrics = this.getAssetMetrics(instanceConfig, [asset], false)
+    //                         metricsMessage.assets.push(assetMetrics)
+    //                     }
+    //                 }
+    //                 break
+    //             default:
+    //                 console.log(`Invalid view:`, instanceConfig.view)
+    //         }
+    
+    //         try {
+    //             webSocket.send(JSON.stringify(metricsMessage))
+    //         }
+    //         catch (err) {
+    //             console.log('Socket error, we should forget interval')
+    //         }
+    //         instance.working=false
+    //     }
+    //     catch (err) {
+    //         this.sendChannelSignal(webSocket, ESignalMessageLevel.WARNING, `Cannot read metrics for instance ${instanceId}`, instanceConfig)
+    //         console.log('Error reading metrics', err)
+    //     }
+    // }
+    
+    sendInstanceConfigMessage = (ws:WebSocket, action:EInstanceMessageAction, flow: EInstanceMessageFlow, channel: EInstanceMessageChannel, instanceConfig:IInstanceConfig, text:string): void => {
         var resp:IInstanceConfigResponse = {
             action,
             flow,
             channel,
             instance: instanceConfig.instance,
-            type: InstanceMessageTypeEnum.SIGNAL,
+            type: EInstanceMessageType.SIGNAL,
             text
         }
         ws.send(JSON.stringify(resp))
     }
 
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: IInstanceConfig): void {
+    sendChannelSignal (webSocket: WebSocket, level: ESignalMessageLevel, text: string, instanceConfig: IInstanceConfig): void {
         var signalMessage:ISignalMessage = {
-            action: InstanceMessageActionEnum.NONE,
-            flow: InstanceMessageFlowEnum.RESPONSE,
-            type: InstanceMessageTypeEnum.SIGNAL,
+            action: EInstanceMessageAction.NONE,
+            flow: EInstanceMessageFlow.RESPONSE,
+            type: EInstanceMessageType.SIGNAL,
             level,
             channel: instanceConfig.channel,
             instance: instanceConfig.instance,
@@ -655,6 +834,18 @@ class MetricsChannel implements IChannel {
         webSocket.send(JSON.stringify(signalMessage))
     }
 
+    private sendSignalMessage = (ws:WebSocket, action:EInstanceMessageAction, flow: EInstanceMessageFlow, level: ESignalMessageLevel, instanceId:string, text:string): void => {
+        var resp:ISignalMessage = {
+            action,
+            flow,
+            channel: 'metrics',
+            instance: instanceId,
+            type: EInstanceMessageType.SIGNAL,
+            text,
+            level
+        }
+        ws.send(JSON.stringify(resp))
+    }
 
 }
 

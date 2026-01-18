@@ -4,31 +4,32 @@ crear un setting del usuario tipo "autoexec.bat"
 log de jobs? revisar "started &&"
 
 replication controller group support
-
+campana
 
 MAGNIFY
+zona de avisos (implementar en filemanager)
 contentexternal
     configuracion
     chartmenu
     logfollow
 
-detail > style  
-    stringseq  **TEST**
-edit > 
-    headers ancho fijo
-    base64 en secrets
+overview global: graficosspcPoc > cpu y memoria
+    implementar timeouts que cada x tiempo soliciten metricas snapshot
+
+contentdetails
+    apply changes
+
 events > revisar orden 23h59m
-pvc > pods
 
-set default ingress class
+pvc > pods  **TEST**
 
-channel
+MAGNIFY BACK
 reconnect
 validate addObject (kwirth/kwrith/kwirth...)
 
-overview global: graficos y ultimos eventos
-spcPoc > cpu y memoria
-    implementar timeoutts que cada x timepo soliciten metricas snapshot
-detail 
-
 💖💖💖 portforward con smart proxy
+
+ERRORS:
+    recatfilemanager columns
+    crd instances duplicates
+    resourceselector groups duplicated simetimes

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { Box,  Card, CardContent, CardHeader, Collapse, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { IWorkspaceSummary } from '../model/IWorkspace'
 import { ITabSummary } from '../model/ITabObject'
-import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { Delete, ExpandLess, ExpandMore, FactCheck, OpenInBrowser, Star } from '@mui/icons-material'
 import { TChannelConstructor } from '../channels/IChannel'
 import { Cluster } from '../model/Cluster'
@@ -10,6 +9,7 @@ import { GaugeComponent } from 'react-gauge-component'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { IconAks, IconBlank, IconContainer, IconEks, IconGke, IconGroup, IconK3d, IconK3s, IconK8s, IconNamespace, IconOcp, IconPod, IconRk2e } from '../tools/Constants-React'
 import { Area, AreaChart } from 'recharts'
+import { EInstanceConfigView } from '@jfvilas/kwirth-common'
 
 // svg optimizer: https://jakearchibald.github.io/svgomg/ (optmizes size and removes namespaces)
 
@@ -28,7 +28,7 @@ interface IProps {
     onUpdateWorkspaces: (last:IWorkspaceSummary[], fav:IWorkspaceSummary[]) => void
 }
 
-enum ListTypeEnum {
+enum EListType {
     FAV='fav',
     LAST='last'
 }
@@ -132,10 +132,10 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         props.onSelectWorkspace(workspace)
     }
 
-    const drawTabCard = (tabList:ITabSummary[], listType:ListTypeEnum) => {
+    const drawTabCard = (tabList:ITabSummary[], listType:EListType) => {
         return <>
             <Card>
-                <CardHeader title={`${listType=== ListTypeEnum.LAST? 'Last':'Fav'} tabs`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
+                <CardHeader title={`${listType=== EListType.LAST? 'Last':'Fav'} tabs`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
                 <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>                                    
                     {
                         tabList.map(tab => {
@@ -146,16 +146,16 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
 
                             let viewIcon = <></>
                             switch (tab.channelObject.view) {
-                                case InstanceConfigViewEnum.NAMESPACE:
+                                case EInstanceConfigView.NAMESPACE:
                                     viewIcon = <IconNamespace height={20}/>
                                     break
-                                case InstanceConfigViewEnum.GROUP:
+                                case EInstanceConfigView.GROUP:
                                     viewIcon = <IconGroup height={20}/>
                                     break
-                                case InstanceConfigViewEnum.POD:
+                                case EInstanceConfigView.POD:
                                     viewIcon = <IconPod height={20}/>
                                     break
-                                case InstanceConfigViewEnum.CONTAINER:
+                                case EInstanceConfigView.CONTAINER:
                                     viewIcon = <IconContainer height={20}/>
                                     break
                                 default:
@@ -184,7 +184,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                     <FactCheck/>
                                 </IconButton>
                                 
-                                { listType !== ListTypeEnum.FAV && 
+                                { listType !== EListType.FAV && 
                                     <IconButton onClick={() => toFavTabs(tab)}>
                                         <Star sx={{ color: 'gray' }} /> 
                                     </IconButton>
@@ -200,10 +200,10 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         </>
     }
 
-    const drawWorkspaceCard = (workspaceList:IWorkspaceSummary[], listType:ListTypeEnum) => {
+    const drawWorkspaceCard = (workspaceList:IWorkspaceSummary[], listType:EListType) => {
         return <>
             <Card>
-                <CardHeader title={`${listType === ListTypeEnum.LAST? 'Last':'Fav'} workspaces`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
+                <CardHeader title={`${listType === EListType.LAST? 'Last':'Fav'} workspaces`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
                 <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>
                     { workspaceList.map (workspace => {
                         return <Stack key={listType+workspace.name} direction={'row'} spacing={1} alignItems={'baseline'}>
@@ -213,7 +213,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                             <IconButton onClick={() => openWorkspace(workspace)}>
                                 <OpenInBrowser/>
                             </IconButton>
-                            { listType !== ListTypeEnum.FAV && 
+                            { listType !== EListType.FAV && 
                                 <IconButton onClick={() => toFavWorkspaces(workspace)}>
                                     <Star sx={{ color: 'gray' }} /> 
                                 </IconButton>
@@ -433,12 +433,12 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
 
                     <Stack direction={'row'} spacing={2} sx={{width:'100%'}}>
                         <Stack direction={'column'} width='100%' spacing={2} height='100%'>
-                            {drawTabCard(props.lastTabs, ListTypeEnum.LAST)}
-                            {drawTabCard(props.favTabs, ListTypeEnum.FAV)}
+                            {drawTabCard(props.lastTabs, EListType.LAST)}
+                            {drawTabCard(props.favTabs, EListType.FAV)}
                         </Stack>
                         <Stack direction={'column'} width='100%' spacing={2} height='100%'>
-                            {drawWorkspaceCard(props.lastWorkspaces, ListTypeEnum.LAST)}
-                            {drawWorkspaceCard(props.favWorkspaces, ListTypeEnum.FAV)}
+                            {drawWorkspaceCard(props.lastWorkspaces, EListType.LAST)}
+                            {drawWorkspaceCard(props.favWorkspaces, EListType.FAV)}
                         </Stack>
                     </Stack>
 

@@ -1,4 +1,4 @@
-import { InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
+import { EInstanceConfigView, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
 import { MetricDefinition } from './metrics/MetricDefinition'
 import { ENotifyLevel } from '../tools/Global'
 import { IChannelSettings } from '../model/Settings'
@@ -27,12 +27,11 @@ interface ISetupProps {
 
 interface IContentProps {
     channelObject: IChannelObject
-    //maxHeight: number
 }
 
 interface IChannelObject {
     clusterName: string
-    view: InstanceConfigViewEnum
+    view: EInstanceConfigView
     namespace: string
     group: string
     pod: string

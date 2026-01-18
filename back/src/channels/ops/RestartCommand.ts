@@ -1,4 +1,4 @@
-import { InstanceMessageFlowEnum, InstanceMessageTypeEnum, OpsCommandEnum, IOpsMessage, IOpsMessageResponse } from "@jfvilas/kwirth-common"
+import { InstanceMessageFlowEnum, InstanceMessageTypeEnum, EOpsCommand, IOpsMessage, IOpsMessageResponse, EInstanceMessageType, EInstanceMessageFlow } from "@jfvilas/kwirth-common"
 import { ClusterInfo } from "../../model/ClusterInfo"
 import { IInstance } from "./OpsChannel"
 
@@ -15,8 +15,8 @@ export async function restartPod(clusterInfo: ClusterInfo, podNamespace:string, 
 export async function execCommandRestart(clusterInfo: ClusterInfo, instance:IInstance, opsMessage:IOpsMessage): Promise<IOpsMessageResponse> {
     let execResponse: IOpsMessageResponse = {
         action: opsMessage.action,
-        flow: InstanceMessageFlowEnum.RESPONSE,
-        type: InstanceMessageTypeEnum.SIGNAL,
+        flow: EInstanceMessageFlow.RESPONSE,
+        type: EInstanceMessageType.SIGNAL,
         channel: opsMessage.channel,
         instance: opsMessage.instance,
         command: opsMessage.command,
@@ -29,14 +29,14 @@ export async function execCommandRestart(clusterInfo: ClusterInfo, instance:IIns
     }
 
     switch(opsMessage.command) {
-        case OpsCommandEnum.RESTARTPOD:
+        case EOpsCommand.RESTARTPOD:
             if (opsMessage.namespace==='' || opsMessage.pod==='' || !opsMessage.namespace || !opsMessage.pod) {
                 execResponse.data = `Namespace and pod must be specified (format 'ns/pod')`
                 return execResponse
             }
             if (instance.assets.find(a => a.podNamespace === opsMessage.namespace && a.podName === opsMessage.pod)) {
                 execResponse.data = await restartPod(clusterInfo, opsMessage.namespace, opsMessage.pod)
-                execResponse.type = InstanceMessageTypeEnum.DATA
+                execResponse.type = EInstanceMessageType.DATA
             }
             else {
                 execResponse.data = `Cannot find pod '${opsMessage.namespace}/${opsMessage.pod}'`
@@ -44,7 +44,7 @@ export async function execCommandRestart(clusterInfo: ClusterInfo, instance:IIns
             }
             break
 
-        case OpsCommandEnum.RESTARTNS:
+        case EOpsCommand.RESTARTNS:
             if (opsMessage.namespace==='' || !opsMessage.namespace) {
                 execResponse.data = `Namespace must be specified`
                 return execResponse
@@ -60,7 +60,7 @@ export async function execCommandRestart(clusterInfo: ClusterInfo, instance:IIns
                     }                
                 }    
             }
-            execResponse.type = InstanceMessageTypeEnum.DATA
+            execResponse.type = EInstanceMessageType.DATA
             break                
             
         default:

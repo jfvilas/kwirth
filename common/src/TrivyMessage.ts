@@ -1,6 +1,6 @@
 import { IInstanceMessage } from "./InstanceMessage"
 
-export enum TrivyCommandEnum {
+export enum ETrivyCommand {
     SCORE = 'score',
     RESCAN = 'rescan'
 }
@@ -14,7 +14,7 @@ export interface ITrivyMessage extends IInstanceMessage {
     group: string
     pod:string
     container: string
-    command: TrivyCommandEnum
+    command: ETrivyCommand
     params?: string[]
 }
 

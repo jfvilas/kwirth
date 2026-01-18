@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { IMetricsData, MetricsEventSeverityEnum } from './MetricsData'
+import { IMetricsData, EMetricsEventSeverity } from './MetricsData'
 import { Alert, Box, Button, Snackbar } from '@mui/material'
 import { IContentProps } from '../IChannel'
 import { IMetricsConfig, IMetricsInstanceConfig, IMetricViewConfig, METRICSCOLOURS, MetricsConfig } from './MetricsConfig'
 import { Chart, ISample } from './Chart'
-import { IInstanceConfig, InstanceConfigObjectEnum, InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
+import { EInstanceConfigObject, EInstanceConfigView, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EMetricsConfigMode, IInstanceConfig } from '@jfvilas/kwirth-common'
 
 const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let metricsConfig:IMetricsConfig = props.channelObject.config
@@ -28,7 +28,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const handleClose = (reason:string, dataMetrics:IMetricsData, event:{ severity:MetricsEventSeverityEnum, text:string }) => {
+    const handleClose = (reason:string, dataMetrics:IMetricsData, event:{ severity:EMetricsEventSeverity, text:string }) => {
         dataMetrics.events = dataMetrics.events.filter(e => e.severity!==event.severity && e.text!==event.text)
         setRefreshTabContent(Math.random())
     }
@@ -53,22 +53,22 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         let metricsMessage:IInstanceConfig = {
             channel: 'metrics',
             data: {
-                mode: MetricsConfigModeEnum.STREAM,
+                mode: EMetricsConfigMode.STREAM,
                 aggregate: metricsInstanceConfig.aggregate,
                 interval: metricsInstanceConfig.interval,
                 metrics: metricsInstanceConfig.metrics.filter(m => m !== metricName)
             },
-            objects: InstanceConfigObjectEnum.PODS,
+            objects: EInstanceConfigObject.PODS,
             accessKey: props.channelObject.accessString!,
             scope: '',
-            view: InstanceConfigViewEnum.NONE,
+            view: EInstanceConfigView.NONE,
             namespace: '',
             group: '',
             pod: '',
             container: '',
-            action: InstanceMessageActionEnum.MODIFY,
-            flow: InstanceMessageFlowEnum.REQUEST,
-            type: InstanceMessageTypeEnum.DATA,
+            action: EInstanceMessageAction.MODIFY,
+            flow: EInstanceMessageFlow.REQUEST,
+            type: EInstanceMessageType.DATA,
             instance: props.channelObject.instanceId
         }
         let payload = JSON.stringify( metricsMessage )
@@ -120,7 +120,12 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     return data.get(assetName)!.get(metric)!
                 })
                 allCharts.push(
-                    <Chart key={metricDefinition.metric} metricDefinition={metricDefinition} names={assetNames} series={series} colour={''} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} tooltip={true} labels={true} onSetDefault={onSetMetricDefault} viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig} onRemove={onChartRemove}/>
+                    <Chart key={metricDefinition.metric} metricDefinition={metricDefinition} names={assetNames} series={series} colour={''} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} tooltip={true} labels={true} onSetDefault={onSetMetricDefault} viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig} onRemove={onChartRemove}
+                        configurable={metricsConfig.configurable}
+                        height={metricsConfig.lineHeight}
+                        compact={metricsConfig.compact}
+                        legend={metricsConfig.legend}
+                    />
                 )
             }
 
@@ -142,7 +147,20 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 return Array.from(data.get(asset)?.keys()!).map ( metric => {
                     let metricDefinition = props.channelObject.metricsList?.get(metric)!
                     var series = data.get(asset)?.get(metric)!
-                    return <Chart key={metricDefinition.metric} metricDefinition={metricDefinition} names={[asset]} series={[series]} colour={METRICSCOLOURS[index]} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} labels={true} tooltip={true} onSetDefault={onSetMetricDefault} viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig} onRemove={onChartRemove}/>
+                    return <Chart key={metricDefinition.metric} colour={METRICSCOLOURS[index]} labels={true} tooltip={true} 
+                        names={[asset]}
+                        series={[series]} chartType={metricsConfig.chart} 
+                        stack={metricsConfig.stack}
+                        viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig} 
+                        numSeries={series.length}
+                        metricDefinition={metricDefinition} 
+                        onRemove={onChartRemove}
+                        onSetDefault={onSetMetricDefault} 
+                        height={metricsConfig.lineHeight}
+                        configurable={metricsConfig.configurable}
+                        compact={metricsConfig.compact}
+                        legend={metricsConfig.legend}
+                    />
                 })
             })
 

@@ -30,7 +30,7 @@ import { IWorkspace, IWorkspaceSummary } from './model/IWorkspace'
 import { VERSION } from './version'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, IInstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources, KwirthData, BackChannelData, IUser, ISignalMessage } from '@jfvilas/kwirth-common'
+import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, IInstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources, KwirthData, BackChannelData, IUser, ISignalMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView, EInstanceConfigObject } from '@jfvilas/kwirth-common'
 import { ITabObject, ITabSummary } from './model/ITabObject'
 
 import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
@@ -315,7 +315,7 @@ const App: React.FC = () => {
             channelObject: {
                 clusterName: cluster.name,
                 instanceId: '',
-                view: view as InstanceConfigViewEnum,
+                view: view as EInstanceConfigView,
                 namespace: namespaces,
                 group: groups,
                 pod: pods,
@@ -428,10 +428,11 @@ const App: React.FC = () => {
                 channelInstanceConfig: channelSettings.channelInstanceConfig,
                 channelConfig: channelSettings.channelConfig
             })
-            console.log(settingsRef.current)
             writeSettings()
         }
 
+        console.log('channelSettings.channelConfig')
+        console.log(channelSettings.channelConfig)
         selectedTab.current.channelObject.config = channelSettings.channelConfig
         selectedTab.current.channelObject.instanceConfig = channelSettings.channelInstanceConfig
         setChannelMessageAction({action : EChannelRefreshAction.REFRESH})  // we force rendering
@@ -443,10 +444,10 @@ const App: React.FC = () => {
             if (tab.channelObject.instanceId) {
                 // we only send keealive (ping) if we have a valid instance id
                 let instanceConfig:IInstanceMessage = {
-                    action: InstanceMessageActionEnum.PING,
+                    action: EInstanceMessageAction.PING,
                     channel: tab.channel.channelId,
-                    flow: InstanceMessageFlowEnum.REQUEST,
-                    type: InstanceMessageTypeEnum.SIGNAL,
+                    flow: EInstanceMessageFlow.REQUEST,
+                    type: EInstanceMessageType.SIGNAL,
                     instance: tab.channelObject.instanceId
                 }
                 if (tab.ws && tab.ws.readyState === WebSocket.OPEN) tab.ws.send(JSON.stringify(instanceConfig))
@@ -514,9 +515,9 @@ const App: React.FC = () => {
             console.log(wsEvent.data)
             return
         }
-        if (instanceMessage.action === InstanceMessageActionEnum.PING || instanceMessage.channel === InstanceMessageChannelEnum.NONE) return
+        if (instanceMessage.action === EInstanceMessageAction.PING || instanceMessage.channel === InstanceMessageChannelEnum.NONE) return
 
-        if (instanceMessage.type === InstanceMessageTypeEnum.SIGNAL && instanceMessage.action === InstanceMessageActionEnum.RECONNECT && instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
+        if (instanceMessage.type === EInstanceMessageType.SIGNAL && instanceMessage.action === EInstanceMessageAction.RECONNECT && instanceMessage.flow === EInstanceMessageFlow.RESPONSE) {
             let msg:ISignalMessage = JSON.parse(wsEvent.data) as ISignalMessage
             if (msg.data!==undefined) {
                 if (msg.data===false) {
@@ -574,18 +575,18 @@ const App: React.FC = () => {
         colorizeTab(tab)
         let instanceConfig:IInstanceConfig = {
             channel: tab.channel.channelId,
-            objects: InstanceConfigObjectEnum.PODS,
-            flow: InstanceMessageFlowEnum.REQUEST,
-            action: InstanceMessageActionEnum.RECONNECT,
+            objects: EInstanceConfigObject.PODS,
+            flow: EInstanceMessageFlow.REQUEST,
+            action: EInstanceMessageAction.RECONNECT,
             instance: tab.channelObject.instanceId,
             scope: InstanceConfigScopeEnum.NONE,
             accessKey: '',
-            view: InstanceConfigViewEnum.NONE,
+            view: EInstanceConfigView.NONE,
             namespace: '',
             group: '',
             pod: '',
             container: '',
-            type: InstanceMessageTypeEnum.SIGNAL
+            type: EInstanceMessageType.SIGNAL
         }
         if (wsEvent.target) {
             tab.ws = wsEvent.target
@@ -659,9 +660,9 @@ const App: React.FC = () => {
 
             let instanceConfig: IInstanceConfig = {
                 channel: tab.channel.channelId,
-                objects: InstanceConfigObjectEnum.PODS,
-                action: InstanceMessageActionEnum.START,
-                flow: InstanceMessageFlowEnum.REQUEST,
+                objects: EInstanceConfigObject.PODS,
+                action: EInstanceMessageAction.START,
+                flow: EInstanceMessageFlow.REQUEST,
                 instance: '',
                 accessKey: cluster.accessString,
                 scope: InstanceConfigScopeEnum.NONE,
@@ -670,7 +671,7 @@ const App: React.FC = () => {
                 group: tab.channelObject.group,
                 pod: tab.channelObject.pod,
                 container: tab.channelObject.container,
-                type: InstanceMessageTypeEnum.SIGNAL
+                type: EInstanceMessageType.SIGNAL
             }
 
             if (tab.channel) {
@@ -684,7 +685,7 @@ const App: React.FC = () => {
                 colorizeTab(tab)
 
                 if (!lastTabs.some(t => t.name === tab.name && t.channel === tab.channel.channelId)) {
-                    let newTab = {
+                    let newTab:ITabSummary = {
                         name: tab.name,
                         description: tab.name,
                         channel: tab.channel.channelId,
@@ -724,9 +725,9 @@ const App: React.FC = () => {
         if (!cluster) return
         let instanceConfig: IInstanceConfig = {
             channel: tab.channel.channelId,
-            objects: InstanceConfigObjectEnum.PODS,
-            action: InstanceMessageActionEnum.STOP,
-            flow: InstanceMessageFlowEnum.REQUEST,
+            objects: EInstanceConfigObject.PODS,
+            action: EInstanceMessageAction.STOP,
+            flow: EInstanceMessageFlow.REQUEST,
             instance: tab.channelObject.instanceId,
             accessKey: cluster.accessString,
             view: tab.channelObject.view,
@@ -735,7 +736,7 @@ const App: React.FC = () => {
             group: '',
             pod: '',
             container: '',
-            type: InstanceMessageTypeEnum.SIGNAL
+            type: EInstanceMessageType.SIGNAL
         }
         if (selectedTab.current && selectedTab.current.channel) {
             if (selectedTab.current.channel.stopChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
@@ -757,9 +758,9 @@ const App: React.FC = () => {
         
         let instanceConfig:IInstanceConfig = {
             channel: selectedTab.current.channel.channelId,
-            objects: InstanceConfigObjectEnum.PODS,
-            action: InstanceMessageActionEnum.PAUSE,
-            flow: InstanceMessageFlowEnum.REQUEST,
+            objects: EInstanceConfigObject.PODS,
+            action: EInstanceMessageAction.PAUSE,
+            flow: EInstanceMessageFlow.REQUEST,
             instance: selectedTab.current.channelObject?.instanceId,
             accessKey: cluster.accessString,
             scope: InstanceConfigScopeEnum.NONE,
@@ -768,19 +769,19 @@ const App: React.FC = () => {
             group: selectedTab.current.channelObject.group,
             pod: selectedTab.current.channelObject.pod,
             container: selectedTab.current.channelObject.container,
-            type: InstanceMessageTypeEnum.SIGNAL
+            type: EInstanceMessageType.SIGNAL
         }
 
         if (selectedTab.current.channelPaused) {
             selectedTab.current.channelPaused = false
             colorizeTab(selectedTab.current)
-            instanceConfig.action = InstanceMessageActionEnum.CONTINUE
+            instanceConfig.action = EInstanceMessageAction.CONTINUE
             if (selectedTab.current.channel.continueChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         }
         else {
             selectedTab.current.channelPaused = true
             colorizeTab(selectedTab.current)
-            instanceConfig.action = InstanceMessageActionEnum.PAUSE
+            instanceConfig.action = EInstanceMessageAction.PAUSE
             if (selectedTab.current.channel.pauseChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         }
         selectedTab.current.ws.send(JSON.stringify(instanceConfig))

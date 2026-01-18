@@ -3,7 +3,7 @@ import { IAlertData } from './AlertData'
 import { IContentProps } from '../IChannel'
 import { useEffect, useRef, useState } from 'react'
 import { Warning, Error, Info } from '@mui/icons-material'
-import { AlertSeverityEnum } from '@jfvilas/kwirth-common'
+import { EAlertSeverity } from '@jfvilas/kwirth-common'
 
 const AlertTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const alertData:IAlertData = props.channelObject.data
@@ -74,9 +74,9 @@ const AlertTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0'}} title={
                 <Stack direction={'row'} alignItems={'center'}>
                     <Typography marginRight={'32px'}><b>Alerts:</b> {alertData.firedAlerts.length}</Typography>
-                    <Typography marginRight={'32px'}><Info fontSize='small' sx={{marginBottom:'2px', color:'blue'}} /><b>&nbsp;Info:</b> {alertData.firedAlerts.filter(a => a.severity === AlertSeverityEnum.INFO).length}</Typography>
-                    <Typography marginRight={'32px'}><Warning fontSize='small' sx={{marginBottom:'2px', color:'orange'}} /><b>&nbsp;Warning:</b> {alertData.firedAlerts.filter(a => a.severity === AlertSeverityEnum.WARNING).length}</Typography>
-                    <Typography marginRight={'32px'}><Error fontSize='small' sx={{marginBottom:'2px', color:'red'}}/><b>&nbsp;Error:</b> {alertData.firedAlerts.filter(a => a.severity === AlertSeverityEnum.ERROR).length}</Typography>
+                    <Typography marginRight={'32px'}><Info fontSize='small' sx={{marginBottom:'2px', color:'blue'}} /><b>&nbsp;Info:</b> {alertData.firedAlerts.filter(a => a.severity === EAlertSeverity.INFO).length}</Typography>
+                    <Typography marginRight={'32px'}><Warning fontSize='small' sx={{marginBottom:'2px', color:'orange'}} /><b>&nbsp;Warning:</b> {alertData.firedAlerts.filter(a => a.severity === EAlertSeverity.WARNING).length}</Typography>
+                    <Typography marginRight={'32px'}><Error fontSize='small' sx={{marginBottom:'2px', color:'red'}}/><b>&nbsp;Error:</b> {alertData.firedAlerts.filter(a => a.severity === EAlertSeverity.ERROR).length}</Typography>
                     <Typography sx={{flexGrow:1}}></Typography>
                     <TextField value={filter} onChange={onChangeFilter} disabled={!alertData.started} size='small' variant='standard' placeholder='Filter...'
                         InputProps={{ endAdornment: 

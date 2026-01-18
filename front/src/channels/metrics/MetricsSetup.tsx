@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemButton, ListItemText, MenuItem, Select, Stack, TextField, Tooltip, Typography} from '@mui/material'
-import { MetricsConfigModeEnum, InstanceConfigViewEnum } from '@jfvilas/kwirth-common'
+import { EMetricsConfigMode, EInstanceConfigView } from '@jfvilas/kwirth-common'
 import { ISetupProps } from '../IChannel'
 import { BarChart } from '@mui/icons-material'
 import { MetricsInstanceConfig, MetricsConfig } from './MetricsConfig'
@@ -15,16 +15,16 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     let multiAssets=false
     if (props.channelObject) {
         switch (props.channelObject.view) {
-            case InstanceConfigViewEnum.NAMESPACE:
+            case EInstanceConfigView.NAMESPACE:
                 multiAssets = props.channelObject.namespace.split(',').length > 1
                 break
-            case InstanceConfigViewEnum.GROUP:
+            case EInstanceConfigView.GROUP:
                 multiAssets = props.channelObject.group.split(',').length > 1
                 break
-            case InstanceConfigViewEnum.POD:
+            case EInstanceConfigView.POD:
                 multiAssets = props.channelObject.pod.split(',').length > 1
                 break
-            case InstanceConfigViewEnum.CONTAINER:
+            case EInstanceConfigView.CONTAINER:
                 multiAssets = props.channelObject.container.split(',').length > 1
                 break
         }
@@ -53,6 +53,10 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
         metricsInstanceConfig.metrics = metricsNames
         metricsConfig.depth = metricsDepth
         metricsConfig.width = metricsWidth
+        metricsConfig.lineHeight = 300
+        metricsConfig.configurable = true
+        metricsConfig.compact = false
+        metricsConfig.legend = true
         metricsConfig.merge = assetMerge
         metricsConfig.stack = assetStack
         metricsConfig.chart = chart
@@ -98,9 +102,9 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                     <Stack direction={'row'} spacing={1} >
                         <FormControl sx={{width:'25%'}}>
                             <InputLabel>Mode</InputLabel>
-                            <Select value={metricsMode} onChange={(e) => setMetricsMode(e.target.value as MetricsConfigModeEnum)} variant='standard' disabled>
-                                <MenuItem value={MetricsConfigModeEnum.SNAPSHOT}>Snapshot</MenuItem>
-                                <MenuItem value={MetricsConfigModeEnum.STREAM}>Stream</MenuItem>
+                            <Select value={metricsMode} onChange={(e) => setMetricsMode(e.target.value as EMetricsConfigMode)} variant='standard' disabled>
+                                <MenuItem value={EMetricsConfigMode.SNAPSHOT}>Snapshot</MenuItem>
+                                <MenuItem value={EMetricsConfigMode.STREAM}>Stream</MenuItem>
                             </Select>
                         </FormControl>
                         <FormControl variant="standard" sx={{width:'25%'}}>

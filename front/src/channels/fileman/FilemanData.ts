@@ -16,7 +16,7 @@ export class FilemanData implements IFilemanData {
     currentPath = '/'
 }
 
-export enum FilemanCommandEnum {
+export enum EFilemanCommand {
     HOME = 'home',
     DIR = 'dir',
     CREATE = 'create',
@@ -37,14 +37,14 @@ export interface IFilemanMessage extends IInstanceMessage {
     group: string
     pod: string
     container: string
-    command: FilemanCommandEnum
+    command: EFilemanCommand
     params?: string[]
 }
 
 export interface IFilemanMessageResponse extends IInstanceMessage {
     msgtype: 'filemanmessageresponse'
     id: string
-    command: FilemanCommandEnum
+    command: EFilemanCommand
     namespace: string
     group: string
     pod: string

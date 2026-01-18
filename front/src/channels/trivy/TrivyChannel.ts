@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { IKnown, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ITrivyMessage, ITrivyMessageResponse, IUnknown, ISignalMessage, SignalMessageLevelEnum, TrivyCommandEnum } from '@jfvilas/kwirth-common'
+import { IKnown, EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageType, ITrivyMessage, ITrivyMessageResponse, IUnknown, ISignalMessage, ETrivyCommand, EInstanceMessageFlow, ESignalMessageLevel } from '@jfvilas/kwirth-common'
 import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
 import { ITrivyData, TrivyData } from './TrivyData'
@@ -35,14 +35,14 @@ export class TrivyChannel implements IChannel {
         let trivyMessageResponse:ITrivyMessageResponse = JSON.parse(wsEvent.data)
 
         switch (trivyMessageResponse.type) {
-            case InstanceMessageTypeEnum.DATA:
-                if (trivyMessageResponse.flow === InstanceMessageFlowEnum.RESPONSE && trivyMessageResponse.action === InstanceMessageActionEnum.COMMAND) {
+            case EInstanceMessageType.DATA:
+                if (trivyMessageResponse.flow === EInstanceMessageFlow.RESPONSE && trivyMessageResponse.action === EInstanceMessageAction.COMMAND) {
                     if (trivyMessageResponse.data) {
                         action = EChannelRefreshAction.REFRESH
                         trivyData.score = trivyMessageResponse.data.score
                     }
                 }
-                else if (trivyMessageResponse.flow === InstanceMessageFlowEnum.UNSOLICITED) {
+                else if (trivyMessageResponse.flow === EInstanceMessageFlow.UNSOLICITED) {
                     switch (trivyMessageResponse.msgsubtype) {
                         case 'score':
                             trivyData.score = trivyMessageResponse.data.score
@@ -64,14 +64,14 @@ export class TrivyChannel implements IChannel {
                     action = EChannelRefreshAction.REFRESH
                 }
                 break
-            case InstanceMessageTypeEnum.SIGNAL:
+            case EInstanceMessageType.SIGNAL:
                 let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
-                if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE && signalMessage.action === InstanceMessageActionEnum.START) {
+                if (signalMessage.flow === EInstanceMessageFlow.RESPONSE && signalMessage.action === EInstanceMessageAction.START) {
                     channelObject.instanceId = signalMessage.instance
                     //this.trivyRequestScore(channelObject)  Not needed, score gets updated when a vuln report is created
                 }
                 else {
-                    if (signalMessage.level!== SignalMessageLevelEnum.INFO) console.log('SIGNAL RECEIVED',wsEvent.data)
+                    if (signalMessage.level!== ESignalMessageLevel.INFO) console.log('SIGNAL RECEIVED',wsEvent.data)
                 }
                 break
             default:
@@ -144,11 +144,11 @@ export class TrivyChannel implements IChannel {
             group: '',
             pod: '',
             container: '',
-            command: TrivyCommandEnum.SCORE,
-            action: InstanceMessageActionEnum.COMMAND,
-            flow: InstanceMessageFlowEnum.REQUEST,
-            type: InstanceMessageTypeEnum.DATA,
-            channel: InstanceMessageChannelEnum.TRIVY
+            command: ETrivyCommand.SCORE,
+            action: EInstanceMessageAction.COMMAND,
+            flow: EInstanceMessageFlow.REQUEST,
+            type: EInstanceMessageType.DATA,
+            channel: EInstanceMessageChannel.TRIVY
         }
         channelObject.webSocket!.send(JSON.stringify(triviMessage))
     }

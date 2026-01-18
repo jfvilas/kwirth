@@ -1,10 +1,12 @@
 import { IInstanceMessage } from "./InstanceMessage"
 
+// transient
 export enum InstanceConfigObjectEnum {
     PODS = 'pods',
     EVENTS = 'events'
 }
 
+// transient
 export enum InstanceConfigViewEnum {
     NONE = 'none',
     CLUSTER = 'cluster',
@@ -14,6 +16,7 @@ export enum InstanceConfigViewEnum {
     CONTAINER = 'container'
 }
 
+// transient
 export enum InstanceConfigScopeEnum {
     NONE='none',
     API = 'api',
@@ -41,11 +44,52 @@ export enum InstanceConfigScopeEnum {
     KUBERNETES = "kubernetes"
 }
 
+export enum EInstanceConfigObject {
+    PODS = 'pods',
+    EVENTS = 'events'
+}
+
+export enum EInstanceConfigView {
+    NONE = 'none',
+    CLUSTER = 'cluster',
+    NAMESPACE = 'namespace',
+    GROUP = 'group',
+    POD = 'pod',
+    CONTAINER = 'container'
+}
+
+export enum EInstanceConfigScope {
+    NONE='none',
+    API = 'api',
+    CLUSTER = 'cluster',
+
+    // LOG
+    FILTER = 'filter',
+    VIEW = 'view',
+
+    // METRICS
+    SNAPSHOT = 'snapshot',
+    STREAM = 'stream',
+
+    // ALARM
+    CREATE = 'create',
+    SUBSCRIBE = 'subscribe',
+
+    // OPS
+    GET = 'get',
+    EXECUTE = 'execute',
+    RESTART = 'restart',
+
+    // TRIVY
+    WORKLOAD = "workload",
+    KUBERNETES = "kubernetes"
+}
+
 export interface IInstanceConfig extends IInstanceMessage{
-    objects: InstanceConfigObjectEnum
+    objects: EInstanceConfigObject
     accessKey: string
     scope: string
-    view: InstanceConfigViewEnum
+    view: EInstanceConfigView
     namespace: string
     group: string
     pod: string

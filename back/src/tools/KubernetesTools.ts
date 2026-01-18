@@ -1,4 +1,4 @@
-import { BatchV1Api, CoreV1Api, V1Eviction, V1Job } from '@kubernetes/client-node'
+import { BatchV1Api, CoreV1Api, NetworkingV1Api, V1Eviction, V1Job } from '@kubernetes/client-node'
 import { ClusterInfo } from '../model/ClusterInfo'
 const fs = require('fs')
 const yaml = require('js-yaml')
@@ -172,20 +172,7 @@ async function nodeDrain(coreApi: CoreV1Api, nodeName: string): Promise<void> {
                 console.log(`Omit system pod: ${name}`)
                 return
             }
-
-            const eviction: V1Eviction = {
-                apiVersion: 'policy/v1',
-                kind: 'Eviction',
-                metadata: { name, namespace }
-            }
-
-            try {
-                await coreApi.createNamespacedPodEviction({ name, namespace, body: eviction })
-                console.log(`Evcition succesfully requested for: ${name}`);
-            }
-            catch (e: any) {
-                console.error(`Error evicting ${name}: ${e.body?.message || e.message}`);
-            }
+            await podEvict(coreApi, namespace, name)
         })
 
         await Promise.all(evictionPromises)
@@ -260,22 +247,52 @@ async function cronJobTrigger (namespace: string, cronJobName: string, batchApi:
                     value: suspend
                 }
             ]
-
-            const options = { 
-                headers: { "Content-type": "application/json-patch+json" } 
-            }
-            
             await batchApi.patchNamespacedCronJob({
                 name: cronJobName,
                 namespace,
                 body: patch
             })
 
-            console.log(`✅ CronJob "${cronJobName}" ${suspend ? 'suspendido' : 'activado'} correctamente.`);
+            console.log(`✅ CronJob "${cronJobName}" ${suspend ? 'suspended' : 'activated'} succesfully.`);
         }
         catch (err: any) {
-            console.error('❌ Error al parchear el CronJob:', err.response?.body?.message || err.message);
+            console.error('❌ Error patching CronJob:', err.response?.body?.message || err.message);
         }
     }
 
-export { applyResource, applyAllResources, deleteAllResources, nodeDrain, nodeCordon, nodeUnCordon, throttleExcute, cronJobStatus, cronJobTrigger }
+    async function podEvict (coreApi: CoreV1Api, namespace: string, name:string): Promise<void> {
+        const body: V1Eviction = {
+            apiVersion: 'policy/v1',
+            kind: 'Eviction',
+            metadata: {
+                name: name,
+                namespace: namespace,
+            }
+        }
+
+        try {
+            await coreApi.createNamespacedPodEviction({name, namespace, body })
+            console.log(`Eviction succesful for ${name}`);
+        }
+        catch (err: any) {
+            console.error('Error evicting:', err.response?.body?.message || err.message);
+        }
+    } 
+    async function setIngressClassAsDefault (networkApi: NetworkingV1Api, name:string) {
+        const patch = {
+            op: 'replace',
+            path: '/metadata/annotations',
+            value: {
+                'ingressclass.kubernetes.io/is-default-class': 'true'
+            }
+        }
+        try {
+            await networkApi.patchIngressClass({ name: name, body: [patch]})
+            console.log(`✅ IngressClass "${name}" set as default.`)
+        }
+        catch (err) {
+            console.error('Error al pathing igress class IngressClass:', err)
+        }        
+    }
+
+export { applyResource, applyAllResources, deleteAllResources, nodeDrain, nodeCordon, nodeUnCordon, throttleExcute, cronJobStatus, cronJobTrigger, podEvict, setIngressClassAsDefault }

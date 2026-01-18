@@ -1,4 +1,10 @@
+//transient
 enum ClusterTypeEnum {
+    KUBERNETES = 'kubernetes',
+    DOCKER = 'docker'
+}
+
+enum EClusterType {
     KUBERNETES = 'kubernetes',
     DOCKER = 'docker'
 }
@@ -26,7 +32,7 @@ interface KwirthData {
     version: string
     lastVersion: string
     clusterName: string
-    clusterType: ClusterTypeEnum
+    clusterType: EClusterType
     inCluster: boolean
     namespace: string
     deployment: string
@@ -34,4 +40,4 @@ interface KwirthData {
     channels: BackChannelData[]
 }
 
-export { ClusterTypeEnum, KwirthData, BackChannelData }
+export { ClusterTypeEnum, KwirthData, BackChannelData, EClusterType }

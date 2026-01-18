@@ -1,5 +1,5 @@
 import { ClusterInfo, INodeInfo } from "../model/ClusterInfo"
-import { InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
+import { EInstanceConfigView, InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
 import { NodeMetrics } from "../model/INodeMetrics"
 
 export interface AssetData {
@@ -450,8 +450,8 @@ export class MetricsTools {
     }
 
     // get a spsecific value for a concrete metric
-    public extractContainerMetrics = (clusterInfo:ClusterInfo, podMetricsSet:Map<string,{value: number, timestamp:number}>, containerMetricsSet:Map<string,{value: number, timestamp:number}>, requestedMetricName:string, view:InstanceConfigViewEnum, node:INodeInfo, asset:AssetData): {value:number, timestamp:number|undefined }=> {
-        if (view === InstanceConfigViewEnum.CONTAINER) {
+    public extractContainerMetrics = (clusterInfo:ClusterInfo, podMetricsSet:Map<string,{value: number, timestamp:number}>, containerMetricsSet:Map<string,{value: number, timestamp:number}>, requestedMetricName:string, view:EInstanceConfigView, node:INodeInfo, asset:AssetData): {value:number, timestamp:number|undefined }=> {
+        if (view === EInstanceConfigView.CONTAINER) {
             var metricName = asset.podNamespace + '/' + asset.podName + '/' + asset.containerName + '/' + requestedMetricName
             var value = containerMetricsSet.get(metricName)?.value
             if (value !== undefined) {

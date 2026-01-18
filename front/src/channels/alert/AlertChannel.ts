@@ -1,6 +1,6 @@
 import { FC } from 'react'
 import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { AlertSeverityEnum, IAlertMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage } from '@jfvilas/kwirth-common'
+import { EAlertSeverity, IAlertMessage, IInstanceMessage, ISignalMessage, EInstanceMessageFlow, EInstanceMessageType, EInstanceMessageAction, EInstanceConfigScope } from '@jfvilas/kwirth-common'
 import { AlertIcon, AlertSetup } from './AlertSetup'
 import { AlertTabContent } from './AlertTabContent'
 import { AlertData, IAlertData } from './AlertData'
@@ -23,7 +23,7 @@ export class AlertChannel implements IChannel {
     requiresWebSocket() { return false }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
-    getScope() { return InstanceConfigScopeEnum.VIEW}
+    getScope() { return EInstanceConfigScope.VIEW}
     getChannelIcon(): JSX.Element { return AlertIcon }
     
     getSetupVisibility(): boolean { return this.setupVisible }
@@ -36,7 +36,7 @@ export class AlertChannel implements IChannel {
         let alertConfig:IAlertConfig = channelObject.config
 
         switch (msg.type) {
-            case InstanceMessageTypeEnum.DATA:
+            case EInstanceMessageType.DATA:
                 alertData.firedAlerts.push ({
                     timestamp: msg.timestamp? new Date(msg.timestamp).getTime(): Date.now(),
                     severity: msg.severity,
@@ -49,16 +49,16 @@ export class AlertChannel implements IChannel {
                 if (alertData.firedAlerts.length > alertConfig.maxAlerts) alertData.firedAlerts.splice(0, alertData.firedAlerts.length - alertConfig.maxAlerts)
                 if (!alertData.paused) action = EChannelRefreshAction.REFRESH
                 break
-            case InstanceMessageTypeEnum.SIGNAL:
+            case EInstanceMessageType.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
-                if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
+                if (instanceMessage.flow === EInstanceMessageFlow.RESPONSE && instanceMessage.action === EInstanceMessageAction.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }
-                else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
+                else if (instanceMessage.flow === EInstanceMessageFlow.RESPONSE && instanceMessage.action === EInstanceMessageAction.RECONNECT) {
                     let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
                     alertData.firedAlerts.push({
                         timestamp: signalMessage.timestamp?.getTime() || 0,
-                        severity: AlertSeverityEnum.INFO,
+                        severity: EAlertSeverity.INFO,
                         text: signalMessage.text || ''
                     })
                     action = EChannelRefreshAction.REFRESH
@@ -104,7 +104,7 @@ export class AlertChannel implements IChannel {
         let alertData:IAlertData = channelObject.data 
         alertData.firedAlerts.push({
             timestamp: Date.now(),
-            severity: AlertSeverityEnum.INFO,
+            severity: EAlertSeverity.INFO,
             namespace:'',
             container: '',
             text: 'Channel stopped\n========================================================================='
@@ -118,7 +118,7 @@ export class AlertChannel implements IChannel {
         let alertData:IAlertData = channelObject.data
         alertData.firedAlerts.push({
             timestamp: Date.now(),
-            severity: AlertSeverityEnum.ERROR,
+            severity: EAlertSeverity.ERROR,
             namespace:'',
             container: '',
             text: '*** Lost connection ***'

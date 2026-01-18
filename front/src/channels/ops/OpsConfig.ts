@@ -1,6 +1,6 @@
 import { IScopedObject } from "./OpsData"
 
-enum ESwitchKeyEnum {
+export enum ESwitchKey {
     DISABLED,
     NONE,
     ALT,
@@ -9,13 +9,13 @@ enum ESwitchKeyEnum {
 }
 
 interface IOpsConfig {
-    accessKey: ESwitchKeyEnum
+    accessKey: ESwitchKey
     launchShell: boolean
     shell?: IScopedObject
 }
 
 class OpsConfig implements IOpsConfig{
-    accessKey =  ESwitchKeyEnum.DISABLED
+    accessKey =  ESwitchKey.DISABLED
     launchShell = false
 }
 
@@ -28,4 +28,4 @@ class OpsInstanceConfig implements IOpsInstanceConfig{
 }
 
 export type { IOpsConfig, IOpsInstanceConfig }
-export { OpsConfig, OpsInstanceConfig, ESwitchKeyEnum }
+export { OpsConfig, OpsInstanceConfig }

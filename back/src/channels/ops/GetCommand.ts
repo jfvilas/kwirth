@@ -1,12 +1,12 @@
-import { InstanceMessageFlowEnum, InstanceMessageTypeEnum, OpsCommandEnum, IOpsMessage, IOpsMessageResponse } from "@jfvilas/kwirth-common"
+import { EOpsCommand, IOpsMessage, IOpsMessageResponse, EInstanceMessageType, EInstanceMessageFlow } from "@jfvilas/kwirth-common"
 import { ClusterInfo } from "../../model/ClusterInfo"
 import { IInstance } from "./OpsChannel"
 
 export async function execCommandDescribe(clusterInfo: ClusterInfo, instance:IInstance, opsMessage:IOpsMessage): Promise<IOpsMessageResponse> {
     let execResponse: IOpsMessageResponse = {
         action: opsMessage.action,
-        flow: InstanceMessageFlowEnum.RESPONSE,
-        type: InstanceMessageTypeEnum.SIGNAL,
+        flow: EInstanceMessageFlow.RESPONSE,
+        type: EInstanceMessageType.SIGNAL,
         channel: opsMessage.channel,
         instance: opsMessage.instance,
         command: opsMessage.command,
@@ -31,7 +31,7 @@ export async function execCommandDescribe(clusterInfo: ClusterInfo, instance:IIn
             // else 
             //     execResponse.data = nsresp.body
             execResponse.data = nsresp
-            execResponse.type = InstanceMessageTypeEnum.DATA
+            execResponse.type = EInstanceMessageType.DATA
             return execResponse
         }
 
@@ -42,7 +42,7 @@ export async function execCommandDescribe(clusterInfo: ClusterInfo, instance:IIn
             // else
             //     execResponse.data = presp.body
             execResponse.data = presp
-            execResponse.type = InstanceMessageTypeEnum.DATA
+            execResponse.type = EInstanceMessageType.DATA
         }
         else {
             let cont = presp.spec?.containers.find(container => container.name === opsMessage.container)
@@ -53,7 +53,7 @@ export async function execCommandDescribe(clusterInfo: ClusterInfo, instance:IIn
                 //     execResponse.data = JSON.stringify(cont,null,2)
                 // }
                 execResponse.data = JSON.stringify(cont,null,2)
-                execResponse.type = InstanceMessageTypeEnum.DATA
+                execResponse.type = EInstanceMessageType.DATA
             }
             else {
                 execResponse.data = 'Container not found'

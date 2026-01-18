@@ -5,7 +5,7 @@ import { IChannel } from '../channels/IChannel'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import Docker from 'dockerode'
 import { applyAllResources, deleteAllResources } from '../tools/KubernetesTools'
-import { ClusterTypeEnum, KwirthData } from '@jfvilas/kwirth-common'
+import { ClusterTypeEnum, EClusterType, KwirthData } from '@jfvilas/kwirth-common'
 
 export class ConfigApi {
     public route = express.Router()
@@ -189,7 +189,7 @@ export class ConfigApi {
                 next()
             })
             .get( async (req:Request, res:Response) => {
-                if (this.kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+                if (this.kwirthData.clusterType === EClusterType.DOCKER) {
                     res.status(200).json(['$docker'])
                 }
                 else {
@@ -245,7 +245,7 @@ export class ConfigApi {
                 try {
                     let result:string[]=[]
 
-                    if (this.kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+                    if (this.kwirthData.clusterType === EClusterType.DOCKER) {
                         result = await this.clusterInfo.dockerTools.getAllPodNames()
                     }
                     else {
@@ -274,7 +274,7 @@ export class ConfigApi {
                 next()
             })
             .get( async (req:Request, res:Response) => {
-                if (this.kwirthData.clusterType === ClusterTypeEnum.DOCKER) {
+                if (this.kwirthData.clusterType === EClusterType.DOCKER) {
                     let names = await this.clusterInfo.dockerTools.getContainers(req.params.pod)
                     res.status(200).json(names)
                 }

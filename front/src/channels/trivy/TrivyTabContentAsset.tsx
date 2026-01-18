@@ -4,9 +4,9 @@ import { Visibility as VisibilityIcon } from '@mui/icons-material'
 import { Replay as ReplayIcon } from '@mui/icons-material'
 import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
 import { useState } from 'react'
-import { InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, TrivyCommandEnum, ITrivyMessage, IKnown } from '@jfvilas/kwirth-common'
 import { IChannelObject } from '../IChannel'
 import { ITrivyInstanceConfig } from './TrivyConfig'
+import { EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageFlow, EInstanceMessageType, IKnown, ITrivyMessage, ETrivyCommand } from '@jfvilas/kwirth-common'
 
 interface IProps {
     asset: IKnown
@@ -59,11 +59,11 @@ const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
                 group: '',
                 pod: asset.name,
                 container: asset.container,
-                command: TrivyCommandEnum.RESCAN,
-                action: InstanceMessageActionEnum.COMMAND,
-                flow: InstanceMessageFlowEnum.REQUEST,
-                type: InstanceMessageTypeEnum.DATA,
-                channel: InstanceMessageChannelEnum.TRIVY
+                command: ETrivyCommand.RESCAN,
+                action: EInstanceMessageAction.COMMAND,
+                flow: EInstanceMessageFlow.REQUEST,
+                type: EInstanceMessageType.DATA,
+                channel: EInstanceMessageChannel.TRIVY
             }
             props.channelObject.webSocket.send(JSON.stringify(trivyMessage))
             props.onDelete(asset)

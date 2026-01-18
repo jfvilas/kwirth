@@ -1,27 +1,19 @@
-import { IInstanceMessage } from "@jfvilas/kwirth-common"
+import { IInstanceMessage, IMetricsAssets } from "@jfvilas/kwirth-common"
 
-export enum MetricsEventSeverityEnum {
+export enum EMetricsEventSeverity {
     INFO = 'info',
     WARNING = 'warning',
     ERROR = 'error'
 }
 
-export interface IAssetMetrics {
-    assetName: string
-    values: {
-        metricName: string
-        metricValue: number
-    }[]
-}
-
-export interface IMetricsMessage extends IInstanceMessage {
-    assets: IAssetMetrics[]
+export interface IAssetMetricsValues extends IInstanceMessage {
+    assets: IMetricsAssets[]
     timestamp: number
 }
 
 export interface IMetricsData {
-    assetMetricsValues: IMetricsMessage[]
-    events: { severity:MetricsEventSeverityEnum, text:string }[]
+    assetMetricsValues: IAssetMetricsValues[]
+    events: { severity:EMetricsEventSeverity, text:string }[]
     paused:boolean
     started:boolean
 }

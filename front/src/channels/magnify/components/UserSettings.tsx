@@ -3,9 +3,11 @@ import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, B
 import { ExpandMore } from '@mui/icons-material'
 import { MagnifyUserSettings } from '../MagnifyUserSettings'
 import { IFileObject } from '@jfvilas/react-file-manager'
+import { IChannelObject } from '../../IChannel'
 
 
 interface IProps {
+    channelObject: IChannelObject
     settings: MagnifyUserSettings
     files: IFileObject[]
     onReload?: () => void
@@ -38,7 +40,7 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
     return <Box sx={{m:1}}>
         <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography component="span">General</Typography>
+                <Typography component="span"><b>General</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse
@@ -50,7 +52,7 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
         </Accordion>
         <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography component="span">Channels</Typography>
+                <Typography component="span"><b>Channels</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
                 <TextField value={logLines} onChange={(event) => {setLogLines(+event.target.value)}} variant='standard' label='Max messages' SelectProps={{native: true}} type='number' fullWidth />
@@ -61,7 +63,7 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
         </Accordion>
         <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography component="span">Debug</Typography>
+                <Typography component="span"><b>Debug</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
                 <Stack direction={'column'} >
@@ -69,6 +71,10 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
                         <Typography sx={{flexGrow:1}}>Show files collection on browser console ({props.files.length} objects, {(JSON.stringify(props.files).length/1024/1024).toFixed(2)}  MB approx.)</Typography>
                         <Button onClick={reload}>Reload</Button> {/*+++ el reload hace que todo crezca en 4 objetos de cada vez*/}
                         <Button onClick={() => console.log(props.files)}>Show files</Button>
+                    </Stack>
+                    <Stack direction={'row'} alignItems={'center'}>
+                        <Typography sx={{flexGrow:1}}>Metrics names </Typography>
+                        <Button onClick={() => console.log(props.channelObject.metricsList?.keys())}>Show metrics</Button>
                     </Stack>
                 </Stack>
             </AccordionDetails>

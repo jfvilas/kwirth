@@ -49,6 +49,5 @@ __exportStar(require("./SignalMessage"), exports);
 __exportStar(require("./ApiKey"), exports);
 __exportStar(require("./AccessKey"), exports);
 __exportStar(require("./Global"), exports);
-//export * from './KwirthData'
 __exportStar(require("./LogInstanceConfig"), exports);
 __exportStar(require("./Version"), exports);

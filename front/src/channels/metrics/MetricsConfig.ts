@@ -1,9 +1,12 @@
-import { MetricsConfigModeEnum } from "@jfvilas/kwirth-common"
+import { EMetricsConfigMode } from "@jfvilas/kwirth-common"
 import { EChartType } from "./MenuChart"
 
 interface IMetricViewConfig {
     displayName: string
     chartType: EChartType
+    configurable: boolean
+    compact: boolean
+    legend: boolean
     tooltip: boolean
     labels: boolean
     stack: boolean
@@ -12,16 +15,24 @@ interface IMetricViewConfig {
 interface IMetricsConfig {
     depth: number
     width: number
+    lineHeight: number
+    configurable: boolean
+    compact: boolean
+    legend: boolean
     merge: boolean 
     stack: boolean
     chart: EChartType
-    // although we like Map's, we prefer using a JSON  beacuse of serialization to backend
+    // although we like Map's, we prefer using a JSON beacuse of serialization to backend
     metricsDefault: { [key:string]: IMetricViewConfig }
 }
 
 class MetricsConfig implements IMetricsConfig{
     depth = 20
     width = 3
+    lineHeight = 300
+    configurable = true
+    compact = false
+    legend = true
     merge = false
     stack = false
     chart = EChartType.LineChart
@@ -29,14 +40,14 @@ class MetricsConfig implements IMetricsConfig{
 }
 
 interface IMetricsInstanceConfig {
-    mode: MetricsConfigModeEnum
+    mode: EMetricsConfigMode
     aggregate: boolean
     interval: number
     metrics: string[]
 }
 
 class MetricsInstanceConfig implements IMetricsInstanceConfig{
-    mode = MetricsConfigModeEnum.STREAM
+    mode = EMetricsConfigMode.STREAM
     aggregate = false
     interval = 15
     metrics:string[] = []

@@ -2,8 +2,8 @@ import { FC } from 'react'
 import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { FilemanInstanceConfig, FilemanConfig } from './FilemanConfig'
 import { FilemanSetup, FilemanIcon } from './FilemanSetup'
-import { IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
-import { FilemanCommandEnum, FilemanData, IFilemanMessageResponse, IFilemanData } from './FilemanData'
+import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageEvent, IInstanceMessage, ISignalMessage } from "@jfvilas/kwirth-common"
+import { EFilemanCommand, FilemanData, IFilemanMessageResponse, IFilemanData } from './FilemanData'
 import { FilemanTabContent } from './FilemanTabContent'
 import { v4 as uuid } from 'uuid'
 import { ENotifyLevel } from '../../tools/Global'
@@ -18,7 +18,7 @@ interface IFilemanMessage extends IInstanceMessage {
     group: string
     pod: string
     container: string
-    command: FilemanCommandEnum
+    command: EFilemanCommand
     params?: string[]
 }
 
@@ -49,12 +49,12 @@ export class FilemanChannel implements IChannel {
 
         let filemanData:IFilemanData = channelObject.data
         switch (msg.type) {
-            case InstanceMessageTypeEnum.DATA: {
+            case EInstanceMessageType.DATA: {
                 let response = JSON.parse(wsEvent.data) as IFilemanMessageResponse
                 switch(response.action) {
-                    case InstanceMessageActionEnum.COMMAND: {
+                    case EInstanceMessageAction.COMMAND: {
                         switch(response.command) {
-                            case FilemanCommandEnum.HOME:
+                            case EFilemanCommand.HOME:
                                 let data = response.data as string[]
                                 let nss = Array.from (new Set (data.map(n => n.split('/')[0])))
                                 nss.map(ns => {
@@ -78,7 +78,7 @@ export class FilemanChannel implements IChannel {
                                 return {
                                     action: EChannelRefreshAction.REFRESH
                                 }
-                            case FilemanCommandEnum.DIR:
+                            case EFilemanCommand.DIR:
                                 let content = JSON.parse(response.data)
                                 if (content.status!=='Success') {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
@@ -103,7 +103,7 @@ export class FilemanChannel implements IChannel {
                                 return {
                                     action: EChannelRefreshAction.REFRESH
                                 }
-                            case FilemanCommandEnum.RENAME: {
+                            case EFilemanCommand.RENAME: {
                                 let content = JSON.parse(response.data)
                                 if (content.status!=='Success') {
                                     this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
@@ -112,7 +112,7 @@ export class FilemanChannel implements IChannel {
                                     action: EChannelRefreshAction.REFRESH
                                 }
                             }
-                            case FilemanCommandEnum.DELETE: {
+                            case EFilemanCommand.DELETE: {
                                 let content = JSON.parse(response.data)
                                 if (content.status==='Success') {
                                     let fname = content.metadata.object
@@ -126,9 +126,9 @@ export class FilemanChannel implements IChannel {
                                     action: EChannelRefreshAction.REFRESH
                                 }
                             }
-                            case FilemanCommandEnum.MOVE:
-                            case FilemanCommandEnum.COPY:
-                            case FilemanCommandEnum.CREATE: {
+                            case EFilemanCommand.MOVE:
+                            case EFilemanCommand.COPY:
+                            case EFilemanCommand.CREATE: {
                                 let content = JSON.parse(response.data)
                                 if (content.status==='Success') {
                                     filemanData.files = filemanData.files.filter(f => f.path !== content.metadata.object)
@@ -158,28 +158,28 @@ export class FilemanChannel implements IChannel {
                     action: EChannelRefreshAction.NONE
                 }
             }
-            case InstanceMessageTypeEnum.SIGNAL:
+            case EInstanceMessageType.SIGNAL:
                 let signalMessage = JSON.parse(wsEvent.data) as ISignalMessage
-                if (signalMessage.flow === InstanceMessageFlowEnum.RESPONSE) {
-                    if (signalMessage.action === InstanceMessageActionEnum.START) {
+                if (signalMessage.flow === EInstanceMessageFlow.RESPONSE) {
+                    if (signalMessage.action === EInstanceMessageAction.START) {
                         channelObject.instanceId = signalMessage.instance
                     }
-                    else if (signalMessage.action === InstanceMessageActionEnum.COMMAND) {
+                    else if (signalMessage.action === EInstanceMessageAction.COMMAND) {
                         if (signalMessage.text) this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                 }
-                if (signalMessage.flow === InstanceMessageFlowEnum.UNSOLICITED) {
+                if (signalMessage.flow === EInstanceMessageFlow.UNSOLICITED) {
 
-                    if (signalMessage.event === SignalMessageEventEnum.ADD) {
+                    if (signalMessage.event === ESignalMessageEvent.ADD) {
                         let filemanMessage:IFilemanMessage = {
-                            flow: InstanceMessageFlowEnum.REQUEST,
-                            action: InstanceMessageActionEnum.COMMAND,
+                            flow: EInstanceMessageFlow.REQUEST,
+                            action: EInstanceMessageAction.COMMAND,
                             channel: 'fileman',
-                            type: InstanceMessageTypeEnum.DATA,
+                            type: EInstanceMessageType.DATA,
                             accessKey: channelObject.accessString!,
                             instance: channelObject.instanceId,
                             id: uuid(),
-                            command: FilemanCommandEnum.HOME,
+                            command: EFilemanCommand.HOME,
                             namespace: signalMessage.namespace!,
                             group: '',
                             pod: signalMessage.pod!,
@@ -192,7 +192,7 @@ export class FilemanChannel implements IChannel {
 
                         if (signalMessage.text) this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
-                    if (signalMessage.event === SignalMessageEventEnum.DELETE) {
+                    if (signalMessage.event === ESignalMessageEvent.DELETE) {
                         filemanData.files = filemanData.files.filter(f => !f.path.startsWith('/'+signalMessage.namespace+'/'+signalMessage.pod+'/'))
                         filemanData.files = filemanData.files.filter(f => f.path!=='/'+signalMessage.namespace+'/'+signalMessage.pod)
                         if (signalMessage.text) this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)

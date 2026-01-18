@@ -73,7 +73,7 @@ let conditions:IDetailsItem = {
     text: 'Conditions',
     source: ['status.conditions'],
     format: 'objectlist',
-    style: ['column'],
+    style: ['column'],  // 'collapse'
     content: [
         {
             name: 'type',
@@ -187,8 +187,9 @@ objectSections.set('PersistentVolumeClaim', [
            {
                 name: 'pods',
                 text: 'Pods',
-                source: ['$n/a'],  //+++
-                format: 'string',
+                source: ['@string[]'],
+                format: 'stringlist',
+                style: ['column']
            },
            {
                 name: 'status',
@@ -483,6 +484,13 @@ objectSections.set('IngressClass', [
                 source: ['spec.controller'],
                 format: 'string'
             },
+            {
+                name: 'defualt',
+                text: 'Default',
+                source: ['metadata.annotations["ingressclass.kubernetes.io/is-default-class"]'],
+                format: 'boolean',
+                style: ['true:Yes:green','false:No:red']
+            },
         ]
     },
     events
@@ -658,7 +666,7 @@ objectSections.set('Secret', [
                 text: '',
                 source: ['data'],
                 format: 'objectprops',
-                style: ['column', 'edit', 'keybold', 'multiline']
+                style: ['column', 'edit', 'keybold', 'multiline', 'lockicon', 'base64']
             },
         ]
     },
@@ -1706,11 +1714,11 @@ objectSections.set('CronJob', [
                 format: 'string',
             },
             {
-                name: 'suspend',
-                text: 'Suspend',
+                name: 'suspended',
+                text: 'Suspended',
                 source: ['spec.suspend'],
                 format: 'boolean',
-                style: ['true:Suspended:red','false:Running:green']
+                style: ['true:Yes:red','false:No:green']
             },
             {
                 name: 'lastSchedule',

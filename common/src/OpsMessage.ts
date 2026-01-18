@@ -1,6 +1,6 @@
 import { IInstanceMessage } from "./InstanceMessage"
 
-export enum OpsCommandEnum {
+export enum EOpsCommand {
     DESCRIBE = 'describe',
 
     EXECUTE = 'execute',
@@ -19,14 +19,14 @@ export interface IOpsMessage extends IInstanceMessage {
     group: string
     pod: string
     container: string
-    command: OpsCommandEnum
+    command: EOpsCommand
     params?: string[]
 }
 
 export interface IOpsMessageResponse extends IInstanceMessage {
     msgtype: 'opsmessageresponse'
     id: string
-    command: OpsCommandEnum
+    command: EOpsCommand
     namespace: string
     group: string
     pod: string

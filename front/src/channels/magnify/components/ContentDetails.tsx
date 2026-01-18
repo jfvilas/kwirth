@@ -14,6 +14,7 @@ interface IContentDetailsProps {
     onDelete: (path:string) => void
     onMinimize: (content:IContentDetailsObject) => void
     onClose: (content:IContentDetailsObject) => void
+    onLink: (kind:string, name:string ) => void
 }
 
 export interface IContentDetailsObject {
@@ -22,8 +23,7 @@ export interface IContentDetailsObject {
 }
 
 const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsProps) => {
-    console.log('renderstart')
-    const content = useRef<IContentDetailsObject>({ type:'details', content:{path:'', title:'', source: {name:'', isDirectory:false, path:''}, maximized:false}})
+    const content = useRef<IContentDetailsObject>()
     const [percent, setPercent] = useState<number>(70)
     const [containsEdit, setContainsEdit] = useState<boolean>(false)
    
@@ -33,6 +33,7 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
             setPercent(content.current.content.maximized? 100 : 70)
         }
         else if (props.selectedFile) {
+            content.current = { type:'details', content:{path:'', title:'', source: {name:'', isDirectory:false, path:''}, maximized:false}}
             content.current.content.title = (props.selectedFile.data.origin.metadata.namespace? props.selectedFile.data.origin.metadata.namespace+'/': '') + props.selectedFile.data.origin.metadata.name
             content.current.content.path = props.selectedFile.path
             content.current.content.source = props.selectedFile
@@ -44,37 +45,41 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
     },[])
 
     const minimize = () => {
-        props.onMinimize(content.current)
+        if (content.current) props.onMinimize(content.current)
     }
 
     const maximizeOrRestore = () => {
-        if (content.current.content.maximized) {
-            content.current.content.maximized = false
-            setPercent(70)
-        }
-        else {
-            content.current.content.maximized = true
-            setPercent(100)
+        if (content.current) {
+            if (content.current.content.maximized) {
+                content.current.content.maximized = false
+                setPercent(70)
+            }
+            else {
+                content.current.content.maximized = true
+                setPercent(100)
+            }
         }
     }
 
     const apply = () => {
-        props.onApply(content.current.content.path)
+        if (content.current) props.onApply(content.current.content.path)
     }
 
     const close = () => {
-        props.onClose(content.current)
+        if (content.current) props.onClose(content.current)
     }
 
     const editObject = () => {
-        props.onEdit(content.current.content.path)
+        if (content.current) props.onEdit(content.current.content.path)
     }
 
     const deleteObject = () => {
-        props.onDelete((content.current.content.path))
+        if (content.current) props.onDelete((content.current.content.path))
     }
 
-    console.log('render')
+    const link = (kind:string, name:string) => {
+        props.onLink(kind, name)
+    }
 
     return (
         <Dialog open={true} 
@@ -88,8 +93,8 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
             }}>
             <DialogTitle>
                 <Stack direction='row' alignItems={'center'}>
-                    <Typography fontSize={18}>{content.current.content.source.data?.origin.kind+': '+content.current.content.source.data?.origin.metadata?.name}</Typography>
-                    <IconButton color='primary' onClick={() => copy(content.current.content.source.data?.origin.metadata?.name)}><ContentCopy fontSize='small'/></IconButton>
+                    <Typography fontSize={18}>{content.current && content.current.content.source.data?.origin.kind+': '+content.current.content.source.data?.origin.metadata?.name}</Typography>
+                    <IconButton color='primary' onClick={() => copy(content.current && content.current.content.source.data?.origin.metadata?.name)}><ContentCopy fontSize='small'/></IconButton>
                     <IconButton color='primary' onClick={editObject}><Edit fontSize='small'/></IconButton>
                     <IconButton color='primary' onClick={deleteObject}><Delete fontSize='small'/></IconButton>
 
@@ -106,8 +111,10 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
                     </IconButton>
                 </Stack>
             </DialogTitle>
-            <DialogContent sx={{scrollbarGutter: 'stable'}}>
-                <DetailsObject object={content.current.content.source} sections={props.sections} onChangeData={() => {}} onLink={() => {}} onContainsEdit={(val:boolean) => setContainsEdit(val)}/>
+            <DialogContent >
+                {
+                    content.current && <DetailsObject object={content.current.content.source} sections={props.sections} onChangeData={() => {}} onLink={link} onContainsEdit={(val:boolean) => setContainsEdit(val)}/>
+                }
             </DialogContent>
             <DialogActions>
                 { containsEdit && <Button onClick={apply}>Apply</Button>}

@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box, Button, Card, CardContent, CardHeader, IconButton, ListItem, ListItemButton, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import { IOpsData, IScopedObject } from './OpsData'
-import { IInstanceConfig, InstanceConfigObjectEnum, InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, IOpsMessage, MetricsConfigModeEnum, OpsCommandEnum } from '@jfvilas/kwirth-common'
+import { IInstanceConfig, EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageFlow, EInstanceMessageType, IOpsMessage, EMetricsConfigMode, EOpsCommand, EInstanceConfigObject, EInstanceConfigView } from '@jfvilas/kwirth-common'
 import { IContentProps } from '../IChannel'
-import { ESwitchKeyEnum, IOpsConfig } from './OpsConfig'
+import { ESwitchKey, IOpsConfig } from './OpsConfig'
 import { v4 as uuid } from 'uuid'
 import { TerminalInstance } from './Terminal/TerminalInstance'
 import { SelectTerminal } from './Terminal/SelectTerminal'
@@ -11,9 +11,9 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxYesNo } from '../../tools/MsgBox'
 import { Delete, Home, MoreVert, RestartAlt, Terminal } from '@mui/icons-material'
 import { defaultStyles, JsonView } from 'react-json-view-lite'
 import 'react-json-view-lite/dist/index.css';
-import { MenuObject, MenuObjectOption } from './MenuObject'
+import { MenuObject, EMenuObjectOption } from './MenuObject'
 import { IResourceSelected } from '../../components/ResourceSelector'
-import { ILogConfig, ILogInstanceConfig, ELogSortOrderEnum } from '../log/LogConfig'
+import { ILogConfig, ILogInstanceConfig, ELogSortOrder } from '../log/LogConfig'
 import { IMetricsConfig, IMetricsInstanceConfig } from '../metrics/MetricsConfig'
 import { EChartType } from '../metrics/MenuChart'
 
@@ -143,11 +143,11 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         let manterm = opsData.terminalManager.terminals.get(newTerm)!
         manterm.index = assignIndex(newTerm)
         manterm.term.attachCustomKeyEventHandler((event) => {
-            if (opsConfig.accessKey !== ESwitchKeyEnum.DISABLED && event.key.startsWith('F') && event.key.length>1) {
-                if (opsConfig.accessKey === ESwitchKeyEnum.NONE && !event.altKey && !event.ctrlKey && !event.shiftKey) return false
-                if (opsConfig.accessKey === ESwitchKeyEnum.ALT && event.altKey && !event.ctrlKey && !event.shiftKey) return false
-                if (opsConfig.accessKey === ESwitchKeyEnum.CTRL && !event.altKey && event.ctrlKey && !event.shiftKey) return false
-                if (opsConfig.accessKey === ESwitchKeyEnum.SHIFT && !event.altKey && !event.ctrlKey && event.shiftKey) return false
+            if (opsConfig.accessKey !== ESwitchKey.DISABLED && event.key.startsWith('F') && event.key.length>1) {
+                if (opsConfig.accessKey === ESwitchKey.NONE && !event.altKey && !event.ctrlKey && !event.shiftKey) return false
+                if (opsConfig.accessKey === ESwitchKey.ALT && event.altKey && !event.ctrlKey && !event.shiftKey) return false
+                if (opsConfig.accessKey === ESwitchKey.CTRL && !event.altKey && event.ctrlKey && !event.shiftKey) return false
+                if (opsConfig.accessKey === ESwitchKey.SHIFT && !event.altKey && !event.ctrlKey && event.shiftKey) return false
             }
             return true
         })
@@ -158,19 +158,19 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         switch(type) {
             case LaunchActionEnum.TERMINAL:
                 let instanceConfig:IInstanceConfig = {
-                    flow: InstanceMessageFlowEnum.REQUEST,
-                    action: InstanceMessageActionEnum.WEBSOCKET,
-                    channel: InstanceMessageChannelEnum.OPS,
-                    type: InstanceMessageTypeEnum.DATA,
+                    flow: EInstanceMessageFlow.REQUEST,
+                    action: EInstanceMessageAction.WEBSOCKET,
+                    channel: EInstanceMessageChannel.OPS,
+                    type: EInstanceMessageType.DATA,
                     accessKey: props.channelObject.accessString!,
                     instance: props.channelObject.instanceId,
                     namespace: so.namespace,
                     group: '',
                     pod: so.pod,
                     container: so.pod+'+'+so.container,
-                    objects: InstanceConfigObjectEnum.PODS,
+                    objects: EInstanceConfigObject.PODS,
                     scope: '',
-                    view: InstanceConfigViewEnum.NONE
+                    view: EInstanceConfigView.NONE
                 }
                 opsData.websocketRequest = { namespace:so.namespace, pod:so.pod, container:so.container }
                 if (props.channelObject.webSocket) 
@@ -180,14 +180,14 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 break
             case LaunchActionEnum.RESTART:
                 let opsMessage:IOpsMessage = {
-                    flow: InstanceMessageFlowEnum.REQUEST,
-                    action: InstanceMessageActionEnum.COMMAND,
-                    channel: InstanceMessageChannelEnum.OPS,
-                    type: InstanceMessageTypeEnum.DATA,
+                    flow: EInstanceMessageFlow.REQUEST,
+                    action: EInstanceMessageAction.COMMAND,
+                    channel: EInstanceMessageChannel.OPS,
+                    type: EInstanceMessageType.DATA,
                     accessKey: props.channelObject.accessString!,
                     instance: props.channelObject.instanceId,
                     id: uuid(),
-                    command: OpsCommandEnum.RESTART,
+                    command: EOpsCommand.RESTART,
                     namespace: so.namespace,
                     group: '',
                     pod: so.pod,
@@ -203,19 +203,19 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const menuObjectOptionSelected = (opt:MenuObjectOption, so:IScopedObject) => {
+    const menuObjectOptionSelected = (opt:EMenuObjectOption, so:IScopedObject) => {
         setAnchorMenuChart(null)
         switch (opt) {
-            case MenuObjectOption.DESCRIBE:
+            case EMenuObjectOption.DESCRIBE:
                 let opsMessageInfo:IOpsMessage = {
-                    flow: InstanceMessageFlowEnum.REQUEST,
-                    action: InstanceMessageActionEnum.COMMAND,
-                    channel: InstanceMessageChannelEnum.OPS,
-                    type: InstanceMessageTypeEnum.DATA,
+                    flow: EInstanceMessageFlow.REQUEST,
+                    action: EInstanceMessageAction.COMMAND,
+                    channel: EInstanceMessageChannel.OPS,
+                    type: EInstanceMessageType.DATA,
                     accessKey: props.channelObject.accessString!,
                     instance: props.channelObject.instanceId,
                     id: uuid(),
-                    command: OpsCommandEnum.DESCRIBE,
+                    command: EOpsCommand.DESCRIBE,
                     namespace: so.namespace,
                     group: '',
                     pod: so.pod,
@@ -226,23 +226,23 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 if (props.channelObject.webSocket) props.channelObject.webSocket.send(JSON.stringify( opsMessageInfo ))
                 break
 
-            case MenuObjectOption.RESTARTCONTAINER:
+            case EMenuObjectOption.RESTARTCONTAINER:
                 launch (LaunchActionEnum.RESTART, so)
                 break
                 
-            case MenuObjectOption.RESTARTPOD:
+            case EMenuObjectOption.RESTARTPOD:
                 setMsgBox(MsgBoxYesNo('Restart pod',`Are you sure you want to restart pod '${so.pod}' in '${so.namespace}' namespace?`, setMsgBox, (button) => {
                     if (button===MsgBoxButtons.Yes) {
                         let opsMessage:IOpsMessage = {
                             msgtype: 'opsmessage',
-                            action: InstanceMessageActionEnum.COMMAND,
-                            flow: InstanceMessageFlowEnum.REQUEST,
-                            type: InstanceMessageTypeEnum.DATA,
-                            channel: InstanceMessageChannelEnum.OPS,
+                            action: EInstanceMessageAction.COMMAND,
+                            flow: EInstanceMessageFlow.REQUEST,
+                            type: EInstanceMessageType.DATA,
+                            channel: EInstanceMessageChannel.OPS,
                             instance: props.channelObject.instanceId,
                             id: '1',
                             accessKey: props.channelObject.accessString!,
-                            command: OpsCommandEnum.RESTARTPOD,
+                            command: EOpsCommand.RESTARTPOD,
                             namespace: so.namespace,
                             group: '',
                             pod: so.pod,
@@ -252,19 +252,19 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     }
                 }))
                 break
-            case MenuObjectOption.RESTARTNS:
+            case EMenuObjectOption.RESTARTNS:
                 setMsgBox(MsgBoxYesNo('Restart namespace',`Are you sure you want to restart namespace '${so.namespace}' (this will restart all pods you have access to)?`, setMsgBox, (button) => {
                     if (button===MsgBoxButtons.Yes) {
                         let opsMessage:IOpsMessage = {
                             msgtype: 'opsmessage',
-                            action: InstanceMessageActionEnum.COMMAND,
-                            flow: InstanceMessageFlowEnum.IMMEDIATE,
-                            type: InstanceMessageTypeEnum.DATA,
-                            channel: InstanceMessageChannelEnum.OPS,
+                            action: EInstanceMessageAction.COMMAND,
+                            flow: EInstanceMessageFlow.IMMEDIATE,
+                            type: EInstanceMessageType.DATA,
+                            channel: EInstanceMessageChannel.OPS,
                             instance: '',
                             id: '1',
                             accessKey: props.channelObject.accessString!,
-                            command: OpsCommandEnum.RESTARTNS,
+                            command: EOpsCommand.RESTARTNS,
                             namespace: so.namespace,
                             group: '',
                             pod: '',
@@ -274,7 +274,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     }
                 }))
                 break
-            case MenuObjectOption.VIEWMETRICS:
+            case EMenuObjectOption.VIEWMETRICS:
                 let metricsResource:IResourceSelected = {
                     channelId: 'metrics',
                     clusterName: props.channelObject.clusterName,
@@ -288,13 +288,17 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 let metricsConfig:IMetricsConfig = {
                     depth: 50,
                     width: 3,
+                    lineHeight: 300,
+                    configurable: true,
+                    compact: false,
+                    legend: true,
                     merge: false,
                     stack: false,
                     chart: EChartType.LineChart,
                     metricsDefault: {}
                 }
                 let metricsInstanceConfig:IMetricsInstanceConfig = {
-                    mode: MetricsConfigModeEnum.STREAM,
+                    mode: EMetricsConfigMode.STREAM,
                     aggregate: false,
                     interval: 15,
                     metrics: ['kwirth_container_cpu_percentage','kwirth_container_memory_percentage', 'kwirth_container_transmit_mbps', 'kwirth_container_receive_mbps', 'kwirth_container_write_mbps', 'kwirth_container_read_mbps']
@@ -305,7 +309,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
                 if (props.channelObject.onCreateTab) props.channelObject.onCreateTab(metricsResource, true, metricsSettings)
                 break
-            case MenuObjectOption.VIEWLOG:
+            case EMenuObjectOption.VIEWLOG:
                 let logResource:IResourceSelected = {
                     channelId: 'log',
                     clusterName: props.channelObject.clusterName,
@@ -321,7 +325,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     follow: true,
                     maxMessages: 5000,
                     maxPerPodMessages: 5000,
-                    sortOrder: ELogSortOrderEnum.TIME
+                    sortOrder: ELogSortOrder.TIME
                 }
                 let logInstanceConfig:ILogInstanceConfig = {
                     previous: false,

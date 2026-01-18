@@ -1,10 +1,10 @@
 import { FC } from 'react'
 import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
-import { ILogMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage } from '@jfvilas/kwirth-common'
+import { ILogMessage, IInstanceMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ISignalMessage, EInstanceConfigScope } from '@jfvilas/kwirth-common'
 import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
 import { LogData, ILogLine, ILogData } from './LogData'
-import { ILogConfig, LogInstanceConfig, ELogSortOrderEnum, LogConfig } from './LogConfig'
+import { ILogConfig, LogInstanceConfig, ELogSortOrder, LogConfig } from './LogConfig'
 import { ENotifyLevel } from '../../tools/Global'
 
 export class LogChannel implements IChannel {
@@ -23,7 +23,7 @@ export class LogChannel implements IChannel {
     requiresWebSocket() { return false }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
-    getScope() { return InstanceConfigScopeEnum.VIEW }
+    getScope() { return EInstanceConfigScope.VIEW }
     getChannelIcon(): JSX.Element { return LogIcon }
     
     getSetupVisibility(): boolean { return this.setupVisible }
@@ -41,7 +41,7 @@ export class LogChannel implements IChannel {
         let logMessage:ILogMessage = JSON.parse(wsEvent.data)
 
         switch (logMessage.type) {
-            case InstanceMessageTypeEnum.DATA:
+            case EInstanceMessageType.DATA:
                 action = EChannelRefreshAction.REFRESH
 
                 let bname = logMessage.namespace+'/'+logMessage.pod+'/'+logMessage.container
@@ -76,11 +76,11 @@ export class LogChannel implements IChannel {
                             }
                             if (cnt < logConfig.maxPerPodMessages) {
                                 switch (logConfig.sortOrder) {
-                                    case ELogSortOrderEnum.POD:
+                                    case ELogSortOrder.POD:
                                         let podIndex = logData.messages.findLastIndex(m => m.container===logLine.container && m.pod===logLine.pod && m.namespace===logLine.namespace)
                                         logData.messages.splice(podIndex+1,0,logLine)
                                         break
-                                    case ELogSortOrderEnum.TIME:
+                                    case ELogSortOrder.TIME:
                                         let timeIndex = logData.messages.findLastIndex(m => getMsgEpoch(m) < getMsgEpoch(logLine))
                                         logData.messages.splice(timeIndex+1,0,logLine)
                                         break
@@ -104,19 +104,19 @@ export class LogChannel implements IChannel {
                     }
                 }
                 break
-            case InstanceMessageTypeEnum.SIGNAL:
+            case EInstanceMessageType.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
-                if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
+                if (instanceMessage.flow === EInstanceMessageFlow.RESPONSE && instanceMessage.action === EInstanceMessageAction.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }
-                else if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.RECONNECT) {
+                else if (instanceMessage.flow === EInstanceMessageFlow.RESPONSE && instanceMessage.action === EInstanceMessageAction.RECONNECT) {
                     let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
                     logData.messages.push({
                         text: signalMessage.text || '',
                         namespace: '',
                         pod: '',
                         container: '',
-                        type: InstanceMessageTypeEnum.DATA
+                        type: EInstanceMessageType.DATA
                     })
                 }
                 else {
@@ -185,7 +185,7 @@ export class LogChannel implements IChannel {
         if (logData.started) {
             logData.messages.push({
                 text: '=========================================================================',
-                type: InstanceMessageTypeEnum.DATA,
+                type: EInstanceMessageType.DATA,
                 namespace: '',
                 pod: '',
                 container: ''
@@ -199,7 +199,7 @@ export class LogChannel implements IChannel {
     socketDisconnected(channelObject: IChannelObject): boolean {
         let logData:ILogData = channelObject.data
         logData.messages.push({
-            type: InstanceMessageTypeEnum.DATA,
+            type: EInstanceMessageType.DATA,
             text: '*** Lost connection ***',
             namespace: '',
             pod: '',

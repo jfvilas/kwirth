@@ -9,10 +9,14 @@ export interface IMagnifyData {
     paused: boolean
     started: boolean
     files: IFileObject[]
+    clusterEvents: any[]
     currentPath: string
+
+    timers: number[]
 
     contentWindows : (IContentExternalObject|IContentEditObject|IContentDetailsObject)[]
     leftMenuAnchorParent: Element | undefined
+    pendingWebSocketRequests : Map<string, (value: any) => void>
 }
 
 export class MagnifyData implements IMagnifyData {
@@ -20,12 +24,16 @@ export class MagnifyData implements IMagnifyData {
     paused = false
     started = false
     files = []
+    clusterEvents = []
     currentPath = '/'
+    timers = []
     contentWindows = []
     leftMenuAnchorParent: undefined
+    pendingWebSocketRequests = new Map<string, (value: any) => void>()
 }
 
-export enum MagnifyCommandEnum {
+export enum EMagnifyCommand {
+    NONE = 'none',
     CREATE = 'create',
     APPLY = 'apply',
     DELETE = 'delete',
@@ -36,6 +44,8 @@ export enum MagnifyCommandEnum {
     EVENTS = 'events',
     K8EVENT = 'k8event',
     CRONJOB = 'CronJob',
+    INGRESSCLASS = 'IngressClass',
+    POD = 'Pod',
     NODE = 'Node',
 }
 
@@ -48,14 +58,14 @@ export interface IMagnifyMessage extends IInstanceMessage {
     group: string
     pod: string
     container: string
-    command: MagnifyCommandEnum
+    command: EMagnifyCommand
     params?: string[]
 }
 
 export interface IMagnifyMessageResponse extends IInstanceMessage {
     msgtype: 'magnifymessageresponse'
     id: string
-    command: MagnifyCommandEnum
+    command: EMagnifyCommand
     namespace: string
     group: string
     pod: string

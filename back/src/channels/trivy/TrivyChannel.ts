@@ -1,7 +1,7 @@
-import { IInstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, TrivyCommandEnum, TrivyConfig, BackChannelData, ClusterTypeEnum, IKnown, IUnknown } from '@jfvilas/kwirth-common';
+import { IInstanceConfig, ISignalMessage, IInstanceMessage, ITrivyMessage, ITrivyMessageResponse, AccessKey, accessKeyDeserialize, parseResources, ETrivyCommand, TrivyConfig, BackChannelData, ClusterTypeEnum, IKnown, IUnknown, EInstanceMessageAction, EInstanceMessageFlow, ESignalMessageLevel, EInstanceMessageChannel, EInstanceMessageType } from '@jfvilas/kwirth-common';
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
-import { CustomObjectsApiListNamespacedCustomObjectRequest, KubernetesObject, makeInformer } from '@kubernetes/client-node';
+import { KubernetesObject, makeInformer } from '@kubernetes/client-node';
 import { Request, Response } from 'express'
 
 const TRIVY_API_VERSION = 'v1alpha1'
@@ -57,7 +57,7 @@ class TrivyChannel implements IChannel {
         return ['', 'trivy$workload', 'trivy$kubernetes', 'cluster'].indexOf(scope)
     }
 
-    processEvent(type:string, obj:any) : void {
+    processObjectEvent(type:string, obj:any) : void {
     }
 
     async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
@@ -80,7 +80,7 @@ class TrivyChannel implements IChannel {
     }
 
     processCommand = async (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> => {
-        if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) return false
+        if (instanceMessage.flow === EInstanceMessageFlow.IMMEDIATE) return false
 
         let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) {
@@ -91,7 +91,7 @@ class TrivyChannel implements IChannel {
         let instances = socket.instances
         let instance = instances.find(i => i.instanceId === instanceMessage.instance)
         if (!instance) {
-            this.sendSignalMessage(webSocket, instanceMessage.action, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceMessage.instance, `Instance not found`)
+            this.sendSignalMessage(webSocket, instanceMessage.action, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instanceMessage.instance, `Instance not found`)
             console.log(`Instance ${instanceMessage.instance} not found`)
             return false
         }
@@ -146,10 +146,10 @@ class TrivyChannel implements IChannel {
                 group: '',
                 pod: asset.podName,
                 container: asset.containerName,
-                action: InstanceMessageActionEnum.NONE,
-                flow: InstanceMessageFlowEnum.UNSOLICITED,
-                type: InstanceMessageTypeEnum.DATA,
-                channel: InstanceMessageChannelEnum.TRIVY,
+                action: EInstanceMessageAction.NONE,
+                flow: EInstanceMessageFlow.UNSOLICITED,
+                type: EInstanceMessageType.DATA,
+                channel: EInstanceMessageChannel.TRIVY,
                 instance: instance.instanceId
             }
             payload.data = result
@@ -166,7 +166,7 @@ class TrivyChannel implements IChannel {
         return true        
     }
     
-    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void => {
+    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig, action: EInstanceMessageAction): void => {
         console.log('Pause/Continue not supported')
     }
 
@@ -180,10 +180,10 @@ class TrivyChannel implements IChannel {
 
         if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
             this.removeInstance(webSocket, instanceConfig.instance)
-            this.sendSignalMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.INFO, instanceConfig.instance, 'Trivy instance stopped')
+            this.sendSignalMessage(webSocket,EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.INFO, instanceConfig.instance, 'Trivy instance stopped')
         }
         else {
-            this.sendSignalMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceConfig.instance, `Trivy instance not found`)
+            this.sendSignalMessage(webSocket,EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instanceConfig.instance, `Trivy instance not found`)
         }
     }
 
@@ -252,13 +252,13 @@ class TrivyChannel implements IChannel {
     // PRIVATE
     // *************************************************************************************
 
-    private sendSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, level: SignalMessageLevelEnum, instanceId:string, text:string): void => {
+    private sendSignalMessage = (ws:WebSocket, action:EInstanceMessageAction, flow: EInstanceMessageFlow, level: ESignalMessageLevel, instanceId:string, text:string): void => {
         var resp:ISignalMessage = {
             action,
             flow,
-            channel: InstanceMessageChannelEnum.TRIVY,
+            channel: EInstanceMessageChannel.TRIVY,
             instance: instanceId,
-            type: InstanceMessageTypeEnum.SIGNAL,
+            type: EInstanceMessageType.SIGNAL,
             text,
             level
         }
@@ -389,15 +389,15 @@ class TrivyChannel implements IChannel {
             pod: instanceMessage.pod,
             container: instanceMessage.container,
             action: instanceMessage.action,
-            flow: InstanceMessageFlowEnum.RESPONSE,
-            type: InstanceMessageTypeEnum.DATA,
+            flow: EInstanceMessageFlow.RESPONSE,
+            type: EInstanceMessageType.DATA,
             channel: instanceMessage.channel,
             instance: instanceMessage.instance,
             data: undefined
         }
 
         switch (instanceMessage.command) {
-            case TrivyCommandEnum.SCORE:
+            case ETrivyCommand.SCORE:
                 if (!this.checkScopes(instance, 'trivy$workload')) {
                     resp.data = `Insufficient scope for WORKLOAD`
                     return resp
@@ -405,7 +405,7 @@ class TrivyChannel implements IChannel {
                 let score = await this.calculateScore(instance)
                 resp.data = { score }
                 break
-            case TrivyCommandEnum.RESCAN:
+            case ETrivyCommand.RESCAN:
                 let pod = (await this.clusterInfo.coreApi.readNamespacedPod({ name:instanceMessage.pod, namespace:instanceMessage.namespace }))
                 let ctrl = pod.metadata?.ownerReferences?.find(or => or.controller)
                 let kind = ctrl?.kind.toLowerCase()
@@ -444,10 +444,10 @@ class TrivyChannel implements IChannel {
                 group: '',
                 pod: asset.podName,
                 container: asset.containerName,
-                action: InstanceMessageActionEnum.NONE,
-                flow: InstanceMessageFlowEnum.UNSOLICITED,
-                type: InstanceMessageTypeEnum.DATA,
-                channel: InstanceMessageChannelEnum.TRIVY,
+                action: EInstanceMessageAction.NONE,
+                flow: EInstanceMessageFlow.UNSOLICITED,
+                type: EInstanceMessageType.DATA,
+                channel: EInstanceMessageChannel.TRIVY,
                 instance: instance.instanceId
             }
             if (event==='add' || event==='update') {
@@ -470,10 +470,10 @@ class TrivyChannel implements IChannel {
                 group: '',
                 pod: '',
                 container: '',
-                action: InstanceMessageActionEnum.NONE,
-                flow: InstanceMessageFlowEnum.UNSOLICITED,
-                type: InstanceMessageTypeEnum.DATA,
-                channel: InstanceMessageChannelEnum.TRIVY,
+                action: EInstanceMessageAction.NONE,
+                flow: EInstanceMessageFlow.UNSOLICITED,
+                type: EInstanceMessageType.DATA,
+                channel: EInstanceMessageChannel.TRIVY,
                 instance: instance.instanceId,
                 data: { score }
             }

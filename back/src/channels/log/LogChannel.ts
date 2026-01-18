@@ -1,4 +1,4 @@
-import { IInstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, IInstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, LogConfig, BackChannelData, ILogMessage } from '@jfvilas/kwirth-common';
+import { IInstanceConfig, InstanceMessageChannelEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, ClusterTypeEnum, IInstanceConfigResponse, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, LogConfig, BackChannelData, ILogMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageChannel, ESignalMessageLevel, EInstanceMessageType, EClusterType } from '@jfvilas/kwirth-common';
 import * as stream from 'stream'
 import { PassThrough } from 'stream'
 import { ClusterInfo } from '../../model/ClusterInfo'
@@ -36,7 +36,7 @@ class LogChannel implements IChannel {
         this.clusterInfo = clusterInfo
     }
 
-    processEvent(type:string, obj:any) : void {
+    processObjectEvent(type:string, obj:any) : void {
     }
 
     async processCommand (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> {
@@ -81,26 +81,26 @@ class LogChannel implements IChannel {
         return false
     }
 
-    sendInstanceConfigMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, channel: InstanceMessageChannelEnum, instanceConfig:IInstanceConfig, text:string): void => {
+    sendInstanceConfigMessage = (ws:WebSocket, action:EInstanceMessageAction, flow: EInstanceMessageFlow, channel: EInstanceMessageChannel, instanceConfig:IInstanceConfig, text:string): void => {
         let resp:IInstanceConfigResponse = {
             action,
             flow,
             channel,
             instance: instanceConfig.instance,
-            type: InstanceMessageTypeEnum.SIGNAL,
+            type: EInstanceMessageType.SIGNAL,
             text
         }
         ws.send(JSON.stringify(resp))
     }
 
-    sendChannelSignal (webSocket: WebSocket, level: SignalMessageLevelEnum, text: string, instanceConfig: IInstanceConfig): void {
+    sendChannelSignal (webSocket: WebSocket, level: ESignalMessageLevel, text: string, instanceConfig: IInstanceConfig): void {
         let signalMessage:ISignalMessage = {
-            action: InstanceMessageActionEnum.NONE,
-            flow: InstanceMessageFlowEnum.RESPONSE,
+            action: EInstanceMessageAction.NONE,
+            flow: EInstanceMessageFlow.RESPONSE,
             level,
             channel: instanceConfig.channel,
             instance: instanceConfig.instance,
-            type: InstanceMessageTypeEnum.SIGNAL,
+            type: EInstanceMessageType.SIGNAL,
             text
         }
         webSocket.send(JSON.stringify(signalMessage))
@@ -134,7 +134,7 @@ class LogChannel implements IChannel {
         try {
             let id = await this.clusterInfo.dockerTools.getContainerId(podName, containerName)
             if (!id) {
-                this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Cannot obtain Id for container ${podName}/${containerName}`,instanceConfig)
+                this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Cannot obtain Id for container ${podName}/${containerName}`,instanceConfig)
                 return
             }
                              
@@ -163,14 +163,14 @@ class LogChannel implements IChannel {
                 podName,
                 containerName,
                 msg: {
-                    action: InstanceMessageActionEnum.NONE,
-                    flow: InstanceMessageFlowEnum.UNSOLICITED,
+                    action: EInstanceMessageAction.NONE,
+                    flow: EInstanceMessageFlow.UNSOLICITED,
                     namespace: podNamespace,
                     instance: instance.instanceId,
-                    type: InstanceMessageTypeEnum.DATA,
+                    type: EInstanceMessageType.DATA,
                     pod: podName,
                     container: containerName,
-                    channel: InstanceMessageChannelEnum.LOG,
+                    channel: EInstanceMessageChannel.LOG,
                     text: '',
                     msgtype: 'logmessage'
                 }
@@ -190,7 +190,7 @@ class LogChannel implements IChannel {
         }
         catch (err:unknown) {
             console.log('Generic error starting pod log', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, err as string, instanceConfig)
+            this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, err as string, instanceConfig)
         }
     }
 
@@ -223,14 +223,14 @@ class LogChannel implements IChannel {
                 containerName,
                 passThroughStream: logStream,
                 msg: {
-                    action: InstanceMessageActionEnum.NONE,
-                    flow: InstanceMessageFlowEnum.UNSOLICITED,
+                    action: EInstanceMessageAction.NONE,
+                    flow: EInstanceMessageFlow.UNSOLICITED,
                     namespace: podNamespace,
                     instance: instance.instanceId,
-                    type: InstanceMessageTypeEnum.DATA,
+                    type: EInstanceMessageType.DATA,
                     pod: podName,
                     container: containerName,
-                    channel: InstanceMessageChannelEnum.LOG,
+                    channel: EInstanceMessageChannel.LOG,
                     text: '',
                     msgtype: 'logmessage'
                 }
@@ -238,7 +238,7 @@ class LogChannel implements IChannel {
             instance.assets.push(asset)
 
             if (!asset.passThroughStream) {
-                this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, 'Passthrough could not be established', instanceConfig)
+                this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, 'Passthrough could not be established', instanceConfig)
                 return
             }
 
@@ -314,12 +314,12 @@ class LogChannel implements IChannel {
         }
         catch (err) {
             console.log('Generic error starting pod log', err)
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, (err as any).stack, instanceConfig)
+            this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, (err as any).stack, instanceConfig)
         }
     }
 
     addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<boolean> => {
-        if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
+        if (this.clusterInfo.type === EClusterType.DOCKER) {
             this.startDockerStream(webSocket, instanceConfig, podNamespace, podName, containerName)
         }
         else {
@@ -335,7 +335,7 @@ class LogChannel implements IChannel {
             return true
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
+            this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Instance not found`, instanceConfig)
             return false
         }
     }
@@ -346,10 +346,10 @@ class LogChannel implements IChannel {
 
         if (socket.instances.find(i => i.instanceId === instanceConfig.instance)) {
             this.removeInstance(webSocket, instanceConfig.instance)
-            this.sendInstanceConfigMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.LOG, instanceConfig, 'Log instance stopped')
+            this.sendInstanceConfigMessage(webSocket,EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, EInstanceMessageChannel.LOG, instanceConfig, 'Log instance stopped')
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance not found`, instanceConfig)
+            this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Instance not found`, instanceConfig)
         }
     }
 
@@ -357,7 +357,7 @@ class LogChannel implements IChannel {
         return ['', 'filter', 'view', 'cluster'].indexOf(scope)
     }
 
-    pauseContinueInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void {
+    pauseContinueInstance(webSocket: WebSocket, instanceConfig: IInstanceConfig, action: EInstanceMessageAction): void {
         let socket = this.webSockets.find(s => s.ws === webSocket)
         if (!socket) {
             console.log('No socket found for pci')
@@ -367,17 +367,17 @@ class LogChannel implements IChannel {
 
         let instance = instances.find(i => i.instanceId === instanceConfig.instance)
         if (instance) {
-            if (action === InstanceMessageActionEnum.PAUSE) {
+            if (action === EInstanceMessageAction.PAUSE) {
                 instance.paused = true
-                this.sendInstanceConfigMessage(webSocket, InstanceMessageActionEnum.PAUSE, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.LOG, instanceConfig, 'Log paused')
+                this.sendInstanceConfigMessage(webSocket, EInstanceMessageAction.PAUSE, EInstanceMessageFlow.RESPONSE, EInstanceMessageChannel.LOG, instanceConfig, 'Log paused')
             }
-            if (action === InstanceMessageActionEnum.CONTINUE) {
+            if (action === EInstanceMessageAction.CONTINUE) {
                 instance.paused = false
-                this.sendInstanceConfigMessage(webSocket, InstanceMessageActionEnum.CONTINUE, InstanceMessageFlowEnum.RESPONSE, InstanceMessageChannelEnum.LOG, instanceConfig, 'Log continued')
+                this.sendInstanceConfigMessage(webSocket, EInstanceMessageAction.CONTINUE, EInstanceMessageFlow.RESPONSE, EInstanceMessageChannel.LOG, instanceConfig, 'Log continued')
             }
         }
         else {
-            this.sendChannelSignal(webSocket, SignalMessageLevelEnum.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
+            this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Instance ${instanceConfig.instance} not found`, instanceConfig)
         }
     }
 
@@ -450,7 +450,7 @@ class LogChannel implements IChannel {
             if (exists) {
                 entry.ws = newWebSocket
                 for (let instance of entry.instances) {
-                    if (this.clusterInfo.type === ClusterTypeEnum.DOCKER) {
+                    if (this.clusterInfo.type === EClusterType.DOCKER) {
                         for (let asset of instance.assets) {
                             if (asset.readableStream) {
                                 asset.readableStream.removeAllListeners('data')
@@ -458,7 +458,7 @@ class LogChannel implements IChannel {
                             }        
                         }
                     }
-                    else if (this.clusterInfo.type === ClusterTypeEnum.KUBERNETES) {
+                    else if (this.clusterInfo.type === EClusterType.KUBERNETES) {
                         for (let asset of instance.assets) {
                             if (asset.passThroughStream) {
                                 asset.passThroughStream.removeAllListeners('data')

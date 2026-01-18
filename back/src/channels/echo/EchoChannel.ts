@@ -1,4 +1,4 @@
-import { IInstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, IEchoConfig, IEchoMessageResponse } from '@jfvilas/kwirth-common'
+import { IInstanceConfig, ISignalMessage, IInstanceMessage, AccessKey, accessKeyDeserialize, EClusterType, BackChannelData, IEchoConfig, IEchoMessageResponse, EInstanceMessageType, EInstanceMessageAction, EInstanceMessageFlow, ESignalMessageLevel } from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel';
 import { Request, Response } from 'express'
@@ -39,7 +39,7 @@ class EchoChannel implements IChannel {
             reconnectable: true,
             metrics: false,
             events: false,
-            sources: [ ClusterTypeEnum.KUBERNETES, ClusterTypeEnum.DOCKER ],
+            sources: [ EClusterType.KUBERNETES, EClusterType.DOCKER ],
             endpoints: [],
             websocket: false
         }
@@ -49,7 +49,7 @@ class EchoChannel implements IChannel {
         return ['', 'none', 'cluster'].indexOf(scope)
     }
 
-    processEvent(type:string, obj:any) : void {
+    processObjectEvent(type:string, obj:any) : void {
     }
 
     async endpointRequest(endpoint:string,req:Request, res:Response) : Promise<void> {
@@ -72,13 +72,13 @@ class EchoChannel implements IChannel {
     }
 
     processCommand = async (webSocket:WebSocket, instanceMessage:IInstanceMessage) : Promise<boolean> => {
-        if (instanceMessage.flow === InstanceMessageFlowEnum.IMMEDIATE) {
+        if (instanceMessage.flow === EInstanceMessageFlow.IMMEDIATE) {
             return false
         }
         else {
             let instance = this.getInstance(webSocket, instanceMessage.instance)
             if (!instance) {
-                this.sendSignalMessage(webSocket, instanceMessage.action, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceMessage.instance, `Instance not found`)
+                this.sendSignalMessage(webSocket, instanceMessage.action, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instanceMessage.instance, `Instance not found`)
                 console.log(`Instance ${instanceMessage.instance} not found`)
                 return false
             }
@@ -121,14 +121,14 @@ class EchoChannel implements IChannel {
         return true
     }
     
-    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig, action: InstanceMessageActionEnum): void => {
+    pauseContinueInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig, action: EInstanceMessageAction): void => {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
-            if (action === InstanceMessageActionEnum.PAUSE) instance.paused = true
-            if (action === InstanceMessageActionEnum.CONTINUE) instance.paused = false
+            if (action === EInstanceMessageAction.PAUSE) instance.paused = true
+            if (action === EInstanceMessageAction.CONTINUE) instance.paused = false
         }
         else {
-            this.sendSignalMessage(webSocket,InstanceMessageActionEnum.PAUSE, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceConfig.instance, `Echo instance not found`)
+            this.sendSignalMessage(webSocket,EInstanceMessageAction.PAUSE, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instanceConfig.instance, `Echo instance not found`)
         }
     }
 
@@ -140,10 +140,10 @@ class EchoChannel implements IChannel {
         let instance = this.getInstance(webSocket, instanceConfig.instance)
         if (instance) {
             this.removeInstance(webSocket, instanceConfig.instance)
-            this.sendSignalMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.INFO, instanceConfig.instance, 'Echo instance stopped')
+            this.sendSignalMessage(webSocket,EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.INFO, instanceConfig.instance, 'Echo instance stopped')
         }
         else {
-            this.sendSignalMessage(webSocket,InstanceMessageActionEnum.STOP, InstanceMessageFlowEnum.RESPONSE, SignalMessageLevelEnum.ERROR, instanceConfig.instance, `Echo instance not found`)
+            this.sendSignalMessage(webSocket,EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instanceConfig.instance, `Echo instance not found`)
         }
     }
 
@@ -229,22 +229,22 @@ class EchoChannel implements IChannel {
         let msg:IEchoMessageResponse = {
             msgtype: 'echomessageresponse',
             channel: 'echo',
-            action: InstanceMessageActionEnum.NONE,
-            flow: InstanceMessageFlowEnum.UNSOLICITED,
-            type: InstanceMessageTypeEnum.DATA,
+            action: EInstanceMessageAction.NONE,
+            flow: EInstanceMessageFlow.UNSOLICITED,
+            type: EInstanceMessageType.DATA,
             instance: instance.instanceId,
             text: `${new Date()} ${asset.podNamespace}/${asset.podName}/${asset.containerName}`
         }
         ws.send(JSON.stringify(msg))
     }
 
-    private sendSignalMessage = (ws:WebSocket, action:InstanceMessageActionEnum, flow: InstanceMessageFlowEnum, level: SignalMessageLevelEnum, instanceId:string, text:string): void => {
+    private sendSignalMessage = (ws:WebSocket, action:EInstanceMessageAction, flow: EInstanceMessageFlow, level: ESignalMessageLevel, instanceId:string, text:string): void => {
         var resp:ISignalMessage = {
             action,
             flow,
             channel: 'echo',
             instance: instanceId,
-            type: InstanceMessageTypeEnum.SIGNAL,
+            type: EInstanceMessageType.SIGNAL,
             text,
             level
         }

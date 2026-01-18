@@ -1,8 +1,8 @@
-import { AlertSeverityEnum } from "@jfvilas/kwirth-common"
+import { EAlertSeverity } from "@jfvilas/kwirth-common"
 
 export interface FiredAlert {
     timestamp: number
-    severity: AlertSeverityEnum
+    severity: EAlertSeverity
     text:string
     namespace?:string
     group?:string

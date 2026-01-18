@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { IChannelObject } from '../IChannel'
-import { FilemanCommandEnum, IFilemanMessage, IFilemanData } from './FilemanData'
+import { EFilemanCommand, IFilemanMessage, IFilemanData } from './FilemanData'
 import { Box, Typography } from '@mui/material'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from '@jfvilas/kwirth-common'
+import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@jfvilas/kwirth-common'
 import { IError, IFileObject } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
 import { IconContainer, IconNamespace, IconPod } from '../../tools/Constants-React'
@@ -101,7 +101,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         for (let file of files) {
             let [namespace,pod,container] = file.path.split('/').slice(1)
             filemanData.files = filemanData.files.filter(f => f.path !== file.path)
-            sendCommand(FilemanCommandEnum.DELETE, namespace, pod, container, [file.path])
+            sendCommand(EFilemanCommand.DELETE, namespace, pod, container, [file.path])
             setRefresh(Math.random())
         }
     }
@@ -109,7 +109,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const onCreateFolder = async (name: string, parentFolder: IFileObject) => {
         setRefresh(Math.random())
         let [namespace,pod,container] = parentFolder.path.split('/').slice(1)
-        sendCommand(FilemanCommandEnum.CREATE, namespace, pod, container, [parentFolder.path + '/' + name])
+        sendCommand(EFilemanCommand.CREATE, namespace, pod, container, [parentFolder.path + '/' + name])
     }
 
     const onDownload = async (files: IFileObject[]) => {
@@ -146,7 +146,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onPaste = (files: IFileObject[], destFolder:IFileObject, operation:string) => {
-        let command = operation==='move'? FilemanCommandEnum.MOVE : FilemanCommandEnum.COPY
+        let command = operation==='move'? EFilemanCommand.MOVE : EFilemanCommand.COPY
         for (let file of files) {
             let [namespace,pod,container] = file.path.split('/').slice(1)
             sendCommand(command, namespace, pod, container, [file.path, destFolder.path])
@@ -161,7 +161,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const onRename	= (file: IFileObject, newName: string) => {
         let [namespace,pod,container] = file.path.split('/').slice(1)
         filemanData.files = filemanData.files.filter (f => f.path!==file.path)
-        sendCommand(FilemanCommandEnum.RENAME, namespace, pod, container, [file.path, newName])
+        sendCommand(EFilemanCommand.RENAME, namespace, pod, container, [file.path, newName])
     }
 
     const onRefresh = () => {
@@ -170,19 +170,19 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             getLocalDir(filemanData.currentPath+'/')
         }
         else {
-            sendCommand(FilemanCommandEnum.HOME, '', '', '', [])
+            sendCommand(EFilemanCommand.HOME, '', '', '', [])
         }
 
     }
 
-    const sendCommand = (command: FilemanCommandEnum, namespace:string, pod:string, container:string,  params:string[]) => {
+    const sendCommand = (command: EFilemanCommand, namespace:string, pod:string, container:string,  params:string[]) => {
         if (!props.channelObject.webSocket) return
         
         let filemanMessage:IFilemanMessage = {
-            flow: InstanceMessageFlowEnum.REQUEST,
-            action: InstanceMessageActionEnum.COMMAND,
+            flow: EInstanceMessageFlow.REQUEST,
+            action: EInstanceMessageAction.COMMAND,
             channel: 'fileman',
-            type: InstanceMessageTypeEnum.DATA,
+            type: EInstanceMessageType.DATA,
             accessKey: props.channelObject.accessString!,
             instance: props.channelObject.instanceId,
             id: uuid(),
@@ -201,14 +201,14 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const getLocalDir = (folder:string) => {
         let [namespace,pod,container] = folder.split('/').slice(1)
         let filemanMessage:IFilemanMessage = {
-            flow: InstanceMessageFlowEnum.REQUEST,
-            action: InstanceMessageActionEnum.COMMAND,
+            flow: EInstanceMessageFlow.REQUEST,
+            action: EInstanceMessageAction.COMMAND,
             channel: 'fileman',
-            type: InstanceMessageTypeEnum.DATA,
+            type: EInstanceMessageType.DATA,
             accessKey: props.channelObject.accessString!,
             instance: props.channelObject.instanceId,
             id: uuid(),
-            command: FilemanCommandEnum.DIR,
+            command: EFilemanCommand.DIR,
             namespace: namespace,
             group: '',
             pod: pod,

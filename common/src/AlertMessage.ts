@@ -1,6 +1,6 @@
 import { IInstanceMessage } from "./InstanceMessage"
 
-export enum AlertSeverityEnum {
+export enum EAlertSeverity {
     INFO = 'info',
     WARNING = 'warning',
     ERROR = 'error'
@@ -9,7 +9,7 @@ export enum AlertSeverityEnum {
 export interface IAlertMessage extends IInstanceMessage {
     msgtype: 'alertmessage'
     timestamp?: Date
-    severity: AlertSeverityEnum
+    severity: EAlertSeverity
     namespace: string
     pod: string
     container: string

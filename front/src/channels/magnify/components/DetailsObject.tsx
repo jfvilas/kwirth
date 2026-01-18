@@ -1,6 +1,6 @@
 import { IFileObject } from '@jfvilas/react-file-manager'
-import { Expand, ExpandLess, ExpandMore } from '@mui/icons-material'
-import { Box, Button, Card, CardContent, IconButton, LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextareaAutosize, TextField, Typography } from '@mui/material'
+import { Https } from '@mui/icons-material'
+import { LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextareaAutosize, TextField, Typography } from '@mui/material'
 
 const _ = require('lodash')
 
@@ -59,8 +59,9 @@ function formatAgeCompact(duracion:{ days: number, hours: number, minutes: numbe
 const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjectDetailsProps) => {
     let containsEdit=false
     let expanderId = 0
+    let labelWidth = 15
 
-    const renderValue = (srcobj:any, src:string, format:string, style:string[], details?:IDetailsItem[], invoke?:(obj:any) => string[], itemx?:IDetailsItem) : JSX.Element => {
+    const renderValue = (srcobj:any, src:string, format:string, style:string[], level:number, details?:IDetailsItem[], invoke?:(obj:any) => string[], itemx?:IDetailsItem) : JSX.Element => {
         if (src.startsWith('$')) return <Typography fontWeight={style.includes('bold')?'700':''}>{src.substring(1)}</Typography>
         let addLink = false
         if (src.startsWith('#')) {
@@ -109,39 +110,39 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 return <>{formatAgeCompact(duracion)}</>
 
             case 'boolean':
-                let bvalue = false
+                let valBoolean = false
                 if (src==='@string[]' && invoke)
-                    bvalue = Boolean(invoke(obj)[0])
+                    valBoolean = Boolean(invoke(obj)[0])
                 else 
-                    bvalue = _.get(obj,src)
-                let valueStyle = style.filter(s => s.startsWith(bvalue+':'))
+                    valBoolean = _.get(obj,src)
+                let valueStyle = style.filter(s => s.startsWith(valBoolean+':'))
                 if (style && valueStyle.length===1) {
                     let parts = valueStyle[0].split(':')
-                    if (bvalue)
+                    if (valBoolean)
                         return <Typography sx={{color:parts[2]}}>{parts[1]}</Typography>
                     else
                         return <Typography sx={{color:parts[2]}}>{parts[1]}</Typography>
 
                 }
                 else {
-                    if (bvalue)
+                    if (valBoolean)
                         return <Typography sx={{color:'green'}}>OK</Typography>
                     else
                         return <Typography sx={{color:'red'}}>ko</Typography>
                 }
 
             case 'string':
-                let value = ''
+                let valString = ''
                 if (src==='@string[]' && invoke)
-                    value = invoke(obj)[0]
+                    valString = invoke(obj)[0]
                 else 
-                    value = _.get(obj,src)
+                    valString = _.get(obj,src)
 
                 if (style && style.includes('edit')) {
-                    return <>{header}{renderValue(srcobj, src, 'edit', style, [], undefined)}</>
+                    return <>{header}{renderValue(srcobj, src, 'edit', style, level, [], undefined)}</>
                 }
                 else {
-                    let v = value
+                    let v = valString
                     let fontWeightStyle = ''
                     let valueStyle:string[] = []
                     let jsxValue = <>{v}</>
@@ -154,7 +155,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
                         if (style.includes('bold')) fontWeightStyle = '700'
 
-                        valueStyle = style.filter(s => s.startsWith(value+':'))
+                        valueStyle = style.filter(s => s.startsWith(valString+':'))
 
                         let linkStyle= style.find(s => s.startsWith('link:'))
                         if (linkStyle && addLink) {
@@ -165,7 +166,6 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                 else
                                     linkParts[i] = linkParts[i].substring(1)
                             }
-                            //jsxValue=<a href={`#/${linkParts[1]}/${v}`} onClick={() => props.onLink(linkParts[1],v)}>{v}</a>
                             jsxValue=<a href={`#`} onClick={() => props.onLink(linkParts[1],v)}>{v}</a>
                         }
                     }
@@ -173,17 +173,12 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         return <Typography color={valueStyle[0].split(':')[1]} fontWeight={fontWeightStyle}>{header}{jsxValue}</Typography>
                     }
                     else if (style) {
-                        if (style.includes('stringseq')) {
-                            return jsxValue
-                        }
-                        else {
-                            let propertyStyle = style.filter(s => s.startsWith('property:'))
-                            if (propertyStyle.length>0) {
-                                for (let ps of propertyStyle) {
-                                    let propertyParts = ps.split(':')
-                                    let propertyValue = _.get(obj,propertyParts[1])
-                                    if (propertyValue === propertyParts[2]) return <Typography color={propertyParts[3]} fontWeight={fontWeightStyle}>{header}{jsxValue}</Typography>
-                                }
+                        let propertyStyle = style.filter(s => s.startsWith('property:'))
+                        if (propertyStyle.length>0) {
+                            for (let ps of propertyStyle) {
+                                let propertyParts = ps.split(':')
+                                let propertyValue = _.get(obj,propertyParts[1])
+                                if (propertyValue === propertyParts[2]) return <Typography color={propertyParts[3]} fontWeight={fontWeightStyle}>{header}{jsxValue}</Typography>
                             }
                         }
                     }
@@ -192,11 +187,13 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
             case 'edit':
                 containsEdit=true
-                //onChange={(e) => props.onChangeData(src,e.target.value)} 
+                //+++onChange={(e) => props.onChangeData(src,e.target.value)} 
+                let valEdit = _.get(obj,src)
+                if (style.includes('base64')) valEdit = atob(valEdit)
                 if (style.includes('multiline'))
-                    return <TextareaAutosize name={src} defaultValue={_.get(obj,src)} minRows={3} maxRows={15} style={{width:'100%', marginTop:1, marginBottom:1}}/>
+                    return <TextareaAutosize name={src} defaultValue={valEdit} minRows={3} maxRows={15} style={{width:'100%', marginTop:1, marginBottom:1}}/>
                 else
-                    return <TextField name={src} defaultValue={_.get(obj,src)} maxRows={5} sx={{width:'100%', mt:1, mb:1}} size='small'/>
+                    return <TextField name={src} defaultValue={valEdit} maxRows={5} sx={{width:'100%', mt:1, mb:1}} size='small'/>
 
             case 'booleankey':
                 if (_.get(obj,src)===true) return <>{src}</>
@@ -204,7 +201,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
             case 'keylist':
                 let keys = Object.keys(_.get(obj,src))
-                return <>{renderValue({keys}, 'keys', 'stringlist',style,[], undefined)}</>
+                return <>{renderValue({keys}, 'keys', 'stringlist', style, level, [], undefined)}</>
 
             case 'stringlist':
                 let result2:string[]=[]
@@ -217,7 +214,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
                 if (style.includes('column')) {
                     return <Stack direction={'column'}>
-                        { result2.map((item:any, index:number) => <Typography>{renderValue(result2, '['+index+']', 'string', style, undefined, undefined)}</Typography>) }
+                        { result2.map((item:any, index:number) => <Typography>{renderValue(result2, '['+index+']', 'string', style, level+1, undefined, undefined)}</Typography>) }
                     </Stack>
                 }
                 else {
@@ -257,12 +254,12 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                             return <TableCell> {
                                                 typeof _.get(row,key.source[0]) === 'object'?
                                                     (Array.isArray(_.get(row,key.source[0]))? 
-                                                        <>{renderValue(row,key.source[0],subcontent.format,key.style||[], subcontent.content, undefined)}</>
+                                                        <>{renderValue(row, key.source[0], subcontent.format, key.style||[], level+1, subcontent.content, undefined)}</>
                                                         :
-                                                        <>{renderValue(row,key.source[0],details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.format, details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.style||[],[subcontent], undefined)}</>
+                                                        <>{renderValue(row, key.source[0], details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.format, details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.style||[], level+1, [subcontent], undefined)}</>
                                                     )
                                                     :
-                                                    <>{renderValues(row,key)}</>
+                                                    <>{renderValues(row, key, level+1)}</>
                                             }</TableCell>})
                                         }
                                     </TableRow>
@@ -279,11 +276,11 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                             <Stack direction={style.includes('column')?'column':'row'}>
                                 { style.includes('column')?
                                     details.map((c:IDetailsItem) => {
-                                        return <>{renderValues(row, c)}</>
+                                        return <>{renderValues(row, c, level+1)}</>
                                     })
                                     :
                                     details.map((c:IDetailsItem) => {
-                                        return <>{renderValues(row, c)} <>{rowIndex<items.length-1?',\u00a0':''}</> </>
+                                        return <>{renderValues(row, c, level+1)} <>{rowIndex<items.length-1?',\u00a0':''}</> </>
                                     }) 
                                 }
                             </Stack>
@@ -303,7 +300,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                             <TableBody>
                             { _.get(obj,src).map((row:any) => {
                                 return <TableRow>
-                                    {Object.keys(_.get(obj,src)[0]).map(key => <TableCell>{renderValue(row,src,'string',[],[], undefined)}</TableCell>)}
+                                    {Object.keys(_.get(obj,src)[0]).map(key => <TableCell>{renderValue(row, src, 'string', [], level+1, [], undefined)}</TableCell>)}
                                 </TableRow>
                             })}
 
@@ -314,7 +311,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 else {
                     return  <>{_.get(obj,src).map((row:any) => {
                         if (!details) return <></>
-                        return <>{details.map((c:IDetailsItem) => <>{renderItem(row, c, 25)}</>)}</>
+                        return <>{details.map((c:IDetailsItem) => <>{renderItem(row, c, 25, level+1)}</>)}</>  //+++ este 25????
                     })}</>
                 }
 
@@ -340,20 +337,29 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         return <>{details.map( (c:IDetailsItem) => {
                             return <Stack direction={c.style && c.style.includes('column')?'column':'row'}>
                                 <Typography fontWeight={style && style.includes('keybold')?'700':''}>{c.text}:&nbsp;</Typography>
-                                {renderValues(obj,c)}
+                                {renderValues(obj,c, level+1)}
                             </Stack>
                         })}</>
                     }
                     else {
                         // all object properties
                         return <>{Object.keys(_.get(obj,src)).map(key => {
-                            return <Stack direction={'row'}>
-                                <Typography fontWeight={style.includes('keybold')?'700':''}>{key}:&nbsp;</Typography>
-                                {
-                                        renderValue(obj, src+'.[\''+key+'\']', style.includes('edit')?'edit':'string', style, [], undefined)
-                                }
-                                
-                            </Stack>
+                            if (style.includes('edit')) {
+                                return <Stack direction={'row'}>
+                                    <Typography fontWeight={style.includes('keybold')?'700':''} sx={{width:labelWidth+'%'}}>{key}&nbsp;{style.includes('lockicon') && <Https sx={{color:'red'}}/>}&nbsp;</Typography>
+                                    {
+                                            renderValue(obj, src+'.[\''+key+'\']', 'edit', style, level+1, [], undefined)
+                                    }                               
+                                </Stack>
+                            }
+                            else {
+                                return <Stack direction={'row'}>
+                                    <Typography fontWeight={style.includes('keybold')?'700':''}>{key}:&nbsp;</Typography>
+                                    {
+                                            renderValue(obj, src+'.[\''+key+'\']', 'string', style, level+1, [], undefined)
+                                    }                               
+                                </Stack>
+                            }
                         })}</>
                     }
                 }
@@ -370,7 +376,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         <TableBody>
                             { _.get(obj,src).map((row:any) => {
                                 return <TableRow>
-                                    {details.map((c:IDetailsItem) => <TableCell>{renderValues(row, c)}</TableCell>)}
+                                    {details.map((c:IDetailsItem) => <TableCell>{renderValues(row, c, level+1)}</TableCell>)}
                                 </TableRow>
                             })}
                         </TableBody>
@@ -383,7 +389,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
         }
     }
 
-    const renderValues = (obj:any, item:IDetailsItem) => {
+    const renderValues = (obj:any, item:IDetailsItem, level:number) => {
         if (item.style?.includes('ifpresent') && _.get(obj,item.source[0])===undefined) {
             return <></>
         }
@@ -401,25 +407,18 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             </Stack>
         }
         else {
-            if (item.style && item.style.includes('stringseq')) {
-                return item.source.map(source => {
-                            return renderValue(obj, source, 'string', item.style||[], item.content, item.invoke, item)
-                        })
-                
-            }
-            else
-                return (
-                    <Stack direction={item.style?.includes('column')?'column':'row'} width={'100%'}>
-                        {item.source.map(source => {
-                            return renderValue(obj, source, item.format, item.style||[], item.content, item.invoke, item)
-                        })}
-                    </Stack>
-                )
+            return (
+                <Stack direction={item.style?.includes('column')?'column':'row'} width={'100%'}>
+                    {item.source.map(source => {
+                        return renderValue(obj, source, item.format, item.style||[], level+1, item.content, item.invoke, item)
+                    })}
+                </Stack>
+            )
         }
     }
 
-    const renderItem = (obj:any, item:IDetailsItem, width:number) => {
-        let expander='xx'+expanderId
+    const renderItem = (obj:any, item:IDetailsItem, width:number, level:number) => {
+        let expander='class-kwirth-'+expanderId
         if (item.style?.includes('ifpresent') && !_.get(obj,item.source[0])) return <></>
 
         if (item.source && item.source[0]==='@jsx[]') {
@@ -435,21 +434,15 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             }
         }
         else {
-            if (item.style && item.style.includes('stringseq')) {
-                return <Stack direction={'row'} alignItems={'baseline'}>
-                    {
-                        renderValues(obj,item)
-                    }
-                </Stack>
-            }
             let numProps = 0
             if (item.source && _.get(obj,item.source[0])) numProps = Object.keys(_.get(obj,item.source[0])).length
             expanderId++
+
             return (
                 <Stack direction={'row'} alignItems={'baseline'}>
                     {item.text==='' && <>
                         <Typography width={'100%'}>
-                            {renderValues(obj, item)}
+                            {renderValues(obj, item, level)}
                         </Typography>
                     </>}
                     {item.text!=='' && <>
@@ -457,36 +450,33 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                             numProps>1 && item.style && item.style.includes('collapse')? 
                                     <Stack direction={'row'} width={`${width-2}%`} alignItems={'center'}>
                                         <Typography >{item.text}</Typography>
-                                        <svg className={'svg'+expander} width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"
+                                        <svg className={'svg-'+expander} width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"
                                             onClick={ () => {
-                                                console.log('click', expander)
-                                                let xx = document.getElementsByClassName(expander)[0] as HTMLElement
-                                                if (xx) {
-                                                    console.log('chg')
-                                                    if (xx.style.height==='auto') {
-                                                        xx.style.height='22px'
-                                                        document.getElementsByClassName('svg'+expander)[0].innerHTML = `<path d="M16.59 8.59L12 13.17L7.41 8.59L6 10L12 16L18 10L16.59 8.59Z" />`
+                                                let divElement = document.getElementsByClassName(expander)[0] as HTMLElement
+                                                if (divElement) {
+                                                    if (divElement.style.height==='auto') {
+                                                        divElement.style.height='22px'
+                                                        document.getElementsByClassName('svg-'+expander)[0].innerHTML = `<path d="M16.59 8.59L12 13.17L7.41 8.59L6 10L12 16L18 10L16.59 8.59Z" />`
                                                     }
                                                     else {
-                                                        xx.style.height='auto'
-                                                        document.getElementsByClassName('svg'+expander)[0].innerHTML = `<path d="M12 8L6 14L7.41 15.41L12 10.83L16.59 15.41L18 14L12 8Z" />`
+                                                        divElement.style.height='auto'
+                                                        document.getElementsByClassName('svg-'+expander)[0].innerHTML = `<path d="M12 8L6 14L7.41 15.41L12 10.83L16.59 15.41L18 14L12 8Z" />`
                                                     }
                                                 }
                                             }}>                                            
                                             <path d="M16.59 8.59L12 13.17L7.41 8.59L6 10L12 16L18 10L16.59 8.59Z" />
                                         </svg>                                        
                                     </Stack>
-                                : <>
+                                :
                                     <Typography width={`${width}%`}>{item.text}</Typography>
-                                </>
                         }
                         {
                             numProps>1 && item.style && item.style.includes('collapse')? 
                                     <div className={expander} style={{height:'22px', overflow:'hidden'}}>
-                                        {renderValues(obj, item)}
+                                        {renderValues(obj, item, level)}
                                     </div>
                                 :
-                                renderValues(obj, item)
+                                renderValues(obj, item, level)
                         }
                     </>}
                 </Stack>
@@ -498,7 +488,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
         if (!obj) return
         return <>
             <Typography fontSize={18} sx={{mt:2, mb:1}}><b>{section.text}</b></Typography>
-            {section.items.map(item => renderItem(obj, item, 15))}
+            {section.items.map(item => renderItem(obj, item, labelWidth, 0))}
         </>
     }
 
@@ -514,6 +504,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
         }
     }
     else {
+        console.log(props.object)
         return <>No data</>
     }
 }

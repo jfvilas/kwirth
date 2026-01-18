@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Select, Stack, Switch, Typography, Checkbox } from '@mui/material'
 import { ISetupProps } from '../IChannel'
 import { Terminal } from '@mui/icons-material'
-import { IOpsInstanceConfig, IOpsConfig, OpsInstanceConfig, OpsConfig, ESwitchKeyEnum } from './OpsConfig'
+import { IOpsInstanceConfig, IOpsConfig, OpsInstanceConfig, OpsConfig, ESwitchKey } from './OpsConfig'
 
 const OpsIcon = <Terminal />
 
@@ -11,7 +11,7 @@ const OpsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     let opsConfig:IOpsConfig = props.setupConfig?.channelConfig || new OpsConfig()
     
     const [sessionKeepAlive, setSessionKeepAlive] = useState(opsInstanceConfig.sessionKeepAlive)
-    const [accessKey, setAccessKey] = useState(opsConfig.accessKey || ESwitchKeyEnum.DISABLED)
+    const [accessKey, setAccessKey] = useState(opsConfig.accessKey || ESwitchKey.DISABLED)
     const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () => {
@@ -44,12 +44,12 @@ const OpsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                 </Stack>
                 <Stack direction={'row'} alignItems={'center'}>
                     <Typography style={{width:'100%'}}>Function access key</Typography>
-                    <Select value={accessKey} onChange={(e) => setAccessKey(e.target.value as ESwitchKeyEnum)} variant='standard' sx={{width:'150px', textAlign: 'center'}}>
-                        <MenuItem value={ESwitchKeyEnum.DISABLED}>Disabled</MenuItem>
-                        <MenuItem value={ESwitchKeyEnum.NONE}>None</MenuItem>
-                        <MenuItem value={ESwitchKeyEnum.ALT}>Alt</MenuItem>
-                        <MenuItem value={ESwitchKeyEnum.CTRL}>Control</MenuItem>
-                        <MenuItem value={ESwitchKeyEnum.SHIFT}>Shift</MenuItem>
+                    <Select value={accessKey} onChange={(e) => setAccessKey(e.target.value as ESwitchKey)} variant='standard' sx={{width:'150px', textAlign: 'center'}}>
+                        <MenuItem value={ESwitchKey.DISABLED}>Disabled</MenuItem>
+                        <MenuItem value={ESwitchKey.NONE}>None</MenuItem>
+                        <MenuItem value={ESwitchKey.ALT}>Alt</MenuItem>
+                        <MenuItem value={ESwitchKey.CTRL}>Control</MenuItem>
+                        <MenuItem value={ESwitchKey.SHIFT}>Shift</MenuItem>
                     </Select>
                 </Stack>                
             </DialogContent>

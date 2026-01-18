@@ -2,7 +2,7 @@ import { FC } from "react";
 import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from "../IChannel";
 import { EchoInstanceConfig, EchoConfig, IEchoConfig } from "./EchoConfig";
 import { EchoSetup, EchoIcon } from './EchoSetup';
-import { IEchoMessage, InstanceConfigScopeEnum, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum } from "@jfvilas/kwirth-common";
+import { IEchoMessage, IInstanceMessage, EInstanceMessageType, EInstanceMessageFlow, EInstanceMessageAction, EInstanceConfigScope } from "@jfvilas/kwirth-common";
 import { EchoData, IEchoData } from "./EchoData";
 import { EchoTabContent } from "./EchoTabContent";
 import { ENotifyLevel } from "../../tools/Global";
@@ -24,7 +24,7 @@ export class EchoChannel implements IChannel {
     requiresWebSocket() { return false }
     setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
-    getScope() { return InstanceConfigScopeEnum.NONE}
+    getScope() { return EInstanceConfigScope.NONE}
     getChannelIcon(): JSX.Element { return EchoIcon }
 
     getSetupVisibility(): boolean { return this.setupVisible }
@@ -36,15 +36,15 @@ export class EchoChannel implements IChannel {
         let echoData:IEchoData = channelObject.data
         let echoConfig:IEchoConfig = channelObject.config
         switch (msg.type) {
-            case InstanceMessageTypeEnum.DATA:
+            case EInstanceMessageType.DATA:
                 echoData.lines.push(msg.text)
                 while (echoData.lines.length > echoConfig.maxLines) echoData.lines.shift()
                 return {
                     action: EChannelRefreshAction.REFRESH
                 }
-            case InstanceMessageTypeEnum.SIGNAL:
+            case EInstanceMessageType.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
-                if (instanceMessage.flow === InstanceMessageFlowEnum.RESPONSE && instanceMessage.action === InstanceMessageActionEnum.START) {
+                if (instanceMessage.flow === EInstanceMessageFlow.RESPONSE && instanceMessage.action === EInstanceMessageAction.START) {
                     channelObject.instanceId = instanceMessage.instance
                 }
                 echoData.lines.push('*** '+msg.text+' ***')

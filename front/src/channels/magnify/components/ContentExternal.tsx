@@ -1,9 +1,9 @@
-import { IInstanceConfig, IInstanceMessage, InstanceConfigObjectEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, MetricsConfigModeEnum } from '@jfvilas/kwirth-common'
+import { EInstanceConfigObject, EInstanceConfigScope, EInstanceConfigView, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EMetricsConfigMode, IInstanceConfig, IInstanceMessage, InstanceConfigScopeEnum } from '@jfvilas/kwirth-common'
 import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelObject, IContentProps } from '../../IChannel'
 import { Dialog, DialogContent, DialogTitle, IconButton, Stack, Typography } from '@mui/material'
-import { Close, Fullscreen, FullscreenExit, Maximize, Minimize, PauseCircle, PlayCircle, Settings, SettingsApplicationsOutlined, StopCircle } from '@mui/icons-material'
+import { Close, Fullscreen, FullscreenExit, Minimize, PauseCircle, PlayCircle, Settings, StopCircle } from '@mui/icons-material'
 import { IFileObject } from '@jfvilas/react-file-manager'
-import { ELogSortOrderEnum, ILogConfig, ILogInstanceConfig } from '../../log/LogConfig'
+import { ELogSortOrder, ILogConfig, ILogInstanceConfig } from '../../log/LogConfig'
 import { ILogData } from '../../log/LogData'
 import { useEffect, useRef, useState } from 'react'
 import { createChannelInstance } from '../../../tools/Channel'
@@ -12,7 +12,7 @@ import { IMetricsConfig, IMetricsInstanceConfig } from '../../metrics/MetricsCon
 import { IMetricsData } from '../../metrics/MetricsData'
 import { EChartType } from '../../metrics/MenuChart'
 import { IOpsData } from '../../ops/OpsData'
-import { ESwitchKeyEnum, IOpsConfig, IOpsInstanceConfig } from '../../ops/OpsConfig'
+import { ESwitchKey, IOpsConfig, IOpsInstanceConfig } from '../../ops/OpsConfig'
 import { TerminalManager } from '../../ops/Terminal/TerminalManager'
 import { MagnifyUserSettings } from '../MagnifyUserSettings'
 
@@ -26,7 +26,7 @@ interface IContentExternalProps {
     onMinimize: (content:IContentExternalObject) => void
     onClose: (content:IContentExternalObject) => void
     onRefresh: () => void
-    contentView: InstanceConfigViewEnum
+    contentView: EInstanceConfigView
     content?: IContentExternalObject
     channelObject?: IChannelObject
     container?: string
@@ -54,7 +54,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             content.current = props.content
         }
         else if (props.channelObject) {
-            content.current = createContent(props.channelId!,props.container)
+            content.current = createContent(props.channelId!)
             if (!content.current) return
             switch(props.channelId) {
                 case 'log':
@@ -71,7 +71,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
         setPercent(content.current?.windowMaximized? 100 : 70)
     },[])
 
-    const createContent = (channelId:string, container?:string) => {
+    const createContent = (channelId:string) => {
         let newChannel = createChannelInstance(props.frontChannels.get(channelId), props.onNotify)
         if (!newChannel) {
             console.log('Invaid channel instance created')
@@ -85,17 +85,10 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 clusterName: props.channelObject?.clusterName!,
                 instanceId: '',
                 view: props.contentView,
-                // namespace: props.selectedFiles[0].data.origin.metadata.namespace,
-                // group: '',
-                // pod: props.selectedFiles[0].data.origin.metadata.name,
-                // container: container || '',
-                //namespace: props.selectedFiles[0].data.origin.metadata.namespace,   //+++
                 namespace: [...new Set(props.selectedFiles.map(n => n.data.origin.metadata.namespace))].join(','),
-                //group: props.contentView === InstanceConfigViewEnum.GROUP? 'Deployment+'+props.selectedFiles[0].data.origin.metadata.name : '',
-                group: props.contentView === InstanceConfigViewEnum.GROUP? props.selectedFiles.map(g => 'Deployment+'+g.data.origin.metadata.name).join(',') : '',
-                //pod: props.contentView === InstanceConfigViewEnum.POD? props.selectedFiles[0].data.origin.metadata.name : '',
-                pod: props.contentView === InstanceConfigViewEnum.POD? props.selectedFiles.map(p => p.data.origin.metadata.name).join(',') : '',
-                container: props.contentView === InstanceConfigViewEnum.CONTAINER? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
+                group: props.contentView === EInstanceConfigView.GROUP? props.selectedFiles.map(g => 'Deployment+'+g.data.origin.metadata.name).join(',') : '',
+                pod: props.contentView === EInstanceConfigView.POD? props.selectedFiles.map(p => p.data.origin.metadata.name).join(',') : '',
+                container: props.contentView === EInstanceConfigView.CONTAINER? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
                 config: undefined,
                 data: undefined,
                 instanceConfig: undefined
@@ -129,7 +122,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             return
         }
 
-        if (instanceMessage.action === InstanceMessageActionEnum.PING || instanceMessage.channel === '') return
+        if (instanceMessage.action === EInstanceMessageAction.PING || instanceMessage.channel === '') return
 
         if (props.channelObject!.frontChannels!.has(instanceMessage.channel)) {
             let refreshAction = content.current?.channel.processChannelMessage(content.current?.channelObject!, wsEvent)
@@ -153,7 +146,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             follow: true,
             maxMessages: props.settings.logLines,
             maxPerPodMessages: 5000,
-            sortOrder: ELogSortOrderEnum.TIME
+            sortOrder: ELogSortOrder.TIME
         }
         let logInstanceConfig:ILogInstanceConfig = {
             previous: false,
@@ -184,13 +177,17 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
         let metricsConfig:IMetricsConfig = {
             depth: 50,
             width: 2,
+            lineHeight: 300,
+            configurable: false,
+            compact: true,
+            legend: true,
             merge: false,
             stack: false,
             chart: EChartType.LineChart,
             metricsDefault: {}
         }
         let metricsInstanceConfig:IMetricsInstanceConfig = {
-            mode: MetricsConfigModeEnum.STREAM,
+            mode: EMetricsConfigMode.STREAM,
             aggregate: false,
             interval: 15,
             metrics: ['kwirth_container_cpu_percentage','kwirth_container_memory_percentage', 'kwirth_container_transmit_mbps', 'kwirth_container_receive_mbps', 'kwirth_container_write_mbps', 'kwirth_container_read_mbps']
@@ -215,7 +212,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             selectedTerminal: undefined
         }
         let opsConfig:IOpsConfig = {
-            accessKey: ESwitchKeyEnum.DISABLED,
+            accessKey: ESwitchKey.DISABLED,
             launchShell: true,
             shell: {
                 namespace: c.channelObject.namespace,
@@ -240,9 +237,9 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             content.current.channel.continueChannel(content.current.channelObject)
             let instanceConfig:IInstanceConfig = {
                 channel: content.current.channel.channelId,
-                objects: InstanceConfigObjectEnum.PODS,
-                action: InstanceMessageActionEnum.CONTINUE,
-                flow: InstanceMessageFlowEnum.REQUEST,
+                objects: EInstanceConfigObject.PODS,
+                action: EInstanceMessageAction.CONTINUE,
+                flow: EInstanceMessageFlow.REQUEST,
                 instance: content.current.channelObject.instanceId,
                 accessKey: props.channelObject!.accessString!,
                 view: props.contentView,
@@ -251,7 +248,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 group: '',
                 pod: '',
                 container: '',
-                type: InstanceMessageTypeEnum.SIGNAL
+                type: EInstanceMessageType.SIGNAL
             }
             content.current.channelPaused = false
             content.current.ws.send(JSON.stringify(instanceConfig))
@@ -261,25 +258,18 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
 
             let instanceConfig:IInstanceConfig = {
                 channel: content.current.channel.channelId,
-                objects: InstanceConfigObjectEnum.PODS,
-                action: InstanceMessageActionEnum.START,
-                flow: InstanceMessageFlowEnum.REQUEST,
+                objects: EInstanceConfigObject.PODS,
+                action: EInstanceMessageAction.START,
+                flow: EInstanceMessageFlow.REQUEST,
                 instance: '',
                 accessKey: props.channelObject!.accessString!,
-                scope: InstanceConfigScopeEnum.NONE,
+                scope: EInstanceConfigScope.NONE,
                 view: props.contentView,
-                // namespace: props.selectedFiles[0].data.origin.metadata.namespace,   //+++
-                // group: '',
-                // pod: props.selectedFiles[0].data.origin.metadata.name,   //+++
-                // container: props.selectedFiles[0].data.origin.metadata.name + '+' + props.container,
-                //namespace: props.selectedFiles[0].data.origin.metadata.namespace,   //+++
                 namespace: [...new Set(props.selectedFiles.map(n => n.data.origin.metadata.namespace))].join(','),
-                //group: props.contentView === InstanceConfigViewEnum.GROUP? 'Deployment+'+props.selectedFiles[0].data.origin.metadata.name : '',
-                group: props.contentView === InstanceConfigViewEnum.GROUP? props.selectedFiles.map(g => g.data.origin.kind+'+'+g.data.origin.metadata.name).join(',') : '',
-                //pod: props.contentView === InstanceConfigViewEnum.POD? props.selectedFiles[0].data.origin.metadata.name : '',
-                pod: props.contentView === InstanceConfigViewEnum.POD? props.selectedFiles.map(p => p.data.origin.metadata.name).join(',') : '',
-                container: props.contentView === InstanceConfigViewEnum.CONTAINER? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
-                type: InstanceMessageTypeEnum.SIGNAL,
+                group: props.contentView === EInstanceConfigView.GROUP? props.selectedFiles.map(g => g.data.origin.kind+'+'+g.data.origin.metadata.name).join(',') : '',
+                pod: props.contentView === EInstanceConfigView.POD? props.selectedFiles.map(p => p.data.origin.metadata.name).join(',') : '',
+                container: props.contentView === EInstanceConfigView.CONTAINER? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
+                type: EInstanceMessageType.SIGNAL,
             }
             instanceConfig.scope = content.current.channel.getScope() || ''
             instanceConfig.data = content.current.channelObject.instanceConfig
@@ -296,9 +286,9 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
 
         let instanceConfig:IInstanceConfig = {
             channel: content.current.channel.channelId,
-            objects: InstanceConfigObjectEnum.PODS,
-            action: InstanceMessageActionEnum.PAUSE,
-            flow: InstanceMessageFlowEnum.REQUEST,
+            objects: EInstanceConfigObject.PODS,
+            action: EInstanceMessageAction.PAUSE,
+            flow: EInstanceMessageFlow.REQUEST,
             instance: content.current.channelObject.instanceId,
             accessKey: props.channelObject!.accessString!,
             view: content.current.channelObject.view,
@@ -307,11 +297,11 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             group: '',
             pod: '',
             container: '',
-            type: InstanceMessageTypeEnum.SIGNAL
+            type: EInstanceMessageType.SIGNAL
         }
 
         content.current.channelPaused = true
-        instanceConfig.action = InstanceMessageActionEnum.PAUSE
+        instanceConfig.action = EInstanceMessageAction.PAUSE
         content.current.ws.send(JSON.stringify(instanceConfig))
     }
 
@@ -320,9 +310,9 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
 
         let instanceConfig: IInstanceConfig = {
             channel: content.current.channel.channelId,
-            objects: InstanceConfigObjectEnum.PODS,
-            action: InstanceMessageActionEnum.STOP,
-            flow: InstanceMessageFlowEnum.REQUEST,
+            objects: EInstanceConfigObject.PODS,
+            action: EInstanceMessageAction.STOP,
+            flow: EInstanceMessageFlow.REQUEST,
             instance: content.current.channelObject.instanceId,
             accessKey: props.channelObject?.accessString!,
             view: content.current.channelObject.view,
@@ -331,7 +321,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             group: '',
             pod: '',
             container: '',
-            type: InstanceMessageTypeEnum.SIGNAL
+            type: EInstanceMessageType.SIGNAL
         }
         content.current.channel.stopChannel(content.current.channelObject)
         content.current.ws.send(JSON.stringify(instanceConfig))
