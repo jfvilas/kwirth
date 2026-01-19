@@ -74,7 +74,7 @@ let conditions:IDetailsItem = {
     source: ['status.conditions'],
     format: 'objectlist',
     style: ['column'],  // 'collapse'
-    content: [
+    items: [
         {
             name: 'type',
             text: 'Type',
@@ -96,7 +96,7 @@ let events: IDetailsSection = {
             source: ['list'],
             format: 'objectlist',
             style: ['table'],
-            content: [
+            items: [
                 {
                     name: 'message',
                     text: 'Message',
@@ -131,7 +131,7 @@ let pods:IDetailsSection =     {
             source: ['@string[]'],
             format: 'objectlist',
             style: ['table'],
-            content: [
+            items: [
                 {
                     name: 'name',
                     text: 'Name',
@@ -189,7 +189,7 @@ objectSections.set('PersistentVolumeClaim', [
                 text: 'Pods',
                 source: ['@string[]'],
                 format: 'stringlist',
-                style: ['column']
+                style: ['column', 'ifpresent']
            },
            {
                 name: 'status',
@@ -349,7 +349,8 @@ objectSections.set('Service', [
                 text: 'Ports',
                 source: ['spec.ports'],
                 format: 'objectlist',
-                content: [
+                //style: ['column'],
+                items: [
                     {
                         name: 'type',
                         text: '',
@@ -382,14 +383,14 @@ objectSections.set('Endpoints', [
                 text: '',
                 source: ['subsets'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'address',
                         text: 'Address',
                         source: ['addresses'],
                         format: 'objectlist',
                         style:['table'],
-                        content: [
+                        items: [
                             {
                                 name: 'ip',
                                 text: 'IP',
@@ -440,7 +441,7 @@ objectSections.set('Ingress', [
                 source: ['spec.rules'],
                 format: 'objectlist',
                 style: ['table'],
-                content: [
+                items: [
                     {
                         name: 'host',
                         text: 'Host',  
@@ -454,7 +455,7 @@ objectSections.set('Ingress', [
                         source: ['http.paths'],
                         format: 'objectlist',
                         style: ['column'],
-                        content: [
+                        items: [
                             {
                                 name: 'path',
                                 text: 'Path',  
@@ -548,7 +549,7 @@ objectSections.set('Node', [
                 text: 'Addresses',
                 source: ['status.addresses'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'type',
                         text: '',
@@ -692,7 +693,8 @@ objectSections.set('LimitRange', [
                 text: 'Limits',
                 source: ['spec.limits'],
                 format: 'objectlist',
-                content: [
+                style: ['table'],
+                items: [
                     {
                         name: 'type',
                         text: 'Type',  
@@ -700,91 +702,54 @@ objectSections.set('LimitRange', [
                         format: 'string'
                     },
                     {
-                        name: 'max',
-                        text: 'Max',  
-                        source: ['max'],
-                        format: 'objectprops',
-                        style:['column'],
-                        content: [
-                            {
-                                name: "cpu",
-                                text: "CPU",
-                                source: ['cpu'],
-                                format: "string"
-                            },
-                            {
-                                name: "memory",
-                                text: "Memory",
-                                source: ['memory'],
-                                format: "string"
-                            }
-                        ]
+                        name: 'maxcpu',
+                        text: 'MaxCPU',  
+                        source: ['max.cpu'],
+                        format: 'string'
                     },
                     {
-                        name: 'min',
-                        text: 'Min',  
-                        source: ['min'],
-                        format: 'objectprops',
-                        style:['column'],
-                        content: [
-                            {
-                                name: "cpu",
-                                text: "CPU",
-                                source: ['cpu'],
-                                format: "string"
-                            },
-                            {
-                                name: "memory",
-                                text: "Memory",
-                                source: ['memory'],
-                                format: "string"
-                            }
-                        ]
+                        name: 'maxmem',
+                        text: 'MaxMem',  
+                        source: ['max.memory'],
+                        format: 'string'
                     },
                     {
-                        name: 'default',
-                        text: 'Default',  
-                        source: ['default'],
-                        format: 'objectprops',
-                        style:['column'],
-                        content: [
-                            {
-                                name: "cpu",
-                                text: "CPU",
-                                source: ['cpu'],
-                                format: "string"
-                            },
-                            {
-                                name: "memory",
-                                text: "Memory",
-                                source: ['memory'],
-                                format: "string"
-                            }
-                        ]
+                        name: 'mincpu',
+                        text: 'MinCPU',  
+                        source: ['min.cpu'],
+                        format: 'string'
                     },
                     {
-                        name: 'defaultRequest',
-                        text: 'DefaultRequest',  
-                        source: ['defaultRequest'],
-                        format: 'objectprops',
-                        style:['column'],
-                        content: [
-                            {
-                                name: "cpu",
-                                text: "CPU",
-                                source: ['cpu'],
-                                format: "string"
-                            },
-                            {
-                                name: "memory",
-                                text: "Memory",
-                                source: ['memory'],
-                                format: "string"
-                            }
-                        ]
+                        name: 'minmem',
+                        text: 'MinMem',  
+                        source: ['min.memory'],
+                        format: 'string'
                     },
-                ],
-                style: ['table']
+                    {
+                        name: 'defcpu',
+                        text: 'DefaultCPU',  
+                        source: ['default.cpu'],
+                        format: 'string'
+                    },
+                    {
+                        name: 'defmem',
+                        text: 'DefaultMem',  
+                        source: ['default.memory'],
+                        format: 'string'
+                    },
+                    {
+                        name: 'defreqcpu',
+                        text: 'DefReqCPU',  
+                        source: ['defaultRequest.cpu'],
+                        format: 'string'
+                    },
+                    {
+                        name: 'defreqmem',
+                        text: 'DefReqMem',  
+                        source: ['defaultRequest.memory'],
+                        format: 'string'
+                    },
+                ]
             },
         ]
     },
@@ -824,64 +789,64 @@ objectSections.set('HorizontalPodAutoscaler', [
             }
         ]
     },
-    {
-        name: 'metrics',
-        text: 'Metrics',
-        root: 'origin',
-        items: [
-            {
-                name: 'limits',
-                text: 'Limits',
-                source: ['spec.metrics'],
-                format: 'objectlist',
-                style: ['table'],
-                content: [
-                    {
-                        name: 'type',
-                        text: 'Type',  
-                        source: ['type'],
-                        format: 'string'
-                    },
-                    {
-                        name: 'resource',
-                        text: 'Resource',  
-                        source: ['resource'],
-                        format: 'objectprops',
-                        style:['column'],
-                        content: [
-                            {
-                                name: 'name',
-                                text: 'Name',
-                                source: ['name'],
-                                format: 'string'
-                            },
-                            {
-                                name: 'target',
-                                text: 'Target',
-                                source: ['target'],
-                                format: 'objectprops',
-                                style: ['column'],
-                                content: [
-                                    {
-                                        name: 'type',
-                                        text: 'Type',
-                                        source: ['type'],
-                                        format: 'string'
-                                    },
-                                    {
-                                        name: 'avgUtil',
-                                        text: 'Average Utilization',
-                                        source: ['averageUtilization'],
-                                        format: 'string'
-                                    },
-                                ],
-                            }
-                        ]
-                    },
-                ]
-            },
-        ]
-    },
+    // {
+    //     name: 'metrics',
+    //     text: 'Metrics',
+    //     root: 'origin',
+    //     items: [
+    //         {
+    //             name: 'limits',
+    //             text: 'Limits',
+    //             source: ['spec.metrics'],
+    //             format: 'objectlist',
+    //             style: ['table'],
+    //             items: [
+    //                 {
+    //                     name: 'type',
+    //                     text: 'Type',  
+    //                     source: ['type'],
+    //                     format: 'string'
+    //                 },
+    //                 {
+    //                     name: 'resource',
+    //                     text: 'Resource',  
+    //                     source: ['resource'],
+    //                     format: 'objectprops',
+    //                     style:['column'],
+    //                     items: [
+    //                         {
+    //                             name: 'name',
+    //                             text: 'Name',
+    //                             source: ['name'],
+    //                             format: 'string'
+    //                         },
+    //                         {
+    //                             name: 'target',
+    //                             text: 'Target',
+    //                             source: ['target'],
+    //                             format: 'objectprops',
+    //                             style: ['column'],
+    //                             items: [
+    //                                 {
+    //                                     name: 'type',
+    //                                     text: 'Type',
+    //                                     source: ['type'],
+    //                                     format: 'string'
+    //                                 },
+    //                                 {
+    //                                     name: 'avgUtil',
+    //                                     text: 'Average Utilization',
+    //                                     source: ['averageUtilization'],
+    //                                     format: 'string'
+    //                                 },
+    //                             ],
+    //                         }
+    //                     ]
+    //                 },
+    //             ]
+    //         },
+    //     ]
+    // },
     events
 ])
 
@@ -969,7 +934,8 @@ objectSections.set('Lease', [
                 name: 'acquireTime',
                 text: 'Acquire',
                 source: ['spec.acquireTime'],
-                format: 'string'
+                format: 'string',
+                style: ['ifpresent']
             },
             {
                 name: 'renewTime',
@@ -981,7 +947,8 @@ objectSections.set('Lease', [
                 name: 'leaseTransitions',
                 text: 'Transitions',
                 source: ['spec.leaseTransitions'],
-                format: 'string'
+                format: 'string',
+                style: ['ifpresent']
             },
         ]
     },
@@ -995,84 +962,308 @@ objectSections.set('ValidatingWebhookConfiguration', [
         root: 'origin',
         items: [
             ...basicCluster,
-            {
-                name: 'webhooks',
-                text: 'Webhooks',
-                source: ['webhooks'],
-                format: 'objectlist',
-                style: ['table'],
-                content: [
-                    {
-                        name: 'name',
-                        text: 'Name',
-                        source: ['name'],
-                        format: 'string'
-                    },
-                    {
-                        name: 'clientConfig',
-                        text: 'Client Config',
-                        source: ['clientConfig.service'],
-                        format: 'objectprops',
-                        content: [
-                            {
-                                name: 'name',
-                                text: 'Name',
-                                source: ['name'],
-                                format: 'string'
-                            }
-                        ]
-                    },
-                    {
-                        name: 'rules',
-                        text: 'Rules',
-                        source: ['rules'],
-                        format: 'objectlist',
-                        style: ['column'],
-                        content: [
-                            {
-                                name: 'scope',
-                                text: 'Scope',
-                                source: ['scope'],
-                                format: 'string',
-                                style: ['header']
-                            },
-                            {
-                                name: 'operations',
-                                text: 'operations',
-                                source: ['operations'],
-                                format: 'stringlist',
-                                style:['header']
-                            },
-                            {
-                                name: 'apiGroups',
-                                text: 'Gruoups',
-                                source: ['apiGroups'],
-                                format: 'stringlist',
-                                style:['header']
-                            },
-                            {
-                                name: 'apiVersions',
-                                text: 'API Versions',
-                                source: ['apiVersions'],
-                                format: 'stringlist',
-                                style:['header']
-                            },
-                            {
-                                name: 'resources',
-                                text: 'Resources',
-                                source: ['resources'],
-                                format: 'stringlist',
-                                style:['header']
-                            },
+            // {
+            //     name: 'webhooks',
+            //     text: 'Webhooks',
+            //     source: ['webhooks'],
+            //     format: 'objectlist',
+            //     style: ['table'],
+            //     items: [
+            //         {
+            //             name: 'name',
+            //             text: 'Name',
+            //             source: ['name'],
+            //             format: 'string'
+            //         },
+            //         {
+            //             name: 'clientConfig',
+            //             text: 'Client Config',
+            //             source: ['clientConfig.service'],
+            //             format: 'objectprops',
+            //             style: ['column'],
+            //             items: [
+            //                 {
+            //                     name: 'clientconfig',
+            //                     text: 'CCName',
+            //                     source: ['name'],
+            //                     format: 'string'
+            //                 },
+            //                 {
+            //                     name: 'name',
+            //                     text: 'Name',
+            //                     source: ['clientConfig.service.name'],
+            //                     format: 'string'
+            //                 },
+            //                 {
+            //                     name: 'namespace',
+            //                     text: 'Namespace',
+            //                     source: ['clientConfig.service.namespace'],
+            //                     format: 'string'
+            //                 },
+            //                 {
+            //                     name: 'route',
+            //                     text: 'Route',
+            //                     source: ['clientConfig.service.path','$:','clientConfig.service.port'],
+            //                     format: 'string'
+            //                 }
+            //             ]
+            //         },
+            //         {
+            //             name: 'rules',
+            //             text: 'Rules',
+            //             source: ['rules'],
+            //             format: 'objectlist',
+            //             style: ['column'],
+            //             items: [
+            //                 {
+            //                     name: 'scope',
+            //                     text: 'Scope',
+            //                     source: ['scope'],
+            //                     format: 'string',
+            //                     style: ['header']
+            //                 },
+            //                 {
+            //                     name: 'operations',
+            //                     text: 'operations',
+            //                     source: ['operations'],
+            //                     format: 'stringlist',
+            //                     style:['header']
+            //                 },
+            //                 {
+            //                     name: 'apiGroups',
+            //                     text: 'Groups',
+            //                     source: ['apiGroups'],
+            //                     format: 'stringlist',
+            //                     style:['header']
+            //                 },
+            //                 {
+            //                     name: 'apiVersions',
+            //                     text: 'API Versions',
+            //                     source: ['apiVersions'],
+            //                     format: 'stringlist',
+            //                     style:['header']
+            //                 },
+            //                 {
+            //                     name: 'resources',
+            //                     text: 'Resources',
+            //                     source: ['resources'],
+            //                     format: 'stringlist',
+            //                     style:['header']
+            //                 },
                           
-                        ],
-                    },
-                ],
-            },
+            //             ],
+            //         },
+            //     ],
+            // },
         ]
+    },
+    {
+        name: 'webhooks',
+        text: 'Webhooks',
+        root: 'origin',
+        items: [ {
+                name:'webhooks',
+                text:'',
+                format:'objectlist',
+                source: ['webhooks'],
+                style: ['table'],
+                items: [
+                {
+                    name: 'name',
+                    text: 'Name',
+                    source: ['name'],
+                    format: 'string'
+                },
+                {
+                    name: 'clientConfig',
+                    text: 'Client Config',
+                    source: ['clientConfig.service'],
+                    format: 'objectprops',
+                    style: ['column'],
+                    items: [
+                        {
+                            name: 'clientconfig',
+                            text: 'CCName',
+                            source: ['name'],
+                            format: 'string'
+                        },
+                        {
+                            name: 'name',
+                            text: 'Name',
+                            source: ['clientConfig.service.name'],
+                            format: 'string'
+                        },
+                        {
+                            name: 'namespace',
+                            text: 'Namespace',
+                            source: ['#clientConfig.service.namespace'],
+                            format: 'string',
+                            style: ['link:$Namespace:clientConfig.service.namespace']
+                        },
+                        {
+                            name: 'route',
+                            text: 'Route',
+                            source: ['clientConfig.service.path','$:','clientConfig.service.port'],
+                            format: 'string'
+                        }
+                    ]
+                },
+                {
+                    name: 'rules',
+                    text: 'Rules',
+                    source: ['rules'],
+                    format: 'objectlist',
+                    style: ['column'],
+                    items: [
+                        {
+                            name: 'scope',
+                            text: 'Scope',
+                            source: ['scope'],
+                            format: 'string',
+                            style: ['header']
+                        },
+                        {
+                            name: 'operations',
+                            text: 'operations',
+                            source: ['operations'],
+                            format: 'stringlist',
+                            style:['header']
+                        },
+                        {
+                            name: 'apiGroups',
+                            text: 'Groups',
+                            source: ['apiGroups'],
+                            format: 'stringlist',
+                            style:['header']
+                        },
+                        {
+                            name: 'apiVersions',
+                            text: 'API Versions',
+                            source: ['apiVersions'],
+                            format: 'stringlist',
+                            style:['header']
+                        },
+                        {
+                            name: 'resources',
+                            text: 'Resources',
+                            source: ['resources'],
+                            format: 'stringlist',
+                            style:['header']
+                        },
+                        
+                    ],
+                }
+                ]}
+            
+        ],
     },
     events
 ])
+
+// objectSections.set('MutatingWebhookConfiguration', [
+//     {
+//         name: 'properties',
+//         text: 'Properties',
+//         root: 'origin',
+//         items: [
+//             ...basicCluster,
+//             {
+//                 name: 'webhooks',
+//                 text: 'Webhooks',
+//                 source: ['webhooks'],
+//                 format: 'objectlist',
+//                 items: [
+//                     {
+//                         name: 'name',
+//                         text: 'Name',
+//                         source: ['name'],
+//                         format: 'string'
+//                     },
+//                     {
+//                         name: 'clientConfig',
+//                         text: 'Client Config',
+//                         source: ['clientConfig.service'],
+//                         format: 'objectprops',
+//                         style: ['column'],
+//                         items: [
+//                             {
+//                                 name: 'clientconfig',
+//                                 text: 'CCName',
+//                                 source: ['name'],
+//                                 format: 'string'
+//                             },
+//                             {
+//                                 name: 'name',
+//                                 text: 'Name',
+//                                 source: ['clientConfig.service.name'],
+//                                 format: 'string'
+//                             },
+//                             {
+//                                 name: 'namespace',
+//                                 text: 'Namespace',
+//                                 source: ['clientConfig.service.namespace'],
+//                                 format: 'string'
+//                             },
+//                             {
+//                                 name: 'port',
+//                                 text: 'Port',
+//                                 source: ['clientConfig.service.port'],
+//                                 format: 'string'
+//                             }
+//                         ]
+//                     },
+//                     {
+//                         name: 'rules',
+//                         text: 'Rules',
+//                         source: ['rules'],
+//                         format: 'objectlist',
+//                         style: ['column'],
+//                         items: [
+//                             {
+//                                 name: 'scope',
+//                                 text: 'Scope',
+//                                 source: ['scope'],
+//                                 format: 'string',
+//                                 style: ['header']
+//                             },
+//                             {
+//                                 name: 'operations',
+//                                 text: 'operations',
+//                                 source: ['operations'],
+//                                 format: 'stringlist',
+//                                 style:['header']
+//                             },
+//                             {
+//                                 name: 'apiGroups',
+//                                 text: 'Groups',
+//                                 source: ['apiGroups'],
+//                                 format: 'stringlist',
+//                                 style:['header']
+//                             },
+//                             {
+//                                 name: 'apiVersions',
+//                                 text: 'API Versions',
+//                                 source: ['apiVersions'],
+//                                 format: 'stringlist',
+//                                 style:['header']
+//                             },
+//                             {
+//                                 name: 'resources',
+//                                 text: 'Resources',
+//                                 source: ['resources'],
+//                                 format: 'stringlist',
+//                                 style:['header']
+//                             },
+                          
+//                         ],
+//                     },
+//                 ],
+//                 style: ['table']
+//             },
+//         ]
+//     },
+//     events
+// ])
 
 objectSections.set('MutatingWebhookConfiguration', [
     {
@@ -1081,88 +1272,107 @@ objectSections.set('MutatingWebhookConfiguration', [
         root: 'origin',
         items: [
             ...basicCluster,
-            {
-                name: 'webhooks',
-                text: 'Webhooks',
-                source: ['webhooks'],
-                format: 'objectlist',
-                content: [
-                    {
-                        name: 'name',
-                        text: 'Name',
-                        source: ['name'],
-                        format: 'string'
-                    },
-                    {
-                        name: 'clientConfig',
-                        text: 'Client Config',
-                        source: ['clientConfig.service'],
-                        format: 'objectprops',
-                        content: [
-                            {
-                                name: 'name',
-                                text: 'Name',
-                                source: ['name'],
-                                format: 'string'
-                            },
-                            {
-                                name: 'namespace',
-                                text: 'Namespace',
-                                source: ['#namespace'],
-                                format: 'string',
-                                style: ['link:$Namespace:namespace']
-                            },
-                        ],
-                    },
-                    {
-                        name: 'rules',
-                        text: 'Rules',
-                        source: ['rules'],
-                        format: 'objectlist',
-                        style: ['column'],
-                        content: [
-                            {
-                                name: 'scope',
-                                text: 'Scope',
-                                source: ['scope'],
-                                format: 'string',
-                                style: ['header']
-                            },
-                            {
-                                name: 'operations',
-                                text: 'operations',
-                                source: ['operations'],
-                                format: 'stringlist',
-                                style:['header']
-                            },
-                            {
-                                name: 'apiGroups',
-                                text: 'Gruoups',
-                                source: ['apiGroups'],
-                                format: 'stringlist',
-                                style:['header']
-                            },
-                            {
-                                name: 'apiVersions',
-                                text: 'API Versions',
-                                source: ['apiVersions'],
-                                format: 'stringlist',
-                                style:['header']
-                            },
-                            {
-                                name: 'resources',
-                                text: 'Resources',
-                                source: ['resources'],
-                                format: 'stringlist',
-                                style:['header']
-                            },
-                          
-                        ],
-                    },
-                ],
-                style: ['table']
-            },
         ]
+    },
+    {
+        name: 'webhooks',
+        text: 'Webhooks',
+        root: 'origin',
+        items: [ {
+                name:'webhooks',
+                text:'',
+                format:'objectlist',
+                source: ['webhooks'],
+                style: ['table'],
+                items: [
+                {
+                    name: 'name',
+                    text: 'Name',
+                    source: ['name'],
+                    format: 'string'
+                },
+                {
+                    name: 'clientConfig',
+                    text: 'Client Config',
+                    source: ['clientConfig.service'],
+                    format: 'objectprops',
+                    style: ['column'],
+                    items: [
+                        {
+                            name: 'clientconfig',
+                            text: 'CCName',
+                            source: ['name'],
+                            format: 'string'
+                        },
+                        {
+                            name: 'name',
+                            text: 'Name',
+                            source: ['clientConfig.service.name'],
+                            format: 'string'
+                        },
+                        {
+                            name: 'namespace',
+                            text: 'Namespace',
+                            source: ['#clientConfig.service.namespace'],
+                            format: 'string',
+                            style: ['link:$Namespace:clientConfig.service.namespace']
+                        },
+                        {
+                            name: 'port',
+                            text: 'Port',
+                            source: ['clientConfig.service.port'],
+                            format: 'string'
+                        }
+                    ]
+                },
+                {
+                    name: 'rules',
+                    text: 'Rules',
+                    source: ['rules'],
+                    format: 'objectlist',
+                    style: ['column'],
+                    items: [
+                        {
+                            name: 'scope',
+                            text: 'Scope',
+                            source: ['scope'],
+                            format: 'string',
+                            style: ['header']
+                        },
+                        {
+                            name: 'operations',
+                            text: 'operations',
+                            source: ['operations'],
+                            format: 'stringlist',
+                            style:['header']
+                        },
+                        {
+                            name: 'apiGroups',
+                            text: 'Groups',
+                            source: ['apiGroups'],
+                            format: 'stringlist',
+                            style:['header']
+                        },
+                        {
+                            name: 'apiVersions',
+                            text: 'API Versions',
+                            source: ['apiVersions'],
+                            format: 'stringlist',
+                            style:['header']
+                        },
+                        {
+                            name: 'resources',
+                            text: 'Resources',
+                            source: ['resources'],
+                            format: 'stringlist',
+                            style:['header']
+                        },
+                        
+                    ],
+                }
+                ]}
+            
+        ],
     },
     events
 ])
@@ -1206,7 +1416,7 @@ objectSections.set('Pod', [
                 text: 'Pod IPs',
                 source: ['status.podIPs'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'ip',
                         text: 'IP',
@@ -1234,7 +1444,7 @@ objectSections.set('Pod', [
                 text: 'Tolerations',
                 source: ['spec.tolerations'],
                 format: 'table',
-                content: [
+                items: [
                     {
                         name: 'key',
                         text: 'Key',
@@ -1279,7 +1489,7 @@ objectSections.set('Pod', [
                 text: 'Volume',
                 source: ['spec.volumes'],
                 format: 'table',
-                content: [
+                items: [
                     {
                         name: 'name',
                         text: 'Name',
@@ -1312,7 +1522,7 @@ objectSections.set('Pod', [
                 text: '',
                 source: ['status.containerStatuses|spec.containers:name'],
                 format: 'objectobject',
-                content: [
+                items: [
                     {
                         name: 'name',
                         text: '',   // no text header => show property value as header
@@ -1339,14 +1549,14 @@ objectSections.set('Pod', [
                         text: 'Ports',
                         source: ['ports'],
                         format: 'objectlist',
-                        content: [
+                        style: ['fullwidth'],
+                        items: [
                             {
-                                name: 'port',
-                                text: 'Port',
-                                source: ['name','$: ', 'containerPort','$/','protocol'],
-                                format: 'string'
+                                name: 'forward',
+                                text: 'Forward',
+                                source: ['@jsx'],
+                                format: 'string',
                             }
-                            
                         ]
                     },
                     {
@@ -1354,7 +1564,7 @@ objectSections.set('Pod', [
                         text: 'Environment',
                         source: ['env'],
                         format: 'objectlist',
-                        content: [
+                        items: [
                             {
                                 name: 'oneenv',
                                 text: 'Env',
@@ -1370,7 +1580,7 @@ objectSections.set('Pod', [
                         text: 'Mounts',
                         source: ['volumeMounts'],
                         format: 'table',
-                        content: [
+                        items: [
                             {
                                 name: 'name',
                                 text: 'Name',
@@ -1461,7 +1671,7 @@ objectSections.set('DaemonSet', [
                 text: 'Images',
                 source: ['spec.template.spec.containers'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'image',
                         text: '',
@@ -1482,7 +1692,7 @@ objectSections.set('DaemonSet', [
                 text: 'Tolerations',
                 source: ['spec.template.spec.tolerations'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'key',
                         text: 'Key',
@@ -1529,7 +1739,7 @@ objectSections.set('ReplicaSet', [
                 text: 'Images',
                 source: ['spec.template.spec.containers'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'image',
                         text: '',
@@ -1631,7 +1841,7 @@ objectSections.set('StatefulSet', [
                 text: 'Images',
                 source: ['spec.template.spec.containers'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'image',
                         text: '',
@@ -1672,7 +1882,7 @@ objectSections.set('Job', [
                 text: 'Images',
                 source: ['spec.template.spec.containers'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'image',
                         text: '',
@@ -1760,7 +1970,7 @@ objectSections.set('CronJob', [
                 //invoke: () => { return ['aa',`bb`]},
                 format: 'objectlist',
                 style: ['table'],
-                content: [
+                items: [
                     {
                         name: 'name',
                         text: 'Name',
@@ -1820,7 +2030,7 @@ objectSections.set('ClusterRole', [
                 text: 'Rules',
                 source: ['rules'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'verbs',
                         text: 'Verbs',  
@@ -1869,7 +2079,7 @@ objectSections.set('Role', [
                 text: 'Rules',
                 source: ['rules'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'verbs',
                         text: 'Verbs',  
@@ -1942,7 +2152,7 @@ objectSections.set('ClusterRoleBinding', [
                 text: 'Bindings',
                 source: ['subjects'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'kind',
                         text: 'Kind',
@@ -2014,7 +2224,7 @@ objectSections.set('RoleBinding', [
                 text: 'Bindings',
                 source: ['subjects'],
                 format: 'objectlist',
-                content: [
+                items: [
                     {
                         name: 'kind',
                         text: 'Kind',
@@ -2143,7 +2353,7 @@ objectSections.set('CustomResourceDefinition', [
                 source: ['spec.versions'],
                 format: 'objectlist',
                 style: ['table'],
-                content: [
+                items: [
                     {
                         name: 'name',
                         text: 'Name',

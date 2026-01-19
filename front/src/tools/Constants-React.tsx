@@ -1,6 +1,7 @@
 // app icons 
 import SvgIconDeployment from'../icons/svg/dp.svg'
 import SvgIconReplicaSet from'../icons/svg/rs.svg'
+import SvgIconReplicationController from'../icons/svg/rc.svg'
 import SvgIconDaemonSet from'../icons/svg/ds.svg'
 import SvgIconStatefulSet from'../icons/svg/ss.svg'
 import SvgIconJob from'../icons/svg/job.svg'
@@ -27,6 +28,7 @@ import SvgIconBlank from'../icons/svg/k8s-blank.svg'
 
 export const IconDeployment = (props: {height?:number}) => <img src={SvgIconDeployment} alt='ss' height={`${props.height||16}px`}/>
 export const IconReplicaSet = (props: {height?:number}) => <img src={SvgIconReplicaSet} alt='rs' height={`${props.height||16}px`}/>
+export const IconReplicationController = (props: {height?:number}) => <img src={SvgIconReplicationController} alt='rc' height={`${props.height||16}px`}/>
 export const IconDaemonSet = (props: {height?:number}) => <img src={SvgIconDaemonSet} alt='ds' height={`${props.height || 16}px`}/>
 export const IconStatefulSet = (props: {height?:number}) => <img src={SvgIconStatefulSet} alt='ss' height={`${props.height||16}||16px`}/>
 export const IconJob = (props: {height?:number}) => <img src={SvgIconJob} alt='ss' height={`${props.height||16}||16px`}/>

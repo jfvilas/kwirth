@@ -9,9 +9,9 @@ interface IDetailsItem {
     text: string
     source: string[]
     format: 'string'|'stringlist'|'table'|'objectprops'|'objectlist'|'objectobject'|'boolean'|'booleankeyname'|'keylist'|'edit'|'bar'|'age'
-    invoke?: (a:any) => any
+    invoke?: (ro:any, o:any) => any
     style?: string[]
-    content?: IDetailsItem[]
+    items?: IDetailsItem[]
 }
 
 interface IDetailsSection {
@@ -61,7 +61,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
     let expanderId = 0
     let labelWidth = 15
 
-    const renderValue = (srcobj:any, src:string, format:string, style:string[], level:number, details?:IDetailsItem[], invoke?:(obj:any) => string[], itemx?:IDetailsItem) : JSX.Element => {
+    const renderValue = (rootObj:any, srcobj:any, src:string, format:string, style:string[], level:number, details?:IDetailsItem[], invoke?:(ro:any, o:any) => string[], itemx?:IDetailsItem) : JSX.Element => {
         if (src.startsWith('$')) return <Typography fontWeight={style.includes('bold')?'700':''}>{src.substring(1)}</Typography>
         let addLink = false
         if (src.startsWith('#')) {
@@ -112,7 +112,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             case 'boolean':
                 let valBoolean = false
                 if (src==='@string[]' && invoke)
-                    valBoolean = Boolean(invoke(obj)[0])
+                    valBoolean = Boolean(invoke(rootObj, obj)[0])
                 else 
                     valBoolean = _.get(obj,src)
                 let valueStyle = style.filter(s => s.startsWith(valBoolean+':'))
@@ -133,13 +133,17 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
             case 'string':
                 let valString = ''
-                if (src==='@string[]' && invoke)
-                    valString = invoke(obj)[0]
+                if ((src==='@string' || src==='@jsx') && itemx?.invoke) {
+                    return <>{itemx.invoke(rootObj, obj) as JSX.Element}</>
+                }
+
+                if ((src==='@string[]') && invoke)
+                    valString = invoke(rootObj, obj)[0]
                 else 
                     valString = _.get(obj,src)
 
                 if (style && style.includes('edit')) {
-                    return <>{header}{renderValue(srcobj, src, 'edit', style, level, [], undefined)}</>
+                    return <>{header}{renderValue(rootObj, srcobj, src, 'edit', style, level, [], undefined)}</>
                 }
                 else {
                     let v = valString
@@ -187,7 +191,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
             case 'edit':
                 containsEdit=true
-                //+++onChange={(e) => props.onChangeData(src,e.target.value)} 
+                //+++onChange={(e) => props.onChangeData(src,e.target.value)}
                 let valEdit = _.get(obj,src)
                 if (style.includes('base64')) valEdit = atob(valEdit)
                 if (style.includes('multiline'))
@@ -201,12 +205,12 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
             case 'keylist':
                 let keys = Object.keys(_.get(obj,src))
-                return <>{renderValue({keys}, 'keys', 'stringlist', style, level, [], undefined)}</>
+                return <>{renderValue(rootObj, {keys}, 'keys', 'stringlist', style, level, [], undefined)}</>
 
             case 'stringlist':
                 let result2:string[]=[]
                 if (src==='@string[]' && invoke) {
-                    result2 = invoke(obj)
+                    result2 = invoke(rootObj, obj)
                 }
                 else
                     result2=_.get(obj,src)
@@ -214,7 +218,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
                 if (style.includes('column')) {
                     return <Stack direction={'column'}>
-                        { result2.map((item:any, index:number) => <Typography>{renderValue(result2, '['+index+']', 'string', style, level+1, undefined, undefined)}</Typography>) }
+                        { result2.map((item:any, index:number) => <Typography>{renderValue(rootObj, result2, '['+index+']', 'string', style, level+1, undefined, undefined)}</Typography>) }
                     </Stack>
                 }
                 else {
@@ -230,7 +234,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             case 'objectlist':
                 let items:any[]=[]
                 if (src==='@string[]' && invoke) {
-                    items = invoke(obj)
+                    items = invoke(rootObj, obj)
                 }
                 else {
                     items = _.get(obj,src)
@@ -254,12 +258,12 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                             return <TableCell> {
                                                 typeof _.get(row,key.source[0]) === 'object'?
                                                     (Array.isArray(_.get(row,key.source[0]))? 
-                                                        <>{renderValue(row, key.source[0], subcontent.format, key.style||[], level+1, subcontent.content, undefined)}</>
+                                                        <>{renderValue(rootObj, row, key.source[0], subcontent.format, key.style||[], level+1, subcontent.items, undefined)}</>
                                                         :
-                                                        <>{renderValue(row, key.source[0], details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.format, details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.style||[], level+1, [subcontent], undefined)}</>
+                                                        <>{renderValue(rootObj, row, key.source[0], details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.format, details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.style||[], level+1, [subcontent], undefined)}</>
                                                     )
                                                     :
-                                                    <>{renderValues(row, key, level+1)}</>
+                                                    <>{renderValues(rootObj, row, key, level+1)}</>
                                             }</TableCell>})
                                         }
                                     </TableRow>
@@ -273,14 +277,14 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         if (!details) return <></>
 
                         return (
-                            <Stack direction={style.includes('column')?'column':'row'}>
+                            <Stack direction={style.includes('column')?'column':'row'} sx={{width:style.includes('fullwidth')?'100%':'auto'}}>
                                 { style.includes('column')?
                                     details.map((c:IDetailsItem) => {
-                                        return <>{renderValues(row, c, level+1)}</>
+                                        return renderValues(rootObj, row, c, level+1)
                                     })
                                     :
                                     details.map((c:IDetailsItem) => {
-                                        return <>{renderValues(row, c, level+1)} <>{rowIndex<items.length-1?',\u00a0':''}</> </>
+                                        return <>{renderValues(rootObj, row, c, level+1)} <>{rowIndex<items.length-1?',\u00a0':''}</> </>
                                     }) 
                                 }
                             </Stack>
@@ -300,7 +304,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                             <TableBody>
                             { _.get(obj,src).map((row:any) => {
                                 return <TableRow>
-                                    {Object.keys(_.get(obj,src)[0]).map(key => <TableCell>{renderValue(row, src, 'string', [], level+1, [], undefined)}</TableCell>)}
+                                    {Object.keys(_.get(obj,src)[0]).map(key => <TableCell>{renderValue(rootObj, row, src, 'string', [], level+1, [], undefined)}</TableCell>)}
                                 </TableRow>
                             })}
 
@@ -311,7 +315,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 else {
                     return  <>{_.get(obj,src).map((row:any) => {
                         if (!details) return <></>
-                        return <>{details.map((c:IDetailsItem) => <>{renderItem(row, c, 25, level+1)}</>)}</>  //+++ este 25????
+                        return <>{details.map((c:IDetailsItem) => <>{renderItem(rootObj, row, c, 25, level+1)}</>)}</>  //+++ este 25????
                     })}</>
                 }
 
@@ -337,7 +341,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         return <>{details.map( (c:IDetailsItem) => {
                             return <Stack direction={c.style && c.style.includes('column')?'column':'row'}>
                                 <Typography fontWeight={style && style.includes('keybold')?'700':''}>{c.text}:&nbsp;</Typography>
-                                {renderValues(obj,c, level+1)}
+                                {renderValues(rootObj, obj,c, level+1)}
                             </Stack>
                         })}</>
                     }
@@ -348,7 +352,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                 return <Stack direction={'row'}>
                                     <Typography fontWeight={style.includes('keybold')?'700':''} sx={{width:labelWidth+'%'}}>{key}&nbsp;{style.includes('lockicon') && <Https sx={{color:'red'}}/>}&nbsp;</Typography>
                                     {
-                                            renderValue(obj, src+'.[\''+key+'\']', 'edit', style, level+1, [], undefined)
+                                            renderValue(rootObj, obj, src+'.[\''+key+'\']', 'edit', style, level+1, [], undefined)
                                     }                               
                                 </Stack>
                             }
@@ -356,7 +360,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                 return <Stack direction={'row'}>
                                     <Typography fontWeight={style.includes('keybold')?'700':''}>{key}:&nbsp;</Typography>
                                     {
-                                            renderValue(obj, src+'.[\''+key+'\']', 'string', style, level+1, [], undefined)
+                                            renderValue(rootObj, obj, src+'.[\''+key+'\']', 'string', style, level+1, [], undefined)
                                     }                               
                                 </Stack>
                             }
@@ -376,7 +380,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         <TableBody>
                             { _.get(obj,src).map((row:any) => {
                                 return <TableRow>
-                                    {details.map((c:IDetailsItem) => <TableCell>{renderValues(row, c, level+1)}</TableCell>)}
+                                    {details.map((c:IDetailsItem) => <TableCell>{renderValues(rootObj, row, c, level+1)}</TableCell>)}
                                 </TableRow>
                             })}
                         </TableBody>
@@ -389,7 +393,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
         }
     }
 
-    const renderValues = (obj:any, item:IDetailsItem, level:number) => {
+    const renderValues = (rootObj:any, obj:any, item:IDetailsItem, level:number) => {
         if (item.style?.includes('ifpresent') && _.get(obj,item.source[0])===undefined) {
             return <></>
         }
@@ -408,16 +412,16 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
         }
         else {
             return (
-                <Stack direction={item.style?.includes('column')?'column':'row'} width={'100%'}>
+                <Stack direction={item.style?.includes('column')?'column':'row'} width={'100%'} alignItems={item.style?.includes('row')?'center':''}>
                     {item.source.map(source => {
-                        return renderValue(obj, source, item.format, item.style||[], level+1, item.content, item.invoke, item)
+                        return renderValue(rootObj, obj, source, item.format, item.style||[], level+1, item.items, item.invoke, item)
                     })}
                 </Stack>
             )
         }
     }
 
-    const renderItem = (obj:any, item:IDetailsItem, width:number, level:number) => {
+    const renderItem = (rootObj:any, obj:any, item:IDetailsItem, width:number, level:number) => {
         let expander='class-kwirth-'+expanderId
         if (item.style?.includes('ifpresent') && !_.get(obj,item.source[0])) return <></>
 
@@ -425,7 +429,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             if (item.invoke) {
                 return (
                     <Stack direction={item.style && item.style.includes('column')?'column':'row'} alignItems="stretch" sx={{ width: '100%' }}>
-                        {(item.invoke(obj) as JSX.Element[]).map(e => e)}
+                        {(item.invoke(rootObj, obj) as JSX.Element[]).map(e => e)}
                     </Stack>
                 )
             }
@@ -442,10 +446,11 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 <Stack direction={'row'} alignItems={'baseline'}>
                     {item.text==='' && <>
                         <Typography width={'100%'}>
-                            {renderValues(obj, item, level)}
+                            {renderValues(rootObj, obj, item, level)}
                         </Typography>
                     </>}
                     {item.text!=='' && <>
+                        {/* render label*/}
                         {
                             numProps>1 && item.style && item.style.includes('collapse')? 
                                     <Stack direction={'row'} width={`${width-2}%`} alignItems={'center'}>
@@ -470,13 +475,14 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                 :
                                     <Typography width={`${width}%`}>{item.text}</Typography>
                         }
+                        {/* render content */}
                         {
                             numProps>1 && item.style && item.style.includes('collapse')? 
                                     <div className={expander} style={{height:'22px', overflow:'hidden'}}>
-                                        {renderValues(obj, item, level)}
+                                        {renderValues(rootObj, obj, item, level)}
                                     </div>
                                 :
-                                renderValues(obj, item, level)
+                                renderValues(rootObj, obj, item, level)
                         }
                     </>}
                 </Stack>
@@ -484,11 +490,11 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
         }
     }
 
-    const renderSection = (obj:any, section:IDetailsSection) => {
-        if (!obj) return
+    const renderSection = (rootObj:any, section:IDetailsSection) => {
+        if (!rootObj) return
         return <>
             <Typography fontSize={18} sx={{mt:2, mb:1}}><b>{section.text}</b></Typography>
-            {section.items.map(item => renderItem(obj, item, labelWidth, 0))}
+            {section.items.map(item => renderItem(rootObj, rootObj, item, labelWidth, 0))}
         </>
     }
 

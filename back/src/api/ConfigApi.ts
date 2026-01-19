@@ -221,7 +221,7 @@ export class ConfigApi {
                 try {
                     let accessKey = await AuthorizationManagement.getKey(req,res, apiKeyApi)
                     if (accessKey) {
-                        let result = await AuthorizationManagement.getAllowedGroups(this.clusterInfo.appsApi, this.clusterInfo.batchApi, req.params.namespace, accessKey)
+                        let result = await AuthorizationManagement.getAllowedGroups(this.clusterInfo.coreApi, this.clusterInfo.appsApi, this.clusterInfo.batchApi, req.params.namespace, accessKey)
                         res.status(200).json(result)
                     }
                     else {

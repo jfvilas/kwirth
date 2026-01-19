@@ -150,7 +150,7 @@ class MetricsChannel implements IChannel {
                 this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `No owner found for starting instance ${instanceConfig.instance}: ${podNamespace}/${podName}/${containerName}`, instanceConfig)
                 return false
             }
-            const gtype = owner.kind.toLocaleLowerCase()  // replicaset, daemonset or statefulset (this is never 'deployment', since owner of pod is replicaset)
+            const gtype = owner.kind.toLocaleLowerCase()  // replicationcontroller, replicaset, daemonset or statefulset (this is never 'deployment', since owner of pod is replicaset)
             const podGroup = gtype + '+' + owner.name  
             const podNode = podResponse.spec?.nodeName
             

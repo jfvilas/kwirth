@@ -22,7 +22,7 @@ interface IContentProps {
 const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const filemanBoxRef = useRef<HTMLDivElement | null>(null)
     const [logBoxTop, setLogBoxTop] = useState(0)
-    const [refresh, setRefresh] = useState(0)
+    //const [refresh, setRefresh] = useState(0)
     const [msgBox, setMsgBox] =useState(<></>)
 
     let filemanData:IFilemanData = props.channelObject.data
@@ -102,12 +102,10 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let [namespace,pod,container] = file.path.split('/').slice(1)
             filemanData.files = filemanData.files.filter(f => f.path !== file.path)
             sendCommand(EFilemanCommand.DELETE, namespace, pod, container, [file.path])
-            setRefresh(Math.random())
         }
     }
 
     const onCreateFolder = async (name: string, parentFolder: IFileObject) => {
-        setRefresh(Math.random())
         let [namespace,pod,container] = parentFolder.path.split('/').slice(1)
         sendCommand(EFilemanCommand.CREATE, namespace, pod, container, [parentFolder.path + '/' + name])
     }
@@ -117,7 +115,8 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             const url = `${props.channelObject.clusterUrl}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
             
             try {
-                const response = await fetch(url, { headers: { 'Authorization': 'Bearer '+ props.channelObject.accessString } })
+                // +++ CAN BE THIS FETCH BE CONFIGURED WITH addGetAuthorization INSTEAD OF THIS?
+                const response = await fetch(url, { headers: { 'Authorization': 'Bearer '+ props.channelObject.accessString, 'X-Kwirth-App': 'true' } })
 
                 if (response.ok) {
                     const blob = await response.blob()

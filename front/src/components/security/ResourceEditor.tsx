@@ -14,6 +14,7 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
     const [namespace, setNamespace] = useState('')
     const [deployment, setDeployment] = useState('')
     const [replicaset, setReplicaset] = useState('')
+    const [replicationController, setReplicationController] = useState('')
     const [daemonset, setDaemonset] = useState('')
     const [statefulset, setStatefulset] = useState('')
     const [pod, setPod] = useState('')
@@ -60,6 +61,8 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
             setDeployment(dps)
             let rss = groups.split(',').filter(g => g.split('+')[0] === 'replicaset').map(g => g.split('+')[1]).join(',')
             setReplicaset(rss)
+            let rcs = groups.split(',').filter(g => g.split('+')[0] === 'replicationcontroller').map(g => g.split('+')[1]).join(',')
+            setReplicationController(rcs)
             let dss = groups.split(',').filter(g => g.split('+')[0] === 'daemonset').map(g => g.split('+')[1]).join(',')
             setDaemonset(dss)
             let sss = groups.split(',').filter(g => g.split('+')[0] === 'statefulset').map(g => g.split('+')[1]).join(',')
@@ -76,6 +79,7 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
         setNamespace('')
         setDeployment('')
         setReplicaset('')
+        setReplicationController('')
         setDaemonset('')
         setStatefulset('')
         setPod('')
@@ -87,6 +91,7 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
         let groups:string[]=[]
         if (deployment.trim()!=='') groups.push (...deployment.split(',').map(g => 'deployment+'+g))
         if (replicaset.trim()!=='') groups.push (...replicaset.split(',').map(g => 'replicaset+'+g))
+        if (replicationController.trim()!=='') groups.push (...replicationController.split(',').map(g => 'replicationcontroller+'+g))
         if (daemonset.trim()!=='') groups.push (...daemonset.split(',').map(g => 'daemonset+'+g))
         if (statefulset.trim()!=='') groups.push (...statefulset.split(',').map(g => 'statefulset+'+g))
         let resource = buildResource(scopes, namespace.split(','), groups, pod.split(','), container.split(','))
@@ -148,8 +153,9 @@ const ResourceEditor: React.FC<IProps> = (props:IProps) => {
                 <Stack direction={'row'} spacing={1}>
                     <TextField value={deployment} onChange={(e) => setDeployment(e.target.value)} variant='standard' label='Deployments' fullWidth/>
                     <TextField value={replicaset} onChange={(e) => setReplicaset(e.target.value)} variant='standard' label='ReplicaSets' fullWidth/>
+                    <TextField value={replicationController} onChange={(e) => setReplicationController(e.target.value)} variant='standard' label='ReplicationControllers' fullWidth/>
                 </Stack>
-                    <Stack direction={'row'} spacing={1}>
+                <Stack direction={'row'} spacing={1}>
                     <TextField value={daemonset} onChange={(e) => setDaemonset(e.target.value)} variant='standard' label='DaemonSets' fullWidth/>
                     <TextField value={statefulset} onChange={(e) => setStatefulset(e.target.value)} variant='standard' label='StatefulSets' fullWidth/>
                 </Stack>

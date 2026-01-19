@@ -30,7 +30,7 @@ import { IWorkspace, IWorkspaceSummary } from './model/IWorkspace'
 import { VERSION } from './version'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, InstanceConfigViewEnum, IInstanceConfig, InstanceConfigObjectEnum, InstanceMessageTypeEnum, InstanceMessageChannelEnum, InstanceMessageFlowEnum, InstanceMessageActionEnum, parseResources, KwirthData, BackChannelData, IUser, ISignalMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView, EInstanceConfigObject } from '@jfvilas/kwirth-common'
+import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, IInstanceConfig, InstanceMessageChannelEnum, parseResources, KwirthData, BackChannelData, IUser, ISignalMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView, EInstanceConfigObject } from '@jfvilas/kwirth-common'
 import { ITabObject, ITabSummary } from './model/ITabObject'
 
 import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
@@ -46,7 +46,6 @@ import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
 import { DEFAULTLASTTABS, IColors, TABBASECOLORS, TABBRIGHTCOLORS } from './tools/Constants'
 import { createChannelInstance } from './tools/Channel'
-import { color } from '@uiw/react-codemirror'
 
 const App: React.FC = () => {
     let backendUrl='http://localhost:3883'
@@ -431,8 +430,6 @@ const App: React.FC = () => {
             writeSettings()
         }
 
-        console.log('channelSettings.channelConfig')
-        console.log(channelSettings.channelConfig)
         selectedTab.current.channelObject.config = channelSettings.channelConfig
         selectedTab.current.channelObject.instanceConfig = channelSettings.channelInstanceConfig
         setChannelMessageAction({action : EChannelRefreshAction.REFRESH})  // we force rendering

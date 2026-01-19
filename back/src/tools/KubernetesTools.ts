@@ -1,12 +1,12 @@
 import { BatchV1Api, CoreV1Api, NetworkingV1Api, V1Eviction, V1Job } from '@kubernetes/client-node'
 import { ClusterInfo } from '../model/ClusterInfo'
-const fs = require('fs')
+//const fs = require('fs')
 const yaml = require('js-yaml')
 
 async function applyResource(resource:any, clusterInfo:ClusterInfo) : Promise<string> {
     try {
-        const namespace = (resource.metadata && resource.metadata.namespace) || 'default'
-        const name = resource.metadata.name
+        // const namespace = (resource.metadata && resource.metadata.namespace) || 'default'
+        // const name = resource.metadata.name
         const kind = resource.kind
 
         if (resource.metadata.managedFields) delete resource['metadata']['managedFields']
@@ -21,7 +21,7 @@ async function applyResource(resource:any, clusterInfo:ClusterInfo) : Promise<st
 }
 
 async function applyAllResources(yamlContent:string, clusterInfo:ClusterInfo) {
-    //+++ test this with apply without spliting source
+    //+++ test this with apply without splitting source
     const resources:any[] = []
 
     yaml.loadAll(yamlContent, (doc: any) => {

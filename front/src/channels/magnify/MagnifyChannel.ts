@@ -94,19 +94,21 @@ class MagnifyChannel implements IChannel {
                                     magnifyData.clusterEvents = result.events 
                                 }
                                 else {
-                                    result.events = result.events.sort( (a:any,b:any) => Date.parse(b.lastTimestamp)-Date.parse(a.lastTimestamp))  //+++ review
-                                    for (let event of result.events) {
-                                        let path = buildPath(event.involvedObject.kind, event.involvedObject.name)
-                                        let obj = magnifyData.files.find(f => f.path === path)
-                                        if ((obj && obj?.data.origin.metadata.namespace === event.involvedObject.namespace) || (obj && !event.involvedObject.namespace)) {
-                                            if (!obj.data.events) {
-                                                obj.data.events = {}
-                                                obj.data.events.list = []
+                                    if (result.events) {
+                                        result.events = result.events.sort( (a:any,b:any) => Date.parse(b.lastTimestamp)-Date.parse(a.lastTimestamp))  //+++ review
+                                        for (let event of result.events) {
+                                            let path = buildPath(event.involvedObject.kind, event.involvedObject.name)
+                                            let obj = magnifyData.files.find(f => f.path === path)
+                                            if ((obj && obj?.data.origin.metadata.namespace === event.involvedObject.namespace) || (obj && !event.involvedObject.namespace)) {
+                                                if (!obj.data.events) {
+                                                    obj.data.events = {}
+                                                    obj.data.events.list = []
+                                                }
+                                                obj.data.events.list.push(event)
                                             }
-                                            obj.data.events.list.push(event)
                                         }
+                                        magnifyData.files = [...magnifyData.files]
                                     }
-                                    magnifyData.files = [...magnifyData.files]
                                 }
                                 return {
                                     action: EChannelRefreshAction.REFRESH

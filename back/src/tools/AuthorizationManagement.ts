@@ -277,26 +277,25 @@ export class AuthorizationManagement {
         return result
     }
     
-    public static getGroupNames = async (appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, gtype:string): Promise<string[]> => {
+    public static getGroupNames = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, gtype:string): Promise<string[]> => {
         let result:string[] = []
     
         let groupNames:string[] = []
         switch (gtype) {
             case 'deployment':
                 groupNames = (await appsApi.listNamespacedDeployment({namespace})).items.map (n => n?.metadata?.name!)
-                //result.push( ...groupNames)
                 break
             case 'replicaset':
                 groupNames = (await appsApi.listNamespacedReplicaSet({namespace})).items.filter(rs => rs.status?.replicas!>0).map (n => n?.metadata?.name!)
-                //result.push( ...groupNames)
+                break
+            case 'replicationcontroller':
+                groupNames = (await coreApi.listNamespacedReplicationController({namespace})).items.map (n => n?.metadata?.name!)
                 break
             case 'daemonset':
                 groupNames = (await appsApi.listNamespacedDaemonSet({namespace})).items.map (ds => ds?.metadata?.name!)
-                //result.push( ...groupNames)
                 break
             case 'statefulset':
                 groupNames = (await appsApi.listNamespacedStatefulSet({namespace})).items.filter(ss => ss.status?.replicas!>0).map (n => n?.metadata?.name!)
-                //result.push( ...groupNames)
                 break
             case 'job':
                 //+++groupNames = (await appsApi.listNamespaced StatefulSet({namespace})).items.filter(ss => ss.status?.replicas!>0).map (n => n?.metadata?.name!)
@@ -308,12 +307,12 @@ export class AuthorizationManagement {
         return [ ...new Set(result)]
     }
     
-    public static getAllowedGroups = async (appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, accessKey:AccessKey): Promise<{[name:string]:any}[]> => {
+    public static getAllowedGroups = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, accessKey:AccessKey): Promise<{[name:string]:any}[]> => {
         let resources = parseResources(accessKey!.resources)
         let result:{[name:string]:any}[] = []
     
-        for (let gtype of ['deployment','replicaset','daemonset','statefulset','job']) {
-            let glist = await AuthorizationManagement.getGroupNames(appsApi, batchApi, namespace, gtype)
+        for (let gtype of ['deployment','replicaset','replicationcontroller','daemonset','statefulset','job']) {
+            let glist = await AuthorizationManagement.getGroupNames(coreApi, appsApi, batchApi, namespace, gtype)
 
             // we prune glist according to resources and namespaces
             for (let resource of resources) {
@@ -330,12 +329,12 @@ export class AuthorizationManagement {
         return [...new Set(result)]
     }
 
-    public static getValidGroups = async (appsApi: AppsV1Api, batchApi:BatchV1Api, accessKey:AccessKey, namespaces:string[], requestedGroups:string[]): Promise<string[]> => {
+    public static getValidGroups = async (coreApi: CoreV1Api, appsApi: AppsV1Api, batchApi:BatchV1Api, accessKey:AccessKey, namespaces:string[], requestedGroups:string[]): Promise<string[]> => {
         let result:string[] = []
         let allowedGroups:string[] =  []
 
         for (let ns of namespaces) {
-            let x:{[name:string]:any}[] = await this.getAllowedGroups(appsApi, batchApi, ns, accessKey)
+            let x:{[name:string]:any}[] = await this.getAllowedGroups(coreApi, appsApi, batchApi, ns, accessKey)
             let y = x.map(g => g.type+'+'+g.name)
             allowedGroups.push(...y)
         }
@@ -419,6 +418,13 @@ export class AuthorizationManagement {
                         let names = x.items.map (rs => rs.metadata?.name)
                         if (!names.includes(groupName)) return emptyResult
                         response = await appsApi.readNamespacedReplicaSet({ name: groupName, namespace: namespace })
+                    }
+                    break
+                case'replicationcontroller': {
+                        let x = (await coreApi.listNamespacedReplicationController({namespace}))
+                        let names = x.items.map(rs => rs.metadata?.name)
+                        if (!names.includes(groupName)) return emptyResult
+                        response = await coreApi.readNamespacedReplicationController({ name: groupName, namespace: namespace })
                     }
                     break
                 case'daemonset': {

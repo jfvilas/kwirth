@@ -6,6 +6,7 @@ import { yaml } from '@codemirror/lang-yaml'
 import { Close, Edit, Fullscreen, FullscreenExit, Minimize } from '@mui/icons-material';
 import { objectEqual, reorderJsonYamlObject } from '../Tools';
 const yamlParser = require('js-yaml');
+//import { color } from '@uiw/react-codemirror'
 
 interface IContentEditProps {
     selectedFile?:IFileObject

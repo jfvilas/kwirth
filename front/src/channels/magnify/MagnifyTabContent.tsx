@@ -114,6 +114,25 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcPod,'details', launchObjectDetails)
             setLeftItem(spcPod,'delete', launchObjectDelete)
             setLeftItem(spcPod,'evict', launchPodEvict)
+            let objPod = objectSections.get('Pod')
+            if (objPod) {
+                let item = objPod.find(o => o.name==='containers')!.items.find(item => item.name === 'container')
+                item = item!.items!.find (i => i.name==='ports')
+                item = item!.items!.find (i => i.name==='forward')
+                if (item) {
+                    item.invoke = (rootObj, obj) => { 
+                        let url = '/kwirth/port-forward/pod/' + rootObj.metadata.namespace + '/' + rootObj.metadata.name + '/' + obj.containerPort
+                        return <Stack direction={'row'} alignItems={'center'} sx={{width:'100%', justifyContent:'space-between'}}>
+                                <Stack direction={'row'} alignItems={'center'} >
+                                    {obj.name && <Typography>{obj.name}:</Typography>}
+                                    <Typography>{obj.containerPort}/{obj.protocol}&nbsp;&nbsp;</Typography>
+                                </Stack>
+                                <Box sx={{ flexGrow: 1 }} />
+                                <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
+                            </Stack>
+                    }
+                }
+            }
 
             // Deployment
             let spcClassDeployment = spaces.get('classDeployment')!
@@ -130,13 +149,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             if (objDeployment) {
                 let item = objDeployment.find(o => o.name==='properties')!.items.find(item => item.name === 'status')
                 if (item) {
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         return ['running']
                     }
                 }
                 item = objDeployment[1].items.find(item => item.name === 'pods')
                 if (item) {
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         const selectors = obj.spec?.selector?.matchLabels
                         if (!selectors) return []
 
@@ -168,13 +187,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 //+++ esto mismo se hace en la custom function de los Deployment
                 let item = objDaemonSet[0].items.find(item => item.name === 'status')
                 if (item) {
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         return ['running']
                     }
                 }
                 item = objDaemonSet[1].items.find(item => item.name === 'pods')
                 if (item) {
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         const selectors = obj.spec?.selector?.matchLabels
                         if (!selectors) return []
 
@@ -206,13 +225,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 //+++ esto mismo se hace en la custom function de los Deployment
                 let item = objReplicaSet[0].items.find(item => item.name === 'status')
                 if (item) {
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         return ['running']
                     }
                 }
                 item = objReplicaSet[1].items.find(item => item.name === 'pods')
                 if (item) {
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         const selectors = obj.spec?.selector?.matchLabels
                         if (!selectors) return []
 
@@ -255,14 +274,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 //+++ esto mismo se hace en la custom function de los Deployment
                 let item = objStatefulSet[0].items.find(item => item.name === 'status')
                 if (item) {
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         return ['running']
                     }
                 }
                 item = objStatefulSet[1].items.find(item => item.name === 'pods')
                 if (item) {
                     //+++ este codigo es igual al de otros
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         const selectors = obj.spec?.selector?.matchLabels
                         if (!selectors) return []
 
@@ -291,7 +310,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 //+++ esto mismo se hace en la custom function de los Deployment
                 let item = objJob[0].items.find(item => item.name === 'status')
                 if (item) {
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         return ['running']
                     }
                 }
@@ -311,21 +330,21 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             if (objCronJob) {
                 let item = objCronJob[0].items.find(item => item.name === 'nextExecution')
                 if (item) {
-                    item.invoke = (obj) => {
+                    item.invoke = (rootObj, obj) => {
                         let x = getNextCronExecution(obj.spec.schedule)
                         return [x?.isoString]
                     }
                 }
                 item = objCronJob[0].items.find(item => item.name === 'timeLeft')
                 if (item) {
-                    item.invoke = (obj) => {
+                    item.invoke = (rootObj, obj) => {
                         let x = getNextCronExecution(obj.spec.schedule)
                         return [`${x?.timeLeft.days}d${x?.timeLeft.hours}h${x?.timeLeft.minutes}m${x?.timeLeft.seconds}s`]
                     }
                 }
                 item = objCronJob[1].items.find(item => item.name === 'jobs')
                 if (item) {
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         let allJobs = magnifyData.files.filter(f => f.path.startsWith('/workload/Job/'))
                         allJobs = allJobs.filter(f => {
                             const owners = f.data.origin.metadata.ownerReferences || []
@@ -377,7 +396,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     )
                 }
                 if (item) {
-                    item.invoke = (obj) => {
+                    item.invoke = (rootObj, obj) => {
                         return [
                             'Pod','Deployment','DaemonSet','ReplicaSet','ReplicationController','StatefulSet','Job','CronJob',
                             'PersistentVolumeClaim+PVC','PersistentVolume+PV',
@@ -542,9 +561,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             if (objPersistentVolumeClaim) {
                 let item = objPersistentVolumeClaim[0].items.find(item => item.name === 'pods')
                 if (item) {  // +++ test
-                    item.invoke = (obj) => { 
+                    item.invoke = (rootObj, obj) => { 
                         let allPods = magnifyData.files.filter(f => f.path.startsWith('/workload/Pod/'))
-                        let pods = allPods.filter(f => f.data.origin.spec.volumes.some( (vol:any) => vol.persistentVolumeClaim.claimName === obj.metadata.name))
+                        let pods = allPods.filter(f => f.data.origin.spec?.volumes?.some( (vol:any) => vol.persistentVolumeClaim?.claimName === obj.metadata.name))
                         let allPodNames = pods.map(f => f.data.origin.metadata.name)
                         return allPodNames
                     }
@@ -621,7 +640,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (objSectionServiceAccount) {
             let item = objSectionServiceAccount[0].items.find(item => item.name === 'tokens')
             if (item) {
-                item.invoke = (obj) => { 
+                item.invoke = (rootObj, obj) => { 
                     let x = magnifyData.files.filter(f => f.data?.origin?.metadata?.annotations && f.data?.origin?.metadata?.namespace && f.data?.origin?.metadata?.annotations['kubernetes.io/service-account.name'] === "kwirth-sa" && f.data?.origin?.metadata?.namespace === obj.metadata.namespace)
                     return x.map(o => o.data.origin.metadata.name)
                 }

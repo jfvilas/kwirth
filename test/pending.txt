@@ -2,8 +2,6 @@ KWIRTH
 crear un permiso para indicar que cosas del front puede ver el usuario
 crear un setting del usuario tipo "autoexec.bat"
 log de jobs? revisar "started &&"
-
-replication controller group support
 campana
 
 MAGNIFY

@@ -38,8 +38,8 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
     const [stack, setStack] = useState<boolean>(props.viewConfig?.stack? props.viewConfig.stack : props.stack)
     const [tooltip, setTooltip] = useState<boolean>(props.viewConfig?.tooltip? props.viewConfig.tooltip : props.tooltip)
     const [labels, setLabels] = useState<boolean>(props.viewConfig?.labels? props.viewConfig.labels : props.labels)
-    const [legend, setLegend] = useState<boolean>(props.viewConfig?.legend? props.viewConfig.legend : props.legend)
-    const [compact, setCompact] = useState<boolean>(props.viewConfig?.compact? props.viewConfig.compact : props.compact)
+    const [legend ] = useState<boolean>(props.viewConfig?.legend? props.viewConfig.legend : props.legend)
+    const [compact ] = useState<boolean>(props.viewConfig?.compact? props.viewConfig.compact : props.compact)
 
     let result
     let height = props.height

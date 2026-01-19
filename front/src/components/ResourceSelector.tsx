@@ -6,7 +6,7 @@ import { MsgBoxOkError } from '../tools/MsgBox'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { BackChannelData, EClusterType, EInstanceConfigView, EInstanceMessageChannel } from '@jfvilas/kwirth-common'
 import { ITabObject } from '../model/ITabObject'
-import { IconDaemonSet, IconDeployment, IconDocker, IconJob, IconKubernetes, IconKubernetesBlank, IconKubernetesUnknown, IconReplicaSet, IconStatefulSet } from '../tools/Constants-React'
+import { IconDaemonSet, IconDeployment, IconDocker, IconJob, IconKubernetes, IconKubernetesBlank, IconKubernetesUnknown, IconReplicaSet, IconReplicationController, IconStatefulSet } from '../tools/Constants-React'
 
 interface IResourceSelected {
     channelId: string
@@ -350,7 +350,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 { allGroups && allGroups.map( (value) => 
                     <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
                         <Checkbox checked={groups.includes (value)} />
-                        {value.startsWith('replica')? <IconReplicaSet/>: value.startsWith('daemon')?<IconDaemonSet/>: value.startsWith('deployment')?<IconDeployment/>:value.startsWith('statefulset')?<IconStatefulSet/>:<IconJob/>}&nbsp;{value.split('+')[1]}
+                        {value.startsWith('replicaset')? <IconReplicaSet/>: value.startsWith('daemonset')?<IconDaemonSet/>: value.startsWith('deployment')?<IconDeployment/>:value.startsWith('statefulset')?<IconStatefulSet/>:value.startsWith('replicationcontroller')?<IconReplicationController/>:<IconJob/>}&nbsp;{value.split('+')[1]}
                     </MenuItem>
                 )}
                 </Select>

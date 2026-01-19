@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, KubernetesObjectApi, KubernetesObject, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, VersionApi, NetworkingV1Api, StorageV1Api, BatchV1Api, AutoscalingV2Api, NodeV1Api, SchedulingV1Api, CoordinationV1Api, AdmissionregistrationV1Api, PolicyV1Api } from '@kubernetes/client-node'
+import { CoreV1Api, AppsV1Api, KubeConfig, KubernetesObjectApi, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, VersionApi, NetworkingV1Api, StorageV1Api, BatchV1Api, AutoscalingV2Api, NodeV1Api, SchedulingV1Api, CoordinationV1Api, AdmissionregistrationV1Api, PolicyV1Api } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -15,11 +15,13 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import { WebSocketServer } from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { InstanceMessageActionEnum, InstanceMessageFlowEnum, accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, IInstanceConfig, ISignalMessage, SignalMessageLevelEnum, InstanceConfigViewEnum, InstanceMessageTypeEnum, ClusterTypeEnum, IInstanceConfigResponse as IInstanceConfigResponse, IInstanceMessage, KwirthData, IRouteMessage, SignalMessageEventEnum, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageLevel, ESignalMessageEvent, EInstanceConfigView, EClusterType } from '@jfvilas/kwirth-common'
+import { accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, IInstanceConfig, ISignalMessage, IInstanceConfigResponse, IInstanceMessage, KwirthData, IRouteMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageLevel, ESignalMessageEvent, EInstanceConfigView, EClusterType } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { AuthorizationManagement } from './tools/AuthorizationManagement'
 
-import express, { Request, Response} from 'express'
+import express, { NextFunction, Request, Response} from 'express'
+import cookieParser from 'cookie-parser'
+import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware'
 import { ClusterInfo } from './model/ClusterInfo'
 import { ServiceAccountToken } from './tools/ServiceAccountToken'
 import { MetricsApi } from './api/MetricsApi'
@@ -51,6 +53,7 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const PORT = 3883
 
+const app = express()
 const channels : Map<string, IChannel> = new Map()
 
 // Kubernetes API access
@@ -279,6 +282,7 @@ const processEvent = async (eventType:string, obj: any, webSocket:WebSocket, ins
                 case EInstanceConfigView.GROUP:
                     console.log('Group event')
                     let [_groupType, groupName] = instanceConfig.group.split('+')
+                    console.log(_groupType, groupName, podName)
                     // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
                     if (podName.startsWith(groupName)) {  
                         console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName} on group`)
@@ -336,7 +340,6 @@ const processEvent = async (eventType:string, obj: any, webSocket:WebSocket, ins
     }
     else {
         console.log(`Pod ${eventType} is unmanaged`)
-        //sendChannelSignal(webSocket, SignalMessageLevelEnum.INFO, `Received unmanaged event (${eventType}): ${podNamespace}/${podName}`, instanceConfig)
         sendChannelSignalAsset(webSocket, ESignalMessageLevel.INFO, ESignalMessageEvent.OTHER, `Received unmanaged event (${eventType}): ${podNamespace}/${podName}`, instanceConfig, podNamespace, podName)
     }
 }
@@ -788,7 +791,7 @@ const processClientMessage = async (webSocket:WebSocket, message:string) => {
     console.log('validNamespaces:', validNamespaces)
 
     let validGroups:string[] = []
-    if (instanceConfig.group) validGroups = await AuthorizationManagement.getValidGroups(appsApi, batchApi, accessKey, validNamespaces, instanceConfig.group.split(','))
+    if (instanceConfig.group) validGroups = await AuthorizationManagement.getValidGroups(coreApi, appsApi, batchApi, accessKey, validNamespaces, instanceConfig.group.split(','))
     console.log('validGroups:', validGroups)
 
     let validPodNames:string[] = []
@@ -868,68 +871,7 @@ const processClientMessage = async (webSocket:WebSocket, message:string) => {
     }
 }
 
-// HTTP server
-const app = express()
-app.use(bodyParser.json())
-app.use(cors())
-app.use(fileUpload())
-
-// websocket server
-const server = http.createServer(app)
-const wss = new WebSocketServer({ server, skipUTF8Validation:true  })
-wss.on('connection', (webSocket:WebSocket, req:IncomingMessage) => {
-    const ipHeader = req.headers['x-forwarded-for']
-    const ip = (Array.isArray(ipHeader) ? ipHeader[0] : ipHeader || req.socket.remoteAddress || '').split(',')[0].trim()
-    console.log(`Client connected from ${ip}`)
-
-    // This block precesses web socket connections for channels
-    if (req.url) {
-        const fullUrl = new URL(req.url, `http://${req.headers.host}`)
-        const challenge = fullUrl.searchParams.get('challenge')
-        if (challenge) {
-            let websocketRequestIndex = pendingWebsocket.findIndex(i => i.challenge === challenge)
-            if (websocketRequestIndex>=0) {
-                let websocketRequest = pendingWebsocket[websocketRequestIndex]
-                console.log('Websocket request received for channel', websocketRequest.channel)
-                if (!channels.has(websocketRequest.channel)) {
-                    webSocket.close()
-                    console.log('Channel not found', websocketRequest.channel)
-                    return
-                }
-                let channel = channels.get(websocketRequest.channel)!
-                console.log('Websocket connection request routed to', websocketRequest.channel)
-                channel.websocketRequest(webSocket, websocketRequest.instance, websocketRequest.instanceConfig)
-                pendingWebsocket.splice(websocketRequestIndex,1)
-                return
-            }
-            else {
-                console.log('Instance not found for completing webscoket request:', challenge)
-                webSocket.close()
-                return
-            }
-        }
-    }
-
-    // this block correpsonds to general websocket requests
-    webSocket.onmessage = (event) => {
-        processClientMessage(webSocket, event.data)
-    }
-
-    webSocket.onclose = () => {
-        // we do not remove connectios for the client to reconnect. previous code was:
-        // for (var channel of channels.keys()) {
-        //     channels.get(channel)?.removeConnection(ws)
-        // }
-        console.log('Client disconnected')
-        for (let chan of channels.values()) {
-            if (chan.containsConnection(webSocket)) {
-                console.log(`Connection from IP ${ip} to channel ${chan.getChannelData().id} has been interrupted.`)
-            }
-        }
-    }
-})
-
-const runKubernetes = async () => {
+const runKubernetes = async (server:any) => {
     const processRequest = async (channel: IChannel, endpointName:string,req:Request, res:Response) : Promise<void> => {
         try {
             let accessKey = await AuthorizationManagement.getKey(req,res,ka)
@@ -1111,9 +1053,8 @@ const initKubernetesCluster = async (token:string, metricsRequired:boolean, even
     }
 }
 
-const launchKubernetes = async() => {
+const launchKubernetes = async (server:any) => {
     console.log('Start Kubernetes Kwirth')
-    kwirthData = await getKubernetesData()
     if (kwirthData) {
         console.log('Initial kwirthData', kwirthData)
         try {
@@ -1158,7 +1099,7 @@ const launchKubernetes = async() => {
                         console.log(`No deployment detected. Kwirth is not running inside a cluster`)
 
                     console.log('Final kwirthData', kwirthData)
-                    runKubernetes()
+                    runKubernetes(server)
                 }
                 else {
                     console.log('SA token is invalid, exiting...')
@@ -1174,7 +1115,7 @@ const launchKubernetes = async() => {
     }    
 }
 
-const runDocker = async () => {
+const runDocker = async (server:any) => {
     secrets = new DockerSecrets(coreApi, '/secrets')
     configMaps = new DockerConfigMaps(coreApi, '/configmaps')
 
@@ -1225,19 +1166,8 @@ const runDocker = async () => {
     })
 }
 
-const launchDocker = async() => {
+const launchDocker = async(server:any) => {
     console.log('Start Docker Kwirth')
-    kwirthData = {
-        namespace: '',
-        deployment: '',
-        inCluster: false,
-        version: VERSION,
-        lastVersion: VERSION,
-        clusterName: 'inDocker',
-        clusterType: EClusterType.DOCKER,
-        metricsInterval:15,
-        channels: []
-    }
     clusterInfo.nodes = new Map()
     clusterInfo.metrics = new MetricsTools(clusterInfo)
     clusterInfo.metricsInterval = 15
@@ -1253,10 +1183,10 @@ const launchDocker = async() => {
     channels.set('log', logChannel)
 
     console.log(`Enabled channels for this (docker) run are: ${Array.from(channels.keys()).map(c => `'${c}'`).join(',')}`)
-    runDocker()
+    runDocker(server)
 }
 
-const startTasks = () => {
+const startNodeTasks = () => {
     // launch GC every 15 secs
     if (global.gc) {
         console.log('GC will run every 15 secs asynchronously')
@@ -1280,22 +1210,192 @@ console.log(`Kwirth started at ${new Date().toISOString()}`)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 showLogo()
-startTasks()
+startNodeTasks()
 
 getExecutionEnvironment().then( async (exenv:string) => {
     switch (exenv) {
         case 'windows':
         case 'linux':
-            launchDocker()
+            kwirthData = {
+                namespace: '',
+                deployment: '',
+                inCluster: false,
+                version: VERSION,
+                lastVersion: VERSION,
+                clusterName: 'inDocker',
+                clusterType: EClusterType.DOCKER,
+                metricsInterval:15,
+                channels: []
+            }
             break
         case 'kubernetes':
-            launchKubernetes()
+            kwirthData = await getKubernetesData()
             break
         default:
-            console.log('Unuspported execution environment. Exiting...')
+            console.log('Unsupported execution environment. Exiting...')
+            process.exit()
         }
-})
+
+    // HTTP server
+    if (kwirthData.inCluster) {
+        app.use(cookieParser())
+        app.use(cors({
+            allowedHeaders: ['Content-Type', 'Authorization', 'x-kwirth-app'],
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+        }))
+
+        const getDynamicTarget = (req: Request): string => {
+            console.log('gdt')
+            let dest= req.cookies['x-kwirth-forward']
+            console.log(dest)  // es un object
+            return 'http://'+dest
+        }
+
+        const dynamicProxy = createProxyMiddleware({
+            target: 'https://www.w3.org/', // Valor inicial (requerido)
+            router: getDynamicTarget,             // Esta función redefine el target por cada petición
+            changeOrigin: true,
+            on: {
+                proxyReq: fixRequestBody,         // Mantiene la integridad del body en POST/PUT
+            },
+        })
+
+        async function getPodIp(namespace:string, podName:string) {
+            try {
+                const response = await coreApi.readNamespacedPod({
+                    name: podName,
+                    namespace: namespace
+                })
+                
+                const podIp = response!.status?.podIP
+                
+                if (podIp) {
+                    return podIp
+                }
+                else {
+                    console.log("El pod existe pero aún no tiene IP asignada (¿está pendiente?).")
+                }
+            }
+            catch (err) {
+                console.error("Error al obtener el pod")
+            }
+        }
+
+        app.use(async (req: Request, res: Response, next: NextFunction) => {
+            console.log('request received', req.url)
+
+            if (!req.url.startsWith('/kwirth')) {
+                if (req.cookies['x-kwirth-refresh']==='1') {
+                    res.cookie('x-kwirth-refresh', '2', { path: '/' })
+                    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+                    res.set('Pragma', 'no-cache')
+                    res.set('Expires', '0')
+                    res.redirect('/')
+                    return
+                }
+                let dest = req.cookies['x-kwirth-forward']
+                console.log(`[PROXY] dynamic routing to `+dest)
+                return dynamicProxy(req, res, next)
+            }
+            if (req.url.startsWith('/kwirth/port-forward/pod')) {
+                let namespace=req.url.split('/')[4]
+                let podname=req.url.split('/')[5]
+                let port=req.url.split('/')[6]
+                console.log(`[PROXY] Launch port forward for pod `, namespace, '/', podname)
+                let ip = await getPodIp(namespace, podname)
+                console.log(`[PROXY] IP `, ip)
+                res.cookie('x-kwirth-forward', ip+':'+port, { path: '/' })
+                res.cookie('x-kwirth-refresh', '1', { path: '/' })
+                // res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+                // res.set('Pragma', 'no-cache')
+                // res.set('Expires', '0')
+                res.redirect('/')
+                return
+            }
+
+            console.log('kwrith native request')
+            next()
+        })
+    }
+    else {
+        // nothing special to do if out of kubernetes
+    }
+
+    app.use(bodyParser.json())
+    app.use(cors())
+    app.use(fileUpload())
+
+    // websocket server
+    const server = http.createServer(app)
+    const wss = new WebSocketServer({ server, skipUTF8Validation:true  })
+    wss.on('connection', (webSocket:WebSocket, req:IncomingMessage) => {
+        const ipHeader = req.headers['x-forwarded-for']
+        const ip = (Array.isArray(ipHeader) ? ipHeader[0] : ipHeader || req.socket.remoteAddress || '').split(',')[0].trim()
+        console.log(`Client connected from ${ip}`)
+
+        // This block precesses web socket connections for channels
+        if (req.url) {
+            const fullUrl = new URL(req.url, `http://${req.headers.host}`)
+            const challenge = fullUrl.searchParams.get('challenge')
+            if (challenge) {
+                let websocketRequestIndex = pendingWebsocket.findIndex(i => i.challenge === challenge)
+                if (websocketRequestIndex>=0) {
+                    let websocketRequest = pendingWebsocket[websocketRequestIndex]
+                    console.log('Websocket request received for channel', websocketRequest.channel)
+                    if (!channels.has(websocketRequest.channel)) {
+                        webSocket.close()
+                        console.log('Channel not found', websocketRequest.channel)
+                        return
+                    }
+                    let channel = channels.get(websocketRequest.channel)!
+                    console.log('Websocket connection request routed to', websocketRequest.channel)
+                    channel.websocketRequest(webSocket, websocketRequest.instance, websocketRequest.instanceConfig)
+                    pendingWebsocket.splice(websocketRequestIndex,1)
+                    return
+                }
+                else {
+                    console.log('Instance not found for completing webscoket request:', challenge)
+                    webSocket.close()
+                    return
+                }
+            }
+        }
+
+        // this block correpsonds to general websocket requests
+        webSocket.onmessage = (event) => {
+            processClientMessage(webSocket, event.data)
+        }
+
+        webSocket.onclose = () => {
+            // we do not remove connectios for the client to reconnect. previous code was:
+            // for (var channel of channels.keys()) {
+            //     channels.get(channel)?.removeConnection(ws)
+            // }
+            console.log('Client disconnected')
+            for (let chan of channels.values()) {
+                if (chan.containsConnection(webSocket)) {
+                    console.log(`Connection from IP ${ip} to channel ${chan.getChannelData().id} has been interrupted.`)
+                }
+            }
+        }
+    })
+
+    switch (exenv) {
+        case 'windows':
+        case 'linux':
+            launchDocker(server)
+            break
+        case 'kubernetes':
+            launchKubernetes(server)
+            break
+        default:
+            console.log('Unsupported execution environment. Exiting...')
+            process.exit()
+        }
+    }
+)
 .catch( (error) => {
     console.log (error)
     console.log ('Cannot determine execution environment')
+    process.exit()
 })
