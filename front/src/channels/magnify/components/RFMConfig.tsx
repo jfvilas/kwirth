@@ -1,6 +1,6 @@
 import { ISpace } from '@jfvilas/react-file-manager'
 import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, StopCircle, Subject, Terminal } from '@mui/icons-material'
-import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from './icons/Icons'
+import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from '../icons/Icons'
 
 const spaces = new Map<string, ISpace>()
 
@@ -579,6 +579,12 @@ spaces.set('Ingress',
 spaces.set('classIngressClass',
     {
         leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'Create',
+                permission: true,
+            }
         ]
     }
 )

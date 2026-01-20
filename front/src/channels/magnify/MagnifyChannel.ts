@@ -835,7 +835,7 @@ class MagnifyChannel implements IChannel {
             data: {
                 namespace: obj.metadata.namespace,
                 storageClass: obj.spec.storageClassName,
-                size: obj.status.capacity.storage,
+                size: obj.status?.capacity?.storage,
                 pods: 'n/a',
                 creationTimestamp: obj.metadata.creationTimestamp,
                 status: obj.status.phase,
