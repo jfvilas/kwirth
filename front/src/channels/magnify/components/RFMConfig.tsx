@@ -1700,7 +1700,6 @@ spaces.set('Pod',
                 text: 'Delete',
                 multi: true,
                 permission: true,
-                //onClick: () => console.log('delete pod'),
             },
             {
                 name: 'evict',
@@ -1730,16 +1729,16 @@ spaces.set('Pod',
             {
                 name: 'cpu',
                 text: 'CPU',
-                source: 'na',
-                format: 'function',
+                source: 'cpu',
+                format: 'string',
                 width: 10,
                 visible: true
             },
             {
                 name: 'memory',
                 text: 'Memory',
-                source: 'na',
-                format: 'function',
+                source: 'memory',
+                format: 'string',
                 width: 10,
                 visible: true
             },

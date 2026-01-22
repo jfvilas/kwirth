@@ -8,6 +8,7 @@ import { MagnifyTabContent } from './MagnifyTabContent'
 import { v4 as uuid } from 'uuid'
 import { ENotifyLevel } from '../../tools/Global'
 import { IFileObject } from '@jfvilas/react-file-manager'
+import { convertBytesToSize, convertSizeToBytes } from './Tools'
 
 interface IMagnifyMessage extends IInstanceMessage {
     msgtype: 'magnifymessage'
@@ -338,6 +339,8 @@ class MagnifyChannel implements IChannel {
         else if (kind==='ClusterRoleBinding') this.loadClusterRoleBinding(magnifyData, obj)
         else if (kind==='RoleBinding') this.loadRoleBinding(magnifyData, obj)
         else if (kind==='CustomResourceDefinition') this.loadCustomResourceDefinition(channelObject, magnifyData, obj)
+        else if (kind==='PodMetrics') this.loadPodMetrics(magnifyData, obj)
+        else if (kind==='NodeMetrics') this.loadNodeMetrics(magnifyData, obj)
         else {
             if (!this.loadCustomResourceDefinitionInstance(magnifyData, obj)) {
                 console.log('*** ERR INVALID Kind:', kind)
@@ -351,27 +354,6 @@ class MagnifyChannel implements IChannel {
             magnifyData.files[i]=obj
         else
             magnifyData.files.push(obj)
-    }
-
-    loadPod(magnifyData:IMagnifyData, obj:any): void {
-        obj.apiVersion = 'v1'
-        obj.kind = 'Pod'
-        this.updateObject(magnifyData, {
-            name: obj.metadata.name,
-            isDirectory: false,
-            path: buildPath('Pod', obj.metadata.name),
-            class: 'Pod',
-            data: {
-                namespace: obj.metadata.namespace,
-                controller: obj.metadata.ownerReferences && obj.metadata.ownerReferences.length>0? obj.metadata.ownerReferences[0].kind : '-',
-                node: obj.spec.nodeName,
-                startTime: obj.status.startTime,
-                status: obj.metadata.deletionTimestamp? 'Terminating' : obj.status.phase,
-                restartCount: obj.status.containerStatuses?.reduce((ac:number,c:any) => ac+=c.restartCount, 0) || 0,
-                origin: obj
-            }
-        })
-        //+++ resquest resources snapshot
     }
 
     loadNamespace(magnifyData:IMagnifyData, obj:any): void {
@@ -484,8 +466,8 @@ class MagnifyChannel implements IChannel {
             class: 'PodDisruptionBudget',
             data: {
                 namespace: obj.metadata.namespace,
-                minAvailable: obj.spec.minAvailable || 'N/A',
-                maxUnavailable: obj.spec.maxUnavailable || 'N/A',
+                minAvailable: obj.spec.minAvailable || '',
+                maxUnavailable: obj.spec.maxUnavailable || '',
                 currentHealthy: obj.status.currentHealthy,
                 desiredHealthy: obj.status.desiredHealthy,
                 creationTimestamp: obj.metadata.creationTimestamp,
@@ -724,7 +706,6 @@ class MagnifyChannel implements IChannel {
                 ready: obj.status.numberReady,
                 upToDate: obj.status.updatedNumberScheduled,
                 available: obj.status.numberAvailable,
-                nodeSelector: '-',
                 creationTimestamp: obj.metadata.creationTimestamp,
                 origin: obj
             }
@@ -856,7 +837,6 @@ class MagnifyChannel implements IChannel {
                 namespace: obj.metadata.namespace,
                 storageClass: obj.spec.storageClassName,
                 size: obj.status?.capacity?.storage,
-                pods: 'n/a',
                 creationTimestamp: obj.metadata.creationTimestamp,
                 status: obj.status.phase,
                 origin: obj
@@ -963,6 +943,51 @@ class MagnifyChannel implements IChannel {
         })
     }
 
+    loadPod(magnifyData:IMagnifyData, obj:any): void {
+        obj.apiVersion = 'v1'
+        obj.kind = 'Pod'
+        this.updateObject(magnifyData, {
+            name: obj.metadata.name,
+            isDirectory: false,
+            path: buildPath('Pod', obj.metadata.name),
+            class: 'Pod',
+            data: {
+                namespace: obj.metadata.namespace,
+                controller: obj.metadata.ownerReferences && obj.metadata.ownerReferences.length>0? obj.metadata.ownerReferences[0].kind : '-',
+                node: obj.spec.nodeName,
+                startTime: obj.status.startTime,
+                status: obj.metadata.deletionTimestamp? 'Terminating' : obj.status.phase,
+                restartCount: obj.status.containerStatuses?.reduce((ac:number,c:any) => ac+=c.restartCount, 0) || 0,
+                origin: obj
+            }
+        })
+        //+++ resquest resources snapshot
+    }
+
+    loadPodMetrics(magnifyData:IMagnifyData, obj:any): void {
+        let podName = obj.metadata.name
+        let podNamespace = obj.metadata.namespace
+        let pod = magnifyData.files.find(f => f.class==='Pod' && f.data.origin.metadata.name === podName && f.data.origin.metadata.namespace === podNamespace)
+        if (pod) {
+            pod.data.metrics = obj
+            pod.data.cpu = (obj.containers.reduce ( (a:any,c:any) => {
+                let cpu=0
+                if (c.usage.cpu.endsWith('n')) cpu = +c.usage.cpu.replace('n','') / 1000000000
+                if (c.usage.cpu.endsWith('m')) cpu = +c.usage.cpu.replace('m','') / 1000000
+                if (c.usage.cpu.endsWith('k')) cpu = +c.usage.cpu.replace('k','') / 1000
+                return a + cpu} ,0) as number).toFixed(4)
+            pod.data.memory = convertBytesToSize(obj.containers.reduce ( (a:any,c:any) => a + convertSizeToBytes(c.usage.memory),0))
+        }
+        else {
+            //console.log('nf')
+            // throw 'adadasd'
+        }
+
+    }
+
+    loadNodeMetrics(magnifyData:IMagnifyData, obj:any): void {
+    }
+
     loadCustomResourceDefinition(channelObject:IChannelObject, magnifyData:IMagnifyData, obj:any): void {
         obj.apiVersion = 'apiextensions.k8s.io/v1'
         obj.kind = 'CustomResourceDefinition'
@@ -1015,6 +1040,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadCustomResourceDefinitionInstance(magnifyData:IMagnifyData, obj:any): boolean {
+        console.log(obj)
         let groupName = obj.apiVersion.replace('/','-')+'-'+obj.kind.toLowerCase()
 
         this.updateObject(magnifyData, {

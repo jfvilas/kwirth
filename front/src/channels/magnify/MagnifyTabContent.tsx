@@ -106,8 +106,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcClassPod, 'create', () => launchObjectCreate('Pod'))
             let spcPod = spaces.get('Pod')!
             setPropertyFunction(spcPod, 'container', showPodContainers)
-            setPropertyFunction(spcPod, 'cpu', showPodCpu)
-            setPropertyFunction(spcPod, 'memory', showPodMemory)
+            // setPropertyFunction(spcPod, 'cpu', showPodCpu)
+            // setPropertyFunction(spcPod, 'memory', showPodMemory)
             setLeftItem(spcPod,'shell', launchPodShell)
             setLeftItem(spcPod,'forward', launchPodForward)
             setLeftItem(spcPod,'logs', launchPodLogs)
@@ -119,19 +119,10 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let objPod = objectSections.get('Pod')
             if (objPod) {
                 let item = objPod.find(o => o.name==='containers')!.items.find(item => item.name === 'container')
-                item = item!.items!.find (i => i.name==='ports')
-                item = item!.items!.find (i => i.name==='forward')
+                item = item!.items!.find (i => i.name==='ports')!.items!.find (i => i.name==='forward')
                 if (item) {
                     item.invoke = (rootObj, obj) => { 
-                        let url = '/kwirth/port-forward/pod/' + rootObj.metadata.namespace + '/' + rootObj.metadata.name + '/' + obj.containerPort
-                        return <Stack direction={'row'} alignItems={'center'} sx={{width:'100%', justifyContent:'space-between'}}>
-                                <Stack direction={'row'} alignItems={'center'} >
-                                    {obj.name && <Typography>{obj.name}:</Typography>}
-                                    <Typography>{obj.containerPort}/{obj.protocol}&nbsp;&nbsp;</Typography>
-                                </Stack>
-                                <Box sx={{ flexGrow: 1 }} />
-                                <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
-                            </Stack>
+                        return buildForward(rootObj, obj.name, obj.protocol, obj.containerPort)
                     }
                 }
             }
@@ -311,10 +302,23 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let objJob = objectSections.get('Job')
             if (objJob) {
                 //+++ esto mismo se hace en la custom function de los Deployment
-                let item = objJob[0].items.find(item => item.name === 'status')
+                let item = objJob.find(s => s.name==='properties')!.items.find(item => item.name === 'status')
                 if (item) {
                     item.invoke = (rootObj, obj) => { 
                         return ['running']
+                    }
+                }
+                item = objJob.find(s => s.name==='properties')!.items.find(item => item.name === 'pods')
+                if (item) {
+                    item.invoke = (rootObj, obj) => { 
+                        let allPods = magnifyData.files.filter(f => f.path.startsWith('/workload/Pod/'))
+                        allPods = allPods.filter(f => {
+                            const owners = f.data.origin.metadata.ownerReferences || []
+                            return owners.some((owner:any) => owner.name === obj.metadata.name && owner.kind === 'Job')
+                        })
+                        allPods = allPods.map(f => f.data.origin)
+                        return allPods
+
                     }
                 }
             }
@@ -422,6 +426,15 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcService,'details', launchObjectDetails)
             setLeftItem(spcService,'edit', launchObjectEdit)
             setLeftItem(spcService,'delete', launchObjectDelete)
+            let objService = objectSections.get('Service')
+            if (objService) {
+                let item = objService.find(o => o.name==='connection')!.items.find(item => item.name === 'ports')!.items!.find(item => item.name === 'forward')
+                if (item) {
+                    item.invoke = (rootObj, obj) => { 
+                        return buildForward(rootObj, obj.name, obj.protocol, obj.targetPort)
+                    }
+                }
+            }
 
             // Endpoints
             let spcClassEndpoints = spaces.get('classEndpoints')!
@@ -557,6 +570,25 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcStorageClass,'details', launchObjectDetails)
             setLeftItem(spcStorageClass,'edit', launchObjectEdit)
             setLeftItem(spcStorageClass,'delete', launchObjectDelete)
+            let objStorageClass = objectSections.get('StorageClass')
+            if (objStorageClass) {
+                let item = objStorageClass.find(i => i.name==='properties')!.items.find(item => item.name === 'pvs')
+                if (item) {
+                    item.invoke = (rootObj, obj) => { 
+                        let allPvs = magnifyData.files.filter(f => f.path.startsWith('/storage/PersistentVolume/'))
+                        allPvs = allPvs.filter(f => f.data.origin.spec?.storageClassName === rootObj.metadata.name)
+                        return allPvs.map(pv => pv.data.origin.metadata.name)
+                    }
+                }
+                item = objStorageClass.find(i => i.name==='properties')!.items.find(item => item.name === 'pvcs')
+                if (item) {
+                    item.invoke = (rootObj, obj) => { 
+                        let allPvcs = magnifyData.files.filter(f => f.path.startsWith('/storage/PersistentVolumeClaim/'))
+                        allPvcs = allPvcs.filter(f => f.data.origin.spec?.storageClassName === rootObj.metadata.name)
+                        return allPvcs.map(pvc => pvc.data.origin.metadata.name)
+                    }
+                }
+            }
 
             // PersistentVolumeClaim
             let spcClassPersistentVolumeClaim = spaces.get('classPersistentVolumeClaim')!
@@ -568,9 +600,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let objPersistentVolumeClaim = objectSections.get('PersistentVolumeClaim')
             if (objPersistentVolumeClaim) {
                 let item = objPersistentVolumeClaim.find(i => i.name==='properties')!.items.find(item => item.name === 'pods')
-                if (item) {  // +++ test
+                if (item) {
                     item.invoke = (rootObj, obj) => { 
-                        console.log('invoke pvcpods')
                         let allPods = magnifyData.files.filter(f => f.path.startsWith('/workload/Pod/'))
                         let pods = allPods.filter(f => f.data.origin.spec?.volumes?.some( (vol:any) => vol.persistentVolumeClaim?.claimName === obj.metadata.name))
                         let allPodNames = pods.map(f => f.data.origin.metadata.name)
@@ -664,6 +695,18 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }, [])
 
+    const buildForward = (rootObj:any, portName:string, portProtocol:string, portNumber:string) => {
+        let url = '/kwirth/port-forward/pod/' + rootObj.metadata.namespace + '/' + rootObj.metadata.name + '/' + portNumber
+        return <Stack direction={'row'} alignItems={'center'} sx={{width:'100%', justifyContent:'space-between'}}>
+            <Stack direction={'row'} alignItems={'center'} >
+                {portName && <Typography>{portName}:</Typography>}
+                <Typography>{portNumber}/{portProtocol}&nbsp;&nbsp;</Typography>
+            </Stack>
+            <Box sx={{ flexGrow: 1 }} />
+            <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
+        </Stack>
+    }
+
     const launchTasks = (channelObject:IChannelObject) => {
         setInterval( (c:IChannelObject) => {
             fetch(`${c.clusterUrl}/metrics/usage/cluster`, addGetAuthorization(c.accessString!)).then ( (result) => {
@@ -724,7 +767,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setLeftMenuAnchorParent(undefined)
 
         if (container==='*all') {
-            action : content external o forward
+            //+++action : content external o forward
             setContentExternalView(EInstanceConfigView.POD)
         }
         else {
@@ -883,13 +926,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         return result
     }
 
-    const showPodCpu = (p:string) => {
-        return '#'
-    }
+    // const showPodCpu = (p:string) => {
+    //     return '#'
+    // }
 
-    const showPodMemory = (p:string) => {
-        return '#'
-    }
+    // const showPodMemory = (p:string) => {
+    //     return '#'
+    // }
 
     const showIngressRules = (p:any) => {
         let f = magnifyData.files.find(x => p===x.path)
@@ -1412,6 +1455,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                                     let text = extcon.channelObject.container
                                     if (text.length>20) text = text.substring(0,10) + '...' + text.substring(text.length-10)
                                     // +++ add a preview of terminal using: https://www.npmjs.com/package/html-to-image
+                                    let pod = extcon.channelObject.pod
+                                    if (pod && pod!=='') pod = 'Pod: '+ pod
+                                    let container = extcon.channelObject.container
+                                    if (container && container !=='') {
+                                        pod = 'Pod: '+container.split('+')[0]
+                                        container = 'Container: '+container.split('+')[1]
+                                    }
                                     return (
                                         <Tooltip key={index} title={<>Pod: {extcon.channelObject.pod}{extcon.channelObject.container!==''? <><br/>Container: {extcon.channelObject.container}</>: <></>}</>}>
                                             <Button onClick={() => onContentExternalRestore(index)}>

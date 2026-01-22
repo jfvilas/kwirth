@@ -503,22 +503,24 @@ class MagnifyChannel implements IChannel {
                 for (let param of magnifyMessage.params!) {
                     switch (param) {
                         case 'Pod':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listPodForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listPodForAllNamespaces()))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.crdApi.listCustomObjectForAllNamespaces({ group: 'metrics.k8s.io', version: 'v1beta1', plural: 'pods' })))
                             break
                         case 'Node':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listNode())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listNode()))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.crdApi.listCustomObjectForAllNamespaces({ group: 'metrics.k8s.io', version: 'v1beta1', plural: 'nodes' })))
                             break
                         case 'Namespace':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listNamespace())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listNamespace()))
                             break
                         case 'ConfigMap':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listConfigMapForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listConfigMapForAllNamespaces()))
                             break
                         case 'Secret':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listSecretForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listSecretForAllNamespaces()))
                             break
                         case 'ResourceQuota':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listResourceQuotaForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listResourceQuotaForAllNamespaces()))
                             break
                         case 'LimitRange':
                             let result = await this.clusterInfo.coreApi.listLimitRangeForAllNamespaces()
@@ -529,85 +531,85 @@ class MagnifyChannel implements IChannel {
                             this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.autoscalingApi.listHorizontalPodAutoscalerForAllNamespaces())))
                             break
                         case 'PodDisruptionBudget':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.policyApi.listPodDisruptionBudgetForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.policyApi.listPodDisruptionBudgetForAllNamespaces()))
                             break
                         case 'PriorityClass':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.schedulingApi.listPriorityClass())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.schedulingApi.listPriorityClass()))
                             break
                         case 'RuntimeClass':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.nodeApi.listRuntimeClass())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.nodeApi.listRuntimeClass()))
                             break
                         case 'Lease':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coordinationApi.listLeaseForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coordinationApi.listLeaseForAllNamespaces()))
                             break
                         case 'ValidatingWebhookConfiguration':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.admissionApi.listValidatingWebhookConfiguration())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.admissionApi.listValidatingWebhookConfiguration()))
                             break
                         case 'MutatingWebhookConfiguration':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.admissionApi.listMutatingWebhookConfiguration())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.admissionApi.listMutatingWebhookConfiguration()))
                             break
                         case 'Service':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listServiceForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listServiceForAllNamespaces()))
                             break
                         case 'Endpoints':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listEndpointsForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listEndpointsForAllNamespaces()))
                             break
                         case 'Ingress':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.networkApi.listIngressForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.networkApi.listIngressForAllNamespaces()))
                             break
                         case 'IngressClass':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.networkApi.listIngressClass())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.networkApi.listIngressClass()))
                             break
                         case 'NetworkPolicy':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.networkApi.listNetworkPolicyForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.networkApi.listNetworkPolicyForAllNamespaces()))
                             break
                         case 'Deployment':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listDeploymentForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.appsApi.listDeploymentForAllNamespaces()))
                             break
                         case 'DaemonSet':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listDaemonSetForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.appsApi.listDaemonSetForAllNamespaces()))
                             break
                         case 'ReplicaSet':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listReplicaSetForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.appsApi.listReplicaSetForAllNamespaces()))
                             break
                         case 'ReplicationController':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listReplicationControllerForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listReplicationControllerForAllNamespaces()))
                             break
                         case 'StatefulSet':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.appsApi.listStatefulSetForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.appsApi.listStatefulSetForAllNamespaces()))
                             break
                         case 'Job':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.batchApi.listJobForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.batchApi.listJobForAllNamespaces()))
                             break
                         case 'CronJob':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.batchApi.listCronJobForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.batchApi.listCronJobForAllNamespaces()))
                             break
                         case 'PersistentVolumeClaim':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listPersistentVolumeClaimForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listPersistentVolumeClaimForAllNamespaces()))
                             break
                         case 'PersistentVolume':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listPersistentVolume())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listPersistentVolume()))
                             break
                         case 'StorageClass':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.storageApi.listStorageClass())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.storageApi.listStorageClass()))
                             break
                         case 'ServiceAccount':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.coreApi.listServiceAccountForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listServiceAccountForAllNamespaces()))
                             break
                         case 'ClusterRole':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listClusterRole())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.rbacApi.listClusterRole()))
                             break
                         case 'Role':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listRoleForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.rbacApi.listRoleForAllNamespaces()))
                             break
                         case 'ClusterRoleBinding':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listClusterRoleBinding())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.rbacApi.listClusterRoleBinding()))
                             break
                         case 'RoleBinding':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.rbacApi.listRoleBindingForAllNamespaces())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.rbacApi.listRoleBindingForAllNamespaces()))
                             break
                         case 'CustomResourceDefinition':
-                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.extensionApi.listCustomResourceDefinition())))
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.extensionApi.listCustomResourceDefinition()))
                             break
                         default:
                             console.log('Invalid class received:', param)

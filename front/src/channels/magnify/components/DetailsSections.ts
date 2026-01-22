@@ -196,6 +196,13 @@ objectSections.set('PersistentVolumeClaim', [
                 text: 'Status',
                 source: ['status.phase'],
                 format: 'string',
+           },
+           {
+                name: 'pv',
+                text: 'PV',
+                source: ['#spec.volumeName'],
+                format: 'string',
+                style: ['link:$PersistentVolume:spec.volumeName']
            }
         ]
     },
@@ -245,6 +252,13 @@ objectSections.set('PersistentVolume', [
                 text: 'Status',
                 source: ['status.phase'],
                 format: 'string',
+           },
+           {
+                name: 'pvc',
+                text: 'PVC',
+                source: ['#spec.claimRef.name'],
+                format: 'string',
+                style: ['link:spec.claimRef.kind:spec.claimRef.name']
            }
         ]
     },
@@ -270,12 +284,26 @@ objectSections.set('StorageClass', [
                 source: ['volumeBindingMode'],
                 format: 'string',
            },
-            {
+           {
                 name: 'reclaimPolicy',
                 text: 'Reclaim Policy',
                 source: ['reclaimPolicy'],
                 format: 'string',
-           }           
+           },
+           {
+                name: 'pvs',
+                text: 'PV',
+                source: ['@string[]'],
+                format: 'stringlist',
+                style: ['column', 'link:$PersistentVolume:.', 'ifpresent']
+           },
+           {
+                name: 'pvcs',
+                text: 'PVC',
+                source: ['@string[]'],
+                format: 'stringlist',
+                style: ['column', 'link:$PersistentVolumeClaim:.', 'ifpresent']
+           }
         ]
     },
     events
@@ -349,16 +377,30 @@ objectSections.set('Service', [
                 text: 'Ports',
                 source: ['spec.ports'],
                 format: 'objectlist',
-                //style: ['column'],
+                style: ['fullwidth', 'column'],
                 items: [
                     {
-                        name: 'type',
-                        text: '',
-                        source: ['name','$:', 'port','$/','protocol'],
-                        format: 'string'
-                    },                    
+                        name: 'forward',
+                        text: 'Forward',
+                        source: ['@jsx'],
+                        format: 'string',
+                    }
                 ]
             },
+            // {
+            //     name: 'ports',
+            //     text: 'Ports',
+            //     source: ['spec.ports'],
+            //     format: 'objectlist',
+            //     items: [
+            //         {
+            //             name: 'type',
+            //             text: '',
+            //             source: ['name','$:', 'port','$/','protocol'],
+            //             format: 'string'
+            //         },                    
+            //     ]
+            // },
         ]
     },
     events
@@ -941,14 +983,17 @@ objectSections.set('PodDisruptionBudget', [
                 name: 'minAvailable',
                 text: 'Min Available',
                 source: ['spec.minAvailable'],
-                format: 'string'
+                format: 'string',
+                style: ['ifpresent']
             },
             {
                 name: 'selector',
                 text: 'Selector',
                 source: ['spec.selector.matchLabels'],
-                format: 'objectprops'
+                format: 'objectprops',
+                style: ['column']
             },
+            conditions
         ]
     },
     events
@@ -1985,6 +2030,27 @@ objectSections.set('Job', [
                 source: ['spec.parallelism'],
                 format: 'string',
             },
+            {
+                name: 'pods',
+                text: 'Pods',
+                source: ['@string[]'],
+                format: 'objectlist',
+                style: ['table'],
+                items: [
+                    {
+                        name: 'name',
+                        text: 'Name',
+                        source: ['metadata.name'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'status',
+                        text: 'Status',
+                        source: ['status.phase'],
+                        format: 'string',
+                    },
+                ]
+            },
         ]
     },
     events
@@ -2046,8 +2112,7 @@ objectSections.set('CronJob', [
             {
                 name: 'jobs',
                 text: 'Jobs',
-                source: ['@string[]'],
-                //invoke: () => { return ['aa',`bb`]},
+                source: ['@string[]'],  //+++ should be @object[]
                 format: 'objectlist',
                 style: ['table'],
                 items: [
@@ -2132,6 +2197,13 @@ objectSections.set('ClusterRole', [
                         format: 'stringlist',
                         style: ['column']
                     },
+                    {
+                        name: 'nonResourceURLs',
+                        text: 'Non Resource URLs',
+                        source: ['nonResourceURLs'],
+                        format: 'stringlist',
+                        style: ['column']
+                    },
                 ],
                 style: ['table']
             },
@@ -2211,8 +2283,9 @@ objectSections.set('ClusterRoleBinding', [
             {
                 name: 'name',
                 text: 'Name',
-                source: ['roleRef.name'],
-                format: 'string'
+                source: ['#roleRef.name'],
+                format: 'string',
+                style: ['link:$ClusterRole:roleRef.name']
             },
             {
                 name: 'apiGroup',
@@ -2243,7 +2316,8 @@ objectSections.set('ClusterRoleBinding', [
                         name: 'name',
                         text: 'Name',
                         source: ['name'],
-                        format: 'string'
+                        format: 'string',
+                        style: ['link:$ServiceAccount:name']
                     },
                     {
                         name: 'namespace',
@@ -2284,7 +2358,8 @@ objectSections.set('RoleBinding', [
                 name: 'name',
                 text: 'Name',
                 source: ['roleRef.name'],
-                format: 'string'
+                format: 'string',
+                style: ['link:$Role:roleRef.name']
             },
             {
                 name: 'apiGroup',
@@ -2315,7 +2390,8 @@ objectSections.set('RoleBinding', [
                         name: 'name',
                         text: 'Name',
                         source: ['name'],
-                        format: 'string'
+                        format: 'string',
+                        style: ['link:$ServiceAccount:name']
                     },                    
                     {
                         name: 'namespace',

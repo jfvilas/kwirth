@@ -167,6 +167,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         valueStyle = style.filter(s => s.startsWith(valString+':'))
 
                         let linkStyle= style.find(s => s.startsWith('link:'))
+
                         if (linkStyle && addLink) {
                             let linkParts=linkStyle.split(':')
                             for (let i=1;i<=2;i++) {
@@ -200,7 +201,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 let valEdit = _.get(obj,src)
                 if (style.includes('base64')) valEdit = atob(valEdit)
                 if (style.includes('multiline'))
-                    return <TextareaAutosize name={src} defaultValue={valEdit} minRows={3} maxRows={15} style={{width:'100%', marginTop:1, marginBottom:1}}/>
+                    return <TextareaAutosize name={src} defaultValue={valEdit} style={{width:'100%', marginTop:1, marginBottom:1, resize:'vertical', minHeight: '64px'}}/>
                 else
                     return <TextField name={src} defaultValue={valEdit} maxRows={5} sx={{width:'100%', mt:1, mb:1}} size='small'/>
 
@@ -222,8 +223,9 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 if (!result2) return <></>
 
                 if (style.includes('column')) {
+                    // we force link reference on source (#) (if link style is not provided, link reference has no impact on output)
                     return <Stack direction={'column'}>
-                        { result2.map((item:any, index:number) => <Typography>{renderValue(rootObj, result2, '['+index+']', 'string', style, level+1, undefined, undefined)}</Typography>) }
+                        { result2.map((item:any, index:number) => <Typography>{renderValue(rootObj, result2, '#['+index+']', 'string', style, level+1, undefined, undefined)}</Typography>) }
                     </Stack>
                 }
                 else {
@@ -375,12 +377,15 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         // all object properties
                         return <>{Object.keys(_.get(obj,src)).map(key => {
                             if (style && style.includes('edit')) {
-                                return <Stack direction={'row'}>
+                                return <Stack direction={'column'} sx={{mt:1}}>
                                     <Tooltip title={key} placement='top'>
-                                        <Typography fontWeight={style.includes('keybold')?'700':''} sx={{width:labelWidth+'%',whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{key}&nbsp;{style.includes('lockicon') && <Https sx={{color:'red'}}/>}&nbsp;</Typography>
+                                        <Stack direction={'row'}>
+                                            <Typography fontWeight={style.includes('keybold')?'700':''} >{key}</Typography>
+                                            {style.includes('lockicon') && <Https fontSize={'small'} sx={{color:'red'}}/>}
+                                        </Stack>
                                     </Tooltip>
                                     {
-                                            renderValue(rootObj, obj, src+'.[\''+key+'\']', 'edit', style, level+1, [], undefined)
+                                        renderValue(rootObj, obj, src+'.[\''+key+'\']', 'edit', style, level+1, [], undefined)
                                     }                               
                                 </Stack>
                             }
@@ -388,7 +393,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                 return <Stack direction={'row'}>
                                     <Typography fontWeight={style.includes('keybold')?'700':''}>{key}:&nbsp;</Typography>
                                     {
-                                            renderValue(rootObj, obj, src+'.[\''+key+'\']', 'string', style, level+1, [], undefined)
+                                        renderValue(rootObj, obj, src+'.[\''+key+'\']', 'string', style, level+1, [], undefined)
                                     }                               
                                 </Stack>
                             }
@@ -451,7 +456,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
     const renderItem = (rootObj:any, obj:any, item:IDetailsItem, width:number, level:number) => {
         let expander='class-kwirth-'+expanderId
-        if (item.style?.includes('ifpresent') && !_.get(obj,item.source[0])) return <></>
+        if (!item.source[0].startsWith('@') && item.style?.includes('ifpresent') && !_.get(obj,item.source[0])) return <></>
 
         if (item.source && item.source[0]==='@jsx[]') {
             if (item.invoke) {
