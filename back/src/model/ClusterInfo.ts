@@ -50,7 +50,8 @@ export class ClusterInfo {
     public metrics!: MetricsTools
     public events!: EventsTools
     public metricsInterval: number = 15
-    public metricsIntervalRef: number = -1
+    //public metricsIntervalRef: number = -1
+    public metricsIntervalRef: NodeJS.Timeout|undefined = undefined
     public vcpus: number = 0
     public memory: number = 0
     public type: EClusterType = EClusterType.KUBERNETES
@@ -58,11 +59,22 @@ export class ClusterInfo {
 
     stopMetricsInterval = () => clearTimeout(this.metricsIntervalRef)
 
+    // startMetricsInterval = (seconds: number) => {
+    //     this.metricsInterval = seconds
+    //     this.metricsIntervalRef = setInterval(() => {
+    //         this.metrics.readClusterMetrics(this)
+    //     }, this.metricsInterval * 1000, {})
+    // }
+    static executeTask(instance: ClusterInfo) {
+        instance.metrics.readClusterMetrics(instance)
+    }
+
     startMetricsInterval = (seconds: number) => {
         this.metricsInterval = seconds
-        this.metricsIntervalRef = setInterval(() => {
-            this.metrics.readClusterMetrics(this)
-        }, this.metricsInterval * 1000, {})
+        this.metricsIntervalRef = setInterval(
+            ClusterInfo.executeTask, 
+            this.metricsInterval * 1000,
+            this)
     }
 
     loadKubernetesClusterName = async() => {

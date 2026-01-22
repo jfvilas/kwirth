@@ -73,8 +73,12 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
                         <Button onClick={() => console.log(props.files)}>Show files</Button>
                     </Stack>
                     <Stack direction={'row'} alignItems={'center'}>
-                        <Typography sx={{flexGrow:1}}>Metrics names </Typography>
+                        <Typography sx={{flexGrow:1}}>Metrics names</Typography>
                         <Button onClick={() => console.log(props.channelObject.metricsList?.keys())}>Show metrics</Button>
+                    </Stack>
+                    <Stack direction={'row'} alignItems={'center'}>
+                        <Typography sx={{flexGrow:1}}>Objects</Typography>
+                        <Button onClick={() => console.log(props.channelObject)}>Show object</Button>
                     </Stack>
                 </Stack>
             </AccordionDetails>

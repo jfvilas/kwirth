@@ -1,12 +1,9 @@
 import { BatchV1Api, CoreV1Api, NetworkingV1Api, V1Eviction, V1Job } from '@kubernetes/client-node'
 import { ClusterInfo } from '../model/ClusterInfo'
-//const fs = require('fs')
 const yaml = require('js-yaml')
 
 async function applyResource(resource:any, clusterInfo:ClusterInfo) : Promise<string> {
     try {
-        // const namespace = (resource.metadata && resource.metadata.namespace) || 'default'
-        // const name = resource.metadata.name
         const kind = resource.kind
 
         if (resource.metadata.managedFields) delete resource['metadata']['managedFields']
@@ -14,7 +11,7 @@ async function applyResource(resource:any, clusterInfo:ClusterInfo) : Promise<st
         return `${kind} '${resource.metadata.name}' applied successfully.`
     }
     catch (err:any) {
-        console.log('Error applying:*********************')
+        console.log('Error applying')
         console.log(err)
         return 'Error applying: '+err
     }
@@ -184,7 +181,7 @@ async function nodeDrain(coreApi: CoreV1Api, nodeName: string): Promise<void> {
     }
 }
 
-async function throttleExcute(invoke:any): Promise<void> {
+async function throttleExcute(id:string, invoke:any): Promise<void> {
     let repeat = true
     while (repeat) {
         repeat = false
@@ -192,6 +189,7 @@ async function throttleExcute(invoke:any): Promise<void> {
             invoke()
         }
         catch (err:any) {
+            console.log('Throttling error on',id)
             if (err.code === 429) {
                 repeat = true
                 await new Promise ( (resolve) => { setTimeout(resolve, (+err.headers['retry-after']||1)*1000)})
@@ -231,10 +229,10 @@ async function cronJobTrigger (namespace: string, cronJobName: string, batchApi:
                 body: jobManifest
             })
 
-            console.log(`✅ Job manual creado con éxito: ${manualJobName}`);
+            console.log(`✅ Manual Job created: ${manualJobName}`);
         } 
         catch (err: any) {
-            console.error('❌ Error al disparar el CronJob:', err.response?.body?.message || err.message);
+            console.error('❌ Error launching CronJob:', err.response?.body?.message || err.message);
         }
     }    
 

@@ -2,7 +2,7 @@ import { FC } from 'react'
 import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
 import { MagnifyInstanceConfig, MagnifyConfig } from './MagnifyConfig'
 import { MagnifySetup, MagnifyIcon } from './MagnifySetup'
-import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageEvent, IInstanceMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceMessageTypeEnum, ISignalMessage, SignalMessageEventEnum } from "@jfvilas/kwirth-common"
+import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageEvent, IInstanceMessage, ISignalMessage } from "@jfvilas/kwirth-common"
 import { EMagnifyCommand, MagnifyData, IMagnifyMessageResponse, IMagnifyData } from './MagnifyData'
 import { MagnifyTabContent } from './MagnifyTabContent'
 import { v4 as uuid } from 'uuid'
@@ -260,25 +260,45 @@ class MagnifyChannel implements IChannel {
 
     createTimers = (channelObject:IChannelObject) : number[] => {
         return [
-            setInterval ( (c:IChannelObject, _forceNumberReturn:any) => {
-                let magnifyMessage:IMagnifyMessage = {
-                    msgtype: 'magnifymessage',
-                    accessKey: channelObject.accessString!,
-                    instance: channelObject.instanceId,
-                    id: uuid(),
-                    namespace: '',
-                    group: '',
-                    pod: '',
-                    container: '',
-                    command: EMagnifyCommand.EVENTS,
-                    action: EInstanceMessageAction.COMMAND,
-                    flow: EInstanceMessageFlow.REQUEST,
-                    type: EInstanceMessageType.DATA,
-                    channel: 'magnify',
-                    params: [ 'cluster', '', '', '', '10']
-                }
-                c.webSocket!.send(JSON.stringify( magnifyMessage ))
-            }, 60000, channelObject)
+            // setInterval ( (c:IChannelObject, _forceNumberReturn:any) => {
+            //     let magnifyMessage:IMagnifyMessage = {
+            //         msgtype: 'magnifymessage',
+            //         accessKey: channelObject.accessString!,
+            //         instance: channelObject.instanceId,
+            //         id: uuid(),
+            //         namespace: '',
+            //         group: '',
+            //         pod: '',
+            //         container: '',
+            //         command: EMagnifyCommand.EVENTS,
+            //         action: EInstanceMessageAction.COMMAND,
+            //         flow: EInstanceMessageFlow.REQUEST,
+            //         type: EInstanceMessageType.DATA,
+            //         channel: 'magnify',
+            //         params: [ 'cluster', '', '', '', '10']
+            //     }
+            //     c.webSocket!.send(JSON.stringify( magnifyMessage ))
+            // }, 60000, channelObject)
+            // setInterval ( (c:IChannelObject, _forceNumberReturn:any) => {
+            //     let magnifyMessage:IMagnifyMessage = {
+            //         msgtype: 'magnifymessage',
+            //         accessKey: c.accessString!,
+            //         instance: c.instanceId,
+            //         id: uuid(),
+            //         namespace: '',
+            //         group: '',
+            //         pod: '',
+            //         container: '',
+            //         command: EMagnifyCommand.EVENTS,
+            //         action: EInstanceMessageAction.COMMAND,
+            //         flow: EInstanceMessageFlow.REQUEST,
+            //         type: EInstanceMessageType.DATA,
+            //         channel: 'magnify',
+            //         params: [ 'cluster', '', '', '', '10']
+            //     }
+            //     c.webSocket!.send(JSON.stringify( magnifyMessage ))
+            // }, 60000, channelObject)
+
         ]
     }
 
@@ -795,8 +815,8 @@ class MagnifyChannel implements IChannel {
             data: {
                 namespace: obj.metadata.namespace,
                 schedule: obj.spec.schedule,
-                suspend: obj.spec.suspend,
-                active: '0',
+                suspend: obj.spec.suspend || '-',
+                active: '-',
                 lastSchedule: obj.status.lastScheduleTime,
                 nextExecution: '-',
                 timezone: '-',
@@ -1004,8 +1024,8 @@ class MagnifyChannel implements IChannel {
             class: 'crdinstance',
             data: {
                 namespace: obj.metadata.namespace,
-                source: obj.spec.source,
-                checksum: obj.spec.checksum,
+                source: obj.spec?.source,
+                checksum: obj.spec?.checksum,
                 creationTimestamp: obj.metadata.creationTimestamp,
                 origin: obj
             }

@@ -59,12 +59,34 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     //     if (homepageBoxRef.current) setHomepageBoxTop(homepageBoxRef.current.getBoundingClientRect().top)
     // })
     
+    // useEffect( () => {
+    //     let i = setInterval( () => {
+    //         let cluster = props.cluster
+    //         if (!cluster) cluster = props.clusters.find(x => x.source)!
+    //         try {
+    //             fetch(`${cluster.url}/metrics/usage`, addGetAuthorization(cluster.accessString)).then ( (result) => {
+    //                 result.json().then ( (data) => {
+    //                     setCpu(data.cpu)
+    //                     setDataCpu([...dataCpu, { value: data.cpu as number }])
+    //                     setMemory(data.memory)
+    //                     setDataMemory([...dataMemory, { value: data.memory as number}])
+    //                     setTxmbps(data.txmbps)
+    //                     setRxmbps(data.rxmbps)
+    //                     setDataNetwork([...dataNetwork, { value: (data.txmbps + data.rxmbps) || 0}])
+    //                 })
+    //             })
+    //         }
+    //         catch (err) {
+    //             console.log(err)
+    //         }
+    //     }, 3000)
+    //     return () => clearInterval(i)
+    // })
+
     useEffect( () => {
-        let i = setInterval( () => {
-            let cluster = props.cluster
-            if (!cluster) cluster = props.clusters.find(x => x.source)!
+        let i = setInterval( (c:Cluster) => {
             try {
-                fetch(`${cluster.url}/metrics/usage`, addGetAuthorization(cluster.accessString)).then ( (result) => {
+                fetch(`${c.url}/metrics/usage/cluster`, addGetAuthorization(c.accessString)).then ( (result) => {
                     result.json().then ( (data) => {
                         setCpu(data.cpu)
                         setDataCpu([...dataCpu, { value: data.cpu as number }])
@@ -79,7 +101,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
             catch (err) {
                 console.log(err)
             }
-        }, 3000)
+        }, 3000, props.cluster || props.clusters.find(x => x.source))
         return () => clearInterval(i)
     })
 

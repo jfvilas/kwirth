@@ -115,14 +115,14 @@ class LogChannel implements IChannel {
             } 
             else {
                 asset.passThroughStream!.pause()
-                const interval = setInterval(() => {
-                    if (webSocket.bufferedAmount === 0) {
+                const interval = setInterval((w:WebSocket, a:IAsset) => {
+                    if (w.bufferedAmount === 0) {
                         clearInterval(interval)
-                        asset.passThroughStream!.resume()
-                        asset.msg.text = text
-                        webSocket.send(JSON.stringify(asset.msg)) // volver a intentar
+                        a.passThroughStream!.resume()
+                        a.msg.text = text
+                        w.send(JSON.stringify(a.msg)) // volver a intentar
                     }
-                }, 100)
+                }, 100, webSocket, asset)
             }
         }
         catch (err) {

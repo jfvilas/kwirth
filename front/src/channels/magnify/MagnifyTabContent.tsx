@@ -1,3 +1,4 @@
+import React from 'react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { IChannelObject, IContentProps } from '../IChannel'
@@ -10,7 +11,6 @@ import { v4 as uuid } from 'uuid'
 import { IMagnifyConfig } from './MagnifyConfig'
 import { ENotifyLevel } from '../../tools/Global'
 import { actions, icons, menu, spaces } from './components/RFMConfig'
-import React from 'react'
 import { IDetailsSection } from './components/DetailsObject'
 import { objectSections } from './components/DetailsSections'
 import { Edit, List } from '@mui/icons-material'
@@ -27,13 +27,13 @@ import { templates } from './components/Templates'
 import { convertBytesToSize, convertSizeToBytes, getNextCronExecution } from './Tools'
 import '@jfvilas/react-file-manager/dist/style.css'
 import './custom-fm.css'
+import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 import { ClusterMetrics } from './components/ClusterMetrics'
 
-const yamlParser = require('js-yaml');
-
-const settings = new MagnifyUserSettings()
+const yamlParser = require('js-yaml')
 
 const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
+    const settings = new MagnifyUserSettings()
     let magnifyData:IMagnifyData = props.channelObject.data
     let permissions = {
         create: false,
@@ -108,10 +108,12 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setPropertyFunction(spcPod, 'container', showPodContainers)
             setPropertyFunction(spcPod, 'cpu', showPodCpu)
             setPropertyFunction(spcPod, 'memory', showPodMemory)
+            setLeftItem(spcPod,'shell', launchPodShell)
+            setLeftItem(spcPod,'forward', launchPodForward)
             setLeftItem(spcPod,'logs', launchPodLogs)
             setLeftItem(spcPod,'metrics', launchPodMetrics)
-            setLeftItem(spcPod,'shell', launchPodShell)
             setLeftItem(spcPod,'details', launchObjectDetails)
+            setLeftItem(spcPod,'edit', launchObjectEdit)
             setLeftItem(spcPod,'delete', launchObjectDelete)
             setLeftItem(spcPod,'evict', launchPodEvict)
             let objPod = objectSections.get('Pod')
@@ -301,6 +303,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let spcClassJob = spaces.get('classJob')!
             setLeftItem(spcClassJob, 'create', () => launchObjectCreate('Job'))
             let spcJob = spaces.get('Job')!
+            setPropertyFunction(spcJob, 'conditions', showJobConditions)
             setLeftItem(spcJob,'details', launchObjectDetails)
             setLeftItem(spcJob,'logs', launchJobLogs)
             setLeftItem(spcJob,'edit', launchObjectEdit)
@@ -319,6 +322,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let spcClassCronJob = spaces.get('classCronJob')!
             setLeftItem(spcClassCronJob, 'create', () => launchObjectCreate('CronJob'))
             let spcCronJob = spaces.get('CronJob')!
+            setPropertyFunction(spcCronJob, 'active', showCronJobActive)
             setPropertyFunction(spcCronJob, 'nextExecution', showCronJobNextExecution)
             setLeftItem(spcCronJob,'trigger', launchCronJobTrigger)
             setLeftItem(spcCronJob,'suspend', launchCronJobSuspend)
@@ -385,20 +389,22 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     if (elements.length===0) return <></>
                     
                     return (
-                        <Stack flexDirection={'row'} display={'flex'} width={'100%'}>
+                        <Stack flexDirection={'row'}>
                             <Typography width={'15%'}>{text}:&nbsp;</Typography>
-                            {
-                                elements.map( (e) => {
-                                    return <><a href={`#`} onClick={() => onMagnifyObjectDetailsLink(kind,e)}>{e}</a>&nbsp;</>
-                                })
-                            }
+                            <Stack flexDirection={'column'}>
+                                {
+                                    elements.map( (e) => {
+                                        return <a href={`#`} onClick={() => onMagnifyObjectDetailsLink(kind,e)}>{e}</a>
+                                    })
+                                }
+                            </Stack>
                         </Stack>
                     )
                 }
                 if (item) {
                     item.invoke = (rootObj, obj) => {
                         return [
-                            'Pod','Deployment','DaemonSet','ReplicaSet','ReplicationController','StatefulSet','Job','CronJob',
+                            'Pod','Deployment','DaemonSet','ReplicaSet','ReplicationController+RepController','StatefulSet','Job','CronJob',
                             'PersistentVolumeClaim+PVC','PersistentVolume+PV',
                             'ConfigMap','Secret', 'Service','Endpoints','Ingress', 'Role','RoleBinding'
                         ].map (kind => getElements(obj.metadata.name, kind))
@@ -412,6 +418,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let spcClassService = spaces.get('classService')!
             setLeftItem(spcClassService, 'create', () => launchObjectCreate('Service'))
             let spcService = spaces.get('Service')!
+            setPropertyFunction(spcService, 'selector', showServiceSelector)
             setLeftItem(spcService,'details', launchObjectDetails)
             setLeftItem(spcService,'edit', launchObjectEdit)
             setLeftItem(spcService,'delete', launchObjectDelete)
@@ -429,6 +436,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             let spcClassIngress = spaces.get('classIngress')!
             setLeftItem(spcClassIngress, 'create', () => launchObjectCreate('Ingress'))
             let spcIngress = spaces.get('Ingress')!
+            setPropertyFunction(spcIngress, 'rules', showIngressRules)
             setLeftItem(spcIngress,'details', launchObjectDetails)
             setLeftItem(spcIngress,'edit', launchObjectEdit)
             setLeftItem(spcIngress,'delete', launchObjectDelete)
@@ -559,9 +567,10 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcPersistentVolumeClaim,'delete', launchObjectDelete)
             let objPersistentVolumeClaim = objectSections.get('PersistentVolumeClaim')
             if (objPersistentVolumeClaim) {
-                let item = objPersistentVolumeClaim[0].items.find(item => item.name === 'pods')
+                let item = objPersistentVolumeClaim.find(i => i.name==='properties')!.items.find(item => item.name === 'pods')
                 if (item) {  // +++ test
                     item.invoke = (rootObj, obj) => { 
+                        console.log('invoke pvcpods')
                         let allPods = magnifyData.files.filter(f => f.path.startsWith('/workload/Pod/'))
                         let pods = allPods.filter(f => f.data.origin.spec?.volumes?.some( (vol:any) => vol.persistentVolumeClaim?.claimName === obj.metadata.name))
                         let allPodNames = pods.map(f => f.data.origin.metadata.name)
@@ -646,12 +655,49 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
             }
         }
-        
+
+        launchTasks(props.channelObject)
+
         return () => {
             // unmount actions
             setLeftMenuAnchorParent(undefined)
         }
     }, [])
+
+    const launchTasks = (channelObject:IChannelObject) => {
+        setInterval( (c:IChannelObject) => {
+            fetch(`${c.clusterUrl}/metrics/usage/cluster`, addGetAuthorization(c.accessString!)).then ( (result) => {
+                result.json().then ( (data) => {
+                    let md:IMagnifyData = c.data
+                    data.timestamp = new Date().getHours()+':'+new Date().getMinutes()+':'+new Date().getSeconds()
+                    md.metricsCluster.push(data)
+                    if (md.metricsCluster.length>10) md.metricsCluster.shift()
+                    setRefresh(Math.random())
+                })
+            })
+        }, 11000, channelObject)
+
+        setInterval ( (c:IChannelObject) => {
+            let magnifyMessage:IMagnifyMessage = {
+                msgtype: 'magnifymessage',
+                accessKey: c.accessString!,
+                instance: c.instanceId,
+                id: uuid(),
+                namespace: '',
+                group: '',
+                pod: '',
+                container: '',
+                command: EMagnifyCommand.EVENTS,
+                action: EInstanceMessageAction.COMMAND,
+                flow: EInstanceMessageFlow.REQUEST,
+                type: EInstanceMessageType.DATA,
+                channel: 'magnify',
+                params: [ 'cluster', '', '', '', '10']
+            }
+            c.webSocket!.send(JSON.stringify( magnifyMessage ))
+        }, 10000, channelObject)
+
+    }
 
     // *********************************************************
     // Convenience functions for configuring item actions
@@ -674,10 +720,11 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (x) x.onClick = invoke
     }
 
-    const onLeftItemMenuOptionSelected = (container:string) => {
+    const onLeftItemMenuContainerSelected = (container:string) => {
         setLeftMenuAnchorParent(undefined)
 
         if (container==='*all') {
+            action : content external o forward
             setContentExternalView(EInstanceConfigView.POD)
         }
         else {
@@ -786,11 +833,26 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setLeftMenuContent(f[0])
         setLeftMenuIncludeAllContainers(false)
         setLeftMenuAnchorParent(currentTarget)
+    }
 
+    const launchPodForward = (p:string[], currentTarget:Element) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        setSelectedFiles(f)
+        setLeftMenuContent(f[0])
+        setLeftMenuIncludeAllContainers(false)
+        setLeftMenuAnchorParent(currentTarget)
+    }
+
+    const launchPodForwardSelected = (p:string[], currentTarget:Element) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))[0]
+        if (!f) return
+        let url = '/kwirth/port-forward/pod/' + f.data?.origin.metadata.namespace + '/' + f.data?.origin.metadata.name + '/' + f.data?.origin.containerPort
+        window.open(url, '_blank')
     }
 
     const launchPodMetrics = (p:string[], currentTarget:Element) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
+        if (!f) return
         setSelectedFiles(f)
         setContentExternalView(EInstanceConfigView.CONTAINER)
         setContentExternalTitle(f[0].name)
@@ -827,6 +889,55 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const showPodMemory = (p:string) => {
         return '#'
+    }
+
+    const showIngressRules = (p:any) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
+        if (!f.data?.origin?.spec?.rules) return <></>
+        let result:JSX.Element[]=[]
+        for (let rule of f.data.origin.spec.rules) {
+            for (let path of rule.http.paths) {
+                result.push(
+                    <Typography fontSize={12}>http://{rule.host}{path.path}&nbsp;&rarr;&nbsp;{path.backend.service.name}:{path.backend.service.port.number}</Typography>
+                )
+            }
+        }
+
+        return <Stack direction={'column'}>
+            {result.map(r => r)}
+        </Stack>
+
+    }
+
+    const showJobConditions = (p:any) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
+        if (!f.data?.origin?.status?.conditions) return <></>
+        let result:JSX.Element[]=[]
+        for (let cond of f.data.origin.status.conditions) {
+            if (cond.status==='True') result.push(<Typography fontSize={12}>{cond.type}</Typography>)
+        }
+        return <Stack direction={'column'}>
+            {result}
+        </Stack>
+
+    }
+
+    const showServiceSelector = (p:any) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
+        if (!f.data?.origin?.spec?.selector) return <></>
+        let result:JSX.Element[]=[]
+        for (let key of Object.keys(f.data.origin.spec.selector)) {
+            result.push(
+                <Typography fontSize={12}>{key}={f.data.origin.spec.selector[key]}</Typography>
+            )
+        }
+        return <Stack direction={'column'}>
+            {result}
+        </Stack>
+
     }
 
     // group actions
@@ -924,6 +1035,12 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         return [`${x?.timeLeft.days}d${x?.timeLeft.hours}h${x?.timeLeft.minutes}m${x?.timeLeft.seconds}s`]
     }
 
+    const showCronJobActive = (p:string) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
+        return [`${f.data.origin.status?.active?.length || 0}`]
+    }
+
     // handlers for showing general data inside filemanager
     const getMoreEvents = () => {
         let magnifyMessage:IMagnifyMessage = {
@@ -949,51 +1066,41 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const showOverview = () => {
         if (!magnifyData.clusterInfo) return <></>
 
-        return <Card sx={{m:1, display: 'flex', 
-        flexDirection: 'column', 
-        height: 'calc(100% - 55px)'}}>
-                <CardContent sx={{ 
-            flex: 1,           // Esto hace que crezca hasta ocupar el espacio sobrante
-            overflowY: 'auto', // Habilita el scroll interno
-            display: 'flex',
-            flexDirection: 'column',
-            p: 2               // Padding interno
-        }}
-                >
-                    <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
-                    <Typography>Version: {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
-                    <Typography>Platform: {magnifyData.clusterInfo.platform}</Typography>
-                    <Typography>Nodes: {magnifyData.files.filter(f => f.class==='Node').length}</Typography>
+        return <Card sx={{m:1, display: 'flex', flexDirection: 'column', height: 'calc(100% - 55px)'}}>
+            <CardContent sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', p: 2}}>
+                <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
+                <Typography>Version: {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
+                <Typography>Platform: {magnifyData.clusterInfo.platform}</Typography>
+                <Typography>Nodes: {magnifyData.files.filter(f => f.class==='Node').length}</Typography>
 
-                    <Divider sx={{mt:1, mb:1}}/>
+                <Divider sx={{mt:1, mb:1}}/>
 
-                    <ClusterMetrics files={magnifyData.files} frontChannels={props.channelObject.frontChannels!} onNotify={onComponentNotify} channelObject={props.channelObject}/>
-                    
-                    <Divider sx={{mt:1, mb:1}}/>
+                <ClusterMetrics channelObject={props.channelObject} data-refresf={refresh}/>
+                
+                <Divider sx={{mt:1, mb:1}}/>
 
-                    <Stack direction={'column'}>
-                        {
-                            magnifyData.clusterEvents.map(e => {
-                                let severity= e.type?e.type[0]:''
-                                let color='black'
-                                if (severity==='W') color='orange'
-                                if (severity==='E') color='red'
-                                return <Stack direction={'row'}>
-                                    <Typography sx={{width:'5%', color}}>{severity}</Typography>
-                                    <Typography sx={{width:'25%', color}}>{e.eventTime||e.firstTimestamp||e.lastTimestamp}</Typography>
-                                    <Typography sx={{width:'70%', color}}>{e.message}</Typography>
-                                </Stack>
-                            })
-                        }
-                    </Stack>
-                    <Stack direction={'row'}>
-                        <Typography flexGrow={1}/>
-                        <Button onClick={getMoreEvents}>More Events</Button>
-                    </Stack>
-                        </Box>
-                </CardContent>
-
-            </Card>
+                <Stack direction={'column'}>
+                    {
+                        magnifyData.clusterEvents.map(e => {
+                            let severity= e.type?e.type[0]:''
+                            let color='black'
+                            if (severity==='W') color='orange'
+                            if (severity==='E') color='red'
+                            return <Stack direction={'row'}>
+                                <Typography sx={{width:'5%', color}}>{severity}</Typography>
+                                <Typography sx={{width:'25%', color}}>{e.eventTime||e.firstTimestamp||e.lastTimestamp}</Typography>
+                                <Typography sx={{width:'70%', color}}>{e.message}</Typography>
+                            </Stack>
+                        })
+                    }
+                </Stack>
+                <Stack direction={'row'}>
+                    <Typography flexGrow={1}/>
+                    <Button onClick={getMoreEvents}>More Events</Button>
+                </Stack>
+                    </Box>
+            </CardContent>
+        </Card>
     }
 
     const showClusterOverview = () => {
@@ -1294,7 +1401,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     searchCasing={true}
                 />
                 {
-                    leftMenuAnchorParent && <LeftItemMenu f={leftMenuContent} onClose={onLeftItemMenuClose} onOptionSelected={onLeftItemMenuOptionSelected} anchorParent={leftMenuAnchorParent} includeAllContainers={leftMenuIncludeAllContainers} />
+                    leftMenuAnchorParent && <LeftItemMenu f={leftMenuContent} onClose={onLeftItemMenuClose} onOptionSelected={onLeftItemMenuContainerSelected} anchorParent={leftMenuAnchorParent} includeAllContainers={leftMenuIncludeAllContainers} />
                 }
                 <Stack direction={'row'} sx={{mt:1}}>
                     {

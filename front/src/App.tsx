@@ -308,7 +308,7 @@ const App: React.FC = () => {
         let newTab:ITabObject = {
             name: name,
             ws: undefined,
-            keepaliveRef: 60,
+            keepAliveRef: undefined,
             defaultTab: false,
             channel: newChannel,
             channelObject: {
@@ -333,7 +333,7 @@ const App: React.FC = () => {
         if (newTab.channel.requiresClusterUrl()) newTab.channelObject.clusterUrl = cluster.url
         if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
         if (newTab.channel.requiresFrontChannels()) newTab.channelObject.frontChannels = frontChannels
-        newTab.channelObject.config = settingsRef.current?.channelSettings.find(c => c.channelId === newTab.channel.channelId)
+        newTab.channelObject.config = settingsRef.current?.channelSettings?.find(c => c.channelId === newTab.channel.channelId)
         if (newTab.channel.initChannel(newTab.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         if (tab) newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
         if (newTab.channel.requiresSettings()) {
@@ -437,19 +437,19 @@ const App: React.FC = () => {
     }
 
     const setKeepAlive = (tab:ITabObject) => {
-        tab.keepaliveRef = setInterval(() => {
-            if (tab.channelObject.instanceId) {
+        tab.keepAliveRef = setInterval((t:ITabObject) => {
+            if (t.channelObject.instanceId) {
                 // we only send keealive (ping) if we have a valid instance id
                 let instanceConfig:IInstanceMessage = {
                     action: EInstanceMessageAction.PING,
-                    channel: tab.channel.channelId,
+                    channel: t.channel.channelId,
                     flow: EInstanceMessageFlow.REQUEST,
                     type: EInstanceMessageType.SIGNAL,
-                    instance: tab.channelObject.instanceId
+                    instance: t.channelObject.instanceId
                 }
-                if (tab.ws && tab.ws.readyState === WebSocket.OPEN) tab.ws.send(JSON.stringify(instanceConfig))
+                if (t.ws && t.ws.readyState === WebSocket.OPEN) t.ws.send(JSON.stringify(instanceConfig))
             }
-        }, (settingsRef.current?.keepAliveInterval || 60) * 1000, '')
+        }, (settingsRef.current?.keepAliveInterval || 60) * 1000, tab)
     }
 
     const colorizeTab = (tab:ITabObject) => {
@@ -794,7 +794,7 @@ const App: React.FC = () => {
             selectedTab.current.ws.onmessage = null
             selectedTab.current.ws.onclose = null
         }
-        clearInterval(selectedTab.current.keepaliveRef)
+        clearInterval(selectedTab.current.keepAliveRef)
         if (selectedTab.current.channelObject) stopTabChannel(selectedTab.current)
 
         let current = tabs.current.findIndex(t => t === selectedTab.current)
@@ -899,7 +899,7 @@ const App: React.FC = () => {
                 name: tab.name,
                 defaultTab: tab.defaultTab,
                 ws: undefined,
-                keepaliveRef: 0,
+                keepAliveRef: undefined,
                 channel: tab.channel,
                 channelObject: JSON.parse(JSON.stringify(tab.channelObject)),
                 channelStarted: tab.channelStarted,

@@ -189,7 +189,7 @@ objectSections.set('PersistentVolumeClaim', [
                 text: 'Pods',
                 source: ['@string[]'],
                 format: 'stringlist',
-                style: ['column', 'ifpresent']
+                style: ['column']
            },
            {
                 name: 'status',
@@ -490,7 +490,7 @@ objectSections.set('IngressClass', [
                 text: 'Default',
                 source: ['metadata.annotations["ingressclass.kubernetes.io/is-default-class"]'],
                 format: 'boolean',
-                style: ['true:Yes:green','false:No:red']
+                style: ['true:Yes:green','false:No:red','undefined:No:red',':No:red']
             },
         ]
     },
@@ -602,14 +602,94 @@ objectSections.set('Node', [
                 text: 'Capacity',
                 source: ['status.capacity'],
                 format: 'objectprops',
-                style: ['table']
+                style: ['table'],
+                items: [
+                    {
+                        name: 'cpu',
+                        text: 'CPU',
+                        source: ['status.capacity.cpu'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'storage',
+                        text: 'Storage',
+                        source: ['status.capacity.ephemeral-storage'],
+                        format: 'string',
+                        style: ['mb'],
+                    },
+                    {
+                        name: 'hp1gi',
+                        text: 'Hugepages-1Gi',
+                        source: ['status.capacity.hugepages-2Mi'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'hp2m',
+                        text: 'Hugepages-2Mi',
+                        source: ['status.capacity.hugepages-1Gi'],
+                        format: 'string',
+                    },                    
+                    {
+                        name: 'memory',
+                        text: 'Memory',
+                        source: ['status.capacity.memory'],
+                        format: 'string',
+                        style: ['mb'],
+                    },
+                    {
+                        name: 'pods',
+                        text: 'Pods',
+                        source: ['status.capacity.pods'],
+                        format: 'string',
+                    }                    
+                ]
             },
             {
                 name: 'allocatable',
                 text: 'Allocatable',
                 source: ['status.allocatable'],
                 format: 'objectprops',
-                style: ['table']
+                style: ['table'],
+                items: [
+                    {
+                        name: 'cpu',
+                        text: 'CPU',
+                        source: ['status.capacity.cpu'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'storage',
+                        text: 'Storage',
+                        source: ['status.capacity.ephemeral-storage'],
+                        format: 'string',
+                        style: ['mb'],
+                    },
+                    {
+                        name: 'hp1gi',
+                        text: 'Hugepages-1Gi',
+                        source: ['status.capacity.hugepages-2Mi'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'hp2m',
+                        text: 'Hugepages-2Mi',
+                        source: ['status.capacity.hugepages-1Gi'],
+                        format: 'string',
+                    },                    
+                    {
+                        name: 'memory',
+                        text: 'Memory',
+                        source: ['status.capacity.memory'],
+                        format: 'string',
+                        style: ['mb'],
+                    },
+                    {
+                        name: 'pods',
+                        text: 'Pods',
+                        source: ['status.capacity.pods'],
+                        format: 'string',
+                    }                    
+                ]
             },
         ]
     },

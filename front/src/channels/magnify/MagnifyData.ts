@@ -6,9 +6,9 @@ import { IContentDetailsObject } from './components/ContentDetails'
 
 export interface IMagnifyData {
     clusterInfo: any
+    files: IFileObject[]
     paused: boolean
     started: boolean
-    files: IFileObject[]
     clusterEvents: any[]
     currentPath: string
 
@@ -17,6 +17,9 @@ export interface IMagnifyData {
     contentWindows : (IContentExternalObject|IContentEditObject|IContentDetailsObject)[]
     leftMenuAnchorParent: Element | undefined
     pendingWebSocketRequests : Map<string, (value: any) => void>
+
+    metricsCluster: any[]
+    metricsPodDetail: any[]
 }
 
 export class MagnifyData implements IMagnifyData {
@@ -30,6 +33,8 @@ export class MagnifyData implements IMagnifyData {
     contentWindows = []
     leftMenuAnchorParent: undefined
     pendingWebSocketRequests = new Map<string, (value: any) => void>()
+    metricsCluster = []
+    metricsPodDetail = []
 }
 
 export enum EMagnifyCommand {

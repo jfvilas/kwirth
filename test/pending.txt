@@ -11,6 +11,25 @@ contentexternal
     configuracion
     chartmenu
     logfollow
+refresh de showoverview
+
+tasks:
+    inervalas con (via api):
+        metrics de pod
+
+LISTS
+pod cpu mem
+daemonset node selector
+pdb max unavailable
+
+DETAILS
+
+RFM
+en los fileitem, cuando le fila es muy alta, el nombre del fileitem se esta alineando arriab, y deberia ir al centro
+
+DETAILS
+ingressclass "Default" boolean OK/KO   TEST**
+
 
 contentdetails
     apply changes (when modifying 'edit' fields)
@@ -24,7 +43,7 @@ pvc > pods  **TEST**
 
 
 MAGNIFY BACK
-reconnect
+reconnect  **TEST**
 validate addObject (kwirth/kwrith/kwirth...)
 
 ERRORS:
@@ -34,3 +53,4 @@ ERRORS:
     delete pvc
     delete pv
     rfm icons and columns
+    delete job or delete pod job

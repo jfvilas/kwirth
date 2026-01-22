@@ -1284,6 +1284,9 @@ getExecutionEnvironment().then( async (exenv:string) => {
         app.use(async (req: Request, res: Response, next: NextFunction) => {
             console.log('request received', req.url)
 
+            if (req.url.startsWith(`/healthz`) || req.url.startsWith(`/health`)) {
+                return next()
+            }
             if (!req.url.startsWith('/kwirth')) {
                 if (req.cookies['x-kwirth-refresh']==='1') {
                     res.cookie('x-kwirth-refresh', '2', { path: '/' })
@@ -1306,9 +1309,6 @@ getExecutionEnvironment().then( async (exenv:string) => {
                 console.log(`[PROXY] IP `, ip)
                 res.cookie('x-kwirth-forward', ip+':'+port, { path: '/' })
                 res.cookie('x-kwirth-refresh', '1', { path: '/' })
-                // res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
-                // res.set('Pragma', 'no-cache')
-                // res.set('Expires', '0')
                 res.redirect('/')
                 return
             }

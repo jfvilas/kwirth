@@ -1,5 +1,5 @@
 import { ISpace } from '@jfvilas/react-file-manager'
-import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, StopCircle, Subject, Terminal } from '@mui/icons-material'
+import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, Forward, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, StopCircle, Subject, Terminal } from '@mui/icons-material'
 import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from '../icons/Icons'
 
 const spaces = new Map<string, ISpace>()
@@ -354,7 +354,7 @@ spaces.set('Service',
     {
         text:'Service name',
         source:'name',
-        width:40,
+        width:20,
         leftItems: [
             {
                 name: 'details',
@@ -420,7 +420,7 @@ spaces.set('Service',
             {
                 name: 'selector',
                 text: 'Selector',
-                source: 'selector',
+                source: 'function',
                 format: 'string',
                 width: 15,
                 visible: true
@@ -518,7 +518,7 @@ spaces.set('Ingress',
     {
         text:'Name',
         source:'name',
-        width:40,
+        width:15,
         leftItems: [
             {
                 name: 'details',
@@ -546,7 +546,7 @@ spaces.set('Ingress',
                 text: 'Namespace',
                 source: 'namespace',
                 format: 'string',
-                width: 15,
+                width: 10,
                 visible: true
             },
             {
@@ -554,15 +554,15 @@ spaces.set('Ingress',
                 text: 'LoadBalancers',
                 source: 'loadBalancers',
                 format: 'string',
-                width: 15,
+                width: 10,
                 visible: true
             },
             {
                 name: 'rules',
                 text: 'Rules',
                 source: 'rules',
-                format: 'string',
-                width: 15,
+                format: 'function',
+                width: 55,
                 visible: true
             },
             {
@@ -1670,6 +1670,18 @@ spaces.set('Pod',
                 permission: true
             },
             {
+                name: 'forward',
+                icon: <Forward fontSize='small'/>,
+                text: 'Forward',
+                permission: true
+            },
+            {
+                name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true
+            },
+            {
                 name:'logs',
                 text: 'Log',
                 icon: <Subject fontSize='small'/>,
@@ -2300,7 +2312,7 @@ spaces.set('Job',
                 name: 'conditions',
                 text: 'Conditions',
                 source: 'conditions',
-                format: 'string',
+                format: 'function',
                 width: 15,
                 visible: true
             },
@@ -2394,8 +2406,8 @@ spaces.set('CronJob',
                 name: 'active',
                 text: 'Active',
                 source: 'active',
-                format: 'number',
-                width: 15,
+                format: 'function',
+                width: 10,
                 visible: true
             },
             {

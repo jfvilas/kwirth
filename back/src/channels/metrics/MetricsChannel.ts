@@ -108,7 +108,6 @@ class MetricsChannel implements IChannel {
             namespace: iconfig.namespace,
             group: '',
             pod: iconfig.pod,
-            //timestamp: initial ? 0 : Date.now(),
             timestamp: Date.now(),
             container: ''
         }
@@ -200,7 +199,7 @@ class MetricsChannel implements IChannel {
                                 let instance = instances?.find((instance) => instance.instanceId === instanceConfig.instance)
                                 if (!instance) {
                                     // new instance for an existing websocket
-                                    let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance, false), interval)
+                                    let timeout = setInterval((w:WebSocket, i:string, s:boolean) => this.sendMetricsDataInstance(w,i,s), interval, webSocket,instanceConfig.instance, false)
                                     instances?.push( {
                                         instanceId: instanceConfig.instance,
                                         working:false,
@@ -230,7 +229,7 @@ class MetricsChannel implements IChannel {
                             }
                             else {
                                 this.webSockets.push( {ws:webSocket, lastRefresh: Date.now(), instances:[]} )
-                                let timeout = setInterval(() => this.sendMetricsDataInstance(webSocket,instanceConfig.instance, false), interval)
+                                let timeout = setInterval((w:WebSocket, i:string,s:boolean) => this.sendMetricsDataInstance(w,i,s), interval, webSocket,instanceConfig.instance, false)
                                 let instances = this.webSockets.find(entry => entry.ws === webSocket)?.instances
                                 instances?.push({
                                     instanceId:instanceConfig.instance, 
@@ -355,7 +354,7 @@ class MetricsChannel implements IChannel {
                 entry.ws = newWebSocket
                 for (var instance of entry.instances) {
                     if (instance.timeout) clearInterval(instance.timeout)
-                    instance.timeout = setInterval(() => this.sendMetricsDataInstance(newWebSocket, instanceId, false), instance.interval)
+                    instance.timeout = setInterval((w:WebSocket,i:string, s:boolean) => this.sendMetricsDataInstance(w,i,s), instance.interval, newWebSocket, instanceId, false)
                 }
                 return true
             }
@@ -834,18 +833,18 @@ class MetricsChannel implements IChannel {
         webSocket.send(JSON.stringify(signalMessage))
     }
 
-    private sendSignalMessage = (ws:WebSocket, action:EInstanceMessageAction, flow: EInstanceMessageFlow, level: ESignalMessageLevel, instanceId:string, text:string): void => {
-        var resp:ISignalMessage = {
-            action,
-            flow,
-            channel: 'metrics',
-            instance: instanceId,
-            type: EInstanceMessageType.SIGNAL,
-            text,
-            level
-        }
-        ws.send(JSON.stringify(resp))
-    }
+    // private sendSignalMessage = (ws:WebSocket, action:EInstanceMessageAction, flow: EInstanceMessageFlow, level: ESignalMessageLevel, instanceId:string, text:string): void => {
+    //     var resp:ISignalMessage = {
+    //         action,
+    //         flow,
+    //         channel: 'metrics',
+    //         instance: instanceId,
+    //         type: EInstanceMessageType.SIGNAL,
+    //         text,
+    //         level
+    //     }
+    //     ws.send(JSON.stringify(resp))
+    // }
 
 }
 

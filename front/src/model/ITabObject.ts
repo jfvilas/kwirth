@@ -1,10 +1,10 @@
-import { EInstanceConfigView, InstanceConfigViewEnum } from "@jfvilas/kwirth-common"
+import { EInstanceConfigView } from "@jfvilas/kwirth-common"
 import { IChannel, IChannelObject } from "../channels/IChannel"
 
 interface ITabObject {
     name: string
     ws: WebSocket|undefined
-    keepaliveRef: number
+    keepAliveRef: NodeJS.Timer|undefined
     defaultTab: boolean
     channel: IChannel
     channelObject: IChannelObject

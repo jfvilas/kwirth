@@ -33,46 +33,20 @@ export class MetricsApi {
                     console.log(err)
                 }
             })
-        this.route.route('/usage')
+        this.route.route('/usage/*')
             .all( async (req:Request,res:Response, next) => {
                 if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    let cpuu=0
-                    let memu=0, memt=0
-                    let tx=0, rx=0
-                    let prevtx=0, prevrx=0
-                    if (this.clusterInfo.metrics) {
-                        try {
-                            for (let node of this.clusterInfo.nodes.values()) {
-                                if (node.summary) {
-                                    memu+=node.summary.memory.usageBytes
-                                    memt+=node.summary.memory.usageBytes + node.summary.memory.availableBytes
-                                    cpuu+=node.summary.cpu.usageNanoCores
-                                    tx += node.summary.network.txBytes
-                                    rx += node.summary.network.rxBytes
-
-                                    if (node.prevSummary) {
-                                        prevtx += node.prevSummary.network.txBytes
-                                        prevrx += node.prevSummary.network.rxBytes
-                                    }
-                                }
-                            }
-                            let tottx = tx-prevtx
-                            let totrx = rx-prevrx
-                            tottx = (tottx/1024/1024) / this.clusterInfo.metricsInterval
-                            totrx = (totrx/1024/1024) / this.clusterInfo.metricsInterval
-                            res.status(200).send({cpu:(cpuu/(44*Math.pow(10,9)))*100, memory:memu/memt*100, txmbps:tottx, rxmbps:totrx})
-                        }
-                        catch (err) {
-                            console.error('Error calculating node resources', err)
-                            res.status(200).send({cpu:Math.random()*100, memory:Math.random()*100})
-                        }
-                    }
-                    else {
-                        res.status(200).send({cpu:0, memory:0})
+                    switch (req.url) {
+                        case '/usage/cluster':
+                            this.sendUsageCluster(req,res)
+                        break
+                        case '/usage/poddetail':
+                            this.sendUsagePodDetail(req,res)
+                        break
                     }
                 }
                 catch (err) {
@@ -153,4 +127,62 @@ export class MetricsApi {
                 }
             })
     }
+
+    sendUsageCluster = (req:Request, res:Response) => {
+        let cpuu=0, cpun=this.clusterInfo.vcpus
+        let memu=0, memt=0
+        let tx=0, rx=0
+        let prevtx=0, prevrx=0
+        if (this.clusterInfo.metrics) {
+            try {
+                for (let node of this.clusterInfo.nodes.values()) {
+                    if (node.summary) {
+                        console.log(this.clusterInfo.vcpus, memt)
+                        memu+=node.summary.memory.usageBytes
+                        memt+=node.summary.memory.usageBytes + node.summary.memory.availableBytes
+                        cpuu+=node.summary.cpu.usageNanoCores
+                        tx += node.summary.network.txBytes
+                        rx += node.summary.network.rxBytes
+
+                        if (node.prevSummary) {
+                            prevtx += node.prevSummary.network.txBytes
+                            prevrx += node.prevSummary.network.rxBytes
+                        }
+                    }
+                }
+                if (memt===0) memt=1
+                if (cpun===0) cpun=1
+                let tottx = tx-prevtx
+                let totrx = rx-prevrx
+                tottx = (tottx/1024/1024) / this.clusterInfo.metricsInterval
+                totrx = (totrx/1024/1024) / this.clusterInfo.metricsInterval
+                res.status(200).send({cpu:(cpuu/(cpun*Math.pow(10,9)))*100, memory:memu/memt*100, txmbps:tottx, rxmbps:totrx})
+            }
+            catch (err) {
+                console.error('Error calculating node resources', err)
+                res.status(200).send({cpu:Math.random()*100, memory:Math.random()*100, txmbps:Math.random()*100, rxmbps:Math.random()*100})
+            }
+        }
+        else {
+            res.status(200).send({cpu:0, memory:0, txmbps:0, rxmbps:0})
+        }
+    }
+
+    sendUsagePodDetail = (req:Request, res:Response) => {
+        if (this.clusterInfo.metrics) {
+            try {
+                res.status(200).send({})
+                
+            }
+            catch (err) {
+                console.error('Error calculating node resources', err)
+                res.status(200).send({})
+            }
+        }
+        else {
+            res.status(200).send({})
+        }
+
+    }
+
 }

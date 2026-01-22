@@ -1,6 +1,7 @@
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { Https } from '@mui/icons-material'
-import { LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextareaAutosize, TextField, Typography } from '@mui/material'
+import { LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextareaAutosize, TextField, Tooltip, Typography } from '@mui/material'
+import { convertBytesToSize, convertSizeToBytes } from '../Tools'
 
 const _ = require('lodash')
 
@@ -90,7 +91,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             src=parts[0]
         }
 
-        let header = style && style.includes('header') && itemx?itemx.text+':\u00a0':''
+        let header = style && style.includes('header') && itemx? itemx.text+':\u00a0' : ''
 
         switch(format) {
             case 'age':
@@ -142,6 +143,10 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 else 
                     valString = _.get(obj,src)
 
+                if (style && style.includes('mb')) {
+                    valString=convertBytesToSize(convertSizeToBytes(valString))
+                }
+                
                 if (style && style.includes('edit')) {
                     return <>{header}{renderValue(rootObj, srcobj, src, 'edit', style, level, [], undefined)}</>
                 }
@@ -321,19 +326,40 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
             case 'objectprops':
                 if (!_.get(obj,src)) return <></>
+
                 if (style && style.includes('table')) {
-                    return <TableContainer component={Paper} elevation={0} sx={{border: '1px solid #e0e0e0', mt:1, mb:1}}>
-                        <Table size='small'>
-                            <TableHead>
-                                <TableRow>
-                                    { Object.keys(_.get(obj,src)).map(k => <TableCell>{k}</TableCell>) }
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                { Object.keys(_.get(obj,src)).map(key => <TableCell>{_.get(obj,src+'.[\''+key+'\']')}</TableCell>) }
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                    if (itemx && itemx?.items) {
+                        return <TableContainer component={Paper} elevation={0} sx={{border: '1px solid #e0e0e0', mt:1, mb:1}}>
+                            <Table size='small'>
+                                <TableHead>
+                                    <TableRow>
+                                        { itemx.items.map(i => <TableCell>{i.text}</TableCell>) }
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {
+                                        itemx.items.map(item => {
+                                            return <TableCell>{renderValue(rootObj, obj, item.source[0], item.format, item.style||[], level)}</TableCell>
+                                        })
+                                    }
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    }
+                    else {
+                        return <TableContainer component={Paper} elevation={0} sx={{border: '1px solid #e0e0e0', mt:1, mb:1}}>
+                            <Table size='small'>
+                                <TableHead>
+                                    <TableRow>
+                                        { Object.keys(_.get(obj,src)).map(k => <TableCell>{k}</TableCell>) }
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    { Object.keys(_.get(obj,src)).map(key => <TableCell>{_.get(obj,src+'.[\''+key+'\']')}</TableCell>) }
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    }
                 }
                 else {
                     if (details) {
@@ -348,9 +374,11 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                     else {
                         // all object properties
                         return <>{Object.keys(_.get(obj,src)).map(key => {
-                            if (style.includes('edit')) {
+                            if (style && style.includes('edit')) {
                                 return <Stack direction={'row'}>
-                                    <Typography fontWeight={style.includes('keybold')?'700':''} sx={{width:labelWidth+'%'}}>{key}&nbsp;{style.includes('lockicon') && <Https sx={{color:'red'}}/>}&nbsp;</Typography>
+                                    <Tooltip title={key} placement='top'>
+                                        <Typography fontWeight={style.includes('keybold')?'700':''} sx={{width:labelWidth+'%',whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{key}&nbsp;{style.includes('lockicon') && <Https sx={{color:'red'}}/>}&nbsp;</Typography>
+                                    </Tooltip>
                                     {
                                             renderValue(rootObj, obj, src+'.[\''+key+'\']', 'edit', style, level+1, [], undefined)
                                     }                               
@@ -394,7 +422,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
     }
 
     const renderValues = (rootObj:any, obj:any, item:IDetailsItem, level:number) => {
-        if (item.style?.includes('ifpresent') && _.get(obj,item.source[0])===undefined) {
+        if (!item.source[0].startsWith('@') && item.style?.includes('ifpresent') && _.get(obj,item.source[0])===undefined) {
             return <></>
         }
 

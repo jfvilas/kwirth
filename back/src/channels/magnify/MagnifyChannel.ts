@@ -1,4 +1,4 @@
-import { IInstanceConfig, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, InstanceMessageActionEnum, InstanceMessageFlowEnum, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, KwirthData, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageLevel} from '@jfvilas/kwirth-common'
+import { IInstanceConfig, ISignalMessage, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, KwirthData, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageLevel} from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel'
 import { Request, Response } from 'express'
@@ -7,7 +7,7 @@ import { applyResource, cronJobStatus, cronJobTrigger, nodeCordon, nodeDrain, no
 const yaml = require('js-yaml')
 
 export interface IMagnifyConfig {
-    interval: number
+    //interval: number
 }
 
 export enum MagnifyCommandEnum {
@@ -53,10 +53,10 @@ export interface IMagnifyMessageResponse extends IInstanceMessage {
 
 export interface IInstance {
     instanceId: string
-    accessKey: AccessKey
-    configData: IMagnifyConfig
-    paused: boolean
-    watch: Watch
+    //accessKey: AccessKey
+    //configData: IMagnifyConfig
+    //paused: boolean
+    //watch: Watch
 }
 
 class MagnifyChannel implements IChannel {
@@ -113,7 +113,7 @@ class MagnifyChannel implements IChannel {
             routable: false,
             pauseable: false,
             modifyable: false,
-            reconnectable: false,
+            reconnectable: true,
             metrics: true,
             events: true,
             sources: [ ClusterTypeEnum.KUBERNETES ],
@@ -127,7 +127,6 @@ class MagnifyChannel implements IChannel {
     }
 
     processObjectEvent(type:string, obj:any) : void {
-        // +++ debug console.log('****', type, obj.kind, obj.metadata.namespace, obj.metadata.name)
         for (let socket of this.webSockets) {
             for (let instance of socket.instances) {
                 let magnifyMessage:IMagnifyMessageResponse = {
@@ -208,11 +207,11 @@ class MagnifyChannel implements IChannel {
         let instance = instances.find(i => i.instanceId === instanceConfig.instance)
         if (!instance) {
             instance = {
-                accessKey: accessKeyDeserialize(instanceConfig.accessKey),
+                //accessKey: accessKeyDeserialize(instanceConfig.accessKey),
                 instanceId: instanceConfig.instance,
-                configData: instanceConfig.data,
-                paused: false,
-                watch: new Watch(this.clusterInfo.kubeConfig)
+                //configData: instanceConfig.data,
+                //paused: false,
+                //watch: new Watch(this.clusterInfo.kubeConfig)
             }
             instances.push(instance)
         }
@@ -500,7 +499,7 @@ class MagnifyChannel implements IChannel {
     
     private async executeList (webSocket:WebSocket, instance:IInstance, magnifyMessage:IMagnifyMessage) {
         try {
-            throttleExcute(async () => {
+            throttleExcute(magnifyMessage.params!.join(','), async () => {
                 for (let param of magnifyMessage.params!) {
                     switch (param) {
                         case 'Pod':
@@ -611,7 +610,7 @@ class MagnifyChannel implements IChannel {
                             this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify((await this.clusterInfo.extensionApi.listCustomResourceDefinition())))
                             break
                         default:
-                            console.log('invalid class: ', param)
+                            console.log('Invalid class received:', param)
                             this.sendSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instance.instanceId, 'Invalid class: '+param)
                             break
                     }
@@ -628,7 +627,7 @@ class MagnifyChannel implements IChannel {
     private async executeListCrd (webSocket:WebSocket, instance:IInstance, magnifyMessage:IMagnifyMessage) {
         try {
             let params = magnifyMessage.params!
-            throttleExcute(async () => {
+            throttleExcute('listcrd', async () => {
                 let resp = await this.clusterInfo.crdApi.listCustomObjectForAllNamespaces({
                     group: params[0],
                     version: params[1],
@@ -689,7 +688,6 @@ class MagnifyChannel implements IChannel {
     }
 
     getEventsForObject = async (command:string, namespace:string,  objectKind:string, objectName:string, limit:number) => {
-        console.log(command, namespace, objectKind, objectName, limit)
         let res: CoreV1EventList = {
             items: []
         }
