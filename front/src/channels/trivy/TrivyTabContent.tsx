@@ -27,7 +27,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [showMode, setShowMode] = useState('card')
     const [selectedAsset, setSelectedAsset] = useState<IKnown>()
     const [anchorMenu, setAnchorMenu] = useState<HTMLElement|null>(null)
-    const [refresh, setRefresh] = useState(0)
+    //const [refresh, setRefresh] = useState(0)
     const [order, setOrder] = useState('scd')
     const [filterScore, setFilterScore] = useState<number>(0)
     const [maxScore, setMaxScore] = useState<number>(0)
@@ -79,7 +79,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
         trivyObject.known = known
         setOrder(orderName)
-        setRefresh(Math.random())
+        //setRefresh(Math.random())
     }
 
     let orderMenu = (
@@ -99,7 +99,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const removeAsset = (asset:IKnown) => {
         trivyObject.known = (trivyObject.known).filter(a => a.namespace!==asset.namespace || a.name!==asset.name || a.container!==asset.container)
-        setRefresh(Math.random())
+        //setRefresh(Math.random())
     }
 
     const showErrors = () => {

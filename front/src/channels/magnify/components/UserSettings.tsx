@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Stack, TextField, Typography } from '@mui/material'
+import React, { useRef, useState } from 'react'
+import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Checkbox, FormControlLabel, FormGroup, Stack, TextField, Typography } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
 import { MagnifyUserSettings } from '../MagnifyUserSettings'
 import { IFileObject } from '@jfvilas/react-file-manager'
@@ -15,6 +15,7 @@ interface IProps {
 
 const UserSettings: React.FC<IProps> = (props:IProps) => {
     const [logLines, setLogLines] = useState(props.settings.logLines)
+    const filterRef = useRef<HTMLInputElement>(null)
 
     const saveGeneral = () => {
     }
@@ -35,6 +36,10 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
     
     const reload = () => {
         if (props.onReload) props.onReload()
+    }
+
+    const showFiles = () => {
+        console.log(props.files.filter(f => f.name.includes(filterRef.current!.value) || f.path.includes(filterRef.current!.value)))
     }
     
     return <Box sx={{m:1}}>
@@ -61,6 +66,7 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
                 <Button onClick={saveChannels} disabled={!changesDetectedChannels()}>Save</Button>
             </AccordionActions>
         </Accordion>
+
         <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
                 <Typography component="span"><b>Debug</b></Typography>
@@ -69,8 +75,9 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
                 <Stack direction={'column'} >
                     <Stack direction={'row'} alignItems={'center'}>
                         <Typography sx={{flexGrow:1}}>Show files collection on browser console ({props.files.length} objects, {(JSON.stringify(props.files).length/1024/1024).toFixed(2)}  MB approx.)</Typography>
-                        <Button onClick={reload}>Reload</Button> {/*+++ el reload hace que todo crezca en 4 objetos de cada vez*/}
-                        <Button onClick={() => console.log(props.files)}>Show files</Button>
+                        <TextField inputRef={filterRef} label='Text filter...' variant='standard'></TextField>
+                        <Button onClick={reload}>Reload</Button>
+                        <Button onClick={showFiles}>Show files</Button>
                     </Stack>
                     <Stack direction={'row'} alignItems={'center'}>
                         <Typography sx={{flexGrow:1}}>Metrics names</Typography>
@@ -79,6 +86,34 @@ const UserSettings: React.FC<IProps> = (props:IProps) => {
                     <Stack direction={'row'} alignItems={'center'}>
                         <Typography sx={{flexGrow:1}}>Objects</Typography>
                         <Button onClick={() => console.log(props.channelObject)}>Show object</Button>
+                    </Stack>
+                </Stack>
+            </AccordionDetails>
+            <AccordionActions>
+            </AccordionActions>
+        </Accordion>
+
+        <Accordion>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography component="span"><b>Data</b></Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+                <Stack direction={'row'}>
+                    <Stack direction={'column'} sx={{width:'59%'}}>
+                        <FormGroup>
+                        { props.settings.dataSettings.all.map( allsetting => {
+                            return (
+                                <FormControlLabel control={<Checkbox checked={props.settings.dataSettings.source.some(s => s===allsetting)}/>} label={allsetting}/>
+                            )
+                        })} 
+                        </FormGroup>
+                    </Stack>
+                    <Stack direction={'column'} sx={{width:'100%'}}>
+                        { props.settings.dataSettings.all.map( allsetting => {
+                            return (
+                                <FormControlLabel control={<Checkbox checked={props.settings.dataSettings.sync.some(s => s===allsetting)}/>} label={allsetting}/>
+                            )
+                        })} 
                     </Stack>
                 </Stack>
             </AccordionDetails>

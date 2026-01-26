@@ -84,7 +84,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
             <DialogTitle>Configure log stream</DialogTitle>
             <DialogContent sx={{height:'350px'}}>
                 <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                    <TextField value={maxMessages} onChange={onChangeMaxMessages} variant='standard'label='Max messages' SelectProps={{native: true}} type='number' fullWidth />
+                    <TextField value={maxMessages} onChange={onChangeMaxMessages} variant='standard' label='Max messages' SelectProps={{native: true}} type='number' fullWidth />
 
                     <Tabs value={selectedTab} onChange={(_: React.SyntheticEvent, newValue: string) => { setSelectedTab(newValue)}}>
                         <Tab key='log' label='Logging' value='log' sx={{width:'50%'}}/>

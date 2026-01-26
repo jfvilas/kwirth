@@ -700,7 +700,6 @@ class FilemanChannel implements IChannel {
 
     uploadFile = async (ns: string, pod: string, c: string, localPath: string, remotePath: string) : Promise<IExecutionResult> => {
         try {
-            console.log('startupload')
             let accumulatedErr: Buffer = Buffer.alloc(0)
             let accumulatedEnd: Buffer = Buffer.alloc(0)
             let stdout = new Writable({})

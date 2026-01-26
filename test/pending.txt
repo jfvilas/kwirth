@@ -1,41 +1,32 @@
 KWIRTH
-crear un permiso para indicar que cosas del front puede ver el usuario
-crear un setting del usuario tipo "autoexec.bat"
 log de jobs? revisar "started &&"
-log: si esta parado que no renderice
 campana
-channel metricss: metricas sinteticas: numero de pods
+channel metrics: metricas sinteticas: numero de pods
 
 
 MAGNIFY
-zona de avisos (implementar en filemanager)
->>forward a services  **TEST**
+zona de avisos del cluster (implementar en filemanager)
 
+en la vista de lista, acciones multi item (metrics, logs...)
+debug: añadir un log de eventos de kwirth
+
+SETTINGS
+    persistir y leer al arrancar
+
+
+DETAILS
++++ cm/secret: textarea, > tamaño inicial fijo (no todo el contenido)
++++ servaccnt: tokens ifpresent
+
+CONFIG
+decidir que recursos queremos verdecidir que recursos queremos sincronizar (listen)
 
 contentexternal
     configuracion
     chartmenu
-    logfollow
-apply de cambios en "details"
 refresh de showoverview
-ademas de @string[] y @jsx[] necesitamos @item[] (y que el invokado devuelva un array de ItemDetail, para poder tener links)
 
-
-scheduled magnify tasks:
-    inervalos con (via api):
-    metrics de pod
-
-RFM
-en los fileitem, cuando le fila es muy alta, el nombre del fileitem se esta alineando arriab, y deberia ir al centro
-habilitar/deshab el reload
-añadir filtro de namespaces
-deshabilitar el "open" boton derecho
-fileitem
     añadir key de recatfilemanager
-    tamaño del icono que sea fijo
-    columnsa mal alineadas
-    columnas dde ancho ajustable
-
 
 
 DETAILS
@@ -59,11 +50,23 @@ reconnect  **TEST**
 validate addObject (kwirth/kwrith/kwirth...)
 
 ERRORS:
-    recatfilemanager columns
+	desaparecen los podemetrics (cpu y mem) al cabo de un rato
     crd instances duplicates
     resourceselector groups duplicated sometimes
     delete pvc
     delete pv
     rfm icons and columns
     delete job or delete pod job
-    rfm: el search parece vacio pero tiene algo qu eno se ve (de lab busqueda anterior)
+
+
+*********V2*********
+en magnify
+    improve DetailsObject
+        always use rootObj, and just change the path, so trace-back can be used ofr detecting data changed origin
+en RFM
+    en los fileitem, cuando le fila es muy alta, el nombre del fileitem se esta alineando arriab, y deberia ir al centro
+    fileitem: columnas de ancho ajustable
+
+en KWIRTH
+    crear un permiso para indicar que cosas del front puede ver el usuario
+    crear un setting del usuario tipo "autoexec.bat"

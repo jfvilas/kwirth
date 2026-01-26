@@ -141,7 +141,7 @@ export class MetricsTools {
             if (node.machineMetricValues.get('machine_memory_bytes')) this.clusterInfo.memory += node.machineMetricValues.get('machine_memory_bytes')!.value
         }
         this.clusterInfo.startMetricsInterval(this.clusterInfo.metricsInterval)
-        console.log('Metrics recollection started...')
+        console.log('Metrics gathering started...')
     }
 
     /*

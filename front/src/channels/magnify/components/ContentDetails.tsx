@@ -3,13 +3,15 @@ import { IFileObject } from '@jfvilas/react-file-manager'
 import { useEffect, useRef, useState } from 'react'
 import { Close, ContentCopy, Delete, Edit, Fullscreen, FullscreenExit, Minimize } from '@mui/icons-material';
 import { DetailsObject, IDetailsSection } from './DetailsObject';
+import { objectClone } from '../Tools';
+const _ = require('lodash')
 const copy = require('clipboard-copy')
 
 interface IContentDetailsProps {
     selectedFile?:IFileObject
     content?: IContentDetailsObject
     sections: IDetailsSection[]
-    onApply: (path:string) => void
+    onApply: (path:string, obj:any) => void
     onEdit: (path:string) => void
     onDelete: (path:string) => void
     onMinimize: (content:IContentDetailsObject) => void
@@ -26,6 +28,8 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
     const content = useRef<IContentDetailsObject>()
     const [percent, setPercent] = useState<number>(70)
     const [containsEdit, setContainsEdit] = useState<boolean>(false)
+    const [dataChanged, setDataChanged] = useState<boolean>(false)
+    const newObject = useRef()
    
     useEffect( () => {
         if (props.content) {
@@ -42,6 +46,7 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
         else {
             //+++ must not happen
         }
+        newObject.current = objectClone(content.current!.content.source.data.origin)
     },[])
 
     const minimize = () => {
@@ -62,7 +67,7 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
     }
 
     const apply = () => {
-        if (content.current) props.onApply(content.current.content.path)
+        if (content.current) props.onApply(content.current.content.path, newObject.current)
     }
 
     const close = () => {
@@ -79,6 +84,20 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
 
     const link = (kind:string, name:string) => {
         props.onLink(kind, name)
+    }
+
+    const onChangeData = (path:string, data:any) => {
+        if (content.current?.content.source.data.origin.kind === 'ConfigMap') {
+            _.set(newObject.current, path, data)
+        }
+        if (content.current?.content.source.data.origin.kind === 'Secret') {
+            _.set(newObject.current, path, btoa(data))
+        }
+        setDataChanged(true)
+    }
+
+    const onContainsEdit = (val:boolean) => {
+        setContainsEdit(val)
     }
 
     return (
@@ -113,12 +132,11 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
             </DialogTitle>
             <DialogContent >
                 {
-                    content.current && <DetailsObject object={content.current.content.source} sections={props.sections} onChangeData={() => {}} onLink={link} onContainsEdit={(val:boolean) => setContainsEdit(val)}/>
+                    content.current && <DetailsObject object={content.current.content.source} sections={props.sections} onChangeData={onChangeData} onLink={link} onContainsEdit={onContainsEdit}/>
                 }
             </DialogContent>
             <DialogActions>
-                { containsEdit && <Button onClick={apply}>Apply</Button>}
-                <Button onClick={close}>Close</Button>
+                <Button onClick={apply} disabled={!containsEdit || !dataChanged}>Apply</Button>
             </DialogActions>
         </Dialog>
     )

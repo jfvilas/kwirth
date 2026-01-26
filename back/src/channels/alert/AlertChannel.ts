@@ -345,7 +345,6 @@ class AlertChannel implements IChannel {
                         }
                     }
                     else if (this.clusterInfo.type === EClusterType.KUBERNETES) {
-                        console.log('instancefound')
                         for (let asset of instance.assets) {
                             console.log(`found ${asset.podNamespace}/${asset.podName}/${asset.containerName}`)
                             if (asset.passThroughStream) {

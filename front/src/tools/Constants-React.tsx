@@ -52,4 +52,4 @@ export const IconBlank = (props: {height?:number}) => { return <img src={SvgIcon
 export const IconNamespace = (props: {height?:number}) => { return <img src={SvgIconNamespace} alt='ns' height={`${props.height||16}px`}/> }
 export const IconGroup = (props: {height?:number}) => { return <img src={SvgIconGroup} alt='grp' height={`${props.height||16}px`}/> }
 export const IconPod = (props: {height?:number}) => { return <img src={SvgIconPod} alt='pod' height={`${props.height||16}px`}/> }
-export const IconContainer = (props: {height?:number}) => { return <img src={SvgIconContainer} height={`${props.height||16}px`}/> }
+export const IconContainer = (props: {height?:number}) => { return <img src={SvgIconContainer} alt='container' height={`${props.height||16}px`}/> }

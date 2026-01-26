@@ -137,7 +137,6 @@ export class MetricsApi {
             try {
                 for (let node of this.clusterInfo.nodes.values()) {
                     if (node.summary) {
-                        console.log(this.clusterInfo.vcpus, memt)
                         memu+=node.summary.memory.usageBytes
                         memt+=node.summary.memory.usageBytes + node.summary.memory.availableBytes
                         cpuu+=node.summary.cpu.usageNanoCores

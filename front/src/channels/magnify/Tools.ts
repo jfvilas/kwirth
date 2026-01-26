@@ -18,6 +18,9 @@ const reorderJsonYamlObject = (objetoJson: any): any => {
     }
 }
 
+function objectClone(obj: any) : any {
+    return JSON.parse(JSON.stringify(obj))
+}
 function objectEqual(obj1: any, obj2: any): boolean {
     if (obj1 === obj2) return true
 
@@ -154,4 +157,4 @@ function getNextCronExecution(cronExpression: string): INextExecution|undefined 
 }
 
 export { type INextExecution }
-export { reorderJsonYamlObject, objectEqual, convertBytesToSize, convertSizeToBytes, getNextCronExecution }
+export { reorderJsonYamlObject, objectEqual, convertBytesToSize, convertSizeToBytes, getNextCronExecution, objectClone }

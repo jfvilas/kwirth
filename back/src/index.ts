@@ -97,6 +97,17 @@ const envChannelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLower
 const envChannelMagnifyEnabled = (process.env.CHANNEL_MAGNIFY || 'true').toLowerCase() === 'true'
 const pendingWebsocket:{channel:string, instance:string, challenge:string, instanceConfig: IInstanceConfig}[] = []
 
+
+// const originalLog = console.log;
+// console.log = (...args) => {
+//     if (args.some(arg => typeof arg === 'number' || typeof arg === 'object')) {
+//         const stack = new Error().stack!.split('\n')[2];
+//         originalLog('\x1b[35m%s\x1b[0m', '📍 LOG LINE:', stack.trim()); 
+//     }
+//     originalLog(...args);
+// };
+
+
 // discover where we are running in: docker, kubernetes...
 const getExecutionEnvironment = async ():Promise<string> => {
     console.log('Detecting execution environment...')
@@ -219,7 +230,7 @@ const sendInstanceConfigSignalMessage = (ws:WebSocket, action:EInstanceMessageAc
 
 const addObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) => {
     try {
-        console.log(`objectReview '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+        console.log(`Object review '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
 
         let valid = AuthorizationManagement.checkAkr(channels, instanceConfig, podNamespace, podName, containerName)
         if (!valid) {
@@ -232,7 +243,7 @@ const addObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, po
         if(channels.has(instanceConfig.channel)) {
             let channel = channels.get(instanceConfig.channel)!
             if (channel?.containsAsset(webSocket, podNamespace, podName, containerName)) {
-                console.log(`existingAsset '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
+                console.log(`Existing asset '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
             }
             else {
                 console.log(`addObject '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
@@ -248,14 +259,6 @@ const addObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, po
         console.error('Error adding object', err)
     }
 }
-
-// const modifyObject = async (_webSocket:WebSocket, _eventType:string, _podNamespace:string, _podName:string, _containerName:string, instanceConfig:InstanceConfig) => {
-//     if(channels.has(instanceConfig.channel)) {
-//     }
-//     else {
-//         console.log(`Invalid channel`, instanceConfig.channel)
-//     }
-// }
 
 const deleteObject = async (webSocket:WebSocket, _eventType:string, podNamespace:string, podName:string, containerName:string, instanceConfig:IInstanceConfig) => {
     if(channels.has(instanceConfig.channel)) {
@@ -282,7 +285,6 @@ const processEvent = async (eventType:string, obj: any, webSocket:WebSocket, ins
                 case EInstanceConfigView.GROUP:
                     console.log('Group event')
                     let [_groupType, groupName] = instanceConfig.group.split('+')
-                    console.log(_groupType, groupName, podName)
                     // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
                     if (podName.startsWith(groupName)) {  
                         console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName} on group`)
@@ -304,7 +306,6 @@ const processEvent = async (eventType:string, obj: any, webSocket:WebSocket, ins
                     break
                 case EInstanceConfigView.CONTAINER:
                     console.log('Container event')
-                    console.log(instanceConfig)
                     // container has the form: podname+containername (includes a plus sign as separating char)
                     let instanceContainers = Array.from (new Set (instanceConfig.container.split(',').map (c => c.split('+')[1])))
                     let instancePods = Array.from (new  Set (instanceConfig.container.split(',').map (c => c.split('+')[0])))
@@ -1045,11 +1046,11 @@ const initKubernetesCluster = async (token:string, metricsRequired:boolean, even
     if (eventsRequired) {
         clusterInfo.events = new EventsTools(clusterInfo)
         clusterInfo.events.startEvents()
-        for (let chan of channels.values()) {
-            if (chan.getChannelData().events) {
-                clusterInfo.events.addSubscriber(chan)
-            }
-        }
+        // for (let chan of channels.values()) {
+        //     if (chan.getChannelData().events) {
+        //         clusterInfo.events.addSubscriber(chan)
+        //     }
+        // }
     }
 }
 
@@ -1245,9 +1246,7 @@ getExecutionEnvironment().then( async (exenv:string) => {
         }))
 
         const getDynamicTarget = (req: Request): string => {
-            console.log('gdt')
             let dest= req.cookies['x-kwirth-forward']
-            console.log(dest)  // es un object
             return 'http://'+dest
         }
 
@@ -1273,17 +1272,15 @@ getExecutionEnvironment().then( async (exenv:string) => {
                     return podIp
                 }
                 else {
-                    console.log("El pod existe pero aún no tiene IP asignada (¿está pendiente?).")
+                    console.log('Pod exists, but it seems to not to have an assigned IP')
                 }
             }
             catch (err) {
-                console.error("Error al obtener el pod")
+                console.error('Error getting pod')
             }
         }
 
         app.use(async (req: Request, res: Response, next: NextFunction) => {
-            console.log('request received', req.url)
-
             if (req.url.startsWith(`/healthz`) || req.url.startsWith(`/health`)) {
                 return next()
             }
@@ -1394,8 +1391,8 @@ getExecutionEnvironment().then( async (exenv:string) => {
         }
     }
 )
-.catch( (error) => {
-    console.log (error)
+.catch( (err) => {
+    console.log (err)
     console.log ('Cannot determine execution environment')
     process.exit()
 })

@@ -1,8 +1,8 @@
-import { IInstanceConfig, ISignalMessage, IInstanceMessage, AccessKey, accessKeyDeserialize, ClusterTypeEnum, BackChannelData, KwirthData, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageLevel} from '@jfvilas/kwirth-common'
+import { IInstanceConfig, ISignalMessage, IInstanceMessage, AccessKey, ClusterTypeEnum, BackChannelData, KwirthData, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageLevel} from '@jfvilas/kwirth-common'
 import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel'
 import { Request, Response } from 'express'
-import { CoreV1EventList, Watch } from '@kubernetes/client-node'
+import { CoreV1EventList } from '@kubernetes/client-node'
 import { applyResource, cronJobStatus, cronJobTrigger, nodeCordon, nodeDrain, nodeUnCordon, podEvict, setIngressClassAsDefault, throttleExcute } from '../../tools/KubernetesTools'
 const yaml = require('js-yaml')
 
@@ -15,6 +15,7 @@ export enum MagnifyCommandEnum {
     APPLY = 'apply',
     DELETE = 'delete',
     LIST = 'list',
+    SUBSCRIBE = 'subscribe',
     CLUSTERINFO = 'clusterinfo',
     LISTCRD = 'listcrd',
     WATCH = 'watch',
@@ -53,10 +54,6 @@ export interface IMagnifyMessageResponse extends IInstanceMessage {
 
 export interface IInstance {
     instanceId: string
-    //accessKey: AccessKey
-    //configData: IMagnifyConfig
-    //paused: boolean
-    //watch: Watch
 }
 
 class MagnifyChannel implements IChannel {
@@ -207,11 +204,7 @@ class MagnifyChannel implements IChannel {
         let instance = instances.find(i => i.instanceId === instanceConfig.instance)
         if (!instance) {
             instance = {
-                //accessKey: accessKeyDeserialize(instanceConfig.accessKey),
                 instanceId: instanceConfig.instance,
-                //configData: instanceConfig.data,
-                //paused: false,
-                //watch: new Watch(this.clusterInfo.kubeConfig)
             }
             instances.push(instance)
         }
@@ -391,6 +384,12 @@ class MagnifyChannel implements IChannel {
                 return
             }
             
+            case MagnifyCommandEnum.SUBSCRIBE: {
+                console.log(`Do SUBSCRIBE`)
+                this.clusterInfo.events.addSubscriber(this, magnifyMessage.params!)
+                return
+            }
+            
             case MagnifyCommandEnum.CLUSTERINFO:
                 this.sendDataMessage(webSocket, instance, '1', MagnifyCommandEnum.CLUSTERINFO, JSON.stringify((await this.clusterInfo.versionApi.getCode())))
                 break
@@ -502,12 +501,19 @@ class MagnifyChannel implements IChannel {
             throttleExcute(magnifyMessage.params!.join(','), async () => {
                 for (let param of magnifyMessage.params!) {
                     switch (param) {
+                        case 'ComponentStatus':
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listComponentStatus()))
+                            break
                         case 'Pod':
                             this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listPodForAllNamespaces()))
+                            break
+                        case 'PodMetrics':
                             this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.crdApi.listCustomObjectForAllNamespaces({ group: 'metrics.k8s.io', version: 'v1beta1', plural: 'pods' })))
                             break
                         case 'Node':
                             this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listNode()))
+                            break
+                        case 'NodeMetrics':
                             this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.crdApi.listCustomObjectForAllNamespaces({ group: 'metrics.k8s.io', version: 'v1beta1', plural: 'nodes' })))
                             break
                         case 'Namespace':
@@ -589,6 +595,18 @@ class MagnifyChannel implements IChannel {
                             break
                         case 'PersistentVolume':
                             this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.coreApi.listPersistentVolume()))
+                            break
+                        case 'VolumeAttachment':
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.storageApi.listVolumeAttachment()))
+                            break
+                        case 'CSIDriver':
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.storageApi.listCSIDriver()))
+                            break
+                        case 'CSINode':
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.storageApi.listCSINode()))
+                            break
+                        case 'CSIStorageCapacity':
+                            this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.storageApi.listCSIStorageCapacityForAllNamespaces()))
                             break
                         case 'StorageClass':
                             this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(await this.clusterInfo.storageApi.listStorageClass()))

@@ -62,7 +62,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
     let expanderId = 0
     let labelWidth = 15
 
-    const renderValue = (rootObj:any, srcobj:any, src:string, format:string, style:string[], level:number, details?:IDetailsItem[], invoke?:(ro:any, o:any) => string[], itemx?:IDetailsItem) : JSX.Element => {
+    const renderValue = (rootObj:any, srcobj:any, src:string, format:string, style:string[], level:number, content?:IDetailsItem[], invoke?:(ro:any, o:any) => string[], itemx?:IDetailsItem) : JSX.Element => {
         if (src.startsWith('$')) return <Typography fontWeight={style.includes('bold')?'700':''}>{src.substring(1)}</Typography>
         let addLink = false
         if (src.startsWith('#')) {
@@ -197,13 +197,12 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
             case 'edit':
                 containsEdit=true
-                //+++onChange={(e) => props.onChangeData(src,e.target.value)}
                 let valEdit = _.get(obj,src)
                 if (style.includes('base64')) valEdit = atob(valEdit)
                 if (style.includes('multiline'))
-                    return <TextareaAutosize name={src} defaultValue={valEdit} style={{width:'100%', marginTop:1, marginBottom:1, resize:'vertical', minHeight: '64px'}}/>
+                    return <TextareaAutosize name={src} defaultValue={valEdit} style={{width:'100%', marginTop:1, marginBottom:1, resize:'vertical', minHeight: '64px'}} onChange={(e) => props.onChangeData(src, e.target.value)}/>
                 else
-                    return <TextField name={src} defaultValue={valEdit} maxRows={5} sx={{width:'100%', mt:1, mb:1}} size='small'/>
+                    return <TextField name={src} defaultValue={valEdit} maxRows={5} sx={{width:'100%', mt:1, mb:1}} size='small' onChange={(e) => props.onChangeData(src, e.target.value)}/>
 
             case 'booleankey':
                 if (_.get(obj,src)===true) return <>{src}</>
@@ -248,26 +247,26 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 }
                 if (!items) return <></>
 
-                if (style.includes('table') && details) {
+                if (style.includes('table') && content) {
                     return <TableContainer component={Paper} elevation={0} sx={{border: '1px solid #e0e0e0', mt:1, mb:1}}>
                         <Table size='small' sx={{width:'100%'}}>
                             <TableHead>
                                 <TableRow>
-                                    {details.map((c:IDetailsItem) => <TableCell>{c.text}</TableCell>)}
+                                    {content.map((c:IDetailsItem) => <TableCell>{c.text}</TableCell>)}
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 { items.map((row:any) => {
                                     return <TableRow>
-                                        {details.map((key:IDetailsItem) => {
-                                            let subcontent = details.find((c:IDetailsItem) => c.name===key.name)
-                                            if (!subcontent || !details) return <></>
+                                        {content.map((key:IDetailsItem) => {
+                                            let subcontent = content.find((c:IDetailsItem) => c.name===key.name)
+                                            if (!subcontent || !content) return <></>
                                             return <TableCell> {
                                                 typeof _.get(row,key.source[0]) === 'object'?
                                                     (Array.isArray(_.get(row,key.source[0]))? 
                                                         <>{renderValue(rootObj, row, key.source[0], subcontent.format, key.style||[], level+1, subcontent.items, undefined)}</>
                                                         :
-                                                        <>{renderValue(rootObj, row, key.source[0], details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.format, details.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.style||[], level+1, [subcontent], undefined)}</>
+                                                        <>{renderValue(rootObj, row, key.source[0], content.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.format, content.find((kx:IDetailsItem) => kx.source[0]===key.source[0])!.style||[], level+1, [subcontent], undefined)}</>
                                                     )
                                                     :
                                                     <>{renderValues(rootObj, row, key, level+1)}</>
@@ -281,16 +280,16 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 }
                 else {
                     return  <>{items.map((row:any, rowIndex:number) => {
-                        if (!details) return <></>
+                        if (!content) return <></>
 
                         return (
                             <Stack direction={style.includes('column')?'column':'row'} sx={{width:style.includes('fullwidth')?'100%':'auto'}}>
                                 { style.includes('column')?
-                                    details.map((c:IDetailsItem) => {
+                                    content.map((c:IDetailsItem) => {
                                         return renderValues(rootObj, row, c, level+1)
                                     })
                                     :
-                                    details.map((c:IDetailsItem) => {
+                                    content.map((c:IDetailsItem) => {
                                         return <>{renderValues(rootObj, row, c, level+1)} <>{rowIndex<items.length-1?',\u00a0':''}</> </>
                                     }) 
                                 }
@@ -321,8 +320,9 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 }
                 else {
                     return  <>{_.get(obj,src).map((row:any) => {
-                        if (!details) return <></>
-                        return <>{details.map((c:IDetailsItem) => <>{renderItem(rootObj, row, c, 25, level+1)}</>)}</>  //+++ este 25????
+                        if (!content) return <></>
+
+                        return <>{content.map((c:IDetailsItem) => <>{renderItem(rootObj, row, c, labelWidth, level+1)}</>)}</>
                     })}</>
                 }
 
@@ -364,9 +364,9 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                     }
                 }
                 else {
-                    if (details) {
+                    if (content) {
                         // selected object properties
-                        return <>{details.map( (c:IDetailsItem) => {
+                        return <>{content.map( (c:IDetailsItem) => {
                             return <Stack direction={c.style && c.style.includes('column')?'column':'row'}>
                                 <Typography fontWeight={style && style.includes('keybold')?'700':''}>{c.text}:&nbsp;</Typography>
                                 {renderValues(rootObj, obj,c, level+1)}
@@ -402,18 +402,20 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 }
 
             case 'table':
-                if (!details) return <></>
+                if (!content) return <></>
                 let result= _.get(obj,src) && <TableContainer component={Paper} elevation={0} sx={{border: '1px solid #e0e0e0', mt:1, mb:1}}>
                     <Table size='small'>
                         <TableHead>
                             <TableRow>
-                                {details.map ((c:IDetailsItem) => <TableCell>{c.text}</TableCell>)}
+                                {content.map ((c:IDetailsItem) => <TableCell>{c.text}</TableCell>)}
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             { _.get(obj,src).map((row:any) => {
                                 return <TableRow>
-                                    {details.map((c:IDetailsItem) => <TableCell>{renderValues(rootObj, row, c, level+1)}</TableCell>)}
+                                    {content.map((c:IDetailsItem) => {
+                                        return <TableCell>{renderValues(rootObj, row, c, level+1)}</TableCell>
+                                    })}
                                 </TableRow>
                             })}
                         </TableBody>
@@ -455,7 +457,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
     }
 
     const renderItem = (rootObj:any, obj:any, item:IDetailsItem, width:number, level:number) => {
-        let expander='class-kwirth-'+expanderId
+        let expander='class-kwirth-'+expanderId  // we use this classname as a trick for searchng th objext inside the DOM
         if (!item.source[0].startsWith('@') && item.style?.includes('ifpresent') && !_.get(obj,item.source[0])) return <></>
 
         if (item.source && item.source[0]==='@jsx[]') {

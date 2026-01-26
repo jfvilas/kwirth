@@ -134,7 +134,6 @@ export class OpsChannel implements IChannel {
         }
 
         let opsData:IOpsData = channelObject.data
-        let opsConfig:IOpsConfig= channelObject.config
 
         while (channelObject.instanceId === '') {
             await new Promise(resolve => setTimeout(resolve, 10))

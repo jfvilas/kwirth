@@ -8,7 +8,8 @@ let basicCluster:IDetailsItem[] = [
         name: 'created',
         text: 'Created',
         source: ['metadata.creationTimestamp'],
-        format: 'string'
+        format: 'string',
+        style: ['ifpresent']
     },
     {
         name: 'name',
@@ -73,7 +74,7 @@ let conditions:IDetailsItem = {
     text: 'Conditions',
     source: ['status.conditions'],
     format: 'objectlist',
-    style: ['column'],  // 'collapse'
+    style: ['column', 'ifpresent'],  // 'collapse'
     items: [
         {
             name: 'type',
@@ -189,7 +190,7 @@ objectSections.set('PersistentVolumeClaim', [
                 text: 'Pods',
                 source: ['@string[]'],
                 format: 'stringlist',
-                style: ['column']
+                style: ['column', 'link:$Pod:name']
            },
            {
                 name: 'status',
@@ -309,6 +310,134 @@ objectSections.set('StorageClass', [
     events
 ])
 
+objectSections.set('VolumeAttachment', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        root: 'origin',
+        items: [
+            ...basicCluster,
+            {
+                name: 'attacher',
+                text: 'Attacher',
+                source: ['#spec.attacher'],
+                format: 'string',
+                style: ['link:$CSIDriver:spec.attacher']
+           },
+            {
+                name: 'nodeName',
+                text: 'Node Name',
+                source: ['#spec.nodeName'],
+                format: 'string',
+                style: ['link:$Node:spec.nodeName']
+           },
+           {
+                name: 'persistentVolumeName',
+                text: 'PV',
+                source: ['#spec.source.persistentVolumeName'],
+                format: 'string',
+                style: ['link:$PersistentVolume:spec.source.persistentVolumeName']
+           },
+        ]
+    },
+    events
+])
+
+objectSections.set('CSIDriver', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        root: 'origin',
+        items: [
+            ...basicCluster,
+            {
+                name: 'attachRequired',
+                text: 'Attach Required',
+                source: ['spec.attachRequired'],
+                format: 'boolean',
+                style: [ 'true:Yes:green','false:No:red', ':No:red']
+            },
+            {
+                name: 'fsGroupPolicy',
+                text: 'Group Policy',
+                source: ['spec.fsGroupPolicy'],
+                format: 'string',
+            },
+            {
+                name: 'republish',
+                text: 'Requires republish',
+                source: ['spec.requiresRepublish'],
+                format: 'boolean',
+                style: [ 'true:Yes:green','false:No:red', ':No:red']
+            },
+            {
+                name: 'linuxMount',
+                text: 'LinuxMount',
+                source: ['spec.seLinuxMount'],
+                format: 'boolean',
+                style: [ 'true:Yes:green','false:No:red', ':No:red']
+            },
+            {
+                name: 'stgCap',
+                text: 'Stg Capacity',
+                source: ['spec.storageCapacity'],
+                format: 'boolean',
+                style: [ 'true:Yes:green','false:No:red', ':No:red']
+            },
+            {
+                name: 'volumeLifecycleModes',
+                text: 'Lifecycle modes',
+                source: ['spec.volumeLifecycleModes'],
+                format: 'stringlist',
+            },
+        ]
+    },
+    events
+])
+
+
+objectSections.set('CSINode', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        root: 'origin',
+        items: [
+            ...basicCluster,
+            {
+                name: 'drivers',
+                text: 'Drivers',
+                source: ['spec.drivers'],
+                format: 'objectlist',
+                style: ['column'],
+                items: [
+                    {
+                        name: 'name',
+                        text: 'Name',
+                        source: ['#name'],
+                        format: 'string',
+                        style: [ 'link:$CSIDriver:name']
+                    },
+                ]
+            },
+        ]
+    },
+    events
+])
+
+
+objectSections.set('CSIStorageCapacity', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        root: 'origin',
+        items: [
+            ...basicCluster,
+        ]
+    },
+    events
+])
+
+
 objectSections.set('NetworkPolicy', [
     {
         name: 'properties',
@@ -377,7 +506,8 @@ objectSections.set('Service', [
                 text: 'Ports',
                 source: ['spec.ports'],
                 format: 'objectlist',
-                style: ['fullwidth', 'column'],
+                //style: ['fullwidth', 'column'],
+                style: ['column'],
                 items: [
                     {
                         name: 'forward',
@@ -731,6 +861,52 @@ objectSections.set('Node', [
                         source: ['status.capacity.pods'],
                         format: 'string',
                     }                    
+                ]
+            },
+        ]
+    },
+    events
+])
+
+objectSections.set('ComponentStatus', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        root: 'origin',
+        items: [
+            ...basicCluster,
+        ]
+    },
+    {
+        name: 'conditions',
+        text: 'Conditions',
+        root: 'origin',
+        items: [
+            {
+                name: 'conditions',
+                text: '',
+                source: ['conditions'],
+                format: 'objectlist',
+                style: ['table'],
+                items: [
+                    {
+                        name: 'status',
+                        text: 'Status',
+                        source: ['status'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'type',
+                        text: 'Type',
+                        source: ['type'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'message',
+                        text: 'Message',
+                        source: ['message'],
+                        format: 'string',
+                    },
                 ]
             },
         ]
@@ -1605,39 +1781,6 @@ objectSections.set('Pod', [
         ]
     },
     {
-        name: 'volumes',
-        text: 'Volumes',
-        root: 'origin',
-        items: [
-            {
-                name: 'volume',
-                text: 'Volume',
-                source: ['spec.volumes'],
-                format: 'table',
-                items: [
-                    {
-                        name: 'name',
-                        text: 'Name',
-                        source: ['name'],
-                        format: 'string'
-                    },
-                    {
-                        name: 'mode',
-                        text: 'Mount Mode',
-                        source: ['projected.defaultMode'],
-                        format: 'string'
-                    },
-                    {
-                        name: 'secret',
-                        text: 'Secret',
-                        source: ['secret.secretName'],
-                        format: 'string'
-                    },
-                ]
-            },
-        ]
-    },
-    {
         name: 'containers',
         text: 'Containers',
         root: 'origin',
@@ -1647,10 +1790,11 @@ objectSections.set('Pod', [
                 text: '',
                 source: ['status.containerStatuses|spec.containers:name'],
                 format: 'objectobject',
+                style: ['column'],
                 items: [
                     {
                         name: 'name',
-                        text: '',   // no text header => show property value as header
+                        text: '',
                         source: ['name'],
                         format: 'string',
                         style:['bold']
@@ -1667,14 +1811,14 @@ objectSections.set('Pod', [
                         text: 'Image',
                         source: ['image'],
                         format: 'string',
-                        style: ['edit']
+                        //style: ['edit']
                     },
                     {
                         name: 'ports',
                         text: 'Ports',
                         source: ['ports'],
                         format: 'objectlist',
-                        style: ['fullwidth'],
+                        style: ['fullwidth', 'ifpresent'],
                         items: [
                             {
                                 name: 'forward',
@@ -1689,16 +1833,21 @@ objectSections.set('Pod', [
                         text: 'Environment',
                         source: ['env'],
                         format: 'objectlist',
+                        style: ['table'],
                         items: [
                             {
-                                name: 'oneenv',
-                                text: 'Env',
-                                source: ['name','$: ', 'value'],
+                                name: 'env',
+                                text: 'Variable',
+                                source: ['name'],
                                 format: 'string'
-                            }
-                            
+                            },
+                            {
+                                name: 'val',
+                                text: 'Value',
+                                source: ['value'],
+                                format: 'string'
+                            },
                         ],
-                        style:['column']
                     },
                     {
                         name: 'mounts',
@@ -1733,11 +1882,73 @@ objectSections.set('Pod', [
                         text: 'Limits',
                         source: ['resources.limits'],
                         format: 'objectprops',
-                        style: ['table','ifpresent']
+                        style: ['table', 'ifpresent']
                     },
                 ],
-                style: ['column']
             }
+        ]
+    },
+    {
+        name: 'volumes',
+        text: 'Volumes',
+        root: 'origin',
+        items: [
+            {
+                name: 'volume',
+                text: '',
+                source: ['spec.volumes'],
+                format: 'table',
+                items: [
+                    {
+                        name: 'name',
+                        text: 'Name',
+                        source: ['name'],
+                        format: 'string'
+                    },
+                    {
+                        name: 'pvc',
+                        text: 'PVC',
+                        source: ['#persistentVolumeClaim.claimName'],
+                        format: 'string',
+                        style: ['link:$PersistentVolumeClaim:persistentVolumeClaim.claimName']
+                    },
+                    // { //+++  al tener {} react lo interpreta como objeto, y queremos un string  
+                    //     // +++ podemos hace que ! significa utilizarlo como source pero no escribir su valor, el valor saldrá de aplicar el style
+                    //     name: 'emptydir',
+                    //     text: 'Empty Dir',
+                    //     source: ['!emptyDir'],
+                    //     format: 'string',
+                    //     style: ['{}:Yes:green','undefined:No:red','ifpresent']
+                    // },
+                    {
+                        name: 'configmap',
+                        text: 'ConfigMap',
+                        source: ['#configMap.name'],
+                        format: 'string',
+                        style: ['link:$ConfigMap:configMap.name']
+                    },
+                    {
+                        name: 'mode',
+                        text: 'Mount Mode',
+                        source: ['projected.defaultMode', 'configMap.defaultMode', 'secret.defaultMode'],
+                        format: 'string'
+                    },
+                    {
+                        name: 'secret',
+                        text: 'Secret',
+                        source: ['#secret.secretName'],
+                        format: 'string',
+                        style: ['link:$Secret:secret.secretName']
+                    },
+                    {
+                        name: 'sources',
+                        text: 'Sources',
+                        source: ['projected.sources'],
+                        format: 'objectlist',
+                        style: ['keyname']
+                    },
+                ]
+            },
         ]
     },
     events
@@ -1756,6 +1967,12 @@ objectSections.set('Deployment', [
                 source: ['spec.selector.matchLabels'],
                 format: 'objectprops',
                 style:['column']
+            },
+            {
+                name: 'replicas',
+                text: 'Replicas',
+                source: ['spec.replicas'],
+                format: 'string'
             },
             {
                 name: 'strategyType',
@@ -1959,7 +2176,8 @@ objectSections.set('StatefulSet', [
                 name: 'selector',
                 text: 'Selector',
                 source: ['spec.selector.matchLabels'],
-                format: 'objectprops'
+                format: 'objectprops',
+                style: ['column']
             },
             {
                 name: 'images',
@@ -2030,29 +2248,30 @@ objectSections.set('Job', [
                 source: ['spec.parallelism'],
                 format: 'string',
             },
-            {
-                name: 'pods',
-                text: 'Pods',
-                source: ['@string[]'],
-                format: 'objectlist',
-                style: ['table'],
-                items: [
-                    {
-                        name: 'name',
-                        text: 'Name',
-                        source: ['metadata.name'],
-                        format: 'string',
-                    },
-                    {
-                        name: 'status',
-                        text: 'Status',
-                        source: ['status.phase'],
-                        format: 'string',
-                    },
-                ]
-            },
+            // {
+            //     name: 'pods',
+            //     text: 'Pods',
+            //     source: ['@string[]'],
+            //     format: 'objectlist',
+            //     style: ['table'],
+            //     items: [
+            //         {
+            //             name: 'name',
+            //             text: 'Name',
+            //             source: ['metadata.name'],
+            //             format: 'string',
+            //         },
+            //         {
+            //             name: 'status',
+            //             text: 'Status',
+            //             source: ['status.phase'],
+            //             format: 'string',
+            //         },
+            //     ]
+            // },
         ]
     },
+    pods,
     events
 ])
 
@@ -2111,7 +2330,7 @@ objectSections.set('CronJob', [
         items: [
             {
                 name: 'jobs',
-                text: 'Jobs',
+                text: '',
                 source: ['@string[]'],  //+++ should be @object[]
                 format: 'objectlist',
                 style: ['table'],
@@ -2147,7 +2366,6 @@ objectSections.set('ServiceAccount', [
                 name: 'tokens',
                 text: 'Tokens',
                 source: ['@string[]'],
-                //invoke: () => { return ['aa',`bb`]},
                 format: 'stringlist',
                 style: ['column', 'char:30', 'ifpresent']
             },
@@ -2172,7 +2390,7 @@ objectSections.set('ClusterRole', [
         items: [
             {
                 name: 'rules',
-                text: 'Rules',
+                text: '',
                 source: ['rules'],
                 format: 'objectlist',
                 items: [
@@ -2228,7 +2446,7 @@ objectSections.set('Role', [
         items: [
             {
                 name: 'rules',
-                text: 'Rules',
+                text: '',
                 source: ['rules'],
                 format: 'objectlist',
                 items: [
@@ -2302,7 +2520,7 @@ objectSections.set('ClusterRoleBinding', [
         items: [
             {
                 name: 'bindings',
-                text: 'Bindings',
+                text: '',
                 source: ['subjects'],
                 format: 'objectlist',
                 items: [
@@ -2376,7 +2594,7 @@ objectSections.set('RoleBinding', [
         items: [
             {
                 name: 'bindings',
-                text: 'Bindings',
+                text: '',
                 source: ['subjects'],
                 format: 'objectlist',
                 items: [

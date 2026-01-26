@@ -4,23 +4,22 @@ import { Watch } from '@kubernetes/client-node'
 
 export class EventsTools {
     private clusterInfo:ClusterInfo
-    private subscribers:IChannel[]
+    private subscribers: Map<IChannel, string[]>
 
     constructor (clusterInfo:ClusterInfo) {
         this.clusterInfo = clusterInfo
-        this.subscribers = []
+        this.subscribers = new Map()
     }
 
-    addSubscriber(c:IChannel) {
-        this.subscribers.push(c)
+    addSubscriber(c:IChannel, kinds:string[]) {
+        this.subscribers.set(c,kinds)
     }
 
     removeSubscriber(c:IChannel) {
-        let i = this.subscribers.indexOf(c)
-        if (i>=0) this.subscribers.splice(i,1)
+        if (this.subscribers.has(c)) this.subscribers.delete(c)
     }
 
-    async startResourceWatcher (resourcePath: string, eventHandler: (type: string, obj: any, subscribersList:IChannel[]) => void) {
+    async startResourceWatcher (resourcePath: string, eventHandler: (type: string, obj: any, subscribersList:Map<IChannel, string[]>) => void) {
         const watchLoop = async () => {
             console.log(`[${resourcePath}] Starting watcher for path: ${resourcePath}`);
             const watch = new Watch(this.clusterInfo.kubeConfig)
@@ -40,16 +39,17 @@ export class EventsTools {
                 );
             }
             catch (error: any) {
-                console.error(`[${resourcePath}] Error al configurar el watcher: ${error.message}`)
+                console.error(`[${resourcePath}] Error configuring watcher: ${error.message}`)
                 setTimeout(watchLoop, 5000)
             }
         }
         watchLoop()
     }
 
-    handleEvent (type: string, obj: any, subscribersList:IChannel[]) {
-        for (let subscriber of subscribersList) {
-            subscriber.processObjectEvent(type, obj)
+    handleEvent (type: string, obj: any, subscribersList:Map<IChannel, string[]>) {
+        for (let subscriber of subscribersList.entries()) {
+            console.log(type, obj.metadata.name)
+            if (subscriber[1].includes(obj.kind)) subscriber[0].processObjectEvent(type, obj)
         }
     }
 
@@ -79,6 +79,7 @@ export class EventsTools {
         this.startResourceWatcher('/apis/admissionregistration.k8s.io/v1/mutatingwebhookconfigurations', this.handleEvent)
 
 
+
         this.startResourceWatcher('/api/v1/pods', this.handleEvent)
         this.startResourceWatcher('/apis/apps/v1/deployments', this.handleEvent)
         this.startResourceWatcher('/apis/apps/v1/daemonsets', this.handleEvent)
@@ -92,6 +93,10 @@ export class EventsTools {
         this.startResourceWatcher('/api/v1/persistentvolumes', this.handleEvent)
         this.startResourceWatcher('/api/v1/persistentvolumeclaims', this.handleEvent)
         this.startResourceWatcher('/apis/storage.k8s.io/v1/storageclasses', this.handleEvent)
+        this.startResourceWatcher('/apis/storage.k8s.io/v1/volumeattachments', this.handleEvent)
+        this.startResourceWatcher('/apis/storage.k8s.io/v1/csinodes', this.handleEvent)
+        this.startResourceWatcher('/apis/storage.k8s.io/v1/csidrivers', this.handleEvent)
+        this.startResourceWatcher('/apis/storage.k8s.io/v1/csistoragecapacities', this.handleEvent)
 
 
         this.startResourceWatcher('/api/v1/serviceaccounts', this.handleEvent)

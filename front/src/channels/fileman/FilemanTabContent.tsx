@@ -255,7 +255,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     fontFamily='Roboto, Helvetica, Arial, sans-serif'
                     height='100%'
                     className='custom-fm'
-                    search='auto'
+                    searchMode='auto'
                 />
                 { msgBox }
             </Box>

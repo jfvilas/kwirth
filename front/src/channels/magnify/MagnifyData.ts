@@ -3,6 +3,7 @@ import { IFileObject } from '@jfvilas/react-file-manager'
 import { IContentExternalObject } from './components/ContentExternal'
 import { IContentEditObject } from './components/ContentEdit'
 import { IContentDetailsObject } from './components/ContentDetails'
+import { MagnifyUserSettings } from './MagnifyUserSettings'
 
 export interface IMagnifyData {
     clusterInfo: any
@@ -20,6 +21,10 @@ export interface IMagnifyData {
 
     metricsCluster: any[]
     metricsPodDetail: any[]
+
+    updateNamespaces?: (action:string, namespace:string) => void
+    userSettings: MagnifyUserSettings
+
 }
 
 export class MagnifyData implements IMagnifyData {
@@ -35,6 +40,8 @@ export class MagnifyData implements IMagnifyData {
     pendingWebSocketRequests = new Map<string, (value: any) => void>()
     metricsCluster = []
     metricsPodDetail = []
+    updateNamespaces = undefined
+    userSettings = new MagnifyUserSettings()
 }
 
 export enum EMagnifyCommand {
@@ -44,6 +51,7 @@ export enum EMagnifyCommand {
     DELETE = 'delete',
     CLUSTERINFO = 'clusterinfo',
     LIST = 'list',
+    SUBSCRIBE = 'subscribe',
     LISTCRD = 'listcrd',
     WATCH = 'watch',
     EVENTS = 'events',

@@ -38,6 +38,12 @@ const menu = [
         class: 'classNamespace',
         children: 'Namespace'
     },
+    {   name: 'Component status',
+        isDirectory: true,
+        path: '/cluster/ComponentStatus',
+        class: 'classComponentStatus',
+        children: 'ComponentStatus'
+    },
 
 
 
@@ -58,48 +64,56 @@ const menu = [
         path: '/workload/Pod',
         layout: 'list',  
         class: 'classPod',
+        categories: [ 'namespace', 'controller' ],
         children: 'Pod'
     },
     {   name: 'Deployments',
         isDirectory: true,
         path: '/workload/Deployment',
         class: 'classDeployment',
+        categories: [ 'namespace' ],
         children: 'Deployment'
     },
     {   name: 'Daemon Sets',
         isDirectory: true,
         path: '/workload/DaemonSet',
         class: 'classDaemonSet',
+        categories: [ 'namespace' ],
         children: 'DaemonSet'
     },
     {   name: 'Replica Sets',
         isDirectory: true,
         path: '/workload/ReplicaSet',
         class: 'classReplicaSet',
+        categories: [ 'namespace' ],
         children: 'ReplicaSet'
     },
     {   name: 'Replication Controllers',
         isDirectory: true,
         path: '/workload/ReplicationController',
         class: 'classReplicationController',
+        categories: [ 'namespace' ],
         children: 'ReplicationController'
     },
     {   name: 'Stateful Sets',
         isDirectory: true,
         path: '/workload/StatefulSet',
         class: 'classStatefulSet',
+        categories: [ 'namespace' ],
         children: 'StatefulSet'
     },
     {   name: 'Jobs',
         isDirectory: true,
         path: '/workload/Job',
         class: 'classJob',
+        categories: [ 'namespace' ],
         children: 'Job'
     },
     {   name: 'Cron jobs',
         isDirectory: true,
         path: '/workload/CronJob',
         class: 'classCronJob',
+        categories: [ 'namespace' ],
         children: 'CronJob'
     },
 
@@ -121,36 +135,42 @@ const menu = [
         isDirectory: true,
         path: '/config/ConfigMap',
         class: 'classConfigMap',
+        categories: [ 'namespace' ],
         children: 'ConfigMap'
     },
     {   name: 'Secrets',
         isDirectory: true,
         path: '/config/Secret',
         class: 'classSecret',
+        categories: [ 'namespace' ],
         children: 'Secret'
     },
     {   name: 'Resource Quota',
         isDirectory: true,
         path: '/config/ResourceQuota',
         class: 'classResourceQuota',
+        categories: [ 'namespace' ],
         children: 'ResourceQuota'
     },
     {   name: 'Limit Range',
         isDirectory: true,
         path: '/config/LimitRange',
         class: 'classLimitRange',
+        categories: [ 'namespace' ],
         children: 'LimitRange'
     },
     {   name: 'Horizontal Pod Autoscaler',
         isDirectory: true,
         path: '/config/HorizontalPodAutoscaler',
         class: 'classHorizontalPodAutoscaler',
+        categories: [ 'namespace' ],
         children: 'HorizontalPodAutoscaler'
     },
     {   name: 'Pod Disruption Budget',
         isDirectory: true,
         path: '/config/PodDisruptionBudget',
         class: 'classPodDisruptionBudget',
+        categories: [ 'namespace' ],
         children: 'PodDisruptionBudget'
     },
     {   name: 'Priority Classes',
@@ -160,8 +180,8 @@ const menu = [
         children: 'PriorityClass'
     },
     {   name: 'Runtime Classes',
-        isDirectory: true,
         path: '/config/RuntimeClass',
+        isDirectory: true,
         class: 'classRuntimeClass',
         children: 'RuntimeClass'
     },
@@ -169,6 +189,7 @@ const menu = [
         isDirectory: true,
         path: '/config/Lease',
         class: 'classLease',
+        categories: [ 'namespace' ],
         children: 'Lease'
     },
     {   name: 'Validating webhooks',
@@ -202,6 +223,7 @@ const menu = [
         path: '/network/Service',
         layout: 'list',  
         class: 'classService',
+        categories: [ 'namespace' ],
         children: 'Service'
     },
     {   name: 'Endpoints\u00a0',
@@ -209,6 +231,7 @@ const menu = [
         path: '/network/Endpoints',
         layout: 'list',  
         class: 'classEndpoints',
+        categories: [ 'namespace' ],
         children: 'Endpoints'
     },
     {   name: 'Ingresses',
@@ -216,6 +239,7 @@ const menu = [
         path: '/network/Ingress',
         layout: 'list',  
         class: 'classIngress',
+        categories: [ 'namespace' ],
         children: 'Ingress'
     },
     {   name: 'Ingress classes',
@@ -230,6 +254,7 @@ const menu = [
         path: '/network/NetworkPolicy',
         layout: 'list',
         class: 'classNetworkPolicy',
+        categories: [ 'namespace' ],
         children: 'NetworkPolicy'
     },
 
@@ -251,6 +276,7 @@ const menu = [
         isDirectory: true,
         path: '/storage/PersistentVolumeClaim',
         class: 'classPersistentVolumeClaim',
+        categories: [ 'namespace' ],
         children: 'PersistentVolumeClaim'
     },
     {   name: 'Persistent volumes',
@@ -259,11 +285,35 @@ const menu = [
         class: 'classPersistentVolume',
         children: 'PersistentVolume'
     },
+    {   name: 'Volume attachments',
+        isDirectory: true,
+        path: '/storage/VolumeAttachment',
+        class: 'classVolumeAttachment',
+        children: 'VolumeAttachment'
+    },
     {   name: 'Storage classes',
         isDirectory: true,
         path: '/storage/StorageClass',
         class: 'classStorageClass',
         children: 'StorageClass'
+    },
+    {   name: 'CSI Drivers',
+        isDirectory: true,
+        path: '/storage/CSIDriver',
+        class: 'classCSIDriver',
+        children: 'CSIDriver'
+    },
+    {   name: 'CSI Nodes',
+        isDirectory: true,
+        path: '/storage/CSINode',
+        class: 'classCSINode',
+        children: 'CSINode'
+    },
+    {   name: 'CSI Storage Capacity',
+        isDirectory: true,
+        path: '/storage/CSIStorageCapacity',
+        class: 'classCSIStorageCapacity',
+        children: 'CSIStorageCapacity'
     },
 
 
@@ -277,6 +327,7 @@ const menu = [
         isDirectory: true,
         path: '/access/ServiceAccount',
         class: 'classServiceAccount',
+        categories: [ 'namespace' ],
         children: 'ServiceAccount'
     },
     {   name: 'Cluster roles',
@@ -289,6 +340,7 @@ const menu = [
         isDirectory: true,
         path: '/access/Role',
         class: 'classRole',
+        categories: [ 'namespace' ],
         children: 'Role'
     },
     {   name: 'Cluster role bindings',
@@ -301,6 +353,7 @@ const menu = [
         isDirectory: true,
         path: '/access/RoleBinding',
         class: 'classRoleBinding',
+        categories: [ 'namespace' ],
         children: 'RoleBinding'
     },
 
@@ -390,7 +443,7 @@ spaces.set('Service',
                 text: 'Type',
                 source: 'type',
                 format: 'string',
-                width: 15,
+                width: 10,
                 visible: true
             },
             {
@@ -398,7 +451,7 @@ spaces.set('Service',
                 text: 'ClusterIP',
                 source: 'clusterIp',
                 format: 'string',
-                width: 15,
+                width: 10,
                 visible: true
             },
             {
@@ -406,7 +459,7 @@ spaces.set('Service',
                 text: 'Ports',
                 source: 'ports',
                 format: 'string',
-                width: 15,
+                width: 10,
                 visible: true
             },
             {
@@ -414,7 +467,7 @@ spaces.set('Service',
                 text: 'ExternalIP',
                 source: 'externalIp',
                 format: 'string',
-                width: 15,
+                width: 10,
                 visible: true
             },
             {
@@ -518,7 +571,7 @@ spaces.set('Ingress',
     {
         text:'Name',
         source:'name',
-        width:15,
+        width:25,
         leftItems: [
             {
                 name: 'details',
@@ -546,7 +599,7 @@ spaces.set('Ingress',
                 text: 'Namespace',
                 source: 'namespace',
                 format: 'string',
-                width: 10,
+                width: 15,
                 visible: true
             },
             {
@@ -562,7 +615,7 @@ spaces.set('Ingress',
                 text: 'Rules',
                 source: 'rules',
                 format: 'function',
-                width: 55,
+                width: 40,
                 visible: true
             },
             {
@@ -1091,7 +1144,7 @@ spaces.set('PodDisruptionBudget',
     {
         text:'Name',
         source:'name',
-        width:40,
+        width:30,
         leftItems: [
             {
                 name:'details',
@@ -1120,7 +1173,7 @@ spaces.set('PodDisruptionBudget',
                 text: 'Namespace',
                 source: 'namespace',
                 format: 'string',
-                width: 40,
+                width: 20,
                 visible: true
             },
             {
@@ -1128,7 +1181,7 @@ spaces.set('PodDisruptionBudget',
                 text: 'Min available',
                 source: 'minAvailable',
                 format: 'string',
-                width: 40,
+                width: 10,
                 visible: true
             },
             {
@@ -1136,7 +1189,7 @@ spaces.set('PodDisruptionBudget',
                 text: 'Max unavailable',
                 source: 'maxUnavailable',
                 format: 'string',
-                width: 40,
+                width: 10,
                 visible: true
             },
             {
@@ -1144,7 +1197,7 @@ spaces.set('PodDisruptionBudget',
                 text: 'Current Healthy',
                 source: 'currentHealthy',
                 format: 'string',
-                width: 40,
+                width: 10,
                 visible: true
             },
             {
@@ -1152,7 +1205,7 @@ spaces.set('PodDisruptionBudget',
                 text: 'Desired Healthy',
                 source: 'desiredHealthy',
                 format: 'string',
-                width: 40,
+                width: 10,
                 visible: true
             },
             {
@@ -1160,7 +1213,7 @@ spaces.set('PodDisruptionBudget',
                 text: 'Age',
                 source: 'creationTimestamp',
                 format: 'age',
-                width: 20,
+                width: 10,
                 visible: true
             }
         ]
@@ -1306,9 +1359,9 @@ spaces.set('classLease',
 )
 spaces.set('Lease',
     {
-        text:'Name',
-        source:'name',
-        width:40,
+        text: 'Name',
+        source: 'name',
+        width: 30,
         leftItems: [
             {
                 name:'details',
@@ -1337,7 +1390,7 @@ spaces.set('Lease',
                 text: 'Namespace',
                 source: 'namespace',
                 format: 'string',
-                width: 40,
+                width: 20,
                 visible: true
             },
             {
@@ -1353,7 +1406,7 @@ spaces.set('Lease',
                 text: 'Age',
                 source: 'creationTimestamp',
                 format: 'age',
-                width: 20,
+                width: 10,
                 visible: true
             }
         ]
@@ -1637,6 +1690,45 @@ spaces.set('Node',
         ]
     }
 )
+spaces.set('classComponentStatus',
+    {
+        leftItems: [
+        ]
+    }
+)
+spaces.set('ComponentStatus',
+    {
+        text:'Name',
+        source:'name',
+        width:30,
+        leftItems: [
+            {
+                name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+        ],
+        properties: [
+            {
+                name: 'status',
+                text: 'Status',
+                source: 'status',
+                format: 'string',
+                width: 20,
+                visible: true
+            },
+            {
+                name: 'message',
+                text: 'Message',
+                source: 'message',
+                format: 'string',
+                width: 50,
+                visible: true
+            },
+        ]
+    }
+)
 
 // Workload
 spaces.set('classPod',
@@ -1685,6 +1777,7 @@ spaces.set('Pod',
                 name:'logs',
                 text: 'Log',
                 icon: <Subject fontSize='small'/>,
+                multi: true,
                 permission: true,
             },
             {
@@ -2342,7 +2435,7 @@ spaces.set('CronJob',
     {
         text:'Name',
         source:'name',
-        width:25,
+        width:30,
         leftItems: [
             {   name: 'details',
                 icon: <Info fontSize='small'/>,
@@ -2382,7 +2475,7 @@ spaces.set('CronJob',
                 text: 'Namespace',
                 source: 'namespace',
                 format: 'string',
-                width: 15,
+                width: 10,
                 visible: true
             },
             {
@@ -2398,7 +2491,7 @@ spaces.set('CronJob',
                 text: 'Suspend',
                 source: 'suspend',
                 format: 'string',
-                width: 15,
+                width: 5,
                 visible: true
             },
             {
@@ -2406,7 +2499,7 @@ spaces.set('CronJob',
                 text: 'Active',
                 source: 'active',
                 format: 'function',
-                width: 10,
+                width: 5,
                 visible: true
             },
             {
@@ -2414,7 +2507,7 @@ spaces.set('CronJob',
                 text: 'Last schedule',
                 source: 'lastSchedule',
                 format: 'age',
-                width: 20,
+                width: 10,
                 visible: true
             },
             {
@@ -2422,7 +2515,7 @@ spaces.set('CronJob',
                 text: 'Next execution',
                 source: 'nextExecution',
                 format: 'function',
-                width: 20,
+                width: 10,
                 visible: true
             },
             {
@@ -2430,7 +2523,7 @@ spaces.set('CronJob',
                 text: 'Time zone',
                 source: 'timezone',
                 format: 'string',
-                width: 20,
+                width: 5,
                 visible: true
             },
             {
@@ -2438,7 +2531,7 @@ spaces.set('CronJob',
                 text: 'Age',
                 source: 'creationTimestamp',
                 format: 'age',
-                width: 20,
+                width: 10,
                 visible: true
             },
         ]
@@ -2446,6 +2539,235 @@ spaces.set('CronJob',
 )
 
 // Storage
+spaces.set('classPersistentVolumeClaim',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'New PVC',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('PersistentVolumeClaim',
+    {
+        text:'Name',
+        source:'name',
+        width:30,
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            }
+        ],
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'storageClass',
+                text: 'Storage class',
+                source: 'storageClass',
+                format: 'string',
+                width: 10,
+                visible: true
+            },
+            {
+                name: 'size',
+                text: 'Size',
+                source: 'size',
+                format: 'string',
+                width: 5,
+                visible: true
+            },
+            {
+                name: 'pods',
+                text: 'Pods',
+                source: 'pods',
+                format: 'string',
+                width: 20,
+                visible: true
+            },
+            {
+                name: 'status',
+                text: 'Status',
+                source: 'status',
+                format: 'string',
+                width: 10,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 10,
+                visible: true
+            },
+        ]
+    }
+)
+spaces.set('classPersistentVolume',
+    {
+        leftItems: [
+            {
+                name: 'create',
+                icon: <Add fontSize='small'/>,
+                text: 'New PV',
+                permission: true,
+            }
+        ]
+    }
+)
+spaces.set('PersistentVolume',
+    {
+        text: 'Name',
+        source: 'name',
+        width: 50,
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+        ],
+        properties: [
+            {
+                name: 'storageClass',
+                text: 'Storage class',
+                source: 'storageClass',
+                format: 'string',
+                width: 10,
+                visible: true
+            },
+            {
+                name: 'capacity',
+                text: 'Capacity',
+                source: 'capacity',
+                format: 'string',
+                width: 10,
+                visible: true
+            },
+            {
+                name: 'clain',
+                text: 'Claim',
+                source: 'claim',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'status',
+                text: 'Status',
+                source: 'status',
+                format: 'string',
+                width: 5,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 10,
+                visible: true
+            },
+        ]
+    }
+)
+spaces.set('classVolumeAttachment',
+    {
+        leftItems: [
+        ]
+    }
+)
+spaces.set('VolumeAttachment',
+    {
+        text:'Name',
+        source:'name',
+        width: 35,
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+        ],
+        properties: [
+            {
+                name: 'attacher',
+                text: 'Attacher',
+                source: 'attacher',
+                format: 'string',
+                width: 15,
+                visible: true
+            },
+            {
+                name: 'nodeName',
+                text: 'Node name',
+                source: 'nodeName',
+                format: 'string',
+                width: 20,
+                visible: true
+            },
+            {
+                name: 'source',
+                text: 'Source',
+                source: 'source',
+                format: 'string',
+                width: 20,
+                visible: true
+            },
+            {
+                name: 'status',
+                text: 'Status',
+                source: 'status',
+                format: 'string',
+                width: 5,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 5,
+                visible: true
+            }
+        ]
+    }
+)
+
 spaces.set('classStorageClass',
     {
         leftItems: [
@@ -2517,19 +2839,14 @@ spaces.set('StorageClass',
         ]
     }
 )
-spaces.set('classPersistentVolumeClaim',
+
+spaces.set('classCSIDriver',
     {
         leftItems: [
-            {
-                name: 'create',
-                icon: <Add fontSize='small'/>,
-                text: 'New PVC',
-                permission: true,
-            }
         ]
     }
 )
-spaces.set('PersistentVolumeClaim',
+spaces.set('CSIDriver',
     {
         text:'Name',
         source:'name',
@@ -2540,47 +2857,20 @@ spaces.set('PersistentVolumeClaim',
                 text: 'Details',
                 permission: true,
             },
-            {   name: 'delete',
-                icon: <Delete fontSize='small'/>,
-                text: 'Delete',
-                multi: true,
-                permission: true,
-            },
-            {   name: 'edit',
-                icon: <Edit fontSize='small'/>,
-                text: 'Edit',
-                permission: true,
-            }
         ],
         properties: [
             {
-                name: 'namespace',
-                text: 'Namespace',
-                source: 'namespace',
+                name: 'attachRequired',
+                text: 'Attach Required',
+                source: 'attachRequired',
                 format: 'string',
                 width: 15,
                 visible: true
             },
             {
-                name: 'storageClass',
-                text: 'Storage class',
-                source: 'storageClass',
-                format: 'string',
-                width: 15,
-                visible: true
-            },
-            {
-                name: 'size',
-                text: 'Size',
-                source: 'size',
-                format: 'string',
-                width: 15,
-                visible: true
-            },
-            {
-                name: 'pods',
-                text: 'Pods',
-                source: 'pods',
+                name: 'storageCapacity',
+                text: 'Storage Capacity',
+                source: 'storageCapacity',
                 format: 'string',
                 width: 15,
                 visible: true
@@ -2592,31 +2882,55 @@ spaces.set('PersistentVolumeClaim',
                 format: 'age',
                 width: 10,
                 visible: true
-            },
-            {
-                name: 'status',
-                text: 'Status',
-                source: 'status',
-                format: 'string',
-                width: 15,
-                visible: true
-            },
-        ]
-    }
-)
-spaces.set('classPersistentVolume',
-    {
-        leftItems: [
-            {
-                name: 'create',
-                icon: <Add fontSize='small'/>,
-                text: 'New PV',
-                permission: true,
             }
         ]
     }
 )
-spaces.set('PersistentVolume',
+spaces.set('classCSINode',
+    {
+        leftItems: [
+        ]
+    }
+)
+spaces.set('CSINode',
+    {
+        text:'Name',
+        source:'name',
+        width: 35,
+        leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+        ],
+        properties: [
+            {
+                name: 'divers',
+                text: 'Drivers',
+                source: 'drivers',
+                format: 'string',
+                width: 55,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 10,
+                visible: true
+            }
+        ]
+    }
+)
+spaces.set('classStorageCapacity',
+    {
+        leftItems: [
+        ]
+    }
+)
+spaces.set('CSIStorageCapacity',
     {
         text:'Name',
         source:'name',
@@ -2627,43 +2941,8 @@ spaces.set('PersistentVolume',
                 text: 'Details',
                 permission: true,
             },
-            {   name: 'edit',
-                icon: <Edit fontSize='small'/>,
-                text: 'Edit',
-                permission: true,
-            },
-            {   name: 'delete',
-                icon: <Delete fontSize='small'/>,
-                text: 'Delete',
-                multi: true,
-                permission: true,
-            },
         ],
         properties: [
-            {
-                name: 'storageClass',
-                text: 'Storage class',
-                source: 'storageClass',
-                format: 'string',
-                width: 15,
-                visible: true
-            },
-            {
-                name: 'capacity',
-                text: 'Capacity',
-                source: 'capacity',
-                format: 'string',
-                width: 15,
-                visible: true
-            },
-            {
-                name: 'clain',
-                text: 'Claim',
-                source: 'claim',
-                format: 'string',
-                width: 15,
-                visible: true
-            },
             {
                 name: 'creationTimestamp',
                 text: 'Age',
@@ -2671,18 +2950,11 @@ spaces.set('PersistentVolume',
                 format: 'age',
                 width: 10,
                 visible: true
-            },
-            {
-                name: 'status',
-                text: 'Status',
-                source: 'status',
-                format: 'string',
-                width: 15,
-                visible: true
-            },
+            }
         ]
     }
 )
+
 
 // Access
 spaces.set('classServiceAccount',
@@ -2883,7 +3155,7 @@ spaces.set('ClusterRoleBinding',
                 text: 'Bindings',
                 source: 'bindings',
                 format: 'string',
-                width: 15,
+                width: 50,
                 visible: true
             },
             {
@@ -2938,7 +3210,7 @@ spaces.set('RoleBinding',
                 text: 'Namespace',
                 source: 'namespace',
                 format: 'string',
-                width: 15,
+                width: 20,
                 visible: true
             },
             {
@@ -2946,7 +3218,7 @@ spaces.set('RoleBinding',
                 text: 'Bindings',
                 source: 'bindings',
                 format: 'string',
-                width: 15,
+                width: 30,
                 visible: true
             },
             {
@@ -3081,8 +3353,8 @@ spaces.set('crdinstance',
                 visible: true
             },
             {
-                name: 'Checksum',
-                text: 'checksum',
+                name: 'checksum',
+                text: 'Checksum',
                 source: 'checksum',
                 format: 'string',
                 width: 15,

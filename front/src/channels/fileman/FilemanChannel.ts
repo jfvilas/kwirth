@@ -57,17 +57,34 @@ export class FilemanChannel implements IChannel {
                             case EFilemanCommand.HOME:
                                 let data = response.data as string[]
                                 let nss = Array.from (new Set (data.map(n => n.split('/')[0])))
-                                nss.map(ns => {
+                                // nss.map(ns => {
+                                //     if (!filemanData.files.some(f => f.path === '/'+ ns)) {
+                                //         filemanData.files.push ({ name: ns, isDirectory: true, path: '/'+ ns, class:'namespace' })
+                                //     }
+                                //     let podNames = Array.from (new Set (data.filter(a => a.split('/')[0]===ns).map(o => o.split('/')[1])))
+                                //     podNames.map(p => {
+                                //         if (!filemanData.files.some(f => f.path === '/'+ns+'/'+p)) {
+                                //             filemanData.files.push({ name: p, isDirectory: true, path: '/'+ns+'/'+p, class:'pod' })
+                                //         }
+                                //         let conts = Array.from (new Set (data.filter(a => a.split('/')[0]===ns && a.split('/')[1]===p).map(o => o.split('/')[2])))
+                                //         conts.map(c => {
+                                //             if (!filemanData.files.some(f => f.path === '/'+ns+'/'+p+'/'+c)) {
+                                //                 filemanData.files.push ({ name: c, isDirectory: true, path: '/'+ns+'/'+p+'/'+c, class:'container' })
+                                //             }
+                                //         })
+                                //     })
+                                // })
+                                nss.forEach(ns => {
                                     if (!filemanData.files.some(f => f.path === '/'+ ns)) {
                                         filemanData.files.push ({ name: ns, isDirectory: true, path: '/'+ ns, class:'namespace' })
                                     }
                                     let podNames = Array.from (new Set (data.filter(a => a.split('/')[0]===ns).map(o => o.split('/')[1])))
-                                    podNames.map(p => {
+                                    podNames.forEach(p => {
                                         if (!filemanData.files.some(f => f.path === '/'+ns+'/'+p)) {
                                             filemanData.files.push({ name: p, isDirectory: true, path: '/'+ns+'/'+p, class:'pod' })
                                         }
                                         let conts = Array.from (new Set (data.filter(a => a.split('/')[0]===ns && a.split('/')[1]===p).map(o => o.split('/')[2])))
-                                        conts.map(c => {
+                                        conts.forEach(c => {
                                             if (!filemanData.files.some(f => f.path === '/'+ns+'/'+p+'/'+c)) {
                                                 filemanData.files.push ({ name: c, isDirectory: true, path: '/'+ns+'/'+p+'/'+c, class:'container' })
                                             }

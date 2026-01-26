@@ -5,7 +5,7 @@ import { IChannelObject, IContentProps } from '../IChannel'
 import { EMagnifyCommand, IMagnifyMessage, IMagnifyData } from './MagnifyData'
 import { Box, Button, Card, CardContent, CardHeader, Divider, Stack, Tooltip, Typography } from '@mui/material'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView } from '@jfvilas/kwirth-common'
-import { IError, IFileObject, ISpace } from '@jfvilas/react-file-manager'
+import { ICategory, IError, IFileObject, ISpace } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
 import { v4 as uuid } from 'uuid'
 import { IMagnifyConfig } from './MagnifyConfig'
@@ -74,6 +74,61 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const [refresh, setRefresh] = useState<number>(Math.random())
 
+    const onCategoryFilter = (categoryKey:string, f:IFileObject) : boolean => {
+        let cat = categories.find(c => c.key===categoryKey)
+        if (!cat) return true
+
+        let valid=true
+        switch(categoryKey) {
+            case 'namespace':
+                valid = cat.selected.includes('all') || cat.selected.some(cat => f.data?.origin?.metadata?.namespace?.includes(cat))
+                break
+            case 'controller':
+                valid = cat.selected.includes('all') || cat.selected.some(cat => f.data?.origin?.metadata?.ownerReferences?.[0]?.kind.includes(cat))
+                break
+        }
+        return valid
+    }
+
+    const isFilterActive = (categoryKey:string) : boolean => {
+        let cat = categories.find(c => c.key===categoryKey)
+        if (!cat) return false
+        return !(cat.selected.length===1 && cat.selected[0]==='all')
+    }
+    const onCategoryValuesChange = (categoryKey:string, categoryValue:string, selected:string[]) => {
+        let cat = categories.find(c => c.key===categoryKey)
+        if (!cat) return
+
+        if (categoryValue==='all') selected=['all']
+        else if (categoryValue!=='all' && selected.length===2 && selected.includes('all')) selected=selected.filter(f => f!=='all')
+        else if (selected.length===0) selected=['all']
+
+        cat.selected = selected
+        setCategories ([ ...categories ])
+    }
+
+
+    const [categories, setCategories] = useState<ICategory[]>([
+        {
+            key:'namespace',
+            text: 'Namespace',
+            all: [ {key:'all',text:'All...'}, {key:'-'} ],
+            selected: ['all'],
+            onCategoryValuesChange: onCategoryValuesChange,
+            onCategoryFilter: onCategoryFilter,
+            isFilterActive: isFilterActive
+        },
+        {
+            key:'controller',
+            text: 'Controller',
+            all: [ {key:'all',text:'All...'}, {key:'-'} , {key:'ReplicaSet'} , {key:'DaemonSet'} , {key:'StatefulSet'} , {key:'ReplicationController'}, {key:'Job'}  ],
+            selected: ['all'],
+            onCategoryValuesChange: onCategoryValuesChange,
+            onCategoryFilter: onCategoryFilter,
+            isFilterActive: isFilterActive
+        }
+    ])
+
     useLayoutEffect(() => {
         const observer = new ResizeObserver(() => {
             if (!magnifyBoxRef.current) return
@@ -106,8 +161,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcClassPod, 'create', () => launchObjectCreate('Pod'))
             let spcPod = spaces.get('Pod')!
             setPropertyFunction(spcPod, 'container', showPodContainers)
-            // setPropertyFunction(spcPod, 'cpu', showPodCpu)
-            // setPropertyFunction(spcPod, 'memory', showPodMemory)
             setLeftItem(spcPod,'shell', launchPodShell)
             setLeftItem(spcPod,'forward', launchPodForward)
             setLeftItem(spcPod,'logs', launchPodLogs)
@@ -170,7 +223,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcClassDaemonSet, 'create', () => launchObjectCreate('DaemonSet'))
             let spcDaemonSet = spaces.get('DaemonSet')!
             setLeftItem(spcDaemonSet,'details', launchObjectDetails)
-            setLeftItem(spcDaemonSet,'restart', launchDaemonSetRestart)
+            setLeftItem(spcDaemonSet,'restart', launchGroupRestart)
             setLeftItem(spcDaemonSet,'logs', launchGroupLogs)
             setLeftItem(spcDaemonSet,'metrics', launchGroupMetrics)
             setLeftItem(spcDaemonSet,'edit', launchObjectEdit)
@@ -208,7 +261,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcClassReplicaSet, 'create', () => launchObjectCreate('ReplicaSet'))
             let spcReplicaSet = spaces.get('ReplicaSet')!
             setLeftItem(spcReplicaSet,'details', launchObjectDetails)
-            setLeftItem(spcReplicaSet,'scale', launchReplicaSetScale)
+            setLeftItem(spcReplicaSet,'scale', launchGroupScale)
             setLeftItem(spcReplicaSet,'logs', launchGroupLogs)
             setLeftItem(spcReplicaSet,'metrics', launchGroupMetrics)
             setLeftItem(spcReplicaSet,'edit', launchObjectEdit)
@@ -416,6 +469,12 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
             }
 
+            // Namespace
+            let spcClassComponentStatus = spaces.get('classComponentStatus')!
+            let spcComponentStatus = spaces.get('ComponentStatus')!
+            setLeftItem(spcComponentStatus,'details', launchObjectDetails)
+
+
         // Network
 
             // Service
@@ -564,32 +623,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         // Storage
 
             // StorageClass
-            let spcClassStorageClass = spaces.get('classStorageClass')!
-            setLeftItem(spcClassStorageClass, 'create', () => launchObjectCreate('StorageClass'))
-            let spcStorageClass = spaces.get('StorageClass')!
-            setLeftItem(spcStorageClass,'details', launchObjectDetails)
-            setLeftItem(spcStorageClass,'edit', launchObjectEdit)
-            setLeftItem(spcStorageClass,'delete', launchObjectDelete)
-            let objStorageClass = objectSections.get('StorageClass')
-            if (objStorageClass) {
-                let item = objStorageClass.find(i => i.name==='properties')!.items.find(item => item.name === 'pvs')
-                if (item) {
-                    item.invoke = (rootObj, obj) => { 
-                        let allPvs = magnifyData.files.filter(f => f.path.startsWith('/storage/PersistentVolume/'))
-                        allPvs = allPvs.filter(f => f.data.origin.spec?.storageClassName === rootObj.metadata.name)
-                        return allPvs.map(pv => pv.data.origin.metadata.name)
-                    }
-                }
-                item = objStorageClass.find(i => i.name==='properties')!.items.find(item => item.name === 'pvcs')
-                if (item) {
-                    item.invoke = (rootObj, obj) => { 
-                        let allPvcs = magnifyData.files.filter(f => f.path.startsWith('/storage/PersistentVolumeClaim/'))
-                        allPvcs = allPvcs.filter(f => f.data.origin.spec?.storageClassName === rootObj.metadata.name)
-                        return allPvcs.map(pvc => pvc.data.origin.metadata.name)
-                    }
-                }
-            }
-
             // PersistentVolumeClaim
             let spcClassPersistentVolumeClaim = spaces.get('classPersistentVolumeClaim')!
             setLeftItem(spcClassPersistentVolumeClaim, 'create', () => launchObjectCreate('PersistentVolumeClaim'))
@@ -617,6 +650,48 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcPersistentVolume,'details', launchObjectDetails)
             setLeftItem(spcPersistentVolume,'edit', launchObjectEdit)
             setLeftItem(spcPersistentVolume,'delete', launchObjectDelete)
+
+            let spcClassStorageClass = spaces.get('classStorageClass')!
+            setLeftItem(spcClassStorageClass, 'create', () => launchObjectCreate('StorageClass'))
+            let spcStorageClass = spaces.get('StorageClass')!
+            setLeftItem(spcStorageClass,'details', launchObjectDetails)
+            setLeftItem(spcStorageClass,'edit', launchObjectEdit)
+            setLeftItem(spcStorageClass,'delete', launchObjectDelete)
+            let objStorageClass = objectSections.get('StorageClass')
+            if (objStorageClass) {
+                let item = objStorageClass.find(i => i.name==='properties')!.items.find(item => item.name === 'pvs')
+                if (item) {
+                    item.invoke = (rootObj, obj) => { 
+                        let allPvs = magnifyData.files.filter(f => f.path.startsWith('/storage/PersistentVolume/'))
+                        allPvs = allPvs.filter(f => f.data.origin.spec?.storageClassName === rootObj.metadata.name)
+                        return allPvs.map(pv => pv.data.origin.metadata.name)
+                    }
+                }
+                item = objStorageClass.find(i => i.name==='properties')!.items.find(item => item.name === 'pvcs')
+                if (item) {
+                    item.invoke = (rootObj, obj) => { 
+                        let allPvcs = magnifyData.files.filter(f => f.path.startsWith('/storage/PersistentVolumeClaim/'))
+                        allPvcs = allPvcs.filter(f => f.data.origin.spec?.storageClassName === rootObj.metadata.name)
+                        return allPvcs.map(pvc => pvc.data.origin.metadata.name)
+                    }
+                }
+            }
+
+            let spcClassVolumeAttachment = spaces.get('classStorageClass')!
+            let spcVolumeAttachment = spaces.get('VolumeAttachment')!
+            setLeftItem(spcVolumeAttachment,'details', launchObjectDetails)
+
+            let spcClassCSIDriver = spaces.get('classCSIDriver')!
+            let spcCSIDriver = spaces.get('CSIDriver')!
+            setLeftItem(spcCSIDriver,'details', launchObjectDetails)
+
+            let spcClassCSINode = spaces.get('classCSINode')!
+            let spcCSINode = spaces.get('CSINode')!
+            setLeftItem(spcCSINode,'details', launchObjectDetails)
+
+            let spcClassCSIStorageCapacity = spaces.get('classCSIStorageCapacity')!
+            let spcCSIStorageCapacity = spaces.get('CSIStorageCapacity')!
+            setLeftItem(spcCSIStorageCapacity,'details', launchObjectDetails)
 
         // Access
 
@@ -689,18 +764,31 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
         launchTasks(props.channelObject)
 
+        magnifyData.updateNamespaces = (action:string, namespace:string) => {
+            let cat = categories.find(c => c.key==='namespace')
+            if (!cat) return
+            if (action==='DELETED') {
+                cat.all = cat.all.filter(c => c.key !== namespace)
+            }
+            else {
+                if (!cat.all.some(c => c.key===namespace)) cat.all.push({ key:namespace })
+            }
+        }
+
         return () => {
             // unmount actions
+            // +++ we need to add a 'destroy' action for deleting data in addition to unmount (when required)
             setLeftMenuAnchorParent(undefined)
         }
     }, [])
 
     const buildForward = (rootObj:any, portName:string, portProtocol:string, portNumber:string) => {
         let url = '/kwirth/port-forward/pod/' + rootObj.metadata.namespace + '/' + rootObj.metadata.name + '/' + portNumber
-        return <Stack direction={'row'} alignItems={'center'} sx={{width:'100%', justifyContent:'space-between'}}>
+        // sx={{width:'100%', justifyContent:'space-between'}}
+        return <Stack direction={'row'} alignItems={'center'}>   
             <Stack direction={'row'} alignItems={'center'} >
                 {portName && <Typography>{portName}:</Typography>}
-                <Typography>{portNumber}/{portProtocol}&nbsp;&nbsp;</Typography>
+                <Typography>{portNumber.toString().toLowerCase().replace('http','80')}/{portProtocol}&nbsp;&nbsp;</Typography>
             </Stack>
             <Box sx={{ flexGrow: 1 }} />
             <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
@@ -708,6 +796,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const launchTasks = (channelObject:IChannelObject) => {
+
+        // cluster usage +++ maybe nodemetrics is enough to get this data
         setInterval( (c:IChannelObject) => {
             fetch(`${c.clusterUrl}/metrics/usage/cluster`, addGetAuthorization(c.accessString!)).then ( (result) => {
                 result.json().then ( (data) => {
@@ -718,8 +808,30 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     setRefresh(Math.random())
                 })
             })
-        }, 11000, channelObject)
+        }, 30000, channelObject)
 
+        // pod cpu/mem & cluster cpu/mem
+        setInterval( (c:IChannelObject) => {
+            let magnifyMessage:IMagnifyMessage = {
+                msgtype: 'magnifymessage',
+                accessKey: channelObject.accessString!,
+                instance: channelObject.instanceId,
+                id: uuid(),
+                namespace: '',
+                group: '',
+                pod: '',
+                container: '',
+                command: EMagnifyCommand.LIST,
+                action: EInstanceMessageAction.COMMAND,
+                flow: EInstanceMessageFlow.REQUEST,
+                type: EInstanceMessageType.DATA,
+                channel: 'magnify',
+                params: [ 'PodMetrics', 'NodeMetrics' ]
+            }
+            channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+        }, 60000, channelObject)
+
+        // request cluster events
         setInterval ( (c:IChannelObject) => {
             let magnifyMessage:IMagnifyMessage = {
                 msgtype: 'magnifymessage',
@@ -807,6 +919,15 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setContentEditVisible(true)
     }
 
+    const launchObjectDelete = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to delete {f[0].data.origin.kind}<b> {f[0].name}</b>?</Box>, setMsgBox, (a) => {
+            if (a === MsgBoxButtons.Yes) {
+                sendCommand(EMagnifyCommand.DELETE, f.map(o => yamlParser.dump(o.data.origin, { indent: 2 })))
+            }
+        }))
+    }
+
     const launchObjectEdit = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         setSelectedFiles([f[0]])
@@ -819,15 +940,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
         setSelectedFiles([f])
         setContentEditVisible(true)
-    }
-
-    const launchObjectDelete = (p:string[]) => {
-        let f = magnifyData.files.filter(x => p.includes(x.path))
-        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to delete {f[0].data.origin.kind}<b> {f[0].name}</b>?</Box>, setMsgBox, (a) => {
-            if (a === MsgBoxButtons.Yes) {
-                sendCommand(EMagnifyCommand.DELETE, f.map(o => yamlParser.dump(o.data.origin, { indent: 2 })))
-            }
-        }))
     }
 
     const launchNamespaceCreate = (p:string[]) => {
@@ -846,7 +958,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setInputBoxTitle('Create namespace')
     }
 
-    // Pod actions & info
+    // Pod actions
     const launchPodEvict = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to evict {f[0].data.origin.kind} <b>{f[0].name}</b>?</Box>, setMsgBox, (a) => {
@@ -886,13 +998,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setLeftMenuAnchorParent(currentTarget)
     }
 
-    const launchPodForwardSelected = (p:string[], currentTarget:Element) => {
-        let f = magnifyData.files.filter(x => p.includes(x.path))[0]
-        if (!f) return
-        let url = '/kwirth/port-forward/pod/' + f.data?.origin.metadata.namespace + '/' + f.data?.origin.metadata.name + '/' + f.data?.origin.containerPort
-        window.open(url, '_blank')
-    }
-
     const launchPodMetrics = (p:string[], currentTarget:Element) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
         if (!f) return
@@ -926,14 +1031,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         return result
     }
 
-    // const showPodCpu = (p:string) => {
-    //     return '#'
-    // }
-
-    // const showPodMemory = (p:string) => {
-    //     return '#'
-    // }
-
+    // Ingress actions
     const showIngressRules = (p:any) => {
         let f = magnifyData.files.find(x => p===x.path)
         if (!f) return
@@ -953,20 +1051,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     }
 
-    const showJobConditions = (p:any) => {
-        let f = magnifyData.files.find(x => p===x.path)
-        if (!f) return
-        if (!f.data?.origin?.status?.conditions) return <></>
-        let result:JSX.Element[]=[]
-        for (let cond of f.data.origin.status.conditions) {
-            if (cond.status==='True') result.push(<Typography fontSize={12}>{cond.type}</Typography>)
-        }
-        return <Stack direction={'column'}>
-            {result}
-        </Stack>
-
-    }
-
+    // Service actions
     const showServiceSelector = (p:any) => {
         let f = magnifyData.files.find(x => p===x.path)
         if (!f) return
@@ -983,7 +1068,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     }
 
-    // group actions
+    // Group actions
     const launchGroupScale = (p:string[]) => {
         // let f = magnifyData.files.filter(x => p.includes(x.path))
         // console.log('set sca')
@@ -1013,16 +1098,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setContentExternalVisible(true)
     }
 
-    const launchDaemonSetRestart = (p:string[]) => {
-        // let f = magnifyData.files.filter(x => p.includes(x.path))
-        // console.log('set rest')
-    }
-
-    const launchReplicaSetScale = (p:string[]) => {
-        // let f = magnifyData.files.filter(x => p.includes(x.path))
-        // console.log('set sca')
-    }
-
     // Job actions
     const launchJobLogs = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
@@ -1031,6 +1106,20 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setSelectedFiles(f)
         setContentExternalType('log')
         setContentExternalVisible(true)
+    }
+
+    const showJobConditions = (p:any) => {
+        let f = magnifyData.files.find(x => p===x.path)
+        if (!f) return
+        if (!f.data?.origin?.status?.conditions) return <></>
+        let result:JSX.Element[]=[]
+        for (let cond of f.data.origin.status.conditions) {
+            if (cond.status==='True') result.push(<Typography fontSize={12}>{cond.type}</Typography>)
+        }
+        return <Stack direction={'column'}>
+            {result}
+        </Stack>
+
     }
 
     // IngressClass actions
@@ -1305,11 +1394,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         magnifyData.currentPath = folder
     }
 
-    // callback handlers for object details
-    // const onMagnifyObjectDetailsChangeData = (src:string, data:any) => {
-    //     //setDetailsChanges( _.set(detailsChanges, src, data))
-    // }
-
     const onMagnifyObjectDetailsLink = (kind:string, name:string) => {
         contentWindowId.current = -1
         setContentDetailsVisible(false)
@@ -1396,24 +1480,15 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setRefresh(Math.random())
     }
 
-    // const onContentDetailsOk = (content:{code:string, source?:IFileObject}) => {
-    //     setContentDetailsVisible(false)
-    //     sendCommand(EMagnifyCommand.APPLY, [content.code])
-    // }
-
-    const onContentDetailsApply = () => {
-        // +++ lanzar oncontentEditOk
+    const onContentDetailsApply = (path:string, obj:any) => {
+        setContentDetailsVisible(false)
+        sendCommand(EMagnifyCommand.APPLY, [yamlParser.dump(obj, { indent: 2 })])
     }
 
     const onComponentNotify = (level: ENotifyLevel, msg: string)  => {
         msg = 'Channel message: '+ msg;
         (props.channelObject.config as IMagnifyConfig).notify(level, msg)
     }
-
-    // const testasync = async () => {
-    //     let resp = await sendCommandAsync(props.channelObject, EMagnifyCommand.EVENTS, ['cluster', '', '', '', '3'])
-    //     console.log(resp)
-    // }
 
     return <>
         { magnifyData.started &&
@@ -1430,7 +1505,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     onError={onError}
                     onRename={undefined}
                     onPaste={undefined}
-                    onDelete={() => {}}
+                    onDelete={undefined}
                     onFolderChange={onFolderChange}
                     onRefresh={undefined}
                     permissions={permissions}
@@ -1439,10 +1514,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     fontFamily='Roboto, Helvetica, Arial, sans-serif'
                     height='100%'
                     className='custom-fm'
-                    search='auto'
+                    searchMode='auto'
                     searchRegex={true}
                     searchCasing={true}
-                />
+                    showContextMenu={false}
+                    showRefresh={false}
+                    categories={categories}
+                    />
                 {
                     leftMenuAnchorParent && <LeftItemMenu f={leftMenuContent} onClose={onLeftItemMenuClose} onOptionSelected={onLeftItemMenuContainerSelected} anchorParent={leftMenuAnchorParent} includeAllContainers={leftMenuIncludeAllContainers} />
                 }
