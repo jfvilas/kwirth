@@ -22,7 +22,7 @@ interface IContentExternalProps {
     settings: MagnifyUserSettings
     frontChannels: Map<string, TChannelConstructor>
     selectedFiles:IFileObject[]
-    onNotify: (level: ENotifyLevel, msg: string) => void
+    onNotify: (channel:IChannel|undefined, level: ENotifyLevel, msg: string) => void
     onMinimize: (content:IContentExternalObject) => void
     onClose: (content:IContentExternalObject) => void
     onRefresh: () => void
@@ -91,7 +91,8 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 container: props.contentView === EInstanceConfigView.CONTAINER? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
                 config: undefined,
                 data: undefined,
-                instanceConfig: undefined
+                instanceConfig: undefined,
+                channel: newChannel
             },
             channelStarted: false,
             channelPaused: false,

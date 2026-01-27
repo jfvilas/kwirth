@@ -1,11 +1,12 @@
 import { ENotifyLevel } from "../../tools/Global"
+import { IChannel } from "../IChannel"
 
 interface IFilemanConfig {
-    notify: (level:ENotifyLevel, msg:string) => void
+    notify: (channel:IChannel|undefined, level:ENotifyLevel, msg:string) => void
 }
 
 class FilemanConfig implements IFilemanConfig {
-    notify: (level:ENotifyLevel, msg:string) => void = (level:ENotifyLevel, msg:string) => {}
+    notify: (channel:IChannel|undefined, level:ENotifyLevel, msg:string) => void = (channel:IChannel|undefined, level:ENotifyLevel, msg:string) => {}
 }
 
 interface IFilemanInstanceConfig {

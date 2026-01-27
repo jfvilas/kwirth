@@ -65,6 +65,7 @@ const menu = [
         layout: 'list',  
         class: 'classPod',
         categories: [ 'namespace', 'controller' ],
+        // features: ['breadcrumb']
         children: 'Pod'
     },
     {   name: 'Deployments',

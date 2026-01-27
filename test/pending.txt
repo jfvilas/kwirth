@@ -9,10 +9,14 @@ zona de avisos del cluster (implementar en filemanager)
 
 en la vista de lista, acciones multi item (metrics, logs...)
 debug: añadir un log de eventos de kwirth
+💖💖💖namespace search!!!
+actions en contentdetails (shell, metrics, log....)
 
 SETTINGS
     persistir y leer al arrancar
 
+RFM
+    update selected on change search filter
 
 DETAILS
 +++ cm/secret: textarea, > tamaño inicial fijo (no todo el contenido)
@@ -26,7 +30,7 @@ contentexternal
     chartmenu
 refresh de showoverview
 
-    añadir key de recatfilemanager
+añadir key de recatfilemanager **TEST**
 
 
 DETAILS

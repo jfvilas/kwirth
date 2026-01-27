@@ -10,7 +10,7 @@ import { ENotifyLevel } from "../../tools/Global";
 
 export class EchoChannel implements IChannel {
     private setupVisible = false
-    private notify: (level:ENotifyLevel, message:string) => void = (level:ENotifyLevel, message:string) => {}
+    private notify: (channel:IChannel, level:ENotifyLevel, message:string) => void = (cjannel:IChannel, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = EchoSetup
     TabContent: FC<IContentProps> = EchoTabContent
     channelId = 'echo'
@@ -22,7 +22,7 @@ export class EchoChannel implements IChannel {
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
-    setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    setNotifier(notifier: (channel:IChannel, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return EInstanceConfigScope.NONE}
     getChannelIcon(): JSX.Element { return EchoIcon }

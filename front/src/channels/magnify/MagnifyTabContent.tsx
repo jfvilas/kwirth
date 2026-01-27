@@ -1,7 +1,7 @@
 import React from 'react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { IChannelObject, IContentProps } from '../IChannel'
+import { IChannel, IChannelObject, IContentProps } from '../IChannel'
 import { EMagnifyCommand, IMagnifyMessage, IMagnifyData } from './MagnifyData'
 import { Box, Button, Card, CardContent, CardHeader, Divider, Stack, Tooltip, Typography } from '@mui/material'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView } from '@jfvilas/kwirth-common'
@@ -828,7 +828,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 channel: 'magnify',
                 params: [ 'PodMetrics', 'NodeMetrics' ]
             }
-            channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+            if (channelObject.webSocket) channelObject.webSocket.send(JSON.stringify( magnifyMessage ))
         }, 60000, channelObject)
 
         // request cluster events
@@ -849,7 +849,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 channel: 'magnify',
                 params: [ 'cluster', '', '', '', '10']
             }
-            c.webSocket!.send(JSON.stringify( magnifyMessage ))
+            if (c.webSocket) c.webSocket.send(JSON.stringify( magnifyMessage ))
         }, 10000, channelObject)
 
     }
@@ -1191,7 +1191,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             channel: 'magnify',
             params: [ 'cluster', '', '', '', '50']
         }
-        props.channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+        if (props.channelObject.webSocket) props.channelObject.webSocket.send(JSON.stringify( magnifyMessage ))
 
     }
 
@@ -1380,14 +1380,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 msgtype: 'magnifymessage'
             }
             let payload = JSON.stringify( magnifyMessage )
-            channelObject.webSocket!.send(payload)
+            if (channelObject.webSocket) channelObject.webSocket.send(payload)
         })
     }
 
     // FileManager handlers
     const onError = (error: IError, file: IFileObject) => {
         let uiConfig = props.channelObject.config as IMagnifyConfig
-        uiConfig.notify(ENotifyLevel.ERROR, error.message)
+        uiConfig.notify(props.channelObject.channel, ENotifyLevel.ERROR, error.message)
     }
 
     const onFolderChange = (folder:string) => {
@@ -1485,9 +1485,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         sendCommand(EMagnifyCommand.APPLY, [yamlParser.dump(obj, { indent: 2 })])
     }
 
-    const onComponentNotify = (level: ENotifyLevel, msg: string)  => {
+    const onComponentNotify = (channel:IChannel|undefined, level: ENotifyLevel, msg: string)  => {
         msg = 'Channel message: '+ msg;
-        (props.channelObject.config as IMagnifyConfig).notify(level, msg)
+        (props.channelObject.config as IMagnifyConfig).notify(channel, level, msg)
     }
 
     return <>

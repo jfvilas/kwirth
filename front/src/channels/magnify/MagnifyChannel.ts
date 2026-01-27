@@ -26,7 +26,7 @@ interface IMagnifyMessage extends IInstanceMessage {
 
 class MagnifyChannel implements IChannel {
     private setupVisible = false
-    private notify: (level:ENotifyLevel, message:string) => void = (level:ENotifyLevel, message:string) => {}
+    private notify: (channel:IChannel|undefined, level:ENotifyLevel, message:string) => void = (channel:IChannel|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = MagnifySetup
     TabContent: FC<IContentProps> = MagnifyTabContent
     channelId = 'magnify'
@@ -38,7 +38,7 @@ class MagnifyChannel implements IChannel {
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return true }
     requiresWebSocket() { return true }
-    setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    setNotifier(notifier: (channel:IChannel|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'magnify$read'}
     getChannelIcon(): JSX.Element { return MagnifyIcon }
@@ -83,7 +83,7 @@ class MagnifyChannel implements IChannel {
                                     content.items.forEach( (item:any) => this.loadObject(channelObject, content.kind.replace('List',''), magnifyData, item) )
                                 }
                                 else {
-                                    this.notify(ENotifyLevel.ERROR, 'Unexpected list: '+ content.kind)
+                                    this.notify(this, ENotifyLevel.ERROR, 'Unexpected list: '+ content.kind)
                                 }
                                 magnifyData.files = [...magnifyData.files]
                                 return {
@@ -138,7 +138,7 @@ class MagnifyChannel implements IChannel {
                                     // magnifyData.files = magnifyData.files.filter(f => !f.path.startsWith(fname+'/'))
                                 }
                                 else {
-                                    this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
+                                    this.notify(this, ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return {
                                     action: EChannelRefreshAction.REFRESH
@@ -147,10 +147,10 @@ class MagnifyChannel implements IChannel {
                             case EMagnifyCommand.CREATE: {
                                 let content = JSON.parse(response.data)
                                 if (content.status==='Success') {
-                                    this.notify(ENotifyLevel.INFO, 'Created: '+ (content.text || content.message))
+                                    this.notify(this, ENotifyLevel.INFO, 'Created: '+ (content.text || content.message))
                                 }
                                 else {
-                                    this.notify(ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
+                                    this.notify(this, ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return {
                                     action: EChannelRefreshAction.REFRESH
@@ -178,7 +178,7 @@ class MagnifyChannel implements IChannel {
                         }, 300)
                     }
                     else if (signalMessage.action === EInstanceMessageAction.COMMAND) {
-                        if (signalMessage.text)this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
+                        if (signalMessage.text)this.notify(this, signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                 }
                 else if (signalMessage.flow === EInstanceMessageFlow.UNSOLICITED) {
@@ -187,7 +187,7 @@ class MagnifyChannel implements IChannel {
                     else if (signalMessage.event === ESignalMessageEvent.DELETE) {
                     }
                     else {
-                        if (signalMessage.text) this.notify(signalMessage.level as any as ENotifyLevel, signalMessage.text)
+                        if (signalMessage.text) this.notify(this, signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                 }
                 return {

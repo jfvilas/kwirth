@@ -1,5 +1,5 @@
 import { EInstanceConfigObject, EInstanceConfigScope, EInstanceConfigView, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EMetricsConfigMode, IInstanceConfig, IInstanceMessage } from '@jfvilas/kwirth-common'
-import { EChannelRefreshAction, IChannelObject, IContentProps, TChannelConstructor } from '../../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelObject, IContentProps, TChannelConstructor } from '../../IChannel'
 import { useEffect, useRef } from 'react'
 import { IMetricsConfig, IMetricsInstanceConfig } from '../../metrics/MetricsConfig'
 import { EChartType } from '../../metrics/MenuChart'
@@ -12,7 +12,7 @@ interface IClusterMetricsProps {
     files: IFileObject[]
     channelObject: IChannelObject
     frontChannels: Map<string, TChannelConstructor>
-    onNotify: (level: ENotifyLevel, msg: string) => void
+    onNotify: (channel:IChannel|undefined, level: ENotifyLevel, msg: string) => void
 }
 
 const ClusterMetricsOld: React.FC<IClusterMetricsProps> = (props:IClusterMetricsProps) => {

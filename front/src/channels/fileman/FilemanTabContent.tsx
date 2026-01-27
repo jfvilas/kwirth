@@ -22,7 +22,6 @@ interface IContentProps {
 const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const filemanBoxRef = useRef<HTMLDivElement | null>(null)
     const [logBoxTop, setLogBoxTop] = useState(0)
-    //const [refresh, setRefresh] = useState(0)
     const [msgBox, setMsgBox] =useState(<></>)
 
     let filemanData:IFilemanData = props.channelObject.data
@@ -133,13 +132,13 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 else {
                     console.error(`Error downloading file: ${file.path}`)
                     let uiConfig = props.channelObject.config as IFilemanConfig
-                    uiConfig.notify(ENotifyLevel.ERROR, `Error downloading file ${file.path}: (${response.status}) ${await response.text()}`)
+                    uiConfig.notify(undefined, ENotifyLevel.ERROR, `Error downloading file ${file.path}: (${response.status}) ${await response.text()}`)
                 }
             }
             catch (error) {
                 console.error(`Error downloading file: ${file.path}`, error)
                 let uiConfig = props.channelObject.config as IFilemanConfig
-                uiConfig.notify(ENotifyLevel.ERROR, `Error downloading file ${file.path}: ${error}`)
+                uiConfig.notify(props.channelObject.channel, ENotifyLevel.ERROR, `Error downloading file ${file.path}: ${error}`)
             }
         }
     }
@@ -154,7 +153,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const onError = (error: IError, file: IFileObject) => {
         let uiConfig = props.channelObject.config as IFilemanConfig
-        uiConfig.notify(ENotifyLevel.ERROR, error.message)
+        uiConfig.notify(props.channelObject.channel, ENotifyLevel.ERROR, error.message)
     }
 
     const onRename	= (file: IFileObject, newName: string) => {
@@ -256,6 +255,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     height='100%'
                     className='custom-fm'
                     searchMode='auto'
+                    //showBreadcrumb={true}
                 />
                 { msgBox }
             </Box>

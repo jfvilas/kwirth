@@ -48,6 +48,7 @@ interface IChannelObject {
     onUpdateChannelSettings?: (channelSettings:IChannelSettings) => void
     onCreateTab?: (resource:IResourceSelected, start:boolean, settings:any) => void
     channelSettings?: IChannelSettings
+    channel:IChannel
 }
 
 interface IChannel {
@@ -62,7 +63,7 @@ interface IChannel {
     requiresClusterUrl(): boolean
     requiresAccessString(): boolean
     requiresWebSocket(): boolean
-    setNotifier(notifier:(level:ENotifyLevel, message:string) => void): void
+    setNotifier(notifier:(channel:IChannel|undefined, level:ENotifyLevel, message:string) => void): void
     getScope(): string
     getChannelIcon(): JSX.Element
     getSetupVisibility():boolean

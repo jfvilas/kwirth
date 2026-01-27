@@ -46,6 +46,7 @@ import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
 import { DEFAULTLASTTABS, IColors, TABBASECOLORS, TABBRIGHTCOLORS } from './tools/Constants'
 import { createChannelInstance } from './tools/Channel'
+import { NotificationMenu, NotificationMessage } from './components/xNotificationMenu'
 
 const App: React.FC = () => {
     let backendUrl='http://localhost:3883'
@@ -107,10 +108,10 @@ const App: React.FC = () => {
     const [notifyOpen, setNotifyOpen] = useState(false)
     const [notifyMessage, setNotifyMessage] = useState('')
     const [notifyLevel, setNotifyLevel] = useState<ENotifyLevel>(ENotifyLevel.INFO)
-    const [notifications, setNotifications] = useState<{level:ENotifyLevel, message:string}[]>([])
+    const [notifications, setNotifications] = useState<NotificationMessage[]>([])
+    const [notificationMenuAnchorEl, setNotificationMenuAnchorEl] = useState<null | HTMLElement>(null)
     
     const [resourceSelected, setResourceSelected] = useState<IResourceSelected|undefined>(undefined)
-
 
     useEffect( () => {
         // only first time
@@ -162,11 +163,11 @@ const App: React.FC = () => {
         setNotifyOpen(false)
     }
 
-    const notify = (level:ENotifyLevel, message:string) => {
+    const notify = (channel:IChannel|undefined, level:ENotifyLevel, message:string) => {
         setNotifyOpen(true)
         setNotifyMessage(message)
         setNotifyLevel(level)
-        setNotifications([...notifications, {level,message}])
+        setNotifications([...notifications, {timestamp:new Date(), level, message, channel }])
     }
 
     const fillTabSummary = async (tab:ITabSummary) => {
@@ -299,8 +300,12 @@ const App: React.FC = () => {
         }
     }
 
+    const onMessageDelete = (indexToDelete: number) => {
+        if (notifications.length===1) setNotificationMenuAnchorEl(null)
+        setNotifications((prev) => prev.filter((_, index) => index !== indexToDelete))
+    }
+
     const populateTabObject = (name:string, channelId:string, cluster:Cluster, view:string, namespaces:string, groups:string, pods:string, containers:string, start:boolean, settings:any, tab?:ITabObject) : ITabObject => {
-        //let newChannel = createChannelInstance(channelId)!
         let newChannel = createChannelInstance(frontChannels.get(channelId), notify)
         if (!newChannel) {
             throw 'Invalid channel instance'
@@ -321,7 +326,8 @@ const App: React.FC = () => {
                 container: containers,
                 config: undefined,
                 data: undefined,
-                instanceConfig: undefined
+                instanceConfig: undefined,
+                channel: newChannel
             },
             channelStarted: false,
             channelPaused: false,
@@ -518,7 +524,7 @@ const App: React.FC = () => {
             let msg:ISignalMessage = JSON.parse(wsEvent.data) as ISignalMessage
             if (msg.data!==undefined) {
                 if (msg.data===false) {
-                    notify( ENotifyLevel.ERROR, msg.text||'Error reconnecting')
+                    notify(undefined, ENotifyLevel.ERROR, msg.text||'Error reconnecting')
                     let tab = tabs.current.find(tab => tab.ws !== null && tab.ws === wsEvent.target)
                     if (tab) stopTabChannel(tab)
                 }
@@ -602,7 +608,7 @@ const App: React.FC = () => {
         let tab = tabs.current.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
 
-        notify(ENotifyLevel.ERROR, `Websocket for channel '${tab.channel.channelId}' has been interrupted`)
+        notify(undefined, ENotifyLevel.ERROR, `Websocket for channel '${tab.channel.channelId}' has been interrupted`)
         colorizeTab(tab)
         const reconnectable = backChannels.find(c => c.id === tab!.channel.channelId && c.reconnectable)
         if (reconnectable) {
@@ -1270,6 +1276,11 @@ const App: React.FC = () => {
         setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
     }
 
+    const showNots = (event:any) => {
+        console.log(event)
+        setNotificationMenuAnchorEl(event.currentTarget)
+    }
+
     if (!logged) return (<>
         <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
             <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
@@ -1289,12 +1300,12 @@ const App: React.FC = () => {
                     </Tooltip>
                     <Tooltip title={<>Notifications</>}>
                         {notifications.length>0? 
-                            <IconButton onClick={() => setNotifications([])}>
+                            <IconButton onClick={showNots}>
                                 <NotificationsActive sx={{color:'red'}}/>
                                 {/* +++ show a list of pending notifications */}
                             </IconButton>
                             :
-                            <IconButton>
+                            <IconButton onClick={showNots}>
                                 <Notifications sx={{color:'lightgray'}}/>
                             </IconButton>
                         }
@@ -1371,6 +1382,7 @@ const App: React.FC = () => {
                 <Alert severity={notifyLevel} variant="filled" onClose={onNotifyClose} sx={{ width: '100%' }}>{notifyMessage}</Alert>
             </Snackbar>
             { msgBox }
+            { notificationMenuAnchorEl && <NotificationMenu open={true} anchorEl={notificationMenuAnchorEl} messages={notifications} onClose={() => setNotificationMenuAnchorEl(null)} onDelete={onMessageDelete} onClear={() => {setNotifications([]); setNotificationMenuAnchorEl(null)}}/>}
         </SessionContext.Provider>
     )
 }

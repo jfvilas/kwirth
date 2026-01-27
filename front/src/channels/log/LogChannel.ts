@@ -9,7 +9,7 @@ import { ENotifyLevel } from '../../tools/Global'
 
 export class LogChannel implements IChannel {
     private setupVisible = false
-    private notify: (level:ENotifyLevel, message:string) => void = (level:ENotifyLevel, message:string) => {}
+    private notify: (channel:IChannel|undefined, level:ENotifyLevel, message:string) => void = (channel:IChannel|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = LogSetup
     TabContent: FC<IContentProps> = LogTabContent
     channelId = 'log'
@@ -21,7 +21,7 @@ export class LogChannel implements IChannel {
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
-    setNotifier(notifier: (level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    setNotifier(notifier: (channel:IChannel|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return EInstanceConfigScope.VIEW }
     getChannelIcon(): JSX.Element { return LogIcon }
