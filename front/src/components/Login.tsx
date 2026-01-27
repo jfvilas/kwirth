@@ -97,17 +97,6 @@ const Login: React.FC<IProps> = (props:IProps) => {
         }
     }
 
-    const onClickCancel = () => {
-        if (changingPassword){
-            setChangingPassword(false)
-            setUser('')
-            setPassword('')
-        }
-        else {
-            props.onClose(undefined, false)
-        }
-    }
-
     const onClickChangePassword = async () => {
         var result=await login(user,password)
         if (result && result.status === 200) setChangingPassword(true)
@@ -133,7 +122,6 @@ const Login: React.FC<IProps> = (props:IProps) => {
                 <Button onClick={onClickChangePassword} sx={{display:changingPassword?'none':'block'}}>Change Password</Button>
                 <Typography sx={{ flexGrow:1}}></Typography>
                 <Button onClick={onClickOk} disabled={((changingPassword && newPassword1!==newPassword2) || user==='' || password==='')}>OK</Button>
-                <Button onClick={onClickCancel}>CANCEL</Button>
             </DialogActions>
         </Dialog>
         {msgBox}

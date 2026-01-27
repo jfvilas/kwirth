@@ -21,6 +21,7 @@ const reorderJsonYamlObject = (objetoJson: any): any => {
 function objectClone(obj: any) : any {
     return JSON.parse(JSON.stringify(obj))
 }
+
 function objectEqual(obj1: any, obj2: any): boolean {
     if (obj1 === obj2) return true
 
@@ -34,6 +35,78 @@ function objectEqual(obj1: any, obj2: any): boolean {
         if (!keys2.includes(key) || !objectEqual(obj1[key], obj2[key])) return false
     }
     return true
+}
+
+// function objectSearch(obj: any, text: string): string[] {
+//     const paths: string[] = []
+    
+//     // 1. Si el texto es vacío, salimos ya. 
+//     // Sin esto, cualquier propiedad "incluye" un string vacío y se cuelga.
+//     if (!text) return []
+
+//     const searchTerm = text.toLowerCase()
+
+//     function search(value: any, currentPath: string) {
+//         if (value === null || value === undefined) return
+
+//         // 2. Buscamos en el valor (como en tu código original)
+//         if (String(value).toLowerCase().includes(searchTerm)) {
+//             paths.push(currentPath)
+//         }
+
+//         // 3. Si es objeto, seguimos profundizando
+//         if (typeof value === 'object') {
+//             for (const key in value) {
+//                 if (Object.prototype.hasOwnProperty.call(value, key)) {
+//                     const newPath = Array.isArray(value) ? 
+//                         `${currentPath}[${key}]` : 
+//                         (currentPath ? `${currentPath}.${key}` : key)
+                    
+//                     search(value[key], newPath)
+//                 }
+//             }
+//         }
+//     }
+
+//     search(obj, "")
+
+//     // Quitamos duplicados y filtramos strings vacíos que puedan quedar en el path
+//     return [...new Set(paths)].filter(p => p !== "")
+// }
+function objectSearch(obj: any, text: string): string[] {
+    const paths: string[] = [];
+    if (!text) return [];
+
+    const searchTerm = text.toLowerCase();
+
+    function search(value: any, currentPath: string) {
+        if (value === null || value === undefined) return;
+
+        // 1. Verificamos si es un objeto o array
+        const isObject = typeof value === 'object';
+
+        if (isObject) {
+            // Si es objeto/array, no guardamos su path, solo profundizamos
+            for (const key in value) {
+                if (Object.prototype.hasOwnProperty.call(value, key)) {
+                    const newPath = Array.isArray(value) ? 
+                        `${currentPath}[${key}]` : 
+                        (currentPath ? `${currentPath}.${key}` : key);
+                    
+                    search(value[key], newPath);
+                }
+            }
+        } else {
+            // 2. Si NO es objeto (es un valor final/hoja), verificamos el match
+            if (String(value).toLowerCase().includes(searchTerm)) {
+                paths.push(currentPath);
+            }
+        }
+    }
+
+    search(obj, "");
+
+    return [...new Set(paths)].filter(p => p !== "");
 }
 
 function convertBytesToSize(bytes: number, decimals: number = 2): string {
@@ -157,4 +230,4 @@ function getNextCronExecution(cronExpression: string): INextExecution|undefined 
 }
 
 export { type INextExecution }
-export { reorderJsonYamlObject, objectEqual, convertBytesToSize, convertSizeToBytes, getNextCronExecution, objectClone }
+export { reorderJsonYamlObject, objectEqual, convertBytesToSize, convertSizeToBytes, getNextCronExecution, objectClone, objectSearch }

@@ -338,6 +338,20 @@ objectSections.set('VolumeAttachment', [
                 format: 'string',
                 style: ['link:$PersistentVolume:spec.source.persistentVolumeName']
            },
+           {
+                name: 'attached',
+                text: 'Attached',
+                source: ['spec.attached'],
+                format: 'string',
+                style: [ 'true:Yes:green','false:No:red', ':No:red']
+           },
+           {
+                name: 'attachmentMetadata',
+                text: 'Metadata',
+                source: ['spec.attachmentMetadata'],
+                format: 'string',
+                style: [ 'true:Yes:green','false:No:red', ':No:red']
+           },
         ]
     },
     events

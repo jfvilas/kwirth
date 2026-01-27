@@ -13,10 +13,10 @@ import { ENotifyLevel } from '../../tools/Global'
 import { actions, icons, menu, spaces } from './components/RFMConfig'
 import { IDetailsSection } from './components/DetailsObject'
 import { objectSections } from './components/DetailsSections'
-import { Edit, List } from '@mui/icons-material'
+import { ContactsOutlined, Edit, List } from '@mui/icons-material'
 import { MsgBoxButtons, MsgBoxOkError, MsgBoxYesNo } from '../../tools/MsgBox'
 import { ContentExternal, IContentExternalObject } from './components/ContentExternal'
-import { ContentDetails, IContentDetailsObject } from './components/ContentDetails'
+import { ContentDetails, IContentDetailsObject, IDetailsAction } from './components/ContentDetails'
 import { ContentEdit, IContentEditObject } from './components/ContentEdit'
 import { LeftItemMenu } from './LeftItemMenu'
 import { MagnifyUserSettings } from './MagnifyUserSettings'
@@ -29,6 +29,7 @@ import '@jfvilas/react-file-manager/dist/style.css'
 import './custom-fm.css'
 import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 import { ClusterMetrics } from './components/ClusterMetrics'
+import { NamespaceSearch } from './components/NamespaceSearch'
 
 const yamlParser = require('js-yaml')
 
@@ -71,6 +72,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     
     const [contentDetailsVisible, setContentDetailsVisible] = useState(false)
     const [detailsSections, setDetailsSections] = useState<IDetailsSection[]>([])
+    const [detailsActions, setDetailsActions] = useState<IDetailsAction[]>([])
+
+    const [namespaceSearchVisible, setNamespaceSearchVisible] = useState(false)
 
     const [refresh, setRefresh] = useState<number>(Math.random())
 
@@ -436,6 +440,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcNamespace,'details', launchObjectDetails)
             setLeftItem(spcNamespace,'edit', launchObjectEdit)
             setLeftItem(spcNamespace,'delete', launchObjectDelete)
+            setLeftItem(spcNamespace,'search', launchNamespaceSearch)
             let objNamespace = objectSections.get('Namespace')
             if (objNamespace) {
                 let item = objNamespace?.find(s => s.name==='content')?.items.find(item => item.name === 'content')
@@ -899,10 +904,21 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const launchObjectDetails = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/'))
+        if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/')) {
             setDetailsSections(objectSections.get('#crdinstance#')!)
-        else
+        }
+        else {
             setDetailsSections(objectSections.get(f[0].data.origin.kind)!)
+            setDetailsActions([
+                {
+                    onClick: function (): void {
+                        throw new Error('Function not implemented.')
+                    },
+                    icon: <ContactsOutlined/>,
+                    text: 'Shell'  //+++test
+                }
+            ])
+        }
 
         // we request a fresh events list
         if (f[0].data.events) delete f[0].data.events
@@ -926,6 +942,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 sendCommand(EMagnifyCommand.DELETE, f.map(o => yamlParser.dump(o.data.origin, { indent: 2 })))
             }
         }))
+    }
+
+    const launchNamespaceSearch = (p:string[]) => {
+        let f = magnifyData.files.filter(x => p.includes(x.path))
+        if (f) {
+            setSelectedFiles(f)
+            setNamespaceSearchVisible(true)
+        }
     }
 
     const launchObjectEdit = (p:string[]) => {
@@ -1626,8 +1650,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 onDelete={(path:string) => launchObjectDelete([path])}
                 onLink={onMagnifyObjectDetailsLink}
                 data-refresh={refresh}
+                actions={detailsActions}
             />
         }
+
+        { namespaceSearchVisible &&
+            <NamespaceSearch onLink={(k,e) => {setNamespaceSearchVisible(false); onMagnifyObjectDetailsLink(k,e)}} onClose={() => setNamespaceSearchVisible(false)} selectedFile={selectedFiles[0]} files={magnifyData.files} />
+        }
+
     </>
 }
 export { MagnifyTabContent }

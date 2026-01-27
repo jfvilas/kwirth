@@ -1,3 +1,4 @@
+import { ReactElement } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, Typography } from '@mui/material'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { useEffect, useRef, useState } from 'react'
@@ -6,6 +7,13 @@ import { DetailsObject, IDetailsSection } from './DetailsObject';
 import { objectClone } from '../Tools';
 const _ = require('lodash')
 const copy = require('clipboard-copy')
+
+export interface IDetailsAction {
+    onClick: () => void
+    icon: ReactElement
+    text: string
+
+}
 
 interface IContentDetailsProps {
     selectedFile?:IFileObject
@@ -17,6 +25,7 @@ interface IContentDetailsProps {
     onMinimize: (content:IContentDetailsObject) => void
     onClose: (content:IContentDetailsObject) => void
     onLink: (kind:string, name:string ) => void
+    actions: IDetailsAction[]
 }
 
 export interface IContentDetailsObject {
@@ -116,6 +125,9 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
                     <IconButton color='primary' onClick={() => copy(content.current && content.current.content.source.data?.origin.metadata?.name)}><ContentCopy fontSize='small'/></IconButton>
                     <IconButton color='primary' onClick={editObject}><Edit fontSize='small'/></IconButton>
                     <IconButton color='primary' onClick={deleteObject}><Delete fontSize='small'/></IconButton>
+                    {
+                        props.actions.map(a => <IconButton color='primary' onClick={a.onClick}>{a.icon}{a.text}</IconButton>)
+                    }
 
                     <Typography sx={{flexGrow:1}}/>
 
