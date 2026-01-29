@@ -21,6 +21,7 @@ export class TrivyChannel implements IChannel {
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return true }
+    requiresUserSettings() { return false }
     setNotifier(notifier: (channel:IChannel, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'trivy$workload' }
@@ -85,7 +86,7 @@ export class TrivyChannel implements IChannel {
         }
     }
 
-    initChannel(channelObject:IChannelObject): boolean {
+    async initChannel(channelObject:IChannelObject): Promise<boolean> {
         channelObject.data = new TrivyData()
         channelObject.instanceConfig = new TrivyInstanceConfig()
         channelObject.config = new TrivyConfig()

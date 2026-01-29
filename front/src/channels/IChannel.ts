@@ -49,6 +49,8 @@ interface IChannelObject {
     onCreateTab?: (resource:IResourceSelected, start:boolean, settings:any) => void
     channelSettings?: IChannelSettings
     channel:IChannel
+    readChannelUserPreferences?: (channelId:string) => Promise<any>
+    writeChannelUserPreferences?: (channelId:string, data:any) => Promise<boolean>
 }
 
 interface IChannel {
@@ -63,13 +65,14 @@ interface IChannel {
     requiresClusterUrl(): boolean
     requiresAccessString(): boolean
     requiresWebSocket(): boolean
+    requiresUserSettings(): boolean
     setNotifier(notifier:(channel:IChannel|undefined, level:ENotifyLevel, message:string) => void): void
     getScope(): string
     getChannelIcon(): JSX.Element
-    getSetupVisibility():boolean
-    setSetupVisibility(visibility:boolean):void
+    getSetupVisibility(): boolean
+    setSetupVisibility(visibility:boolean): void
     processChannelMessage (channelObject:IChannelObject, wsEvent:MessageEvent): IChannelMessageAction
-    initChannel(channelObject:IChannelObject): boolean
+    initChannel(channelObject:IChannelObject): Promise<boolean>
     startChannel(channelObject:IChannelObject): boolean
     pauseChannel(channelObject:IChannelObject): boolean
     continueChannel(channelObject:IChannelObject): boolean

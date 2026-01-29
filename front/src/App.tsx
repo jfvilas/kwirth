@@ -45,7 +45,7 @@ import { getMetricsNames, ENotifyLevel, readClusterInfo } from './tools/Global'
 import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
 import { DEFAULTLASTTABS, IColors, TABBASECOLORS, TABBRIGHTCOLORS } from './tools/Constants'
-import { createChannelInstance } from './tools/Channel'
+import { createChannelInstance } from './tools/ChannelTools'
 import { NotificationMenu, NotificationMessage } from './components/xNotificationMenu'
 
 const App: React.FC = () => {
@@ -58,6 +58,8 @@ const App: React.FC = () => {
     const [user, setUser] = useState<IUser>()
     const [logged,setLogged]=useState(false)
     const [firstLogin,setFirstLogin]=useState(false)
+    const [refresh,setRefresh]=useState(0)
+
     const [accessString,setAccessString]=useState('')
     const [msgBox, setMsgBox] =useState(<></>)
 
@@ -70,7 +72,7 @@ const App: React.FC = () => {
     const selectedTab = useRef<ITabObject>()
     const [channelMessageAction, setChannelMessageAction] = useState<IChannelMessageAction>({action: EChannelRefreshAction.NONE})
 
-    const settingsRef = useRef<Settings|null>(null)
+    const userSettingsRef = useRef<Settings>(new Settings())
 
     const [backChannels, setBackChannels] = useState<BackChannelData[]>([])
     const backChannelsRef = useRef(backChannels)
@@ -131,7 +133,8 @@ const App: React.FC = () => {
 
         if (clustersRef.current.length === 0) getClusters()
             
-        if (!settingsRef.current || settingsRef.current === null) readSettings() 
+        //if (!userSettingsRef.current || userSettingsRef.current === null) readLoggedUserSettings() 
+        readLoggedUserSettings() 
 
         // load user tabs
         let lt = localStorage.getItem('lastTabs')
@@ -238,26 +241,26 @@ const App: React.FC = () => {
             clusterList = clusterList.filter (c => c.name !== srcCluster.name)
         }
         for (let cluster of clusterList)
-            readClusterInfo(cluster).then( () => { setChannelMessageAction({action : EChannelRefreshAction.REFRESH}) })
+            readClusterInfo(cluster, notify).then( () => { setChannelMessageAction({action : EChannelRefreshAction.REFRESH}) })
         clusterList.push(srcCluster)
         setClusters(clusterList)
         setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
     }
 
-    const readSettings = async () => {
+    const readLoggedUserSettings = async () => {
         let resp = await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString))
         if (resp.status===200) {
             let json=await resp.json()
-            if (json && settingsRef) settingsRef.current = JSON.parse(json) as Settings
+            if (json && userSettingsRef) userSettingsRef.current = JSON.parse(json) as Settings
         }
         else {
-            settingsRef.current = { channelSettings: [], keepAliveInterval: 60 }
+            userSettingsRef.current = { channelSettings: [], keepAliveInterval: 60, channelUserPreferences:[] }
         }
     }
 
-    const writeSettings = async () => {
+    const writeLoggedUserSettings = async () => {
         if (user) {
-            let payload = JSON.stringify(settingsRef.current)
+            let payload = JSON.stringify(userSettingsRef.current)
             fetch (`${backendUrl}/store/${user.id}/settings/general`, addPostAuthorization(accessString, payload))
         }
     }
@@ -284,7 +287,7 @@ const App: React.FC = () => {
         tab.ws.onopen = fn
     }
 
-    const onResourceSelectorAdd = (selection:IResourceSelected, start:boolean, settings:any) => {
+    const onResourceSelectorAdd = async (selection:IResourceSelected, start:boolean, settings:any) : Promise<void> => {
         let cluster = clusters.find(c => c.name===selection.clusterName)
         if (!cluster) {
             setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.clusterName} does not exist.`, setMsgBox))
@@ -292,7 +295,7 @@ const App: React.FC = () => {
         }
 
         if (frontChannels.has(selection.channelId)) {
-           populateTabObject(selection.name, selection.channelId, cluster, selection.view, selection.namespaces.join(','), selection.groups.join(','), selection.pods.join(','), selection.containers.join(','), start, settings)
+           await populateTabObject(selection.name, selection.channelId, cluster, selection.view, selection.namespaces.join(','), selection.groups.join(','), selection.pods.join(','), selection.containers.join(','), start, settings)
         }
         else {
             console.log(`Error, invalid channel: `, selection.channelId)
@@ -305,7 +308,33 @@ const App: React.FC = () => {
         setNotifications((prev) => prev.filter((_, index) => index !== indexToDelete))
     }
 
-    const populateTabObject = (name:string, channelId:string, cluster:Cluster, view:string, namespaces:string, groups:string, pods:string, containers:string, start:boolean, settings:any, tab?:ITabObject) : ITabObject => {
+    const readChannelUserPreferences = async (channelId:string) : Promise<any> => {
+        let chanPref = userSettingsRef.current.channelUserPreferences?.find(c => c.channelId===channelId)
+        if (chanPref) {
+            return chanPref.data
+        }
+        else {
+            return undefined
+        }
+    }
+
+    const writeChannelUserPreferences = async (channelId:string, data:any) : Promise<boolean> => {
+        if (!userSettingsRef.current?.channelUserPreferences) userSettingsRef.current.channelUserPreferences = []
+
+        let chanPref = userSettingsRef.current?.channelUserPreferences?.find(c => c.channelId===channelId)
+        if (chanPref) {
+            chanPref.data = data
+            await writeLoggedUserSettings()
+            return true
+        }
+        else {
+            userSettingsRef.current.channelUserPreferences.push ({ channelId, data })
+            await writeLoggedUserSettings()
+            return true
+        }
+    }
+
+    const populateTabObject = async (name:string, channelId:string, cluster:Cluster, view:string, namespaces:string, groups:string, pods:string, containers:string, start:boolean, settings:any, tab?:ITabObject) : Promise<ITabObject> => {
         let newChannel = createChannelInstance(frontChannels.get(channelId), notify)
         if (!newChannel) {
             throw 'Invalid channel instance'
@@ -339,13 +368,17 @@ const App: React.FC = () => {
         if (newTab.channel.requiresClusterUrl()) newTab.channelObject.clusterUrl = cluster.url
         if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
         if (newTab.channel.requiresFrontChannels()) newTab.channelObject.frontChannels = frontChannels
-        newTab.channelObject.config = settingsRef.current?.channelSettings?.find(c => c.channelId === newTab.channel.channelId)
-        if (newTab.channel.initChannel(newTab.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
+        if (newTab.channel.requiresUserSettings()) {
+            newTab.channelObject.readChannelUserPreferences = readChannelUserPreferences
+            newTab.channelObject.writeChannelUserPreferences = writeChannelUserPreferences
+        }
+        newTab.channelObject.config = userSettingsRef.current?.channelSettings?.find(c => c.channelId === newTab.channel.channelId)
+        if ((await newTab.channel.initChannel(newTab.channelObject))) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         if (tab) newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
         if (newTab.channel.requiresSettings()) {
             // this 'requiresSettings' must be executed after managing config and instanceConfig
-            if (settingsRef.current) {
-                let thisChannnel = settingsRef.current.channelSettings.find(c => c.channelId === newTab.channel.channelId)
+            if (userSettingsRef.current) {
+                let thisChannnel = userSettingsRef.current.channelSettings.find(c => c.channelId === newTab.channel.channelId)
                 if (thisChannnel) {
                     newTab.channelObject.channelSettings = {
                         channelId: newTab.channel.channelId,
@@ -362,20 +395,20 @@ const App: React.FC = () => {
                 }
             }
             newTab.channelObject.onUpdateChannelSettings = (channelSettings:IChannelSettings) => {
-                if (settingsRef.current) {
-                    let thisChannnel = settingsRef.current.channelSettings.find(c => c.channelId === newTab.channel.channelId)
+                if (userSettingsRef.current) {
+                    let thisChannnel = userSettingsRef.current.channelSettings.find(c => c.channelId === newTab.channel.channelId)
                     if (!thisChannnel) {
                         thisChannnel = {
                             channelId: newTab.channel.channelId,
                             channelConfig: channelSettings.channelConfig,
                             channelInstanceConfig: undefined
                         }
-                        settingsRef.current.channelSettings.push(thisChannnel)
+                        userSettingsRef.current.channelSettings.push(thisChannnel)
                     }
                     else {
                         thisChannnel.channelConfig = channelSettings.channelConfig
                     }
-                    writeSettings()
+                    writeLoggedUserSettings()
                 }
             }
         }
@@ -412,28 +445,28 @@ const App: React.FC = () => {
                 channelInstanceConfig: selectedTab.current.channelObject.instanceConfig
             }
         }
-        if (settingsRef.current?.channelSettings && settingsRef.current.channelSettings.some(c => c.channelId === selectedTab.current?.channel.channelId)) {
-            props.setupConfig = settingsRef.current.channelSettings.find(c => c.channelId === selectedTab.current?.channel.channelId)
+        if (userSettingsRef.current?.channelSettings && userSettingsRef.current.channelSettings.some(c => c.channelId === selectedTab.current?.channel.channelId)) {
+            props.setupConfig = userSettingsRef.current.channelSettings.find(c => c.channelId === selectedTab.current?.channel.channelId)
         }
         return <SetupDialog {...props} />
     }
 
     const onChannelSetupClosed = (channel:IChannel, channelSettings:IChannelSettings, start:boolean, setDefaultValues:boolean) => {
         channel.setSetupVisibility(false)
-        if (!selectedTab.current || !settingsRef.current) return
+        if (!selectedTab.current || !userSettingsRef.current) return
         if (!start) {
             setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
             return
         }
 
         if (setDefaultValues) {
-            settingsRef.current.channelSettings = settingsRef.current.channelSettings.filter(c => c.channelId !== channel.channelId)
-            settingsRef.current.channelSettings.push ({
+            userSettingsRef.current.channelSettings = userSettingsRef.current.channelSettings.filter(c => c.channelId !== channel.channelId)
+            userSettingsRef.current.channelSettings.push ({
                 channelId: selectedTab.current.channel.channelId,
                 channelInstanceConfig: channelSettings.channelInstanceConfig,
                 channelConfig: channelSettings.channelConfig
             })
-            writeSettings()
+            writeLoggedUserSettings()
         }
 
         selectedTab.current.channelObject.config = channelSettings.channelConfig
@@ -455,7 +488,7 @@ const App: React.FC = () => {
                 }
                 if (t.ws && t.ws.readyState === WebSocket.OPEN) t.ws.send(JSON.stringify(instanceConfig))
             }
-        }, (settingsRef.current?.keepAliveInterval || 60) * 1000, tab)
+        }, (userSettingsRef.current?.keepAliveInterval || 60) * 1000, tab)
     }
 
     const colorizeTab = (tab:ITabObject) => {
@@ -1151,7 +1184,7 @@ const App: React.FC = () => {
 
     const onSettingsUserClosed = (ok:boolean) => {
         setShowSettingsUser(false)
-        if (ok) writeSettings()
+        if (ok) writeLoggedUserSettings()
     }
 
     const onSettingsClusterClosed = (readMetricsInterval:number|undefined) => {
@@ -1195,18 +1228,6 @@ const App: React.FC = () => {
         setClusters([...cc])
     }
 
-    const onLoginClosed = (user:IUser|undefined, firstTime:boolean) => {
-        if (user) {
-            setLogged(true)
-            setFirstLogin(firstTime)
-            setUser(user)
-            setAccessString(user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources)
-            setCurrentWorkspaceName('untitled')
-            setCurrentWorkspaceDescription('No description yet')
-            clearTabs()
-        }
-    }
-
     const onFirstTimeLoginClose = (exit:boolean) => {
         setFirstLogin(false)
         if (exit) setLogged(false)
@@ -1232,7 +1253,7 @@ const App: React.FC = () => {
         if (cluster) {
             let clonedTab:ITabSummary = await JSON.parse(JSON.stringify(tab))
             await fillTabSummary(clonedTab)
-            populateTabObject(clonedTab.name, clonedTab.channel, cluster, clonedTab.channelObject.view, clonedTab.channelObject.namespace, clonedTab.channelObject.group, clonedTab.channelObject.pod, clonedTab.channelObject.container, false, undefined)
+            await populateTabObject(clonedTab.name, clonedTab.channel, cluster, clonedTab.channelObject.view, clonedTab.channelObject.namespace, clonedTab.channelObject.group, clonedTab.channelObject.pod, clonedTab.channelObject.container, false, undefined)
             onClickChannelStart()
         }
     }
@@ -1276,15 +1297,30 @@ const App: React.FC = () => {
         setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
     }
 
-    const showNots = (event:any) => {
-        console.log(event)
+    const showNotifications = (event:any) => {
         setNotificationMenuAnchorEl(event.currentTarget)
+    }
+
+    const onLoginClosed = (user:IUser|undefined, firstTime:boolean) => {
+        if (user) {
+            setLogged(true)
+            setFirstLogin(firstTime)
+            setUser(user)
+            setAccessString(user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources)
+            setCurrentWorkspaceName('untitled')
+            setCurrentWorkspaceDescription('No description yet')
+            clearTabs()
+        }
+        else {
+            setLogged(false)
+            setRefresh(Math.random())
+        }
     }
 
     if (!logged) return (<>
         <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
             <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
-                <Login onClose={onLoginClosed}></Login>
+                <Login onClose={onLoginClosed} key={refresh}></Login>
             </SessionContext.Provider>
         </div>
     </>)
@@ -1300,13 +1336,12 @@ const App: React.FC = () => {
                     </Tooltip>
                     <Tooltip title={<>Notifications</>}>
                         {notifications.length>0? 
-                            <IconButton onClick={showNots}>
-                                <NotificationsActive sx={{color:'red'}}/>
-                                {/* +++ show a list of pending notifications */}
+                            <IconButton onClick={showNotifications}>
+                                <NotificationsActive sx={{color:notifications.some(n => n.level === ENotifyLevel.ERROR)? 'red':notifications.some(n => n.level === ENotifyLevel.WARNING)?'orange':'lightgray'}}/>
                             </IconButton>
                             :
-                            <IconButton onClick={showNots}>
-                                <Notifications sx={{color:'lightgray'}}/>
+                            <IconButton onClick={showNotifications}>
+                                <Notifications sx={{color:'white'}}/>
                             </IconButton>
                         }
                     </Tooltip>
@@ -1369,11 +1404,11 @@ const App: React.FC = () => {
             { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs.current} oldname={selectedTab.current?.name}/> }
             { showSaveWorkspace && <SaveWorkspace onClose={onSaveWorkspaceClosed} name={currentWorkspaceName} description={currentWorkspaceDescription} values={workspaces} /> }
             { showSelectWorkspace && <SelectWorkspace onSelect={onSelectWorkspaceClosed} values={workspaces} action={selectWorkspaceAction}/> }
-            { showManageClusters && <ManageClusters onClose={onManageClustersClosed} clusters={clusters}/> }
+            { showManageClusters && <ManageClusters onClose={onManageClustersClosed} clusters={clusters} notify={notify}/> }
             { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
             { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
             { showChannelSetup() }
-            { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={settingsRef.current} /> }
+            { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={userSettingsRef.current} /> }
             { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.kwirthData?.metricsInterval} /> }
             { showSettingsTrivy && selectedClusterName && <SettingsTrivy onClose={onSettingsTrivyClosed} cluster={clusters.find(c => c.name===selectedClusterName)!}/> }
             { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}

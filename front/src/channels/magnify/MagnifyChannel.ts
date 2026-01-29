@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid'
 import { ENotifyLevel } from '../../tools/Global'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { convertBytesToSize, convertSizeToBytes } from './Tools'
+import { MagnifyUserPreferences } from './MagnifyUserPreferences'
 
 interface IMagnifyMessage extends IInstanceMessage {
     msgtype: 'magnifymessage'
@@ -38,6 +39,7 @@ class MagnifyChannel implements IChannel {
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return true }
     requiresWebSocket() { return true }
+    requiresUserSettings() { return true }
     setNotifier(notifier: (channel:IChannel|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'magnify$read'}
@@ -54,7 +56,10 @@ class MagnifyChannel implements IChannel {
         let msg:IMagnifyMessage = JSON.parse(wsEvent.data)
         let magnifyData:IMagnifyData = channelObject.data
 
-        
+        if (magnifyData.userPreferences.tracing) {
+            console.warn(new Date().toTimeString())
+            console.log(JSON.parse(wsEvent.data))
+        }
         // Implement commandAsync responses management
         if (msg.id && magnifyData.pendingWebSocketRequests.has(msg.id)) {
             const resolve = magnifyData.pendingWebSocketRequests.get(msg.id)
@@ -201,13 +206,16 @@ class MagnifyChannel implements IChannel {
         }
     }
 
-    initChannel(channelObject:IChannelObject): boolean {        
+    async initChannel(channelObject:IChannelObject): Promise<boolean> {
         let config = new MagnifyConfig()
         config.notify = this.notify
 
         channelObject.instanceConfig = new MagnifyInstanceConfig()
         channelObject.config = config
-        channelObject.data = new MagnifyData()
+        channelObject.data = new MagnifyData() as IMagnifyData
+        if (channelObject.readChannelUserPreferences) channelObject.data.userPreferences = await channelObject.readChannelUserPreferences(this.channelId)
+        if (!channelObject.data.userPreferences) channelObject.data.userPreferences = new MagnifyUserPreferences()
+
         return false
     }
 
@@ -301,6 +309,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadObject (channelObject:IChannelObject, kind:string, magnifyData:IMagnifyData, obj:any): void {
+        if (obj.metadata?.managedFields) delete obj.metadata.managedFields //+++
         if (kind==='Pod') this.loadPod(magnifyData, obj)
         else if (kind==='ConfigMap') this.loadConfigMap(magnifyData, obj)
         else if (kind==='Secret') this.loadSecret(magnifyData, obj)
@@ -1193,16 +1202,7 @@ const requestList = (channelObject: IChannelObject) => {
         flow: EInstanceMessageFlow.REQUEST,
         type: EInstanceMessageType.DATA,
         channel: 'magnify',
-        params: magnifyData.userSettings.dataSettings.source
-        // params: [
-        //     'ComponentStatus', 'Namespace', 'Node', 'NodeMetrics',
-        //     'Service', 'Endpoints', 'Ingress', 'IngressClass', 'NetworkPolicy',
-        //     'Pod', 'PodMetrics', 'Deployment', 'DaemonSet', 'ReplicaSet', 'ReplicationController', 'StatefulSet', 'Job', 'CronJob',
-        //     'ConfigMap', 'Secret', 'ResourceQuota', 'LimitRange', 'HorizontalPodAutoscaler', 'PodDisruptionBudget', 'PriorityClass','RuntimeClass', 'Lease', 'ValidatingWebhookConfiguration', 'MutatingWebhookConfiguration',
-        //     'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass', 'VolumeAttachment', 'CSIDriver', 'CSINode', 'CSIStorageCapacity',
-        //     'ServiceAccount', 'ClusterRole', 'Role', 'ClusterRoleBinding', 'RoleBinding',
-        //     'CustomResourceDefinition'
-        // ]
+        params: magnifyData.userPreferences?.dataConfig?.source
     }
     channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
 }
@@ -1223,7 +1223,7 @@ const subscribe = (channelObject: IChannelObject) => {
         flow: EInstanceMessageFlow.REQUEST,
         type: EInstanceMessageType.DATA,
         channel: 'magnify',
-        params: magnifyData.userSettings.dataSettings.sync
+        params: magnifyData.userPreferences?.dataConfig?.sync
     }
     channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
 }

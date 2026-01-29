@@ -22,6 +22,7 @@ export class OpsChannel implements IChannel {
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return true }
     requiresWebSocket() { return true }
+    requiresUserSettings() { return false }
     setNotifier(notifier: (channel:IChannel, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'ops$get' }
@@ -161,7 +162,7 @@ export class OpsChannel implements IChannel {
         channelObject.webSocket.send(JSON.stringify( instanceConfig ))
     }
     
-    initChannel(channelObject:IChannelObject): boolean {
+    async initChannel(channelObject:IChannelObject): Promise<boolean> {
         channelObject.config = new OpsConfig()
         channelObject.data = new OpsData()
         channelObject.instanceConfig = new OpsInstanceConfig()

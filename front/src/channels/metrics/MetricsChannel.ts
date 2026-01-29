@@ -21,6 +21,7 @@ export class MetricsChannel implements IChannel {
     requiresAccessString() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return true }
+    requiresUserSettings() { return false }
     setNotifier(notifier: (channel:IChannel, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return InstanceConfigScopeEnum.STREAM }
@@ -81,7 +82,7 @@ export class MetricsChannel implements IChannel {
         }
     }
 
-    initChannel(channelObject:IChannelObject): boolean {
+    async initChannel(channelObject:IChannelObject): Promise<boolean> {
         channelObject.data = new MetricsData()
         channelObject.instanceConfig = new MetricsInstanceConfig()
         channelObject.config = new MetricsConfig()

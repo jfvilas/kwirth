@@ -1,4 +1,4 @@
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, TextField, Typography } from '@mui/material'
+import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, Stack, TextField, Typography } from '@mui/material'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { ChangeEvent, useEffect, useRef, useState } from 'react'
 import { Close, Fullscreen, FullscreenExit, Minimize, Search } from '@mui/icons-material';
@@ -21,6 +21,7 @@ export interface IContentEditObject {
 const NamespaceSearch: React.FC<IContentEditProps> = (props:IContentEditProps) => {
     const content = useRef<IContentEditObject>({ type:'edit', content:{code:'', title:''}})
     const [search, setSearch] = useState('')
+    const [includeStatus, setIncludeStatus] = useState(false)
     const [percent, setPercent] = useState<number>(70)
    
     useEffect(() => {
@@ -44,7 +45,11 @@ const NamespaceSearch: React.FC<IContentEditProps> = (props:IContentEditProps) =
             previousFocus?.focus()
         }
     }, [])
-    
+
+    const onChangeStatus = () => {
+        setIncludeStatus(!includeStatus)
+    }
+
     useEffect( () => {
     },[])
 
@@ -101,13 +106,17 @@ const NamespaceSearch: React.FC<IContentEditProps> = (props:IContentEditProps) =
             </DialogTitle>
 
             <DialogContent>
-                <TextField value={search} onChange={onSearchChange} variant='standard' label={'Search...'}></TextField>
+                <Stack direction={'row'} alignItems={'center'}>
+                    <TextField value={search} onChange={onSearchChange} variant='standard' label={'Search...'}></TextField>
+                    <FormControlLabel control={<Checkbox/>} value={includeStatus} onChange={onChangeStatus} label='Include status'/>
+                </Stack>
                 <Stack direction={'column'}>
                     {
                         search.trim()!=='' && props.files.filter(f => f.data?.origin?.metadata?.namespace === props.selectedFile.data.origin.metadata.name)
                             .map((file, index1) => {
                                 let res=objectSearch(file.data.origin, search)
                                 return res.map((r, index2) => {
+                                    if (!includeStatus && r.startsWith('status')) return
                                     let val = _.get(file.data.origin, r)
                                     if (val===undefined) return
                                     return <Stack key={''+index1+index2}direction={'row'} sx={{mb:2}} alignItems={'center'}>

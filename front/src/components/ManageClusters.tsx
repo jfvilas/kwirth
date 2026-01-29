@@ -3,11 +3,13 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, List, ListIt
 import { Cluster } from '../model/Cluster'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxWaitCancel, MsgBoxYesNo } from '../tools/MsgBox'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
-import { readClusterInfo } from '../tools/Global'
+import { ENotifyLevel, readClusterInfo } from '../tools/Global'
 import { KwirthData } from '@jfvilas/kwirth-common'
+import { IChannel } from '../channels/IChannel'
 
 interface IProps {
   onClose:(clusters:Cluster[]) => void
+  notify: (channel:IChannel|undefined, level:ENotifyLevel, msg:string) => void
   clusters?: Cluster[]
 }
 
@@ -38,7 +40,8 @@ const ManageClusters: React.FC<IProps> = (props:IProps) => {
             selectedCluster.kwirthData = undefined
             clusters.splice(clusters.findIndex(c => c.id===selectedCluster.id),1)
             clusters.push(selectedCluster)
-            readClusterInfo(selectedCluster).then ( () => { setRefresh(Math.random()) })
+            await readClusterInfo(selectedCluster, props.notify)
+            setRefresh(Math.random())
         }
         else {
             var c = new Cluster()
@@ -47,7 +50,8 @@ const ManageClusters: React.FC<IProps> = (props:IProps) => {
             c.url = url
             c.kwirthData = undefined
             clusters.push(c)
-            readClusterInfo(c).then ( () => { setRefresh(Math.random()) })
+            await readClusterInfo(c, props.notify)
+            setRefresh(Math.random())
         }
         setName('')
         setUrl('')

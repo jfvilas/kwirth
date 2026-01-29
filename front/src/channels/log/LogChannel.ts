@@ -21,6 +21,7 @@ export class LogChannel implements IChannel {
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
+    requiresUserSettings() { return false }
     setNotifier(notifier: (channel:IChannel|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return EInstanceConfigScope.VIEW }
@@ -134,7 +135,7 @@ export class LogChannel implements IChannel {
         }
     }
 
-    initChannel(channelObject:IChannelObject): boolean {
+    async initChannel(channelObject:IChannelObject): Promise<boolean> {
         channelObject.instanceConfig = new LogInstanceConfig()
         channelObject.config = new LogConfig()
         channelObject.data = new LogData()

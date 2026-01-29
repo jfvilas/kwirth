@@ -7,6 +7,7 @@ interface IChannelSettings {
 class Settings {
     public channelSettings: IChannelSettings[] = []
     public keepAliveInterval: number = 60
+    public channelUserPreferences: {channelId: string, data:any}[] = []
 }
 
 export type { IChannelSettings }

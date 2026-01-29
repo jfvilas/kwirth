@@ -6,7 +6,7 @@ import { IFileObject } from '@jfvilas/react-file-manager'
 import { ELogSortOrder, ILogConfig, ILogInstanceConfig } from '../../log/LogConfig'
 import { ILogData } from '../../log/LogData'
 import { useEffect, useRef, useState } from 'react'
-import { createChannelInstance } from '../../../tools/Channel'
+import { createChannelInstance } from '../../../tools/ChannelTools'
 import { ENotifyLevel } from '../../../tools/Global'
 import { IMetricsConfig, IMetricsInstanceConfig } from '../../metrics/MetricsConfig'
 import { IMetricsData } from '../../metrics/MetricsData'
@@ -14,12 +14,12 @@ import { EChartType } from '../../metrics/MenuChart'
 import { IOpsData } from '../../ops/OpsData'
 import { ESwitchKey, IOpsConfig, IOpsInstanceConfig } from '../../ops/OpsConfig'
 import { TerminalManager } from '../../ops/Terminal/TerminalManager'
-import { MagnifyUserSettings } from '../MagnifyUserSettings'
+import { MagnifyUserPreferences } from '../MagnifyUserPreferences'
 
 interface IContentExternalProps {
     title: string
     channelId: string
-    settings: MagnifyUserSettings
+    settings: MagnifyUserPreferences
     frontChannels: Map<string, TChannelConstructor>
     selectedFiles:IFileObject[]
     onNotify: (channel:IChannel|undefined, level: ENotifyLevel, msg: string) => void
@@ -35,7 +35,7 @@ interface IContentExternalProps {
 export interface IContentExternalObject {
     type: 'external'
     ws: WebSocket | undefined
-    settings: MagnifyUserSettings
+    settings: MagnifyUserPreferences
     channel: IChannel
     channelObject: IChannelObject
     channelStarted: boolean
@@ -54,7 +54,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             content.current = props.content
         }
         else if (props.channelObject) {
-            content.current = createContent(props.channelId!)
+            content.current = createContent(props.channelId)
             if (!content.current) return
             switch(props.channelId) {
                 case 'log':
@@ -72,6 +72,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
     },[])
 
     const createContent = (channelId:string) => {
+        console.log(channelId)
         let newChannel = createChannelInstance(props.frontChannels.get(channelId), props.onNotify)
         if (!newChannel) {
             console.log('Invaid channel instance created')

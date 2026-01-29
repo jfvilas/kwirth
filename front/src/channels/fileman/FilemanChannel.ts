@@ -36,6 +36,7 @@ export class FilemanChannel implements IChannel {
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return true }
     requiresWebSocket() { return true }
+    requiresUserSettings() { return false }
     setNotifier(notifier: (channel:IChannel|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'fileman$read'}
@@ -226,7 +227,7 @@ export class FilemanChannel implements IChannel {
         }
     }
 
-    initChannel(channelObject:IChannelObject): boolean {        
+    async initChannel(channelObject:IChannelObject): Promise<boolean> {
         channelObject.instanceConfig = new FilemanInstanceConfig()
         let config = new FilemanConfig()
         config.notify = this.notify

@@ -23,8 +23,8 @@ const menu = [
     {   name: 'Overview',
         isDirectory: true,
         path: '/cluster/overview',
-        class: 'classmenu',
-        layout: 'own',   
+        class: 'classclusteroverview',
+        layout: 'own',
     },
     {   name: 'Nodes',
         isDirectory: true,
@@ -371,10 +371,10 @@ const menu = [
         children: 'CustomResourceDefinition'
     },
 
-    // Setttings
-    {   name: 'Settings',
+    // Preferences
+    {   name: 'Preferences',
         isDirectory: true,
-        path: '/settings',
+        path: '/preferences',
         class: 'classsettings',
         layout: 'own'
     },
@@ -382,7 +382,18 @@ const menu = [
 
 // General  (these empty classes are needed for showing icons)
 spaces.set('classmenu', {})
-spaces.set('classcluster', {})
+spaces.set('classclusteroverview', 
+    {
+        leftItems: [
+            {
+                name:'search',
+                icon: <Search fontSize='small'/>,
+                text: 'Search',
+                permission: true
+            }
+        ]
+    }    
+)
 spaces.set('classnetwork', {})
 spaces.set('classworkload', {})
 spaces.set('classstorage', {})
@@ -1766,12 +1777,6 @@ spaces.set('Pod',
                 name: 'shell',
                 icon: <Terminal fontSize='small'/>,
                 text: 'Shell',
-                permission: true
-            },
-            {
-                name: 'forward',
-                icon: <Forward fontSize='small'/>,
-                text: 'Forward',
                 permission: true
             },
             {

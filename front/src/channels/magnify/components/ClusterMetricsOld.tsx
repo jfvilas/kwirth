@@ -6,7 +6,7 @@ import { EChartType } from '../../metrics/MenuChart'
 import { IMetricsData } from '../../metrics/MetricsData'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { ENotifyLevel } from '../../../tools/Global'
-import { createChannelInstance } from '../../../tools/Channel'
+import { createChannelInstance } from '../../../tools/ChannelTools'
 
 interface IClusterMetricsProps {
     files: IFileObject[]

@@ -2,6 +2,14 @@ import { KwirthData } from '@jfvilas/kwirth-common'
 import { MetricDefinition } from '../channels/metrics/MetricDefinition'
 import { Cluster, IClusterInfo } from '../model/Cluster'
 import { addGetAuthorization } from './AuthorizationManagement'
+import { IChannel } from '../channels/IChannel'
+
+export enum ENotifyLevel {
+    INFO ='info',
+    ERROR='error',
+    WARNING='warning',
+    SUCCESS='success'
+}
 
 export const getMetricsNames = async (cluster:Cluster) => {
     try {
@@ -18,7 +26,7 @@ export const getMetricsNames = async (cluster:Cluster) => {
     }
 }
 
-export const readClusterInfo = async (cluster: Cluster): Promise<void> => {
+export const readClusterInfo = async (cluster: Cluster, notify: (channel:IChannel|undefined, level:ENotifyLevel, msg:string)=> void): Promise<void> => {
     try {
         cluster.enabled = false
         let responseInfo = await fetch(`${cluster.url}/config/info`, addGetAuthorization(cluster.accessString))
@@ -48,12 +56,7 @@ export const readClusterInfo = async (cluster: Cluster): Promise<void> => {
     catch (error) {
         console.log(error)
         console.log(`Cluster ${cluster.name} not enabled`)
+        notify(undefined, ENotifyLevel.WARNING, `Cluster ${cluster.name} not enabled. `+error)
     }
 }
 
-export enum ENotifyLevel {
-    INFO ='info',
-    ERROR='error',
-    WARNING='warning',
-    SUCCESS='success'
-}

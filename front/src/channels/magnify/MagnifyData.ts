@@ -3,7 +3,7 @@ import { IFileObject } from '@jfvilas/react-file-manager'
 import { IContentExternalObject } from './components/ContentExternal'
 import { IContentEditObject } from './components/ContentEdit'
 import { IContentDetailsObject } from './components/ContentDetails'
-import { MagnifyUserSettings } from './MagnifyUserSettings'
+import { MagnifyUserPreferences } from './MagnifyUserPreferences'
 
 export interface IMagnifyData {
     clusterInfo: any
@@ -23,8 +23,7 @@ export interface IMagnifyData {
     metricsPodDetail: any[]
 
     updateNamespaces?: (action:string, namespace:string) => void
-    userSettings: MagnifyUserSettings
-
+    userPreferences: MagnifyUserPreferences
 }
 
 export class MagnifyData implements IMagnifyData {
@@ -41,7 +40,7 @@ export class MagnifyData implements IMagnifyData {
     metricsCluster = []
     metricsPodDetail = []
     updateNamespaces = undefined
-    userSettings = new MagnifyUserSettings()
+    userPreferences = new MagnifyUserPreferences()
 }
 
 export enum EMagnifyCommand {

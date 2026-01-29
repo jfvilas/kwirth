@@ -255,7 +255,8 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     height='100%'
                     className='custom-fm'
                     searchMode='auto'
-                    //showBreadcrumb={true}
+                    showBreadcrumb={true}
+                    maxNavigationPaneDepth={3}
                 />
                 { msgBox }
             </Box>

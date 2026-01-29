@@ -21,6 +21,7 @@ export class AlertChannel implements IChannel {
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
     requiresWebSocket() { return false }
+    requiresUserSettings() { return false }
     setNotifier(notifier: (channel:IChannel, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return EInstanceConfigScope.VIEW}
@@ -73,7 +74,7 @@ export class AlertChannel implements IChannel {
         }
     }
 
-    initChannel(channelObject:IChannelObject): boolean {
+    async initChannel(channelObject:IChannelObject): Promise<boolean> {
         channelObject.data = new AlertData()
         channelObject.instanceConfig = new AlertInstanceConfig()
         channelObject.config = new AlertConfig()

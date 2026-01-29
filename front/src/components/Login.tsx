@@ -47,6 +47,10 @@ const Login: React.FC<IProps> = (props:IProps) => {
         props.onClose(user, firstTime)
     }
 
+    const onClickCancel = async () => {
+        props.onClose(undefined, firstTime)
+    }
+
     const onClickOk = async () => {
         let result
         if(changingPassword) {
@@ -112,16 +116,21 @@ const Login: React.FC<IProps> = (props:IProps) => {
                         <TextField value={password} onChange={(ev) => setPassword(ev.target.value)} type='password' variant='standard'label='Password'></TextField>
                     </>}
                     { changingPassword && <>
-                        <Typography>Change your password, since it's your first login</Typography>
+                        <Typography>Your login has been succesful, you can now change your password.</Typography>
                         <TextField value={newPassword1} onChange={(ev) => setNewPassword1(ev.target.value)} type='password' variant='standard' label='New Password' autoFocus></TextField>
                         <TextField value={newPassword2} onChange={(ev) => setNewPassword2(ev.target.value)} type='password' variant='standard' label='Repeat New Password'></TextField>
                     </>}
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button onClick={onClickChangePassword} sx={{display:changingPassword?'none':'block'}}>Change Password</Button>
-                <Typography sx={{ flexGrow:1}}></Typography>
-                <Button onClick={onClickOk} disabled={((changingPassword && newPassword1!==newPassword2) || user==='' || password==='')}>OK</Button>
+                <Stack direction='row' flex={1} sx={{ml:2, mr:2}}>
+                    <Button onClick={onClickChangePassword} sx={{display:changingPassword?'none':'block'}}>Change Password</Button>
+                    <Typography sx={{ flexGrow:1}}></Typography>
+                    <Button onClick={onClickOk} disabled={((changingPassword && (newPassword1!==newPassword2 || newPassword1==='')) || user==='' || password==='')}>OK</Button>
+                    {
+                        changingPassword && <Button onClick={onClickCancel}>Cancel</Button>
+                    }
+                </Stack>
             </DialogActions>
         </Dialog>
         {msgBox}

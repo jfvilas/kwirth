@@ -1,65 +1,62 @@
 KWIRTH
-log de jobs? revisar "started &&"
-campana
-channel metrics: metricas sinteticas: numero de pods
+log de jobs: revisar "started &&"
+channel metrics: añadir metricas sinteticas: numero de pods en nodo, percentage de pods
+añadir 2 metodos de canal para guardar y leer preferencias de usuario especificas del canal **TEST
 
 
 MAGNIFY
 zona de avisos del cluster (implementar en filemanager)
-
 en la vista de lista, acciones multi item (metrics, logs...)
-debug: añadir un log de eventos de kwirth
-💖💖💖namespace search!!!
-actions en contentdetails (shell, metrics, log....)
+revisar namespacesearch: no encuentra en los cm
+añadir la opcion de buscar en el cluster
 
 SETTINGS
-    persistir y leer al arrancar
+    persistir y leer al arrancar **TEST
 
 RFM
-    update selected on change search filter
+    context memu paste **TEST
+    maxlevel TEST**
+    fileman **TEST
 
 DETAILS
 +++ cm/secret: textarea, > tamaño inicial fijo (no todo el contenido)
 +++ servaccnt: tokens ifpresent
 
 CONFIG
-decidir que recursos queremos verdecidir que recursos queremos sincronizar (listen)
+decidir que recursos queremos ver **TEST
+decidir que recursos queremos sincronizar (listen) **TEST
 
 contentexternal
     configuracion
     chartmenu
-refresh de showoverview
+    refresh de showoverview (charts de consumo)
 
-añadir key de recatfilemanager **TEST**
+añadir key defileitem en recatfilemanager
 
 
 DETAILS
 pod envs (habra que pasar a invoke):
-valueFrom:
-    secretKeyRef:
-        name: report-sender-secrets
-        key: azure_conn_str
-
-contentdetails
-    apply changes (when modifying 'edit' fields)
+    valueFrom:
+        secretKeyRef:
+            name: report-sender-secrets
+            key: azure_conn_str
 
 events > revisar orden 23h59m
 
 💖💖💖 portforward con smart proxy
-    running, just manage rootpath in order to enable/disable forwarding
+    running, just manage to detect rootpath in order to enable/disable forwarding
 
 
 MAGNIFY BACK
 reconnect  **TEST**
-validate addObject (kwirth/kwrith/kwirth...)
+validate el addObject inicial (kwirth/kwrith/kwirth...) para dar permisos al cliente
 
 ERRORS:
 	desaparecen los podemetrics (cpu y mem) al cabo de un rato
-    crd instances duplicates
+    crd instances duplicates (only on k3s local)
     resourceselector groups duplicated sometimes
     delete pvc
     delete pv
-    rfm icons and columns
     delete job or delete pod job
 
 
@@ -74,3 +71,4 @@ en RFM
 en KWIRTH
     crear un permiso para indicar que cosas del front puede ver el usuario
     crear un setting del usuario tipo "autoexec.bat"
+    mover los settigns de trivy a trivy

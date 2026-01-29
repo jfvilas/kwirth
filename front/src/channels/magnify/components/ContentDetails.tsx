@@ -1,6 +1,6 @@
 import { ReactElement } from 'react'
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, Typography } from '@mui/material'
-import { IFileObject } from '@jfvilas/react-file-manager'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, Tooltip, Typography } from '@mui/material'
+import { IFileObject, ISpaceMenuItem } from '@jfvilas/react-file-manager'
 import { useEffect, useRef, useState } from 'react'
 import { Close, ContentCopy, Delete, Edit, Fullscreen, FullscreenExit, Minimize } from '@mui/icons-material';
 import { DetailsObject, IDetailsSection } from './DetailsObject';
@@ -8,24 +8,25 @@ import { objectClone } from '../Tools';
 const _ = require('lodash')
 const copy = require('clipboard-copy')
 
-export interface IDetailsAction {
-    onClick: () => void
-    icon: ReactElement
-    text: string
+// export interface IDetailsAction {
+//     onClick: () => void
+//     icon: ReactElement
+//     text: string
 
-}
+// }
 
 interface IContentDetailsProps {
     selectedFile?:IFileObject
     content?: IContentDetailsObject
     sections: IDetailsSection[]
+    actions: ISpaceMenuItem[]
     onApply: (path:string, obj:any) => void
     onEdit: (path:string) => void
     onDelete: (path:string) => void
+    onAction: (path:string, action:string) => void
     onMinimize: (content:IContentDetailsObject) => void
     onClose: (content:IContentDetailsObject) => void
     onLink: (kind:string, name:string ) => void
-    actions: IDetailsAction[]
 }
 
 export interface IContentDetailsObject {
@@ -39,6 +40,17 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
     const [containsEdit, setContainsEdit] = useState<boolean>(false)
     const [dataChanged, setDataChanged] = useState<boolean>(false)
     const newObject = useRef()
+    let showEdit = false
+    let showDelete = false
+    let items = props.actions.filter(a => a.name!=='details')
+    if (items.some(a => a.name==='edit')) {
+        items=items.filter(a => a.name!=='edit')
+        showEdit=true
+    }
+    if (items.some(a => a.name=='delete')) {
+        items=items.filter(a => a.name!=='delete')
+        showDelete=true
+    }
    
     useEffect( () => {
         if (props.content) {
@@ -109,6 +121,10 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
         setContainsEdit(val)
     }
 
+    const actionClick = (actionName:string) => {
+        console.log(actionName)
+    }
+
     return (
         <Dialog open={true} 
             sx={{
@@ -122,12 +138,24 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
             <DialogTitle>
                 <Stack direction='row' alignItems={'center'}>
                     <Typography fontSize={18}>{content.current && content.current.content.source.data?.origin.kind+': '+content.current.content.source.data?.origin.metadata?.name}</Typography>
-                    <IconButton color='primary' onClick={() => copy(content.current && content.current.content.source.data?.origin.metadata?.name)}><ContentCopy fontSize='small'/></IconButton>
-                    <IconButton color='primary' onClick={editObject}><Edit fontSize='small'/></IconButton>
-                    <IconButton color='primary' onClick={deleteObject}><Delete fontSize='small'/></IconButton>
+                    <Tooltip title='Copy'>
+                        <IconButton color='primary' onClick={() => copy(content.current && content.current.content.source.data?.origin.metadata?.name)}><ContentCopy fontSize='small'/></IconButton>
+                    </Tooltip>
                     {
-                        props.actions.map(a => <IconButton color='primary' onClick={a.onClick}>{a.icon}{a.text}</IconButton>)
+                        items.map(a => {
+
+                            return <Tooltip title={a.text}>
+                                <IconButton color='primary' onClick={() => actionClick(a.name!)}>{a.icon!}</IconButton>
+                            </Tooltip>
+                        })
                     }
+                    {showEdit && <Tooltip title='Edit'>
+                        <IconButton color='primary' onClick={editObject}><Edit fontSize='small'/></IconButton>
+                    </Tooltip>}
+                    { showDelete && <Tooltip title='Delete'>
+                        <IconButton color='primary' onClick={deleteObject}><Delete fontSize='small'/></IconButton>
+                    </Tooltip>}
+                    
 
                     <Typography sx={{flexGrow:1}}/>
 

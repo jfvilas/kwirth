@@ -151,6 +151,7 @@ declare module '@jfvilas/react-file-manager' {
         showContextMenu?: boolean,
         showBreadcrumb?: boolean,
         categories?: ICategory[],
+        maxNavigationPaneDepth: number
         formatDate? : string | number
     }>  
   

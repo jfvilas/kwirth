@@ -5,7 +5,7 @@ import { IChannel, IChannelObject, IContentProps } from '../IChannel'
 import { EMagnifyCommand, IMagnifyMessage, IMagnifyData } from './MagnifyData'
 import { Box, Button, Card, CardContent, CardHeader, Divider, Stack, Tooltip, Typography } from '@mui/material'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView } from '@jfvilas/kwirth-common'
-import { ICategory, IError, IFileObject, ISpace } from '@jfvilas/react-file-manager'
+import { ICategory, IError, IFileObject, ISpace, ISpaceMenuItem } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
 import { v4 as uuid } from 'uuid'
 import { IMagnifyConfig } from './MagnifyConfig'
@@ -13,14 +13,13 @@ import { ENotifyLevel } from '../../tools/Global'
 import { actions, icons, menu, spaces } from './components/RFMConfig'
 import { IDetailsSection } from './components/DetailsObject'
 import { objectSections } from './components/DetailsSections'
-import { ContactsOutlined, Edit, List } from '@mui/icons-material'
+import { Edit, List } from '@mui/icons-material'
 import { MsgBoxButtons, MsgBoxOkError, MsgBoxYesNo } from '../../tools/MsgBox'
 import { ContentExternal, IContentExternalObject } from './components/ContentExternal'
-import { ContentDetails, IContentDetailsObject, IDetailsAction } from './components/ContentDetails'
+import { ContentDetails, IContentDetailsObject } from './components/ContentDetails'
 import { ContentEdit, IContentEditObject } from './components/ContentEdit'
 import { LeftItemMenu } from './LeftItemMenu'
-import { MagnifyUserSettings } from './MagnifyUserSettings'
-import { UserSettings } from './components/UserSettings'
+import { UserPreferences } from './components/UserPreferences'
 import { buildPath, requestList } from './MagnifyChannel'
 import { InputBox } from '../../tools/FrontTools'
 import { templates } from './components/Templates'
@@ -34,7 +33,6 @@ import { NamespaceSearch } from './components/NamespaceSearch'
 const yamlParser = require('js-yaml')
 
 const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    const settings = new MagnifyUserSettings()
     let magnifyData:IMagnifyData = props.channelObject.data
     let permissions = {
         create: false,
@@ -62,7 +60,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const [inputBoxTitle, setInputBoxTitle] = useState<any>()
     const [inputBoxMessage, setInputBoxMessage] = useState<any>()
-    const [inputBoxResult, setIinputBoxResult] = useState<(b:any) => void>()
+    const [inputBoxResult, setIinputBoxResult] = useState<(result:any) => void>()
 
     const [selectedFiles, setSelectedFiles] = useState<IFileObject[]>([])
 
@@ -72,12 +70,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     
     const [contentDetailsVisible, setContentDetailsVisible] = useState(false)
     const [detailsSections, setDetailsSections] = useState<IDetailsSection[]>([])
-    const [detailsActions, setDetailsActions] = useState<IDetailsAction[]>([])
+    const [contentDetailsActions, setContentDetailsActions] = useState<ISpaceMenuItem[]>([])
 
     const [namespaceSearchVisible, setNamespaceSearchVisible] = useState(false)
 
     const [refresh, setRefresh] = useState<number>(Math.random())
 
+
+    // RFM categories
     const onCategoryFilter = (categoryKey:string, f:IFileObject) : boolean => {
         let cat = categories.find(c => c.key===categoryKey)
         if (!cat) return true
@@ -93,7 +93,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
         return valid
     }
-
     const isFilterActive = (categoryKey:string) : boolean => {
         let cat = categories.find(c => c.key===categoryKey)
         if (!cat) return false
@@ -110,8 +109,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         cat.selected = selected
         setCategories ([ ...categories ])
     }
-
-
     const [categories, setCategories] = useState<ICategory[]>([
         {
             key:'namespace',
@@ -157,7 +154,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setPathFunction('/network/overview', showNetworkOverview)
             setPathFunction('/config/overview', showConfigOverview)
             setPathFunction('/storage/overview', showStorageOverview)
-            setPathFunction('/settings', showSettings)
+            setPathFunction('/preferences', showPreferences)
 
         // Workload
             // Pod
@@ -432,6 +429,10 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcNode,'drain', launchNodeDrain)
             setLeftItem(spcNode,'edit', launchObjectEdit)
             setLeftItem(spcNode,'delete', launchObjectDelete)
+
+            // ClusterOverview
+            let spcClassClusterOverview = spaces.get('classclusteroverview')!
+            setLeftItem(spcClassClusterOverview,'search', launchNamespaceSearch)
 
             // Namespace
             let spcClassNamespace = spaces.get('classNamespace')!
@@ -770,13 +771,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         launchTasks(props.channelObject)
 
         magnifyData.updateNamespaces = (action:string, namespace:string) => {
-            let cat = categories.find(c => c.key==='namespace')
-            if (!cat) return
+            let nsCategory = categories.find(c => c.key==='namespace')
+            if (!nsCategory) return
             if (action==='DELETED') {
-                cat.all = cat.all.filter(c => c.key !== namespace)
+                nsCategory.all = nsCategory.all.filter(c => c.key !== namespace)
             }
             else {
-                if (!cat.all.some(c => c.key===namespace)) cat.all.push({ key:namespace })
+                if (!nsCategory.all.some(c => c.key===namespace)) nsCategory.all.push({ key:namespace })
             }
         }
 
@@ -909,15 +910,11 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
         else {
             setDetailsSections(objectSections.get(f[0].data.origin.kind)!)
-            setDetailsActions([
-                {
-                    onClick: function (): void {
-                        throw new Error('Function not implemented.')
-                    },
-                    icon: <ContactsOutlined/>,
-                    text: 'Shell'  //+++test
-                }
-            ])
+            let spc = spaces.get(f[0].data.origin.kind)
+            if (spc && spc.leftItems) {
+                //let items = spc.leftItems.filter(i => i.name !== 'details' && i.name !== 'edit' && i.name !== 'delete')
+                setContentDetailsActions(spc.leftItems)
+            }
         }
 
         // we request a fresh events list
@@ -945,6 +942,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const launchNamespaceSearch = (p:string[]) => {
+        console.log(p)
         let f = magnifyData.files.filter(x => p.includes(x.path))
         if (f) {
             setSelectedFiles(f)
@@ -1344,11 +1342,11 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         </Box>
     }
 
-    const showSettings = () => {
-        return <UserSettings settings={settings} files={magnifyData.files} onReload={onUserSettingsReload} channelObject={props.channelObject}/>
+    const showPreferences = () => {
+        return <UserPreferences preferences={magnifyData.userPreferences} files={magnifyData.files} onReload={onUserPreferencesReload} channelObject={props.channelObject}/>
     }
 
-    const onUserSettingsReload = () => {
+    const onUserPreferencesReload = () => {
         magnifyData.files = magnifyData.files.filter(f => f.isDirectory && f.path.split('/').length-1 <= 2)
         magnifyData.files = magnifyData.files.filter(f => f.class!=='crdgroup')
         magnifyData.currentPath='/overview'
@@ -1509,6 +1507,44 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         sendCommand(EMagnifyCommand.APPLY, [yamlParser.dump(obj, { indent: 2 })])
     }
 
+    const onContentDetailsAction = (path:string, action:string) => {
+        setContentDetailsVisible(false)
+        let f = magnifyData.files.filter(x => x.path === path)
+        switch (action) {
+            case 'shell':
+                //+++ launchPodShell([f],xxx) falta seleccioanr container
+                break
+            case 'logs':
+                //+++
+                break
+            case 'metrics':
+                //+++
+                break
+            case 'evict':
+                launchPodEvict([path])
+                break
+            case 'forward':
+                //+++launchPodForward([path], container)
+                break
+            case 'cordon':
+                break
+            case 'uncordon':
+                break
+            case 'drain':
+                break
+            case 'scale':
+                break
+            case 'restart':
+                break
+            case 'trigger':
+                break
+            case 'suspend':
+                break
+            case 'resume':
+                break
+        }
+    }
+
     const onComponentNotify = (channel:IChannel|undefined, level: ENotifyLevel, msg: string)  => {
         msg = 'Channel message: '+ msg;
         (props.channelObject.config as IMagnifyConfig).notify(channel, level, msg)
@@ -1544,6 +1580,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     showContextMenu={false}
                     showRefresh={false}
                     categories={categories}
+                    maxNavigationPaneDepth={2}
                     />
                 {
                     leftMenuAnchorParent && <LeftItemMenu f={leftMenuContent} onClose={onLeftItemMenuClose} onOptionSelected={onLeftItemMenuContainerSelected} anchorParent={leftMenuAnchorParent} includeAllContainers={leftMenuIncludeAllContainers} />
@@ -1624,7 +1661,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 contentView={contentExternalView}
                 data-refresh={refresh}
                 container={contentExternalContainer}
-                settings={settings}/>
+                settings={magnifyData.userPreferences}/>
         }
 
         { contentEditVisible &&
@@ -1649,8 +1686,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 onEdit={(path:string) => launchEditFromDetails(path)}
                 onDelete={(path:string) => launchObjectDelete([path])}
                 onLink={onMagnifyObjectDetailsLink}
+                onAction={onContentDetailsAction}
                 data-refresh={refresh}
-                actions={detailsActions}
+                actions={contentDetailsActions}
             />
         }
 
