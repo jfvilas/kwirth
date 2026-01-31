@@ -11,6 +11,9 @@ export class ManageClusterApi {
     appsApi:AppsV1Api
     channels:Map<string,IChannel>
 
+    changeCluster (coreApi:CoreV1Api, appsApi:AppsV1Api, apiKeyApi: ApiKeyApi, channels:Map<string, IChannel>) {
+
+    }
     constructor (coreApi:CoreV1Api, appsApi:AppsV1Api, apiKeyApi: ApiKeyApi, channels:Map<string, IChannel>) {
         this.coreApi = coreApi
         this.appsApi = appsApi

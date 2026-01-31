@@ -28,6 +28,21 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
     const [percent, setPercent] = useState<number>(70)
     const [editorUnChanged, setEditorUnChanged] = useState<boolean>(true)
    
+    useEffect(() => {
+        const previousFocus = document.activeElement as HTMLElement
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            event.stopPropagation()
+            if (event.key === 'Escape') props.onClose(content.current!)
+        }
+
+        window.addEventListener('keydown', handleKeyDown, true)
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown, true)
+            previousFocus?.focus()
+        }
+    }, [])
+
     useEffect( () => {
         if (props.content) {
             content.current = props.content

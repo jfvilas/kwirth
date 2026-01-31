@@ -11,27 +11,30 @@ revisar namespacesearch: no encuentra en los cm
 añadir la opcion de buscar en el cluster
 
 SETTINGS
-    persistir y leer al arrancar **TEST
+    persistir y leer al arrancar +++TEST
 
 RFM
-    context memu paste **TEST
-    maxlevel TEST**
-    fileman **TEST
+    context memu paste +++TEST
+    maxlevel +++TEST
+    fileman +++TEST
+    filemna: paste on background (on folderview) does nothing!!  +++TEST
 
 DETAILS
 +++ cm/secret: textarea, > tamaño inicial fijo (no todo el contenido)
 +++ servaccnt: tokens ifpresent
 
 CONFIG
-decidir que recursos queremos ver **TEST
-decidir que recursos queremos sincronizar (listen) **TEST
+decidir que recursos queremos ver +++TEST
+decidir que recursos queremos sincronizar (listen) +++TEST
 
 contentexternal
     configuracion
     chartmenu
     refresh de showoverview (charts de consumo)
 
-añadir key defileitem en recatfilemanager
+añadir key de fileitem en recatfilemanager
+    no parece ser de los items de filelist, es otro componente
+    
 
 
 DETAILS
@@ -72,3 +75,9 @@ en KWIRTH
     crear un permiso para indicar que cosas del front puede ver el usuario
     crear un setting del usuario tipo "autoexec.bat"
     mover los settigns de trivy a trivy
+
+
+DESKTOP
+    pagina de seleccion de cluster
+    api para que el node cambie de cluster (local)
+    conexion a cluster remoto

@@ -72,7 +72,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [detailsSections, setDetailsSections] = useState<IDetailsSection[]>([])
     const [contentDetailsActions, setContentDetailsActions] = useState<ISpaceMenuItem[]>([])
 
-    const [namespaceSearchVisible, setNamespaceSearchVisible] = useState(false)
+    const [searchVisible, setSearchVisible] = useState(false)
+    const [searchScope, setSearchScope] = useState('')
 
     const [refresh, setRefresh] = useState<number>(Math.random())
 
@@ -432,7 +433,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
             // ClusterOverview
             let spcClassClusterOverview = spaces.get('classclusteroverview')!
-            setLeftItem(spcClassClusterOverview,'search', launchNamespaceSearch)
+            setLeftItem(spcClassClusterOverview,'search', launchSearch)
 
             // Namespace
             let spcClassNamespace = spaces.get('classNamespace')!
@@ -441,7 +442,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setLeftItem(spcNamespace,'details', launchObjectDetails)
             setLeftItem(spcNamespace,'edit', launchObjectEdit)
             setLeftItem(spcNamespace,'delete', launchObjectDelete)
-            setLeftItem(spcNamespace,'search', launchNamespaceSearch)
+            setLeftItem(spcNamespace,'search', launchSearch)
             let objNamespace = objectSections.get('Namespace')
             if (objNamespace) {
                 let item = objNamespace?.find(s => s.name==='content')?.items.find(item => item.name === 'content')
@@ -941,13 +942,18 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }))
     }
 
-    const launchNamespaceSearch = (p:string[]) => {
+    const launchSearch = (p:string[]) => {
         console.log(p)
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        if (f) {
-            setSelectedFiles(f)
-            setNamespaceSearchVisible(true)
+        if (p[0]==='/cluster/overview') {
+            setSearchScope('cluster')
+            setSelectedFiles(magnifyData.files)
         }
+        else {
+            setSearchScope(f[0].name)
+            setSelectedFiles(magnifyData.files.filter(x => x.data?.origin?.metadata.namespace===f[0].name))
+        }
+        setSearchVisible(true)
     }
 
     const launchObjectEdit = (p:string[]) => {
@@ -1692,8 +1698,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             />
         }
 
-        { namespaceSearchVisible &&
-            <NamespaceSearch onLink={(k,e) => {setNamespaceSearchVisible(false); onMagnifyObjectDetailsLink(k,e)}} onClose={() => setNamespaceSearchVisible(false)} selectedFile={selectedFiles[0]} files={magnifyData.files} />
+        { searchVisible &&
+            <NamespaceSearch scope={searchScope} onLink={(k,e) => {setSearchVisible(false); onMagnifyObjectDetailsLink(k,e)}} onClose={() => setSearchVisible(false)} selectedFiles={selectedFiles}/>
         }
 
     </>

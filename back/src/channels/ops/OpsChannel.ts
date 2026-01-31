@@ -407,7 +407,6 @@ class OpsChannel implements IChannel {
                     resp.data = `Insufficient scope for GET`
                 break
             case EOpsCommand.RESTARTPOD:
-            case EOpsCommand.RESTARTPOD:
             case EOpsCommand.RESTARTNS:
                 if (this.checkAssetScope(instance, instance.assets[0], 'ops$restart'))
                     resp = await execCommandRestart(this.clusterInfo, instance, opsMessage)

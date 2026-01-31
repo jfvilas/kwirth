@@ -47,12 +47,29 @@ import { Homepage } from './components/Homepage'
 import { DEFAULTLASTTABS, IColors, TABBASECOLORS, TABBRIGHTCOLORS } from './tools/Constants'
 import { createChannelInstance } from './tools/ChannelTools'
 import { NotificationMenu, NotificationMessage } from './components/xNotificationMenu'
+import { useEnvironment } from './components/UseEnvironment'
+import { ContextSelector } from './components/ContextSelector'
 
-const App: React.FC = () => {
-    let backendUrl='http://localhost:3883'
+interface IAppProps {
+    backend:string
+    onBackendChange: (newback:string) => void
+}
+const App: React.FC<IAppProps> = (props:IAppProps) => {
+    let NODEENV = process.env.NODE_ENV
+    //+++NODEENV = 'production'
     const rootPath = window.__PUBLIC_PATH__ || ''
-    if ( process.env.NODE_ENV==='production') backendUrl=window.location.protocol+'//'+window.location.host
-    backendUrl=backendUrl+rootPath
+    const backendUrlRef = useRef('http://localhost:3883')
+    const { isElectron } = useEnvironment()
+
+    if (NODEENV==='production' && isElectron) backendUrlRef.current=window.location.protocol+'//'+window.location.host
+    backendUrlRef.current = backendUrlRef.current + rootPath
+    let backendUrl = backendUrlRef.current
+
+    console.log(`Context data:`)
+    console.log(`Environment: ${NODEENV}`)
+    console.log(`Front running inside electron: ${isElectron}`)
+    console.log(`Root path: '${rootPath}'`)
+    console.log(`Backend URL: ${backendUrl}`)
 
     const [frontChannels] = useState<Map<string, TChannelConstructor>>(new Map())
     const [user, setUser] = useState<IUser>()
@@ -115,6 +132,8 @@ const App: React.FC = () => {
     
     const [resourceSelected, setResourceSelected] = useState<IResourceSelected|undefined>(undefined)
 
+    const [ isClusterRemoteSelected, setIsClusterRemoteSelected] = useState(false)
+    
     useEffect( () => {
         // only first time
         frontChannels.set('log', LogChannel)
@@ -1149,6 +1168,7 @@ const App: React.FC = () => {
                 break
             case MenuDrawerOption.Exit:
                 setLogged(false)
+                window.location.href = '/'
                 break
         }
     }
@@ -1317,13 +1337,57 @@ const App: React.FC = () => {
         }
     }
 
-    if (!logged) return (<>
-        <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
-            <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
-                <Login onClose={onLoginClosed} key={refresh}></Login>
-            </SessionContext.Provider>
-        </div>
-    </>)
+    const onLocalClusterSelect = (id:string) => {
+        setLogged(true)
+        setFirstLogin(false)
+        setCurrentWorkspaceName('untitled')
+        setCurrentWorkspaceDescription('No description yet')
+        clearTabs()
+        let user:IUser = {
+            id: 'desktop',
+            name: 'Kwirth',
+            password: '',
+            accessKey: {
+                id: 'id',
+                type: 'type',
+                resources: 'all'
+            },
+            resources: ''
+        }
+        setUser(user)
+        setAccessString(user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources)
+    }
+    
+    const onRemoteClusterSelect = (id:string, url:string) => {
+        setIsClusterRemoteSelected(true)
+        setLogged(false)
+        setFirstLogin(false)
+        setCurrentWorkspaceName('untitled')
+        setCurrentWorkspaceDescription('No description yet')
+        clearTabs()
+        console.log('change to ', url)
+        backendUrlRef.current = url
+        //props.onBackendChange(url)
+    }
+    
+    if (!logged) {
+        if ((isElectron) && !isClusterRemoteSelected) {
+            return <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
+                <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
+                    <ContextSelector onClusterSelectLocal={onLocalClusterSelect} onClusterSelectRemote={onRemoteClusterSelect} />
+                </SessionContext.Provider>
+            </div>
+        }
+        else {
+            return (
+                <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
+                    <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
+                        <Login onClose={onLoginClosed} key={refresh}></Login>
+                    </SessionContext.Provider>
+                </div>
+            )
+        }
+    }
 
     return (
         <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>

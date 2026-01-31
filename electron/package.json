@@ -1,0 +1,33 @@
+{
+  "name": "kwirth-desktop",
+  "author": "Kulio Fernandez",
+  "main": "main.js",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+
+  "build": {
+    "appId": "com.tuapp.desktop",
+    "files": [
+      "./main.js",
+      "./build/**/*"
+    ],
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    }
+  },
+    
+    
+  "dependencies": {
+    "portfinder": "^1.0.38"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "electron": "^40.1.0",
+    "electron-builder": "^26.4.0",
+    "wait-on": "^9.0.3"
+  }
+}
