@@ -1,25 +1,25 @@
 import express, { Request, Response} from 'express'
 import { ApiKeyApi } from './ApiKeyApi'
 import { ClusterInfo } from '../model/ClusterInfo'
-import { IChannel } from '../channels/IChannel'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import { applyAllResources, deleteAllResources } from '../tools/KubernetesTools'
 import { EClusterType, KwirthData } from '@jfvilas/kwirth-common'
 import Docker from 'dockerode'
+import { IChannel } from '../channels/IChannel'
 
 export class ConfigApi {
     public route = express.Router()
     dockerApi : Docker
     kwirthData: KwirthData
     clusterInfo: ClusterInfo
-    onChangeCluster?: (name:string) => void
+    onSelectContext?: (name:string, kwirthData:KwirthData) => Promise<void>
 
 
-    constructor (apiKeyApi: ApiKeyApi, kwirthData:KwirthData, clusterInfo:ClusterInfo, onChangeCluster?: (name:string) => void) {
+    constructor (apiKeyApi: ApiKeyApi, kwirthData:KwirthData, clusterInfo:ClusterInfo, onSelectContext?: (name:string, kwirthData:KwirthData) => Promise<void>) {
         this.kwirthData = kwirthData
         this.clusterInfo = clusterInfo
         this.dockerApi = new Docker()
-        this.onChangeCluster = onChangeCluster
+        this.onSelectContext = onSelectContext
 
         // return kwirth version information
         this.route.route('/info')
@@ -69,7 +69,8 @@ export class ConfigApi {
         // return kwirth and cluster version information
         this.route.route('/kubeconfig')
             .all( async (req:Request,res:Response, next) => {
-                if (this.kwirthData.inCluster && ! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
+                if (kwirthData.isElectron) next()
+                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -88,7 +89,7 @@ export class ConfigApi {
                     let clusterName = req.body.cluster
                     if (clusterName) {
                         res.status(200).json({})
-                        if (this.onChangeCluster) this.onChangeCluster(clusterName)
+                        if (this.onSelectContext) this.onSelectContext(clusterName, this.kwirthData)
                     }
                     else {
                         res.status(500).json({error: 'NotFound'})

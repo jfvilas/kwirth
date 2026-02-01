@@ -408,9 +408,9 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             }
 
                             { opsData.terminalManager.terminals.size>0 &&
-                                Array.from(opsData.terminalManager.terminals.keys()).map( (key) => {
+                                Array.from(opsData.terminalManager.terminals.keys()).map( (key,index) => {
 
-                                    return <ListItem>
+                                    return <ListItem key={index}>
                                         <Stack direction={'row'} sx={{width:'100%'}} alignItems={'center'}>
                                             <ListItemButton onClick={() => onSelectNewTerm(key)}>
                                                 <Typography flex={1}>{key}</Typography>

@@ -1,6 +1,6 @@
 import { AdmissionregistrationV1Api, ApiextensionsV1Api, AppsV1Api, AutoscalingV2Api, BatchV1Api, CoordinationV1Api, CoreV1Api, CustomObjectsApi, Exec, KubeConfig, KubernetesObjectApi, Log, NetworkingV1Api, NodeV1Api, PolicyV1Api, RbacAuthorizationV1Api, SchedulingV1Api, StorageV1Api, V1Node, VersionApi } from '@kubernetes/client-node'
 import { MetricsTools } from "../tools/MetricsTools"
-import { EClusterType } from "@jfvilas/kwirth-common"
+import { EClusterType, IInstanceConfig } from "@jfvilas/kwirth-common"
 import Docker from 'dockerode'
 import { DockerTools } from "../tools/DockerTools"
 import { NodeMetrics } from "./INodeMetrics"
@@ -23,9 +23,17 @@ export interface INodeInfo {
     timestamp: number
 }
 
+export interface IPendingWebsocket {
+    channel:string
+    instance:string
+    challenge:string
+    instanceConfig: IInstanceConfig
+}
+
 export class ClusterInfo {
     public name: string = ''
     public nodes: Map<string, INodeInfo> = new Map()
+    public pendingWebsocket:IPendingWebsocket[] = []
     public dockerTools!: DockerTools
     public dockerApi!: Docker
     public kubeConfig!: KubeConfig
