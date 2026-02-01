@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useRef } from 'react'
-import { Tooltip, Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography,  Box, TextField } from '@mui/material'
+import { Tooltip, Stack, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography,  Box, TextField } from '@mui/material'
 import { InfoOutlined } from '@mui/icons-material'
 
 interface ITextToolTipProps {
@@ -35,8 +35,7 @@ const InputBox: React.FC<IInputBoxProps> = (props:IInputBoxProps) => {
             <DialogTitle>
                 {props.title}
             </DialogTitle>
-            <DialogContent >
-                <DialogContentText>
+            <DialogContent>
                     <Stack sx={{mt:2}} direction='column' alignItems={'top'}>
                         { typeof(props.message)==='string' ?
                             <Typography sx={{ml:2}}><div dangerouslySetInnerHTML={{__html: props.message}}/></Typography>
@@ -45,7 +44,6 @@ const InputBox: React.FC<IInputBoxProps> = (props:IInputBoxProps) => {
                          }
                          <TextField inputRef={inputRef}></TextField>
                     </Stack>
-                </DialogContentText>
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => { props.onClose(<></>); if (props.onResult) props.onResult(inputRef.current?.value)}}>ok</Button>

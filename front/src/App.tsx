@@ -46,30 +46,16 @@ import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
 import { DEFAULTLASTTABS, IColors, TABBASECOLORS, TABBRIGHTCOLORS } from './tools/Constants'
 import { createChannelInstance } from './tools/ChannelTools'
-import { NotificationMenu, NotificationMessage } from './components/xNotificationMenu'
+import { NotificationMenu, NotificationMessage } from './components/NotificationMenu'
 import { useEnvironment } from './components/UseEnvironment'
 import { ContextSelector } from './components/ContextSelector'
 
 interface IAppProps {
-    backend:string
-    onBackendChange: (newback:string) => void
+    backendUrl:string
 }
 const App: React.FC<IAppProps> = (props:IAppProps) => {
-    let NODEENV = process.env.NODE_ENV
-    //+++NODEENV = 'production'
-    const rootPath = window.__PUBLIC_PATH__ || ''
-    const backendUrlRef = useRef('http://localhost:3883')
     const { isElectron } = useEnvironment()
-
-    if (NODEENV==='production' && isElectron) backendUrlRef.current=window.location.protocol+'//'+window.location.host
-    backendUrlRef.current = backendUrlRef.current + rootPath
-    let backendUrl = backendUrlRef.current
-
-    console.log(`Context data:`)
-    console.log(`Environment: ${NODEENV}`)
-    console.log(`Front running inside electron: ${isElectron}`)
-    console.log(`Root path: '${rootPath}'`)
-    console.log(`Backend URL: ${backendUrl}`)
+    let backendUrl = props.backendUrl
 
     const [frontChannels] = useState<Map<string, TChannelConstructor>>(new Map())
     const [user, setUser] = useState<IUser>()
@@ -124,9 +110,9 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const [favWorkspaces, setFavWorkspaces] = useState<IWorkspaceSummary[]>([])
 
     // ui notifications
-    const [notifyOpen, setNotifyOpen] = useState(false)
-    const [notifyMessage, setNotifyMessage] = useState('')
-    const [notifyLevel, setNotifyLevel] = useState<ENotifyLevel>(ENotifyLevel.INFO)
+    const [notifySnackbarOpen, setNotifySnackbarOpen] = useState(false)
+    const [notifySnackbarMessage, setNotifySnackbarMessage] = useState('')
+    const [notifySnackbarLevel, setNotifySnackbarLevel] = useState<ENotifyLevel>(ENotifyLevel.INFO)
     const [notifications, setNotifications] = useState<NotificationMessage[]>([])
     const [notificationMenuAnchorEl, setNotificationMenuAnchorEl] = useState<null | HTMLElement>(null)
     
@@ -179,16 +165,15 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         if (c) onChangeCluster(c.name)
     }, [clusters])
 
-    const onNotifyClose = (event?: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
-        setNotifications(notifications.filter(n => n.level===notifyLevel && n.message === notifyMessage))
+    const onNotifySnackbarClose = (event?: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
         if (reason === 'clickaway') return
-        setNotifyOpen(false)
+        setNotifySnackbarOpen(false)
     }
 
     const notify = (channel:IChannel|undefined, level:ENotifyLevel, message:string) => {
-        setNotifyOpen(true)
-        setNotifyMessage(message)
-        setNotifyLevel(level)
+        setNotifySnackbarMessage(message)
+        setNotifySnackbarLevel(level)
+        setNotifySnackbarOpen(true)
         setNotifications([...notifications, {timestamp:new Date(), level, message, channel }])
     }
 
@@ -513,7 +498,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const colorizeTab = (tab:ITabObject) => {
         let colorTable:IColors = TABBRIGHTCOLORS
         if (selectedTab.current === tab) colorTable = TABBASECOLORS
-        if (tab.channelStarted) {
+        if (tab.channelStarted) {  //+++ maybe channle is started but communicartions interrupted, so we shoould set to red/salmon
             if (tab.channelPaused) {
                 tab.headerEl.style.backgroundColor = colorTable.pause
             }
@@ -1366,7 +1351,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         setCurrentWorkspaceDescription('No description yet')
         clearTabs()
         console.log('change to ', url)
-        backendUrlRef.current = url
+        //backendUrlRef.current = url
         //props.onBackendChange(url)
     }
     
@@ -1477,8 +1462,8 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             { showSettingsTrivy && selectedClusterName && <SettingsTrivy onClose={onSettingsTrivyClosed} cluster={clusters.find(c => c.name===selectedClusterName)!}/> }
             { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
             { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
-            <Snackbar open={notifyOpen} autoHideDuration={3000} anchorOrigin={{vertical: 'bottom', horizontal:'center'}} onClose={onNotifyClose}>
-                <Alert severity={notifyLevel} variant="filled" onClose={onNotifyClose} sx={{ width: '100%' }}>{notifyMessage}</Alert>
+            <Snackbar open={notifySnackbarOpen} autoHideDuration={3000} anchorOrigin={{vertical: 'bottom', horizontal:'center'}} onClose={onNotifySnackbarClose}>
+                <Alert severity={notifySnackbarLevel} variant="filled" onClose={onNotifySnackbarClose} sx={{ width: '100%' }}>{notifySnackbarMessage}</Alert>
             </Snackbar>
             { msgBox }
             { notificationMenuAnchorEl && <NotificationMenu open={true} anchorEl={notificationMenuAnchorEl} messages={notifications} onClose={() => setNotificationMenuAnchorEl(null)} onDelete={onMessageDelete} onClear={() => {setNotifications([]); setNotificationMenuAnchorEl(null)}}/>}

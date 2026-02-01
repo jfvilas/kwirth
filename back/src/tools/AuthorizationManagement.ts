@@ -557,21 +557,27 @@ export class AuthorizationManagement {
         let result:string[] = []    
         let resources = parseResources(accessKey!.resources)
 
-        let x = (await coreApi.readNamespacedPod({ name: pod, namespace: namespace }))
-        if (!x.spec) return result
+        try {
+            let x = (await coreApi.readNamespacedPod({ name: pod, namespace: namespace }))
+            if (!x.spec) return result
     
-        for (let cont of x.spec.containers) {
-            for (let resid of resources) {
-                // we check if the resource is applicable to the container we are evaluating (namespace and pod of the resource must match)
-                if (AuthorizationManagement.getValidValues([x.metadata!.namespace!], resid.namespaces.split(',')).length>0) {
-                    if (AuthorizationManagement.getValidValues([x.metadata!.name!], resid.pods.split(',')).length>0) {
-                        let xx = AuthorizationManagement.getValidValues([cont.name], resid.containers.split(','))
-                        result.push(...xx)
+            for (let cont of x.spec.containers) {
+                for (let resid of resources) {
+                    // we check if the resource is applicable to the container we are evaluating (namespace and pod of the resource must match)
+                    if (AuthorizationManagement.getValidValues([x.metadata!.namespace!], resid.namespaces.split(',')).length>0) {
+                        if (AuthorizationManagement.getValidValues([x.metadata!.name!], resid.pods.split(',')).length>0) {
+                            let xx = AuthorizationManagement.getValidValues([cont.name], resid.containers.split(','))
+                            result.push(...xx)
+                        }
                     }
                 }
             }
+            return [...new Set(result)]
         }
-        return [...new Set(result)]
+        catch (err) {
+            //Error can be 404 (since caller may be asking of a pod that is not present in a concrete namespace) or other erros
+            return []
+        }
     }
 
     public static getValidContainers = async (coreApi:CoreV1Api, accessKey:AccessKey, namespaces:string[], pods:string[], requestedContainers:string[]): Promise<string[]> => {

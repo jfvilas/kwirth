@@ -82,7 +82,6 @@ export class ConfigApi {
                     console.log(err)
                 }
             })
-
             .post( async (req:Request, res:Response) => {
                 try {
                     //+++TEST
@@ -320,7 +319,7 @@ export class ConfigApi {
                     try {
                         let accessKey = await AuthorizationManagement.getKey(req, res, apiKeyApi)
                         if (accessKey) {
-                            let result = await AuthorizationManagement.getAllowedContainers(this.clusterInfo.coreApi, accessKey, req.params.namespace, req.params.pod, )
+                            let result = await AuthorizationManagement.getAllowedContainers(this.clusterInfo.coreApi, accessKey, req.params.namespace, req.params.pod)
                             res.status(200).json(result)
                         }
                         else {

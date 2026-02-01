@@ -1,72 +1,39 @@
 KWIRTH
 log de jobs: revisar "started &&"
 channel metrics: añadir metricas sinteticas: numero de pods en nodo, percentage de pods
-añadir 2 metodos de canal para guardar y leer preferencias de usuario especificas del canal **TEST
-
 
 MAGNIFY
-zona de avisos del cluster (implementar en filemanager)
 en la vista de lista, acciones multi item (metrics, logs...)
-revisar namespacesearch: no encuentra en los cm
-añadir la opcion de buscar en el cluster
-
-SETTINGS
-    persistir y leer al arrancar +++TEST
-
-RFM
-    context memu paste +++TEST
-    maxlevel +++TEST
-    fileman +++TEST
-    filemna: paste on background (on folderview) does nothing!!  +++TEST
-
-DETAILS
-+++ cm/secret: textarea, > tamaño inicial fijo (no todo el contenido)
-+++ servaccnt: tokens ifpresent
-
-CONFIG
-decidir que recursos queremos ver +++TEST
-decidir que recursos queremos sincronizar (listen) +++TEST
-
 contentexternal
     configuracion
     chartmenu
     refresh de showoverview (charts de consumo)
 
-añadir key de fileitem en recatfilemanager
-    no parece ser de los items de filelist, es otro componente
-    
-
 
 DETAILS
-pod envs (habra que pasar a invoke):
-    valueFrom:
-        secretKeyRef:
-            name: report-sender-secrets
-            key: azure_conn_str
++++ cm/secret: textarea, > tamaño inicial fijo (no todo el contenido)
++++ servaccnt: tokens ifpresent
 
-events > revisar orden 23h59m
+DETAILS
+events > revisar orden 23h59m, y revisar orden si no hay fechahora (en blanco) +++TEST
 
 💖💖💖 portforward con smart proxy
     running, just manage to detect rootpath in order to enable/disable forwarding
 
 
 MAGNIFY BACK
-reconnect  **TEST**
+reconnect  NO VA!!!!
 validate el addObject inicial (kwirth/kwrith/kwirth...) para dar permisos al cliente
 
 ERRORS:
-	desaparecen los podemetrics (cpu y mem) al cabo de un rato
     crd instances duplicates (only on k3s local)
-    resourceselector groups duplicated sometimes
-    delete pvc
-    delete pv
-    delete job or delete pod job
-
 
 *********V2*********
 en magnify
     improve DetailsObject
         always use rootObj, and just change the path, so trace-back can be used ofr detecting data changed origin
+    zona de avisos del cluster (implementar en filemanager)
+
 en RFM
     en los fileitem, cuando le fila es muy alta, el nombre del fileitem se esta alineando arriab, y deberia ir al centro
     fileitem: columnas de ancho ajustable

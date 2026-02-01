@@ -82,6 +82,10 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
         else {
             //+++ must not happen
         }
+        // if (!content.current!.content.source.data.origin) {
+        //     console.log('errr*******')
+        //     console.log(content.current)
+        // }
         newObject.current = objectClone(content.current!.content.source.data.origin)
     },[])
 
@@ -157,9 +161,9 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
                         <IconButton color='primary' onClick={() => copy(content.current && content.current.content.source.data?.origin.metadata?.name)}><ContentCopy fontSize='small'/></IconButton>
                     </Tooltip>
                     {
-                        items.map(a => {
+                        items.map((a,index) => {
 
-                            return <Tooltip title={a.text}>
+                            return <Tooltip key={index} title={a.text}>
                                 <IconButton color='primary' onClick={() => actionClick(a.name!)}>{a.icon!}</IconButton>
                             </Tooltip>
                         })

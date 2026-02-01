@@ -665,6 +665,8 @@ class MagnifyChannel implements IChannel {
     private async executeDelete (webSocket:WebSocket, instance:IInstance, params:string[]) {
         for (let obj of params) {
             try {
+                console.log(obj)
+                console.log(yaml.load(obj))
                 await this.clusterInfo.objectsApi.delete(yaml.load(obj))
             }
             catch (err:any) {

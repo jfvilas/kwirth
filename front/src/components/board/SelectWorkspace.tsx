@@ -1,4 +1,4 @@
-import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography, List, ListItemButton, ListItem } from '@mui/material'
+import { Stack, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, List, ListItemButton, ListItem } from '@mui/material'
 
 interface IProps {
     onSelect:(action:string, a?:string) => {},
@@ -18,23 +18,21 @@ const SelectWorkspace: React.FC<IProps> = (props:IProps) => {
                 Select workspace
             </DialogTitle>
             <DialogContent>
-                <DialogContentText>
-                    <Stack direction='column' sx={{width:'50vh'}}>
-                        <Typography>{
-                            props.action === 'delete'? 'Select workspace to delete' : 'Select workspace to load'
-                        }</Typography>
-                        <List>
-                            {props.values?.map(v => <ListItemButton onClick={() => props.onSelect(props.action, v.name)} key={v.name}>
-                                <ListItem>
-                                    <Stack direction={'column'}>
-                                        <Typography>{v.name}</Typography>
-                                        <Typography color={'darkgray'} fontSize={12}>{v.description}</Typography>
-                                    </Stack>
-                                </ListItem>
-                            </ListItemButton>)}
-                        </List>
-                    </Stack>
-                </DialogContentText>
+                <Stack direction='column' sx={{width:'50vh'}}>
+                    <Typography>{
+                        props.action === 'delete'? 'Select workspace to delete' : 'Select workspace to load'
+                    }</Typography>
+                    <List>
+                        {props.values?.map(v => <ListItemButton onClick={() => props.onSelect(props.action, v.name)} key={v.name}>
+                            <ListItem>
+                                <Stack direction={'column'}>
+                                    <Typography>{v.name}</Typography>
+                                    <Typography color={'darkgray'} fontSize={12}>{v.description}</Typography>
+                                </Stack>
+                            </ListItem>
+                        </ListItemButton>)}
+                    </List>
+                </Stack>
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => props.onSelect(props.action)}>{props.action === 'load'? 'CANCEL':'CLOSE'}</Button>

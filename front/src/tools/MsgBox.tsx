@@ -1,5 +1,5 @@
 import { Info, Warning, Error, HelpOutline } from '@mui/icons-material';
-import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography, CircularProgress, Box } from '@mui/material';
+import { Stack, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, CircularProgress, Box } from '@mui/material';
 import { Dispatch, SetStateAction } from 'react';
 
 enum MsgBoxButtons {
@@ -27,17 +27,15 @@ const MsgBoxShow = (title:string, message:string|JSX.Element, onClose:Dispatch<S
             <DialogTitle>
                 {title}
             </DialogTitle>
-            <DialogContent >
-                <DialogContentText>
-                    <Stack sx={{mt:2}} direction='row' alignItems={'top'}>
-                        {icon}
-                        { typeof(message)==='string' ?
-                            <Typography sx={{ml:2}}><div dangerouslySetInnerHTML={{__html: message}}/></Typography>
-                            :
-                            message
-                         }                        
-                    </Stack>
-                </DialogContentText>
+            <DialogContent>
+                <Stack sx={{mt:2}} direction='row' alignItems={'top'}>
+                    {icon}
+                    { typeof(message)==='string' ?
+                        <Typography sx={{ml:2}}><div dangerouslySetInnerHTML={{__html: message}}/></Typography>
+                        :
+                        message
+                        }                        
+                </Stack>
             </DialogContent>
             <DialogActions>
                 { (buttons & MsgBoxButtons.Ok)? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Ok)}}>ok</Button>:<></>}

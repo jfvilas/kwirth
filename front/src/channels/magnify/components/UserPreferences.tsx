@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Checkbox, FormControlLabel, FormGroup, Stack, TextField, Typography } from '@mui/material'
+import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Checkbox, FormControlLabel, Stack, TextField, Typography } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
 import { allKinds, MagnifyUserPreferences } from '../MagnifyUserPreferences'
 import { IFileObject } from '@jfvilas/react-file-manager'
@@ -18,7 +18,11 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
     const [tracing, setTracing ] = useState(props.preferences.tracing)
     const [sourceList, setSourceList] = useState<string[]>(props.preferences.dataConfig?.source)
     const [syncList, setSyncList] = useState<string[]>(props.preferences.dataConfig?.sync)
+    const [dataChanged, setDataChanged] = useState(false)
+    const [debugChanged, setDebugChanged] = useState(false)
+    const [externalChanged, setExternalChanged] = useState(false)
     const filterRef = useRef<HTMLInputElement>(null)
+
 
     const save = () => {
         if (!props.channelObject.writeChannelUserPreferences) return
@@ -27,6 +31,9 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
         props.preferences.logLines = logLines
         props.preferences.tracing = tracing
         props.channelObject.writeChannelUserPreferences(props.channelObject.channel.channelId, props.preferences)
+        setDataChanged(false)
+        setDebugChanged(false)
+        setExternalChanged(false)
     }
     
     const reload = () => {
@@ -47,10 +54,11 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
             list.push(kind)
         if (type==='source') setSourceList([...list])
         if (type==='sync') setSyncList([...list])
+        setDataChanged(true)
     }
 
-    return <Box sx={{m:1}}>
-        <Accordion defaultExpanded>
+    return <Box sx={{m:1, width:'100%'}}>
+        <Accordion defaultExpanded >
             <AccordionSummary expandIcon={<ExpandMore />}>
                 <Typography component="span"><b>General</b></Typography>
             </AccordionSummary>
@@ -64,10 +72,10 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
                 <Typography component="span"><b>External content</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
-                <TextField value={logLines} onChange={(event) => {setLogLines(+event.target.value)}} variant='standard' label='Max messages' SelectProps={{native: true}} type='number' fullWidth />
+                <TextField value={logLines} onChange={(event) => {setLogLines(+event.target.value); setExternalChanged(true)}} variant='standard' label='Max messages' SelectProps={{native: true}} type='number' fullWidth />
             </AccordionDetails>
             <AccordionActions>
-                <Button onClick={save}>Save</Button>
+                <Button onClick={save} disabled={!externalChanged}>Save</Button>
             </AccordionActions>
         </Accordion>
 
@@ -96,7 +104,7 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
                 </Stack>
             </AccordionDetails>
             <AccordionActions>
-                <Button onClick={save}>Save</Button>
+                <Button onClick={save} disabled={!dataChanged}>Save</Button>
             </AccordionActions>
         </Accordion>
 
@@ -122,12 +130,12 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
                     </Stack>
                     <Stack direction={'row'} alignItems={'center'}>
                         <Typography sx={{flexGrow:1}}>Message tracing (send to console received messages)</Typography>
-                        <Checkbox checked={tracing} onChange={() => setTracing(!tracing)}/>
+                        <Checkbox checked={tracing} onChange={() => { setTracing(!tracing); setDebugChanged(true)}}/>
                     </Stack>
                 </Stack>
             </AccordionDetails>
             <AccordionActions>
-                <Button onClick={save}>Save</Button>
+                <Button onClick={save} disabled={!debugChanged}>Save</Button>
             </AccordionActions>
         </Accordion>
 

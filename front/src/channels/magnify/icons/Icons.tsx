@@ -1,5 +1,4 @@
-// https://iconbuddy.com/search?q=settings
-
+// Open source icons: https://iconbuddy.com/
 type IconProps = {
     size: string;
 }

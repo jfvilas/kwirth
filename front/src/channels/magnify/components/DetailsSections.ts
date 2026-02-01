@@ -197,6 +197,7 @@ objectSections.set('PersistentVolumeClaim', [
                 text: 'Status',
                 source: ['status.phase'],
                 format: 'string',
+                style: [ 'Bound:green','Pending:orange']
            },
            {
                 name: 'pv',
@@ -1858,8 +1859,22 @@ objectSections.set('Pod', [
                             {
                                 name: 'val',
                                 text: 'Value',
-                                source: ['value'],
+                                source: ['value', 'valueFrom.fieldRef.fieldPath'],
                                 format: 'string'
+                            },
+                            {
+                                name: 'valSecret',
+                                text: 'From Secret',
+                                source: ['#valueFrom.secretKeyRef.name', '$/' , 'valueFrom.secretKeyRef.key'],
+                                format: 'string',
+                                style: ['ifpresent', 'link:$Secret:valueFrom.secretKeyRef.name']
+                            },
+                            {
+                                name: 'valCm',
+                                text: 'From CM',
+                                source: ['#valueFrom.configMapKeyRef.name', '$/' , 'valueFrom.configMapKeyRef.key'],
+                                format: 'string',
+                                style: ['ifpresent', 'link:$ConfigMap:valueFrom.configMapKeyRef.name']
                             },
                         ],
                     },
@@ -2379,9 +2394,9 @@ objectSections.set('ServiceAccount', [
             {
                 name: 'tokens',
                 text: 'Tokens',
-                source: ['@string[]'],
+                source: ['#@string[]'],
                 format: 'stringlist',
-                style: ['column', 'char:30', 'ifpresent']
+                style: ['column', 'char:30', 'ifpresent', 'link:$Secret:.']
             },
         ]
     },

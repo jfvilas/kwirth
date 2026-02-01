@@ -12,7 +12,8 @@ import { Area, AreaChart } from 'recharts'
 import { EInstanceConfigView } from '@jfvilas/kwirth-common'
 
 // svg optimizer: https://jakearchibald.github.io/svgomg/ (optmizes size and removes namespaces)
-
+// Open source icons: https://iconbuddy.com/
+// +++ convert svg k8 icons to component (so they won't be downloaded)
 interface IProps {
     cluster:Cluster|undefined,
     clusters:Cluster[]

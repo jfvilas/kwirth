@@ -42,15 +42,15 @@ import { IChannel } from './channels/IChannel'
 import { EchoChannel } from './channels/echo/EchoChannel'
 import { FilemanChannel } from './channels/fileman/FilemanChannel'
 
-import fileUpload from 'express-fileupload'
 import { IncomingMessage } from 'http'
 import { MagnifyChannel } from './channels/magnify/MagnifyChannel'
 import { EventsTools } from './tools/EventsTools'
 
-const v8 = require('node:v8')
-const http = require('http')
-const cors = require('cors')
-const bodyParser = require('body-parser')
+import fileUpload from 'express-fileupload'
+import v8 from 'node:v8'
+import http from 'http'
+import bodyParser from 'body-parser'
+import cors from 'cors'
 
 const app = express()
 const channels : Map<string, IChannel> = new Map()
@@ -77,6 +77,16 @@ const nodeApi = kubeConfig.makeApiClient(NodeV1Api)
 const objectsApi = KubernetesObjectApi.makeApiClient(kubeConfig)
 const execApi = new Exec(kubeConfig)
 const logApi = new Log(kubeConfig)
+
+interface IRunningInstnce {
+    dockerApi: Docker
+    kwirthData: KwirthData
+    clusterInfo: ClusterInfo
+    saToken: ServiceAccountToken
+    secrets: ISecrets
+    configMaps: IConfigMaps
+}
+
 var dockerApi: Docker = new Docker()
 var kwirthData: KwirthData
 var clusterInfo: ClusterInfo = new ClusterInfo()
@@ -84,6 +94,7 @@ var clusterInfo: ClusterInfo = new ClusterInfo()
 var saToken: ServiceAccountToken
 var secrets: ISecrets
 var configMaps: IConfigMaps
+
 const envRootPath = process.env.ROOTPATH || ''
 const envMasterKey = process.env.MASTERKEY || 'Kwirth4Ever'
 const portString = process?.env?.PORT || '3883'
@@ -99,7 +110,6 @@ const envChannelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLower
 const envChannelMagnifyEnabled = (process.env.CHANNEL_MAGNIFY || 'true').toLowerCase() === 'true'
 const pendingWebsocket:{channel:string, instance:string, challenge:string, instanceConfig: IInstanceConfig}[] = []
 
-// discover where we are running in: docker, kubernetes...
 const getExecutionEnvironment = async ():Promise<string> => {
     console.log('Detecting execution environment...')
 
@@ -140,7 +150,6 @@ const getExecutionEnvironment = async ():Promise<string> => {
     return 'undetected'
 }
 
-// get the namespace where Kwirth is running on
 const getKubernetesData = async ():Promise<KwirthData> => {
     let podName=process.env.HOSTNAME
     const pods = await coreApi.listPodForAllNamespaces()
@@ -374,7 +383,6 @@ const watchDockerPods = async (_apiPath:string, queryParams:any, webSocket:WebSo
     }
 }
 
-// watches for pod changes (add, delete...) inside the group pointed by the requestor
 const watchKubernetesPods = async (apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:IInstanceConfig) => {
     const watch = new Watch(kubeConfig)
 
@@ -498,18 +506,6 @@ const processStartInstanceConfig = async (webSocket: WebSocket, instanceConfig: 
             }
             break
         case EInstanceConfigView.GROUP:
-            // for (let namespace of validNamespaces) {
-            //     for (let gTypeName of instanceConfig.group.split(',')) {
-            //         let groupPods = await AuthorizationManagement.getPodLabelSelectorsFromGroup(coreApi, appsApi, namespace, gTypeName)
-            //         if (groupPods.pods.length > 0) {
-            //             let specificInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
-            //             specificInstanceConfig.group = gTypeName
-            //             watchPods(`/api/v1/namespaces/${namespace}/${instanceConfig.objects}`, { labelSelector: groupPods.labelSelector }, webSocket, specificInstanceConfig)
-            //         }
-            //         else
-            //             console.log(`No pods on namespace ${namespace}`)
-            //     }
-            // }
             for (let namespace of validNamespaces) {
                 for (let gTypeName of instanceConfig.group.split(',')) {
                     let groupPods = await AuthorizationManagement.getPodLabelSelectorsFromGroup(coreApi, appsApi, batchApi, namespace, gTypeName)
@@ -717,7 +713,6 @@ const processChannelWebsocket = async (webSocket: WebSocket, instanceConfig: IIn
     }
 }
 
-// clients send requests to start receiving log
 const processClientMessage = async (webSocket:WebSocket, message:string) => {
     const instanceMessage = JSON.parse(message) as IInstanceMessage
 
@@ -868,7 +863,7 @@ const onChangeCluster = (name:string) => {
 }
 
 const runKubernetes = async (server:any) => {
-    const processRequest = async (channel: IChannel, endpointName:string,req:Request, res:Response) : Promise<void> => {
+    const processHttpChannelRequest = async (channel: IChannel, endpointName:string,req:Request, res:Response) : Promise<void> => {
         try {
             let accessKey = await AuthorizationManagement.getKey(req,res,apiKeyApi)
             if (accessKey) {
@@ -894,14 +889,12 @@ const runKubernetes = async (server:any) => {
     // serve front
     console.log(`SPA is available at: ${envRootPath}/front`)
     app.get(`/`, (_req:Request,res:Response) => { res.redirect(`${envRootPath}/front`) })
-
     app.get(`/healthz`, (_req:Request,res:Response) => { res.status(200).send() })
-
     app.get(`${envRootPath}`, (_req:Request,res:Response) => { res.redirect(`${envRootPath}/front`) })
     app.use(`${envRootPath}/front`, express.static('./front'))
 
     if (kwirthData.isElectron) {
-        // show root contents for debuggunng purposes
+        // +++ show root contents for debuggunng purposes
         const fs = require('fs')
         fs.readdir('.', (err:any, archivos:any) => {
             if (err) {
@@ -934,10 +927,10 @@ const runKubernetes = async (server:any) => {
     app.use(`${envRootPath}/metrics`, metricsApi.route)
 
     for (let channel of channels.values()) {
-        let cdata = channel.getChannelData()
-        if (cdata.endpoints.length>0) {
-            for (let endpoint of cdata.endpoints) {
-                console.log(`Will listen on ${envRootPath}/channel/${cdata.id}/${endpoint.name}`)
+        let channelData = channel.getChannelData()
+        if (channelData.endpoints.length>0) {
+            for (let endpoint of channelData.endpoints) {
+                console.log(`Will listen on ${envRootPath}/channel/${channelData.id}/${endpoint.name}`)
                 const router = express.Router()
                 router.route('*')
                     .all( async (req:Request,res:Response, next) => {
@@ -948,29 +941,29 @@ const runKubernetes = async (server:any) => {
                     })
                     .get( async (req:Request, res:Response) => {
                         if (endpoint.methods.includes('GET'))
-                            processRequest(channel, endpoint.name, req, res)
+                            processHttpChannelRequest(channel, endpoint.name, req, res)
                         else
                             res.status(405).send()
                     })
                     .post( async (req:Request, res:Response) => {
                         if (endpoint.methods.includes('POST'))
-                            processRequest(channel, endpoint.name, req, res)
+                            processHttpChannelRequest(channel, endpoint.name, req, res)
                         else
                             res.status(405).send()
                     })
                     .put( async (req:Request, res:Response) => {
                         if (endpoint.methods.includes('PUT'))
-                            processRequest(channel, endpoint.name, req, res)
+                            processHttpChannelRequest(channel, endpoint.name, req, res)
                         else
                             res.status(405).send()
                     })
                     .delete( async (req:Request, res:Response) => {
                         if (endpoint.methods.includes('DELETE'))
-                            processRequest(channel, endpoint.name, req, res)
+                            processHttpChannelRequest(channel, endpoint.name, req, res)
                         else
                             res.status(405).send()
                     })
-                app.use(`${envRootPath}/channel/${cdata.id}/${endpoint.name}`, router)
+                app.use(`${envRootPath}/channel/${channelData.id}/${endpoint.name}`, router)
             }
         }
     }
@@ -983,30 +976,10 @@ const runKubernetes = async (server:any) => {
             console.log(`Kwirth is running INSIDE cluster`)
         }
         else {
-            console.log(`Cluster name (according to kubeconfig context): ${kubeConfig.getCluster(kubeConfig.currentContext)?.name}. Kwirth is running OUTSIDE a cluster`)
+            console.log(`Cluster name (according to kubeconfig context): ${kubeConfig.getCluster(kubeConfig.currentContext)?.name}.`)
+            console.log(`Kwirth is running OUTSIDE a cluster`)
         }
         console.log(`KWI1500I Control is being given to Kwirth`)
-        // app._router.stack.forEach((layer: any) => {
-        //     if (layer.route) {
-        //         // Esto muestra los app.get, app.post, etc.
-        //         console.log(`Ruta: ${Object.keys(layer.route.methods)} ${layer.route.path}`);
-        //     } else {
-        //         // Esto muestra los app.use (Middlewares)
-        //         const name = layer.name || 'anonymous';
-        //         const path = layer.regexp.toString(); 
-        //         // path en middlewares es una RegExp que indica dónde se activan
-        //         console.log(`Middleware: [${name}] activado en -> ${path}`);
-                
-        //         // Si quieres ver qué hay dentro de un router anidado:
-        //         if (name === 'router' && layer.handle.stack) {
-        //             layer.handle.stack.forEach((subLayer: any) => {
-        //                 if (subLayer.route) {
-        //                     console.log(`  └─ Ruta hija: ${subLayer.route.path}`);
-        //                 }
-        //             });
-        //         }
-        //     }
-        // });
     })
 
     process.on('uncaughtException', (err, origin) => {
@@ -1187,7 +1160,8 @@ const runDocker = async (server:any) => {
             console.log(`Kwirth is running INSIDE cluster`)
         }
         else {
-            console.log(`Cluster name (according to kubeconfig context): ${kubeConfig.getCluster(kubeConfig.currentContext)?.name}. Kwirth is running OUTSIDE a cluster`)
+            console.log(`Cluster name (according to kubeconfig context): ${kubeConfig.getCluster(kubeConfig.currentContext)?.name}.`)
+            console.log(`Kwirth is running OUTSIDE a cluster`)
         }
         console.log(`KWI1500I Control is being given to Kwirth`)
     })
@@ -1267,7 +1241,7 @@ getExecutionEnvironment().then( async (exenv:string) => {
             process.exit()
         }
 
-    // HTTP server
+    // HTTP server with Proxy server for FORWARD feature (only enabled if running inside cluster)
     if (kwirthData.inCluster) {
         app.use(cookieParser())
         app.use(cors({
@@ -1339,8 +1313,6 @@ getExecutionEnvironment().then( async (exenv:string) => {
                 res.redirect('/')
                 return
             }
-
-            console.log('kwrith native request')
             next()
         })
     }

@@ -1,5 +1,5 @@
 import { ISpace } from '@jfvilas/react-file-manager'
-import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, Forward, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal } from '@mui/icons-material'
+import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal } from '@mui/icons-material'
 import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from '../icons/Icons'
 
 const spaces = new Map<string, ISpace>()

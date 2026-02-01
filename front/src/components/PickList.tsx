@@ -1,4 +1,4 @@
-import { Stack, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography, List , ListItemButton , ListItem } from '@mui/material'
+import { Stack, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, List , ListItemButton , ListItem } from '@mui/material'
 import { PickListConfig } from '../model/PickListConfig'
 
 interface IProps {
@@ -12,14 +12,12 @@ const PickList: React.FC<IProps> = (props:IProps) => {
                 {props.config.title}
             </DialogTitle>
             <DialogContent>
-                <DialogContentText>
-                    <Stack direction='column' sx={{width:'50vh'}}>
-                        <Typography>{props.config.message}</Typography>
-                        <List>
-                            {props.config.values?.map(v => <ListItemButton onClick={() => props.config.onClose(v)}><ListItem key={v}>{v}</ListItem></ListItemButton>)}
-                        </List>
-                    </Stack>
-                </DialogContentText>
+                <Stack direction='column' sx={{width:'50vh'}}>
+                    <Typography>{props.config.message}</Typography>
+                    <List>
+                        {props.config.values?.map(v => <ListItemButton onClick={() => props.config.onClose(v)}><ListItem key={v}>{v}</ListItem></ListItemButton>)}
+                    </List>
+                </Stack>
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => props.config.onClose(null)}>CANCEL</Button>

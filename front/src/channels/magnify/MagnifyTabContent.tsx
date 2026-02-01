@@ -28,7 +28,7 @@ import '@jfvilas/react-file-manager/dist/style.css'
 import './custom-fm.css'
 import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 import { ClusterMetrics } from './components/ClusterMetrics'
-import { NamespaceSearch } from './components/NamespaceSearch'
+import { ArtifactSearch } from './components/ArtifactSearch'
 
 const yamlParser = require('js-yaml')
 
@@ -457,8 +457,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             <Typography width={'15%'}>{text}:&nbsp;</Typography>
                             <Stack flexDirection={'column'}>
                                 {
-                                    elements.map( (e) => {
-                                        return <a href={`#`} onClick={() => onMagnifyObjectDetailsLink(kind,e)}>{e}</a>
+                                    elements.map( (e, index) => {
+                                        return <a key={index} href={`#`} onClick={() => onMagnifyObjectDetailsLink(kind,e)}>{e}</a>
                                     })
                                 }
                             </Stack>
@@ -795,7 +795,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         return <Stack direction={'row'} alignItems={'center'}>   
             <Stack direction={'row'} alignItems={'center'} >
                 {portName && <Typography>{portName}:</Typography>}
-                <Typography>{portNumber.toString().toLowerCase().replace('http','80')}/{portProtocol}&nbsp;&nbsp;</Typography>
+                <Typography>{portNumber.toString().toLowerCase().replace('https','443').replace('http','80')}/{portProtocol}&nbsp;&nbsp;</Typography>
             </Stack>
             <Box sx={{ flexGrow: 1 }} />
             <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
@@ -935,7 +935,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const launchObjectDelete = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to delete {f[0].data.origin.kind}<b> {f[0].name}</b>?</Box>, setMsgBox, (a) => {
+        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to delete {f[0].data.origin.kind}<b> {f[0].name}</b>{p.length>0?` (and other ${p.length-1} items)`:''}?</Box>, setMsgBox, (a) => {
             if (a === MsgBoxButtons.Yes) {
                 sendCommand(EMagnifyCommand.DELETE, f.map(o => yamlParser.dump(o.data.origin, { indent: 2 })))
             }
@@ -943,10 +943,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const launchSearch = (p:string[]) => {
-        console.log(p)
         let f = magnifyData.files.filter(x => p.includes(x.path))
         if (p[0]==='/cluster/overview') {
-            setSearchScope('cluster')
+            setSearchScope(':cluster:')
             setSelectedFiles(magnifyData.files)
         }
         else {
@@ -1044,17 +1043,17 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (!f.data?.origin?.status) return <></>
         let result:JSX.Element[]=[]
         if (f.data.origin.status.containerStatuses && f.data.origin.status.containerStatuses.length>0) {
-            for (let c of f.data.origin.status.containerStatuses) {
+            f.data.origin.status.containerStatuses.map((c:any, index:number) => {
                 let color='orange'
                 if (c.started) {
                     color='green'
-                    if (f.data.origin.metadata.deletionTimestamp) color = 'blue'
+                    if (f?.data.origin.metadata.deletionTimestamp) color = 'blue'
                 }
                 else {
                     if (c.state.terminated) color = 'gray'
                 }
-                result.push(<Box sx={{ width: '8px', height: '8px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>)
-            }
+                result.push(<Box key={index} sx={{ width: '8px', height: '8px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>)
+            })
         }
         return result
     }
@@ -1064,17 +1063,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         let f = magnifyData.files.find(x => p===x.path)
         if (!f) return
         if (!f.data?.origin?.spec?.rules) return <></>
-        let result:JSX.Element[]=[]
-        for (let rule of f.data.origin.spec.rules) {
-            for (let path of rule.http.paths) {
-                result.push(
-                    <Typography fontSize={12}>http://{rule.host}{path.path}&nbsp;&rarr;&nbsp;{path.backend.service.name}:{path.backend.service.port.number}</Typography>
-                )
-            }
-        }
 
         return <Stack direction={'column'}>
-            {result.map(r => r)}
+            {
+                f.data.origin.spec.rules.map((rule:any,ruleIndex:number) => 
+                    rule.http.paths.map ( (path:any, pathIndex:number) => 
+                    <Typography key={ruleIndex+'-'+pathIndex} fontSize={12}>http://{rule.host}{path.path}&nbsp;&rarr;&nbsp;{path.backend.service.name}:{path.backend.service.port.number}</Typography>
+                ))
+            }
         </Stack>
 
     }
@@ -1084,14 +1080,12 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         let f = magnifyData.files.find(x => p===x.path)
         if (!f) return
         if (!f.data?.origin?.spec?.selector) return <></>
-        let result:JSX.Element[]=[]
-        for (let key of Object.keys(f.data.origin.spec.selector)) {
-            result.push(
-                <Typography fontSize={12}>{key}={f.data.origin.spec.selector[key]}</Typography>
-            )
-        }
         return <Stack direction={'column'}>
-            {result}
+            {
+                Object.keys(f.data.origin.spec.selector).map( (key,index) => 
+                    <Typography key={index}fontSize={12}>{key}={f?.data.origin.spec.selector[key]}</Typography>
+                )
+            }
         </Stack>
 
     }
@@ -1226,7 +1220,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const showOverview = () => {
         if (!magnifyData.clusterInfo) return <></>
 
-        return <Card sx={{m:1, display: 'flex', flexDirection: 'column', height: 'calc(100% - 55px)'}}>
+        return <Card sx={{m:1, display: 'flex', flexDirection: 'column', height: 'calc(100% - 55px)', width:'100%'}}>
             <CardContent sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', p: 2}}>
                 <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
                 <Typography>Version: {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
@@ -1264,7 +1258,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const showClusterOverview = () => {
-        return <Box sx={{m:1}}>
+        return <Box sx={{m:1, width:'100%'}}>
             <Card>
                 <CardHeader title={'Cluster overview'}/>
                 <CardContent>
@@ -1279,7 +1273,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const showWorkloadOverview = () => {
-        return <Box sx={{m:1}}>
+        return <Box sx={{m:1, width:'100%'}}>
             <Card>
                 <CardHeader title={'Workload overview'}>
 
@@ -1302,7 +1296,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const showConfigOverview = () => {
-        return <Box sx={{m:1}}>
+        return <Box sx={{m:1, width:'100%'}}>
             <Card>
                 <CardHeader title={'Config overview'}>
 
@@ -1317,7 +1311,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const showNetworkOverview = () => {
-        return <Box sx={{m:1}}>
+        return <Box sx={{m:1, width:'100%'}}>
             <Card>
                 <CardHeader title={'Config overview'}>
 
@@ -1334,7 +1328,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const showStorageOverview = () => {
-        return <Box sx={{m:1}}>
+        return <Box sx={{m:1, width:'100%'}}>
             <Card>
                 <CardHeader title={'Storage overview'}>
 
@@ -1586,7 +1580,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     showContextMenu={false}
                     showRefresh={false}
                     categories={categories}
-                    maxNavigationPaneDepth={2}
+                    maxNavigationPaneLevel={2}
+                    minFileActionsLevel={2}
                     />
                 {
                     leftMenuAnchorParent && <LeftItemMenu f={leftMenuContent} onClose={onLeftItemMenuClose} onOptionSelected={onLeftItemMenuContainerSelected} anchorParent={leftMenuAnchorParent} includeAllContainers={leftMenuIncludeAllContainers} />
@@ -1699,7 +1694,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
 
         { searchVisible &&
-            <NamespaceSearch scope={searchScope} onLink={(k,e) => {setSearchVisible(false); onMagnifyObjectDetailsLink(k,e)}} onClose={() => setSearchVisible(false)} selectedFiles={selectedFiles}/>
+            <ArtifactSearch scope={searchScope} onLink={(k,e) => {setSearchVisible(false); onMagnifyObjectDetailsLink(k,e)}} onClose={() => setSearchVisible(false)} selectedFiles={selectedFiles}/>
         }
 
     </>

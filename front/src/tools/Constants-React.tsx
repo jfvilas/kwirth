@@ -91,8 +91,8 @@ export const getIconFromKind = (kind:string, size:number) => {
         case 'DaemonSet': return <IconDaemonSet height={size}/>
         case 'StatefulSet': return <IconStatefulSet height={size}/>
         case 'ReplicationController': return <IconReplicationController height={size}/>
-        case 'ConfigMap': return <IconDaemonSet height={size}/>
-        case 'Secret': return <IconDaemonSet height={size}/>
+        case 'ConfigMap': return <IconConfigMap height={size}/>
+        case 'Secret': return <IconSecret height={size}/>
         case 'Service': return <IconService height={size}/>
         case 'Endpoints': return <IconEndpoints height={size}/>
         case 'Ingress': return <IconIngress height={size}/>

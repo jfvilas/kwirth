@@ -114,7 +114,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             const url = `${props.channelObject.clusterUrl}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
             
             try {
-                // +++ CAN BE THIS FETCH BE CONFIGURED WITH addGetAuthorization INSTEAD OF THIS?
+                // +++ CAN THIS FETCH BE CONFIGURED WITH addGetAuthorization INSTEAD OF THIS?
                 const response = await fetch(url, { headers: { 'Authorization': 'Bearer '+ props.channelObject.accessString, 'X-Kwirth-App': 'true' } })
 
                 if (response.ok) {
@@ -256,7 +256,8 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     className='custom-fm'
                     searchMode='auto'
                     showBreadcrumb={true}
-                    maxNavigationPaneDepth={3}
+                    maxNavigationPaneLevel={3}
+                    minFileActionsLevel={3}
                 />
                 { msgBox }
             </Box>

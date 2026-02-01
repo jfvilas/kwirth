@@ -13,7 +13,7 @@ const reorderJsonYamlObject = (objetoJson: any): any => {
         return orderedObject
     }
     catch (e) {
-        console.error("Error al convertir JSON a YAML:", e);
+        console.error("Error al convertir JSON a YAML:", e)
         return {}
     }
 }
@@ -37,158 +37,99 @@ function objectEqual(obj1: any, obj2: any): boolean {
     return true
 }
 
-// function objectSearch(obj: any, text: string): string[] {
-//     const paths: string[] = []
-    
-//     // 1. Si el texto es vacío, salimos ya. 
-//     // Sin esto, cualquier propiedad "incluye" un string vacío y se cuelga.
-//     if (!text) return []
+function objectSearch(obj: any, text: string, matchCase:boolean): string[] {
+    const paths: string[] = []
+    if (!text) return []
 
-//     const searchTerm = text.toLowerCase()
-
-//     function search(value: any, currentPath: string) {
-//         if (value === null || value === undefined) return
-
-//         // 2. Buscamos en el valor (como en tu código original)
-//         if (String(value).toLowerCase().includes(searchTerm)) {
-//             paths.push(currentPath)
-//         }
-
-//         // 3. Si es objeto, seguimos profundizando
-//         if (typeof value === 'object') {
-//             for (const key in value) {
-//                 if (Object.prototype.hasOwnProperty.call(value, key)) {
-//                     const newPath = Array.isArray(value) ? 
-//                         `${currentPath}[${key}]` : 
-//                         (currentPath ? `${currentPath}.${key}` : key)
-                    
-//                     search(value[key], newPath)
-//                 }
-//             }
-//         }
-//     }
-
-//     search(obj, "")
-
-//     // Quitamos duplicados y filtramos strings vacíos que puedan quedar en el path
-//     return [...new Set(paths)].filter(p => p !== "")
-// }
-function objectSearch(obj: any, text: string): string[] {
-    const paths: string[] = [];
-    if (!text) return [];
-
-    const searchTerm = text.toLowerCase();
+    const searchTerm = matchCase? text : text.toLowerCase()
 
     function search(value: any, currentPath: string) {
-        if (value === null || value === undefined) return;
+        if (value === null || value === undefined) return
 
-        // 1. Verificamos si es un objeto o array
-        const isObject = typeof value === 'object';
-
-        if (isObject) {
-            // Si es objeto/array, no guardamos su path, solo profundizamos
+        if (typeof value === 'object') {
             for (const key in value) {
                 if (Object.prototype.hasOwnProperty.call(value, key)) {
                     const newPath = Array.isArray(value) ? 
                         `${currentPath}[${key}]` : 
-                        (currentPath ? `${currentPath}.${key}` : key);
+                        (currentPath ? `${currentPath}.${key}` : key)
                     
-                    search(value[key], newPath);
+                    search(value[key], newPath)
                 }
             }
-        } else {
-            // 2. Si NO es objeto (es un valor final/hoja), verificamos el match
-            if (String(value).toLowerCase().includes(searchTerm)) {
-                paths.push(currentPath);
-            }
+        }
+        else {
+            if (String(value).toLowerCase().includes(searchTerm)) paths.push(currentPath)
         }
     }
 
-    search(obj, "");
+    search(obj, "")
 
-    return [...new Set(paths)].filter(p => p !== "");
+    return [...new Set(paths)].filter(p => p !== "")
 }
 
 function convertBytesToSize(bytes: number, decimals: number = 2): string {
-    // Si el valor no es un número válido o es 0, simplemente devuelve "0 Bytes"
-    if (!Number.isFinite(bytes) || bytes === 0) {
-        return '0 Bytes';
-    }
+    if (!Number.isFinite(bytes) || bytes === 0) return '0 Bytes'
+    
+    const k = 1024
+    const dm = decimals < 0 ? 0 : decimals
+    const units = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
 
-    const k = 1024; // Base binaria (IEC)
-    const dm = decimals < 0 ? 0 : decimals; // Asegura que los decimales no sean negativos
-
-    // Prefijos de unidades binarias (IEC)
-    const units = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
-
-    // Calcula el índice de la unidad más grande que cabe en el número de bytes
-    // Math.floor(Math.log(bytes) / Math.log(k))
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    // Si el resultado de i es 0, no dividimos, y si es mayor, dividimos por 1024^i
-    const calculatedValue = parseFloat((bytes / Math.pow(k, i)).toFixed(dm));
-
-    // Retorna el valor calculado y la unidad correspondiente
-    return calculatedValue + ' ' + units[i];
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    const calculatedValue = parseFloat((bytes / Math.pow(k, i)).toFixed(dm))
+    return calculatedValue + ' ' + units[i]
 }        
 
 function convertSizeToBytes(fileSizeString: string): number {
-    // 1. Extraer el número y la unidad
-    // La RegEx busca: (Número con decimales) + Espacios opcionales + (Unidad con prefijo opcional 'i' y 'B' opcional)
-    const match = fileSizeString.trim().match(/^([\d.]+)\s*([KMGTPE]i?)B?$/i);
-
+    if (!fileSizeString) return 0
+    const match = fileSizeString.trim().match(/^([\d.]+)\s*([KMGTPE]i?)B?$/i)
     if (!match) {
-        console.error(`Formato de tamaño de archivo no reconocido: ${fileSizeString}`);
-        return NaN;
+        console.error(`Formato de tamaño de archivo no reconocido: ${fileSizeString}`)
+        return 0
     }
 
-    const value: number = parseFloat(match[1]); // El valor numérico (ej: 1, 23, 1.5)
+    const value: number = parseFloat(match[1])
+    const unitUpper: string = match[2].toUpperCase().replace(/B$/, '')
     
-    // Obtener la unidad base, quitando 'B' si existe y convirtiendo a mayúsculas.
-    // Ej: "Gi" -> "GI", "MiB" -> "MI"
-    const unitUpper: string = match[2].toUpperCase().replace(/B$/, ''); 
-    
-    // 2. Determinar el multiplicador (Base 1024)
-    let multiplier: number;
-    const base = 1024;
+    let multiplier: number
+    const base = 1024
 
     switch (unitUpper) {
         case 'EI': // Exbibyte
         case 'E':
-            multiplier = base ** 6;
-            break;
+            multiplier = base ** 6
+            break
         case 'PI': // Pebibyte
         case 'P':
-            multiplier = base ** 5;
-            break;
+            multiplier = base ** 5
+            break
         case 'TI': // Tebibyte
         case 'T':
-            multiplier = base ** 4;
-            break;
+            multiplier = base ** 4
+            break
         case 'GI': // Gibibyte
         case 'G':
-            multiplier = base ** 3;
-            break;
+            multiplier = base ** 3
+            break
         case 'MI': // Mebibyte
         case 'M':
-            multiplier = base ** 2;
-            break;
+            multiplier = base ** 2
+            break
         case 'KI': // Kibibyte
         case 'K':
-            multiplier = base ** 1;
-            break;
-        case '': // Si solo era un número sin unidad (asume Bytes)
+            multiplier = base ** 1
+            break
+        case '':
         case 'B': // Bytes
-            multiplier = 1;
-            break;
+            multiplier = 1
+            break
         default:
-            console.warn(`Unidad desconocida '${unitUpper}'. Asumiendo Bytes.`);
-            multiplier = 1;
-            break;
+            console.warn(`Unknown unit '${unitUpper}'. We assume Bytes.`)
+            multiplier = 1
+            break
     }
 
     // 3. Calcular el resultado final
-    return value * multiplier;
+    return value * multiplier
 }
 
 interface INextExecution {

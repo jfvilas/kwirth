@@ -484,16 +484,16 @@ templates.set('PersistentVolumeClaim',`
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mi-manual-pvc
+  name: my-pvc
   namespace: default
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 5Gi
+      storage: 1Mi
   volumeName: my-local-pv
-  storageClassName: manual
+  storageClassName: local-path
   volumeMode: Filesystem
 `)
 
@@ -507,11 +507,11 @@ spec:
     storage: 1Gi
   hostPath:
     path: /tmp/mypv
-    type: 'my-type'
+    type: BlockDevice
   accessModes:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: manual
+  storageClassName: local-path
   volumeMode: Filesystem
 `)
 
@@ -519,7 +519,7 @@ templates.set('StorageClass',`
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: local-path
+  name: my-sc
 provisioner: rancher.io/local-path
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer

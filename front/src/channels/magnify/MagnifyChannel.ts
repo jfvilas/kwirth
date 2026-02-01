@@ -85,7 +85,7 @@ class MagnifyChannel implements IChannel {
                             case EMagnifyCommand.LISTCRD:
                                 let content = JSON.parse(response.data)
                                 if (content.kind.endsWith('List')) {
-                                    content.items.forEach( (item:any) => this.loadObject(channelObject, content.kind.replace('List',''), magnifyData, item) )
+                                    content.items.forEach( (item:any) => this.loadObject('NONE', channelObject, content.kind.replace('List',''), magnifyData, item) )
                                 }
                                 else {
                                     this.notify(this, ENotifyLevel.ERROR, 'Unexpected list: '+ content.kind)
@@ -101,7 +101,8 @@ class MagnifyChannel implements IChannel {
                                 }
                                 else {
                                     if (result.events) {
-                                        result.events = result.events.sort( (a:any,b:any) => Date.parse(b.lastTimestamp)-Date.parse(a.lastTimestamp))  //+++ review
+                                        //result.events = result.events.sort( (a:any,b:any) => Date.parse(b.lastTimestamp)-Date.parse(a.lastTimestamp))  //+++ review
+                                        result.events = result.events.sort( (a:any,b:any) => Date.parse(b.eventTime||b.firstTimestamp||b.lastTimestamp)-Date.parse(a.eventTime||a.firstTimestamp||a.lastTimestamp))
                                         for (let event of result.events) {
                                             let path = buildPath(event.involvedObject.kind, event.involvedObject.name)
                                             let obj = magnifyData.files.find(f => f.path === path)
@@ -123,7 +124,7 @@ class MagnifyChannel implements IChannel {
                                 switch(response.event) {
                                     case 'ADDED':
                                     case 'MODIFIED':
-                                        this.loadObject(channelObject, response.data.kind, magnifyData, response.data)
+                                        this.loadObject(response.event, channelObject, response.data.kind, magnifyData, response.data)
                                         magnifyData.files = [...magnifyData.files]
                                         break
                                     case 'DELETED':
@@ -308,7 +309,7 @@ class MagnifyChannel implements IChannel {
         if (kind==='Namespace' && magnifyData.updateNamespaces) magnifyData.updateNamespaces('DELETED', obj.metadata.name)
     }
 
-    loadObject (channelObject:IChannelObject, kind:string, magnifyData:IMagnifyData, obj:any): void {
+    loadObject (event:string, channelObject:IChannelObject, kind:string, magnifyData:IMagnifyData, obj:any): void {
         if (obj.metadata?.managedFields) delete obj.metadata.managedFields //+++
         if (kind==='Pod') this.loadPod(magnifyData, obj)
         else if (kind==='ConfigMap') this.loadConfigMap(magnifyData, obj)
@@ -353,7 +354,8 @@ class MagnifyChannel implements IChannel {
         else if (kind==='NodeMetrics') this.loadNodeMetrics(magnifyData, obj)
         else if (kind==='ComponentStatus') this.loadComponentStatus(magnifyData, obj)
         else {
-            if (!this.loadCustomResourceDefinitionInstance(magnifyData, obj)) {
+            console.log('received kind:', kind, '. Try CRDi parsing.')
+            if (!this.loadCustomResourceDefinitionInstance(event, magnifyData, obj)) {
                 console.log('*** ERR INVALID Kind:', kind)
             }
         }
@@ -819,7 +821,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadPersistentVolumeClaim(magnifyData:IMagnifyData, obj:any): void {
-        obj.apiVersion = 'storage.k8s.io/v1'
+        obj.apiVersion = 'v1'
         obj.kind = 'PersistentVolumeClaim'
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
@@ -838,7 +840,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadPersistentVolume(magnifyData:IMagnifyData, obj:any): void {
-        obj.apiVersion = 'storage.k8s.io/v1'
+        obj.apiVersion = 'v1'
         obj.kind = 'PersistentVolume'
         this.updateObject(magnifyData, {
             name: obj.metadata.name,
@@ -846,11 +848,11 @@ class MagnifyChannel implements IChannel {
             path: buildPath('PersistentVolume', obj.metadata.name),
             class: 'PersistentVolume',
             data: {
-                storageClass: obj.spec.storageClassName,
-                capacity: obj.spec.capacity.storage,
-                claim: obj.spec.claimRef.name,
-                creationTimestamp: obj.metadata.creationTimestamp,
-                status: obj.status.phase,
+                storageClass: obj.spec?.storageClassName,
+                capacity: obj.spec?.capacity?.storage,
+                claim: obj.spec?.claimRef?.name,
+                creationTimestamp: obj.metadata?.creationTimestamp,
+                status: obj.status?.phase,
                 origin: obj
             }
         })
@@ -1083,6 +1085,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadCustomResourceDefinition(channelObject:IChannelObject, magnifyData:IMagnifyData, obj:any): void {
+        console.log('RECIVED LOAD CRD********************************')
         obj.apiVersion = 'apiextensions.k8s.io/v1'
         obj.kind = 'CustomResourceDefinition'
         let version = obj.spec.versions && obj.spec.versions.length>0? obj.spec.versions[0].name : '-'
@@ -1133,7 +1136,7 @@ class MagnifyChannel implements IChannel {
         }
     }
 
-    loadCustomResourceDefinitionInstance(magnifyData:IMagnifyData, obj:any): boolean {
+    loadCustomResourceDefinitionInstance(event: string, magnifyData:IMagnifyData, obj:any): boolean {
         let groupName = obj.apiVersion.replace('/','-')+'-'+obj.kind.toLowerCase()
 
         this.updateObject(magnifyData, {
