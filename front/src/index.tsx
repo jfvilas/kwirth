@@ -13,7 +13,7 @@ console.log(`Environment: ${process.env.NODE_ENV}`)
 console.log(`Front running inside electron: ${isElectron}`)
 console.log(`Root path: '${rootPath}'`)
 let backendUrl = 'http://localhost:3883'
-if (process.env.NODE_ENV==='production' && isElectron) backendUrl=window.location.protocol+'//'+window.location.host
+if (process.env.NODE_ENV==='production' || isElectron) backendUrl=window.location.protocol+'//'+window.location.host
 backendUrl = backendUrl + rootPath
 console.log(`Backend URL: ${backendUrl}`)
  

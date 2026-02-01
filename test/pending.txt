@@ -27,6 +27,13 @@ validate el addObject inicial (kwirth/kwrith/kwirth...) para dar permisos al cli
 
 ERRORS:
     crd instances duplicates (only on k3s local)
+    al seleccionar una accion que exige elegir contenedor, el estado para los jobs acabados deberia ser gris, y es naranja
+    refresh de los graficos del overview general
+    los namespaces del filtro en las vistas del RFM se pierden al cabo de un rato
+
+RFM
+    en vista de layout, el menu rightitem deberia estar deshabilitado  +++TEST
+
 
 *********V2*********
 en magnify

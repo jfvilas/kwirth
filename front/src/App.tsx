@@ -49,12 +49,14 @@ import { createChannelInstance } from './tools/ChannelTools'
 import { NotificationMenu, NotificationMessage } from './components/NotificationMenu'
 import { useEnvironment } from './components/UseEnvironment'
 import { ContextSelector } from './components/ContextSelector'
+const isElectron = false
 
 interface IAppProps {
     backendUrl:string
 }
 const App: React.FC<IAppProps> = (props:IAppProps) => {
-    const { isElectron } = useEnvironment()
+    //const { isElectron } = useEnvironment()
+    // setelectron
     let backendUrl = props.backendUrl
 
     const [frontChannels] = useState<Map<string, TChannelConstructor>>(new Map())

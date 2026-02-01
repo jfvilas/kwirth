@@ -10,6 +10,8 @@ RUN npm install
 
 COPY ./dist ./dist
 
+WORKDIR /usr/kwirth/dist
+
 EXPOSE 3883
 
-CMD [ "node", "--expose-gc", "--no-incremental-marking", "./dist/index.js" ]
+CMD [ "node", "--expose-gc", "--no-incremental-marking", "index.js" ]

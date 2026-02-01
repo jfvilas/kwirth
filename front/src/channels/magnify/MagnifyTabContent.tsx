@@ -771,6 +771,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
         launchTasks(props.channelObject)
 
+        let nsCategory = categories.find(c => c.key==='namespace')
+        if (nsCategory) {
+            // +++ we need to do this because category data is lost when magnify tab is unmounted (we could move this into magnifyData in order to preserve)
+            for (let f of magnifyData.files.filter(f => f.data?.origin?.kind==='Namespace')) {
+                if (!nsCategory.all.some(cv => cv.key === f.name)) nsCategory.all.push({key:f.name, text:f.name})
+            }
+        }
+
         magnifyData.updateNamespaces = (action:string, namespace:string) => {
             let nsCategory = categories.find(c => c.key==='namespace')
             if (!nsCategory) return
@@ -1235,12 +1243,12 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
                 <Stack direction={'column'}>
                     {
-                        magnifyData.clusterEvents.map(e => {
+                        magnifyData.clusterEvents.map( (e,index) => {
                             let severity= e.type?e.type[0]:''
                             let color='black'
                             if (severity==='W') color='orange'
                             if (severity==='E') color='red'
-                            return <Stack direction={'row'}>
+                            return <Stack key={index} direction={'row'}>
                                 <Typography sx={{width:'5%', color}}>{severity}</Typography>
                                 <Typography sx={{width:'25%', color}}>{e.eventTime||e.firstTimestamp||e.lastTimestamp}</Typography>
                                 <Typography sx={{width:'70%', color}}>{e.message}</Typography>

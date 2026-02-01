@@ -1,4 +1,4 @@
-import { InstanceMessageFlowEnum, InstanceMessageTypeEnum, EOpsCommand, IOpsMessage, IOpsMessageResponse, EInstanceMessageType, EInstanceMessageFlow } from "@jfvilas/kwirth-common"
+import { EOpsCommand, IOpsMessage, IOpsMessageResponse, EInstanceMessageType, EInstanceMessageFlow } from "@jfvilas/kwirth-common"
 import { ClusterInfo } from "../../model/ClusterInfo"
 import { IInstance } from "./OpsChannel"
 

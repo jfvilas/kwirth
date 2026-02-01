@@ -5,6 +5,7 @@ import Docker from 'dockerode'
 import { DockerTools } from "../tools/DockerTools"
 import { NodeMetrics } from "./INodeMetrics"
 import { EventsTools } from "../tools/EventsTools"
+import { ServiceAccountToken } from '../tools/ServiceAccountToken'
 
 export interface INodeInfo {
     [x: string]: any;
@@ -46,11 +47,11 @@ export class ClusterInfo {
     public policyApi!: PolicyV1Api
     public nodeApi!: NodeV1Api
     public objectsApi!: KubernetesObjectApi
+    public saToken!: ServiceAccountToken
     public token: string = ''
     public metrics!: MetricsTools
     public events!: EventsTools
     public metricsInterval: number = 15
-    //public metricsIntervalRef: number = -1
     public metricsIntervalRef: NodeJS.Timeout|undefined = undefined
     public vcpus: number = 0
     public memory: number = 0
@@ -59,12 +60,6 @@ export class ClusterInfo {
 
     stopMetricsInterval = () => clearTimeout(this.metricsIntervalRef)
 
-    // startMetricsInterval = (seconds: number) => {
-    //     this.metricsInterval = seconds
-    //     this.metricsIntervalRef = setInterval(() => {
-    //         this.metrics.readClusterMetrics(this)
-    //     }, this.metricsInterval * 1000, {})
-    // }
     static executeTask(instance: ClusterInfo) {
         instance.metrics.readClusterMetrics(instance)
     }
@@ -77,7 +72,7 @@ export class ClusterInfo {
             this)
     }
 
-    loadKubernetesClusterName = async() => {
+    setKubernetesClusterName = async() => {
         if (this.name !== '') return
         var resp = await this.coreApi.listNode()
         if (!resp.items || resp.items.length===0) return 'unnamed'
@@ -129,7 +124,7 @@ export class ClusterInfo {
         }
     }
 
-    loadNodes = async () => {
+    getNodes = async () => {
         // load nodes
         var resp = await this.coreApi.listNode()
         var nodes:Map<string, INodeInfo> = new Map()

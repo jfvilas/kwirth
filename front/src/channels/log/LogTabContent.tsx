@@ -5,7 +5,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Error, Warning } from '@mui/icons-material'
 
 const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    console.log('render')
     let logData:ILogData = props.channelObject.data
     const logBoxRef = useRef<HTMLDivElement | null>(null)
     const [logBoxHeight, setLogBoxHeight] = useState(0)

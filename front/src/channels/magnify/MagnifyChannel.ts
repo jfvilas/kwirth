@@ -1190,6 +1190,8 @@ const requestClusterInfo = (channelObject: IChannelObject) => {
 }
 
 const requestList = (channelObject: IChannelObject) => {
+    console.log('REQUEST LIST')
+    console.trace('Show me');
     let magnifyData:IMagnifyData = channelObject.data
     let magnifyMessage:IMagnifyMessage = {
         msgtype: 'magnifymessage',

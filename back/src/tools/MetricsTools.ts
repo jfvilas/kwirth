@@ -427,7 +427,7 @@ export class MetricsTools {
             console.log(`About to read cluster metrics ${new Date().toTimeString()}`)
 
             // we rebuild the list of nodes
-            let newNodeSet = await clusterInfo.loadNodes()
+            let newNodeSet = await clusterInfo.getNodes()
             // remove inxistent nodes
             for (let nodeName of Array.from(clusterInfo.nodes.keys())) {
                 if (!newNodeSet.get(nodeName)) clusterInfo.nodes.delete(nodeName)

@@ -402,7 +402,7 @@ class OpsChannel implements IChannel {
         switch (opsMessage.command) {
             case EOpsCommand.DESCRIBE:
                 if (this.checkAssetScope(instance, instance.assets[0], 'ops$get'))
-                    resp = await execCommandDescribe(this.clusterInfo, instance, opsMessage)
+                    resp = await execCommandDescribe(this.clusterInfo, opsMessage)
                 else
                     resp.data = `Insufficient scope for GET`
                 break
@@ -462,7 +462,7 @@ class OpsChannel implements IChannel {
                     execResponse.data = `Insuffcient scope for GET/DESCRIBE`
                     return execResponse
                 }
-                execResponse = await execCommandDescribe(this.clusterInfo, instance, opsMessage)
+                execResponse = await execCommandDescribe(this.clusterInfo, opsMessage)
                 break
             }
             case EOpsCommand.RESTART: {
