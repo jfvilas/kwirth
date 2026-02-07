@@ -72,7 +72,7 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
 
         let podPrefix = <></>
-        // if (selectedPodNames.length !== 1 || kwirthLogOptionsRef.current.showNames) {  // +++test
+        // if (selectedPodNames.length !== 1 || kwirthLogOptionsRef.current.showNames) {  // +++ log channel doesnt show pod nor container
         //     podPrefix  = <span style={{color:"green"}}>{logLine.pod+' '}</span>
         // }
 

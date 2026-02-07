@@ -15,6 +15,7 @@ interface IContentEditProps {
 const ArtifactSearch: React.FC<IContentEditProps> = (props:IContentEditProps) => {
     const [searchText, setSearch] = useState('')
     const [includeStatus, setIncludeStatus] = useState(false)
+    const [merge, setMerge] = useState(true)
     const [matchCase, setMatchCase] = useState(false)
     const percent = 70
 
@@ -24,7 +25,6 @@ const ArtifactSearch: React.FC<IContentEditProps> = (props:IContentEditProps) =>
         const handleKeyDown = (event: KeyboardEvent) => {
             event.stopPropagation()
             if (event.key === 'Escape') props.onClose()
-            //+++if (event.key === 'Enter' && event.ctrlKey) closeOk
         }
         window.addEventListener('keydown', handleKeyDown, true)
         return () => {
@@ -57,7 +57,7 @@ const ArtifactSearch: React.FC<IContentEditProps> = (props:IContentEditProps) =>
         return pathBuffer === '' ? current : undefined
     }
 
-    const getResults= (obj:any, text:string, includeStatus:boolean, matchCase:boolean) => {
+    const getResults= (obj:any, text:string, includeStatus:boolean, matchCase:boolean, merge:boolean) => {
         if (!obj || !obj.kind) return []
         let result = []
         if (obj.kind==='Secret' && obj.data) {
@@ -69,6 +69,9 @@ const ArtifactSearch: React.FC<IContentEditProps> = (props:IContentEditProps) =>
         else
             result = objectSearch(obj, text, matchCase)
         if (!includeStatus) result= result.filter(r => !r.startsWith('status'))
+        if (merge && result.length>1) {
+            result=[result[0]]
+        }
         return result
     }
 
@@ -99,22 +102,23 @@ const ArtifactSearch: React.FC<IContentEditProps> = (props:IContentEditProps) =>
             </DialogTitle>
 
             <DialogContent>
-                <Stack direction={'row'} alignItems={'center'}>
+                <Stack direction={'row'} alignItems={'baseline'}>
                     <TextField value={searchText} onChange={onSearchChange} variant='standard' label={'Search...'}></TextField>
-                    <FormControlLabel control={<Checkbox/>} value={includeStatus} onChange={() => setIncludeStatus(!includeStatus)} label='Include status'/>
-                    <FormControlLabel control={<Checkbox/>} value={matchCase} onChange={() => setMatchCase(!matchCase)} label='Match case'/>
+                    <FormControlLabel control={<Checkbox/>} checked={includeStatus} onChange={() => setIncludeStatus(!includeStatus)} label='Include status'/>
+                    <FormControlLabel control={<Checkbox/>} checked={matchCase} onChange={() => setMatchCase(!matchCase)} label='Match case'/>
+                    <FormControlLabel control={<Checkbox/>} checked={merge} onChange={() => setMerge(!merge)} label='Merge repeated results'/>
                     <Typography flexGrow={1}></Typography>
                     <Typography>
-                        {searchText.trim()!=='' && (searchText.length>=3) && <>Results: {props.selectedFiles.reduce( (acc,file) => acc + getResults(file.data?.origin, searchText, includeStatus, matchCase).length, 0)}</>}
+                        {searchText.trim()!=='' && (searchText.length>=3) && <>Results: {props.selectedFiles.reduce( (acc,file) => acc + getResults(file.data?.origin, searchText, includeStatus, matchCase, merge).length, 0)}</>}
                     </Typography>
                 </Stack>
                 <Stack direction={'column'}>
                     {
                         searchText.trim()!=='' && (searchText.length>=3) && props.selectedFiles.map((file) => {
-                                let res = getResults(file.data?.origin, searchText, includeStatus, matchCase)
-                                return res.map((r) => {
+                                let res = getResults(file.data?.origin, searchText, includeStatus, matchCase, merge)
+                                return res.map((r,index) => {
                                     let val = getDeepValue(file.data.origin, r)
-                                    return <Stack direction={'row'} sx={{mb:2}} alignItems={'center'}>
+                                    return <Stack key={index} direction={'row'} sx={{mb:2}} alignItems={'center'}>
                                         {getIconFromKind(file.data?.origin?.kind, 32)}
                                         <Stack direction={'column'} sx={{ml:2}}>
                                             <a href={`#`} onClick={() => props.onLink(file.data.origin.kind,file.data.origin.metadata.name)}>{file.data.origin.metadata.name}</a>

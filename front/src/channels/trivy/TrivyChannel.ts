@@ -20,6 +20,7 @@ export class TrivyChannel implements IChannel {
     requiresAccessString() { return true }
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
+    requiresClusterInfo() { return false }
     requiresWebSocket() { return true }
     requiresUserSettings() { return false }
     setNotifier(notifier: (channel:IChannel, level:ENotifyLevel, message:string) => void) { this.notify = notifier }

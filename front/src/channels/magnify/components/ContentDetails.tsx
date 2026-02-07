@@ -1,4 +1,3 @@
-import { ReactElement } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { IFileObject, ISpaceMenuItem } from '@jfvilas/react-file-manager'
 import { useEffect, useRef, useState } from 'react'
@@ -7,13 +6,6 @@ import { DetailsObject, IDetailsSection } from './DetailsObject';
 import { objectClone } from '../Tools';
 const _ = require('lodash')
 const copy = require('clipboard-copy')
-
-// export interface IDetailsAction {
-//     onClick: () => void
-//     icon: ReactElement
-//     text: string
-
-// }
 
 interface IContentDetailsProps {
     selectedFile?:IFileObject
@@ -47,7 +39,7 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
         items=items.filter(a => a.name!=='edit')
         showEdit=true
     }
-    if (items.some(a => a.name=='delete')) {
+    if (items.some(a => a.name==='delete')) {
         items=items.filter(a => a.name!=='delete')
         showDelete=true
     }
@@ -80,12 +72,8 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
             setPercent(70)
         }
         else {
-            //+++ must not happen
+            console.log('Must not happen!')
         }
-        // if (!content.current!.content.source.data.origin) {
-        //     console.log('errr*******')
-        //     console.log(content.current)
-        // }
         newObject.current = objectClone(content.current!.content.source.data.origin)
     },[])
 

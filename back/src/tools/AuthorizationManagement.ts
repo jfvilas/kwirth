@@ -35,12 +35,12 @@ export class AuthorizationManagement {
                     computedExpire = +receivedAccessKey.type.split(':')[1]
             }
             else {
-                var key = ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
+                let key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
                 if (!key) {
                     await apiKeyApi.refreshKeys()
-                    key = ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
+                    key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
                     if (!key) {
-                        console.log('Inexistent key: '+receivedAccessString)
+                        console.log('Inexistent key on validKey: '+receivedAccessString)
                         res.status(403).json()
                         return false
                     }            
@@ -79,12 +79,12 @@ export class AuthorizationManagement {
                     computedExpire = +receivedAccessKey.type.split(':')[1]
             }
             else {
-                var key = ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
+                var key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
                 if (!key) {
                     await apiKeyApi.refreshKeys()
-                    key = ApiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
+                    key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
                     if (!key) {
-                        console.log('Inexistent key: '+receivedAccessString)
+                        console.log('Inexistent key on getKey: '+receivedAccessString)
                         res.status(403).json()
                         return undefined
                     }            
@@ -123,7 +123,7 @@ export class AuthorizationManagement {
         return higherScope
     }
 
-    public static checkResource = (resource:ResourceIdentifier, podNamespace:string, podName:string, containerName:string) => {
+    public static checkResource = (resource:ResourceIdentifier, podNamespace:string, podName:string, containerName:string): boolean => {
        if (resource.namespaces !== '') {
             let x = AuthorizationManagement.getValidValues([podNamespace], resource.namespaces.split(','))
             if (x.length===0) return false
@@ -142,7 +142,7 @@ export class AuthorizationManagement {
         return true
     }
 
-    public static checkAkr = (channels:Map<string, IChannel>, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string) => {
+    public static checkAkr = (channels:Map<string, IChannel>, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string): boolean => {
         let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resources)
         let valid=false
         for (let akr of accessKeyResources) {
@@ -162,44 +162,6 @@ export class AuthorizationManagement {
         }
         return valid
     }
-
-
-
-    // public static checkAkr = (channels:Map<string, IChannel>, instanceConfig:InstanceConfig, podNamespace:string, podName:string, containerName:string) => {
-    //     let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resources)
-    //     let valid=false
-    //     console.log('checkAkr')
-    //     for (let akr of accessKeyResources) {
-    //         let haveLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, akr.scopes, Number.MIN_VALUE)
-    //         let requestedLevel = AuthorizationManagement.getScopeLevel(channels, instanceConfig.channel, instanceConfig.scope, Number.MAX_VALUE)
-    //         if (haveLevel<requestedLevel) {
-    //             console.log(`Insufficent level ${akr.scopes}(${haveLevel}) < ${instanceConfig.scope} (${requestedLevel}) for object`)
-    //             continue
-    //         }
-    //         console.log(`Level is enough for object: ${akr.scopes}(${haveLevel}) >= ${instanceConfig.scope} (${requestedLevel}),  let's check regexes...`)
-
-    //         if (akr.namespaces !== '') {
-    //             let x = AuthorizationManagement.getValidValues([podNamespace], akr.namespaces.split(','))
-    //             if (x.length===0) continue
-    //         }
-    //         if (akr.groups !== '') {
-    //             //+ ++
-    //         }
-    //         if (akr.pods !== '') {
-    //             let x = AuthorizationManagement.getValidValues([podName], akr.pods.split(','))
-    //             if (x.length===0) continue
-    //         }
-    //         if (akr.containers !== '') {
-    //             let x = AuthorizationManagement.getValidValues([containerName], akr.containers.split(','))
-    //             if (x.length===0) continue
-    //         }
-    //         valid = true
-    //         console.log(`Found AKR: ${JSON.stringify(akr)}`)
-    //         break
-    //     }
-    //     return valid
-    // }
-
 
     public static validAuth = (req:Request, res:Response, channels:Map<string, IChannel>, reqScope:string, instanceConfig: IInstanceConfig, namespace:string, group:string, pod:string, container:string): boolean => {
         if (!req.headers.authorization) return false
@@ -236,7 +198,8 @@ export class AuthorizationManagement {
         return true
     }
     
-    public static getValidValues = (values:string[], regexes:string[]) => {
+    public static getValidValues = (values:string[], regexes:string[]): string[] => {
+        //if (this.isElectron) return values
         let result:string[] = []
         try {
             for (let value of values) {
@@ -298,8 +261,6 @@ export class AuthorizationManagement {
                 groupNames = (await appsApi.listNamespacedStatefulSet({namespace})).items.filter(ss => ss.status?.replicas!>0).map (n => n?.metadata?.name!)
                 break
             case 'job':
-                //+++groupNames = (await appsApi.listNamespaced StatefulSet({namespace})).items.filter(ss => ss.status?.replicas!>0).map (n => n?.metadata?.name!)
-                //+++result.push( ...groupNames)
                 groupNames = (await batchApi.listNamespacedJob({namespace})).items.map(j => j.metadata?.name!)       
                 break
         }
@@ -398,10 +359,10 @@ export class AuthorizationManagement {
         return [...new Set(result)]
     }
     
-    public static getPodLabelSelectorsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, groupTypeName:string) => {
+    public static getPodLabelSelectorsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, groupTypeName:string): Promise<{pods:V1Pod[],labelSelector:string}> => {
         let response:any
         let groupName, groupType
-        let emptyResult = { pods:[],labelSelector:'' };
+        let emptyResult = { pods:[] as V1Pod[],labelSelector:'' };
         [groupType, groupName] = groupTypeName.toLowerCase().split('+')
     
         try {
@@ -462,7 +423,7 @@ export class AuthorizationManagement {
             return  { pods, labelSelector }
         }
         else {
-            return { pods:[], labelSelector:[] }            
+            return { pods:[], labelSelector:'' }
         }
     }
 

@@ -5,21 +5,17 @@ import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import { applyAllResources, deleteAllResources } from '../tools/KubernetesTools'
 import { EClusterType, KwirthData } from '@jfvilas/kwirth-common'
 import Docker from 'dockerode'
-import { IChannel } from '../channels/IChannel'
 
 export class ConfigApi {
     public route = express.Router()
     dockerApi : Docker
     kwirthData: KwirthData
     clusterInfo: ClusterInfo
-    onSelectContext?: (name:string, kwirthData:KwirthData) => Promise<void>
 
-
-    constructor (apiKeyApi: ApiKeyApi, kwirthData:KwirthData, clusterInfo:ClusterInfo, onSelectContext?: (name:string, kwirthData:KwirthData) => Promise<void>) {
+    constructor (apiKeyApi: ApiKeyApi, kwirthData:KwirthData, clusterInfo:ClusterInfo) {
         this.kwirthData = kwirthData
         this.clusterInfo = clusterInfo
         this.dockerApi = new Docker()
-        this.onSelectContext = onSelectContext
 
         // return kwirth version information
         this.route.route('/info')
@@ -66,41 +62,6 @@ export class ConfigApi {
                 }
             })
             
-        // return kwirth and cluster version information
-        this.route.route('/kubeconfig')
-            .all( async (req:Request,res:Response, next) => {
-                if (kwirthData.isElectron) next()
-                if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
-                next()
-            })
-            .get( async (req:Request, res:Response) => {
-                try {
-                    const clusterList = this.clusterInfo.kubeConfig.clusters
-                    res.status(200).json(clusterList.map(c => c.name))
-                }
-                catch (err) {
-                    res.status(500).json({})
-                    console.log(err)
-                }
-            })
-            .post( async (req:Request, res:Response) => {
-                try {
-                    //+++TEST
-                    let clusterName = req.body.cluster
-                    if (clusterName) {
-                        res.status(200).json({})
-                        if (this.onSelectContext) this.onSelectContext(clusterName, this.kwirthData)
-                    }
-                    else {
-                        res.status(500).json({error: 'NotFound'})
-                    }
-                }
-                catch (err) {
-                    res.status(500).json({})
-                    console.log(err)
-                }
-            })
-
         this.route.route('/trivy')
             .all( async (req:Request,res:Response, next) => {
                 if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return

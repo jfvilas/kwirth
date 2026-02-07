@@ -29,19 +29,18 @@ export class ServiceAccountToken {
             await this.deleteToken(serviceAccountName, namespace)
         }
         catch (err) {
-            console.log('Token does not exists. A new one will be created')
+            console.log(`Token does not exists. A new one will be created (${namespace}/${serviceAccountName}-kwirthtoken)`)
         }
 
         // we now create it
         try {
-            await this.coreApi.createNamespacedSecret({namespace, body:secret})
+            let sec = await this.coreApi.createNamespacedSecret({namespace, body:secret})
             console.log('SA token created')
+            console.log(sec)
         }
         catch (err:any) {
             console.log('Error creating SA token')
-            console.log(`  Code: ${err.body?.code}`)
-            console.log(`  Reason: ${err.body?.reason}`)
-            console.log(`  Message: ${err.body?.message}`)
+            console.log(err)
         }
     }
     
@@ -55,7 +54,7 @@ export class ServiceAccountToken {
             console.log('Error extracting token')
             console.log(err)
         }
-        return null
+        return undefined
     }
     
     public deleteToken = async (serviceAccountName: string, namespace: string) => {

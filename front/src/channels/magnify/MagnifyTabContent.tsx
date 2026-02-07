@@ -29,6 +29,7 @@ import './custom-fm.css'
 import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 import { ClusterMetrics } from './components/ClusterMetrics'
 import { ArtifactSearch } from './components/ArtifactSearch'
+import { validateConfigMaps, validateReplicaSets, validateSecrets } from './components/Validations'
 
 const yamlParser = require('js-yaml')
 
@@ -454,7 +455,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     
                     return (
                         <Stack flexDirection={'row'}>
-                            <Typography width={'15%'}>{text}:&nbsp;</Typography>
+                            <Typography width={'13%'}>{text}:&nbsp;</Typography>
                             <Stack flexDirection={'column'}>
                                 {
                                     elements.map( (e, index) => {
@@ -769,7 +770,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             }
         }
 
-        launchTasks(props.channelObject)
 
         let nsCategory = categories.find(c => c.key==='namespace')
         if (nsCategory) {
@@ -808,65 +808,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             <Box sx={{ flexGrow: 1 }} />
             <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
         </Stack>
-    }
-
-    const launchTasks = (channelObject:IChannelObject) => {
-
-        // cluster usage +++ maybe nodemetrics is enough to get this data
-        setInterval( (c:IChannelObject) => {
-            fetch(`${c.clusterUrl}/metrics/usage/cluster`, addGetAuthorization(c.accessString!)).then ( (result) => {
-                result.json().then ( (data) => {
-                    let md:IMagnifyData = c.data
-                    data.timestamp = new Date().getHours()+':'+new Date().getMinutes()+':'+new Date().getSeconds()
-                    md.metricsCluster.push(data)
-                    if (md.metricsCluster.length>10) md.metricsCluster.shift()
-                    setRefresh(Math.random())
-                })
-            })
-        }, 30000, channelObject)
-
-        // pod cpu/mem & cluster cpu/mem
-        setInterval( (c:IChannelObject) => {
-            let magnifyMessage:IMagnifyMessage = {
-                msgtype: 'magnifymessage',
-                accessKey: channelObject.accessString!,
-                instance: channelObject.instanceId,
-                id: uuid(),
-                namespace: '',
-                group: '',
-                pod: '',
-                container: '',
-                command: EMagnifyCommand.LIST,
-                action: EInstanceMessageAction.COMMAND,
-                flow: EInstanceMessageFlow.REQUEST,
-                type: EInstanceMessageType.DATA,
-                channel: 'magnify',
-                params: [ 'PodMetrics', 'NodeMetrics' ]
-            }
-            if (channelObject.webSocket) channelObject.webSocket.send(JSON.stringify( magnifyMessage ))
-        }, 60000, channelObject)
-
-        // request cluster events
-        setInterval ( (c:IChannelObject) => {
-            let magnifyMessage:IMagnifyMessage = {
-                msgtype: 'magnifymessage',
-                accessKey: c.accessString!,
-                instance: c.instanceId,
-                id: uuid(),
-                namespace: '',
-                group: '',
-                pod: '',
-                container: '',
-                command: EMagnifyCommand.EVENTS,
-                action: EInstanceMessageAction.COMMAND,
-                flow: EInstanceMessageFlow.REQUEST,
-                type: EInstanceMessageType.DATA,
-                channel: 'magnify',
-                params: [ 'cluster', '', '', '', '10']
-            }
-            if (c.webSocket) c.webSocket.send(JSON.stringify( magnifyMessage ))
-        }, 10000, channelObject)
-
     }
 
     // *********************************************************
@@ -1204,7 +1145,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     // handlers for showing general data inside filemanager
-    const getMoreEvents = () => {
+    const getMoreEvents = () => {  // +++ review
         let magnifyMessage:IMagnifyMessage = {
             msgtype: 'magnifymessage',
             accessKey: props.channelObject.accessString!,
@@ -1227,10 +1168,11 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const showOverview = () => {
         if (!magnifyData.clusterInfo) return <></>
-
+        
         return <Card sx={{m:1, display: 'flex', flexDirection: 'column', height: 'calc(100% - 55px)', width:'100%'}}>
             <CardContent sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', p: 2}}>
                 <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
+                <Typography>Cluster: {props.channelObject.clusterInfo?.name}</Typography>
                 <Typography>Version: {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
                 <Typography>Platform: {magnifyData.clusterInfo.platform}</Typography>
                 <Typography>Nodes: {magnifyData.files.filter(f => f.class==='Node').length}</Typography>
@@ -1283,9 +1225,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const showWorkloadOverview = () => {
         return <Box sx={{m:1, width:'100%'}}>
             <Card>
-                <CardHeader title={'Workload overview'}>
-
-                </CardHeader>
+                <CardHeader title={'Workload overview'}/>
                 <CardContent>
                     <Typography>Pods: {magnifyData.files.filter(f => f.class==='Pod').length}</Typography>
                     <Divider sx={{mt:2, mb:2}}/>
@@ -1297,6 +1237,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     <Divider sx={{mt:2, mb:2}}/>
                     <Typography>Jobs: {magnifyData.files.filter(f => f.class==='Job').length}</Typography>
                     <Typography>Cron jobs: {magnifyData.files.filter(f => f.class==='CronJob').length}</Typography>
+                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography>Validations</Typography>
+                    {validateReplicaSets(magnifyData.files, onMagnifyObjectDetailsLink)}
                 </CardContent>
 
             </Card>
@@ -1306,14 +1249,15 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const showConfigOverview = () => {
         return <Box sx={{m:1, width:'100%'}}>
             <Card>
-                <CardHeader title={'Config overview'}>
-
-                </CardHeader>
+                <CardHeader title={'Config overview'}/>
                 <CardContent>
                     <Typography>ConfigMap: {magnifyData.files.filter(f => f.class==='ConfigMap').length}</Typography>
                     <Typography>Secret: {magnifyData.files.filter(f => f.class==='Secret').length}</Typography>
+                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography fontSize={'16'}>Validations</Typography>
+                    {validateConfigMaps(magnifyData.files, onMagnifyObjectDetailsLink)}
+                    {validateSecrets(magnifyData.files, onMagnifyObjectDetailsLink)}
                 </CardContent>
-
             </Card>
         </Box>
     }
@@ -1343,7 +1287,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 </CardHeader>
                 <CardContent>
                     <Typography>Total PVC's: {magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').length}</Typography>
-                    <Typography>Total storage: {convertBytesToSize(magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').reduce((ac, v) => convertSizeToBytes(v.data.size), 0))}</Typography>
+                    <Typography>Total storage: {convertBytesToSize(magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').reduce((ac, v) => ac+convertSizeToBytes(v.data.size), 0))}</Typography>
                 </CardContent>
 
             </Card>
@@ -1602,7 +1546,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                                     let extcon = ec as IContentExternalObject
                                     let text = extcon.channelObject.container
                                     if (text.length>20) text = text.substring(0,10) + '...' + text.substring(text.length-10)
-                                    // +++ add a preview of terminal using: https://www.npmjs.com/package/html-to-image
+                                    // +++ add a preview of terminal using: www.npmjs.com/package/html-to-image
                                     let pod = extcon.channelObject.pod
                                     if (pod && pod!=='') pod = 'Pod: '+ pod
                                     let container = extcon.channelObject.container

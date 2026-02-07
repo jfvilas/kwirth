@@ -188,7 +188,7 @@ objectSections.set('PersistentVolumeClaim', [
            {
                 name: 'pods',
                 text: 'Pods',
-                source: ['@string[]'],
+                source: ['#@string[]'],
                 format: 'stringlist',
                 style: ['column', 'link:$Pod:name']
            },
@@ -277,8 +277,9 @@ objectSections.set('StorageClass', [
             {
                 name: 'provisioner',
                 text: 'Provisioner',
-                source: ['provisioner'],
+                source: ['#provisioner'],
                 format: 'string',
+                style: ['link:$CSIDriver:provisioner']
            },
             {
                 name: 'volumeBindingMode',
@@ -295,14 +296,14 @@ objectSections.set('StorageClass', [
            {
                 name: 'pvs',
                 text: 'PV',
-                source: ['@string[]'],
+                source: ['#@string[]'],
                 format: 'stringlist',
                 style: ['column', 'link:$PersistentVolume:.', 'ifpresent']
            },
            {
                 name: 'pvcs',
                 text: 'PVC',
-                source: ['@string[]'],
+                source: ['#@string[]'],
                 format: 'stringlist',
                 style: ['column', 'link:$PersistentVolumeClaim:.', 'ifpresent']
            }
@@ -2360,7 +2361,7 @@ objectSections.set('CronJob', [
             {
                 name: 'jobs',
                 text: '',
-                source: ['@string[]'],  //+++ should be @object[]
+                source: ['@string[]'],
                 format: 'objectlist',
                 style: ['table'],
                 items: [

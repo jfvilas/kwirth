@@ -10,30 +10,14 @@ import { IConfigMaps } from '../tools/IConfigMap'
 export class LoginApi {
     secrets: ISecrets
     configMaps: IConfigMaps
+    apiKeyApi: ApiKeyApi
     static semaphore:Semaphore = new Semaphore(1)
     public route = express.Router()
 
-    readUsersSecret = async (secrets: ISecrets) => {
-        let users:{ [username:string]:string }
-        try {
-            users = await secrets.read('kwirth-users')
-            return users
-        }
-        catch (err) {
-            try {
-                users = await secrets.read('kwirth.users')
-            }
-            catch (err) {
-                console.log(`*** Cannot read 'kwirth-users' secret on source ***`)
-                return undefined
-            }
-            return users
-        }
-    }
-
-    constructor (secrets: ISecrets, configMaps: IConfigMaps) {
+    constructor (secrets: ISecrets, configMaps: IConfigMaps, apiKeyApi:ApiKeyApi) {
         this.secrets = secrets
         this.configMaps = configMaps
+        this.apiKeyApi = apiKeyApi
 
         // authentication (login)
         this.route.post('/', async (req:Request,res:Response) => {
@@ -55,7 +39,8 @@ export class LoginApi {
                         if (user.id === 'admin' && user.password === 'password')
                             res.status(201).send()
                         else {
-                            user.accessKey = (await this.createApiKey(req, user)).accessKey
+                            let ip = (req as any).clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress
+                            user.accessKey = (await this.createApiKey(user, ip, this.apiKeyApi)).accessKey
                             res.status(200).json(this.okResponse(user))
                         }
                     } 
@@ -88,7 +73,8 @@ export class LoginApi {
                 if (user) {
                     if (req.body.password===user.password) {
                         user.password = req.body.newpassword
-                        user.accessKey=(await this.createApiKey(req, user)).accessKey
+                        let ip = (req as any).clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress
+                        user.accessKey=(await this.createApiKey(user, ip, this.apiKeyApi)).accessKey
                         users[req.body.user]=btoa(JSON.stringify(user))
                         await secrets.write('kwirth-users',users)
                         res.status(200).json(this.okResponse(user))
@@ -104,8 +90,26 @@ export class LoginApi {
         })
     }
 
-    createApiKey = async (req:Request, user:IUser) : Promise<ApiKey> => {
-        let ip = (req as any).clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress
+    readUsersSecret = async (secrets: ISecrets) => {
+        let users:{ [username:string]:string }
+        try {
+            users = await secrets.read('kwirth-users')
+            return users
+        }
+        catch (err) {
+            try {
+                users = await secrets.read('kwirth.users')
+            }
+            catch (err) {
+                console.log(`*** Cannot read 'kwirth-users' secret on source ***`)
+                return undefined
+            }
+            return users
+        }
+    }
+
+    createApiKey = async (user:IUser, ip:string, apiKeyApi:ApiKeyApi) : Promise<ApiKey> => {
+        //let ip = (req as any).clientIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress
         let apiKey:ApiKey = {
             accessKey: accessKeyCreate('permanent', user.resources),
             description: `Login user '${user.id}' from ${ip}`,
@@ -116,7 +120,7 @@ export class LoginApi {
         storedKeys = AuthorizationManagement.cleanApiKeys(storedKeys)
         storedKeys.push(apiKey)
         this.configMaps.write('kwirth.keys', storedKeys )
-        ApiKeyApi.apiKeys = storedKeys
+        apiKeyApi.apiKeys = storedKeys
         return apiKey
     }
 

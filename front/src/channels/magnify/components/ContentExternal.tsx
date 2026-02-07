@@ -48,20 +48,20 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
     const content = useRef<IContentExternalObject>()
     const [ percent, setPercent] = useState<number>(70)
    
-    useEffect(() => {
-        const previousFocus = document.activeElement as HTMLElement
+    // useEffect(() => {
+    //     const previousFocus = document.activeElement as HTMLElement
 
-        const handleKeyDown = (event: KeyboardEvent) => {
-            event.stopPropagation()
-            if (event.key === 'Escape') props.onClose(content.current!)
-        }
+    //     const handleKeyDown = (event: KeyboardEvent) => {
+    //         event.stopPropagation()
+    //         if (event.key === 'Escape') props.onClose(content.current!)
+    //     }
 
-        window.addEventListener('keydown', handleKeyDown, true)
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown, true)
-            previousFocus?.focus()
-        }
-    }, [])
+    //     window.addEventListener('keydown', handleKeyDown, true)
+    //     return () => {
+    //         window.removeEventListener('keydown', handleKeyDown, true)
+    //         previousFocus?.focus()
+    //     }
+    // }, [])
 
     useEffect( () => {
         // if we receive content, we show content (we don't create a new content)

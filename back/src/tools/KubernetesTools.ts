@@ -181,12 +181,14 @@ async function nodeDrain(coreApi: CoreV1Api, nodeName: string): Promise<void> {
     }
 }
 
-async function throttleExcute(id:string, invoke:any): Promise<void> {
+async function throttleExcute(id:string, invoke:any): Promise<boolean> {
     let repeat = true
+    let retry = 3
     while (repeat) {
         repeat = false
         try {
-            invoke()
+            await invoke()
+            return true
         }
         catch (err:any) {
             console.log('Throttling error on',id)
@@ -195,10 +197,16 @@ async function throttleExcute(id:string, invoke:any): Promise<void> {
                 await new Promise ( (resolve) => { setTimeout(resolve, (+err.headers['retry-after']||1)*1000)})
             }
             else {
-                throw (err)
+                // unknown error just retry
+                retry--
+                console.log('Error when throttling', id)
+                if (retry>0) await new Promise ( (resolve) => { setTimeout(resolve, 3000)})
+                return false
             }
         }
     }
+    console.log('Unexpected error when throttling', id)
+    return false
 }
 
 async function cronJobTrigger (namespace: string, cronJobName: string, batchApi: BatchV1Api): Promise<void> {

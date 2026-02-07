@@ -36,7 +36,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     let icons = new Map()
-    icons.set('namespace', { open:<IconNamespace height={18}/>, closed:<IconNamespace height={18}/>, grid:<IconNamespace height={50}/>, list:<IconNamespace height={18}/>, default:<IconNamespace height={18}/> })
+    icons.set('namespace', { open:<IconNamespace size={18}/>, closed:<IconNamespace size={18}/>, grid:<IconNamespace size={50}/>, list:<IconNamespace size={18}/>, default:<IconNamespace size={18}/> })
     icons.set('pod', { open:<IconPod height={18}/>, closed:<IconPod height={18}/>, grid:<IconPod height={50}/>, list:<IconPod height={18}/>, default:<IconPod height={18}/> })
     icons.set('container', { open:<IconContainer/>, closed:<IconContainer/>, grid:<IconContainer height={44}/>, list:<IconContainer height={16}/>, default:<IconContainer height={16}/> })
 

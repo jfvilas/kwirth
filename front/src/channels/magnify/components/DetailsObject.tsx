@@ -3,7 +3,6 @@ import { Https } from '@mui/icons-material'
 import { LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextareaAutosize, TextField, Tooltip, Typography } from '@mui/material'
 import { convertBytesToSize, convertSizeToBytes } from '../Tools'
 import React from 'react'
-import { clearLine } from 'readline'
 
 const _ = require('lodash')
 
@@ -340,18 +339,20 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 }
                 else {
                     return  <>{_.get(obj,src).map((row:any, rowIndex:number) => {
-                        // if (!content) return <></>
+                        if (!content) return <></>
 
-                        // return <>{content.map((c:IDetailsItem, index) => <React.Fragment key={index}>{renderItem(rootObj, row, c, labelWidth, level+1)}</React.Fragment>)}</>
-                        <React.Fragment key={rowIndex}>
-                        {
-                            !content?
-                                <></>
-                                :
-                                <>{content.map((c:IDetailsItem, elIndex) => <React.Fragment key={elIndex}>{renderItem(rootObj, row, c, labelWidth, level+1)}</React.Fragment>)}</>
-                        }
-
+                        return <React.Fragment key={rowIndex}>
+                            {content.map((c:IDetailsItem, index) => <React.Fragment key={index}>{renderItem(rootObj, row, c, labelWidth, level+1)}</React.Fragment>)}
                         </React.Fragment>
+                        // <React.Fragment key={rowIndex}>
+                        // {
+                        //     !content?
+                        //         <></>
+                        //         :
+                        //         <>{content.map((c:IDetailsItem, elIndex) => <React.Fragment key={elIndex}>{renderItem(rootObj, row, c, labelWidth, level+1)}</React.Fragment>)}</>
+                        // }
+
+                        // </React.Fragment>
 
                     })}</>
                 }

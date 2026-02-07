@@ -20,10 +20,14 @@ export class MetricsTools {
     private clusterInfo:ClusterInfo
     private metricsList: Map<string,MetricDefinition>
     private loadingClusterMetrics: boolean = false
+    private isElectron: boolean = false
+    private inCluster: boolean = true
 
-    constructor (clusterInfo:ClusterInfo) {
+    constructor (clusterInfo:ClusterInfo, isElectron:boolean, inCluster:boolean) {
         this.clusterInfo = clusterInfo
         this.metricsList = new Map()
+        this.isElectron = isElectron
+        this.inCluster = inCluster
     }
 
     /*
@@ -150,17 +154,35 @@ export class MetricsTools {
 
     // read metric raw values at a specific cluster node (invokes kubelet's cAdvisor)
     public readCAdvisorMetrics = async (node:INodeInfo): Promise<string> => {
-        var text=''
-        try {
-            var resp = await fetch (`https://${node.ip}:10250/metrics/cadvisor`, { headers: { Authorization: 'Bearer ' + this.clusterInfo.token} })
-            //var resp = await fetch (`https://psd-k8s-dev.azure.plexusdevops.com/kwirth/metrics/debug/text/aks-basv2pool-33612910-vmss000000`, { headers: { Authorization: '7db98cec-8891-7c53-539a-f7917c650662|permanent|cluster::+::'} })
+        let text=''
+        
+        if (this.isElectron || !this.inCluster) {
+            // we use kubeconfig credentials
+            let cluster = this.clusterInfo.kubeConfig.getCurrentCluster()
+            const url = `${cluster!.server}/api/v1/nodes/${node.kubernetesNode.metadata?.name}/proxy/metrics/cadvisor`
+            const fetchOptions: any = { method: 'GET' }
+            await this.clusterInfo.kubeConfig.applyToFetchOptions(fetchOptions)  // add credentials
 
-            text = await resp.text()
+            try {
+                const response = await fetch(url, fetchOptions)
+                if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`)
+                text = await response.text()
+            }
+            catch (error: any) {
+                console.error(`Error consultando cAdvisor en nodo ${node.kubernetesNode.metadata?.name}:`, error.message)
+            }
         }
-        catch (error:any) {
-            console.log(`Error reading cAdvisor metrics at node ${node.ip}`, error.stack)
-            text=''
+        else {
+            try {
+                const response = await fetch (`https://${node.ip}:10250/metrics/cadvisor`, { headers: { Authorization: 'Bearer ' + this.clusterInfo.token} })
+                if (!response.ok) throw new Error(`Error getting kubelet metrics ${response.status}: ${response.statusText}`)
+                text = await response.text()
+            }
+            catch (error:any) {
+                console.log(`Error reading cAdvisor metrics at node ${node.ip}`, error.stack)
+            }
         }
+
         // add kwirth container metrics
         text += '# HELP kwirth_container_memory_percentage Percentage of memory used by object from the whole cluster\n'
         text += '# TYPE kwirth_container_memory_percentage gauge\n'
@@ -205,30 +227,32 @@ export class MetricsTools {
         return text
     }
 
-    // public readCAdvisorGeneric = async (node:NodeInfo, path:string): Promise<string> => {
-    //     var text=''
-    //     try {
-    //         var resp = await fetch (`https://${node.ip}:10250/${path}`, { headers: { Authorization: 'Bearer ' + this.clusterInfo.token} })
-    //         text = await resp.text()
-    //     }
-    //     catch (error:any) {
-    //         console.log(`Error reading cAdvisor metics at node ${node.ip}`, error.stack)
-    //         text=''
-    //     }
-    //     return text
-    // }
-
     public readCAdvisorSummary = async (node:INodeInfo): Promise<any> => {
-        let json={}
-        try {
-            let resp = await fetch (`https://${node.ip}:10250/stats/summary`, { headers: { Authorization: 'Bearer ' + this.clusterInfo.token} })
-            json = await resp.json()
+        if (this.isElectron || !this.inCluster) {
+            let cluster = this.clusterInfo.kubeConfig.getCurrentCluster()
+            const url = `${cluster!.server}/api/v1/nodes/${node.kubernetesNode.metadata?.name}/proxy/stats/summary`
+            const fetchOptions: any = { method: 'GET' }
+
+            // we add kubeconfig credentials
+            try {
+                await this.clusterInfo.kubeConfig.applyToFetchOptions(fetchOptions)
+                const resp = await fetch(url, fetchOptions)
+                return await resp.json()
+            }
+            catch {
+                console.log('error reading cadvisor')
+            }
         }
-        catch (error:any) {
-            console.log(`Error reading cAdvisor summary at node ${node.ip}`, error.stack)
-            json=''
+        else {
+            try {
+                let resp = await fetch (`https://${node.ip}:10250/stats/summary`, { headers: { Authorization: 'Bearer ' + this.clusterInfo.token} })
+                return await resp.json()
+            }
+            catch (error:any) {
+                console.log(`Error reading cAdvisor summary at node ${node.ip}`, error.stack)
+            }
         }
-        return json
+        return {}
     }
 
     // reads node metrics and loads 'metricValues' with parsed and formated data

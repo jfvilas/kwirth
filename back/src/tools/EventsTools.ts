@@ -21,7 +21,7 @@ export class EventsTools {
 
     async startResourceWatcher (resourcePath: string, eventHandler: (type: string, obj: any, subscribersList:Map<IChannel, string[]>) => void) {
         const watchLoop = async () => {
-            console.log(`[${resourcePath}] Starting watcher for path: ${resourcePath}`);
+            // +++console.log(`[${resourcePath}] Starting watcher for path: ${resourcePath}`);
             const watch = new Watch(this.clusterInfo.kubeConfig)
             try {
                 await watch.watch(
@@ -48,7 +48,7 @@ export class EventsTools {
 
     handleEvent (type: string, obj: any, subscribersList:Map<IChannel, string[]>) {
         for (let subscriber of subscribersList.entries()) {
-            console.log(type, obj.metadata.name)
+            // +++ console.log(type, obj.kind, obj.metadata.name)
             if (subscriber[1].includes(obj.kind)) subscriber[0].processObjectEvent(type, obj)
         }
     }

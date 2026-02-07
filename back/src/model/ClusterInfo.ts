@@ -56,7 +56,7 @@ export class ClusterInfo {
     public nodeApi!: NodeV1Api
     public objectsApi!: KubernetesObjectApi
     public saToken!: ServiceAccountToken
-    public token: string = ''
+    public token: string|undefined   // needed just for connecting to kubelet and extract metrics
     public metrics!: MetricsTools
     public events!: EventsTools
     public metricsInterval: number = 15

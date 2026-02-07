@@ -3384,9 +3384,6 @@ spaces.set('crdinstance',
     }
 )
 
-//
-// Open source icons: https://iconbuddy.com/
-//
 const icons = new Map()
 icons.set('classoverview', { default: <Kubernetes size={'16'}/> } )
 icons.set('classcluster', { default: <Cluster size={'16'}/> } )

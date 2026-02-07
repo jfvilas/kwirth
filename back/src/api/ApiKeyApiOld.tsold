@@ -7,7 +7,7 @@ import { IConfigMaps } from '../tools/IConfigMap'
 
 
 export class ApiKeyApi {
-    public apiKeys: ApiKey[] = []
+    public static apiKeys: ApiKey[] = []
     public route = express.Router()
     private configMaps: IConfigMaps
     public masterKey: string
@@ -22,7 +22,7 @@ export class ApiKeyApi {
         const instance = new ApiKeyApi(configMaps, masterKey)
         const result = await configMaps.read('kwirth.keys', [])
         const cleanKeys = AuthorizationManagement.cleanApiKeys(result)
-        instance.apiKeys = cleanKeys
+        ApiKeyApi.apiKeys = cleanKeys
         return instance
     }
 
@@ -34,7 +34,7 @@ export class ApiKeyApi {
             })
             .get( async (req:Request,res:Response) => {
                 let storedKeys:ApiKey[] =await this.configMaps.read('kwirth.keys',[]) || []
-                for (let apikey of this.apiKeys) {
+                for (let apikey of ApiKeyApi.apiKeys) {
                     if (!storedKeys.some(s => accessKeySerialize(s.accessKey) === accessKeySerialize(apikey.accessKey))) storedKeys.push(apikey)
                 }
                 res.status(200).json(storedKeys)
@@ -86,10 +86,10 @@ export class ApiKeyApi {
                             storedKeys = AuthorizationManagement.cleanApiKeys(storedKeys)
                             storedKeys.push(apiKey)
                             await this.configMaps.write('kwirth.keys',storedKeys)
-                            this.apiKeys=[...this.apiKeys.filter(a => a.accessKey.type==='volatile'), ...storedKeys]
+                            ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type==='volatile'), ...storedKeys]
                         }
                         else if (accessKey.type==='volatile') {
-                            this.apiKeys.push(apiKey)
+                            ApiKeyApi.apiKeys.push(apiKey)
                         }
                         else {
                             // bearer
@@ -137,7 +137,7 @@ export class ApiKeyApi {
                     storedKeys = AuthorizationManagement.cleanApiKeys(storedKeys)
                     storedKeys=storedKeys.filter(apiKey => apiKey.accessKey.id!==req.params.key)
                     await this.configMaps.write('kwirth.keys', storedKeys )
-                    this.apiKeys=[...this.apiKeys.filter(a => a.accessKey.type === 'volatile'), ...storedKeys]
+                    ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type === 'volatile'), ...storedKeys]
                     res.status(200).json({})
                 }
                 catch (err) {
@@ -153,7 +153,7 @@ export class ApiKeyApi {
                     storedKeys = storedKeys.filter(k => k.accessKey.id!==key.accessKey.id)
                     storedKeys.push(key)
                     await this.configMaps.write('kwirth.keys',storedKeys)
-                    this.apiKeys=[...this.apiKeys.filter(a => a.accessKey.type === 'volatile'), ...storedKeys]
+                    ApiKeyApi.apiKeys=[...ApiKeyApi.apiKeys.filter(a => a.accessKey.type === 'volatile'), ...storedKeys]
 
                     res.status(200).json({})
                 }
@@ -168,7 +168,7 @@ export class ApiKeyApi {
         let storedKeys = await this.configMaps.read('kwirth.keys', [])
         storedKeys = AuthorizationManagement.cleanApiKeys(storedKeys)
         await this.configMaps.write('kwirth.keys', storedKeys )
-        this.apiKeys = storedKeys
+        ApiKeyApi.apiKeys = storedKeys
     }
     
 }

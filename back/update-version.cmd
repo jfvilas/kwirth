@@ -8,3 +8,5 @@ echo %level% > level
 set nextversion=%major%.%minor%.%level%
 echo %currversion% to %nextversion%
 echo export const VERSION:string="%nextversion%"; > src\version.ts
+echo export const VERSION:string="%nextversion%"; > ..\front\src\version.ts
+echo const VERSION="%nextversion%"; module.exports = { VERSION }; > ..\electron\version.js

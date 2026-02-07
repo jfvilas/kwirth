@@ -3,6 +3,7 @@ import { MetricDefinition } from './metrics/MetricDefinition'
 import { ENotifyLevel } from '../tools/Global'
 import { IChannelSettings } from '../model/Settings'
 import { IResourceSelected } from '../components/ResourceSelector'
+import { IClusterInfo } from '../model/Cluster'
 
 type TChannelConstructor = (new () => IChannel)|undefined
 
@@ -45,6 +46,7 @@ interface IChannelObject {
     frontChannels?: Map<string, TChannelConstructor>
     webSocket?: WebSocket
     clusterUrl?: string
+    clusterInfo?: IClusterInfo
     onUpdateChannelSettings?: (channelSettings:IChannelSettings) => void
     onCreateTab?: (resource:IResourceSelected, start:boolean, settings:any) => void
     channelSettings?: IChannelSettings
@@ -63,6 +65,7 @@ interface IChannel {
     requiresFrontChannels(): boolean
     requiresMetrics(): boolean
     requiresClusterUrl(): boolean
+    requiresClusterInfo(): boolean
     requiresAccessString(): boolean
     requiresWebSocket(): boolean
     requiresUserSettings(): boolean

@@ -1,10 +1,9 @@
 import React, { useRef, useState } from 'react'
 import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Checkbox, FormControlLabel, Stack, TextField, Typography } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
-import { allKinds, MagnifyUserPreferences } from '../MagnifyUserPreferences'
+import { allKinds, IKind, MagnifyUserPreferences } from '../MagnifyUserPreferences'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { IChannelObject } from '../../IChannel'
-
 
 interface IProps {
     channelObject: IChannelObject
@@ -13,11 +12,12 @@ interface IProps {
     onReload?: () => void
 }
 
+//+++ las userpreferences siguen dando undefined al arrancar el canal
 const UserPreferences: React.FC<IProps> = (props:IProps) => {
     const [logLines, setLogLines] = useState(props.preferences.logLines)
     const [tracing, setTracing ] = useState(props.preferences.tracing)
-    const [sourceList, setSourceList] = useState<string[]>(props.preferences.dataConfig?.source)
-    const [syncList, setSyncList] = useState<string[]>(props.preferences.dataConfig?.sync)
+    const [sourceList, setSourceList] = useState<IKind[]>(props.preferences.dataConfig?.source)
+    const [syncList, setSyncList] = useState<IKind[]>(props.preferences.dataConfig?.sync)
     const [dataChanged, setDataChanged] = useState(false)
     const [debugChanged, setDebugChanged] = useState(false)
     const [externalChanged, setExternalChanged] = useState(false)
@@ -44,12 +44,12 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
         console.log(props.files.filter(f => f.name.includes(filterRef.current!.value) || f.path.includes(filterRef.current!.value)))
     }
 
-    const changeKind = (type:string, kind:string) => {
+    const changeKind = (type:string, kind:IKind) => {
         let list=sourceList
         if (type==='sync') list=syncList
 
-        if (list.includes(kind))
-            list=list.filter(k => k!==kind)
+        if (list.some(k => k.name===kind.name))
+            list=list.filter(k => k.name!==kind.name)
         else
             list.push(kind)
         if (type==='source') setSourceList([...list])
@@ -89,15 +89,15 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
                         <Typography fontWeight={700}>Source</Typography>
                         { allKinds.map(kind => {
                             return (
-                                <FormControlLabel key={kind} control={<Checkbox onChange={() => changeKind('source', kind)} checked={sourceList.some(s => s===kind)}/>} label={kind}/>
+                                <FormControlLabel key={kind.name} control={<Checkbox onChange={() => changeKind('source', kind)} checked={sourceList.some(s => s.name===kind.name)}/>} label={kind.name}/>
                             )
                         })} 
                     </Stack>
                     <Stack direction={'column'} sx={{width:'100%'}}>
                         <Typography fontWeight={700}>Sync</Typography>
-                        { allKinds.map( kind => {
+                        { allKinds.map(kind => {
                             return (
-                                <FormControlLabel key={kind} control={<Checkbox onChange={() => changeKind('sync', kind)} checked={syncList.some(s => s===kind)}/>} label={kind}/>
+                                <FormControlLabel key={kind.name} control={<Checkbox onChange={() => changeKind('sync', kind)} checked={syncList.some(s => s.name===kind.name)}/>} label={kind.name}/>
                             )
                         })} 
                     </Stack>

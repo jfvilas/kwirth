@@ -30,7 +30,7 @@ import { IWorkspace, IWorkspaceSummary } from './model/IWorkspace'
 import { VERSION } from './version'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, IInstanceConfig, InstanceMessageChannelEnum, parseResources, KwirthData, BackChannelData, IUser, ISignalMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView, EInstanceConfigObject } from '@jfvilas/kwirth-common'
+import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, IInstanceConfig, InstanceMessageChannelEnum, parseResources, KwirthData, BackChannelData, IUser, ISignalMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView, EInstanceConfigObject, AccessKey } from '@jfvilas/kwirth-common'
 import { ITabObject, ITabSummary } from './model/ITabObject'
 
 import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
@@ -47,13 +47,15 @@ import { Homepage } from './components/Homepage'
 import { DEFAULTLASTTABS, IColors, TABBASECOLORS, TABBRIGHTCOLORS } from './tools/Constants'
 import { createChannelInstance } from './tools/ChannelTools'
 import { NotificationMenu, NotificationMessage } from './components/NotificationMenu'
-import { useEnvironment } from './components/UseEnvironment'
 import { ContextSelector } from './components/ContextSelector'
-const isElectron = false
+import { v4 as uuid } from 'uuid'
+
+const isElectron = true
 
 interface IAppProps {
     backendUrl:string
 }
+
 const App: React.FC<IAppProps> = (props:IAppProps) => {
     //const { isElectron } = useEnvironment()
     // setelectron
@@ -176,11 +178,17 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         setNotifySnackbarMessage(message)
         setNotifySnackbarLevel(level)
         setNotifySnackbarOpen(true)
-        setNotifications([...notifications, {timestamp:new Date(), level, message, channel }])
+        setNotifications((prev) => [...prev, { timestamp: new Date(), level, message, channel }])
     }
 
     const fillTabSummary = async (tab:ITabSummary) => {
         let namespacesArray:string[] = []
+        if (tab.channelObject.clusterName === '$cluster') {
+            if (isElectron)
+                tab.channelObject.clusterName = 'inElectron'
+            else
+                tab.channelObject.clusterName = 'inCluster'
+        }
         if (tab.channelObject.namespace==='$all' || tab.channelObject.group==='$all'|| tab.channelObject.pod==='$all'|| tab.channelObject.container==='$all') {
             namespacesArray = (await (await fetch(`${backendUrl}/config/namespace`, addGetAuthorization(accessString))).json())
             tab.channelObject.namespace = namespacesArray.join(',')
@@ -222,7 +230,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         let srcCluster = new Cluster()
         srcCluster.kwirthData = await response.json() as KwirthData
         if (!srcCluster.kwirthData) {
-            console.log('No kwirthtdata received from source cluster')
+            console.log('No KwirthData received from source cluster')
             return
         }
         let responseCluster = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString))
@@ -241,11 +249,14 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
         // get previously configured clusters
         let clusterList:Cluster[]=[]
-        response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString))
-        if (response.status===200) {
-            clusterList = JSON.parse (await response.json())
-            clusterList = clusterList.filter (c => c.name !== srcCluster.name)
+        if (!isElectron) {
+            response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString))
+            if (response.status===200) {
+                clusterList = JSON.parse (await response.json())
+                clusterList = clusterList.filter (c => c.name !== srcCluster.name)
+            }
         }
+
         for (let cluster of clusterList)
             readClusterInfo(cluster, notify).then( () => { setChannelMessageAction({action : EChannelRefreshAction.REFRESH}) })
         clusterList.push(srcCluster)
@@ -254,20 +265,33 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     }
 
     const readLoggedUserSettings = async () => {
-        let resp = await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString))
-        if (resp.status===200) {
-            let json=await resp.json()
-            if (json && userSettingsRef) userSettingsRef.current = JSON.parse(json) as Settings
+        if (isElectron) {
+            let settingsStr = localStorage.getItem('settingsGeneral')
+            if (settingsStr && userSettingsRef) userSettingsRef.current = JSON.parse(settingsStr) as Settings
+            console.log('**********************', userSettingsRef.current)
         }
         else {
-            userSettingsRef.current = { channelSettings: [], keepAliveInterval: 60, channelUserPreferences:[] }
+            let resp = await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString))
+            if (resp.status===200) {
+                let json=await resp.json()
+                if (json && userSettingsRef) {
+                    userSettingsRef.current = JSON.parse(json) as Settings
+                    return
+                }
+            }
         }
+        userSettingsRef.current = { channelSettings: [], keepAliveInterval: 60, channelUserPreferences:[] }
     }
 
     const writeLoggedUserSettings = async () => {
         if (user) {
-            let payload = JSON.stringify(userSettingsRef.current)
-            fetch (`${backendUrl}/store/${user.id}/settings/general`, addPostAuthorization(accessString, payload))
+            if (isElectron) {
+                localStorage.setItem('settingsGeneral', JSON.stringify(userSettingsRef.current))
+            }
+            else {
+                let payload = JSON.stringify(userSettingsRef.current)
+                fetch (`${backendUrl}/store/${user.id}/settings/general`, addPostAuthorization(accessString, payload))
+            }
         }
     }
 
@@ -315,11 +339,14 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     }
 
     const readChannelUserPreferences = async (channelId:string) : Promise<any> => {
+        console.log('readpref', channelId, userSettingsRef.current)
         let chanPref = userSettingsRef.current.channelUserPreferences?.find(c => c.channelId===channelId)
         if (chanPref) {
+            console.log(chanPref.data)
             return chanPref.data
         }
         else {
+            console.log('undef')
             return undefined
         }
     }
@@ -372,6 +399,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
         if (newTab.channel.requiresMetrics()) newTab.channelObject.metricsList = cluster.metricsList
         if (newTab.channel.requiresClusterUrl()) newTab.channelObject.clusterUrl = cluster.url
+        if (newTab.channel.requiresClusterInfo()) newTab.channelObject.clusterInfo = cluster.clusterInfo
         if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
         if (newTab.channel.requiresFrontChannels()) newTab.channelObject.frontChannels = frontChannels
         if (newTab.channel.requiresUserSettings()) {
@@ -1155,7 +1183,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 break
             case MenuDrawerOption.Exit:
                 setLogged(false)
-                window.location.href = '/'
                 break
         }
     }
@@ -1258,10 +1285,13 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const onHomepageSelectTab = async (tab: ITabSummary): Promise<void> => {
         let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
         if (cluster) {
-            let clonedTab:ITabSummary = await JSON.parse(JSON.stringify(tab))
+            let clonedTab:ITabSummary = JSON.parse(JSON.stringify(tab))
             await fillTabSummary(clonedTab)
             await populateTabObject(clonedTab.name, clonedTab.channel, cluster, clonedTab.channelObject.view, clonedTab.channelObject.namespace, clonedTab.channelObject.group, clonedTab.channelObject.pod, clonedTab.channelObject.container, false, undefined)
             onClickChannelStart()
+        }
+        else {
+            console.log('Cluster not found:', tab.channelObject.clusterName)
         }
     }
 
@@ -1324,28 +1354,30 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
     }
 
-    const onLocalClusterSelect = (id:string) => {
+    const onClusterSelectLocal = async (id:string, accessKey: AccessKey) => {
+        console.log('**************accessKey', accessKey)
         setLogged(true)
         setFirstLogin(false)
         setCurrentWorkspaceName('untitled')
         setCurrentWorkspaceDescription('No description yet')
         clearTabs()
+        let userId = localStorage.getItem('electronUser')
+        if (!userId) {
+            userId = uuid()
+            localStorage.setItem('electronUser', userId)
+        }
         let user:IUser = {
-            id: 'desktop',
-            name: 'Kwirth',
+            id: userId,
+            name: 'Kwirth Electron',
             password: '',
-            accessKey: {
-                id: 'id',
-                type: 'type',
-                resources: 'all'
-            },
+            accessKey: accessKey,
             resources: ''
         }
         setUser(user)
         setAccessString(user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources)
     }
     
-    const onRemoteClusterSelect = (id:string, url:string) => {
+    const onClusterSelectRemote = (id:string, url:string) => {
         setIsClusterRemoteSelected(true)
         setLogged(false)
         setFirstLogin(false)
@@ -1361,7 +1393,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         if ((isElectron) && !isClusterRemoteSelected) {
             return <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
                 <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
-                    <ContextSelector onClusterSelectLocal={onLocalClusterSelect} onClusterSelectRemote={onRemoteClusterSelect} />
+                    <ContextSelector onClusterSelectLocal={onClusterSelectLocal} onClusterSelectRemote={onClusterSelectRemote} isElectron={isElectron}/>
                 </SessionContext.Provider>
             </div>
         }

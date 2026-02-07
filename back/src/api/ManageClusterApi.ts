@@ -3,21 +3,15 @@ import { AppsV1Api, V1DeploymentList, V1PodList } from '@kubernetes/client-node'
 import { CoreV1Api } from '@kubernetes/client-node'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
 import { ApiKeyApi } from './ApiKeyApi'
-import { IChannel } from '../channels/IChannel'
 
 export class ManageClusterApi {
     public route = express.Router()
     coreApi:CoreV1Api
     appsApi:AppsV1Api
-    channels:Map<string,IChannel>
 
-    changeCluster (coreApi:CoreV1Api, appsApi:AppsV1Api, apiKeyApi: ApiKeyApi, channels:Map<string, IChannel>) {
-
-    }
-    constructor (coreApi:CoreV1Api, appsApi:AppsV1Api, apiKeyApi: ApiKeyApi, channels:Map<string, IChannel>) {
+    constructor (coreApi:CoreV1Api, appsApi:AppsV1Api, apiKeyApi: ApiKeyApi) {
         this.coreApi = coreApi
         this.appsApi = appsApi
-        this.channels = channels
 
         this.route.route('/find')
             .all( async (req:Request,res:Response, next) => {

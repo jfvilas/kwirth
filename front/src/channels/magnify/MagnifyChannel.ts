@@ -10,6 +10,7 @@ import { ENotifyLevel } from '../../tools/Global'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { convertBytesToSize, convertSizeToBytes } from './Tools'
 import { MagnifyUserPreferences } from './MagnifyUserPreferences'
+import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 
 interface IMagnifyMessage extends IInstanceMessage {
     msgtype: 'magnifymessage'
@@ -31,6 +32,7 @@ class MagnifyChannel implements IChannel {
     SetupDialog: FC<ISetupProps> = MagnifySetup
     TabContent: FC<IContentProps> = MagnifyTabContent
     channelId = 'magnify'
+    tasks: number[] = []
     
     requiresSetup() { return false }
     requiresSettings() { return false }
@@ -38,6 +40,7 @@ class MagnifyChannel implements IChannel {
     requiresAccessString() { return true }
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return true }
+    requiresClusterInfo() { return true }
     requiresWebSocket() { return true }
     requiresUserSettings() { return true }
     setNotifier(notifier: (channel:IChannel|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
@@ -174,7 +177,7 @@ class MagnifyChannel implements IChannel {
                 if (signalMessage.flow === EInstanceMessageFlow.RESPONSE) {
                     if (signalMessage.action === EInstanceMessageAction.START) {
                         channelObject.instanceId = signalMessage.instance
-                        magnifyData.timers = this.createTimers(channelObject)
+                        // +++ magnifyData.timers = this.createTimers(channelObject)
 
                         // +++ improve setTimeout mechanism (find something better!!!)
                         setTimeout( () => {
@@ -227,6 +230,7 @@ class MagnifyChannel implements IChannel {
         magnifyData.files = magnifyData.files.filter(f => f.isDirectory && f.path.split('/').length-1 <= 2)
         magnifyData.files = magnifyData.files.filter(f => f.class!=='crdgroup')
         magnifyData.currentPath='/overview'
+        this.launchTasks(channelObject)
         return true
     }
 
@@ -246,6 +250,7 @@ class MagnifyChannel implements IChannel {
         let magnifyData:IMagnifyData = channelObject.data
         magnifyData.paused = false
         magnifyData.started = false
+        this.tasks.forEach( (id) => clearInterval(id))
         return true
     }
 
@@ -261,48 +266,63 @@ class MagnifyChannel implements IChannel {
     //*************************************************************************************************
     //*************************************************************************************************
 
-    createTimers = (channelObject:IChannelObject) : number[] => {
-        return [
-            // setInterval ( (c:IChannelObject, _forceNumberReturn:any) => {
-            //     let magnifyMessage:IMagnifyMessage = {
-            //         msgtype: 'magnifymessage',
-            //         accessKey: channelObject.accessString!,
-            //         instance: channelObject.instanceId,
-            //         id: uuid(),
-            //         namespace: '',
-            //         group: '',
-            //         pod: '',
-            //         container: '',
-            //         command: EMagnifyCommand.EVENTS,
-            //         action: EInstanceMessageAction.COMMAND,
-            //         flow: EInstanceMessageFlow.REQUEST,
-            //         type: EInstanceMessageType.DATA,
-            //         channel: 'magnify',
-            //         params: [ 'cluster', '', '', '', '10']
-            //     }
-            //     c.webSocket!.send(JSON.stringify( magnifyMessage ))
-            // }, 60000, channelObject)
-            // setInterval ( (c:IChannelObject, _forceNumberReturn:any) => {
-            //     let magnifyMessage:IMagnifyMessage = {
-            //         msgtype: 'magnifymessage',
-            //         accessKey: c.accessString!,
-            //         instance: c.instanceId,
-            //         id: uuid(),
-            //         namespace: '',
-            //         group: '',
-            //         pod: '',
-            //         container: '',
-            //         command: EMagnifyCommand.EVENTS,
-            //         action: EInstanceMessageAction.COMMAND,
-            //         flow: EInstanceMessageFlow.REQUEST,
-            //         type: EInstanceMessageType.DATA,
-            //         channel: 'magnify',
-            //         params: [ 'cluster', '', '', '', '10']
-            //     }
-            //     c.webSocket!.send(JSON.stringify( magnifyMessage ))
-            // }, 60000, channelObject)
+    launchTasks = (channelObject:IChannelObject) => {
 
-        ]
+        // cluster usage +++ maybe nodemetrics is enough to get this data
+        this.tasks.push (window.setInterval( (c:IChannelObject) => {
+            fetch(`${c.clusterUrl}/metrics/usage/cluster`, addGetAuthorization(c.accessString!)).then ( (result) => {
+                result.json().then ( (data) => {
+                    let md:IMagnifyData = c.data
+                    data.timestamp = new Date().getHours()+':'+new Date().getMinutes()+':'+new Date().getSeconds()
+                    md.metricsCluster.push(data)
+                    if (md.metricsCluster.length>10) md.metricsCluster.shift()
+                    // +++ setRefresh(Math.random())
+                })
+            })
+        }, 30000, channelObject))
+
+        // pod cpu/mem & cluster cpu/mem
+        this.tasks.push(window.setInterval( (c:IChannelObject) => {
+            let magnifyMessage:IMagnifyMessage = {
+                msgtype: 'magnifymessage',
+                accessKey: channelObject.accessString!,
+                instance: channelObject.instanceId,
+                id: uuid(),
+                namespace: '',
+                group: '',
+                pod: '',
+                container: '',
+                command: EMagnifyCommand.LIST,
+                action: EInstanceMessageAction.COMMAND,
+                flow: EInstanceMessageFlow.REQUEST,
+                type: EInstanceMessageType.DATA,
+                channel: 'magnify',
+                params: [ 'PodMetrics', 'NodeMetrics' ]
+            }
+            if (channelObject.webSocket) channelObject.webSocket.send(JSON.stringify( magnifyMessage ))
+        }, 60000, channelObject))
+
+        // request cluster events
+        this.tasks.push (window.setInterval ( (c:IChannelObject) => {
+            let magnifyMessage:IMagnifyMessage = {
+                msgtype: 'magnifymessage',
+                accessKey: c.accessString!,
+                instance: c.instanceId,
+                id: uuid(),
+                namespace: '',
+                group: '',
+                pod: '',
+                container: '',
+                command: EMagnifyCommand.EVENTS,
+                action: EInstanceMessageAction.COMMAND,
+                flow: EInstanceMessageFlow.REQUEST,
+                type: EInstanceMessageType.DATA,
+                channel: 'magnify',
+                params: [ 'cluster', '', '', '', '10']
+            }
+            if (c.webSocket) c.webSocket.send(JSON.stringify( magnifyMessage ))
+        }, 10000, channelObject))
+
     }
 
     deleteObject (channelObject:IChannelObject, kind:string, magnifyData:IMagnifyData, obj:any): void {
@@ -1189,27 +1209,30 @@ const requestClusterInfo = (channelObject: IChannelObject) => {
     channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
 }
 
-const requestList = (channelObject: IChannelObject) => {
-    console.log('REQUEST LIST')
-    console.trace('Show me');
-    let magnifyData:IMagnifyData = channelObject.data
-    let magnifyMessage:IMagnifyMessage = {
-        msgtype: 'magnifymessage',
-        accessKey: channelObject.accessString!,
-        instance: channelObject.instanceId,
-        id: uuid(),
-        namespace: '',
-        group: '',
-        pod: '',
-        container: '',
-        command: EMagnifyCommand.LIST,
-        action: EInstanceMessageAction.COMMAND,
-        flow: EInstanceMessageFlow.REQUEST,
-        type: EInstanceMessageType.DATA,
-        channel: 'magnify',
-        params: magnifyData.userPreferences?.dataConfig?.source
+const requestList = async (channelObject: IChannelObject) => {
+    for (let i = 1;i<10;i++) {
+        let magnifyData:IMagnifyData = channelObject.data
+        let params = magnifyData.userPreferences?.dataConfig?.source.filter(k => k.priority===i).map(k => k.name)
+        if (params.length===0) break
+        let magnifyMessage:IMagnifyMessage = {
+            msgtype: 'magnifymessage',
+            accessKey: channelObject.accessString!,
+            instance: channelObject.instanceId,
+            id: uuid(),
+            namespace: '',
+            group: '',
+            pod: '',
+            container: '',
+            command: EMagnifyCommand.LIST,
+            action: EInstanceMessageAction.COMMAND,
+            flow: EInstanceMessageFlow.REQUEST,
+            type: EInstanceMessageType.DATA,
+            channel: 'magnify',
+            params: params
+        }
+        channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
+        await new Promise(resolve => setTimeout(resolve, 250))
     }
-    channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
 }
 
 const subscribe = (channelObject: IChannelObject) => {
@@ -1228,7 +1251,7 @@ const subscribe = (channelObject: IChannelObject) => {
         flow: EInstanceMessageFlow.REQUEST,
         type: EInstanceMessageType.DATA,
         channel: 'magnify',
-        params: magnifyData.userPreferences?.dataConfig?.sync
+        params: magnifyData.userPreferences?.dataConfig?.sync.map(k => k.name)
     }
     channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
 }

@@ -13,6 +13,8 @@ import { EInstanceConfigView } from '@jfvilas/kwirth-common'
 
 // svg optimizer: https://jakearchibald.github.io/svgomg/ (optmizes size and removes namespaces)
 // Open source icons: https://iconbuddy.com/
+// transform svg to JSX https://svg2jsx.com/
+
 // +++ convert svg k8 icons to component (so they won't be downloaded)
 interface IProps {
     cluster:Cluster|undefined,
@@ -139,7 +141,6 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         if (i>=0) {
             list.splice(i,1)
             props.onUpdateWorkspaces([...props.lastWorkspaces], [...props.favWorkspaces])
-            //setRefresh(Math.random())
         }
     }
 
@@ -170,7 +171,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                             let viewIcon = <></>
                             switch (tab.channelObject.view) {
                                 case EInstanceConfigView.NAMESPACE:
-                                    viewIcon = <IconNamespace height={20}/>
+                                    viewIcon = <IconNamespace size={20}/>
                                     break
                                 case EInstanceConfigView.GROUP:
                                     viewIcon = <IconGroup height={20}/>
@@ -467,7 +468,6 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
 
                 </Stack>
             </Box>
-            {/* +++ <a href='/kwirth/port-forward/pod/default/play2048-phvqv/80'>kwirth</a> */}
         </Box>
     )
 }

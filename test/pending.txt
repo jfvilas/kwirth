@@ -1,6 +1,7 @@
 KWIRTH
 log de jobs: revisar "started &&"
 channel metrics: añadir metricas sinteticas: numero de pods en nodo, percentage de pods
+añadir gestion centralizada de timeouts e intervasl en front y en back [codigo mas abajo]
 
 MAGNIFY
 en la vista de lista, acciones multi item (metrics, logs...)
@@ -8,6 +9,10 @@ contentexternal
     configuracion
     chartmenu
     refresh de showoverview (charts de consumo)
+
+
+RFM
+    invert selection no tiene n cuent alos filtros
 
 
 DETAILS
@@ -20,26 +25,60 @@ events > revisar orden 23h59m, y revisar orden si no hay fechahora (en blanco) +
 💖💖💖 portforward con smart proxy
     running, just manage to detect rootpath in order to enable/disable forwarding
 
+KWIRTH
+    en los last tabs deberiamos poder saber a que nos vamos a conectar antes de conectarnos (un tooltip o asin)
+    revisar el arranque de los canales, para eviatr el "instance not found" (si no hay objetos no deja arrancar, y eso no vale para magnify)
+
 
 MAGNIFY BACK
 reconnect  NO VA!!!!
 validate el addObject inicial (kwirth/kwrith/kwirth...) para dar permisos al cliente
+429 en listCustomObjectForAllNamespaces +++TEST
+revisar los +++TEST
+    ❌ UNHANDLED REJECTION
+    Motivo: FetchError: Invalid response body while trying to fetch https://aks-blockchain-pro-westeurope-7qzj9f4j.01c35ba2-c3eb-463e-8053-ec9b65f95533.privatelink.westeurope.azmk8s.io/apis/status.gatekeeper.sh/v1beta1/constraintpodstatuses#%E2%80%8E: Premature close
+    (se produce un promise reject, pero no lo estamos capturando, parece que ocurre al consultar los CRDi)
 
-ERRORS:
+
+MAGNIFY FRONT
+    cuando se solicitan los recursos con LISTCRD, habria que priorizar, y bajar primero los mas importantes +++TEST
+    validation rules
+        config / secret no referenciados
+        replicasets
+        *** obtener un resumen da validaciones para mostrar en el magnify overview
+
+
+MAGNIFY ERRORS
     crd instances duplicates (only on k3s local)
-    al seleccionar una accion que exige elegir contenedor, el estado para los jobs acabados deberia ser gris, y es naranja
     refresh de los graficos del overview general
-    los namespaces del filtro en las vistas del RFM se pierden al cabo de un rato
+
 
 RFM
-    en vista de layout, el menu rightitem deberia estar deshabilitado  +++TEST
+    cuadno se aplica un filtro de categoria, el conteo de items de la status bar es incorrecto +++TEST
+    revisar la ordenacion de columnas (la de nombre funciona)
+    cuadno cambiamos de pantalla en magnify (o lo que sea) y cambian las columnas, hay que resetear los widths de las columnas
 
+
+ELECTRON
+    en los templates no usar inCluster , usar $cluster  +++test
+    revisar el cambio o salida de cluster: parar las cosas antes de entrar en el otro
+        en el backend, parar las cosas si se pierde la comnicacion con el front??
+    ocultar en el front lo que es de kwirth y no de magnify (to be lens-like)
+        ocultar las partes del menu que no aplican, como gestion de usuarios o api keys
+    implementar un read/store equivalente a los configmaps (para almacenamiento en local, asi popdemos gaurdar prefs o settings sin enviar nada al backend)
+    revisar funcionamiento de conectar a cluster remoto
+    añadir un color de si esta o no accesible el cluster (testear con una llamada al api de k8)
+    eliminar menu  +++TEST AL FINAL
+
+    
 
 *********V2*********
 en magnify
     improve DetailsObject
         always use rootObj, and just change the path, so trace-back can be used ofr detecting data changed origin
     zona de avisos del cluster (implementar en filemanager)
+    busqeudas: buscar en los CRD y en los CRDi
+    revisar el resize column
 
 en RFM
     en los fileitem, cuando le fila es muy alta, el nombre del fileitem se esta alineando arriab, y deberia ir al centro
@@ -55,3 +94,54 @@ DESKTOP
     pagina de seleccion de cluster
     api para que el node cambie de cluster (local)
     conexion a cluster remoto
+
+
+
+
+==============================================================================
+
+
+global.activeTimers = new Map();
+
+// --- Interceptar INTERVALOS ---
+const originalSetInterval = global.setInterval;
+const originalClearInterval = global.clearInterval;
+
+global.setInterval = (handler, timeout, ...args) => {
+  const id = originalSetInterval(handler, timeout, ...args);
+  global.activeTimers.set(id, {
+    type: 'Interval',
+    createdAt: new Date().toLocaleTimeString(),
+    ms: timeout
+  });
+  return id;
+};
+
+global.clearInterval = (id) => {
+  global.activeTimers.delete(id);
+  originalClearInterval(id);
+};
+
+// --- Interceptar TIMEOUTS ---
+const originalSetTimeout = global.setTimeout;
+const originalClearTimeout = global.clearTimeout;
+
+global.setTimeout = (handler, timeout, ...args) => {
+  const id = originalSetTimeout((...innerArgs) => {
+    // Cuando el timeout se ejecuta, se borra solo de la lista
+    global.activeTimers.delete(id);
+    handler(...innerArgs);
+  }, timeout, ...args);
+
+  global.activeTimers.set(id, {
+    type: 'Timeout',
+    createdAt: new Date().toLocaleTimeString(),
+    ms: timeout
+  });
+  return id;
+};
+
+global.clearTimeout = (id) => {
+  global.activeTimers.delete(id);
+  originalClearTimeout(id);
+};

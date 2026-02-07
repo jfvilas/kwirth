@@ -19,7 +19,7 @@ export class Cluster {
     }
 }
 
-export interface IClusterInfo {  //+++ take this to common
+export interface IClusterInfo {
     name: string,
     type: string,
     flavour: string,

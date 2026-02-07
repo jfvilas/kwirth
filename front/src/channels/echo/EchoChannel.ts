@@ -21,6 +21,7 @@ export class EchoChannel implements IChannel {
     requiresAccessString() { return false }
     requiresFrontChannels() { return true }
     requiresClusterUrl() { return false }
+    requiresClusterInfo() { return false }
     requiresWebSocket() { return false }
     requiresUserSettings() { return false }
     setNotifier(notifier: (channel:IChannel, level:ENotifyLevel, message:string) => void) { this.notify = notifier }

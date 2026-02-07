@@ -111,7 +111,6 @@ class EchoChannel implements IChannel {
             podNamespace,
             podName,
             containerName,
-            //interval: setInterval(() => this.sendData(webSocket, instance, asset), instance.configData.interval*1000)
             interval: undefined
         }
         asset.interval = setInterval(
@@ -216,7 +215,6 @@ class EchoChannel implements IChannel {
                 for (let instance of entry.instances) {
                     for (let asset of instance.assets) {
                         clearInterval(asset.interval)
-                        //asset.interval = setInterval(() => this.sendData(newWebSocket, instance, asset), instance.configData.interval*1000)
                         asset.interval = setInterval(
                             (ws:WebSocket, i:IInstance, a:IAsset) => this.sendData(ws,i,a),
                             instance.configData.interval*1000,

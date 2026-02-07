@@ -24,7 +24,7 @@ export class KubernetesConfigMaps implements IConfigMaps {
                 return {}
             }
             catch (err:any) {
-                console.log(`Error replacing, try to create.`, err)
+                console.log(`Error replacing, try to create.`)
                 try {
                     await this.coreApi?.createNamespacedConfigMap({ namespace: this.namespace, body: configMap })
                     return {}
@@ -37,6 +37,7 @@ export class KubernetesConfigMaps implements IConfigMaps {
             }
         }
         catch (err) {
+            console.log('Error writing configMap',this.namespace,'/', name)
             console.log(err)
             return undefined
         }
@@ -51,10 +52,12 @@ export class KubernetesConfigMaps implements IConfigMaps {
         }
         catch(err:any){
             if (err.code===404) {
+                console.log('Value not found reading configMap',this.namespace,'/', name)
                 return defaultValue
             }
             else {
-                console.log(err)
+                console.log('Error reading configMap',this.namespace,'/', name)
+                //+++console.log(err)
                 return undefined
             }
         }

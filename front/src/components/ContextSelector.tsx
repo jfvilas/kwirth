@@ -1,30 +1,83 @@
 import React, { useContext, useRef, useState } from 'react'
-import { Button, Dialog, DialogContent, DialogTitle, IconButton, List, ListItemButton, Stack, Tab, Tabs, Typography} from '@mui/material'
+import { Checkbox, Backdrop, Box, Button, CircularProgress, Dialog, DialogContent, DialogTitle, FormControlLabel, IconButton, List, ListItemButton, Stack, Tab, Tabs, TextField, Typography} from '@mui/material'
 import { SessionContext, SessionContextType } from '../model/SessionContext'
 import { useAsync } from 'react-use'
 import { InputBox } from '../tools/FrontTools'
 import { Delete } from '@mui/icons-material'
+import { AccessKey } from '@jfvilas/kwirth-common'
 
 interface IProps {
-    onClusterSelectLocal: (id:string) => void,
+    isElectron: boolean
+    onClusterSelectLocal: (id:string, accessKey:AccessKey) => void,
     onClusterSelectRemote: (id:string, url:string) => void
+}
+
+interface IContext {
+    cluster: string
+    name: string
+    user: string
+    namespace: string
+    server: string
+    status?: boolean
 }
 
 const ContextSelector: React.FC<IProps> = (props:IProps) => {
     const {backendUrl} = useContext(SessionContext) as SessionContextType
     const [selectedTab, setSelectedTab] = useState(0)
-    const [localClusters, setLocalClusters] = useState<string[]>([])
+    const [localContexts, setLocalContexts] = useState<IContext[]>([])
     const [remoteClusters, setRemoteClusters] = useState<{name:string, url:string}[]>([])
-    useAsync( async () => {
-        let resp = await fetch(backendUrl+'/config/kubeconfig')
-        setLocalClusters(await resp.json())
-        let rc = localStorage.getItem('remoteClusters')
-        if (rc) setRemoteClusters(JSON.parse(rc))
-    })
     const newCluster = useRef<string>('')
     const [inputBoxTitle, setInputBoxTitle] = useState<any>()
     const [inputBoxMessage, setInputBoxMessage] = useState<any>()
     const [inputBoxResult, setIinputBoxResult] = useState<(result:any) => void>()
+    const [showActive, setShowActive] = useState(false)
+    const [waiting, setWaiting] = useState(false)
+    const [filterLocal, setFilterLocal] = useState('')
+    const [filterRemote, setFilterRemote] = useState('')
+    const intId = useRef<any>()
+
+    const updateStatus = (
+        contexts: IContext[], 
+        onUpdate: (updatedCtx: IContext) => void) => {
+            contexts.forEach(async (ctx) => {
+                try {
+                    const isAvailable = await (window as any).kwirth.kubeApiAvailable(ctx.server)
+                    onUpdate({ ...ctx, status: isAvailable })
+                }
+                catch (error) {
+                    onUpdate({ ...ctx, status: false })
+                }
+            })
+        }
+
+    const updateAll = (contexts:IContext[]) =>  {
+        updateStatus(contexts, (updatedCtx: IContext) => {
+            setLocalContexts(prevContexts => {
+                return prevContexts.map(c => {
+                    if (c.name === updatedCtx.name && c.status !== updatedCtx.status) return { ...c, status: updatedCtx.status }
+                    return c
+                })
+            })
+        })
+    }
+
+    useAsync(async () => {
+
+        if (props.isElectron) {
+            let resp = await fetch(backendUrl + '/electron/kubeconfig')
+            let contexts = await resp.json() as IContext[]            
+            setLocalContexts(contexts)
+            updateAll(contexts)
+            intId.current = setInterval (updateAll, 5000, contexts)
+        }
+
+        let rc = localStorage.getItem('remoteClusters')
+        if (rc) setRemoteClusters(JSON.parse(rc))
+        
+        return () => {
+            if (intId.current) clearInterval(intId.current)
+        }
+    }, [])
 
     const addRemoteCluster = () => {
         setIinputBoxResult ( () => (name:any) => {
@@ -47,10 +100,36 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
         setRemoteClusters(newRemotes)
     }
 
+    const selectLocal = async (name:string) => {
+        setWaiting(true)
+        try {
+            let payload = JSON.stringify({ context:name })
+            let resp = await fetch(backendUrl+'/electron/kubeconfig', { method:'POST', body:payload, headers: {'Content-Type':'application/json'} } )
+            if (resp.status === 200) {
+                let jresp = await resp.json()
+                let sc = 0
+                do {
+                    await new Promise ( (resolve) => { setTimeout(resolve, 1000)})
+                    let resp2 = await fetch(backendUrl+'/config/info')
+                    sc = resp2.status
+                } while (sc!==200)
+                console.log('name', name)
+                props.onClusterSelectLocal(name, jresp.accessKey as AccessKey)
+            }
+            else {
+                console.log('ERROR')
+            }
+        }
+        catch (err) {
+            console.log(err)
+        }
+        setWaiting(false)
+    }
+
     return (<>
         <Dialog open={true} disableRestoreFocus={true}>
             <DialogTitle>Select cluster</DialogTitle>
-            <DialogContent sx={{height:350, width:450}}>
+            <DialogContent sx={{height:350, width:550}}>
                 <Tabs value={selectedTab} onChange={(_event, index) => setSelectedTab(index)} centered>
                     <Tab key='local' value={0} label='Local (Kubeconfig)'/>
                     <Tab key='remote' value={1} label='remote (Kwirth)'/>
@@ -58,11 +137,17 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
                 
                 { selectedTab === 0 &&
                     <Stack direction={'column'} sx={{height:300, overflowY:'auto' }}>
+                        <Stack direction={'row'} sx={{width:'100%'}} alignItems={'baseline'}>
+                            <TextField label={'Filter'} value={filterLocal} onChange={(e) => setFilterLocal(e.target.value)} sx={{width:'100%', ml:2, mr:2}} variant={'standard'}></TextField>
+                            <FormControlLabel control={<Checkbox />} checked={showActive} onChange={() => setShowActive(!showActive)} label={'Show\u00a0only\u00a0active'}/>
+                        </Stack>
                         <List>
                         {
-                            localClusters.map(c => 
-                                <ListItemButton key={c} onClick={() => props.onClusterSelectLocal(c)}>
-                                    <Typography>{c}</Typography>
+                            localContexts.filter(c => c.cluster.includes(filterLocal)).filter(c => true || !showActive || (showActive && c.status)).map(c => 
+                                <ListItemButton key={c.cluster} onClick={() => selectLocal(c.cluster)}>
+                                    <Typography>{c.cluster.substring(0,50)+(c.cluster.length>60?'...':'')}</Typography>
+                                    <Typography flexGrow={1}></Typography>
+                                    <Box sx={{width:12, height:12, borderRadius:'50%', bgcolor:c.status!==undefined? (c.status?'success.main':'error.main'):'gray', mr:1}}></Box>
                                 </ListItemButton>
                             )
                         }
@@ -72,9 +157,10 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
                 { selectedTab === 1 &&
                     <>
                     <Stack direction={'column'} sx={{height:250, overflowY:'auto'}}>
+                        <TextField label={'Filter'} value={filterRemote} onChange={(e) => setFilterRemote(e.target.value)} sx={{ml:2, mr:2}} variant={'standard'}></TextField>
                         <List>
                         {
-                            remoteClusters.map(c => 
+                            remoteClusters.filter(c => c.name.includes(filterRemote)).map(c => 
                                 <Stack key={c.name} direction={'row'} sx={{wodth:'100%'}}>
                                     <ListItemButton onClick={() => props.onClusterSelectRemote(c.name, c.url)}>
                                         <Typography>{c.name}</Typography>
@@ -94,6 +180,12 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
             </DialogContent>
         </Dialog>
         <InputBox title={inputBoxTitle} message={inputBoxMessage} onClose={() => setInputBoxTitle(undefined)} onResult={inputBoxResult}/>
+        {waiting && <Backdrop
+            sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 10000 })}
+            open={true}
+            >
+            <CircularProgress color="inherit" />
+        </Backdrop>}
     </>)
 }
 
