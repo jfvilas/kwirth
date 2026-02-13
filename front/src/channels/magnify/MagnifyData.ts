@@ -22,6 +22,7 @@ export interface IMagnifyData {
     metricsCluster: any[]
     metricsPodDetail: any[]
 
+    refreshUsage?: () => void
     updateNamespaces?: (action:string, namespace:string) => void
     userPreferences: MagnifyUserPreferences
 }
@@ -59,6 +60,7 @@ export enum EMagnifyCommand {
     INGRESSCLASS = 'IngressClass',
     POD = 'Pod',
     NODE = 'Node',
+    CONTROLLER = 'Controller',
 }
 
 export interface IMagnifyMessage extends IInstanceMessage {

@@ -156,30 +156,49 @@ export class MetricsTools {
     public readCAdvisorMetrics = async (node:INodeInfo): Promise<string> => {
         let text=''
         
-        if (this.isElectron || !this.inCluster) {
-            // we use kubeconfig credentials
+        if (this.isElectron) {
+            // electronaccess with kubeconfig credentials
             let cluster = this.clusterInfo.kubeConfig.getCurrentCluster()
             const url = `${cluster!.server}/api/v1/nodes/${node.kubernetesNode.metadata?.name}/proxy/metrics/cadvisor`
             const fetchOptions: any = { method: 'GET' }
-            await this.clusterInfo.kubeConfig.applyToFetchOptions(fetchOptions)  // add credentials
+            await this.clusterInfo.kubeConfig.applyToFetchOptions(fetchOptions)
 
             try {
                 const response = await fetch(url, fetchOptions)
-                if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`)
-                text = await response.text()
+                if (response.ok)
+                    text = await response.text()
+                else
+                    console.log(`Error reading inElectron metrics ${response.status}: ${response.statusText}`)
             }
             catch (error: any) {
-                console.error(`Error consultando cAdvisor en nodo ${node.kubernetesNode.metadata?.name}:`, error.message)
+                console.error(`Error reading cAdvisor metrics from inElectron on node ${node.kubernetesNode.metadata?.name}:`, error.message)
             }
         }
-        else {
+        else if (this.inCluster) {
+            // internal access without kubeconfig
             try {
                 const response = await fetch (`https://${node.ip}:10250/metrics/cadvisor`, { headers: { Authorization: 'Bearer ' + this.clusterInfo.token} })
                 if (!response.ok) throw new Error(`Error getting kubelet metrics ${response.status}: ${response.statusText}`)
                 text = await response.text()
             }
             catch (error:any) {
-                console.log(`Error reading cAdvisor metrics at node ${node.ip}`, error.stack)
+                console.log(`Error reading cAdvisor inCluster metrics at node ${node.ip}`, error.stack)
+            }
+        }
+        else {
+            // external access without kubeconfig
+            try {
+                let cluster = this.clusterInfo.kubeConfig.getCurrentCluster()
+                const url = `${cluster!.server}/api/v1/nodes/${node.kubernetesNode.metadata?.name}/proxy/metrics/cadvisor`
+                const fetchOptions: any = { method: 'GET', headers: { Authorization: 'Bearer ' + this.clusterInfo.token} }
+                const response = await fetch(url, fetchOptions)
+                if (response.ok) 
+                    text = await response.text()
+                else
+                    console.log(`Cannot get kubelet metrics ${response.status}: ${response.statusText}`)
+            }
+            catch (err) {
+                console.log(`Error obtaining kubelet metrics`, err)
             }
         }
 
@@ -272,7 +291,7 @@ export class MetricsTools {
             let sampledMetricName=line.substring(0,i)
             let sourceMetricName = sampledMetricName
 
-            // now we obtain labels (we obtain groups in a while-loop)
+            // now we obtain labels (we obtain data in a while-loop)
             // and we create a labels object containing all labels and its values
             // for this line: container_fs_writes_total{container="customers",device="/dev/sda",id="/kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod268dcd16_68d8_497e_a85c_3b6b5031518b.slice/cri-containerd-39eaedb2106a4794c6094a4a142971f948e02b5fa104422f76889a48eeeb9f1a.scope",image="cracrnopro.azurecr.io/customers-dev:latest",name="39eaedb2106a4794c6094a4a142971f948e02b5fa104422f76889a48eeeb9f1a",namespace="dev",pod="customers-5cc8cb444f-psrwp"} 2929 1728588770767
             // we obtain:

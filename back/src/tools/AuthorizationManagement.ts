@@ -7,6 +7,7 @@ import { Request, Response } from 'express'
 import { AppsV1Api, BatchV1Api, CoreV1Api, V1Pod } from '@kubernetes/client-node'
 
 export class AuthorizationManagement {
+    
     public static cleanApiKeys = (apiKeys:ApiKey[]) => {
         if (!apiKeys) return []
         apiKeys = apiKeys.filter(a => a.expire >= Date.now())
@@ -21,48 +22,51 @@ export class AuthorizationManagement {
     }
     
     public static validKey = async (req:Request,res:Response, apiKeyApi: ApiKeyApi): Promise<boolean> => {
-        if (req.headers.authorization) {
-            var receivedAccessString = req.headers.authorization.replaceAll('Bearer ','').trim()
-            var receivedAccessKey = accessKeyDeserialize(receivedAccessString)
-            let computedExpire = 0
-            if (receivedAccessKey.type && receivedAccessKey.type.startsWith('bearer:')) {
-                if (!AuthorizationManagement.validBearerKey(apiKeyApi.masterKey, receivedAccessKey)) {
-                    res.status(403).json()
-                    console.log('Hashes do not match validating key')
-                    return false
-                }
-                else
-                    computedExpire = +receivedAccessKey.type.split(':')[1]
-            }
-            else {
-                let key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
-                if (!key) {
-                    await apiKeyApi.refreshKeys()
-                    key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
-                    if (!key) {
-                        console.log('Inexistent key on validKey: '+receivedAccessString)
-                        res.status(403).json()
+        try {
+            if (req.headers.authorization) {
+                var receivedAccessKeyStr = req.headers.authorization.replaceAll('Bearer ','').trim()
+                var receivedAccessKey = accessKeyDeserialize(receivedAccessKeyStr)
+                let computedExpire = 0
+                if (receivedAccessKey.type && receivedAccessKey.type.startsWith('bearer:')) {
+                    if (!AuthorizationManagement.validBearerKey(apiKeyApi.masterKey, receivedAccessKey)) {
+                        res.status(403).json({})
+                        console.log('Hashes do not match validating key')
                         return false
-                    }            
+                    }
+                    else
+                        computedExpire = +receivedAccessKey.type.split(':')[1]
                 }
                 else {
-                    computedExpire = key.expire
+                    let key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessKeyStr)
+                    if (!key) {
+                        if (!apiKeyApi.isElectron) await apiKeyApi.refreshKeys()
+                        key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessKeyStr)
+                        if (!key) {
+                            console.log('Inexistent key on validKey: '+receivedAccessKeyStr)
+                            res.status(403).json({})
+                            return false
+                        }            
+                    }
+                    else {
+                        computedExpire = key.expire
+                    }
+                }
+                if (computedExpire>0) {
+                    if (computedExpire>=Date.now())
+                        return true
+                    else
+                        console.log('Expired key: '+receivedAccessKeyStr)
                 }
             }
-            if (computedExpire>0) {
-                if (computedExpire<Date.now())
-                    console.log('Expired key: '+receivedAccessString)
-                else
-                    return true
+            else {
+                console.log('No valid key present in headers')
             }
-            res.status(403).json()
-            return false
         }
-        else {
-            console.log('No valid key present in headers')
-            res.status(403).json()
-            return false
+        catch (err) {
+            console.log('Error validating Key', err)
         }
+        res.status(403).json({})
+        return false
     }
     
     public static getKey = async (req:Request,res:Response, apiKeyApi: ApiKeyApi): Promise<AccessKey|undefined> => {
@@ -81,11 +85,11 @@ export class AuthorizationManagement {
             else {
                 var key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
                 if (!key) {
-                    await apiKeyApi.refreshKeys()
+                    if (!apiKeyApi.isElectron) await apiKeyApi.refreshKeys()
                     key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessString)
                     if (!key) {
                         console.log('Inexistent key on getKey: '+receivedAccessString)
-                        res.status(403).json()
+                        res.status(403).json({})
                         return undefined
                     }            
                 }
@@ -99,12 +103,12 @@ export class AuthorizationManagement {
                 else
                     return receivedAccessKey
             }
-            res.status(403).json()
+            res.status(403).json({})
             return undefined
         }
         else {
             console.log('No valid key present in headers')
-            res.status(403).json()
+            res.status(403).json({})
             return undefined
         }
     }
@@ -214,15 +218,21 @@ export class AuthorizationManagement {
     }
 
     public static getAllowedNamespaces = async (coreApi:CoreV1Api, accessKey:AccessKey): Promise<string[]> => {
-        let resources = parseResources(accessKey.resources)
-        let response = await coreApi.listNamespace()
-        let clusterNamespaces = response.items.map (ns => ns!.metadata!.name!)
-        let result:string[] = []
+        try {
+            let resources = parseResources(accessKey.resources)
+            let response = await coreApi.listNamespace()
+            let clusterNamespaces = response.items.map (ns => ns!.metadata!.name!)
+            let result:string[] = []
 
-        for (let resid of resources) {
-            result.push (...AuthorizationManagement.getValidValues(clusterNamespaces, resid.namespaces.split(',')))
+            for (let resid of resources) {
+                result.push (...AuthorizationManagement.getValidValues(clusterNamespaces, resid.namespaces.split(',')))
+            }
+            return [...new Set(result)]
         }
-        return [...new Set(result)]
+        catch (err) {
+            console.log('Cannot list namespaces', err)
+            return []
+        }
     }
     
     public static getValidNamespaces = async (coreApi: CoreV1Api, accessKey:AccessKey, requestedNamespaces:string[]): Promise<string[]> => {
@@ -240,47 +250,49 @@ export class AuthorizationManagement {
         return result
     }
     
-    public static getGroupNames = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, gtype:string): Promise<string[]> => {
+    public static getControllerNames = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, gtype:string): Promise<string[]> => {
         let result:string[] = []
     
         let groupNames:string[] = []
         switch (gtype) {
-            case 'deployment':
+            case 'Deployment':
                 groupNames = (await appsApi.listNamespacedDeployment({namespace})).items.map (n => n?.metadata?.name!)
                 break
-            case 'replicaset':
+            case 'ReplicaSet':
                 groupNames = (await appsApi.listNamespacedReplicaSet({namespace})).items.filter(rs => rs.status?.replicas!>0).map (n => n?.metadata?.name!)
                 break
-            case 'replicationcontroller':
+            case 'ReplicationController':
                 groupNames = (await coreApi.listNamespacedReplicationController({namespace})).items.map (n => n?.metadata?.name!)
                 break
-            case 'daemonset':
+            case 'DaemonSet':
                 groupNames = (await appsApi.listNamespacedDaemonSet({namespace})).items.map (ds => ds?.metadata?.name!)
                 break
-            case 'statefulset':
+            case 'StatefulSet':
                 groupNames = (await appsApi.listNamespacedStatefulSet({namespace})).items.filter(ss => ss.status?.replicas!>0).map (n => n?.metadata?.name!)
                 break
-            case 'job':
+            case 'Job':
+                console.log('job')
                 groupNames = (await batchApi.listNamespacedJob({namespace})).items.map(j => j.metadata?.name!)       
+                console.log(groupNames)
                 break
         }
         result.push(...groupNames)        
         return [ ...new Set(result)]
     }
     
-    public static getAllowedGroups = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, accessKey:AccessKey): Promise<{[name:string]:any}[]> => {
+    public static getAllowedControllers = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, accessKey:AccessKey): Promise<{[name:string]:any}[]> => {
         let resources = parseResources(accessKey!.resources)
         let result:{[name:string]:any}[] = []
     
-        for (let gtype of ['deployment','replicaset','replicationcontroller','daemonset','statefulset','job']) {
-            let glist = await AuthorizationManagement.getGroupNames(coreApi, appsApi, batchApi, namespace, gtype)
+        for (let gtype of ['Deployment','ReplicaSet','ReplicationController','DaemonSet','StatefulSet','Job']) {
+            let glist = await AuthorizationManagement.getControllerNames(coreApi, appsApi, batchApi, namespace, gtype)
 
             // we prune glist according to resources and namespaces
             for (let resource of resources) {
                 if (resource.groups !== '' && AuthorizationManagement.getValidValues([namespace], resource.namespaces.split(',')).length>0) {
-                    let resGroups = resource.groups.split(',').filter(g => g.startsWith(gtype+'+'))
-                    if (resGroups.length!==0) {
-                        let regexes = resGroups.map(g => g.split('+')[1])
+                    let resControllers = resource.groups.split(',').filter(g => g.startsWith(gtype+'+'))
+                    if (resControllers.length!==0) {
+                        let regexes = resControllers.map(g => g.split('+')[1])
                         glist = [ ...new Set(AuthorizationManagement.getValidValues(glist, regexes)) ]
                     }
                 }
@@ -290,21 +302,21 @@ export class AuthorizationManagement {
         return [...new Set(result)]
     }
 
-    public static getValidGroups = async (coreApi: CoreV1Api, appsApi: AppsV1Api, batchApi:BatchV1Api, accessKey:AccessKey, namespaces:string[], requestedGroups:string[]): Promise<string[]> => {
+    public static getValidControllers = async (coreApi: CoreV1Api, appsApi: AppsV1Api, batchApi:BatchV1Api, accessKey:AccessKey, namespaces:string[], requestedControllers:string[]): Promise<string[]> => {
         let result:string[] = []
-        let allowedGroups:string[] =  []
+        let allowedControllers:string[] =  []
 
         for (let ns of namespaces) {
-            let x:{[name:string]:any}[] = await this.getAllowedGroups(coreApi, appsApi, batchApi, ns, accessKey)
+            let x:{[name:string]:any}[] = await this.getAllowedControllers(coreApi, appsApi, batchApi, ns, accessKey)
             let y = x.map(g => g.type+'+'+g.name)
-            allowedGroups.push(...y)
+            allowedControllers.push(...y)
         }
 
-        if (requestedGroups.length === 0 || (requestedGroups.length === 1 && requestedGroups[0]==='')) {
-            result.push(...allowedGroups)
+        if (requestedControllers.length === 0 || (requestedControllers.length === 1 && requestedControllers[0]==='')) {
+            result.push(...allowedControllers)
         }
         else {
-            let x = this.getValidValues(allowedGroups, requestedGroups.map(g => '^'+g.replaceAll('+','\\+')+'$'))
+            let x = this.getValidValues(allowedControllers, requestedControllers.map(g => '^'+g.replaceAll('+','\\+')+'$'))
             result.push(...x)
         }
         return [...new Set(result)]
@@ -359,7 +371,7 @@ export class AuthorizationManagement {
         return [...new Set(result)]
     }
     
-    public static getPodLabelSelectorsFromGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, groupTypeName:string): Promise<{pods:V1Pod[],labelSelector:string}> => {
+    public static getPodLabelSelectorsFromController = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, groupTypeName:string): Promise<{pods:V1Pod[],labelSelector:string}> => {
         let response:any
         let groupName, groupType
         let emptyResult = { pods:[] as V1Pod[],labelSelector:'' };

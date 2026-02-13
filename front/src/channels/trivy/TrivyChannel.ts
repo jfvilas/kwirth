@@ -9,7 +9,7 @@ import { ENotifyLevel } from '../../tools/Global'
 
 export class TrivyChannel implements IChannel {
     private setupVisible = false
-    private notify: (channel:IChannel, level:ENotifyLevel, message:string) => void = (cjannel:IChannel, level:ENotifyLevel, message:string) => {}
+    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = (channel:string|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = TrivySetup
     TabContent: FC<IContentProps> = TrivyTabContent
     channelId = 'trivy'
@@ -23,7 +23,7 @@ export class TrivyChannel implements IChannel {
     requiresClusterInfo() { return false }
     requiresWebSocket() { return true }
     requiresUserSettings() { return false }
-    setNotifier(notifier: (channel:IChannel, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'trivy$workload' }
     getChannelIcon(): JSX.Element { return TrivyIcon }

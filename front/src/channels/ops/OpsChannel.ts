@@ -10,7 +10,7 @@ import 'xterm/css/xterm.css'
 
 export class OpsChannel implements IChannel {
     private setupVisible = false
-    private notify: (channel:IChannel, level:ENotifyLevel, message:string) => void = (cjannel:IChannel, level:ENotifyLevel, message:string) => {}
+    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = (channel:string|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = OpsSetup
     TabContent: FC<IContentProps> = OpsTabContent
     channelId = 'ops'
@@ -24,7 +24,7 @@ export class OpsChannel implements IChannel {
     requiresClusterInfo() { return false }
     requiresWebSocket() { return true }
     requiresUserSettings() { return false }
-    setNotifier(notifier: (channel:IChannel, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'ops$get' }
     getChannelIcon(): JSX.Element { return OpsIcon }
@@ -50,7 +50,8 @@ export class OpsChannel implements IChannel {
                 socket: new WebSocket(channelObject.clusterUrl + '?challenge='+(instanceConfigResponse.data as string)),
                 terminal: undefined
             }
-            opsData.terminalManager.createTerminal(`${newXterm.namespace+'/'+newXterm.pod+'/'+newXterm.container}`, newXterm.socket!)
+            //opsData.terminalManager.createTerminal(`${newXterm.namespace+'/'+newXterm.pod+'/'+newXterm.container}`, newXterm.socket!)
+            opsData.terminalManager.createTerminal(newXterm.namespace+'/'+newXterm.container.split('+')[0]+'/'+newXterm.container.split('+')[1], newXterm.socket!)
             refresh.action = EChannelRefreshAction.REFRESH
         }
         else {
@@ -64,7 +65,7 @@ export class OpsChannel implements IChannel {
                                 if (scopedObject)
                                     refresh.data = JSON.parse(opsMessage.data)
                                 else
-                                    this.notify(this, ENotifyLevel.INFO, 'Data received for a non-scoped object')
+                                    this.notify('ops', ENotifyLevel.INFO, 'Data received for a non-scoped object')
                                 if (opsData.onDescribeResponse) opsData.onDescribeResponse({event:'describe', data:refresh.data})
                                 refresh.action = EChannelRefreshAction.REFRESH
                                 break
@@ -78,14 +79,14 @@ export class OpsChannel implements IChannel {
                 case EInstanceMessageType.SIGNAL:
                     let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
                     if (signalMessage.flow === EInstanceMessageFlow.RESPONSE && signalMessage.action === EInstanceMessageAction.COMMAND) {
-                        this.notify(this, signalMessage.level as any as ENotifyLevel, signalMessage.text||'No info')
+                        this.notify('ops', signalMessage.level as any as ENotifyLevel, signalMessage.text||'No info')
                         refresh.action = EChannelRefreshAction.REFRESH
                     }
                     else if (opsMessage.flow === EInstanceMessageFlow.UNSOLICITED) {
                         if (signalMessage.text) {
-                            if (signalMessage.level === ESignalMessageLevel.WARNING) this.notify(this, ENotifyLevel.WARNING, signalMessage.text)
-                            else if (signalMessage.level === ESignalMessageLevel.ERROR) this.notify(this, ENotifyLevel.ERROR, signalMessage.text)
-                            else this.notify(this, ENotifyLevel.INFO, signalMessage.text)
+                            if (signalMessage.level === ESignalMessageLevel.WARNING) this.notify('ops', ENotifyLevel.WARNING, signalMessage.text)
+                            else if (signalMessage.level === ESignalMessageLevel.ERROR) this.notify('ops', ENotifyLevel.ERROR, signalMessage.text)
+                            else this.notify('ops', ENotifyLevel.INFO, signalMessage.text)
                             
                             refresh.action = EChannelRefreshAction.REFRESH
                         }
@@ -112,7 +113,7 @@ export class OpsChannel implements IChannel {
                             channelObject.instanceId = signalMessage.instance
                             if (signalMessage.text) {
                                 refresh.action = EChannelRefreshAction.REFRESH
-                                this.notify(this, ENotifyLevel.INFO, signalMessage.text)
+                                this.notify('ops', ENotifyLevel.INFO, signalMessage.text)
                             }
                         }
                         else {

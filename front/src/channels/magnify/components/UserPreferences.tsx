@@ -57,8 +57,8 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
         setDataChanged(true)
     }
 
-    return <Box sx={{m:1, width:'100%'}}>
-        <Accordion defaultExpanded >
+    return <Box bgcolor={'#f1f1f1'} width={'100%'} minHeight={'calc(100% - 16px)'} sx={{p:1}}> 
+        <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMore />}>
                 <Typography component="span"><b>General</b></Typography>
             </AccordionSummary>
@@ -138,9 +138,7 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
                 <Button onClick={save} disabled={!debugChanged}>Save</Button>
             </AccordionActions>
         </Accordion>
-
     </Box>
-    
     }
 
 export { UserPreferences }

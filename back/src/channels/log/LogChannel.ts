@@ -60,7 +60,8 @@ class LogChannel implements IChannel {
             events: false,
             sources: [ ClusterTypeEnum.DOCKER, ClusterTypeEnum.KUBERNETES ],
             endpoints: [],
-            websocket: false
+            websocket: false,
+            cluster:false
         }
     }
 

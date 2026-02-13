@@ -1,9 +1,10 @@
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { IFileObject, ISpaceMenuItem } from '@jfvilas/react-file-manager'
 import { useEffect, useRef, useState } from 'react'
-import { Close, ContentCopy, Delete, Edit, Fullscreen, FullscreenExit, Minimize } from '@mui/icons-material';
-import { DetailsObject, IDetailsSection } from './DetailsObject';
-import { objectClone } from '../Tools';
+import { Close, ContentCopy, Delete, Edit, Fullscreen, FullscreenExit, Minimize } from '@mui/icons-material'
+import { DetailsObject, IDetailsSection } from './DetailsObject'
+import { objectClone } from '../Tools'
+import { ContainersMenu } from './ContainersMenu'
 const _ = require('lodash')
 const copy = require('clipboard-copy')
 
@@ -15,10 +16,11 @@ interface IContentDetailsProps {
     onApply: (path:string, obj:any) => void
     onEdit: (path:string) => void
     onDelete: (path:string) => void
-    onAction: (path:string, action:string) => void
+    onAction: (action:string, path:string, container?:string) => void
     onMinimize: (content:IContentDetailsObject) => void
     onClose: (content:IContentDetailsObject) => void
-    onLink: (kind:string, name:string ) => void
+    onLink: (kind:string, name:string, namespace:string) => void
+    includeAllContainers: Map<string, number>
 }
 
 export interface IContentDetailsObject {
@@ -31,6 +33,9 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
     const [percent, setPercent] = useState<number>(70)
     const [containsEdit, setContainsEdit] = useState<boolean>(false)
     const [dataChanged, setDataChanged] = useState<boolean>(false)
+    const [leftMenuAnchorParent, setContainersMenuAnchorParent] = useState<Element>()
+    const [selectedAction, setSelectedAction] = useState('')
+    
     const newObject = useRef()
     let showEdit = false
     let showDelete = false
@@ -66,7 +71,12 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
         }
         else if (props.selectedFile) {
             content.current = { type:'details', content:{path:'', title:'', source: {name:'', isDirectory:false, path:''}, maximized:false}}
-            content.current.content.title = (props.selectedFile.data.origin.metadata.namespace? props.selectedFile.data.origin.metadata.namespace+'/': '') + props.selectedFile.data.origin.metadata.name
+            if (props.selectedFile.data.origin.metadata)
+                content.current.content.title = (props.selectedFile.data.origin.metadata.namespace? props.selectedFile.data.origin.metadata.namespace+'/': '') + props.selectedFile.data.origin.metadata.name
+            else {
+                // this is valid for API Resources
+                content.current.content.title = props.selectedFile.data.origin.name
+            }
             content.current.content.path = props.selectedFile.path
             content.current.content.source = props.selectedFile
             setPercent(70)
@@ -110,8 +120,8 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
         if (content.current) props.onDelete((content.current.content.path))
     }
 
-    const link = (kind:string, name:string) => {
-        props.onLink(kind, name)
+    const link = (kind:string, name:string, namespace:string) => {
+        props.onLink(kind, name, namespace)
     }
 
     const onChangeData = (path:string, data:any) => {
@@ -128,11 +138,27 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
         setContainsEdit(val)
     }
 
-    const actionClick = (actionName:string) => {
-        console.log(actionName)
+    const actionClick = (action:string, currentTarget:Element) => {
+        if (props.selectedFile && props.selectedFile.path.startsWith('/workload/Pod/')) {
+            if (props.includeAllContainers.get(action)! >= 1) {
+                setContainersMenuAnchorParent(currentTarget)
+                setSelectedAction(action)
+            }
+            else {
+                if (props.selectedFile) props.onAction(action, props.selectedFile.path, undefined)
+            }
+        }
+        else {
+            if (props.selectedFile) props.onAction(action, props.selectedFile.path, undefined)
+        }
+    }
+
+    const onOptionSelected = (container:string) => {
+        if (props.selectedFile) props.onAction(selectedAction, props.selectedFile.path, container)
     }
 
     return (
+        <>
         <Dialog open={true} 
             sx={{
             '& .MuiDialog-paper': {
@@ -144,15 +170,14 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
             }}>
             <DialogTitle>
                 <Stack direction='row' alignItems={'center'}>
-                    <Typography fontSize={18}>{content.current && content.current.content.source.data?.origin.kind+': '+content.current.content.source.data?.origin.metadata?.name}</Typography>
+                    <Typography fontSize={18}>{content.current && content.current.content.source.data?.origin.kind+': '+(content.current.content.source.data?.origin?.metadata?content.current.content.source.data?.origin.metadata?.name:content.current.content.source.data?.origin.name)}</Typography>
                     <Tooltip title='Copy'>
                         <IconButton color='primary' onClick={() => copy(content.current && content.current.content.source.data?.origin.metadata?.name)}><ContentCopy fontSize='small'/></IconButton>
                     </Tooltip>
                     {
                         items.map((a,index) => {
-
                             return <Tooltip key={index} title={a.text}>
-                                <IconButton color='primary' onClick={() => actionClick(a.name!)}>{a.icon!}</IconButton>
+                                <IconButton color='primary' onClick={(event) => actionClick(a.name!, event.currentTarget)}>{a.icon!}</IconButton>
                             </Tooltip>
                         })
                     }
@@ -186,6 +211,14 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
                 <Button onClick={apply} disabled={!containsEdit || !dataChanged}>Apply</Button>
             </DialogActions>
         </Dialog>
+        {
+            leftMenuAnchorParent && 
+            props.selectedFile &&
+            props.selectedFile.path.startsWith('/workload/Pod/') && 
+            props.includeAllContainers.get(selectedAction)!>=0 &&
+            <ContainersMenu f={props.selectedFile} onClose={() => setContainersMenuAnchorParent(undefined)} onContainerSelected={onOptionSelected} anchorParent={leftMenuAnchorParent} includeAllContainers={Boolean(props.includeAllContainers.get(selectedAction)===2)} />
+        }
+        </>
     )
 }
 export { ContentDetails }

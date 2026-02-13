@@ -1,12 +1,12 @@
-// terminalManager.ts
-import { Terminal } from "xterm"
-import { FitAddon } from "xterm-addon-fit"
+import { Terminal } from 'xterm'
+import { FitAddon } from 'xterm-addon-fit'
 
 export interface ManagedTerminal {
     term: Terminal
     fitAddon: FitAddon
     started: boolean
     index: number
+    socket: WebSocket
 }
 
 export class TerminalManager {
@@ -19,14 +19,14 @@ export class TerminalManager {
     }
 
     attachTerminal(id: string): ManagedTerminal | undefined {
-        const existing = this.terminals.get(id)
-        if (existing) return existing
+        const existingTerminal = this.terminals.get(id)
+        if (existingTerminal) return existingTerminal
         return undefined
     }
 
     createTerminal(id: string, socket:WebSocket): ManagedTerminal {
-        const existing = this.terminals.get(id)
-        if (existing) return existing
+        const existingTerminal = this.terminals.get(id)
+        if (existingTerminal) return existingTerminal
 
         const term = new Terminal({
             fontSize: 14,
@@ -39,7 +39,9 @@ export class TerminalManager {
         if (!socket) console.log('****horror****')
 
         socket.onopen = () => term.write('Connected to backend...\r\n')
-        socket.onmessage = (event) => term.write(event.data)
+        socket.onmessage = (event) => {
+            term.write(event.data)
+        }
         socket.onclose = () => {
             term.write('\r\nConnection closed.\r\n')
             term.dispose()
@@ -51,7 +53,7 @@ export class TerminalManager {
             if (socket) socket.send(data)
         })
 
-        const managedTerminal: ManagedTerminal = { term, fitAddon, started:false, index:0 }
+        const managedTerminal: ManagedTerminal = { term, fitAddon, started:false, index:0, socket }
         this.terminals.set(id, managedTerminal)
         return managedTerminal
     }
@@ -61,10 +63,10 @@ export class TerminalManager {
     }
 
     destroyTerminal(id: string): void {
-        const m = this.terminals.get(id)
-        if (!m) return
+        const existingTerminal = this.terminals.get(id)
+        if (!existingTerminal) return
 
-        m.term.dispose()
+        existingTerminal.term.dispose()
         this.terminals.delete(id)
     }
 }

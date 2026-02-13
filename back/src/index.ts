@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, KubeConfig, KubernetesObjectApi, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, VersionApi, NetworkingV1Api, StorageV1Api, BatchV1Api, AutoscalingV2Api, NodeV1Api, SchedulingV1Api, CoordinationV1Api, AdmissionregistrationV1Api, PolicyV1Api } from '@kubernetes/client-node'
+import { ApisApi, CoreV1Api, AppsV1Api, KubeConfig, KubernetesObjectApi, Log, Watch, Exec, V1Pod, CustomObjectsApi, RbacAuthorizationV1Api, ApiextensionsV1Api, VersionApi, NetworkingV1Api, StorageV1Api, BatchV1Api, AutoscalingV2Api, NodeV1Api, SchedulingV1Api, CoordinationV1Api, AdmissionregistrationV1Api, PolicyV1Api } from '@kubernetes/client-node'
 import Docker from 'dockerode'
 import { ConfigApi } from './api/ConfigApi'
 import { KubernetesSecrets } from './tools/KubernetesSecrets'
@@ -53,10 +53,20 @@ import bodyParser from 'body-parser'
 import cors from 'cors'
 import { Application } from 'express-serve-static-core'
 
-const isElectron = true
+
+// const originalFetch = require('node-fetch');
+// global.fetch = (...args) => {
+//     console.log(`🚀 Petición iniciada a: ${args[0]}`);
+//     return originalFetch(...args);
+// }
+
+//const isElectron = true
+const isElectron = !!process.versions.electron;
+
 const app : Application = express()
 
 interface IRunningInstance {
+    id: string
     electronContext?: string
     clusterInfo: ClusterInfo
     kwirthData: KwirthData
@@ -192,33 +202,40 @@ const getExecutionEnvironment = async ():Promise<string> => {
     return 'undetected'
 }
 
-const getKubernetesKwirthData = async ():Promise<KwirthData> => {
-    let podName=process.env.HOSTNAME
-    let kc = new KubeConfig()
-    kc.loadFromDefault()
-    let coreApi = kc.makeApiClient(CoreV1Api)
-    let appsApi = kc.makeApiClient(AppsV1Api)
+const getKubernetesKwirthData = async ():Promise<KwirthData|undefined> => {
+    try {
+        let podName=process.env.HOSTNAME
+        let kc = new KubeConfig()
+        kc.loadFromDefault()
+        let coreApi = kc.makeApiClient(CoreV1Api)
+        let appsApi = kc.makeApiClient(AppsV1Api)
 
-    const pods = await coreApi.listPodForAllNamespaces()
-    const pod = pods.items.find(p => p.metadata?.name === podName)  
-    if (pod && pod.metadata?.namespace) {
-        let depName = (await AuthorizationManagement.getPodControllerName(appsApi, pod, true)) || ''
-        return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, isElectron:false, version:VERSION, lastVersion: VERSION, clusterType: EClusterType.KUBERNETES, metricsInterval:15, channels: [] }
-    }
-    else {
-        // kwirth is supposed to be running outside of cluster, so we look for kwirth users config in order to detect namespace
-        let allSecrets = (await coreApi.listSecretForAllNamespaces()).items
-        let usersSecret = allSecrets.find(s => s.metadata?.name === 'kwirth-users')
-        if (!usersSecret) usersSecret = allSecrets.find(s => s.metadata?.name === 'kwirth.users')
-        if (usersSecret) {
-            // this namespace will be used to access secrets and configmaps
-            return { clusterName: 'inCluster', namespace:usersSecret.metadata?.namespace!, deployment:'', inCluster:false, isElectron:isElectron, version:VERSION, lastVersion: VERSION, clusterType: EClusterType.KUBERNETES, metricsInterval:15, channels: [] }
+        const pods = await coreApi.listPodForAllNamespaces()
+        const pod = pods.items.find(p => p.metadata?.name === podName)  
+        if (pod && pod.metadata?.namespace) {
+            let depName = (await AuthorizationManagement.getPodControllerName(appsApi, pod, true)) || ''
+            return { clusterName: 'inCluster', namespace: pod.metadata.namespace, deployment:depName, inCluster:true, isElectron:false, version:VERSION, lastVersion: VERSION, clusterType: EClusterType.KUBERNETES, metricsInterval:15, channels: [] }
         }
         else {
-            console.log('Cannot determine namespace while running outside cluster')
-            process.exit(1)
+            // kwirth is supposed to be running outside of cluster, so we look for kwirth users config in order to detect namespace
+            let allSecrets = (await coreApi.listSecretForAllNamespaces()).items
+            let usersSecret = allSecrets.find(s => s.metadata?.name === 'kwirth-users')
+            if (!usersSecret) usersSecret = allSecrets.find(s => s.metadata?.name === 'kwirth.users')
+            if (usersSecret) {
+                // this namespace will be used to access secrets and configmaps
+                return { clusterName: 'inCluster', namespace:usersSecret.metadata?.namespace!, deployment:'', inCluster:false, isElectron:isElectron, version:VERSION, lastVersion: VERSION, clusterType: EClusterType.KUBERNETES, metricsInterval:15, channels: [] }
+            }
+            else {
+                console.log('Cannot determine namespace while running outside cluster')
+                process.exit(1)
+            }
         }
     }
+    catch (err) {
+        console.log('Error obatingin KwirthData')
+        console.log(err)
+    }
+    return undefined
 }
 
 const activateRunningInstance = (ri:IRunningInstance) => {
@@ -226,68 +243,91 @@ const activateRunningInstance = (ri:IRunningInstance) => {
     ri.active = true
 }
 
-const createRunningInstance = async (context:string|undefined, kwirthData:KwirthData):Promise<IRunningInstance> => {
-    let kubeConfig = new KubeConfig()
-    kubeConfig.loadFromDefault()
-    if (context) kubeConfig.setCurrentContext(context)
+const createRunningInstance = async (context:string|undefined, kwirthData:KwirthData):Promise<IRunningInstance|undefined> => {
+    try {
+        let kubeConfig = new KubeConfig()
+        kubeConfig.loadFromDefault()
+        if (context) kubeConfig.setCurrentContext(context)
 
-    let clusterInfo = new ClusterInfo()
-    clusterInfo.kubeConfig = kubeConfig
-    clusterInfo.coreApi = kubeConfig.makeApiClient(CoreV1Api)
-    clusterInfo.versionApi = kubeConfig.makeApiClient(VersionApi)    
-    clusterInfo.appsApi= kubeConfig.makeApiClient(AppsV1Api)
-    clusterInfo.networkApi= kubeConfig.makeApiClient(NetworkingV1Api)
-    clusterInfo.crdApi= kubeConfig.makeApiClient(CustomObjectsApi)
-    clusterInfo.rbacApi= kubeConfig.makeApiClient(RbacAuthorizationV1Api)
-    clusterInfo.extensionApi= kubeConfig.makeApiClient(ApiextensionsV1Api)
-    clusterInfo.storageApi= kubeConfig.makeApiClient(StorageV1Api)
-    clusterInfo.batchApi= kubeConfig.makeApiClient(BatchV1Api)
-    clusterInfo.autoscalingApi= kubeConfig.makeApiClient(AutoscalingV2Api)
-    clusterInfo.schedulingApi= kubeConfig.makeApiClient(SchedulingV1Api)
-    clusterInfo.coordinationApi= kubeConfig.makeApiClient(CoordinationV1Api)
-    clusterInfo.admissionApi= kubeConfig.makeApiClient(AdmissionregistrationV1Api)
-    clusterInfo.policyApi= kubeConfig.makeApiClient(PolicyV1Api)
-    clusterInfo.nodeApi = kubeConfig.makeApiClient(NodeV1Api)
-    clusterInfo.objectsApi = KubernetesObjectApi.makeApiClient(kubeConfig)
-    clusterInfo.execApi = new Exec(clusterInfo.kubeConfig)
-    clusterInfo.logApi = new Log(clusterInfo.kubeConfig)
+        let clusterInfo = new ClusterInfo()
+        clusterInfo.kubeConfig = kubeConfig
+        clusterInfo.coreApi = kubeConfig.makeApiClient(CoreV1Api)
+        clusterInfo.versionApi = kubeConfig.makeApiClient(VersionApi)    
+        clusterInfo.appsApi= kubeConfig.makeApiClient(AppsV1Api)
+        clusterInfo.networkApi= kubeConfig.makeApiClient(NetworkingV1Api)
+        clusterInfo.crdApi= kubeConfig.makeApiClient(CustomObjectsApi)
+        clusterInfo.rbacApi= kubeConfig.makeApiClient(RbacAuthorizationV1Api)
+        clusterInfo.extensionApi= kubeConfig.makeApiClient(ApiextensionsV1Api)
+        clusterInfo.storageApi= kubeConfig.makeApiClient(StorageV1Api)
+        clusterInfo.batchApi= kubeConfig.makeApiClient(BatchV1Api)
+        clusterInfo.autoscalingApi= kubeConfig.makeApiClient(AutoscalingV2Api)
+        clusterInfo.schedulingApi= kubeConfig.makeApiClient(SchedulingV1Api)
+        clusterInfo.coordinationApi= kubeConfig.makeApiClient(CoordinationV1Api)
+        clusterInfo.admissionApi= kubeConfig.makeApiClient(AdmissionregistrationV1Api)
+        clusterInfo.policyApi= kubeConfig.makeApiClient(PolicyV1Api)
+        clusterInfo.nodeApi = kubeConfig.makeApiClient(NodeV1Api)
+        clusterInfo.objectsApi = KubernetesObjectApi.makeApiClient(kubeConfig)
+        clusterInfo.execApi = new Exec(clusterInfo.kubeConfig)
+        clusterInfo.logApi = new Log(clusterInfo.kubeConfig)
+        clusterInfo.apisApi = kubeConfig.makeApiClient(ApisApi)
 
-    if (isElectron) {
-        // do nothing, since we will use kubeconfig credentials
-    }
-    else {
-        let saToken = new ServiceAccountToken(clusterInfo.coreApi, kwirthData.namespace)
-        await saToken.createToken('kwirth-sa', kwirthData.namespace)
-        let token:string|undefined = undefined
-        let retries = 3
-        while (!token && retries-- > 0) {
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-            token = await saToken.extractToken('kwirth-sa', kwirthData.namespace)
-        }
-        if (token) {
-            console.log('Got token...')
-            clusterInfo.saToken = saToken
-            clusterInfo.token = token
+        // let x1 = await clusterInfo.coreApi.getAPIResources()
+        // console.log(x1)
+        // let x2 = await clusterInfo.apisApi.getAPIVersions()
+        // console.log(x2.groups[1])
+        // console.log(await clusterInfo.appsApi.getAPIResources())
+        // let x = await clusterInfo.coreApi.getAPIResources()
+        // console.log(x)
+        // let x2 = await clusterInfo.objectsApi.list('apiregistration.k8s.io/v1', 'APIService')
+        // console.log(x2.items[10])
+        // console.log(x2.items[20])
+        // console.log(x2.items[12])
+        // console.log(x2.items[23])
+        // console.log(x2.items[14])
+        // console.log(x2.items[25])
+
+        if (isElectron) {
+            // do nothing, since we will use kubeconfig credentials
         }
         else {
-            console.log('No SA Token, no metrics will be available.')
+            let saToken = new ServiceAccountToken(clusterInfo.coreApi, kwirthData.namespace)
+            await saToken.createToken('kwirth-sa', kwirthData.namespace)
+            let token:string|undefined = undefined
+            let retries = 3
+            while (!token && retries-- > 0) {
+                await new Promise((resolve) => setTimeout(resolve, 1000))
+                token = await saToken.extractToken('kwirth-sa', kwirthData.namespace)
+            }
+            if (token) {
+                console.log('Got token...')
+                clusterInfo.saToken = saToken
+                clusterInfo.token = token
+            }
+            else {
+                console.log('No SA Token, no metrics will be available.')
+            }
         }
-    }
 
-    clusterInfo.setKubernetesClusterName()
-    clusterInfo.nodes = await clusterInfo.getNodes()
-    
-    let runningInstance:IRunningInstance = {
-        kwirthData: kwirthData,
-        clusterInfo: clusterInfo,
-        secrets: new KubernetesSecrets(clusterInfo.coreApi, kwirthData.namespace),
-        configMaps: new KubernetesConfigMaps(clusterInfo.coreApi, kwirthData.namespace),
-        channels: new Map(),
-        active: false,
-        router: undefined,
-        apiKeyApi: undefined
+        clusterInfo.setKubernetesClusterName()
+        clusterInfo.nodes = await clusterInfo.getNodes()
+        
+        let runningInstance:IRunningInstance = {
+            id: uuid(),
+            kwirthData: kwirthData,
+            clusterInfo: clusterInfo,
+            secrets: new KubernetesSecrets(clusterInfo.coreApi, kwirthData.namespace),
+            configMaps: new KubernetesConfigMaps(clusterInfo.coreApi, kwirthData.namespace),
+            channels: new Map(),
+            active: false,
+            router: undefined,
+            apiKeyApi: undefined
+        }
+        return runningInstance
     }
-    return runningInstance
+    catch (err) {
+        console.log('Error creating running instance')
+        console.log(err)
+    }
 }
 
 const sendChannelSignal = (webSocket: WebSocket, level: ESignalMessageLevel, text: string, instanceMessage: IInstanceMessage, localChannels:Map<string,IChannel>) => {
@@ -309,8 +349,8 @@ const sendChannelSignal = (webSocket: WebSocket, level: ESignalMessageLevel, tex
     }
 }
 
-const sendChannelSignalAsset = (webSocket: WebSocket, level: ESignalMessageLevel, event: ESignalMessageEvent, text: string, instanceMessage: IInstanceMessage, localChannels:Map<string,IChannel>, namespace:string, pod:string, container?:string) => {
-    if (localChannels.has(instanceMessage.channel)) {
+const sendChannelSignalAsset = (webSocket: WebSocket, level: ESignalMessageLevel, event: ESignalMessageEvent, text: string, instanceMessage: IInstanceMessage, ri:IRunningInstance, namespace:string, pod:string, container?:string) => {
+    if (ri.channels.has(instanceMessage.channel)) {
         let signalMessage:ISignalMessage = {
             action: EInstanceMessageAction.NONE,
             flow: EInstanceMessageFlow.UNSOLICITED,
@@ -328,7 +368,7 @@ const sendChannelSignalAsset = (webSocket: WebSocket, level: ESignalMessageLevel
     }
     else {
         console.log(`Channel '${instanceMessage.channel}' is unsupported sneding asset info`)
-        sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Channel '${instanceMessage.channel}' is unsupported sending asset info`, instanceMessage, localChannels)
+        sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Channel '${instanceMessage.channel}' is unsupported sending asset info`, instanceMessage, ri.channels)
     }
 }
 
@@ -345,11 +385,11 @@ const sendInstanceConfigSignalMessage = (ws:WebSocket, action:EInstanceMessageAc
     ws.send(JSON.stringify(resp))
 }
 
-const addObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string, localChannels:Map<string,IChannel>) => {
+const addObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containerName:string, ri:IRunningInstance) => {
     try {
         console.log(`Object review '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
 
-        let valid = AuthorizationManagement.checkAkr(localChannels, instanceConfig, podNamespace, podName, containerName)
+        let valid = AuthorizationManagement.checkAkr(ri.channels, instanceConfig, podNamespace, podName, containerName)
         if (!valid) {
             console.log(`No AKR found for object : ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
             return
@@ -357,15 +397,15 @@ const addObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, po
 
         console.log(`Level is enough for adding object: ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
 
-        if(localChannels.has(instanceConfig.channel)) {
-            let channel = localChannels.get(instanceConfig.channel)!
+        if(ri.channels.has(instanceConfig.channel)) {
+            let channel = ri.channels.get(instanceConfig.channel)!
             if (channel?.containsAsset(webSocket, podNamespace, podName, containerName)) {
                 console.log(`Existing asset '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
             }
             else {
                 console.log(`addObject '${instanceConfig.channel}': ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view}) (instance: ${instanceConfig.instance})`)
                 await channel.addObject(webSocket, instanceConfig, podNamespace, podName, containerName)
-                sendChannelSignalAsset(webSocket, ESignalMessageLevel.INFO, ESignalMessageEvent.ADD, `Container ADDED: ${podNamespace}/${podName}/${containerName}`, instanceConfig, localChannels, podNamespace, podName, containerName)
+                sendChannelSignalAsset(webSocket, ESignalMessageLevel.INFO, ESignalMessageEvent.ADD, `Container ADDED: ${podNamespace}/${podName}/${containerName}`, instanceConfig, ri, podNamespace, podName, containerName)
             }
         }
         else {
@@ -377,203 +417,239 @@ const addObject = async (webSocket:WebSocket, instanceConfig:IInstanceConfig, po
     }
 }
 
-const deleteObject = async (webSocket:WebSocket, _eventType:string, podNamespace:string, podName:string, containerName:string, instanceConfig:IInstanceConfig, localChannels:Map<string,IChannel>) => {
-    if(localChannels.has(instanceConfig.channel)) {
-        localChannels.get(instanceConfig.channel)?.deleteObject(webSocket, instanceConfig, podNamespace, podName, containerName)
-        sendChannelSignalAsset(webSocket, ESignalMessageLevel.INFO, ESignalMessageEvent.DELETE, `Container DELETED: ${podNamespace}/${podName}/${containerName}`, instanceConfig, localChannels, podNamespace, podName, containerName)
+const deleteObject = async (webSocket:WebSocket, _eventType:string, podNamespace:string, podName:string, containerName:string, instanceConfig:IInstanceConfig, ri:IRunningInstance) => {
+    if(ri.channels.has(instanceConfig.channel)) {
+        ri.channels.get(instanceConfig.channel)?.deleteObject(webSocket, instanceConfig, podNamespace, podName, containerName)
+        sendChannelSignalAsset(webSocket, ESignalMessageLevel.INFO, ESignalMessageEvent.DELETE, `Container DELETED: ${podNamespace}/${podName}/${containerName}`, instanceConfig, ri, podNamespace, podName, containerName)
     }
     else {
         console.log(`Invalid channel`, instanceConfig.channel)
     }
 }
 
-const processEvent = async (eventType:string, obj: any, webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containers:string[], localChannels:Map<string,IChannel>) => {
+const processEvent = async (eventType:string, obj: any, webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containers:string[], ri:IRunningInstance) => {
     // +++ if (eventType === 'ADDED' && (obj.status.phase.toLowerCase()==='running' || obj.status.phase.toLowerCase()==='succeeded')) {
-    if (eventType === 'ADDED') {
-        console.log('eventype',eventType, podNamespace, podName, obj.status.phase)
-        for (let container of containers) {
-            let containerName = container
-            switch (instanceConfig.view) {
-                case EInstanceConfigView.NAMESPACE:
-                    console.log('Namespace event')
-                    console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName} on namespace`)
-                    await addObject(webSocket, instanceConfig, podNamespace, podName, containerName, localChannels)
-                    break
-                case EInstanceConfigView.GROUP:
-                    console.log('Group event')
-                    let [_groupType, groupName] = instanceConfig.group.split('+')
-                    // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
-                    if (podName.startsWith(groupName)) {  
-                        console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName} on group`)
-                        await addObject(webSocket, instanceConfig, podNamespace, podName, containerName, localChannels)
+    try {
+        if (eventType === 'ADDED') {
+            console.log('eventype',eventType, podNamespace, podName, obj.status.phase)
+            for (let container of containers) {
+                let containerName = container
+                switch (instanceConfig.view) {
+                    case EInstanceConfigView.NAMESPACE:
+                        console.log('Namespace event')
+                        console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName} on namespace`)
+                        await addObject(webSocket, instanceConfig, podNamespace, podName, containerName, ri)
                         break
-                    }
-                    console.log(`Excluded group: ${groupName}`)
-                    break
-                case EInstanceConfigView.POD:
-                    console.log('Pod event')
-                    if ((instanceConfig.namespace==='' || (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace))) && instanceConfig.pod.split(',').includes(podName)) {
-                        if (instanceConfig.pod.split(',').includes(podName)) {
-                            console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName} on pod`)
-                            await addObject(webSocket, instanceConfig, podNamespace, podName, containerName, localChannels)
+                    case EInstanceConfigView.GROUP:
+                        console.log('Group event')
+                        let [_groupType, groupName] = instanceConfig.group.split('+')
+                        // we rely on kubernetes naming conventions here (we could query k8 api to discover group the pod belongs to)
+                        if (podName.startsWith(groupName)) {  
+                            console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName} on group`)
+                            await addObject(webSocket, instanceConfig, podNamespace, podName, containerName, ri)
                             break
                         }
-                    }
-                    console.log(`Excluded pod: ${podName}`)
-                    break
-                case EInstanceConfigView.CONTAINER:
-                    console.log('Container event')
-                    // container has the form: podname+containername (includes a plus sign as separating char)
-                    let instanceContainers = Array.from (new Set (instanceConfig.container.split(',').map (c => c.split('+')[1])))
-                    let instancePods = Array.from (new  Set (instanceConfig.container.split(',').map (c => c.split('+')[0])))
-                    if (instanceContainers.includes(containerName) && instancePods.includes(podName)) {
-                        if (instanceConfig.container.split(',').includes(podName+'+'+containerName)) {
-                            console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName} on container`)
-                            await addObject(webSocket, instanceConfig, podNamespace, podName, containerName, localChannels)
-                            break
+                        console.log(`Excluded group: ${groupName}`)
+                        break
+                    case EInstanceConfigView.POD:
+                        console.log('Pod event')
+                        if ((instanceConfig.namespace==='' || (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace))) && instanceConfig.pod.split(',').includes(podName)) {
+                            if (instanceConfig.pod.split(',').includes(podName)) {
+                                console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName} on pod`)
+                                await addObject(webSocket, instanceConfig, podNamespace, podName, containerName, ri)
+                                break
+                            }
                         }
-                    }
-                    console.log(`Excluded container: ${containerName}`)
-                    break
-                default:
-                    console.log('Invalid instanceConfig view')
-                    break
+                        console.log(`Excluded pod: ${podName}`)
+                        break
+                    case EInstanceConfigView.CONTAINER:
+                        console.log('Container event')
+                        // container has the form: podname+containername (includes a plus sign as separating char)
+                        let instanceContainers = Array.from (new Set (instanceConfig.container.split(',').map (c => c.split('+')[1])))
+                        let instancePods = Array.from (new  Set (instanceConfig.container.split(',').map (c => c.split('+')[0])))
+                        if (instanceContainers.includes(containerName) && instancePods.includes(podName)) {
+                            if (instanceConfig.container.split(',').includes(podName+'+'+containerName)) {
+                                console.log(`Pod ADDED: ${podNamespace}/${podName}/${containerName} on container`)
+                                await addObject(webSocket, instanceConfig, podNamespace, podName, containerName, ri)
+                                break
+                            }
+                        }
+                        console.log(`Excluded container: ${containerName}`)
+                        break
+                    default:
+                        console.log('Invalid instanceConfig view')
+                        break
+                }
             }
         }
-    }
-    else if (eventType === 'MODIFIED') {
-        console.log('eventype',eventType, podNamespace, podName, obj.status.phase.toLowerCase())
-        let containerNames = obj.spec.containers.map( (c: any) => c.name)
-        if (obj.status.phase.toLowerCase()==='running') {
-            processEvent('ADDED', obj, webSocket, instanceConfig, podNamespace, podName, containerNames, localChannels)
+        else if (eventType === 'MODIFIED') {
+            console.log('eventype',eventType, podNamespace, podName, obj.status.phase.toLowerCase())
+            let containerNames = obj.spec.containers.map( (c: any) => c.name)
+            if (obj.status.phase.toLowerCase()==='running') {
+                processEvent('ADDED', obj, webSocket, instanceConfig, podNamespace, podName, containerNames, ri)
+            }
+            else {
+                // modifyObject(webSocket, eventType, podNamespace, podName, '', instanceConfig)
+                // sendChannelSignalAsset(webSocket, SignalMessageLevelEnum.INFO, SignalMessageEventEnum.OTHER, `Pod MODIFIED: ${podNamespace}/${podName}`, instanceConfig, podNamespace, podName, '')
+            }
+        }
+        else if (eventType === 'DELETED') {
+            console.log('eventype', eventType, podNamespace, podName, obj.status.phase)
+            deleteObject(webSocket, eventType, podNamespace, podName, '', instanceConfig, ri)
         }
         else {
-            // modifyObject(webSocket, eventType, podNamespace, podName, '', instanceConfig)
-            // sendChannelSignalAsset(webSocket, SignalMessageLevelEnum.INFO, SignalMessageEventEnum.OTHER, `Pod MODIFIED: ${podNamespace}/${podName}`, instanceConfig, podNamespace, podName, '')
+            console.log(`Pod ${eventType} is unmanaged`)
+            sendChannelSignalAsset(webSocket, ESignalMessageLevel.INFO, ESignalMessageEvent.OTHER, `Received unmanaged event (${eventType}): ${podNamespace}/${podName}`, instanceConfig, ri, podNamespace, podName)
         }
     }
-    else if (eventType === 'DELETED') {
-        console.log('eventype', eventType, podNamespace, podName, obj.status.phase)
-        deleteObject(webSocket, eventType, podNamespace, podName, '', instanceConfig, localChannels)
-    }
-    else {
-        console.log(`Pod ${eventType} is unmanaged`)
-        sendChannelSignalAsset(webSocket, ESignalMessageLevel.INFO, ESignalMessageEvent.OTHER, `Received unmanaged event (${eventType}): ${podNamespace}/${podName}`, instanceConfig, localChannels, podNamespace, podName)
+    catch (err) {
+        console.log('Error preceossing event')
+        console.log(err)
     }
 }
 
 const watchDockerPods = async (ri:IRunningInstance, _apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:IInstanceConfig) => {
     //launch included containers
 
-    if (instanceConfig.view==='pod') {
-        let kvps:string[] = queryParams.labelSelector.split(',')
-        const jsonObject: { [key: string]: string } = {}
-        kvps.forEach(kvp => {
-            const [key, value] = kvp.split('=')
-            jsonObject[key] = value
-        })
+    try {
+        if (instanceConfig.view==='pod') {
+            let kvps:string[] = queryParams.labelSelector.split(',')
+            const jsonObject: { [key: string]: string } = {}
+            kvps.forEach(kvp => {
+                const [key, value] = kvp.split('=')
+                jsonObject[key] = value
+            })
 
-        let containers = await ri.clusterInfo.dockerTools.getContainers(jsonObject['kwirthDockerPodName'])
-        for (let container of containers) {
-            processEvent('ADDED', null, webSocket, instanceConfig, '$docker', jsonObject['kwirthDockerPodName'], [ container ], ri.channels )
+            let containers = await ri.clusterInfo.dockerTools.getContainers(jsonObject['kwirthDockerPodName'])
+            for (let container of containers) {
+                processEvent('ADDED', null, webSocket, instanceConfig, '$docker', jsonObject['kwirthDockerPodName'], [ container ], ri )
+            }
+        }
+        else if (instanceConfig.view==='container') {
+            let kvps:string[] = queryParams.labelSelector.split(',')
+            const jsonObject: { [key: string]: string } = {}
+            kvps.forEach(kvp => {
+                const [key, value] = kvp.split('=')
+                jsonObject[key] = value
+            })
+            let podName=jsonObject['kwirthDockerPodName']
+            let containerName = jsonObject['kwirthDockerContainerName']
+            let id = await ri.clusterInfo.dockerTools.getContainerId(podName, containerName )
+            if (id) {
+                processEvent('ADDED', null, webSocket, instanceConfig, '$docker', podName, [ containerName ], ri)
+            }
+            else {
+                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Container ${podName}/${containerName} does not exist.`, instanceConfig, ri.channels)
+            }
         }
     }
-    else if (instanceConfig.view==='container') {
-        let kvps:string[] = queryParams.labelSelector.split(',')
-        const jsonObject: { [key: string]: string } = {}
-        kvps.forEach(kvp => {
-            const [key, value] = kvp.split('=')
-            jsonObject[key] = value
-        })
-        let podName=jsonObject['kwirthDockerPodName']
-        let containerName = jsonObject['kwirthDockerContainerName']
-        let id = await ri.clusterInfo.dockerTools.getContainerId(podName, containerName )
-        if (id) {
-            processEvent('ADDED', null, webSocket, instanceConfig, '$docker', podName, [ containerName ], ri.channels)
-        }
-        else {
-            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Container ${podName}/${containerName} does not exist.`, instanceConfig, ri.channels)
-        }
+    catch (err) {
+        console.log('Error watching docker pods')
+        console.log(err)
     }
 }
 
 const watchKubernetesPods = async (ri:IRunningInstance, apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:IInstanceConfig) => {
-    const watch = new Watch(ri.clusterInfo.kubeConfig)
+    try {
+        const watch = new Watch(ri.clusterInfo.kubeConfig)
 
-    await watch.watch(apiPath, queryParams, (eventType:string, obj:any) => {
-        let podName:string = obj.metadata.name
-        let podNamespace:string = obj.metadata.namespace
+        await watch.watch(apiPath, queryParams, (eventType:string, obj:any) => {
+            let podName:string = obj.metadata.name
+            let podNamespace:string = obj.metadata.namespace
 
-        // +++ review event management
-        // if (obj.status.phase.toLowerCase()!=='running') {
-        //     console.log('Not running pod:', podNamespace+'/'+podName, obj.status.phase.toLowerCase())
-        //     return
-        // }
-        // console.log('Add containers if needed')
-        let containerNames = obj.spec.containers.map( (c: any) => c.name)
-        processEvent(eventType, obj, webSocket, instanceConfig, podNamespace, podName, containerNames, ri.channels)
-    },
-    (err) => {
-        if (err !== null) {
-            console.log('Generic error starting watchPods')
-            console.log(err)
-            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, JSON.stringify(err), instanceConfig, ri.channels)
-        }
-        else {
-            // watch method launches a 'done' invocation several minutes after starting streaming, I don't know why.
-        }
-    })
+            // +++ review event management
+            // if (obj.status.phase.toLowerCase()!=='running') {
+            //     console.log('Not running pod:', podNamespace+'/'+podName, obj.status.phase.toLowerCase())
+            //     return
+            // }
+            // console.log('Add containers if needed')
+            let containerNames:string[] = obj.spec.containers.map( (c: any) => c.name)
+            processEvent(eventType, obj, webSocket, instanceConfig, podNamespace, podName, containerNames, ri)
+        },
+        (err) => {
+            if (err !== null) {
+                console.log('Generic error starting watchPods')
+                console.log(err)
+                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, JSON.stringify(err), instanceConfig, ri.channels)
+            }
+            else {
+                // watch method launches a 'done' invocation several minutes after starting streaming, I don't know why.
+            }
+        })
+    }
+    catch (err) {
+        console.log('Error watching kubernetes pods')
+        console.log(err)
+    }        
 }
 
 const watchPods = async (ri:IRunningInstance, apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:IInstanceConfig) => {
-    if (ri.kwirthData.clusterType === EClusterType.DOCKER) {
-        watchDockerPods(ri, apiPath, queryParams, webSocket, instanceConfig)
+    try {
+        if (ri.kwirthData.clusterType === EClusterType.DOCKER) {
+            await watchDockerPods(ri, apiPath, queryParams, webSocket, instanceConfig)
+        }
+        else {
+            try {
+                await watchKubernetesPods(ri, apiPath, queryParams, webSocket, instanceConfig)
+            }
+            catch (err) {
+                console.log('Error starting to watch docker pods')
+                console.log(err)
+            }
+        }
     }
-    else {
-        await watchKubernetesPods(ri, apiPath, queryParams, webSocket, instanceConfig)
+    catch (err) {
+        console.log('Error in generic watch pods')
+        console.log(err)
     }
 }
 
 const getRequestedValidatedScopedPods = async (ri:IRunningInstance, instanceConfig:IInstanceConfig, accessKeyResources:ResourceIdentifier[], validNamespaces:string[], validPodNames:string[], validContainers:string[], ) => {
     let selectedPods:V1Pod[] = []
     let allPods:V1Pod[] = []
+    try {
 
-    if (ri.kwirthData.clusterType === EClusterType.DOCKER)
-        allPods = await ri.clusterInfo.dockerTools.getAllPods()
-    else {
-        for (let ns of validNamespaces) {
-            allPods.push(...(await ri.clusterInfo.coreApi.listNamespacedPod({namespace: ns})).items)
+        if (ri.kwirthData.clusterType === EClusterType.DOCKER)
+            allPods = await ri.clusterInfo.dockerTools.getAllPods()
+        else {
+            for (let ns of validNamespaces) {
+                allPods.push(...(await ri.clusterInfo.coreApi.listNamespacedPod({namespace: ns})).items)
+            }
+        }
+
+        for (let pod of allPods) {
+            let podName = pod.metadata?.name!
+            let podNamespace = pod.metadata?.namespace!
+            let containerNames = pod.spec?.containers.map(c => c.name) || []
+
+            let existClusterScope = accessKeyResources.some(resource => resource.scopes === 'cluster')
+            if (!existClusterScope) {
+                console.log('validPodNames:',validPodNames, '  podName:', podName)
+                if (validPodNames.length>0 && !validPodNames.includes(podName)) continue
+
+                if (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace)) {
+                    if (!validNamespaces.includes(podNamespace)) continue
+                }
+
+                if (instanceConfig.pod!=='' && instanceConfig.pod.split(',').includes(podName)) {
+                    if (!validPodNames.includes(podName)) continue
+                }
+
+                let foundKeyResource = false
+                for (let c of containerNames) {
+                    if (AuthorizationManagement.checkAkr(ri.channels, instanceConfig, podNamespace, podName, c)) {
+                        foundKeyResource = true
+                        break
+                    }
+                }
+                if (!foundKeyResource) continue
+            }
+            selectedPods.push(pod)
         }
     }
-
-    for (let pod of allPods) {
-        let podName = pod.metadata?.name!
-        let podNamespace = pod.metadata?.namespace!
-        let containerNames = pod.spec?.containers.map(c => c.name) || []
-
-        let existClusterScope = accessKeyResources.some(resource => resource.scopes === 'cluster')
-        if (!existClusterScope) {
-            console.log('validPodNames:',validPodNames, '  podName:', podName)
-            if (validPodNames.length>0 && !validPodNames.includes(podName)) continue
-
-            if (instanceConfig.namespace!=='' && instanceConfig.namespace.split(',').includes(podNamespace)) {
-                if (!validNamespaces.includes(podNamespace)) continue
-            }
-
-            if (instanceConfig.pod!=='' && instanceConfig.pod.split(',').includes(podName)) {
-                if (!validPodNames.includes(podName)) continue
-            }
-
-            let foundKeyResource = false
-            for (let c of containerNames) {
-                if (AuthorizationManagement.checkAkr(ri.channels, instanceConfig, podNamespace, podName, c)) {
-                    foundKeyResource = true
-                    break
-                }
-            }
-            if (!foundKeyResource) continue
-        }
-        selectedPods.push(pod)
+    catch (err) {
+        console.log('Error getting requested validated scoped pods')
+        console.log(err)
     }
     return selectedPods
 }
@@ -603,92 +679,112 @@ const processReconnect = async (webSocket: WebSocket, instanceMessage: IInstance
 }
 
 const processStartInstanceConfig = async (ri:IRunningInstance, webSocket: WebSocket, instanceConfig: IInstanceConfig, accessKeyResources: ResourceIdentifier[], validNamespaces: string[], validPodNames: string[], validContainers: string[]) => {
-    console.log(`Trying to perform instance config for channel '${instanceConfig.channel}' with view '${instanceConfig.view}'`)
-    let requestedValidatedPods = await getRequestedValidatedScopedPods(ri, instanceConfig, accessKeyResources, validNamespaces, validPodNames, validContainers)
-    if (requestedValidatedPods.length === 0) {
-        sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: there are no filters that match requested instance config`, instanceConfig, ri.channels)
-        return
-    }
-    
-    // we confirm startInstance is ok prior to launching watchPods (because client needs to know instanceId)
-    instanceConfig.instance = uuid()
+    try {
+        console.log(`Trying to perform instance config for channel '${instanceConfig.channel}' with view '${instanceConfig.view}'`)
+        if (ri.channels.get(instanceConfig.channel) && ri.channels.get(instanceConfig.channel)?.getChannelData().cluster) {
+            console.error('A cluster-wide access key has been created for access key', instanceConfig.accessKey.substring(0,8)+'... to access channel', instanceConfig.channel)
+            let channel = ri.channels.get(instanceConfig.channel)
+            if (channel) {
+                instanceConfig.instance = uuid()
+                await channel.addObject(webSocket, instanceConfig, '*all', '*all', '*all')
+                sendInstanceConfigSignalMessage(webSocket,EInstanceMessageAction.START, EInstanceMessageFlow.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
+            }
+            else {
+                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Channel not found for adding object`, instanceConfig, ri.channels)
+            }
+        }
+        else {
+            let requestedValidatedPods = await getRequestedValidatedScopedPods(ri, instanceConfig, accessKeyResources, validNamespaces, validPodNames, validContainers)
+            if (requestedValidatedPods.length === 0) {
+                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: there are no filters that match requested instance config`, instanceConfig, ri.channels)
+                return
+            }
+            
+            // we confirm startInstance is ok prior to launching watchPods (because client needs to know instanceId)
+            instanceConfig.instance = uuid()
 
-    switch (instanceConfig.view) {
-        case EInstanceConfigView.NAMESPACE:
-            for (let ns of validNamespaces) {
-                await watchPods(ri, `/api/v1/namespaces/${ns}/${instanceConfig.objects}`, {}, webSocket, instanceConfig)
-            }
-            break
-        case EInstanceConfigView.GROUP:
-            for (let namespace of validNamespaces) {
-                for (let gTypeName of instanceConfig.group.split(',')) {
-                    let groupPods = await AuthorizationManagement.getPodLabelSelectorsFromGroup(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, ri.clusterInfo.batchApi, namespace, gTypeName)
-                    if (groupPods.pods.length > 0) {
-                        let specificInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
-                        specificInstanceConfig.group = gTypeName
-                        await watchPods(ri, `/api/v1/namespaces/${namespace}/${instanceConfig.objects}`, { labelSelector: groupPods.labelSelector }, webSocket, specificInstanceConfig)
+            switch (instanceConfig.view) {
+                case EInstanceConfigView.NAMESPACE:
+                    for (let ns of validNamespaces) {
+                        await watchPods(ri, `/api/v1/namespaces/${ns}/${instanceConfig.objects}`, {}, webSocket, instanceConfig)
                     }
-                    else
-                        console.log(`No pods on namespace ${namespace}`)
-                }
-            }
-            break
-        case EInstanceConfigView.POD:
-            for (let podName of instanceConfig.pod.split(',')) {
-                let validPod = requestedValidatedPods.find(p => p.metadata?.name === podName)
-                if (validPod) {
-                    let metadataLabels = validPod.metadata?.labels
-                    if (metadataLabels) {
-                        if (ri.kwirthData.clusterType === EClusterType.DOCKER) {
-                            metadataLabels['kwirthDockerPodName'] = podName
+                    break
+                case EInstanceConfigView.GROUP:
+                    for (let namespace of validNamespaces) {
+                        for (let gTypeName of instanceConfig.group.split(',')) {
+                            let groupPods = await AuthorizationManagement.getPodLabelSelectorsFromController(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, ri.clusterInfo.batchApi, namespace, gTypeName)
+                            if (groupPods.pods.length > 0) {
+                                let specificInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
+                                specificInstanceConfig.group = gTypeName
+                                await watchPods(ri, `/api/v1/namespaces/${namespace}/${instanceConfig.objects}`, { labelSelector: groupPods.labelSelector }, webSocket, specificInstanceConfig)
+                            }
+                            else
+                                console.log(`No pods on namespace ${namespace}`)
                         }
-
-                        let labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
-                        let specificInstanceConfig: IInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
-                        specificInstanceConfig.pod = podName
-                        await watchPods(ri, `/api/v1/${instanceConfig.objects}`, { labelSelector }, webSocket, specificInstanceConfig)
                     }
-                    else {
-                        sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: cannot get metadata labels for pod '${podName}'`, instanceConfig, ri.channels)
-                    }
-                }
-                else {
-                    sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: your accesskey has no access to pod '${podName}' (or pod does not exsist) for pod access`, instanceConfig, ri.channels)
-                }
-            }
-            break
-        case EInstanceConfigView.CONTAINER:
-            for (let container of instanceConfig.container.split(',')) {
-                let [podName, containerName] = container.split('+')
-                let validPod = requestedValidatedPods.find(p => p.metadata?.name === podName)
-                if (validPod) {
-                    let metadataLabels = validPod.metadata?.labels
+                    break
+                case EInstanceConfigView.POD:
+                    for (let podName of instanceConfig.pod.split(',')) {
+                        let validPod = requestedValidatedPods.find(p => p.metadata?.name === podName)
+                        if (validPod) {
+                            let metadataLabels = validPod.metadata?.labels
+                            if (metadataLabels) {
+                                if (ri.kwirthData.clusterType === EClusterType.DOCKER) {
+                                    metadataLabels['kwirthDockerPodName'] = podName
+                                }
 
-                    if (metadataLabels) {
-                        if (ri.kwirthData.clusterType === EClusterType.DOCKER) {
-                            metadataLabels['kwirthDockerContainerName'] = containerName
-                            metadataLabels['kwirthDockerPodName'] = podName
+                                let labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
+                                let specificInstanceConfig: IInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
+                                specificInstanceConfig.pod = podName
+                                await watchPods(ri, `/api/v1/${instanceConfig.objects}`, { labelSelector }, webSocket, specificInstanceConfig)
+                            }
+                            else {
+                                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: cannot get metadata labels for pod '${podName}'`, instanceConfig, ri.channels)
+                            }
                         }
-    
-                        let labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
-                        let specificInstanceConfig: IInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
-                        specificInstanceConfig.container = container
-                        await watchPods(ri, `/api/v1/${instanceConfig.objects}`, { labelSelector }, webSocket, specificInstanceConfig)
+                        else {
+                            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: your accesskey has no access to pod '${podName}' (or pod does not exsist) for pod access`, instanceConfig, ri.channels)
+                        }
                     }
-                    else {
-                        sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: cannot get metadata labels for container '${podName}/${containerName}'`, instanceConfig, ri.channels)
+                    break
+                case EInstanceConfigView.CONTAINER:
+                    for (let container of instanceConfig.container.split(',')) {
+                        let [podName, containerName] = container.split('+')
+                        let validPod = requestedValidatedPods.find(p => p.metadata?.name === podName)
+                        if (validPod) {
+                            let metadataLabels = validPod.metadata?.labels
+
+                            if (metadataLabels) {
+                                if (ri.kwirthData.clusterType === EClusterType.DOCKER) {
+                                    metadataLabels['kwirthDockerContainerName'] = containerName
+                                    metadataLabels['kwirthDockerPodName'] = podName
+                                }
+            
+                                let labelSelector = Object.entries(metadataLabels).map(([key, value]) => `${key}=${value}`).join(',')
+                                let specificInstanceConfig: IInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
+                                specificInstanceConfig.container = container
+                                await watchPods(ri, `/api/v1/${instanceConfig.objects}`, { labelSelector }, webSocket, specificInstanceConfig)
+                            }
+                            else {
+                                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: cannot get metadata labels for container '${podName}/${containerName}'`, instanceConfig, ri.channels)
+                            }
+                        }
+                        else {
+                            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: your accesskey has no access to container '${podName}' (or pod does not exsist) for container access`, instanceConfig, ri.channels)
+                        }
                     }
-                }
-                else {
-                    sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: your accesskey has no access to container '${podName}' (or pod does not exsist) for container access`, instanceConfig, ri.channels)
-                }
+                    break
+                default:
+                    sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: invalid view '${instanceConfig.view}'`, instanceConfig, ri.channels)
+                    break
             }
-            break
-        default:
-            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: invalid view '${instanceConfig.view}'`, instanceConfig, ri.channels)
-            break
+            sendInstanceConfigSignalMessage(webSocket,EInstanceMessageAction.START, EInstanceMessageFlow.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
+        }
     }
-    sendInstanceConfigSignalMessage(webSocket,EInstanceMessageAction.START, EInstanceMessageFlow.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
+    catch (err) {
+        console.log('Error starting instance')
+        console.log(err)
+    }
 }
 
 const processStopInstanceConfig = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, localChannels:Map<string,IChannel>) => {
@@ -828,194 +924,203 @@ const processChannelWebsocket = async (ri:IRunningInstance, webSocket: WebSocket
 }
 
 const processClientMessage = async (webSocket:WebSocket, message:string, ri:IRunningInstance) => {
-    const instanceMessage = JSON.parse(message) as IInstanceMessage
+    try {
+        const instanceMessage = JSON.parse(message) as IInstanceMessage
 
-    if (instanceMessage.flow !== EInstanceMessageFlow.REQUEST && instanceMessage.flow !== EInstanceMessageFlow.IMMEDIATE) {
-        sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, 'Invalid flow received', instanceMessage, ri.channels)
-        return
-    }
-
-    if (instanceMessage.action === EInstanceMessageAction.PING) {
-        processPing(webSocket, instanceMessage, ri.channels)
-        return
-    }
-
-    if (!ri.channels.has(instanceMessage.channel)) {
-        sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, 'Unsupported channel in this Kwirth deployment', instanceMessage, ri.channels)
-        return
-    }
-
-    console.log('Received request:', instanceMessage.flow, instanceMessage.action, instanceMessage.channel)
-    if (instanceMessage.action === EInstanceMessageAction.RECONNECT) {
-        console.log('Reconnect received')
-        if (!ri.channels.get(instanceMessage.channel)?.getChannelData().reconnectable) {
-            console.log(`Reconnect capability not enabled for channel ${instanceMessage.channel} and instance ${instanceMessage.instance}`)
-            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Channel ${instanceMessage.channel} does not support reconnect`, instanceMessage, ri.channels)
+        if (instanceMessage.flow !== EInstanceMessageFlow.REQUEST && instanceMessage.flow !== EInstanceMessageFlow.IMMEDIATE) {
+            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, 'Invalid flow received', instanceMessage, ri.channels)
             return
         }
-        processReconnect (webSocket, instanceMessage, ri.channels)
-        return
-    }
 
-    if (instanceMessage.action === EInstanceMessageAction.ROUTE) {
-        let routeMessage = instanceMessage as IRouteMessage
-        console.log(`Route received from channel ${instanceMessage.channel} to ${routeMessage.destChannel}`)
-        processChannelRoute (ri, webSocket, instanceMessage)
-        return
-    }
-
-    const instanceConfig = JSON.parse(message) as IInstanceConfig
-    if (!instanceConfig.accessKey) {
-        sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, 'No access key received', instanceConfig, ri.channels)
-        return
-    }
-
-    let accessKey = accessKeyDeserialize(instanceConfig.accessKey)
-    if (accessKey.type.toLowerCase().startsWith('bearer:')) {
-        if (!AuthorizationManagement.validBearerKey(envMasterKey, accessKey)) {
-            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Invalid bearer access key: ${instanceConfig.accessKey}`, instanceConfig, ri.channels)
-            return
-        }       
-    }
-    else {
-        // if (!ApiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===instanceConfig.accessKey)) {
-        //     sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Invalid API key: ${instanceConfig.accessKey}`, instanceConfig, localChannels)
-        //     return
-        // }
-        // if (!ApiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===instanceConfig.accessKey)) {
-        //     sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Invalid API key: ${instanceConfig.accessKey}`, instanceConfig, ri.channels)
-        //     return
-        // }
-        if (!ri.apiKeyApi || !ri.apiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===instanceConfig.accessKey)) {
-            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Invalid API key ot no ApiKeyApi: ${instanceConfig.accessKey}`, instanceConfig, ri.channels)
+        if (instanceMessage.action === EInstanceMessageAction.PING) {
+            processPing(webSocket, instanceMessage, ri.channels)
             return
         }
-    }
 
-    // +++ maybe we can perform this things later when knowing what the action is
-    let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resources)
+        if (!ri.channels.has(instanceMessage.channel)) {
+            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, 'Unsupported channel in this Kwirth deployment', instanceMessage, ri.channels)
+            return
+        }
 
-    let validNamespaces:string[] = []
-    if (instanceConfig.namespace) validNamespaces = await AuthorizationManagement.getValidNamespaces(ri.clusterInfo.coreApi, accessKey, instanceConfig.namespace.split(','))
-    console.log('validNamespaces:', validNamespaces)
+        console.log('Received request:', instanceMessage.flow, instanceMessage.action, instanceMessage.channel)
+        if (instanceMessage.action === EInstanceMessageAction.RECONNECT) {
+            console.log('Reconnect received')
+            if (!ri.channels.get(instanceMessage.channel)?.getChannelData().reconnectable) {
+                console.log(`Reconnect capability not enabled for channel ${instanceMessage.channel} and instance ${instanceMessage.instance}`)
+                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Channel ${instanceMessage.channel} does not support reconnect`, instanceMessage, ri.channels)
+                return
+            }
+            processReconnect (webSocket, instanceMessage, ri.channels)
+            return
+        }
 
-    let validGroups:string[] = []
-    if (instanceConfig.group) validGroups = await AuthorizationManagement.getValidGroups(ri.clusterInfo.coreApi,ri.clusterInfo.appsApi, ri.clusterInfo.batchApi, accessKey, validNamespaces, instanceConfig.group.split(','))
-    console.log('validGroups:', validGroups)
+        if (instanceMessage.action === EInstanceMessageAction.ROUTE) {
+            let routeMessage = instanceMessage as IRouteMessage
+            console.log(`Route received from channel ${instanceMessage.channel} to ${routeMessage.destChannel}`)
+            processChannelRoute (ri, webSocket, instanceMessage)
+            return
+        }
 
-    let validPodNames:string[] = []
-    if (ri.kwirthData.clusterType === EClusterType.DOCKER) {
-        validPodNames = await ri.clusterInfo.dockerTools.getAllPodNames()
-    }
-    else {
-        if (instanceConfig.pod) validPodNames = await AuthorizationManagement.getValidPods(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, validNamespaces, accessKey, instanceConfig.pod.split(','))
-    }
-    console.log('validPods:', validPodNames)
+        const instanceConfig = JSON.parse(message) as IInstanceConfig
+        if (!instanceConfig.accessKey) {
+            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, 'No access key received', instanceConfig, ri.channels)
+            return
+        }
 
-    let validContainers:string[] = []
-    if (instanceConfig.container) validContainers = await  AuthorizationManagement.getValidContainers(ri.clusterInfo.coreApi, accessKey, validNamespaces, validPodNames, instanceConfig.container.split(','))
-    console.log('validContainers:', validContainers)
-    
-    switch (instanceConfig.action) {
-        case EInstanceMessageAction.COMMAND:
-            if (instanceMessage.flow === EInstanceMessageFlow.IMMEDIATE) {
-                console.log('Processing immediate request')
-                if (validNamespaces.includes(instanceConfig.namespace)) {
-                    if (validPodNames.includes(instanceConfig.pod)) {
-                        if (instanceConfig.container !== '' && instanceConfig.container) {
-                            let containerAuthorized = accessKeyResources.some (r => r.namespaces === instanceConfig.namespace && r.pods === instanceConfig.pod && r.containers === instanceConfig.container)
-                            if (containerAuthorized) {
-                                processChannelCommand(webSocket, instanceConfig, ri.channels, instanceConfig.namespace, instanceConfig.pod, instanceConfig.container)
+        let accessKey = accessKeyDeserialize(instanceConfig.accessKey)
+        if (accessKey.type.toLowerCase().startsWith('bearer:')) {
+            if (!AuthorizationManagement.validBearerKey(envMasterKey, accessKey)) {
+                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Invalid bearer access key: ${instanceConfig.accessKey}`, instanceConfig, ri.channels)
+                return
+            }       
+        }
+        else {
+            if (!ri.apiKeyApi || !ri.apiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===instanceConfig.accessKey)) {
+                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Invalid API key ot no ApiKeyApi: ${instanceConfig.accessKey}`, instanceConfig, ri.channels)
+                return
+            }
+        }
+
+        // +++ maybe we can perform this things later when knowing what the action is
+        let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resources)
+
+        let validNamespaces:string[] = []
+        if (instanceConfig.namespace) validNamespaces = await AuthorizationManagement.getValidNamespaces(ri.clusterInfo.coreApi, accessKey, instanceConfig.namespace.split(','))
+        console.log('validNamespaces:', validNamespaces)
+
+        let validControllers:string[] = []
+        if (instanceConfig.group) validControllers = await AuthorizationManagement.getValidControllers(ri.clusterInfo.coreApi,ri.clusterInfo.appsApi, ri.clusterInfo.batchApi, accessKey, validNamespaces, instanceConfig.group.split(','))
+        console.log('validControllers:', validControllers)
+
+        let validPodNames:string[] = []
+        if (ri.kwirthData.clusterType === EClusterType.DOCKER) {
+            validPodNames = await ri.clusterInfo.dockerTools.getAllPodNames()
+        }
+        else {
+            if (instanceConfig.pod) validPodNames = await AuthorizationManagement.getValidPods(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, validNamespaces, accessKey, instanceConfig.pod.split(','))
+        }
+        console.log('validPods:', validPodNames)
+
+        let validContainers:string[] = []
+        if (instanceConfig.container) validContainers = await  AuthorizationManagement.getValidContainers(ri.clusterInfo.coreApi, accessKey, validNamespaces, validPodNames, instanceConfig.container.split(','))
+        console.log('validContainers:', validContainers)
+        
+        switch (instanceConfig.action) {
+            case EInstanceMessageAction.COMMAND:
+                if (instanceMessage.flow === EInstanceMessageFlow.IMMEDIATE) {
+                    console.log('Processing immediate request')
+                    if (validNamespaces.includes(instanceConfig.namespace)) {
+                        if (validPodNames.includes(instanceConfig.pod)) {
+                            if (instanceConfig.container !== '' && instanceConfig.container) {
+                                let containerAuthorized = accessKeyResources.some (r => r.namespaces === instanceConfig.namespace && r.pods === instanceConfig.pod && r.containers === instanceConfig.container)
+                                if (containerAuthorized) {
+                                    processChannelCommand(webSocket, instanceConfig, ri.channels, instanceConfig.namespace, instanceConfig.pod, instanceConfig.container)
+                                }
+                                else {
+                                    sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Not authorized send immediate command to container ${instanceConfig.namespace}/${instanceConfig.pod}/${instanceConfig.container}`, instanceConfig, ri.channels)
+                                }
                             }
                             else {
-                                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Not authorized send immediate command to container ${instanceConfig.namespace}/${instanceConfig.pod}/${instanceConfig.container}`, instanceConfig, ri.channels)
+                                processChannelCommand(webSocket, instanceConfig, ri.channels, instanceConfig.namespace, instanceConfig.pod)
                             }
                         }
                         else {
-                            processChannelCommand(webSocket, instanceConfig, ri.channels, instanceConfig.namespace, instanceConfig.pod)
+                            sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Not authorized send immediate command to pod ${instanceConfig.namespace}/${instanceConfig.pod}`, instanceConfig, ri.channels)
                         }
                     }
                     else {
-                        sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Not authorized send immediate command to pod ${instanceConfig.namespace}/${instanceConfig.pod}`, instanceConfig, ri.channels)
+                        sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Not authorized send immediate command to namespace  ${instanceConfig.namespace}`, instanceConfig, ri.channels)
                     }
                 }
                 else {
-                    sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Not authorized send immediate command to namespace  ${instanceConfig.namespace}`, instanceConfig, ri.channels)
+                    processChannelCommand(webSocket, instanceConfig, ri.channels)
                 }
-            }
-            else {
-                processChannelCommand(webSocket, instanceConfig, ri.channels)
-            }
-            break
-        case EInstanceMessageAction.WEBSOCKET:
-            processChannelWebsocket (ri, webSocket, instanceConfig)
-            break
+                break
+            case EInstanceMessageAction.WEBSOCKET:
+                processChannelWebsocket (ri, webSocket, instanceConfig)
+                break
 
-        case EInstanceMessageAction.START:
-            processStartInstanceConfig(ri, webSocket, instanceConfig, accessKeyResources, validNamespaces, validPodNames, validContainers)
-            break
-        case EInstanceMessageAction.STOP:
-            processStopInstanceConfig(webSocket, instanceConfig, ri.channels)
-            break
-        case EInstanceMessageAction.MODIFY:
-            if (ri.channels.get(instanceConfig.channel)?.getChannelData().modifyable) {
-                ri.channels.get(instanceConfig.channel)?.modifyInstance(webSocket, instanceConfig)
-            }
-            else {
-                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Channel ${instanceConfig.channel} does not support MODIFY`, instanceConfig, ri.channels)
-            }
-            break
-        case EInstanceMessageAction.PAUSE:
-        case EInstanceMessageAction.CONTINUE:   
-            if (ri.channels.get(instanceConfig.channel)?.getChannelData().pauseable) {
-                processPauseContinueInstanceConfig(instanceConfig, webSocket, instanceConfig.action, ri.channels)
-            }
-            else {
-                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Channel ${instanceConfig.channel} does not support PAUSE/CONTINUE`, instanceConfig, ri.channels)
-            }
-            break
-        default:
-            console.log (`Invalid action in instance config: '${instanceConfig.action}'`)
-            break
+            case EInstanceMessageAction.START:
+                processStartInstanceConfig(ri, webSocket, instanceConfig, accessKeyResources, validNamespaces, validPodNames, validContainers)
+                break
+            case EInstanceMessageAction.STOP:
+                processStopInstanceConfig(webSocket, instanceConfig, ri.channels)
+                break
+            case EInstanceMessageAction.MODIFY:
+                if (ri.channels.get(instanceConfig.channel)?.getChannelData().modifyable) {
+                    ri.channels.get(instanceConfig.channel)?.modifyInstance(webSocket, instanceConfig)
+                }
+                else {
+                    sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Channel ${instanceConfig.channel} does not support MODIFY`, instanceConfig, ri.channels)
+                }
+                break
+            case EInstanceMessageAction.PAUSE:
+            case EInstanceMessageAction.CONTINUE:   
+                if (ri.channels.get(instanceConfig.channel)?.getChannelData().pauseable) {
+                    processPauseContinueInstanceConfig(instanceConfig, webSocket, instanceConfig.action, ri.channels)
+                }
+                else {
+                    sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Channel ${instanceConfig.channel} does not support PAUSE/CONTINUE`, instanceConfig, ri.channels)
+                }
+                break
+            default:
+                console.log (`Invalid action in instance config: '${instanceConfig.action}'`)
+                break
+        }
+    }
+    catch (err) {
+        console.log('Error processing clietn message')
+        console.log(err)
     }
 }
 
+const setUpRoutes = async (ri:IRunningInstance) : Promise<ApiKeyApi|undefined> => {
+    try {
+        const riRouter = express.Router()
 
-const setUpRoutes = async (ri:IRunningInstance) : Promise<ApiKeyApi> => {
-    const riRouter = express.Router()
+        let result = await ApiKeyApi.create(ri.configMaps, envMasterKey, isElectron)
+        if (!result) {
+            console.log('Could not get apikeyapi')
+            return
+        }
+        let apiKeyApi = result
+        riRouter.use(`/key`, apiKeyApi.route)
+        ri.apiKeyApi = apiKeyApi
+        let configApi:ConfigApi = new ConfigApi(apiKeyApi, ri.kwirthData, ri.clusterInfo)
+        riRouter.use(`/config`, configApi.route)
+        let storeApi:StoreApi = new StoreApi(ri.configMaps, apiKeyApi)
+        riRouter.use(`/store`, storeApi.route)
+        let userApi:UserApi = new UserApi(ri.secrets, apiKeyApi)
+        riRouter.use(`/user`, userApi.route)
+        let loginApi:LoginApi = new LoginApi(ri.secrets, ri.configMaps, ri.apiKeyApi)
+        riRouter.use(`/login`, loginApi.route)
+        let manageKwirthApi:ManageKwirthApi = new ManageKwirthApi(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, ri.clusterInfo.batchApi, apiKeyApi, ri.kwirthData)
+        riRouter.use(`/managekwirth`, manageKwirthApi.route)
+        let manageCluster:ManageClusterApi = new ManageClusterApi(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, apiKeyApi)
+        riRouter.use(`/managecluster`, manageCluster.route)
+        let metricsApi:MetricsApi = new MetricsApi(ri.clusterInfo, apiKeyApi)
+        riRouter.use(`/metrics`, metricsApi.route)
 
-    let apiKeyApi:ApiKeyApi = await ApiKeyApi.create(ri.configMaps, envMasterKey)
-    riRouter.use(`/key`, apiKeyApi.route)
-    ri.apiKeyApi = apiKeyApi
-    let configApi:ConfigApi = new ConfigApi(apiKeyApi, ri.kwirthData, ri.clusterInfo)
-    riRouter.use(`/config`, configApi.route)
-    let storeApi:StoreApi = new StoreApi(ri.configMaps, apiKeyApi)
-    riRouter.use(`/store`, storeApi.route)
-    let userApi:UserApi = new UserApi(ri.secrets, apiKeyApi)
-    riRouter.use(`/user`, userApi.route)
-    let loginApi:LoginApi = new LoginApi(ri.secrets, ri.configMaps, ri.apiKeyApi)
-    riRouter.use(`/login`, loginApi.route)
-    let manageKwirthApi:ManageKwirthApi = new ManageKwirthApi(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, ri.clusterInfo.batchApi, apiKeyApi, ri.kwirthData)
-    riRouter.use(`/managekwirth`, manageKwirthApi.route)
-    let manageCluster:ManageClusterApi = new ManageClusterApi(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, apiKeyApi)
-    riRouter.use(`/managecluster`, manageCluster.route)
-    let metricsApi:MetricsApi = new MetricsApi(ri.clusterInfo, apiKeyApi)
-    riRouter.use(`/metrics`, metricsApi.route)
-
-    ri.router = riRouter
-    return apiKeyApi
+        ri.router = riRouter
+        return apiKeyApi
+    }
+    catch (err) {
+        console.log('Error setting up routes')
+        console.log(err)
+    }
+    return undefined
 }
 
-
 const runKubernetes = async (ri:IRunningInstance, expressApp:Application) => {
-    const processHttpChannelRequest = async (channel: IChannel, endpointName:string,aka:ApiKeyApi, req:Request, res:Response) : Promise<void> => {
+    const processHttpChannelRequest = async (channel: IChannel, endpointName:string, aka:ApiKeyApi, req:Request, res:Response) : Promise<void> => {
         try {
-            console.log('accesskey shoulf note be validated')
-            let accessKey = await AuthorizationManagement.getKey(req,res,aka)
+            console.log('AccessKey should not be validated on electron')
+            let accessKey = await AuthorizationManagement.getKey(req, res, aka)
             if (accessKey) {
                 channel.endpointRequest(endpointName, req, res, accessKey)
             }
             else {
+                console.log('Could not get accessKey')
                 res.status(400).send()
             }
         }
@@ -1026,360 +1131,406 @@ const runKubernetes = async (ri:IRunningInstance, expressApp:Application) => {
         }
     }
 
-    let lastVersion = await getLastKwirthVersion(ri.kwirthData)
-    if (lastVersion) ri.kwirthData.lastVersion = lastVersion
-  
-    // show root contents for debuggunng purposes
-    const fs = require('fs')
-    fs.readdir('.', (err:any, archivos:any) => {
-        if (err) {
-            console.error('Error reading folder data:', err)
-            return
-        }
-        console.log("File list at project root:",archivos.join(', '))
-    })
+    try {
+        let lastVersion = await getLastKwirthVersion(ri.kwirthData)
+        if (lastVersion) ri.kwirthData.lastVersion = lastVersion
+    
+        // show root contents for debuggunng purposes
+        const fs = require('fs')
+        fs.readdir('.', (err:any, archivos:any) => {
+            if (err) {
+                console.error('Error reading folder data:', err)
+                return
+            }
+            console.log('File list at project root when starting instance:', archivos.join(', '))
+        })
 
-    // serve config API
-    // let apiKeyApi:ApiKeyApi = await ApiKeyApi.create(ri.configMaps, envMasterKey)
-    // expressApp.use(`${envRootPath}/key`, apiKeyApi.route)
-    // let configApi:ConfigApi = new ConfigApi(apiKeyApi, ri.kwirthData, ri.clusterInfo)
-    // expressApp.use(`${envRootPath}/config`, configApi.route)
-    // let storeApi:StoreApi = new StoreApi(ri.configMaps, apiKeyApi)
-    // expressApp.use(`${envRootPath}/store`, storeApi.route)
-    // let userApi:UserApi = new UserApi(ri.secrets, apiKeyApi)
-    // expressApp.use(`${envRootPath}/user`, userApi.route)
-    // let loginApi:LoginApi = new LoginApi(ri.secrets, ri.configMaps)
-    // expressApp.use(`${envRootPath}/login`, loginApi.route)
-    // let manageKwirthApi:ManageKwirthApi = new ManageKwirthApi(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, ri.clusterInfo.batchApi, apiKeyApi, ri.kwirthData)
-    // expressApp.use(`${envRootPath}/managekwirth`, manageKwirthApi.route)
-    // let manageCluster:ManageClusterApi = new ManageClusterApi(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, apiKeyApi)
-    // expressApp.use(`${envRootPath}/managecluster`, manageCluster.route)
-    // let metricsApi:MetricsApi = new MetricsApi(ri.clusterInfo, apiKeyApi)
-    // expressApp.use(`${envRootPath}/metrics`, metricsApi.route)
-
-    let apiKeyApi = await setUpRoutes(ri)
-
-    for (let channel of ri.channels.values()) {
-        let channelData = channel.getChannelData()
-        if (channelData.endpoints.length>0) {
-            for (let endpoint of channelData.endpoints) {
-                console.log(`Will listen on ${envRootPath}/channel/${channelData.id}/${endpoint.name}`)
-                const router = express.Router()
-                router.route('*')
-                    .all( async (req:Request,res:Response, next) => {
-                        if (endpoint.requiresAccessKey) {
-                            if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
-                        }
-                        next()
-                    })
-                    .get( async (req:Request, res:Response) => {
-                        if (endpoint.methods.includes('GET'))
-                            processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
-                        else
-                            res.status(405).send()
-                    })
-                    .post( async (req:Request, res:Response) => {
-                        if (endpoint.methods.includes('POST'))
-                            processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
-                        else
-                            res.status(405).send()
-                    })
-                    .put( async (req:Request, res:Response) => {
-                        if (endpoint.methods.includes('PUT'))
-                            processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
-                        else
-                            res.status(405).send()
-                    })
-                    .delete( async (req:Request, res:Response) => {
-                        if (endpoint.methods.includes('DELETE'))
-                            processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
-                        else
-                            res.status(405).send()
-                    })
-                expressApp.use(`${envRootPath}/channel/${channelData.id}/${endpoint.name}`, router)
+        let apiKeyApi = await setUpRoutes(ri)
+        if (apiKeyApi) {
+            for (let channel of ri.channels.values()) {
+                let channelData = channel.getChannelData()
+                if (channelData.endpoints.length>0) {
+                    for (let endpoint of channelData.endpoints) {
+                        console.log(`Will listen on ${envRootPath}/channel/${channelData.id}/${endpoint.name}`)
+                        const router = express.Router()
+                        router.route('*')
+                            .all( async (req:Request,res:Response, next) => {
+                                if (endpoint.requiresAccessKey) {
+                                    if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
+                                }
+                                next()
+                            })
+                            .get( async (req:Request, res:Response) => {
+                                if (endpoint.methods.includes('GET'))
+                                    processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
+                                else
+                                    res.status(405).send()
+                            })
+                            .post( async (req:Request, res:Response) => {
+                                if (endpoint.methods.includes('POST')) {
+                                    processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
+                                }
+                                else
+                                    res.status(405).send()
+                            })
+                            .put( async (req:Request, res:Response) => {
+                                if (endpoint.methods.includes('PUT'))
+                                    processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
+                                else
+                                    res.status(405).send()
+                            })
+                            .delete( async (req:Request, res:Response) => {
+                                if (endpoint.methods.includes('DELETE'))
+                                    processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
+                                else
+                                    res.status(405).send()
+                            })
+                        expressApp.use(`${envRootPath}/channel/${channelData.id}/${endpoint.name}`, router)
+                    }
+                }
             }
         }
+        else {
+            console.log('Could not set up routes. Exiting')
+            process.exit(1)
+        }
     }
-
-    const handleNodeProcessSignal = (signal:any) => {
-        console.warn(`⚠️ Signal ${signal} received. We just close everything.`)
-        process.exit(0)
+    catch (err) {
+        console.log('Error in runKubernetes')
+        console.log(err)
     }
-    
-    //+++ capture more events?
-    process.on('SIGTERM', () => handleNodeProcessSignal('SIGTERM'))
-    process.on('SIGINT', () => handleNodeProcessSignal('SIGINT'))
-
-    process.on('unhandledRejection', (reason:any, promise:any) => {
-        console.error('❌ UNHANDLED REJECTION')
-        console.error('Reason:', reason)
-        console.error('Stack:', reason.stack)
-        process.exit(1)
-    })
-
-    process.on('uncaughtException', (err, origin) => {
-        console.error('🚨 UNCAUGHT EXCEPTION')
-        console.error(`Origin: ${origin}`)
-        console.error(err.stack || err)
-        process.exit(1)
-    })
-    
-    process.on('exit', async () => {
-        console.log('********************************************************************************')
-        console.log('********************************************************************************')
-        console.log('********************************************************************************')
-        console.log('********************************************************************************')
-        console.log('********************************************************************************')
-        console.log('exiting on node exit')
-        await new Promise((resolve) => setTimeout(resolve, 10000))
-        if (!isElectron) ri.clusterInfo.saToken.deleteToken('kwirth-sa', ri.kwirthData.namespace)
-    })
 }
 
+const handleNodeProcessSignal = (signal:any) => {
+    console.warn(`⚠️ Signal ${signal} received. We just close everything.`)
+    process.exit(0)
+}   
+
+//+++ capture more events?
+process.on('SIGTERM', () => handleNodeProcessSignal('SIGTERM'))
+process.on('SIGINT', () => handleNodeProcessSignal('SIGINT'))
+
+process.on('unhandledRejection', (reason:any, promise:any) => {
+    console.error('❌ UNHANDLED REJECTION')
+    console.error('Reason:', reason)
+    console.error('Stack:', reason.stack)
+    console.error('Promise:', promise)
+    console.dir(promise)
+    process.exit(1)
+})
+
+process.on('uncaughtException', (err, origin) => {
+    console.error('🚨 UNCAUGHT EXCEPTION')
+    console.error(`Origin: ${origin}`)
+    console.error(err.stack || err)
+    process.exit(1)
+})
+
+process.on('exit', async () => {
+    console.log('********************************************************************************')
+    console.log('********************************************************************************')
+    console.log('********************************************************************************')
+    console.log('********************************************************************************')
+    console.log('********************************************************************************')
+    console.log('exiting on node exit')
+    await new Promise((resolve) => setTimeout(resolve, 10000))
+})
+
 const setKubernetesClusterKwirthRequirements = async (localKwirthData: KwirthData, localClusterInfo:ClusterInfo, metricsRequired:boolean, eventsRequired: boolean) : Promise<void> => {
-    console.log('Node info loaded')
+    try {
+        console.log('Node info loaded')
 
-    console.log('Source Info')
-    console.log('  Name:', localClusterInfo.name)
-    console.log('  Type:', localClusterInfo.type)
-    console.log('  Flavour:', localClusterInfo.flavour)
-    console.log('  Nodes:', localClusterInfo.nodes.size)
+        console.log('Source Info')
+        console.log('  Name:', localClusterInfo.name)
+        console.log('  Type:', localClusterInfo.type)
+        console.log('  Flavour:', localClusterInfo.flavour)
+        console.log('  Nodes:', localClusterInfo.nodes.size)
 
-    if (metricsRequired) {
-        localClusterInfo.metrics = new MetricsTools(localClusterInfo, localKwirthData.isElectron, localKwirthData.inCluster)
-        localClusterInfo.metricsInterval = envMetricsInterval // we set cluster metrics interval based on default metrics interval
-        await localClusterInfo.metrics.startMetrics()
-        console.log('  vCPU:', localClusterInfo.vcpus)
-        console.log('  Memory (GB):', localClusterInfo.memory/1024/1024/1024)
+        if (metricsRequired) {
+            localClusterInfo.metrics = new MetricsTools(localClusterInfo, localKwirthData.isElectron, localKwirthData.inCluster)
+            localClusterInfo.metricsInterval = envMetricsInterval // we set cluster metrics interval based on default metrics interval
+            await localClusterInfo.metrics.startMetrics()
+            console.log('  vCPU:', localClusterInfo.vcpus)
+            console.log('  Memory (GB):', localClusterInfo.memory/1024/1024/1024)
+        }
+
+        if (eventsRequired) {
+            localClusterInfo.events = new EventsTools(localClusterInfo)
+            localClusterInfo.events.startEvents()
+        }
     }
-
-    if (eventsRequired) {
-        localClusterInfo.events = new EventsTools(localClusterInfo)
-        localClusterInfo.events.startEvents()
+    catch (err) {
+        console.log('Error setting up kubernetes requirements')
+        console.log(err)
     }
 }
 
 const prepareKubernetes = async (localKwirthData:KwirthData, runningInstance:IRunningInstance) : Promise<void> => {
-    if (envChannelLogEnabled) runningInstance.channels.set('log', new LogChannel(runningInstance.clusterInfo))
-    if (envChannelAlertEnabled) runningInstance.channels.set('alert', new AlertChannel(runningInstance.clusterInfo))
-    if (envChannelMetricsEnabled) runningInstance.channels.set('metrics', new MetricsChannel(runningInstance.clusterInfo))
-    if (envChannelOpsEnabled) runningInstance.channels.set('ops', new OpsChannel(runningInstance.clusterInfo))
-    if (envChannelTrivyEnabled) runningInstance.channels.set('trivy', new TrivyChannel(runningInstance.clusterInfo))
-    if (envChannelEchoEnabled) runningInstance.channels.set('echo', new EchoChannel(runningInstance.clusterInfo))
-    if (envChannelFilemanEnabled) runningInstance.channels.set('fileman', new FilemanChannel(runningInstance.clusterInfo))
-    if (envChannelMagnifyEnabled) runningInstance.channels.set('magnify', new MagnifyChannel(runningInstance.clusterInfo, localKwirthData))
+    try {
+        if (envChannelLogEnabled) runningInstance.channels.set('log', new LogChannel(runningInstance.clusterInfo))
+        if (envChannelAlertEnabled) runningInstance.channels.set('alert', new AlertChannel(runningInstance.clusterInfo))
+        if (envChannelMetricsEnabled) runningInstance.channels.set('metrics', new MetricsChannel(runningInstance.clusterInfo))
+        if (envChannelOpsEnabled) runningInstance.channels.set('ops', new OpsChannel(runningInstance.clusterInfo))
+        if (envChannelTrivyEnabled) runningInstance.channels.set('trivy', new TrivyChannel(runningInstance.clusterInfo))
+        if (envChannelEchoEnabled) runningInstance.channels.set('echo', new EchoChannel(runningInstance.clusterInfo))
+        if (envChannelFilemanEnabled) runningInstance.channels.set('fileman', new FilemanChannel(runningInstance.clusterInfo))
+        if (envChannelMagnifyEnabled) runningInstance.channels.set('magnify', new MagnifyChannel(runningInstance.clusterInfo, localKwirthData))
 
-    // +++ OJO, los channels ya no deben estar en kwirth data, ya que dependen del cluster
-    // en el banckend se puede quitar de kwirthdata, pero los forntend INCLUIDO BACKSTAGE lo usan
-    localKwirthData.channels =  Array.from(runningInstance.channels.keys()).map(k => {
-        return runningInstance.channels.get(k)?.getChannelData()!
-    })
+        // +++ OJO, los channels ya no deben estar en kwirth data, ya que dependen del cluster
+        // en el banckend se puede quitar de kwirthdata, pero los forntend INCLUIDO BACKSTAGE lo usan
+        localKwirthData.channels =  Array.from(runningInstance.channels.keys()).map(k => {
+            return runningInstance.channels.get(k)?.getChannelData()!
+        })
 
-    // Detect if any channel requires metrics or events
-    let eventsRequired = Array.from(runningInstance.channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().events}, false)
-    console.log('Events required: ', eventsRequired)
-    let metricsRequired = Array.from(runningInstance.channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)
-    console.log('Metrics required: ', metricsRequired)
-    if (!envChannelMetricsEnabled) console.log('❌ Metrics have not been enabled on Kwirth, so it will not be available.')
-    if (!isElectron && runningInstance.clusterInfo.token) console.log('❌ A SA Token could not be obtained, so metrics will not be available.')
-    metricsRequired = metricsRequired && envChannelMetricsEnabled && (isElectron || Boolean(runningInstance.clusterInfo.token))
+        // Detect if any channel requires metrics or events
+        let eventsRequired = Array.from(runningInstance.channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().events}, false)
+        console.log('Events required: ', eventsRequired)
+        let metricsRequired = Array.from(runningInstance.channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)
+        console.log('Metrics required: ', metricsRequired)
+        if (!envChannelMetricsEnabled) console.log('❌ Metrics have not been enabled on Kwirth, so it will not be available.')
+        if (!isElectron && !runningInstance.clusterInfo.token) console.log('❌ A SA Token could not be obtained, so metrics will not be available.')
+        metricsRequired = metricsRequired && envChannelMetricsEnabled && (isElectron || Boolean(runningInstance.clusterInfo.token))
 
-    await setKubernetesClusterKwirthRequirements(localKwirthData, runningInstance.clusterInfo, metricsRequired, eventsRequired)
-    runningInstance.clusterInfo.type = localKwirthData.clusterType
+        await setKubernetesClusterKwirthRequirements(localKwirthData, runningInstance.clusterInfo, metricsRequired, eventsRequired)
+        runningInstance.clusterInfo.type = localKwirthData.clusterType
 
-    console.log(`Enabled channels for this (kubernetes) run are: ${Array.from(runningInstance.channels.keys()).map(c => `'${c}'`).join(',')}`)
-    console.log(`Detected own namespace: ${localKwirthData.namespace}`)
-    if (localKwirthData.deployment !== '')
-        console.log(`Detected own deployment: ${localKwirthData.deployment}`)
-    else
-        console.log(`No deployment detected. Kwirth is not running inside a cluster`)
+        console.log(`Enabled channels for this (kubernetes) run are: ${Array.from(runningInstance.channels.keys()).map(c => `'${c}'`).join(',')}`)
+        console.log(`Detected own namespace: ${localKwirthData.namespace}`)
+        if (localKwirthData.deployment !== '')
+            console.log(`Detected own deployment: ${localKwirthData.deployment}`)
+        else
+            console.log(`No deployment detected. Kwirth is not running inside a cluster`)
 
-    if (envForward) {
-        console.log('Will try to configure FORWARDing...')
-        if (runningInstance.kwirthData.inCluster) {
-            console.log('FORWARD for inCluster is being configured...')
-            if (envRootPath!=='') {
-                configureForward(runningInstance.clusterInfo, app)
+        if (envForward) {
+            console.log('Will try to configure FORWARDing...')
+            if (runningInstance.kwirthData.inCluster) {
+                console.log('FORWARD for inCluster is being configured...')
+                if (envRootPath!=='') {
+                    configureForward(runningInstance.clusterInfo, app)
+                }
+                else {
+                    console.log('FORWARD for kubernetes Kwirth cannot be started since Kwirth must have a root path specified (like /kwirth, for example). Kwirth cannot FORWARD if it is running on root (/) path')
+                }
+            }
+            else if (runningInstance.kwirthData.isElectron) {
+                console.log('FORWARD for electron should be implemented')
             }
             else {
-                console.log('FORWARD for kubernetes Kwirth cannot be started since Kwirth must have a root path specified (like "/kwirth", for example). Kwirth cannot FORWARD if it is running on root (/) path')
+                console.log('FORWARD not avialable (not inCluster and not isElectron)')
             }
         }
-        else if (runningInstance.kwirthData.isElectron) {
-            console.log('FORWARD for electron should be implemented')
-        }
         else {
-            console.log('FORWARD not avialable (not inCluster and not isElectron)')
+            console.log('No FORWARD mechanism will be available.')
         }
     }
-    else {
-        console.log('No FORWARD mechanism will be available.')
+    catch (err) {
+        console.log('Error preparing kubernetes')
+        console.log(err)
     }
 }
 
 const launchKubernetes = async (localKwirthData:KwirthData, expressApp:Application) : Promise<void> => {
-    console.log('Start Kubernetes Kwirth')
-    if (localKwirthData) {
-        console.log('Initial kwirthData', localKwirthData)
-        try {
-            let runningInstance = await createRunningInstance(undefined, localKwirthData)
-            await prepareKubernetes(localKwirthData, runningInstance)
-            runningInstances.push(runningInstance)
-            activateRunningInstance(runningInstance)
-            runKubernetes(runningInstance, expressApp)
+    try {
+        console.log('Start Kubernetes Kwirth')
+        if (localKwirthData) {
+            console.log('Initial kwirthData', localKwirthData)
+            try {
+                let runningInstance = await createRunningInstance(undefined, localKwirthData)
+                if (runningInstance) {
+                    await prepareKubernetes(localKwirthData, runningInstance)
+                    runningInstances.push(runningInstance)
+                    activateRunningInstance(runningInstance)
+                    await runKubernetes(runningInstance, expressApp)
+                }
+                else {
+                    console.log('Cannot get a running instance')
+                }
+            }
+            catch (err){
+                console.log(err)
+            }
         }
-        catch (err){
-            console.log(err)
+        else {
+            console.log('Cannot get kwirthdata, exiting...')
         }
     }
-    else {
-        console.log('Cannot get kwirthdata, exiting...')
+    catch (err) {
+        console.log('Error launching kubernetes')
+        console.log(err)
     }
 }
 
 const runDocker = async (localDockerApi:Docker, localClusterInfo:ClusterInfo, localKwirthData:KwirthData) : Promise<void> => {
-    let localSecrets = new DockerSecrets(localClusterInfo.coreApi, '/secrets')
-    let localConfigMaps = new DockerConfigMaps(localClusterInfo.coreApi, '/configmaps')
+    try {
+        let localSecrets = new DockerSecrets(localClusterInfo.coreApi, '/secrets')
+        let localConfigMaps = new DockerConfigMaps(localClusterInfo.coreApi, '/configmaps')
 
-    let lastVersion = await getLastKwirthVersion(localKwirthData)
-    if (lastVersion) localKwirthData.lastVersion = lastVersion
-    
-    let ka:ApiKeyApi = await  ApiKeyApi.create(localConfigMaps, envMasterKey)
-    app.use(`${envRootPath}/key`, ka.route)
-    let ca:ConfigApi = new ConfigApi(ka, localKwirthData, localClusterInfo)
-    ca.setDockerApi(localDockerApi)
-    app.use(`${envRootPath}/config`, ca.route)
-    let sa:StoreApi = new StoreApi(localConfigMaps, ka)
-    app.use(`${envRootPath}/store`, sa.route)
-    let ua:UserApi = new UserApi(localSecrets, ka)
-    app.use(`${envRootPath}/user`, ua.route)
-    let la:LoginApi = new LoginApi(localSecrets, localConfigMaps, ka)
-    app.use(`${envRootPath}/login`, la.route)
-    let mk:ManageKwirthApi = new ManageKwirthApi(localClusterInfo.coreApi, localClusterInfo.appsApi, localClusterInfo.batchApi, ka, localKwirthData)
-    app.use(`${envRootPath}/managekwirth`, mk.route)
-    let mc:ManageClusterApi = new ManageClusterApi(localClusterInfo.coreApi, localClusterInfo.appsApi, ka)
-    app.use(`${envRootPath}/managecluster`, mc.route)
+        let lastVersion = await getLastKwirthVersion(localKwirthData)
+        if (lastVersion) localKwirthData.lastVersion = lastVersion
+        
+        let result = await  ApiKeyApi.create(localConfigMaps, envMasterKey, isElectron)
+        if (!result) {
+            console.log('Could not get apikeyapi')
+            return
+        }
+        let ka:ApiKeyApi = result
+        app.use(`${envRootPath}/key`, ka.route)
+        let ca:ConfigApi = new ConfigApi(ka, localKwirthData, localClusterInfo)
+        ca.setDockerApi(localDockerApi)
+        app.use(`${envRootPath}/config`, ca.route)
+        let sa:StoreApi = new StoreApi(localConfigMaps, ka)
+        app.use(`${envRootPath}/store`, sa.route)
+        let ua:UserApi = new UserApi(localSecrets, ka)
+        app.use(`${envRootPath}/user`, ua.route)
+        let la:LoginApi = new LoginApi(localSecrets, localConfigMaps, ka)
+        app.use(`${envRootPath}/login`, la.route)
+        let mk:ManageKwirthApi = new ManageKwirthApi(localClusterInfo.coreApi, localClusterInfo.appsApi, localClusterInfo.batchApi, ka, localKwirthData)
+        app.use(`${envRootPath}/managekwirth`, mk.route)
+        let mc:ManageClusterApi = new ManageClusterApi(localClusterInfo.coreApi, localClusterInfo.appsApi, ka)
+        app.use(`${envRootPath}/managecluster`, mc.route)
 
-    // +++ we need to add this channels into a runninginstance
-    let localChannels:Map<string,IChannel> = new Map()
-    let logChannel = new LogChannel(localClusterInfo)
-    localChannels.set('log', logChannel)
+        // +++ we need to add this channels into a runninginstance
+        let localChannels:Map<string,IChannel> = new Map()
+        let logChannel = new LogChannel(localClusterInfo)
+        localChannels.set('log', logChannel)
+    }
+    catch (err) {
+        console.log('Error in runDocker')
+        console.log(err)
+    }
 }
 
 const launchDocker = async(localKwirthData:KwirthData) : Promise<void> => {
-    console.log('Start Docker Kwirth')
-    let localDockerApi =new Docker()
-    let localClusterInfo = new ClusterInfo()
-    localClusterInfo.nodes = new Map()
-    localClusterInfo.metrics = new MetricsTools(localClusterInfo, localKwirthData.isElectron, localKwirthData.inCluster)
-    localClusterInfo.metricsInterval = 15
-    localClusterInfo.token = ''
-    localClusterInfo.dockerApi = localDockerApi
-    localClusterInfo.dockerTools = new DockerTools(localClusterInfo)
-    localClusterInfo.name = 'docker'
-    localClusterInfo.type = EClusterType.DOCKER
-    localClusterInfo.flavour = 'docker'
+    try {
+        console.log('Start Docker Kwirth')
+        let localDockerApi =new Docker()
+        let localClusterInfo = new ClusterInfo()
+        localClusterInfo.nodes = new Map()
+        localClusterInfo.metrics = new MetricsTools(localClusterInfo, localKwirthData.isElectron, localKwirthData.inCluster)
+        localClusterInfo.metricsInterval = 15
+        localClusterInfo.token = ''
+        localClusterInfo.dockerApi = localDockerApi
+        localClusterInfo.dockerTools = new DockerTools(localClusterInfo)
+        localClusterInfo.name = 'docker'
+        localClusterInfo.type = EClusterType.DOCKER
+        localClusterInfo.flavour = 'docker'
 
-    await runDocker(localDockerApi, localClusterInfo, localKwirthData)
-    let localChannels = new Map()
-    console.log(`Enabled channels for this (docker) run are: ${Array.from(localChannels.keys()).map(c => `'${c}'`).join(',')}`)
+        await runDocker(localDockerApi, localClusterInfo, localKwirthData)
+        let localChannels = new Map()
+        console.log(`Enabled channels for this (docker) run are: ${Array.from(localChannels.keys()).map(c => `'${c}'`).join(',')}`)
+    }
+    catch (err) {
+        console.log('Error launching docker')
+        console.log(err)
+    }
 }
 
 const launchElectron = async (localKwirthData:KwirthData, expressApp:Application) : Promise<void> => {
-    console.log('Start Electron Kwirth')
-    if (localKwirthData) {
-        console.log('Initial kwirthData', localKwirthData)
-        try {
-            expressApp.get('/electron/kubeconfig', (req:Request,res:Response) => {
-                try {
-                    let kc = new KubeConfig()
-                    kc.loadFromDefault()
-                    let myContexts = JSON.parse(JSON.stringify(kc.contexts))
-                    myContexts.forEach( (context:any) => {
-                        const cluster = kc.clusters.find(c => c.name === context.cluster)
-                        if (cluster) context.server = cluster.server
-                    })
-                    res.status(200).json(myContexts)
-                }
-                catch (err) {
-                    res.status(500).json({})
-                    console.log(err)
-                }
-            })
-            expressApp.delete('/electron/kubeconfig', (req:Request,res:Response) => {
-                try {
-                    let contextName = req.body.context
-                    if (contextName) {
-                        let ri = runningInstances.find(r => r.electronContext === contextName)
-                        if (ri) {
-                            // +++ remove runninginstance
-                            res.status(200).json({})
+    try {
+        console.log('Start Electron Kwirth')
+        if (localKwirthData) {
+            console.log('Initial kwirthData', localKwirthData)
+            try {
+                expressApp.get('/electron/kubeconfig', (req:Request,res:Response) => {
+                    try {
+                        let kc = new KubeConfig()
+                        kc.loadFromDefault()
+                        let myContexts = JSON.parse(JSON.stringify(kc.contexts))
+                        myContexts.forEach( (context:any) => {
+                            const cluster = kc.clusters.find(c => c.name === context.cluster)
+                            if (cluster) context.server = cluster.server
+                        })
+                        res.status(200).json(myContexts)
+                    }
+                    catch (err) {
+                        res.status(500).json({})
+                        console.log(err)
+                    }
+                })
+                expressApp.delete('/electron/kubeconfig', (req:Request,res:Response) => {
+                    try {
+                        let contextName = req.body.context
+                        if (contextName) {
+                            let ri = runningInstances.find(r => r.electronContext === contextName)
+                            if (ri) {
+                                // +++ remove runninginstance
+                                res.status(200).json({})
+                            }
+                            else {
+                                res.status(404).json({})
+                            }
                         }
                         else {
                             res.status(404).json({})
                         }
                     }
-                    else {
-                        res.status(404).json({})
+                    catch (err) {
+                        res.status(500).json({})
+                        console.log(err)
                     }
-                }
-                catch (err) {
-                    res.status(500).json({})
-                    console.log(err)
-                }
-            })
-            expressApp.post('/electron/kubeconfig', async (req:Request, res:Response) => {
-                try {
-                    let contextName:string = req.body.context
-                    console.log('Activating context for electron use:', contextName)
-                    if (contextName) {
-                        let ri = runningInstances.find(r => r.electronContext === contextName)
-                        if (ri) {
-                            console.log('Already activated', contextName)
-                            activateRunningInstance(ri)
-                            console.log('*******',ri.apiKeyApi?.apiKeys)
-                            res.status(200).json(ri.apiKeyApi?.apiKeys[0])  // we just reuse the first inElectron ApiKey (there should be no other kind of Api Keysstsored)
+                })
+                expressApp.post('/electron/kubeconfig', async (req:Request, res:Response) => {
+                    try {
+                        let contextName:string = req.body.context
+                        console.log('Activating context for electron use:', contextName)
+                        if (contextName) {
+                            let ri = runningInstances.find(r => r.electronContext === contextName)
+                            if (ri) {
+                                console.log('Already activated', contextName)
+                                activateRunningInstance(ri)
+                                res.status(200).json(ri.apiKeyApi?.apiKeys[0])  // we just reuse the first inElectron ApiKey (there should be no other kind of Api Keysstsored)
+                            }
+                            else {
+                                //+++ el id de la RI es correcto o tiene que se 'mas unico'? llega con contextName??
+                                let runningInstance = await createRunningInstance(contextName, localKwirthData) 
+                                if (runningInstance) {
+                                    runningInstance.electronContext = contextName
+                                    await prepareKubernetes(localKwirthData, runningInstance)
+                                    runningInstances.push(runningInstance)
+                                    activateRunningInstance(runningInstance)
+                                    await runKubernetes(runningInstance, expressApp)
+
+                                    console.log('Activating context', contextName)
+                                    // +++ we should be using a common function for creating api key
+                                    let description = 'Volatile key for electron'
+                                    let expire:number = Date.now() + 100000000000000
+                                    let days:number = 1
+                                    let accessKey:AccessKey = { id: uuid(), type: 'volatile', resources: 'cluster::::' }
+                                    let apiKey:ApiKey={ accessKey, description, expire, days }
+                                    if (runningInstance.apiKeyApi) 
+                                        runningInstance.apiKeyApi.apiKeys.push(apiKey)
+                                    else
+                                        throw new Error('no apikeyapis')
+                                    res.status(200).json({ accessKey })
+                                }
+                                else {
+                                    console.log('Could not get a running instance')
+                                    res.status(400).json({})
+                                }
+                            }
                         }
                         else {
-                            //+++ el id de la RI es correcto o tiene que se "mas unico"? llega con contextName??
-                            let runningInstance = await createRunningInstance(contextName, localKwirthData) 
-                            runningInstance.electronContext = contextName
-                            await prepareKubernetes(localKwirthData, runningInstance)
-                            runningInstances.push(runningInstance)
-                            activateRunningInstance(runningInstance)
-                            await runKubernetes(runningInstance, expressApp)
-
-                            console.log('Activating context', contextName)
-                            // +++ we should be using a common function for creating api key
-                            let description = 'Volatile key for electron'
-                            let expire:number = Date.now() + 100000000000000
-                            let days:number = 1
-                            let accessKey:AccessKey = { id: uuid(), type: 'volatile', resources: 'cluster::::' }
-                            let apiKey:ApiKey={ accessKey, description, expire, days }
-                            if (runningInstance.apiKeyApi) 
-                                runningInstance.apiKeyApi.apiKeys.push(apiKey)
-                            else
-                                throw new Error('no apikeyapis')
-                            res.status(200).json({ accessKey })
+                            res.status(500).json({error: 'NotFound'})
                         }
                     }
-                    else {
-                        res.status(500).json({error: 'NotFound'})
+                    catch (err) {
+                        res.status(500).json({})
+                        console.log(err)
                     }
-                }
-                catch (err) {
-                    res.status(500).json({})
-                    console.log(err)
-                }
-            })
+                })
+            }
+            catch (err){
+                console.log(err)
+            }
         }
-        catch (err){
-            console.log(err)
-        }
+        else {
+            console.log('Cannot get kwirthdata, exiting...')
+        }    
     }
-    else {
-        console.log('Cannot get kwirthdata, exiting...')
-    }    
+    catch (err) {
+        console.log('Error launching electron')
+        console.log(err)
+    }
 }
 
 const startNodeTasks = () => {
@@ -1460,109 +1611,121 @@ const configureForward = (localClusterInfo:ClusterInfo, expressApp:Application) 
             return dynamicProxy(req, res, next)
         }
         if (req.url.startsWith(`${envRootPath}/port-forward/pod`)) {
-            let namespace=req.url.split('/')[4]
-            let podname=req.url.split('/')[5]
-            let port=req.url.split('/')[6]
-            console.log(`[PROXY] Launch port forward for pod `, namespace, '/', podname)
-            let ip = await getPodIp(localClusterInfo.coreApi, namespace, podname)
-            console.log(`[PROXY] IP `, ip)
-            res.cookie('x-kwirth-forward', ip+':'+port, { path: '/' })
-            res.cookie('x-kwirth-refresh', '1', { path: '/' })
-            res.redirect('/')
-            return
+            try {
+                let namespace=req.url.split('/')[4]
+                let podname=req.url.split('/')[5]
+                let port=req.url.split('/')[6]
+                console.log(`[PROXY] Launch port forward for pod `, namespace, '/', podname)
+                let ip = await getPodIp(localClusterInfo.coreApi, namespace, podname)
+                console.log(`[PROXY] IP `, ip)
+                res.cookie('x-kwirth-forward', ip+':'+port, { path: '/' })
+                res.cookie('x-kwirth-refresh', '1', { path: '/' })
+                res.redirect('/')
+                return
+            }
+            catch (err) {
+                console.log('Error processing port-forward')
+                console.log(err)
+            }
         }
         next()
     })
 }
 
 const createHttpServers = (localKwirthData:KwirthData, expressApp:Application, instances:IRunningInstance[], localProcessClientMessage:(webSocket: WebSocket, message: string, ri:IRunningInstance) => Promise<void>) => {
-    // create HTTP and WS servers
-    console.log('Creating HTTP server...')
-    const httpServer = http.createServer(expressApp)
-    console.log('Creating WS server...')
-    const wsServer = new WebSocketServer({ server: httpServer, skipUTF8Validation:true  })
+    try {
+        // create HTTP and WS servers
+        console.log('Creating HTTP server...')
+        const httpServer = http.createServer(expressApp)
+        console.log('Creating WS server...')
+        const wsServer = new WebSocketServer({ server: httpServer, skipUTF8Validation:true  })
 
-    wsServer.on('connection', (webSocket:WebSocket, req:IncomingMessage) => {
-        const ipHeader = req.headers['x-forwarded-for']
-        const ip = (Array.isArray(ipHeader) ? ipHeader[0] : ipHeader || req.socket.remoteAddress || '').split(',')[0].trim()
-        console.log(`Client connected from ${ip}`)
+        wsServer.on('connection', (webSocket:WebSocket, req:IncomingMessage) => {
+            const ipHeader = req.headers['x-forwarded-for']
+            const ip = (Array.isArray(ipHeader) ? ipHeader[0] : ipHeader || req.socket.remoteAddress || '').split(',')[0].trim()
+            console.log(`Client connected from ${ip}`)
 
-        if (req.url) {
-            // This block precesses web socket connections for channels (they are not the websocket connecitons for kwrith itself)
-            const fullUrl = new URL(req.url, `http://${req.headers.host}`)
-            const challenge = fullUrl.searchParams.get('challenge')
-            if (challenge) {
-                let ri = instances.find(r => r.active)
-                if (!ri) {
-                    console.log('No running Instance found on WS connection')
-                    return
-                }
-                let websocketRequestIndex = ri.clusterInfo.pendingWebsocket.findIndex(i => i.challenge === challenge)
-                if (websocketRequestIndex>=0) {
-                    let websocketRequest = ri.clusterInfo.pendingWebsocket[websocketRequestIndex]
-                    console.log('Websocket request received for channel', websocketRequest.channel)
-                    if (!ri.channels.has(websocketRequest.channel)) {
-                        webSocket.close()
-                        console.log('Channel not found', websocketRequest.channel)
+            if (req.url) {
+                // This block precesses web socket connections for channels (they are not the websocket connecitons for kwrith itself)
+                const fullUrl = new URL(req.url, `http://${req.headers.host}`)
+                const challenge = fullUrl.searchParams.get('challenge')
+                if (challenge) {
+                    let ri = instances.find(r => r.active)
+                    if (!ri) {
+                        console.log('No running Instance found on WS connection')
                         return
                     }
-                    let channel = ri.channels.get(websocketRequest.channel)!
-                    console.log('Websocket connection request routed to', websocketRequest.channel)
-                    channel.websocketRequest(webSocket, websocketRequest.instance, websocketRequest.instanceConfig)
-                    ri.clusterInfo.pendingWebsocket.splice(websocketRequestIndex,1)
+                    let websocketRequestIndex = ri.clusterInfo.pendingWebsocket.findIndex(i => i.challenge === challenge)
+                    if (websocketRequestIndex>=0) {
+                        let websocketRequest = ri.clusterInfo.pendingWebsocket[websocketRequestIndex]
+                        console.log('Websocket request received for channel', websocketRequest.channel)
+                        if (!ri.channels.has(websocketRequest.channel)) {
+                            webSocket.close()
+                            console.log('Channel not found', websocketRequest.channel)
+                            return
+                        }
+                        let channel = ri.channels.get(websocketRequest.channel)!
+                        console.log('Websocket connection request routed to', websocketRequest.channel)
+                        channel.websocketRequest(webSocket, websocketRequest.instance, websocketRequest.instanceConfig)
+                        ri.clusterInfo.pendingWebsocket.splice(websocketRequestIndex,1)
+                        return
+                    }
+                    else {
+                        console.log('Instance not found for completing webscoket request:', challenge)
+                        webSocket.close()
+                        return
+                    }
+                }
+            }
+
+            webSocket.onmessage = (event) => {
+                let ri = instances.find(r => r.active)
+                if (!ri) {
+                    console.log('No running Instance found on WS message')
                     return
                 }
-                else {
-                    console.log('Instance not found for completing webscoket request:', challenge)
-                    webSocket.close()
+                localProcessClientMessage(webSocket, event.data, ri)
+            }
+
+            webSocket.onclose = () => {
+                // we do not remove connections for the client to reconnect. previous code was:
+                // for (var channel of channels.keys()) {
+                //     channels.get(channel)?.removeConnection(ws)
+                // }
+                console.log('Client disconnected')
+                let ri = instances.find(r => r.active)
+                if (!ri) {
+                    console.log('No running Instance found on WS close')
                     return
                 }
-            }
-        }
-
-        webSocket.onmessage = (event) => {
-            let ri = instances.find(r => r.active)
-            if (!ri) {
-                console.log('No running Instance found on WS message')
-                return
-            }
-            localProcessClientMessage(webSocket, event.data, ri)
-        }
-
-        webSocket.onclose = () => {
-            // we do not remove connections for the client to reconnect. previous code was:
-            // for (var channel of channels.keys()) {
-            //     channels.get(channel)?.removeConnection(ws)
-            // }
-            console.log('Client disconnected')
-            let ri = instances.find(r => r.active)
-            if (!ri) {
-                console.log('No running Instance found on WS close')
-                return
-            }
-            for (let channel of ri.channels.values()) {
-                if (channel.containsConnection(webSocket)) {
-                    console.log(`Connection from IP ${ip} to channel ${channel.getChannelData().id} has been interrupted.`)
+                for (let channel of ri.channels.values()) {
+                    if (channel.containsConnection(webSocket)) {
+                        console.log(`Connection from IP ${ip} to channel ${channel.getChannelData().id} has been interrupted.`)
+                    }
+                }
+                if (isElectron) {
+                    // +++ if session is electron, we remove everything and stop everything
                 }
             }
-            if (isElectron) {
-                // +++ if session is electron, we remove everything and stop everything
-            }
-        }
-    })
+        })
 
-    console.log('Listening...')
-    httpServer.listen(PORT, () => {
-        console.log(`Server is listening on port ${PORT}`)
-        //console.log(`Context being used: ${ri.clusterInfo.kubeConfig.currentContext}`)
-        if (localKwirthData.inCluster) {
-            console.log(`Kwirth is running INSIDE cluster`)
-        }
-        else {
-            //console.log(`Cluster name (according to kubeconfig context): ${ri.clusterInfo.kubeConfig.getCluster(ri.clusterInfo.kubeConfig.currentContext)?.name}.`)
-            console.log(`Kwirth is running OUTSIDE a cluster`)
-        }
-    })
+        console.log('Listening...')
+        httpServer.listen(PORT, () => {
+            console.log(`Server is listening on port ${PORT}`)
+            //console.log(`Context being used: ${ri.clusterInfo.kubeConfig.currentContext}`)
+            if (localKwirthData.inCluster) {
+                console.log(`Kwirth is running INSIDE cluster`)
+            }
+            else {
+                //console.log(`Cluster name (according to kubeconfig context): ${ri.clusterInfo.kubeConfig.getCluster(ri.clusterInfo.kubeConfig.currentContext)?.name}.`)
+                console.log(`Kwirth is running OUTSIDE a cluster`)
+            }
+        })
+    }
+    catch (err) {
+        console.log('Error creatinh HTTP/WS server')
+        console.log(err)
+    }
 }
 
 
@@ -1609,7 +1772,13 @@ getExecutionEnvironment().then( async (exenv:string) => {
             }
             break
         case 'kubernetes':
-            kwirthData = await getKubernetesKwirthData()
+            let kd = await getKubernetesKwirthData()
+            if (kd)
+                kwirthData = kd
+            else {
+                console.log('Cannot get KwirthData. Exiting')
+                process.exit(1)
+            }
             break
         default:
             console.log(`Unsupported execution environment '${exenv}'. Exiting...`)
@@ -1622,40 +1791,21 @@ getExecutionEnvironment().then( async (exenv:string) => {
 
     // serve front
     console.log(`SPA is available at: ${envRootPath}/front`)
-    // app.get(`/`, (_req:Request,res:Response) => { res.redirect(`${envRootPath}/front`) })
-    // app.get(`${envRootPath}`, (_req:Request,res:Response) => { res.redirect(`${envRootPath}/front`) })
-
-    // app.use(`${envRootPath}`, (req, res, next) => {
-    //     // Buscamos cuál de las instancias tiene el flag 'active'
-    //     const activeRI = runningInstances.find(r => r.active);
-
-    //     if (activeRI && activeRI.router) {
-    //         // Enrutamos la petición al router que tiene las APIs con los datos de ESTA instancia
-    //         // Express entrará en ri.mainRouter y buscará si coincide con /key, /config, etc.
-    //         activeRI.router(req, res, next);
-    //     } else {
-    //         // Si no hay instancia activa o no tiene rutas, pasamos al siguiente (404)
-    //         next();
-    //     }
-    // });
-    // app.get(`/`, (_req:Request,res:Response) => { res.redirect(`${envRootPath}/front`) })
-    // app.get(`${envRootPath}`, (_req:Request,res:Response) => { res.redirect(`${envRootPath}/front`) })
-
-    app.get('/', (req, res) => res.redirect('/front'));
+    app.get(`${envRootPath}`, (req, res) => res.redirect(`${envRootPath}/front`))
     app.use(`${envRootPath}`, (req, res, next) => {
-        if (req.path.startsWith('/front') || req.path === '/') return next()
+        if (req.path.startsWith(`${envRootPath}/front`) || req.path === '/') return next()
         if (isElectron && req.path.startsWith('/electron/')) return next()
-        const activeRI = runningInstances.find(r => r.active)
 
-        if (activeRI && activeRI.router) {
+        const activeRI = runningInstances.find(r => r.active)
+        if (activeRI && activeRI.router)
             return activeRI.router(req, res, next)
-        }
         else
-            return res.status(503).send("No active instance available")
+            return res.status(503).send('No active instance available')
     })
-    app.use('/front', express.static('./front'))
+    app.use(`${envRootPath}/front/`, express.static('./front'))
 
     if (kwirthData.inCluster) {
+        console.log('Configuring healthz endpoint for Kubernetes')
         app.get(`/healthz`, (_req:Request,res:Response) => { res.status(200).send() })
     }
 
@@ -1665,10 +1815,8 @@ getExecutionEnvironment().then( async (exenv:string) => {
             console.error('Error reading folder data:', err)
             return
         }
-        console.log("File list at project root:",archivos.join(', '))
+        console.log('File list at project root when launching environment:', archivos.join(', '))
     })
-    app.use(`${envRootPath}/front`, express.static('./front'))
-
 
     createHttpServers(kwirthData, app, runningInstances, processClientMessage)
 

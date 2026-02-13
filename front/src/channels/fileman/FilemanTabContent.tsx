@@ -37,8 +37,8 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     let icons = new Map()
     icons.set('namespace', { open:<IconNamespace size={18}/>, closed:<IconNamespace size={18}/>, grid:<IconNamespace size={50}/>, list:<IconNamespace size={18}/>, default:<IconNamespace size={18}/> })
-    icons.set('pod', { open:<IconPod height={18}/>, closed:<IconPod height={18}/>, grid:<IconPod height={50}/>, list:<IconPod height={18}/>, default:<IconPod height={18}/> })
-    icons.set('container', { open:<IconContainer/>, closed:<IconContainer/>, grid:<IconContainer height={44}/>, list:<IconContainer height={16}/>, default:<IconContainer height={16}/> })
+    icons.set('pod', { open:<IconPod size={18}/>, closed:<IconPod size={18}/>, grid:<IconPod size={50}/>, list:<IconPod size={18}/>, default:<IconPod size={18}/> })
+    icons.set('container', { open:<IconContainer size={18}/>, closed:<IconContainer size={18}/>, grid:<IconContainer size={44}/>, list:<IconContainer size={16}/>, default:<IconContainer size={16}/> })
 
     let actions = new Map()
     actions.set('namespace', [
@@ -114,8 +114,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             const url = `${props.channelObject.clusterUrl}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
             
             try {
-                // +++ CAN THIS FETCH BE CONFIGURED WITH addGetAuthorization INSTEAD OF THIS?
-                const response = await fetch(url, { headers: { 'Authorization': 'Bearer '+ props.channelObject.accessString, 'X-Kwirth-App': 'true' } })
+                const response = await fetch(url, addGetAuthorization(props.channelObject.accessString || 'have-no-access-string'))
 
                 if (response.ok) {
                     const blob = await response.blob()
@@ -138,7 +137,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             catch (error) {
                 console.error(`Error downloading file: ${file.path}`, error)
                 let uiConfig = props.channelObject.config as IFilemanConfig
-                uiConfig.notify(props.channelObject.channel, ENotifyLevel.ERROR, `Error downloading file ${file.path}: ${error}`)
+                uiConfig.notify(props.channelObject.channel.channelId, ENotifyLevel.ERROR, `Error downloading file ${file.path}: ${error}`)
             }
         }
     }
@@ -153,7 +152,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const onError = (error: IError, file: IFileObject) => {
         let uiConfig = props.channelObject.config as IFilemanConfig
-        uiConfig.notify(props.channelObject.channel, ENotifyLevel.ERROR, error.message)
+        uiConfig.notify(props.channelObject.channel.channelId, ENotifyLevel.ERROR, error.message)
     }
 
     const onRename	= (file: IFileObject, newName: string) => {
@@ -222,10 +221,18 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         filemanData.currentPath = folder
         folder +='/'
         let level = folder.split('/').length - 1
-        if (level > 2) getLocalDir(folder)
+        if (level > 3) getLocalDir(folder)
     }
 
     const onFileUploading = (file: IFileObject, parentFolder: IFileObject) => { 
+        return { filename: filemanData.currentPath + '/' + file.name }
+    }
+
+    const onFileUploaded = () => { 
+        return 
+    }
+
+    const onFileUploadError = (file: IFileObject, parentFolder: IFileObject) => { 
         return { filename: filemanData.currentPath + '/' + file.name }
     }
 
@@ -246,6 +253,8 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     onFolderChange={onFolderChange}
                     onRefresh={onRefresh}
                     onFileUploading={onFileUploading}
+                    onFileUploaded={onFileUploaded}
+                    onFileUploadError={onFileUploadError}
                     onDownload={onDownload}
                     permissions={permissions}
                     fileUploadConfig={fileUploadConfig}

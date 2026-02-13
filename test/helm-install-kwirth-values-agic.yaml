@@ -1,0 +1,19 @@
+kwirth:
+  config:
+    channelAlert: "true"
+    channelEcho: "false"
+    channelLog: "true"
+    channelMetrics: "true"
+    channelOps: "true"
+    channelTrivy: "false"
+    rootpath: /kwirth
+  image: jfvilasoutlook/kwirth:develop
+  ingress:
+    enabled: true
+    controller: agic
+    agic:
+      privateip: true
+    nginx:
+      tls: false
+      secret: secreto
+    hostname: azurehost

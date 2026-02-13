@@ -39,7 +39,8 @@ class MetricsChannel implements IChannel {
             events: false,
             sources: [ ClusterTypeEnum.KUBERNETES ],
             endpoints: [],
-            websocket: false
+            websocket: false,
+            cluster: false
         }
     }
 

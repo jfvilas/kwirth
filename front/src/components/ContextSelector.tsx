@@ -1,5 +1,5 @@
 import React, { useContext, useRef, useState } from 'react'
-import { Checkbox, Backdrop, Box, Button, CircularProgress, Dialog, DialogContent, DialogTitle, FormControlLabel, IconButton, List, ListItemButton, Stack, Tab, Tabs, TextField, Typography} from '@mui/material'
+import { Backdrop, Box, Button, Checkbox, CircularProgress, Dialog, DialogContent, DialogTitle, FormControlLabel, IconButton, List, ListItemButton, Stack, Tab, Tabs, TextField, Typography} from '@mui/material'
 import { SessionContext, SessionContextType } from '../model/SessionContext'
 import { useAsync } from 'react-use'
 import { InputBox } from '../tools/FrontTools'
@@ -8,8 +8,8 @@ import { AccessKey } from '@jfvilas/kwirth-common'
 
 interface IProps {
     isElectron: boolean
-    onClusterSelectLocal: (id:string, accessKey:AccessKey) => void,
-    onClusterSelectRemote: (id:string, url:string) => void
+    onContextSelectorLocal: (id:string, accessKey:AccessKey) => void,
+    onContextSelectorRemote: (id:string, url:string) => void
 }
 
 interface IContext {
@@ -36,40 +36,43 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
     const [filterRemote, setFilterRemote] = useState('')
     const intId = useRef<any>()
 
-    const updateStatus = (
+    const updateContextsStatus = async (
         contexts: IContext[], 
-        onUpdate: (updatedCtx: IContext) => void) => {
-            contexts.forEach(async (ctx) => {
-                try {
-                    const isAvailable = await (window as any).kwirth.kubeApiAvailable(ctx.server)
-                    onUpdate({ ...ctx, status: isAvailable })
-                }
-                catch (error) {
-                    onUpdate({ ...ctx, status: false })
-                }
-            })
-        }
+        onUpdate: (updatedCtx: IContext) => void
+    ) => {
+        const promises = contexts.map(async (context) => {
+            try {
+                const isAvailable = await (window as any).kwirth.kubeApiAvailable(context.server);
+                onUpdate({ ...context, status: isAvailable })
+            }
+            catch (error) {
+                onUpdate({ ...context, status: false })
+            }
+        })
 
-    const updateAll = (contexts:IContext[]) =>  {
-        updateStatus(contexts, (updatedCtx: IContext) => {
+        await Promise.allSettled(promises)
+    }
+
+    const update = (contexts:IContext[]) =>  {
+        updateContextsStatus(contexts, (updatedCtx: IContext) => {
             setLocalContexts(prevContexts => {
                 return prevContexts.map(c => {
-                    if (c.name === updatedCtx.name && c.status !== updatedCtx.status) return { ...c, status: updatedCtx.status }
-                    return c
+                    if (c.name === updatedCtx.name && c.status !== updatedCtx.status)
+                        return { ...c, status: updatedCtx.status }
+                    else
+                        return c
                 })
             })
         })
     }
 
     useAsync(async () => {
+        let resp = await fetch(backendUrl + '/electron/kubeconfig')
+        let contexts = await resp.json() as IContext[]
 
-        if (props.isElectron) {
-            let resp = await fetch(backendUrl + '/electron/kubeconfig')
-            let contexts = await resp.json() as IContext[]            
-            setLocalContexts(contexts)
-            updateAll(contexts)
-            intId.current = setInterval (updateAll, 5000, contexts)
-        }
+        setLocalContexts(contexts)
+        update(contexts)
+        if (props.isElectron) intId.current = setInterval (update, 5000, contexts)
 
         let rc = localStorage.getItem('remoteClusters')
         if (rc) setRemoteClusters(JSON.parse(rc))
@@ -114,7 +117,7 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
                     sc = resp2.status
                 } while (sc!==200)
                 console.log('name', name)
-                props.onClusterSelectLocal(name, jresp.accessKey as AccessKey)
+                props.onContextSelectorLocal(name, jresp.accessKey as AccessKey)
             }
             else {
                 console.log('ERROR')
@@ -137,13 +140,13 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
                 
                 { selectedTab === 0 &&
                     <Stack direction={'column'} sx={{height:300, overflowY:'auto' }}>
-                        <Stack direction={'row'} sx={{width:'100%'}} alignItems={'baseline'}>
+                        <Stack direction={'row'} sx={{width:'100%'}}>
                             <TextField label={'Filter'} value={filterLocal} onChange={(e) => setFilterLocal(e.target.value)} sx={{width:'100%', ml:2, mr:2}} variant={'standard'}></TextField>
                             <FormControlLabel control={<Checkbox />} checked={showActive} onChange={() => setShowActive(!showActive)} label={'Show\u00a0only\u00a0active'}/>
                         </Stack>
                         <List>
                         {
-                            localContexts.filter(c => c.cluster.includes(filterLocal)).filter(c => true || !showActive || (showActive && c.status)).map(c => 
+                            localContexts.filter(c => c.cluster.includes(filterLocal)).filter(c => !showActive || (showActive && c.status)).map(c => 
                                 <ListItemButton key={c.cluster} onClick={() => selectLocal(c.cluster)}>
                                     <Typography>{c.cluster.substring(0,50)+(c.cluster.length>60?'...':'')}</Typography>
                                     <Typography flexGrow={1}></Typography>
@@ -162,7 +165,7 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
                         {
                             remoteClusters.filter(c => c.name.includes(filterRemote)).map(c => 
                                 <Stack key={c.name} direction={'row'} sx={{wodth:'100%'}}>
-                                    <ListItemButton onClick={() => props.onClusterSelectRemote(c.name, c.url)}>
+                                    <ListItemButton onClick={() => props.onContextSelectorRemote(c.name, c.url)}>
                                         <Typography>{c.name}</Typography>
                                     </ListItemButton>
                                     <IconButton onClick={() => deleteRemoteCluster(c.name)}>

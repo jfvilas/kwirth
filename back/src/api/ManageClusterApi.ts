@@ -46,12 +46,7 @@ export class ManageClusterApi {
                     let data:string=req.query.data? (req.query.data as string) : 'id'  // transitional
                     switch(object) {
                         case 'pod':
-                            //let podListResp:{response:IncomingMessage,body:V1PodList}
                             let podListResp:V1PodList
-                            // if (namespace) 
-                            //     podListResp = await this.coreApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector)
-                            // else
-                            //     podListResp = await this.coreApi.listPodForAllNamespaces(undefined, undefined, undefined, labelSelector)
                             if (namespace) 
                                 podListResp = await this.coreApi.listNamespacedPod( { namespace, labelSelector })
                             else
@@ -78,11 +73,6 @@ export class ManageClusterApi {
                             }
                             break
                         case 'deployment':
-                            // var depListResp:{response:IncomingMessage,body:V1DeploymentList}
-                            // if (namespace) 
-                            //     depListResp = await this.appsApi.listNamespacedDeployment(namespace, undefined, undefined, undefined, undefined, labelSelector)
-                            // else
-                            //     depListResp = await this.appsApi.listDeploymentForAllNamespaces(undefined, undefined, undefined, labelSelector)
                             var depListResp:V1DeploymentList
                             if (namespace) 
                                 depListResp = await this.appsApi.listNamespacedDeployment({ namespace, labelSelector })

@@ -34,9 +34,8 @@ export class ServiceAccountToken {
 
         // we now create it
         try {
-            let sec = await this.coreApi.createNamespacedSecret({namespace, body:secret})
+            await this.coreApi.createNamespacedSecret({namespace, body:secret})
             console.log('SA token created')
-            console.log(sec)
         }
         catch (err:any) {
             console.log('Error creating SA token')

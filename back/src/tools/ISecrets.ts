@@ -1,4 +1,4 @@
 export interface ISecrets {
-    write: (name:string, content:{}) => void
-    read: (name:string) => any
+    write: (name:string, content:{}) => Promise<void>
+    read: (name:string) => Promise<any>
 }

@@ -55,7 +55,7 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     channelObject: {
       clusterName: '$cluster',
       view: EInstanceConfigView.NAMESPACE,
-      namespace: '$all',
+      namespace: '*all',
       group: '',
       pod: '',
       container: ''
@@ -68,8 +68,8 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     channelObject: {
       clusterName: '$cluster',
       view: EInstanceConfigView.GROUP,
-      namespace: '$all',
-      group: '$all',
+      namespace: '*all',
+      group: '*all',
       pod: '',
       container: ''
     }
@@ -81,9 +81,9 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     channelObject: {
       clusterName: '$cluster',
       view: EInstanceConfigView.POD,
-      namespace: '$all',
-      group: '$all',
-      pod: '$all',
+      namespace: '*all',
+      group: '*all',
+      pod: '*all',
       container: ''
     }
   },
@@ -94,10 +94,10 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     channelObject: {
       clusterName: '$cluster',
       view: EInstanceConfigView.CONTAINER,
-      namespace: '$all',
-      group: '$all',
-      pod: '$all',
-      container: '$all'
+      namespace: '*all',
+      group: '*all',
+      pod: '*all',
+      container: '*all'
     }
   }
 ]

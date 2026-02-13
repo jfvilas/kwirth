@@ -1,10 +1,16 @@
-import { ISpace } from '@jfvilas/react-file-manager'
-import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal } from '@mui/icons-material'
+import { IFileObject, ISpace } from '@jfvilas/react-file-manager'
+import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, FolderCopy, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal } from '@mui/icons-material'
 import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from '../icons/Icons'
+
+
+// const nameProcessor = (name:string) => {
+//     if (name.includes(':')) return name.split(':')[0]
+//     return name
+// }
 
 const spaces = new Map<string, ISpace>()
 
-const menu = [
+const menu:IFileObject[] = [
     {   name: 'Overview',
         isDirectory: true,
         path: '/overview',
@@ -18,7 +24,8 @@ const menu = [
     {   name: 'Cluster',
         isDirectory: true,
         path: '/cluster',
-        class: 'classcluster'
+        class: 'classcluster',
+        layout: 'own',
     },
     {   name: 'Overview',
         isDirectory: true,
@@ -38,6 +45,12 @@ const menu = [
         class: 'classNamespace',
         children: 'Namespace'
     },
+    {   name: 'API Resources',
+        isDirectory: true,
+        path: '/cluster/V1APIResource',
+        class: 'classV1APIResource',
+        children: 'V1APIResource'
+    },
     {   name: 'Component status',
         isDirectory: true,
         path: '/cluster/ComponentStatus',
@@ -51,7 +64,8 @@ const menu = [
     {   name: 'Workload',
         isDirectory: true,
         path: '/workload',
-        class: 'classworkload'
+        class: 'classworkload',
+        layout: 'own',
     },
     {   name: 'Overview',
         isDirectory: true,
@@ -124,7 +138,8 @@ const menu = [
     {   name: 'Config',
         isDirectory: true,
         path: '/config',
-        class: 'classconfig'
+        class: 'classconfig',
+        layout: 'own',
     },
     {   name: 'Overview',
         isDirectory: true,
@@ -211,7 +226,8 @@ const menu = [
     {   name: 'Network',
         isDirectory: true,
         path: '/network',
-        class: 'classnetwork'
+        class: 'classnetwork',
+        layout: 'own',
     },
     {   name: 'Overview',
         isDirectory: true,
@@ -265,7 +281,8 @@ const menu = [
     {   name: 'Storage',
         isDirectory: true,
         path: '/storage',
-        class: 'classstorage'
+        class: 'classstorage',
+        layout: 'own',
     },
     {   name: 'Overview',
         isDirectory: true,
@@ -322,7 +339,8 @@ const menu = [
     {   name: 'Access',
         isDirectory: true,
         path: '/access',
-        class: 'classaccess'
+        class: 'classaccess',
+        layout: 'own',
     },
     {   name: 'Service accounts',
         isDirectory: true,
@@ -362,7 +380,8 @@ const menu = [
     {   name: 'Custom',
         isDirectory: true,
         path: '/custom',
-        class: 'classcustom'
+        class: 'classcustom',
+        layout: 'own',
     },
     {   name: 'Definitions',
         isDirectory: true,
@@ -380,7 +399,7 @@ const menu = [
     },
 ]
 
-// General  (these empty classes are needed for showing icons)
+// General  (these empty classes are needed for showing icons on the navigation pane, they are referenced in the "icons" map)
 spaces.set('classmenu', {})
 spaces.set('classclusteroverview', 
     {
@@ -448,6 +467,7 @@ spaces.set('Service',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -456,6 +476,7 @@ spaces.set('Service',
                 source: 'type',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -464,6 +485,7 @@ spaces.set('Service',
                 source: 'clusterIp',
                 format: 'string',
                 width: 10,
+                sortable: false,
                 visible: true
             },
             {
@@ -472,6 +494,7 @@ spaces.set('Service',
                 source: 'ports',
                 format: 'string',
                 width: 10,
+                sortable: false,
                 visible: true
             },
             {
@@ -480,6 +503,7 @@ spaces.set('Service',
                 source: 'externalIp',
                 format: 'string',
                 width: 10,
+                sortable: false,
                 visible: true
             },
             {
@@ -488,6 +512,7 @@ spaces.set('Service',
                 source: 'function',
                 format: 'string',
                 width: 15,
+                sortable: false,
                 visible: true
             },
             {
@@ -496,6 +521,7 @@ spaces.set('Service',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -546,6 +572,7 @@ spaces.set('Endpoints',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -554,6 +581,7 @@ spaces.set('Endpoints',
                 source: 'endpoints',
                 format: 'string',
                 width: 45,
+                sortable: false,
                 visible: true
             },
             {
@@ -562,6 +590,7 @@ spaces.set('Endpoints',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -612,6 +641,7 @@ spaces.set('Ingress',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -620,6 +650,7 @@ spaces.set('Ingress',
                 source: 'loadBalancers',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -628,6 +659,7 @@ spaces.set('Ingress',
                 source: 'rules',
                 format: 'function',
                 width: 40,
+                sortable: false,
                 visible: true
             },
             {
@@ -636,6 +668,7 @@ spaces.set('Ingress',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             },
         ]
@@ -692,6 +725,7 @@ spaces.set('IngressClass',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -700,6 +734,7 @@ spaces.set('IngressClass',
                 source: 'controller',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -708,6 +743,7 @@ spaces.set('IngressClass',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             },
         ]
@@ -758,6 +794,7 @@ spaces.set('NetworkPolicy',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -766,6 +803,7 @@ spaces.set('NetworkPolicy',
                 source: 'policyTypes',
                 format: 'string',
                 width: 15,
+                sortable: false,
                 visible: true
             },
             {
@@ -774,6 +812,7 @@ spaces.set('NetworkPolicy',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             },
         ]
@@ -793,6 +832,7 @@ spaces.set('classConfigMap',
         ]
     }
 )
+
 spaces.set('ConfigMap',
     {
         text:'Config Map name',
@@ -827,6 +867,7 @@ spaces.set('ConfigMap',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -835,6 +876,7 @@ spaces.set('ConfigMap',
                 source: 'keys',
                 format: 'string',
                 width: 40,
+                sortable: false,
                 visible: true
             },
             {
@@ -843,6 +885,7 @@ spaces.set('ConfigMap',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -894,6 +937,7 @@ spaces.set('Secret',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -902,6 +946,7 @@ spaces.set('Secret',
                 source: 'type',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -910,6 +955,7 @@ spaces.set('Secret',
                 source: 'keys',
                 format: 'string',
                 width: 15,
+                sortable: false,
                 visible: true
             },
             {
@@ -918,6 +964,7 @@ spaces.set('Secret',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 15,
+                sortable: true,
                 visible: true
             }
         ]
@@ -969,6 +1016,7 @@ spaces.set('ResourceQuota',
                 source: 'namespace',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -977,6 +1025,7 @@ spaces.set('ResourceQuota',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 20,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1028,6 +1077,7 @@ spaces.set('LimitRange',
                 source: 'namespace',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1036,6 +1086,7 @@ spaces.set('LimitRange',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 20,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1087,6 +1138,7 @@ spaces.set('HorizontalPodAutoscaler',
                 source: 'namespace',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1095,6 +1147,7 @@ spaces.set('HorizontalPodAutoscaler',
                 source: 'metrics',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1103,6 +1156,7 @@ spaces.set('HorizontalPodAutoscaler',
                 source: 'minpods',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1111,6 +1165,7 @@ spaces.set('HorizontalPodAutoscaler',
                 source: 'maxpods',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1119,6 +1174,7 @@ spaces.set('HorizontalPodAutoscaler',
                 source: 'replicas',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1127,6 +1183,7 @@ spaces.set('HorizontalPodAutoscaler',
                 source: 'status',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1135,6 +1192,7 @@ spaces.set('HorizontalPodAutoscaler',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 20,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1186,6 +1244,7 @@ spaces.set('PodDisruptionBudget',
                 source: 'namespace',
                 format: 'string',
                 width: 20,
+                sortable: true,
                 visible: true
             },
             {
@@ -1194,6 +1253,7 @@ spaces.set('PodDisruptionBudget',
                 source: 'minAvailable',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1202,6 +1262,7 @@ spaces.set('PodDisruptionBudget',
                 source: 'maxUnavailable',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1210,6 +1271,7 @@ spaces.set('PodDisruptionBudget',
                 source: 'currentHealthy',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1218,6 +1280,7 @@ spaces.set('PodDisruptionBudget',
                 source: 'desiredHealthy',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1226,6 +1289,7 @@ spaces.set('PodDisruptionBudget',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1277,6 +1341,7 @@ spaces.set('PriorityClass',
                 source: 'value',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1285,6 +1350,7 @@ spaces.set('PriorityClass',
                 source: 'globalDefault',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1293,6 +1359,7 @@ spaces.set('PriorityClass',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 20,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1344,6 +1411,7 @@ spaces.set('RuntimeClass',
                 source: 'handler',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1352,6 +1420,7 @@ spaces.set('RuntimeClass',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 20,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1360,12 +1429,6 @@ spaces.set('RuntimeClass',
 spaces.set('classLease',
     {
         leftItems: [
-            {
-                name: 'create',
-                icon: <Add fontSize='small'/>,
-                text: 'Create',
-                permission: true
-            }
         ]
     }
 )
@@ -1403,6 +1466,7 @@ spaces.set('Lease',
                 source: 'namespace',
                 format: 'string',
                 width: 20,
+                sortable: true,
                 visible: true
             },
             {
@@ -1411,6 +1475,7 @@ spaces.set('Lease',
                 source: 'holder',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1419,6 +1484,7 @@ spaces.set('Lease',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1470,6 +1536,7 @@ spaces.set('ValidatingWebhookConfiguration',
                 source: 'webhooks',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1478,6 +1545,7 @@ spaces.set('ValidatingWebhookConfiguration',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 20,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1529,6 +1597,7 @@ spaces.set('MutatingWebhookConfiguration',
                 source: 'webhooks',
                 format: 'string',
                 width: 40,
+                sortable: true,
                 visible: true
             },
             {
@@ -1537,6 +1606,7 @@ spaces.set('MutatingWebhookConfiguration',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 20,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1595,6 +1665,7 @@ spaces.set('Namespace',
                 source: 'labels',
                 format: 'string',
                 width: 30,
+                sortable: false,
                 visible: true
             },
             {
@@ -1603,6 +1674,7 @@ spaces.set('Namespace',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -1611,6 +1683,7 @@ spaces.set('Namespace',
                 source: 'status',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1671,6 +1744,7 @@ spaces.set('Node',
                 source: 'taints',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -1679,6 +1753,7 @@ spaces.set('Node',
                 source: 'roles',
                 format: 'string',
                 width: 30,
+                sortable: false,
                 visible: true
             },
             {
@@ -1687,6 +1762,7 @@ spaces.set('Node',
                 source: 'version',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1695,6 +1771,7 @@ spaces.set('Node',
                 source: 'conditions',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1703,6 +1780,65 @@ spaces.set('Node',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
+                visible: true
+            },
+        ]
+    }
+)
+spaces.set('classV1APIResource',
+    {
+        leftItems: [
+        ]
+    }
+)
+spaces.set('V1APIResource',
+    {
+        text:'Name',
+        source:'name',
+        width:30,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                multi: false,
+                permission: true,
+            },
+            {
+                name:'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                multi: false,
+                permission: true,
+            },
+        ],
+        properties: [
+            {
+                name: 'kindName',
+                text: 'Kind',
+                source: 'kind',
+                format: 'string',
+                width: 30,
+                sortable: true,
+                visible: true
+            },
+            {
+                name: 'singularName',
+                text: 'Singular',
+                source: 'singular',
+                format: 'string',
+                width: 30,
+                sortable: true,
+                visible: true
+            },
+            {
+                name: 'namespaced',
+                text: 'Namespaced',
+                source: 'namespaced',
+                format: 'string',
+                width: 10,
+                sortable: true,
                 visible: true
             },
         ]
@@ -1734,6 +1870,7 @@ spaces.set('ComponentStatus',
                 source: 'status',
                 format: 'string',
                 width: 20,
+                sortable: true,
                 visible: true
             },
             {
@@ -1742,6 +1879,7 @@ spaces.set('ComponentStatus',
                 source: 'message',
                 format: 'string',
                 width: 50,
+                sortable: true,
                 visible: true
             },
         ]
@@ -1786,7 +1924,7 @@ spaces.set('Pod',
                 permission: true
             },
             {
-                name:'logs',
+                name:'log',
                 text: 'Log',
                 icon: <Subject fontSize='small'/>,
                 multi: true,
@@ -1797,6 +1935,13 @@ spaces.set('Pod',
                 icon: <BarChart fontSize='small'/>,
                 text: 'Metrics',
                 multi: true,
+                permission: true
+            },
+            {
+                name:'fileman',
+                icon: <FolderCopy fontSize='small'/>,
+                text: 'Fileman',
+                multi: false,
                 permission: true
             },
             {
@@ -1821,6 +1966,7 @@ spaces.set('Pod',
                 source: 'namespace',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1828,6 +1974,7 @@ spaces.set('Pod',
                 text: 'Container',
                 source: 'na',
                 format: 'function',
+                sortable: false,
                 width: 10,
                 visible: true
             },
@@ -1837,14 +1984,16 @@ spaces.set('Pod',
                 source: 'cpu',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
                 name: 'memory',
                 text: 'Memory',
                 source: 'memory',
-                format: 'string',
+                format: 'storage',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1853,6 +2002,7 @@ spaces.set('Pod',
                 source: 'restartCount',
                 format: 'number',
                 width: 5,
+                sortable: true,
                 visible: true
             },
             {
@@ -1861,6 +2011,7 @@ spaces.set('Pod',
                 source: 'controller',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1869,6 +2020,7 @@ spaces.set('Pod',
                 source: 'node',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1877,14 +2029,16 @@ spaces.set('Pod',
                 source: 'startTime',
                 format: 'age',
                 width: 5,
+                sortable: true,
                 visible: true
             },
             {
                 name: 'status',
                 text: 'Status',
-                source: 'status',
+                source: 'function',
                 format: 'string',
                 width: 5,
+                sortable: true,
                 visible: true
             }
         ]
@@ -1923,7 +2077,7 @@ spaces.set('Deployment',
                 text: 'Restart',
                 permission: true,
             },
-            {   name: 'logs',
+            {   name: 'log',
                 icon: <Subject fontSize='small'/>,
                 text: 'Logs',
                 multi: true,
@@ -1955,6 +2109,7 @@ spaces.set('Deployment',
                 source: 'namespace',
                 format: 'string',
                 width: 20,
+                sortable: true,
                 visible: true
             },
             {
@@ -1963,6 +2118,7 @@ spaces.set('Deployment',
                 source: 'pods',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -1971,6 +2127,16 @@ spaces.set('Deployment',
                 source: 'replicas',
                 format: 'number',
                 width: 15,
+                sortable: true,
+                visible: true
+            },
+            {
+                name: 'status',
+                text: 'Status',
+                source: 'status',
+                format: 'function',
+                width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -1979,14 +2145,7 @@ spaces.set('Deployment',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
-                visible: true
-            },
-            {
-                name: 'status',
-                text: 'Status',
-                source: 'status',
-                format: 'string',
-                width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -2020,7 +2179,7 @@ spaces.set('DaemonSet',
                 text: 'Restart',
                 permission: true,
             },
-            {   name: 'logs',
+            {   name: 'log',
                 icon: <Subject fontSize='small'/>,
                 text: 'Logs',
                 permission: true,
@@ -2051,6 +2210,7 @@ spaces.set('DaemonSet',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2059,6 +2219,7 @@ spaces.set('DaemonSet',
                 source: 'desired',
                 format: 'number',
                 width: 8,
+                sortable: true,
                 visible: true
             },
             {
@@ -2067,6 +2228,7 @@ spaces.set('DaemonSet',
                 source: 'current',
                 format: 'number',
                 width: 8,
+                sortable: true,
                 visible: true
             },
             {
@@ -2075,6 +2237,7 @@ spaces.set('DaemonSet',
                 source: 'ready',
                 format: 'number',
                 width: 8,
+                sortable: true,
                 visible: true
             },
             {
@@ -2083,6 +2246,7 @@ spaces.set('DaemonSet',
                 source: 'upToDate',
                 format: 'number',
                 width: 8,
+                sortable: true,
                 visible: true
             },
             {
@@ -2091,6 +2255,7 @@ spaces.set('DaemonSet',
                 source: 'available',
                 format: 'number',
                 width: 8,
+                sortable: true,
                 visible: true
             },
             {
@@ -2099,6 +2264,7 @@ spaces.set('DaemonSet',
                 source: 'nodeSelector',
                 format: 'string',
                 width: 10,
+                sortable: false,
                 visible: true
             },
             {
@@ -2107,6 +2273,7 @@ spaces.set('DaemonSet',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             },
         ]
@@ -2140,7 +2307,7 @@ spaces.set('ReplicaSet',
                 text: 'Scale',
                 permission: true,
             },
-            {   name: 'logs',
+            {   name: 'log',
                 icon: <Subject fontSize='small'/>,
                 text: 'Logs',
                 permission: true,
@@ -2164,6 +2331,7 @@ spaces.set('ReplicaSet',
                 source: 'namespace',
                 format: 'string',
                 width: 20,
+                sortable: true,
                 visible: true
             },
             {
@@ -2172,6 +2340,7 @@ spaces.set('ReplicaSet',
                 source: 'desired',
                 format: 'number',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -2180,6 +2349,7 @@ spaces.set('ReplicaSet',
                 source: 'current',
                 format: 'number',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -2188,6 +2358,7 @@ spaces.set('ReplicaSet',
                 source: 'ready',
                 format: 'number',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -2196,6 +2367,7 @@ spaces.set('ReplicaSet',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 20,
+                sortable: true,
                 visible: true
             },
         ]
@@ -2224,7 +2396,17 @@ spaces.set('ReplicationController',
                 text: 'Details',
                 permission: true,
             },
-            {   name: 'logs',
+            {   name: 'restart',
+                icon: <RestartAlt fontSize='small'/>,
+                text: 'Restart',
+                permission: true,
+            },
+            {   name: 'scale',
+                icon: <Iso fontSize='small'/>,
+                text: 'Scale',
+                permission: true,
+            },
+            {   name: 'log',
                 icon: <Subject fontSize='small'/>,
                 text: 'Logs',
                 permission: true,
@@ -2248,6 +2430,7 @@ spaces.set('ReplicationController',
                 source: 'namespace',
                 format: 'string',
                 width: 20,
+                sortable: true,
                 visible: true
             },
             {
@@ -2256,6 +2439,7 @@ spaces.set('ReplicationController',
                 source: 'replicas',
                 format: 'number',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -2264,6 +2448,7 @@ spaces.set('ReplicationController',
                 source: 'desired',
                 format: 'number',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -2302,7 +2487,7 @@ spaces.set('StatefulSet',
                 text: 'Restart',
                 permission: true,
             },
-            {   name: 'logs',
+            {   name: 'log',
                 icon: <Subject fontSize='small'/>,
                 text: 'Logs',
                 permission: true,
@@ -2326,6 +2511,7 @@ spaces.set('StatefulSet',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2334,6 +2520,7 @@ spaces.set('StatefulSet',
                 source: 'pods',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2342,6 +2529,7 @@ spaces.set('StatefulSet',
                 source: 'replicas',
                 format: 'number',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2350,6 +2538,7 @@ spaces.set('StatefulSet',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 20,
+                sortable: true,
                 visible: true
             },
         ]
@@ -2378,7 +2567,7 @@ spaces.set('Job',
                 text: 'Details',
                 permission: true,
             },
-            {   name: 'logs',
+            {   name: 'log',
                 icon: <Subject fontSize='small'/>,
                 text: 'Logs',
                 permission: true,
@@ -2402,6 +2591,7 @@ spaces.set('Job',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2410,6 +2600,7 @@ spaces.set('Job',
                 source: 'completions',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2418,6 +2609,7 @@ spaces.set('Job',
                 source: 'conditions',
                 format: 'function',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2426,6 +2618,7 @@ spaces.set('Job',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 20,
+                sortable: true,
                 visible: true
             },
         ]
@@ -2488,6 +2681,7 @@ spaces.set('CronJob',
                 source: 'namespace',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -2496,6 +2690,7 @@ spaces.set('CronJob',
                 source: 'schedule',
                 format: 'string',
                 width: 15,
+                sortable: false,
                 visible: true
             },
             {
@@ -2504,6 +2699,7 @@ spaces.set('CronJob',
                 source: 'suspend',
                 format: 'string',
                 width: 5,
+                sortable: true,
                 visible: true
             },
             {
@@ -2512,6 +2708,7 @@ spaces.set('CronJob',
                 source: 'active',
                 format: 'function',
                 width: 5,
+                sortable: true,
                 visible: true
             },
             {
@@ -2520,6 +2717,7 @@ spaces.set('CronJob',
                 source: 'lastSchedule',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -2528,6 +2726,7 @@ spaces.set('CronJob',
                 source: 'nextExecution',
                 format: 'function',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -2536,6 +2735,7 @@ spaces.set('CronJob',
                 source: 'timezone',
                 format: 'string',
                 width: 5,
+                sortable: true,
                 visible: true
             },
             {
@@ -2544,6 +2744,7 @@ spaces.set('CronJob',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             },
         ]
@@ -2593,6 +2794,7 @@ spaces.set('PersistentVolumeClaim',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2601,6 +2803,7 @@ spaces.set('PersistentVolumeClaim',
                 source: 'storageClass',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -2609,6 +2812,7 @@ spaces.set('PersistentVolumeClaim',
                 source: 'size',
                 format: 'string',
                 width: 5,
+                sortable: true,
                 visible: true
             },
             {
@@ -2617,6 +2821,7 @@ spaces.set('PersistentVolumeClaim',
                 source: 'pods',
                 format: 'string',
                 width: 20,
+                sortable: true,
                 visible: true
             },
             {
@@ -2625,6 +2830,7 @@ spaces.set('PersistentVolumeClaim',
                 source: 'status',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -2633,6 +2839,7 @@ spaces.set('PersistentVolumeClaim',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             },
         ]
@@ -2680,14 +2887,16 @@ spaces.set('PersistentVolume',
                 source: 'storageClass',
                 format: 'string',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
                 name: 'capacity',
                 text: 'Capacity',
                 source: 'capacity',
-                format: 'string',
+                format: 'storage',
                 width: 10,
+                sortable: true,
                 visible: true
             },
             {
@@ -2696,6 +2905,7 @@ spaces.set('PersistentVolume',
                 source: 'claim',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2704,6 +2914,7 @@ spaces.set('PersistentVolume',
                 source: 'status',
                 format: 'string',
                 width: 5,
+                sortable: true,
                 visible: true
             },
             {
@@ -2712,6 +2923,7 @@ spaces.set('PersistentVolume',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             },
         ]
@@ -2742,6 +2954,7 @@ spaces.set('VolumeAttachment',
                 source: 'attacher',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2750,6 +2963,7 @@ spaces.set('VolumeAttachment',
                 source: 'nodeName',
                 format: 'string',
                 width: 20,
+                sortable: true,
                 visible: true
             },
             {
@@ -2758,6 +2972,7 @@ spaces.set('VolumeAttachment',
                 source: 'source',
                 format: 'string',
                 width: 20,
+                sortable: true,
                 visible: true
             },
             {
@@ -2766,6 +2981,7 @@ spaces.set('VolumeAttachment',
                 source: 'status',
                 format: 'string',
                 width: 5,
+                sortable: true,
                 visible: true
             },
             {
@@ -2774,12 +2990,12 @@ spaces.set('VolumeAttachment',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 5,
+                sortable: true,
                 visible: true
             }
         ]
     }
 )
-
 spaces.set('classStorageClass',
     {
         leftItems: [
@@ -2822,6 +3038,7 @@ spaces.set('StorageClass',
                 source: 'provisioner',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2830,6 +3047,7 @@ spaces.set('StorageClass',
                 source: 'reclaimPolicy',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2838,6 +3056,7 @@ spaces.set('StorageClass',
                 source: 'default',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2846,12 +3065,12 @@ spaces.set('StorageClass',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
     }
 )
-
 spaces.set('classCSIDriver',
     {
         leftItems: [
@@ -2877,6 +3096,7 @@ spaces.set('CSIDriver',
                 source: 'attachRequired',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2885,6 +3105,7 @@ spaces.set('CSIDriver',
                 source: 'storageCapacity',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -2893,6 +3114,7 @@ spaces.set('CSIDriver',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -2923,6 +3145,7 @@ spaces.set('CSINode',
                 source: 'drivers',
                 format: 'string',
                 width: 55,
+                sortable: true,
                 visible: true
             },
             {
@@ -2931,6 +3154,7 @@ spaces.set('CSINode',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -2961,6 +3185,7 @@ spaces.set('CSIStorageCapacity',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -3011,6 +3236,7 @@ spaces.set('ServiceAccount',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -3019,6 +3245,7 @@ spaces.set('ServiceAccount',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -3066,6 +3293,7 @@ spaces.set('ClusterRole',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -3113,6 +3341,7 @@ spaces.set('Role',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -3121,6 +3350,7 @@ spaces.set('Role',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -3168,6 +3398,7 @@ spaces.set('ClusterRoleBinding',
                 source: 'bindings',
                 format: 'string',
                 width: 50,
+                sortable: false,
                 visible: true
             },
             {
@@ -3176,6 +3407,7 @@ spaces.set('ClusterRoleBinding',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -3223,6 +3455,7 @@ spaces.set('RoleBinding',
                 source: 'namespace',
                 format: 'string',
                 width: 20,
+                sortable: true,
                 visible: true
             },
             {
@@ -3231,6 +3464,7 @@ spaces.set('RoleBinding',
                 source: 'bindings',
                 format: 'string',
                 width: 30,
+                sortable: false,
                 visible: true
             },
             {
@@ -3239,6 +3473,7 @@ spaces.set('RoleBinding',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -3288,6 +3523,7 @@ spaces.set('CustomResourceDefinition',
                 source: 'group',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -3296,6 +3532,7 @@ spaces.set('CustomResourceDefinition',
                 source: 'version',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -3304,6 +3541,7 @@ spaces.set('CustomResourceDefinition',
                 source: 'scope',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -3312,6 +3550,7 @@ spaces.set('CustomResourceDefinition',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]
@@ -3327,7 +3566,6 @@ spaces.set('crdgroup',
         properties: []
     }
 )
-
 spaces.set('crdinstance',
     {
         text:'Name',
@@ -3354,6 +3592,7 @@ spaces.set('crdinstance',
                 source: 'namespace',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -3362,6 +3601,7 @@ spaces.set('crdinstance',
                 source: 'source',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -3370,6 +3610,7 @@ spaces.set('crdinstance',
                 source: 'checksum',
                 format: 'string',
                 width: 15,
+                sortable: true,
                 visible: true
             },
             {
@@ -3378,6 +3619,7 @@ spaces.set('crdinstance',
                 source: 'creationTimestamp',
                 format: 'age',
                 width: 10,
+                sortable: true,
                 visible: true
             }
         ]

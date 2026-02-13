@@ -30,7 +30,7 @@ export class KubernetesConfigMaps implements IConfigMaps {
                     return {}
                 }
                 catch (err:any) {
-                    console.log(`Error creating`)
+                    console.log(`Error creating ConfigMap`)
                     console.log(err)
                     return {}
                 }

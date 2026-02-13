@@ -19,10 +19,11 @@ const TextToolTip: React.FC<ITextToolTipProps> = (props:ITextToolTipProps) => {
 }
 
 interface IInputBoxProps {
-    title:string
-    message:string|JSX.Element
-    onClose:Dispatch<SetStateAction<JSX.Element>>
-    onResult?:(result:any) => void
+    title: string
+    default?: any
+    message: string|JSX.Element
+    onClose: Dispatch<SetStateAction<JSX.Element>>
+    onResult?: (result:any) => void
 }
 
 const InputBox: React.FC<IInputBoxProps> = (props:IInputBoxProps) => {
@@ -38,11 +39,11 @@ const InputBox: React.FC<IInputBoxProps> = (props:IInputBoxProps) => {
             <DialogContent>
                     <Stack sx={{mt:2}} direction='column' alignItems={'top'}>
                         { typeof(props.message)==='string' ?
-                            <Typography sx={{ml:2}}><div dangerouslySetInnerHTML={{__html: props.message}}/></Typography>
+                            <Typography component={'div'} sx={{ml:2}}><div dangerouslySetInnerHTML={{__html: props.message}}/></Typography>
                             :
                             props.message
                          }
-                         <TextField inputRef={inputRef}></TextField>
+                         <TextField inputRef={inputRef} defaultValue={props.default}></TextField>
                     </Stack>
             </DialogContent>
             <DialogActions>

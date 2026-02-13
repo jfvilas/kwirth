@@ -1,13 +1,21 @@
 call update-version.cmd
 
+REM clean targets
+del dist\front\*.* /s /q
+md  dist\front
+del bundle\*.* /s /q
+md  bundle
+del front\*.* /s /q
+md  front
+del ..\electron\build\*.* /s /q
+md  ..\electron\build
+
+REM copy front without rebuilding
+xcopy ..\front\build\*.* .\dist\front\*.* /s /y
+xcopy ..\front\build\*.* .\front\*.* /s /y
+xcopy ..\front\build\*.* .\bundle\front /s /y
+
 REM build back
 call npm run build
-@REM del dist\front\*.* /s /q
-@REM md dist\front
 
-REM build front (tsc)
-@REM xcopy src\version.ts ..\front\src\version.ts /y
-@REM cd ..\front
-@REM call npm run build
-@REM xcopy build\*.* ..\back\dist\front\*.* /s /y
-@REM cd ..\back
+xcopy .\bundle\*.* ..\electron\build /s /y

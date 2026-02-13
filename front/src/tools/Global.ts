@@ -2,7 +2,6 @@ import { KwirthData } from '@jfvilas/kwirth-common'
 import { MetricDefinition } from '../channels/metrics/MetricDefinition'
 import { Cluster, IClusterInfo } from '../model/Cluster'
 import { addGetAuthorization } from './AuthorizationManagement'
-import { IChannel } from '../channels/IChannel'
 
 export enum ENotifyLevel {
     INFO ='info',
@@ -26,7 +25,7 @@ export const getMetricsNames = async (cluster:Cluster) => {
     }
 }
 
-export const readClusterInfo = async (cluster: Cluster, notify: (channel:IChannel|undefined, level:ENotifyLevel, msg:string)=> void): Promise<void> => {
+export const readClusterInfo = async (cluster: Cluster, notify: (channel:string|undefined, level:ENotifyLevel, msg:string)=> void): Promise<void> => {
     try {
         cluster.enabled = false
         let responseInfo = await fetch(`${cluster.url}/config/info`, addGetAuthorization(cluster.accessString))

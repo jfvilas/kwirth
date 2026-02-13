@@ -6,14 +6,14 @@ import { MsgBoxOkError } from '../tools/MsgBox'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { BackChannelData, EClusterType, EInstanceConfigView, EInstanceMessageChannel } from '@jfvilas/kwirth-common'
 import { ITabObject } from '../model/ITabObject'
-import { IconDaemonSet, IconDeployment, IconDocker, IconJob, IconKubernetes, IconKubernetesBlank, IconKubernetesUnknown, IconReplicaSet, IconReplicationController, IconStatefulSet } from '../tools/Constants-React'
+import { IconDaemonSet, IconDeployment, IconDocker, IconJob, IconK8s, IconK8sBlank, IconK8sElectron, IconK8sUnknown, IconReplicaSet, IconReplicationController, IconStatefulSet } from '../tools/Constants-React'
 
 interface IResourceSelected {
     channelId: string
     clusterName: string
     view: string
     namespaces: string[]
-    groups: string[]
+    controllers: string[]
     pods: string[]
     containers: string[]
     name: string
@@ -29,9 +29,9 @@ interface IProps {
     sx: SxProps
 }
 
-interface IGroup {
+interface IController {
     // these names match with the ones returned in the "/config/groups" fetch.
-    type:string,  // rs, ds, ss
+    type:string,  // 'deployment','replicaset','replicationcontroller','daemonset','statefulset','job'
     name:string
 }
 
@@ -40,8 +40,8 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     const [view, setView] = useState('')
     const [allNamespaces, setAllNamespaces] = useState<string[]>([])
     const [namespaces, setNamespaces] = useState<string[]>([])
-    const [allGroups, setAllGroups] = useState<string[]>([])
-    const [groups, setGroups] = useState<string[]>([])
+    const [allControllers, setAllControllers] = useState<string[]>([])
+    const [controllers, setControllers] = useState<string[]>([])
     const [allPods, setAllPods] = useState<string[]>([])
     const [pods, setPods] = useState<string[]>([])
     const [allContainers, setAllContainers] = useState<string[]>([])
@@ -64,16 +64,16 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         }
     }
 
-    const loadAllGroups = async (cluster:Cluster,namespace:string) => {
+    const loadAllControllers = async (cluster:Cluster,namespace:string) => {
         let response = await fetch(`${cluster!.url}/config/${namespace}/groups`, addGetAuthorization(cluster!.accessString))
-        let data = await response.json() as IGroup[]
-        setAllGroups((prev) => [...prev, ...data.map(d => d.type+'+'+d.name)])
-        setGroups([])
+        let data = await response.json() as IController[]
+        setAllControllers((prev) => [...prev, ...data.map(d => d.type+'+'+d.name)])
+        setControllers([])
     }
 
-    const loadAllPods = async (namespaces:string[], groups:string[]) => {
+    const loadAllPods = async (namespaces:string[], controllers:string[]) => {
         if (isDocker) {
-            let [gtype,gname] = groups[0].split('+')
+            let [gtype,gname] = controllers[0].split('+')
             let response = await fetch(`${cluster!.url}/config/${namespaces[0]}/${gname}/pods?type=${gtype}`, addGetAuthorization(cluster!.accessString))
             let data = await response.json()
             setAllPods((prev) => [...prev, ...data])
@@ -81,7 +81,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         else {
             let list:string[] = []
             for (let namespace of namespaces) {
-                for (let group of groups) {
+                for (let group of controllers) {
                     let [gtype,gname] = group.split('+')
                     let response = await fetch(`${cluster!.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(cluster!.accessString))
                     let data = await response.json()
@@ -106,8 +106,8 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             setView('')
             setAllNamespaces([])
             setNamespaces([])
-            setAllGroups([])
-            setGroups([])
+            setAllControllers([])
+            setControllers([])
             setPods([])
             setAllContainers([])
             setContainers([])
@@ -117,8 +117,8 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             setView('')
             setAllNamespaces([])
             setNamespaces([])
-            setAllGroups([])
-            setGroups([])
+            setAllControllers([])
+            setControllers([])
             setPods([])
             setAllContainers([])
             setContainers([])
@@ -132,7 +132,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
 
         if (isDocker) {
             setNamespaces(['$docker'])
-            setGroups(['$docker'])
+            setControllers(['$docker'])
             setAllPods([])
             setPods([])
             setContainers([])
@@ -140,8 +140,8 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         }
         else {
             setNamespaces([])
-            setAllGroups([])
-            setGroups([])
+            setAllControllers([])
+            setControllers([])
             setPods([])
             setAllContainers([])
             setContainers([])
@@ -159,23 +159,23 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         }
         else {
             setNamespaces(nss)
-            setAllGroups([])
-            setGroups([])
+            setAllControllers([])
+            setControllers([])
             setPods([])
             setAllContainers([])
             setContainers([])
-            if (view!=='namespace') nss.map (ns => loadAllGroups(cluster, ns))
+            if (view!=='namespace') nss.map (ns => loadAllControllers(cluster, ns))
         }
     }
 
-    const onChangeGroup = (event: SelectChangeEvent<typeof groups>) => {
-        let groups  = event.target.value as string[]
-        setGroups(groups)
+    const onChangeGroup = (event: SelectChangeEvent<typeof controllers>) => {
+        let controllers  = event.target.value as string[]
+        setControllers(controllers)
         setAllPods([])
         setPods([])
         setAllContainers([])
         setContainers([])
-        if (view!==EInstanceConfigView.GROUP) loadAllPods(namespaces,groups)
+        if (view!==EInstanceConfigView.GROUP) loadAllPods(namespaces,controllers)
     }
 
     const onChangePod= (event: SelectChangeEvent<typeof pods>) => {
@@ -200,7 +200,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         if (view===EInstanceConfigView.NAMESPACE)
             tabName=namespaces.join('+')
         else if (view===EInstanceConfigView.GROUP)
-            tabName=namespaces.join('+')+'-'+groups.join('+')
+            tabName=namespaces.join('+')+'-'+controllers.join('+')
         else if (view===EInstanceConfigView.POD)
             tabName=namespaces.join('+')+'-'+pods.join('+')
         else if (view===EInstanceConfigView.CONTAINER)
@@ -215,7 +215,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
             clusterName: cluster?.name,
             view,
             namespaces,
-            groups,
+            controllers: controllers,
             pods,
             containers,
             name: tabName
@@ -229,7 +229,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         if (view==='') return false
         if (namespaces.length === 0) return false
         if (view===EInstanceConfigView.NAMESPACE) return true
-        if (groups.length === 0) return false
+        if (controllers.length === 0) return false
         if (view===EInstanceConfigView.GROUP) return true
         if (pods.length === 0) return false
         if (view===EInstanceConfigView.POD) return true
@@ -238,13 +238,17 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
     }
 
     const getIcon = (cluster:Cluster)  => {
-        if (!cluster.kwirthData || !cluster.kwirthData.clusterType) return <IconKubernetesUnknown/>
+        if (!cluster.kwirthData || !cluster.kwirthData.clusterType) return <IconK8sUnknown size={20}/>
         if (cluster.kwirthData.clusterType[0] === 'd') return <IconDocker/>
         if (cluster.kwirthData.clusterType[0] === 'k') {
             if (cluster.kwirthData.inCluster) 
-                return <IconKubernetes/>
-            else
-                return <IconKubernetesBlank/>
+                return <IconK8s size={20}/>
+            else {
+                if (cluster.name === 'inElectron')
+                    return <IconK8sElectron size={20} />
+                else
+                    return <IconK8sBlank size={20}/>
+            }
         }
     }
 
@@ -269,12 +273,12 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
 
                 allg.push(...gs.map((g: { type: string; name: string }) => g.type+'+'+g.name))
             }
-            setAllGroups(allg)
-            setGroups(props.resourceSelected!.groups)
+            setAllControllers(allg)
+            setControllers(props.resourceSelected!.controllers)
             if (v===EInstanceConfigView.POD || v===EInstanceConfigView.CONTAINER) {
                 let allp:string[] = []
                 for (let namespace of props.resourceSelected!.namespaces) {
-                    for (let group of props.resourceSelected!.groups) {
+                    for (let group of props.resourceSelected!.controllers) {
                         let [gtype,gname] = group.split('+')
                         let ps = await (await fetch(`${c.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(c.accessString))).json()
                         allp.push (...ps)
@@ -300,7 +304,6 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
         }
     }
     
-
     if (props.resourceSelected && props.resourceSelected.channelId!=='') {
         updateResource()
         props.resourceSelected!.channelId=''
@@ -346,17 +349,17 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
 
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={namespaces.length===0 || view==='namespace' || isDocker}>
                 <InputLabel>Group</InputLabel>
-                <Select onChange={onChangeGroup} value={groups} multiple renderValue={(selected) => selected.join(', ')}>
-                { allGroups && allGroups.map( (value) => 
+                <Select onChange={onChangeGroup} value={controllers} multiple renderValue={(selected) => selected.join(', ')}>
+                { allControllers && allControllers.map( (value) => 
                     <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
-                        <Checkbox checked={groups.includes (value)} />
-                        {value.startsWith('replicaset')? <IconReplicaSet size={18}/>: value.startsWith('daemonset')?<IconDaemonSet/>: value.startsWith('deployment')?<IconDeployment/>:value.startsWith('statefulset')?<IconStatefulSet/>:value.startsWith('replicationcontroller')?<IconReplicationController/>:<IconJob/>}&nbsp;{value.split('+')[1]}
+                        <Checkbox checked={controllers.includes (value)} />
+                        {value.startsWith('replicaset')? <IconReplicaSet size={18}/>: value.startsWith('daemonset')?<IconDaemonSet size={20}/>: value.startsWith('deployment')?<IconDeployment size={20}/>:value.startsWith('statefulset')?<IconStatefulSet size={20}/>:value.startsWith('replicationcontroller')?<IconReplicationController size={20}/>:<IconJob size={20}/>}&nbsp;{value.split('+')[1]}
                     </MenuItem>
                 )}
                 </Select>
             </FormControl>
 
-            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={(!isDocker && (groups.length === 0 || view===EInstanceConfigView.NAMESPACE || view===EInstanceConfigView.GROUP)) || (isDocker && (view ==='namespace' || namespaces.length === 0))}>
+            <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={(!isDocker && (controllers.length === 0 || view===EInstanceConfigView.NAMESPACE || view===EInstanceConfigView.GROUP)) || (isDocker && (view ==='namespace' || namespaces.length === 0))}>
                 <InputLabel >Pod</InputLabel>
                 <Select value={pods} onChange={onChangePod} multiple renderValue={(selected) => selected.join(', ')}>
                 { allPods && allPods.map( (value:string) =>

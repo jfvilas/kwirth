@@ -2,7 +2,7 @@ import { BackChannelData, IInstanceConfig, IInstanceMessage, AccessKey, EInstanc
 import { Request, Response } from 'express'
 
 interface IChannel {
-    getChannelData() : BackChannelData
+    getChannelData(): BackChannelData
     getChannelScopeLevel(scope:string) : number
 
     endpointRequest(endpoint:string,req:Request, res:Response, accessKey?:AccessKey) : void

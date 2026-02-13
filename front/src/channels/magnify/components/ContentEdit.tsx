@@ -5,8 +5,11 @@ import CodeMirror from '@uiw/react-codemirror';
 import { yaml } from '@codemirror/lang-yaml'
 import { Close, Edit, Fullscreen, FullscreenExit, Minimize } from '@mui/icons-material';
 import { objectEqual, reorderJsonYamlObject } from '../Tools';
+import { search, openSearchPanel, searchKeymap } from '@codemirror/search'; // Asegúrate de importar 'search'
+import { EditorView, keymap } from '@codemirror/view';
+import { defaultKeymap } from '@codemirror/commands';
+
 const yamlParser = require('js-yaml');
-//import { color } from '@uiw/react-codemirror'
 
 interface IContentEditProps {
     selectedFile?:IFileObject
@@ -27,21 +30,34 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
     const [code, setCode] = useState<string>('')
     const [percent, setPercent] = useState<number>(70)
     const [editorUnChanged, setEditorUnChanged] = useState<boolean>(true)
-   
+
+    const containerRef = useRef<HTMLDivElement>(null);
+    const editorViewRef = useRef<EditorView | null>(null);
+
     useEffect(() => {
-        const previousFocus = document.activeElement as HTMLElement
+        const handleNativeKey = (e: KeyboardEvent) => {
+            if (!containerRef.current?.contains(document.activeElement)) return;
 
-        const handleKeyDown = (event: KeyboardEvent) => {
-            event.stopPropagation()
-            if (event.key === 'Escape') props.onClose(content.current!)
-        }
+            const isCtrl = e.ctrlKey || e.metaKey;
+            
+            if (isCtrl && e.key.toLowerCase() === 'f') {
+                e.preventDefault(); // Bloquea navegador
+                e.stopPropagation(); // Bloquea otros listeners
+                
+                if (editorViewRef.current) {
+                    openSearchPanel(editorViewRef.current);
+                }
+            }
+            
+            if (isCtrl && e.key.toLowerCase() === 'd') {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        };
 
-        window.addEventListener('keydown', handleKeyDown, true)
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown, true)
-            previousFocus?.focus()
-        }
-    }, [])
+        window.addEventListener('keydown', handleNativeKey, true);
+        return () => window.removeEventListener('keydown', handleNativeKey, true);
+    }, []);
 
     useEffect( () => {
         if (props.content) {
@@ -52,7 +68,13 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
             setCode(content.current.content.code)
         }
         else if (props.selectedFile) {
-            content.current.content.title = (props.selectedFile.data.origin.metadata.namespace? props.selectedFile.data.origin.metadata.namespace+'/': '') + props.selectedFile.data.origin.metadata.name
+            //content.current.content.title = (props.selectedFile.data.origin.metadata.namespace? props.selectedFile.data.origin.metadata.namespace+'/': '') + props.selectedFile.data.origin.metadata.name
+            if (props.selectedFile.data.origin.metadata)
+                content.current.content.title = (props.selectedFile.data.origin.metadata.namespace? props.selectedFile.data.origin.metadata.namespace+'/': '') + props.selectedFile.data.origin.metadata.name
+            else {
+                // this is valid for API Resources
+                content.current.content.title = props.selectedFile.data.origin.name
+            }
             let obj = props.selectedFile.data.origin
             let reorderObj = reorderJsonYamlObject(obj)
             content.current.content.code = yamlParser.dump(reorderObj)
@@ -126,7 +148,20 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
 
             <DialogContent>
                 <p></p>
-                <CodeMirror value={code} onChange={updateEditorValue} extensions={[yaml()]}/>
+                <div ref={containerRef} tabIndex={-1} style={{ height: '100%', width: '100%' }}>
+                    <CodeMirror value={code}
+                        onChange={updateEditorValue} 
+                        onUpdate={(v) => { if (v.view) editorViewRef.current = v.view }}                    
+                        extensions={[
+                            yaml(),
+                            search({ top: true }),
+                            keymap.of([
+                                ...defaultKeymap,
+                                ...searchKeymap,
+                            ])
+                        ]}
+                    />
+                </div>
             </DialogContent>
 
             <DialogActions>

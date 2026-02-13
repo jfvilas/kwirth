@@ -8,12 +8,12 @@
     "build": "tsc && esbuild dist/index.js --bundle --platform=node --target=node22 --outfile=bundle/bundle.js",
     "startold": "tsc && node dist/index.js",
     "start-wsl": "CHOKIDAR_USEPOLLING=true npx nodemon src/index.ts",
-    "start": "set \"NODE_OPTIONS=--expose-gc --max-old-space-size=1024\" && npx nodemon src/index.ts"
+    "start": "set \"NODE_OPTIONS=--expose-gc --max-old-space-size=1024 --trace-warnings --unhandled-rejections=strict\" && npx nodemon src/index.ts"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@jfvilas/kwirth-common": "^0.4.46",
+    "@jfvilas/kwirth-common": "^0.4.47",
     "@jfvilas/parse-listing": "^1.0.1",
     "@kubernetes/client-node": "^1.4.0",
     "@types/node": "^20.12.13",

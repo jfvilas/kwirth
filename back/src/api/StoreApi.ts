@@ -13,9 +13,9 @@ export class StoreApi {
     constructor (config: IConfigMaps, apiKeyApi: ApiKeyApi) {
         this.configMaps=config
 
-        // A group is implemented by prepending 'groupname-' (the group name and a dash) to key name
+        // A controller is implemented by prepending 'groupname-' (the controller name and a dash) to key name
 
-        // get groups
+        // get controller
         this.route.route('/:user')
             .all( async (req:Request,res:Response, next) => {
                 if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
@@ -28,9 +28,9 @@ export class StoreApi {
                         if (data===undefined)
                             res.status(200).json([])
                         else {
-                            let allGroupNames=Object.keys(data).map(k => k.substring(0,k.indexOf('-')))
-                            let uniqueGroups = [...new Set(allGroupNames)]
-                            res.status(200).json(uniqueGroups)
+                            let allControllerNames=Object.keys(data).map(k => k.substring(0,k.indexOf('-')))
+                            let uniqueControllers = [...new Set(allControllerNames)]
+                            res.status(200).json(uniqueControllers)
                         }
                     }
                     catch (err) {
@@ -55,8 +55,8 @@ export class StoreApi {
                             res.status(200).json([])
                         else {
                             if (req.query.full) {
-                                let selectedGroupObjects = Object.keys(data).filter(k => k.startsWith(req.params.group+'-'))
-                                let objects = selectedGroupObjects.map ( o => {
+                                let selectedControllerObjects = Object.keys(data).filter(k => k.startsWith(req.params.group+'-'))
+                                let objects = selectedControllerObjects.map ( o => {
                                     return { [o.substring(o.indexOf('-')+1)]: data[o] }
                                 })
                                 res.status(200).json(objects)

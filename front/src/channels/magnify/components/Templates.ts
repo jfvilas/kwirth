@@ -237,12 +237,12 @@ templates.set('ResourceQuota',`
 apiVersion: v1
 kind: ResourceQuota
 metadata:
-  name: cpru-limit-default
+  name: cpu-limit-default
   namespace: default
 spec:
   hard:
-    limits:
-      cpu: '2'
+    limits.cpu: '2'
+    limits.memory: '1Gi'
 `)
 
 templates.set('LimitRange',`
@@ -255,11 +255,11 @@ spec:
     - default:
         cpu: 200m
       defaultRequest:
-        cpu: 100m
+        cpu: 500m
       max:
         cpu: "2"
       min:
-        cpu: 500m
+        cpu: 100m
       type: Container
 `)
 
@@ -318,11 +318,11 @@ scheduling:
     region: "eu"
   tolerations:
     - key: cpuCount
-      value: 8
+      value: '8'
       effect: NoSchedule
 `)
 
-templates.set('LEase',`
+templates.set('Lease',`
 apiVersion: coordination.k8s.io/v1
 kind: Lease
 metadata:
@@ -368,7 +368,7 @@ webhooks:
         namespace: kwirth-namespace
         name: kwirth-webhook
     admissionReviewVersions:
-      - v2
+      - v1
     matchPolicy: Equivalent
     rules:
       - operations: ["DELETE", "UPDATE"]

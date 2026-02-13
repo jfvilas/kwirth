@@ -24,6 +24,7 @@ declare module '@jfvilas/react-file-manager' {
 
     export interface IFileObject {
         name: string;
+        displayName?: string;
         isDirectory: boolean;
         path: string;
         layout?: string;
@@ -51,6 +52,7 @@ declare module '@jfvilas/react-file-manager' {
     export interface ISpace {
         text?:string,
         source?:string,
+        //nameProcessor?: (name:string) => string
         width?:number,
         sumSourceProperty?: string,
         sumReducer?: number,
@@ -72,7 +74,8 @@ declare module '@jfvilas/react-file-manager' {
         name: string,
         text: string,
         source: string|function,
-        format: 'string'|'function'|'age'|'number',
+        format: 'string'|'function'|'age'|'number'|'storage',
+        sortable: boolean,
         width: number,
         visible: boolean
     }
@@ -112,8 +115,9 @@ declare module '@jfvilas/react-file-manager' {
         icons?: Map<string, IIcon[]>,
         isLoading?: boolean,
         onCreateFolder? : (name: string, parentFolder: IFileObject) => void,
+        onFileUploaded? : (file:IFileObject, parentFolder: IFileObject) => void,
         onFileUploading? : (file:IFileObject, parentFolder: IFileObject) => void,
-        onFileUploaded? : () => void,
+        onFileUploadError? : (file:IFileObject, parentFolder: IFileObject) => void,
         onCut? : (files: IFileObject[]) => void,
         onCopy? : (files: IFileObject[]) => void,
         onPaste? : (files: IFileObject[], destFolder:IFileObject, operation:string) => void,

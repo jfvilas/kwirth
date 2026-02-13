@@ -118,7 +118,8 @@ class FilemanChannel implements IChannel {
                 { name: 'download', methods: ['GET'], requiresAccessKey: true },
                 { name: 'upload', methods: ['POST'], requiresAccessKey: true } 
             ],
-            websocket: false
+            websocket: false,
+            cluster: false
         }
     }
 
@@ -130,19 +131,16 @@ class FilemanChannel implements IChannel {
     }
 
     async endpointRequest(endpoint:string, req:Request, res:Response, accessKey:AccessKey) : Promise<void> {
-        console.log('Received endpointreq:', endpoint, req.method, req.url)
+        console.log('Received endpointRequest:', endpoint, req.method, req.url)
 
-        let socket = this.webSockets.find(ws => ws.instances.some(i => i.accessKey.id === accessKey.id))
+        let instanceId=req.query['key'] as string
+        let socket = this.webSockets.find(ws => ws.instances.some(i => i.accessKey.id === accessKey.id && i.instanceId === instanceId))
         if (!socket) {
-            res.status(400).send('Inexistent socket')
+            res.status(400).send('Inexistent socket with accessKey ' + accessKey.id + ' and instance ' + instanceId )
             return
         }
-        let key=req.query['key'] as string
-        let instance = socket.instances.find(i => i.instanceId === key)
-        if (!instance) {
-            res.status(400).send(`Inexistent instance: '${key}'`)
-            return
-        }
+
+        let instance = socket.instances.find(i => i.instanceId === instanceId)!
 
         switch (endpoint){
             case 'download':
@@ -197,27 +195,32 @@ class FilemanChannel implements IChannel {
                 fs.writeFileSync(tmpName, filedata.data)
                 let [dstNamespace,dstPod,dstContainer] = filename.split('/').slice(1)
                 let dstLocalPath = '/' + filename.split('/').slice(4).join('/')
-                await this.uploadFile(dstNamespace, dstPod, dstContainer, tmpName, dstLocalPath)
-
-                let size = fs.statSync(tmpName).size
-                let result = { metadata: { object:filename, type:0, time: Date.now(), size: size }, status: ExecutionStatus.SUCCESS}
-                let resp: IFilemanMessageResponse = {
-                    action: EInstanceMessageAction.COMMAND,
-                    flow: EInstanceMessageFlow.UNSOLICITED,
-                    channel: 'fileman',
-                    instance: instance.instanceId,
-                    type: EInstanceMessageType.DATA,
-                    id: '1',
-                    command: EFilemanCommand.CREATE,
-                    namespace: '',
-                    group: '',
-                    pod: '',
-                    container: '',
-                    data: JSON.stringify(result),
-                    msgtype: 'filemanmessageresponse'
+                let executionResult = await this.uploadFile(dstNamespace, dstPod, dstContainer, tmpName, dstLocalPath)
+                if (executionResult.status === ExecutionStatus.FAILURE) {
+                    this.sendSignalMessage(socket.ws, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.UNSOLICITED, ESignalMessageLevel.ERROR, instance.instanceId, executionResult.message)
+                    res.status(400).send()
                 }
-                socket.ws.send(JSON.stringify(resp))
-                res.status(200).send()
+                else {
+                    let size = fs.statSync(tmpName).size
+                    let result = { metadata: { object:filename, type:0, time: Date.now(), size: size }, status: ExecutionStatus.SUCCESS}
+                    let resp: IFilemanMessageResponse = {
+                        action: EInstanceMessageAction.COMMAND,
+                        flow: EInstanceMessageFlow.UNSOLICITED,
+                        channel: 'fileman',
+                        instance: instance.instanceId,
+                        type: EInstanceMessageType.DATA,
+                        id: '1',
+                        command: EFilemanCommand.CREATE,
+                        namespace: '',
+                        group: '',
+                        pod: '',
+                        container: '',
+                        data: JSON.stringify(result),
+                        msgtype: 'filemanmessageresponse'
+                    }
+                    socket.ws.send(JSON.stringify(resp))
+                    res.status(200).send()
+                }
                 break
             }
         } 
@@ -745,14 +748,28 @@ class FilemanChannel implements IChannel {
                 ended=true
             }
 
+            // wait for 'cat' end
+            let retries = 10 * 15  // 15 seconds
+            while (!ended && retries>0) {
+                console.log(accumulatedEnd.toString('utf8'))
+                console.log(accumulatedErr.toString('utf8'))
+                retries--
+                await new Promise ( (resolve) => { setTimeout(resolve, 100)})
+            }
+            let result = JSON.parse(accumulatedEnd.toString('utf8'))
+            console.log('result', result)
+            if (result.status!=='Success') {
+                console.log('Error on cat:', accumulatedErr.toString('utf8'))
+                return { metadata: {}, message: result.message + '\n' + accumulatedErr, status: ExecutionStatus.FAILURE }
+            }
+            
             // exec api with the sh and the > returns immediately, so we add a '&& exit'
             // when executing this way, we dont receive 'channel 3' messages (where a json with the result should be present)
             let dstPath = '/'+ns+'/'+pod+'/'+c+remotePath
             let len = (await this.getFileInfo(dstPath))?.size
-            let retries = (10*100) * 15  // 15 seconds
             while ((!len || +len!==srclen) && (retries>0)) {
                 retries--
-                await new Promise ( (resolve) => { setTimeout(resolve, 10)})
+                await new Promise ( (resolve) => { setTimeout(resolve, 100)})
                 len = (await this.getFileInfo(dstPath))?.size
             }
             if (retries>0) {
@@ -856,7 +873,7 @@ class FilemanChannel implements IChannel {
             // copy/move on same container
             let fileInfo = await this.getFileInfo(srcClusterPath)
             if (fileInfo) {
-                let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, [linuxCommand, srcLocalPath+'/'+fname, dstLocalPath])
+                let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, [linuxCommand, '-r', srcLocalPath+'/'+fname, dstLocalPath])
                 if (result.stdend.status===ExecutionStatus.SUCCESS && result.stderr==='') {
                     this.sendUnsolicitedMessage(webSocket, instance.instanceId, EFilemanCommand.CREATE, JSON.stringify({ metadata: { object:dstClusterPath + '/' + fname, type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
                     if (operation === EFilemanCommand.MOVE) this.sendUnsolicitedMessage(webSocket, instance.instanceId, EFilemanCommand.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))

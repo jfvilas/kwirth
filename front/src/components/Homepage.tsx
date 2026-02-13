@@ -15,7 +15,6 @@ import { EInstanceConfigView } from '@jfvilas/kwirth-common'
 // Open source icons: https://iconbuddy.com/
 // transform svg to JSX https://svg2jsx.com/
 
-// +++ convert svg k8 icons to component (so they won't be downloaded)
 interface IProps {
     cluster:Cluster|undefined,
     clusters:Cluster[]
@@ -25,7 +24,7 @@ interface IProps {
     lastWorkspaces:IWorkspaceSummary[]
     favWorkspaces:IWorkspaceSummary[]
     onRestoreTabParameters: (tab:ITabSummary) => void
-    onSelectTab: (tab:ITabSummary) => void
+    onHomepageSelectTab: (tab:ITabSummary) => void
     onSelectWorkspace: (workspace:IWorkspaceSummary) => void
     onUpdateTabs: (last:ITabSummary[], fav:ITabSummary[]) => void
     onUpdateWorkspaces: (last:IWorkspaceSummary[], fav:IWorkspaceSummary[]) => void
@@ -86,28 +85,64 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     //     return () => clearInterval(i)
     // })
 
-    useEffect( () => {
-        let i = setInterval( (c:Cluster) => {
-            try {
-                fetch(`${c.url}/metrics/usage/cluster`, addGetAuthorization(c.accessString)).then ( (result) => {
-                    result.json().then ( (data) => {
-                        setCpu(data.cpu)
-                        setDataCpu([...dataCpu, { value: data.cpu as number }])
-                        setMemory(data.memory)
-                        setDataMemory([...dataMemory, { value: data.memory as number}])
-                        setTxmbps(data.txmbps)
-                        setRxmbps(data.rxmbps)
-                        setDataNetwork([...dataNetwork, { value: (data.txmbps + data.rxmbps) || 0}])
-                    })
-                })
-            }
-            catch (err) {
-                console.log(err)
-            }
-        }, 3000, props.cluster || props.clusters.find(x => x.source))
-        return () => clearInterval(i)
-    })
+    // useEffect( () => {
+    //     let i = setInterval( (c:Cluster) => {
+    //         try {
+    //             fetch(`${c.url}/metrics/usage/cluster`, addGetAuthorization(c.accessString)).then ( (result) => {
+    //                 result.json().then ( (data) => {
+    //                     setCpu(data.cpu)
+    //                     setDataCpu([...dataCpu, { value: data.cpu as number }])
+    //                     setMemory(data.memory)
+    //                     setDataMemory([...dataMemory, { value: data.memory as number}])
+    //                     setTxmbps(data.txmbps)
+    //                     setRxmbps(data.rxmbps)
+    //                     setDataNetwork([...dataNetwork, { value: (data.txmbps + data.rxmbps) || 0}])
+    //                 })
+    //             })
+    //         }
+    //         catch (err) {
+    //             console.log(err)
+    //         }
+    //     }, 3000, props.cluster || props.clusters.find(x => x.source))
+    //     return () => clearInterval(i)
+    // })
+    useEffect(() => {
+        // 1. Definimos el cluster objetivo fuera para mayor claridad
+        const targetCluster = props.cluster || props.clusters.find(x => x.source);
+        if (!targetCluster) return;
 
+        const i = setInterval((c: Cluster) => {
+            fetch(`${c.url}/metrics/usage/cluster`, addGetAuthorization(c.accessString))
+                .then((result) => {
+                    if (!result.ok) throw new Error("Error en respuesta de red");
+                    return result.json();
+                })
+                .then((data) => {
+                    // 2. IMPORTANTE: Usamos la función de actualización (prev => ...) 
+                    // para evitar que los datos se dupliquen o se pierdan.
+                    setCpu(data.cpu);
+                    setDataCpu(prev => [...prev, { value: data.cpu as number }]);
+                    
+                    setMemory(data.memory);
+                    setDataMemory(prev => [...prev, { value: data.memory as number}]);
+                    
+                    setTxmbps(data.txmbps);
+                    setRxmbps(data.rxmbps);
+                    setDataNetwork(prev => [...prev, { value: (data.txmbps + data.rxmbps) || 0}]);
+                })
+                .catch((err) => {
+                    // 3. Si hay cualquier error (red, JSON malformado o throw manual), cancelamos.
+                    console.error("Fallo crítico en métricas. Cancelando intervalo:", err);
+                    clearInterval(i);
+                });
+        }, 3000, targetCluster);
+
+        // Limpieza al desmontar el componente
+        return () => clearInterval(i);
+
+        // 4. Añade las dependencias para que el efecto se reinicie si el cluster cambia
+    }, [props.cluster, props.clusters]);
+    
     const toFavTabs = (tab:ITabSummary) => {
         if (!props.favTabs.some(t => t.name === tab.name && t.channel === tab.channel)) {
             props.favTabs.push(tab)
@@ -145,7 +180,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     }
 
     const openTab = (tab:ITabSummary) => {
-        props.onSelectTab(tab)
+        props.onHomepageSelectTab(tab)
     }
 
     const restoreTabParameters = (tab:ITabSummary) => {
@@ -174,22 +209,23 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                     viewIcon = <IconNamespace size={20}/>
                                     break
                                 case EInstanceConfigView.GROUP:
-                                    viewIcon = <IconGroup height={20}/>
+                                    viewIcon = <IconGroup size={20}/>
                                     break
                                 case EInstanceConfigView.POD:
-                                    viewIcon = <IconPod height={20}/>
+                                    viewIcon = <IconPod size={20}/>
                                     break
                                 case EInstanceConfigView.CONTAINER:
-                                    viewIcon = <IconContainer height={20}/>
+                                    viewIcon = <IconContainer size={20}/>
                                     break
                                 default:
-                                    viewIcon = <IconBlank/>
+                                    viewIcon = <IconBlank size={20}/>
                                     break
                             }
 
                             let name = tab.name
                             if (name.length>50) name = name.substring(0,25) + '...' + name.substring(name.length-25)
-                                
+
+                            let disabled = !props.clusters.find(c => c.name === tab.channelObject.clusterName)
                             return <Stack key={listType+tab.name+tab.channel} direction={'row'} alignItems={'center'} flex={1}>
                                 <Tooltip title={tab.channel}>
                                     {channelIcon}
@@ -197,19 +233,19 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                 <Typography>&nbsp;</Typography>
                                 {viewIcon}
                                 <Typography>&nbsp;</Typography>
-                                <Tooltip title={tab.name}>
+                                <Tooltip title={disabled? `Cannot access cluser (${tab.channelObject.clusterName})`: tab.name}>
                                     <Typography>{name}</Typography>
                                 </Tooltip>
                                 <Typography flexGrow={1}/>
-                                <IconButton onClick={() => openTab(tab)}>
+                                <IconButton onClick={() => openTab(tab)} disabled={disabled}>
                                     <OpenInBrowser/>
                                 </IconButton>
-                                <IconButton onClick={() => restoreTabParameters(tab)}>
+                                <IconButton onClick={() => restoreTabParameters(tab)} disabled={disabled}>
                                     <FactCheck/>
                                 </IconButton>
                                 
                                 { listType !== EListType.FAV && 
-                                    <IconButton onClick={() => toFavTabs(tab)}>
+                                    <IconButton onClick={() => toFavTabs(tab)} disabled={disabled}>
                                         <Star sx={{ color: 'gray' }} /> 
                                     </IconButton>
                                 }
@@ -311,7 +347,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         let content = <></>
         switch (flavour) {
             case 'aks':
-                content = <><IconAks/>&nbsp;Azure Kubernetes</>
+                content = <><IconAks size={20}/>&nbsp;Azure Kubernetes</>
                 break
             case 'k3s':
                 content = <><IconK3s/>&nbsp;Rancher K3</>
@@ -320,7 +356,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                 content = <><IconK3d/>&nbsp;K3D</>
                 break
             case 'eks':
-                content = <><IconEks/>&nbsp;AWS Kubernetes</>
+                content = <><IconEks size={20}/>&nbsp;AWS Kubernetes</>
                 break
             case 'ocp':
                 content = <><IconOcp/>&nbsp;OpenShift</>
@@ -332,7 +368,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                 content = <><IconRk2e/>&nbsp;Rancher Kubernetes</>
                 break
             default:
-                content = <><IconK8s/>&nbsp;Kubernetes</>
+                content = <><IconK8s size={20}/>&nbsp;Kubernetes</>
                 break
         }
         return <Stack flexDirection={'row'} fontSize={12} alignItems={'center'}>{content}</Stack>
@@ -346,7 +382,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                         {cardExpanded && <Typography variant="h6">Cluster details</Typography>}
                         {!cardExpanded && <Stack direction={'row'}>
                             <Typography><b>Cluster: </b>{props.cluster?.clusterInfo?.name}</Typography>
-                            <Typography sx={{ml:'32px'}}><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes.length}</Typography>
+                            <Typography sx={{ml:'32px'}}><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes?.length}</Typography>
                             <Typography sx={{ml:'32px'}}><b>Resources: </b>{props.cluster?.clusterInfo?.vcpu} vCPU / {((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)} GB</Typography>
 
                             <Typography flexGrow={1}></Typography>
@@ -430,7 +466,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                 </Stack>
                                 <Typography><b>Version: </b>{props.cluster?.clusterInfo?.version}</Typography>
                                 <Typography><b>Platform: </b>{props.cluster?.clusterInfo?.platform}</Typography>
-                                <Typography><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes.length}</Typography>
+                                <Typography><b>Nodes: </b>{props.cluster?.clusterInfo?.nodes?.length}</Typography>
                                 <Typography><b>Total vCPU: </b>{props.cluster?.clusterInfo?.vcpu}</Typography>
                                 <Typography><b>Total Memory: </b>{((props.cluster?.clusterInfo?.memory||0)/1024/1024/1024).toFixed(2)}GB</Typography>
                             </Stack>

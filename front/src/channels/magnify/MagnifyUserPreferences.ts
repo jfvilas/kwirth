@@ -6,6 +6,7 @@ export interface IKind {
 export const allKinds: IKind[] = [ 
     {name:'ComponentStatus',priority:5},
     {name:'Node',priority:1},
+    {name:'APIResource',priority:5},
     {name:'Namespace',priority:1},
     {name:'NodeMetrics',priority:3},
     {name:'Pod',priority:2},

@@ -2,11 +2,11 @@ import { ENotifyLevel } from "../../tools/Global"
 import { IChannel } from "../IChannel"
 
 interface IMagnifyConfig {
-    notify: (channel:IChannel|undefined, level:ENotifyLevel, msg:string) => void
+    notify: (channel:string|undefined, level:ENotifyLevel, msg:string) => void
 }
 
 class MagnifyConfig implements IMagnifyConfig {
-    notify: (channel:IChannel|undefined, level:ENotifyLevel, msg:string) => void = (channel:IChannel|undefined, level:ENotifyLevel, msg:string) => {}
+    notify: (channel:string|undefined, level:ENotifyLevel, msg:string) => void = (channel:string|undefined, level:ENotifyLevel, msg:string) => {}
 }
 
 interface IMagnifyInstanceConfig {

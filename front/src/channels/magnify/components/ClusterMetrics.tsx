@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { Stack } from '@mui/material'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { IMagnifyData } from '../MagnifyData'
@@ -11,9 +10,10 @@ interface IClusterMetricsProps {
 const ClusterMetrics: React.FC<IClusterMetricsProps> = (props:IClusterMetricsProps) => {
     let magnifyData:IMagnifyData = props.channelObject.data as IMagnifyData
 
+    const chartData = [...magnifyData.metricsCluster]
     return <Stack direction={'row'} sx={{height:'200px'}}>
         <ResponsiveContainer>
-            <LineChart data={magnifyData.metricsCluster} title='CPU'>
+            <LineChart data={chartData} title='CPU'>
                 <CartesianGrid strokeDasharray='3 3'/>
                 <XAxis dataKey='timestamp' fontSize={8}/>
                 <YAxis fontSize={8}/>
@@ -23,7 +23,7 @@ const ClusterMetrics: React.FC<IClusterMetricsProps> = (props:IClusterMetricsPro
         </ResponsiveContainer>
 
         <ResponsiveContainer>
-            <LineChart data={magnifyData.metricsCluster} title='Memory'>
+            <LineChart data={chartData} title='Memory'>
                 <CartesianGrid strokeDasharray='3 3'/>
                 <XAxis dataKey='timestamp' fontSize={8}/>
                 <YAxis fontSize={8}/>
@@ -32,7 +32,7 @@ const ClusterMetrics: React.FC<IClusterMetricsProps> = (props:IClusterMetricsPro
             </LineChart>
         </ResponsiveContainer>
         <ResponsiveContainer>
-            <LineChart data={magnifyData.metricsCluster} title='Network'>
+            <LineChart data={chartData} title='Network'>
                 <CartesianGrid strokeDasharray='3 3'/>
                 <XAxis dataKey='timestamp' fontSize={8}/>
                 <YAxis fontSize={8}/>

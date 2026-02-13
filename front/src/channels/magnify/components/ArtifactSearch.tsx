@@ -9,7 +9,7 @@ interface IContentEditProps {
     scope: string
     selectedFiles: IFileObject[]
     onClose: () => void
-    onLink: (kind:string, name:string ) => void
+    onLink: (kind:string, name:string, namespace:string) => void
 }
 
 const ArtifactSearch: React.FC<IContentEditProps> = (props:IContentEditProps) => {
@@ -118,10 +118,16 @@ const ArtifactSearch: React.FC<IContentEditProps> = (props:IContentEditProps) =>
                                 let res = getResults(file.data?.origin, searchText, includeStatus, matchCase, merge)
                                 return res.map((r,index) => {
                                     let val = getDeepValue(file.data.origin, r)
+                                    let link
+                                    if (file.data.origin.metadata)
+                                        link = <a href={`#`} onClick={() => props.onLink(file.data.origin.kind, file.data.origin.metadata.name, file.data.origin.metadata.namespace)}>{file.data.origin.metadata.name}</a>
+                                    else
+                                        link = <a href={`#`} onClick={() => props.onLink(file.data.origin.kind, file.data.origin.name, '')}>{file.data.origin.name}</a>
                                     return <Stack key={index} direction={'row'} sx={{mb:2}} alignItems={'center'}>
                                         {getIconFromKind(file.data?.origin?.kind, 32)}
                                         <Stack direction={'column'} sx={{ml:2}}>
-                                            <a href={`#`} onClick={() => props.onLink(file.data.origin.kind,file.data.origin.metadata.name)}>{file.data.origin.metadata.name}</a>
+                                            {/* <a href={`#`} onClick={() => props.onLink(file.data.origin.kind,file.data.origin.metadata.name,file.data.origin.metadata.namespace)}>{file.data.origin.metadata.name}</a> */}
+                                            {link}
                                             <span style={{marginLeft:'4px'}}>{r}</span>
                                             <span style={{marginLeft:'4px'}}>{String(val).substring(0,80)}{String(val).length>80?'...':''}</span>
                                         </Stack>

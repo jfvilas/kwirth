@@ -90,6 +90,9 @@ const Login: React.FC<IProps> = (props:IProps) => {
                     case 403:
                         setMsgBox(MsgBoxOkError('Login',`Access has been denied.`, setMsgBox))
                         break
+                    case 503:
+                        setMsgBox(MsgBoxOkError('Login',`Backend seems to be starting or in error (error 503).`, setMsgBox))
+                        break
                     default:
                         setMsgBox(MsgBoxOkError('Login',`Unknown error.`, setMsgBox))
                         break

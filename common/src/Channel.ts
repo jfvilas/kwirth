@@ -26,6 +26,7 @@ interface BackChannelData {
     events: boolean  // this channel receives events
     endpoints: IEndpointConfig[]  // array of specific endpoints the channel requires (usually this would be empty)
     websocket: boolean  // this channel allows websocket creation (aside from main websocket communication)
+    cluster: boolean    // this channel is cluster-wide, it has access to all namespaces/controllers/pods/containers
 }
 
 interface KwirthData {

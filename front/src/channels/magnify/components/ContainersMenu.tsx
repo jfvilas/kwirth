@@ -5,12 +5,17 @@ import React from 'react'
 interface IProps {
     f: any
     onClose?:() => void
-    onOptionSelected: (container:string) => void
+    onContainerSelected: (container:string) => void
     includeAllContainers: boolean
     anchorParent: Element
 }
 
-const LeftItemContainersMenu: React.FC<IProps> = (props:IProps) => {
+const ContainersMenu: React.FC<IProps> = (props:IProps) => {
+    if (props.f.data.origin.status.containerStatuses.length===1) {
+        props.onContainerSelected(props.f.data.origin.status.containerStatuses[0].name)
+        return <></>
+    }
+
     return <Menu id='menu-logs' anchorEl={props.anchorParent} open={Boolean(props.anchorParent)} onClose={props.onClose}>
         <MenuList dense sx={{minWidth: 120}}>
             {
@@ -24,7 +29,7 @@ const LeftItemContainersMenu: React.FC<IProps> = (props:IProps) => {
                     else {
                         if (cs.state.terminated) color = 'gray'
                     }
-                    return <MenuItem key={cs.name} onClick={() => props.onOptionSelected(cs.name)}>
+                    return <MenuItem key={cs.name} onClick={() => props.onContainerSelected(cs.name)}>
                         <Stack direction={'row'} alignItems={'center'}>
                             <Box sx={{ width: '10px', height: '10px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>
                             <Typography>&nbsp;{cs.name}</Typography>
@@ -35,7 +40,7 @@ const LeftItemContainersMenu: React.FC<IProps> = (props:IProps) => {
             { props.includeAllContainers && 
                 <>
                     <Divider/>
-                    <MenuItem key={'all'} onClick={() => props.onOptionSelected('*all')}>
+                    <MenuItem key={'all'} onClick={() => props.onContainerSelected('*all')}>
                         <Typography>All containers</Typography>
                     </MenuItem>
                 </>
@@ -44,4 +49,4 @@ const LeftItemContainersMenu: React.FC<IProps> = (props:IProps) => {
     </Menu>
 }
 
-export { LeftItemContainersMenu as LeftItemMenu }
+export { ContainersMenu }

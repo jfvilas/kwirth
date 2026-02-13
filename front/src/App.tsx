@@ -50,15 +50,12 @@ import { NotificationMenu, NotificationMessage } from './components/Notification
 import { ContextSelector } from './components/ContextSelector'
 import { v4 as uuid } from 'uuid'
 
-const isElectron = true
-
 interface IAppProps {
     backendUrl:string
+    isElectron: boolean
 }
 
 const App: React.FC<IAppProps> = (props:IAppProps) => {
-    //const { isElectron } = useEnvironment()
-    // setelectron
     let backendUrl = props.backendUrl
 
     const [frontChannels] = useState<Map<string, TChannelConstructor>>(new Map())
@@ -71,8 +68,8 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const [msgBox, setMsgBox] =useState(<></>)
 
     const [clusters, setClusters] = useState<Cluster[]>([])
-    const clustersRef = useRef(clusters)
-    clustersRef.current = clusters
+    // const clustersRef = useRef(clusters)
+    // clustersRef.current = clusters
     const [selectedClusterName, setSelectedClusterName] = useState<string>()
 
     const tabs = useRef<ITabObject[]>([])
@@ -140,28 +137,29 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         // only when user logs on / off
         if (!logged) return
 
-        if (clustersRef.current.length === 0) getClusters()
+        //+++if (clustersRef.current.length === 0) getClusters()
+        getClusters()
             
         //if (!userSettingsRef.current || userSettingsRef.current === null) readLoggedUserSettings() 
         readLoggedUserSettings() 
 
         // load user tabs
-        let lt = localStorage.getItem('lastTabs')
-        if (lt)
-            setLastTabs(JSON.parse(lt))
+        let lastTabs = localStorage.getItem('lastTabs')
+        if (lastTabs)
+            setLastTabs(JSON.parse(lastTabs))
         else
             setLastTabs(DEFAULTLASTTABS)
-        let ft = localStorage.getItem('favTabs')
-        if (ft) setFavTabs(JSON.parse(ft))
+        let favTabs = localStorage.getItem('favTabs')
+        if (favTabs) setFavTabs(JSON.parse(favTabs))
 
         // load user Workspaces
-        let lb = localStorage.getItem('lastWorkspaces')
-        if (lb)
-            setLastWorkspaces(JSON.parse(lb))
+        let lastBoards = localStorage.getItem('lastWorkspaces')
+        if (lastBoards)
+            setLastWorkspaces(JSON.parse(lastBoards))
         else
             setLastWorkspaces([])
-        let fb = localStorage.getItem('favWorkspaces')
-        if (fb) setFavWorkspaces(JSON.parse(fb))
+        let favBoards = localStorage.getItem('favWorkspaces')
+        if (favBoards) setFavWorkspaces(JSON.parse(favBoards))
     },[logged])
 
     useEffect( () => {
@@ -174,47 +172,47 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         setNotifySnackbarOpen(false)
     }
 
-    const notify = (channel:IChannel|undefined, level:ENotifyLevel, message:string) => {
+    const notify = (channelId:string|undefined, level:ENotifyLevel, message:string) => {
         setNotifySnackbarMessage(message)
         setNotifySnackbarLevel(level)
         setNotifySnackbarOpen(true)
-        setNotifications((prev) => [...prev, { timestamp: new Date(), level, message, channel }])
+        setNotifications((prev) => [...prev, { timestamp: new Date(), level, message, channelId }])
     }
 
     const fillTabSummary = async (tab:ITabSummary) => {
         let namespacesArray:string[] = []
         if (tab.channelObject.clusterName === '$cluster') {
-            if (isElectron)
+            if (props.isElectron)
                 tab.channelObject.clusterName = 'inElectron'
             else
                 tab.channelObject.clusterName = 'inCluster'
         }
-        if (tab.channelObject.namespace==='$all' || tab.channelObject.group==='$all'|| tab.channelObject.pod==='$all'|| tab.channelObject.container==='$all') {
+        if (tab.channelObject.namespace==='*all' || tab.channelObject.group==='*all'|| tab.channelObject.pod==='*all'|| tab.channelObject.container==='*all') {
             namespacesArray = (await (await fetch(`${backendUrl}/config/namespace`, addGetAuthorization(accessString))).json())
             tab.channelObject.namespace = namespacesArray.join(',')
         }
-        let groupsArr = []
-        if (tab.channelObject.group==='$all') {
+        let controllersArray = []
+        if (tab.channelObject.group==='*all') {
             for (let namespace of namespacesArray) {
                 let data = await((await fetch(`${backendUrl}/config/${namespace}/groups`, addGetAuthorization(accessString))).json())
                 data = data.map ( (g:any) => ({ ...g, namespace }))
-                groupsArr.push(...data)
+                controllersArray.push(...data)
             }
-            if (tab.channelObject.group==='$all') tab.channelObject.group = groupsArr.map(g => g.type+'+'+g.name).join(',')
+            if (tab.channelObject.group==='*all') tab.channelObject.group = controllersArray.map(g => g.type+'+'+g.name).join(',')
         }
 
         let podsArray:any[] = []
-        if (tab.channelObject.pod==='$all' || tab.channelObject.container==='$all') {
-            for (let group of groupsArr.filter(g => g.type!=='deployment')) {
+        if (tab.channelObject.pod==='*all' || tab.channelObject.container==='*all') {
+            for (let group of controllersArray.filter(g => g.type!=='deployment')) {
                 let data = await (await fetch(`${backendUrl}/config/${group.namespace}/${group.name}/pods?type=${group.type}`, addGetAuthorization(accessString))).json()
                 data = data.map ((name:string) => ({ name, namespace:group.namespace}))
                 podsArray.push (...data)
             }
-            if (tab.channelObject.pod==='$all') tab.channelObject.pod = podsArray.map(pod => pod.name).join(',')
+            if (tab.channelObject.pod==='*all') tab.channelObject.pod = podsArray.map(pod => pod.name).join(',')
         }
     
         let containersArray:string[] = []
-        if (tab.channelObject.container==='$all') {
+        if (tab.channelObject.container==='*all') {
             for (let pod of podsArray) {
                 let data = await ((await fetch(`${backendUrl}/config/${pod.namespace}/${pod.name}/containers`, addGetAuthorization(accessString))).json())
                 data = data.map( (c:string) => pod.name+'+'+c)
@@ -226,49 +224,53 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
     const getClusters = async () => {
         // get current cluster
-        let response = await fetch(`${backendUrl}/config/info`, addGetAuthorization(accessString))
-        let srcCluster = new Cluster()
-        srcCluster.kwirthData = await response.json() as KwirthData
-        if (!srcCluster.kwirthData) {
-            console.log('No KwirthData received from source cluster')
-            return
-        }
-        let responseCluster = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString))
-        srcCluster.clusterInfo = await responseCluster.json() as IClusterInfo
-
-        srcCluster.name = srcCluster.kwirthData.clusterName
-        srcCluster.url = backendUrl
-        srcCluster.accessString = accessString
-        srcCluster.source = true
-        srcCluster.enabled = true
-        let srcMetricsRequired = Array.from(srcCluster.kwirthData.channels).reduce( (prev, current) => { return prev || current.metrics}, false)
-        if (srcMetricsRequired) getMetricsNames(srcCluster)
-        if (versionGreaterThan(srcCluster.kwirthData.version, srcCluster.kwirthData.lastVersion)) {
-            setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
-        }
-
-        // get previously configured clusters
-        let clusterList:Cluster[]=[]
-        if (!isElectron) {
-            response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString))
-            if (response.status===200) {
-                clusterList = JSON.parse (await response.json())
-                clusterList = clusterList.filter (c => c.name !== srcCluster.name)
+        try {
+            let response = await fetch(`${backendUrl}/config/info`, addGetAuthorization(accessString))
+            let srcCluster = new Cluster()
+            srcCluster.kwirthData = await response.json() as KwirthData
+            if (!srcCluster.kwirthData) {
+                console.log('No KwirthData received from source cluster')
+                return
             }
-        }
+            let responseCluster = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString))
+            srcCluster.clusterInfo = await responseCluster.json() as IClusterInfo
 
-        for (let cluster of clusterList)
-            readClusterInfo(cluster, notify).then( () => { setChannelMessageAction({action : EChannelRefreshAction.REFRESH}) })
-        clusterList.push(srcCluster)
-        setClusters(clusterList)
-        setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
+            srcCluster.name = srcCluster.kwirthData.clusterName
+            srcCluster.url = backendUrl
+            srcCluster.accessString = accessString
+            srcCluster.source = true
+            srcCluster.enabled = true
+            let srcMetricsRequired = Array.from(srcCluster.kwirthData.channels).reduce( (prev, current) => { return prev || current.metrics}, false)
+            if (srcMetricsRequired) getMetricsNames(srcCluster)
+            if (versionGreaterThan(srcCluster.kwirthData.version, srcCluster.kwirthData.lastVersion)) {
+                setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
+            }
+
+            // get previously configured clusters
+            let clusterList:Cluster[]=[]
+            if (!props.isElectron) {
+                response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString))
+                if (response.status===200) {
+                    clusterList = JSON.parse (await response.json())
+                    clusterList = clusterList.filter (c => c.name !== srcCluster.name)
+                }
+            }
+
+            for (let cluster of clusterList)
+                readClusterInfo(cluster, notify).then( () => { setChannelMessageAction({action : EChannelRefreshAction.REFRESH}) })
+            clusterList.push(srcCluster)
+            setClusters(clusterList)
+            setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
+        }
+        catch (err) {
+            notify(undefined, ENotifyLevel.ERROR, 'Cannot build clusters list: '+err)
+        }
     }
 
     const readLoggedUserSettings = async () => {
-        if (isElectron) {
+        if (props.isElectron) {
             let settingsStr = localStorage.getItem('settingsGeneral')
             if (settingsStr && userSettingsRef) userSettingsRef.current = JSON.parse(settingsStr) as Settings
-            console.log('**********************', userSettingsRef.current)
         }
         else {
             let resp = await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString))
@@ -285,7 +287,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
     const writeLoggedUserSettings = async () => {
         if (user) {
-            if (isElectron) {
+            if (props.isElectron) {
                 localStorage.setItem('settingsGeneral', JSON.stringify(userSettingsRef.current))
             }
             else {
@@ -325,7 +327,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
 
         if (frontChannels.has(selection.channelId)) {
-           await populateTabObject(selection.name, selection.channelId, cluster, selection.view, selection.namespaces.join(','), selection.groups.join(','), selection.pods.join(','), selection.containers.join(','), start, settings)
+           await populateTabObject(selection.name, selection.channelId, cluster, selection.view, selection.namespaces.join(','), selection.controllers.join(','), selection.pods.join(','), selection.containers.join(','), start, settings)
         }
         else {
             console.log(`Error, invalid channel: `, selection.channelId)
@@ -367,7 +369,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
     }
 
-    const populateTabObject = async (name:string, channelId:string, cluster:Cluster, view:string, namespaces:string, groups:string, pods:string, containers:string, start:boolean, settings:any, tab?:ITabObject) : Promise<ITabObject> => {
+    const populateTabObject = async (name:string, channelId:string, cluster:Cluster, view:string, namespaces:string, controllers:string, pods:string, containers:string, start:boolean, settings:any, tab?:ITabObject) : Promise<ITabObject> => {
         let newChannel = createChannelInstance(frontChannels.get(channelId), notify)
         if (!newChannel) {
             throw 'Invalid channel instance'
@@ -383,7 +385,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 instanceId: '',
                 view: view as EInstanceConfigView,
                 namespace: namespaces,
-                group: groups,
+                group: controllers,
                 pod: pods,
                 container: containers,
                 config: undefined,
@@ -526,9 +528,10 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     }
 
     const colorizeTab = (tab:ITabObject) => {
+        if (!tab.headerEl) return
         let colorTable:IColors = TABBRIGHTCOLORS
         if (selectedTab.current === tab) colorTable = TABBASECOLORS
-        if (tab.channelStarted) {  //+++ maybe channle is started but communicartions interrupted, so we shoould set to red/salmon
+        if (tab.channelStarted) {  //+++ maybe channel is started but communicartions interrupted, so we shoould set to red/salmon
             if (tab.channelPaused) {
                 tab.headerEl.style.backgroundColor = colorTable.pause
             }
@@ -538,12 +541,10 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 }
                 else {
                     if (selectedTab.current?.ws?.readyState) {
-                        if (selectedTab.current?.ws?.readyState === 1) {
+                        if (selectedTab.current?.ws?.readyState === 1)
                             tab.headerEl.style.backgroundColor = colorTable.start
-                        }
-                        else {
+                        else
                             tab.headerEl.style.backgroundColor = colorTable.interrupt
-                        }
                     }
                     else {
                         tab.headerEl.style.backgroundColor = colorTable.start
@@ -944,7 +945,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     setResourceSelected( {
                         view:selectedTab.current.channelObject.view,
                         name: selectedTab.current.name,
-                        groups: selectedTab.current.channelObject.group.split(','),
+                        controllers: selectedTab.current.channelObject.group.split(','),
                         clusterName: selectedTab.current.channelObject.clusterName,
                         containers: selectedTab.current.channelObject.container.split(','),
                         pods:selectedTab.current.channelObject.pod.split(','),
@@ -1056,7 +1057,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     clusterName: t.channelObject.clusterName,
                     view: t.channelObject.view,
                     namespaces: t.channelObject.namespace.split(','),
-                    groups: t.channelObject.group.split(','),
+                    controllers: t.channelObject.group.split(','),
                     pods: t.channelObject.pod.split(','),
                     containers: t.channelObject.container.split(','),
                     name: t.name
@@ -1289,9 +1290,10 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             await fillTabSummary(clonedTab)
             await populateTabObject(clonedTab.name, clonedTab.channel, cluster, clonedTab.channelObject.view, clonedTab.channelObject.namespace, clonedTab.channelObject.group, clonedTab.channelObject.pod, clonedTab.channelObject.container, false, undefined)
             onClickChannelStart()
+            setRefresh(Math.random())
         }
         else {
-            console.log('Cluster not found:', tab.channelObject.clusterName)
+            notify(undefined, ENotifyLevel.ERROR, `Cluster ${tab.channelObject.clusterName} does not exist in your clusters list`)
         }
     }
 
@@ -1301,7 +1303,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             setResourceSelected( {
                 view:tab.channelObject.view,
                 name: tab.name,
-                groups: tab.channelObject.group.split(','),
+                controllers: tab.channelObject.group.split(','),
                 clusterName: tab.channelObject.clusterName,
                 containers: tab.channelObject.container.split(','),
                 pods:tab.channelObject.pod.split(','),
@@ -1354,10 +1356,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
     }
 
-    const onClusterSelectLocal = async (id:string, accessKey: AccessKey) => {
-        console.log('**************accessKey', accessKey)
-        setLogged(true)
-        setFirstLogin(false)
+    const onContextSelectorLocal = async (id:string, accessKey: AccessKey) => {
         setCurrentWorkspaceName('untitled')
         setCurrentWorkspaceDescription('No description yet')
         clearTabs()
@@ -1373,11 +1372,13 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             accessKey: accessKey,
             resources: ''
         }
-        setUser(user)
         setAccessString(user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources)
+        setUser(user)
+        setFirstLogin(false)
+        setLogged(true)
     }
     
-    const onClusterSelectRemote = (id:string, url:string) => {
+    const onContextSelectorRemote = (id:string, url:string) => {
         setIsClusterRemoteSelected(true)
         setLogged(false)
         setFirstLogin(false)
@@ -1390,10 +1391,10 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     }
     
     if (!logged) {
-        if ((isElectron) && !isClusterRemoteSelected) {
+        if (props.isElectron && !isClusterRemoteSelected) {
             return <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
                 <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
-                    <ContextSelector onClusterSelectLocal={onClusterSelectLocal} onClusterSelectRemote={onClusterSelectRemote} isElectron={isElectron}/>
+                    <ContextSelector onContextSelectorLocal={onContextSelectorLocal} onContextSelectorRemote={onContextSelectorRemote} isElectron={props.isElectron}/>
                 </SessionContext.Provider>
             </div>
         }
@@ -1413,7 +1414,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             <AppBar position='sticky' elevation={0} sx={{ zIndex: 99, height:'64px' }}>
                 <Toolbar>
                     <IconButton size='large' edge='start' color='inherit' sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
-                    <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth</Typography>
+                    <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth - {clusters.find(c => c.name === selectedClusterName)?.clusterInfo?.name}</Typography>
                     <Tooltip title={<div style={{textAlign:'center'}}>{currentWorkspaceName}<br/><br/>{currentWorkspaceDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
                         <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentWorkspaceName}</Typography>
                     </Tooltip>
@@ -1478,7 +1479,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 }
                 { !selectedTab.current && 
                     <Box sx={{ display: 'flex', flexDirection: 'column', height:'100%', minHeight:0 }}>
-                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onSelectTab={onHomepageSelectTab} onRestoreTabParameters={onHomepageRestoreParameters} onSelectWorkspace={onHomepageSelectWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces}/>
+                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onHomepageSelectTab={onHomepageSelectTab} onRestoreTabParameters={onHomepageRestoreParameters} onSelectWorkspace={onHomepageSelectWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces}/>
                     </Box>
                 }
 
@@ -1500,7 +1501,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 <Alert severity={notifySnackbarLevel} variant="filled" onClose={onNotifySnackbarClose} sx={{ width: '100%' }}>{notifySnackbarMessage}</Alert>
             </Snackbar>
             { msgBox }
-            { notificationMenuAnchorEl && <NotificationMenu open={true} anchorEl={notificationMenuAnchorEl} messages={notifications} onClose={() => setNotificationMenuAnchorEl(null)} onDelete={onMessageDelete} onClear={() => {setNotifications([]); setNotificationMenuAnchorEl(null)}}/>}
+            { notificationMenuAnchorEl && <NotificationMenu open={true} anchorEl={notificationMenuAnchorEl} messages={notifications} onClose={() => setNotificationMenuAnchorEl(null)} onDelete={onMessageDelete} onClear={() => {setNotifications([]); setNotificationMenuAnchorEl(null)}} channels={frontChannels}/>}
         </SessionContext.Provider>
     )
 }

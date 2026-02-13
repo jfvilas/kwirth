@@ -9,7 +9,7 @@ import { ENotifyLevel } from '../../tools/Global'
 
 export class LogChannel implements IChannel {
     private setupVisible = false
-    private notify: (channel:IChannel|undefined, level:ENotifyLevel, message:string) => void = (channel:IChannel|undefined, level:ENotifyLevel, message:string) => {}
+    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = (channel:string|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = LogSetup
     TabContent: FC<IContentProps> = LogTabContent
     channelId = 'log'
@@ -23,7 +23,7 @@ export class LogChannel implements IChannel {
     requiresClusterInfo() { return false }
     requiresWebSocket() { return false }
     requiresUserSettings() { return false }
-    setNotifier(notifier: (channel:IChannel|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return EInstanceConfigScope.VIEW }
     getChannelIcon(): JSX.Element { return LogIcon }
@@ -109,7 +109,12 @@ export class LogChannel implements IChannel {
             case EInstanceMessageType.SIGNAL:
                 let instanceMessage:IInstanceMessage = JSON.parse(wsEvent.data)
                 if (instanceMessage.flow === EInstanceMessageFlow.RESPONSE && instanceMessage.action === EInstanceMessageAction.START) {
-                    channelObject.instanceId = instanceMessage.instance
+                    if (instanceMessage.instance!=='')
+                        channelObject.instanceId = instanceMessage.instance
+                    else {
+                        let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
+                        this.notify('log', ENotifyLevel.ERROR, signalMessage.text|| signalMessage.event || '')
+                    }
                 }
                 else if (instanceMessage.flow === EInstanceMessageFlow.RESPONSE && instanceMessage.action === EInstanceMessageAction.RECONNECT) {
                     let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)

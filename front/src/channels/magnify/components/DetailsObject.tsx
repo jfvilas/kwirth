@@ -27,7 +27,7 @@ interface IMagnifyObjectDetailsProps {
     sections: IDetailsSection[]
     object: IFileObject
     onChangeData: (src:string,data:any) => void
-    onLink: (kind:string, name:string) => void
+    onLink: (kind:string, name:string, namespace:string) => void
     onContainsEdit?: (val:boolean) => void
 }
 
@@ -193,7 +193,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                 else
                                     linkParts[i] = linkParts[i].substring(1)
                             }
-                            jsxValue=<a href={`#`} onClick={() => props.onLink(linkParts[1],v)}>{v}</a>
+                            jsxValue=<a href={`#`} onClick={() => props.onLink(linkParts[1], v, rootObj.metadata.namespace)}>{v}</a>
                         }
                     }
                     if (valueStyle.length>0) {
@@ -230,22 +230,22 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 return <>{renderValue(rootObj, {keys}, 'keys', 'stringlist', style, level, [], undefined)}</>
 
             case 'stringlist':
-                let result2:string[]=[]
+                let resultStringlist:string[]=[]
                 if (src==='@string[]' && invoke) {
-                    result2 = invoke(rootObj, obj)
+                    resultStringlist = invoke(rootObj, obj)
                 }
                 else
-                    result2=_.get(obj,src)
-                if (!result2) return <></>
+                    resultStringlist=_.get(obj,src)
+                if (!resultStringlist) return <></>
 
                 if (style.includes('column')) {
                     let linkIndicator = originalSrc.startsWith('#')? '#' : ''
                     return <Stack direction={'column'}>
-                        { result2.map((item:any, index:number) => <Typography component='div' key={index}>{renderValue(rootObj, result2, linkIndicator + '['+index+']', 'string', style, level+1, undefined, undefined)}</Typography>) }
+                        { resultStringlist.map((item:any, index:number) => <Typography component='div' key={index}>{renderValue(rootObj, resultStringlist, linkIndicator + '['+index+']', 'string', style, level+1, undefined, undefined)}</Typography>) }
                     </Stack>
                 }
                 else {
-                    let val = result2.join(',')
+                    let val = resultStringlist.join(',\u00a0')
                     let st2 = style.filter(s => s.startsWith(val+':'))
                     if (st2.length>0)
                         return <Typography color={st2[0].split(':')[1]}>{header}{val}</Typography>
@@ -495,7 +495,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
     const renderItem = (rootObj:any, obj:any, item:IDetailsItem, width:number, level:number) => {
         let expander='class-kwirth-'+expanderId  // we use this classname as a trick for searchng th objext inside the DOM
         let firstSource = item.source[0].replace('#','')
-        if (!firstSource.startsWith('@') && item.style?.includes('ifpresent') && !_.get(obj,firstSource)) return <></>
+        if (!firstSource.startsWith('@') && item.style?.includes('ifpresent') && _.get(obj,firstSource)===undefined) return <></>
 
         if (item.source && firstSource==='@jsx[]') {
             if (item.invoke) {

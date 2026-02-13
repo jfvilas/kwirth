@@ -23,7 +23,7 @@ export class ManageKwirthApi {
             })
             .get( async (req:Request, res:Response) => {
                 try {
-                    this.restartGroup(this.coreApi, this.appsApi, this.batchApi, kwirthData.namespace, 'deployment+' + kwirthData.deployment)
+                    this.restartController(this.coreApi, this.appsApi, this.batchApi, kwirthData.namespace, 'deployment+' + kwirthData.deployment)
                     res.status(200).json()
                 }
                 catch (err) {
@@ -34,9 +34,9 @@ export class ManageKwirthApi {
         
     }
 
-    restartGroup = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, groupTypeName:string): Promise<void> => {
+    restartController = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, controllerTypeName:string): Promise<void> => {
         try {
-            let result = await AuthorizationManagement.getPodLabelSelectorsFromGroup(coreApi, appsApi, batchApi, namespace, groupTypeName)
+            let result = await AuthorizationManagement.getPodLabelSelectorsFromController(coreApi, appsApi, batchApi, namespace, controllerTypeName)
             // +++ test & try if this is suitable for restarting jobs
 
             // Delete all pods, which forces kubernetes to recreate them
@@ -49,7 +49,7 @@ export class ManageKwirthApi {
             }
         }
         catch (error) {
-            console.log(`Error restarting group: ${error}`)
+            console.log(`Error restarting controller: ${error}`)
         }
     }
 

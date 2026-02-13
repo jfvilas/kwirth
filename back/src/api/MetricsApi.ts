@@ -168,6 +168,7 @@ export class MetricsApi {
     }
 
     sendUsagePodDetail = (req:Request, res:Response) => {
+        // +++ pending implementing for showin % data on pod list view
         if (this.clusterInfo.metrics) {
             try {
                 res.status(200).send({})

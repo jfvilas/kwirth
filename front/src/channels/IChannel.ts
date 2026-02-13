@@ -69,7 +69,7 @@ interface IChannel {
     requiresAccessString(): boolean
     requiresWebSocket(): boolean
     requiresUserSettings(): boolean
-    setNotifier(notifier:(channel:IChannel|undefined, level:ENotifyLevel, message:string) => void): void
+    setNotifier(notifier:(channelId:string|undefined, level:ENotifyLevel, message:string) => void): void
     getScope(): string
     getChannelIcon(): JSX.Element
     getSetupVisibility(): boolean

@@ -86,6 +86,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }, [])
     
     const onKeyDown = (event:any) => {
+        console.log('key', event.key)
         let key = event.key
         if (key.startsWith('F') && key.length>1) {
             switch(key) {
@@ -136,13 +137,13 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         return 0
     }
 
-    let newTerm =  Array.from(opsData.terminalManager.terminals.keys()).find(tm => !opsData.terminalManager.terminals.get(tm)?.started)
-    if (newTerm) {
-        setSelectedTerminal(newTerm)
-        opsData.selectedTerminal = newTerm
-        let manterm = opsData.terminalManager.terminals.get(newTerm)!
-        manterm.index = assignIndex(newTerm)
-        manterm.term.attachCustomKeyEventHandler((event) => {
+    let newManagedTerm =  Array.from(opsData.terminalManager.terminals.keys()).find(tm => !opsData.terminalManager.terminals.get(tm)?.started)
+    if (newManagedTerm) {
+        setSelectedTerminal(newManagedTerm)
+        opsData.selectedTerminal = newManagedTerm
+        let managedTerm = opsData.terminalManager.terminals.get(newManagedTerm)!
+        managedTerm.index = assignIndex(newManagedTerm)
+        managedTerm.term.attachCustomKeyEventHandler((event) => {
             if (opsConfig.accessKey !== ESwitchKey.DISABLED && event.key.startsWith('F') && event.key.length>1) {
                 if (opsConfig.accessKey === ESwitchKey.NONE && !event.altKey && !event.ctrlKey && !event.shiftKey) return false
                 if (opsConfig.accessKey === ESwitchKey.ALT && event.altKey && !event.ctrlKey && !event.shiftKey) return false
@@ -151,7 +152,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             }
             return true
         })
-        manterm.started = true
+        managedTerm.started = true
     }
 
     const launch = (type:LaunchActionEnum, so:IScopedObject) => {
@@ -280,7 +281,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     clusterName: props.channelObject.clusterName,
                     view: props.channelObject.view,
                     namespaces: [so.namespace],
-                    groups: [],
+                    controllers: [],
                     pods: [so.pod],
                     containers: [so.container],
                     name: `${so.namespace}-${so.pod}+${so.container}`
@@ -315,7 +316,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     clusterName: props.channelObject.clusterName,
                     view: props.channelObject.view,
                     namespaces: [so.namespace],
-                    groups: [],
+                    controllers: [],
                     pods: [so.pod],
                     containers: [so.container],
                     name: `${so.namespace}-${so.pod}+${so.container}`

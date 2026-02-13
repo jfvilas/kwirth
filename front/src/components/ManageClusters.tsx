@@ -5,11 +5,10 @@ import { MsgBoxButtons, MsgBoxOk, MsgBoxWaitCancel, MsgBoxYesNo } from '../tools
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { ENotifyLevel, readClusterInfo } from '../tools/Global'
 import { KwirthData } from '@jfvilas/kwirth-common'
-import { IChannel } from '../channels/IChannel'
 
 interface IProps {
   onClose:(clusters:Cluster[]) => void
-  notify: (channel:IChannel|undefined, level:ENotifyLevel, msg:string) => void
+  notify: (channel:string|undefined, level:ENotifyLevel, msg:string) => void
   clusters?: Cluster[]
 }
 
