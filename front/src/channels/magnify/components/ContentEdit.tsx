@@ -2,8 +2,9 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, 
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { useEffect, useRef, useState } from 'react'
 import CodeMirror from '@uiw/react-codemirror';
+import { EditorState } from "@codemirror/state";
 import { yaml } from '@codemirror/lang-yaml'
-import { Close, Edit, Fullscreen, FullscreenExit, Minimize } from '@mui/icons-material';
+import { Close, Edit, EditOff, Fullscreen, FullscreenExit, Minimize } from '@mui/icons-material';
 import { objectEqual, reorderJsonYamlObject } from '../Tools';
 import { search, openSearchPanel, searchKeymap } from '@codemirror/search'; // Asegúrate de importar 'search'
 import { EditorView, keymap } from '@codemirror/view';
@@ -11,22 +12,24 @@ import { defaultKeymap } from '@codemirror/commands';
 
 const yamlParser = require('js-yaml');
 
+export interface IContentEditObject {
+    type: 'edit'
+    allowEdit:boolean,
+    content: { code:string, title: string, source?:IFileObject, maximized?:boolean}
+}
+
 interface IContentEditProps {
-    selectedFile?:IFileObject
+    selectedFile?: IFileObject
     content?: IContentEditObject
     newContent?: string
+    allowEdit: boolean
     onMinimize: (content:IContentEditObject) => void
     onClose: (content:IContentEditObject) => void
     onOk: (content:{code:string, source?:IFileObject}) => void
 }
 
-export interface IContentEditObject {
-    type: 'edit'
-    content: { code:string, title: string, source?:IFileObject, maximized?:boolean}
-}
-
 const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
-    const content = useRef<IContentEditObject>({ type:'edit', content:{code:'', title:''}})
+    const content = useRef<IContentEditObject>({ type:'edit', allowEdit:true, content:{code:'', title:''}})
     const [code, setCode] = useState<string>('')
     const [percent, setPercent] = useState<number>(70)
     const [editorUnChanged, setEditorUnChanged] = useState<boolean>(true)
@@ -68,7 +71,6 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
             setCode(content.current.content.code)
         }
         else if (props.selectedFile) {
-            //content.current.content.title = (props.selectedFile.data.origin.metadata.namespace? props.selectedFile.data.origin.metadata.namespace+'/': '') + props.selectedFile.data.origin.metadata.name
             if (props.selectedFile.data.origin.metadata)
                 content.current.content.title = (props.selectedFile.data.origin.metadata.namespace? props.selectedFile.data.origin.metadata.namespace+'/': '') + props.selectedFile.data.origin.metadata.name
             else {
@@ -79,6 +81,7 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
             let reorderObj = reorderJsonYamlObject(obj)
             content.current.content.code = yamlParser.dump(reorderObj)
             content.current.content.source = props.selectedFile.data.origin
+            content.current.allowEdit = props.allowEdit
             setCode(content.current.content.code)
             setPercent(70)
         }
@@ -132,7 +135,7 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
             <DialogTitle>
                 <Stack direction={'row'} alignItems={'center'}>                    
                     <Typography sx={{flexGrow:1}}></Typography>
-                    <Typography><Edit />&nbsp;{content.current.content.title}</Typography>
+                    <Typography>{props.allowEdit?<Edit />:<EditOff/>}&nbsp;{content.current.content.title}</Typography>
                     <Typography sx={{flexGrow:1}}></Typography>
                     <IconButton onClick={minimize}>
                         <Minimize />
@@ -153,6 +156,7 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
                         onChange={updateEditorValue} 
                         onUpdate={(v) => { if (v.view) editorViewRef.current = v.view }}                    
                         extensions={[
+                            EditorState.readOnly.of(!props.allowEdit),
                             yaml(),
                             search({ top: true }),
                             keymap.of([

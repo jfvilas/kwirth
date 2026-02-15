@@ -332,29 +332,29 @@ export class AuthorizationManagement {
         }
     }
 
-    public static getPodsFromGroup = async (coreApi: CoreV1Api, appsApi: AppsV1Api, namespace:string, gtype:string, gname:string, accessKey:AccessKey): Promise<string[]> => {
+    public static getPodsFromController = async (coreApi: CoreV1Api, appsApi: AppsV1Api, namespace:string, ctype:string, cname:string, accessKey:AccessKey): Promise<string[]> => {
         let pods:V1Pod[] = []
         let result:string[]=[]
     
         let resources = parseResources(accessKey!.resources)
         let response= await coreApi.listNamespacedPod({namespace})
-        if (gtype === 'deployment') {
+        if (ctype === 'deployment') {
             for (let pod of response.items) {
                 let controllerName = await this.getPodControllerName(appsApi, pod, true)
-                if (controllerName === gname || pod.metadata?.name?.startsWith(gname)) pods.push(pod)
+                if (controllerName === cname || pod.metadata?.name?.startsWith(cname)) pods.push(pod)
             }
         }
-        else if (gtype === 'job') {
+        else if (ctype === 'job') {
             for (let pod of response.items) {
                 let controllerName = await this.getPodControllerName(appsApi, pod, true)
-                if (controllerName === gname || pod.metadata?.name?.startsWith(gname)) pods.push(pod)
+                if (controllerName === cname || pod.metadata?.name?.startsWith(cname)) pods.push(pod)
             }
         }
         else {
             // we find for pod whose controller is gname
             let filteredPods = response.items.filter (pod => {
                 let podController  = pod?.metadata?.ownerReferences?.find(cont => cont.controller)
-                if (podController && podController.name===gname) return pod
+                if (podController && podController.name===cname) return pod
             })
             // we then filter for running pods
             filteredPods = filteredPods.filter(p => p.status?.phase?.toLowerCase()==='running')

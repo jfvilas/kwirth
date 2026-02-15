@@ -5,14 +5,14 @@ import { Close, Minimize, Search } from '@mui/icons-material'
 import { objectClone, objectSearch } from '../Tools'
 import { getIconFromKind } from '../../../tools/Constants-React'
 
-interface IContentEditProps {
+interface IArtifactSearchProps {
     scope: string
     selectedFiles: IFileObject[]
     onClose: () => void
     onLink: (kind:string, name:string, namespace:string) => void
 }
 
-const ArtifactSearch: React.FC<IContentEditProps> = (props:IContentEditProps) => {
+const ArtifactSearch: React.FC<IArtifactSearchProps> = (props:IArtifactSearchProps) => {
     const [searchText, setSearch] = useState('')
     const [includeStatus, setIncludeStatus] = useState(false)
     const [merge, setMerge] = useState(true)

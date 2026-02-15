@@ -1,5 +1,5 @@
 import { IFileObject, ISpace } from '@jfvilas/react-file-manager'
-import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, FolderCopy, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal } from '@mui/icons-material'
+import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, EditOff, FolderCopy, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal } from '@mui/icons-material'
 import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from '../icons/Icons'
 
 
@@ -690,7 +690,7 @@ spaces.set('IngressClass',
     {
         text:'Name',
         source:'name',
-        width:40,
+        width:50,
         leftItems: [
             {
                 name: 'details',
@@ -720,20 +720,11 @@ spaces.set('IngressClass',
         ],
         properties: [
             {
-                name: 'namespace',
-                text: 'Namespace',
-                source: 'namespace',
-                format: 'string',
-                width: 15,
-                sortable: true,
-                visible: true
-            },
-            {
                 name: 'controller',
                 text: 'Controller',
                 source: 'controller',
                 format: 'string',
-                width: 15,
+                width: 40,
                 sortable: true,
                 visible: true
             },
@@ -1806,9 +1797,9 @@ spaces.set('V1APIResource',
                 permission: true,
             },
             {
-                name:'edit',
-                icon: <Edit fontSize='small'/>,
-                text: 'Edit',
+                name:'browse',
+                icon: <EditOff fontSize='small'/>,
+                text: 'Browse',
                 multi: false,
                 permission: true,
             },
@@ -1860,6 +1851,12 @@ spaces.set('ComponentStatus',
                 name: 'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
+                permission: true,
+            },
+            {
+                name:'browse',
+                icon: <EditOff fontSize='small'/>,
+                text: 'Browse',
                 permission: true,
             },
         ],
@@ -2810,7 +2807,7 @@ spaces.set('PersistentVolumeClaim',
                 name: 'size',
                 text: 'Size',
                 source: 'size',
-                format: 'string',
+                format: 'storage',
                 width: 5,
                 sortable: true,
                 visible: true
@@ -2944,6 +2941,12 @@ spaces.set('VolumeAttachment',
             {   name: 'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
+                permission: true,
+            },
+            {
+                name:'browse',
+                icon: <EditOff fontSize='small'/>,
+                text: 'Browse',
                 permission: true,
             },
         ],
@@ -3088,6 +3091,12 @@ spaces.set('CSIDriver',
                 text: 'Details',
                 permission: true,
             },
+            {
+                name:'browse',
+                icon: <EditOff fontSize='small'/>,
+                text: 'Browse',
+                permission: true,
+            },
         ],
         properties: [
             {
@@ -3137,6 +3146,12 @@ spaces.set('CSINode',
                 text: 'Details',
                 permission: true,
             },
+            {
+                name:'browse',
+                icon: <EditOff fontSize='small'/>,
+                text: 'Browse',
+                permission: true,
+            },
         ],
         properties: [
             {
@@ -3175,6 +3190,12 @@ spaces.set('CSIStorageCapacity',
             {   name: 'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
+                permission: true,
+            },
+            {
+                name:'browse',
+                icon: <EditOff fontSize='small'/>,
+                text: 'Browse',
                 permission: true,
             },
         ],

@@ -7,7 +7,7 @@ import { TChannelConstructor } from '../channels/IChannel'
 import { Cluster } from '../model/Cluster'
 import { GaugeComponent } from 'react-gauge-component'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
-import { IconAks, IconBlank, IconContainer, IconEks, IconGke, IconGroup, IconK3d, IconK3s, IconK8s, IconNamespace, IconOcp, IconPod, IconRk2e } from '../tools/Constants-React'
+import { IconAks, IconBlank, IconContainer, IconController, IconEks, IconGke, IconK3d, IconK3s, IconK8s, IconNamespace, IconOcp, IconPod, IconRk2e } from '../tools/Constants-React'
 import { Area, AreaChart } from 'recharts'
 import { EInstanceConfigView } from '@jfvilas/kwirth-common'
 
@@ -209,7 +209,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                     viewIcon = <IconNamespace size={20}/>
                                     break
                                 case EInstanceConfigView.GROUP:
-                                    viewIcon = <IconGroup size={20}/>
+                                    viewIcon = <IconController size={20}/>
                                     break
                                 case EInstanceConfigView.POD:
                                     viewIcon = <IconPod size={20}/>

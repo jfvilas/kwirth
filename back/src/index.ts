@@ -226,6 +226,7 @@ const getKubernetesKwirthData = async ():Promise<KwirthData|undefined> => {
                 return { clusterName: 'inCluster', namespace:usersSecret.metadata?.namespace!, deployment:'', inCluster:false, isElectron:isElectron, version:VERSION, lastVersion: VERSION, clusterType: EClusterType.KUBERNETES, metricsInterval:15, channels: [] }
             }
             else {
+                // +++ kwirth is running outside, but wants tu use kubernetes secrets for storing creds
                 console.log('Cannot determine namespace while running outside cluster')
                 process.exit(1)
             }

@@ -515,7 +515,7 @@ export class MetricsTools {
                 if (podValue)
                     return  { value: podValue, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
                 else {
-                    console.log(`Pod metric value not found for: ${asset.podNamespace + '/' + asset.podName+'/'+requestedMetricName}`)
+                    //+++ console.log(`Pod metric value not found for: ${asset.podNamespace + '/' + asset.podName+'/'+requestedMetricName}`)
                     return  { value: 0, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
                 }
             }

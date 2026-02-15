@@ -3,6 +3,7 @@ import { Https } from '@mui/icons-material'
 import { LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextareaAutosize, TextField, Tooltip, Typography } from '@mui/material'
 import { convertBytesToSize, convertSizeToBytes } from '../Tools'
 import React from 'react'
+import { link } from 'fs'
 
 const _ = require('lodash')
 
@@ -76,6 +77,30 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
         }
     }, [containsEdit, props.onContainsEdit]);
 
+    const getValue = (obj:any, src:string) => {
+        let value:any
+        if (src.includes('||')) {
+            // format for selecting one from a list of proeperties:
+            //  prop1||prop2||$default    (default value according to format, default for age is current moment)
+            // or
+            //  props1||prop2||37    (default fixed value)
+            let parts = src.split('||')
+            if (parts[parts.length-1]==='$default')
+                value = '$default'
+            else
+                value = parts[parts.length-1]
+            for (let part of parts) {
+                if (Boolean (_.get(obj,part))) {
+                    value = _.get(obj,part)
+                    break
+                }
+            }
+        }
+        else {
+            value = _.get(obj,src)
+        }
+        return value
+    }
 
     const renderValue = (rootObj:any, srcobj:any, src:string, format:string, style:string[], level:number, content?:IDetailsItem[], invoke?:(ro:any, o:any) => string[], itemx?:IDetailsItem) : JSX.Element => {
         let originalSrc = src
@@ -112,27 +137,25 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
         switch(format) {
             case 'age':
-                let ts = Date.parse(_.get(obj,src))
-                const ahora = new Date();
-                let diffMs = ahora.getTime() - ts
-
-                const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-                diffMs -= dias * (1000 * 60 * 60 * 24)
-
-                const horas = Math.floor(diffMs / (1000 * 60 * 60))
-                diffMs -= horas * (1000 * 60 * 60)
-
-                const minutos = Math.floor(diffMs / (1000 * 60))
-
-                const duracion = { days: dias, hours: horas, minutes: minutos }
-                return <>{formatAgeCompact(duracion)}</>
+                let ts = Date.parse(getValue(obj,src))
+                const now = new Date()
+                let diffMs = now.getTime() - ts
+                const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+                diffMs -= days * (1000 * 60 * 60 * 24)
+                const hours = Math.floor(diffMs / (1000 * 60 * 60))
+                diffMs -= hours * (1000 * 60 * 60)
+                const minutes = Math.floor(diffMs / (1000 * 60))
+                const duration = { days: days, hours: hours, minutes: minutes }
+                return <>{formatAgeCompact(duration)}</>
 
             case 'boolean':
                 let valBoolean = false
                 if (src==='@string[]' && invoke)
                     valBoolean = Boolean(invoke(rootObj, obj)[0])
-                else 
-                    valBoolean = _.get(obj,src)
+                else {
+                    valBoolean = Boolean(_.get(obj,src))
+                }
+
                 let valueStyle = style.filter(s => s.startsWith(valBoolean+':'))
                 if (style && valueStyle.length===1) {
                     let parts = valueStyle[0].split(':')
@@ -157,8 +180,10 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
                 if ((src==='@string[]') && invoke)
                     valString = invoke(rootObj, obj)[0]
-                else 
-                    valString = _.get(obj,src)
+                else {
+                    //valString = _.get(obj,src)
+                    valString = getValue(obj,src)
+                }
 
                 if (style && style.includes('mb')) {
                     valString=convertBytesToSize(convertSizeToBytes(valString))
@@ -172,28 +197,36 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                     let fontWeightStyle = ''
                     let valueStyle:string[] = []
                     let jsxValue = <>{v}</>
-                    if (style) {
+                    if (v && style) {
                         let charLimit = style.find(s => s.startsWith('char:'))
                         if (charLimit) {
                             let limit = +charLimit.substring(5)
-                            if (v.length>limit) jsxValue = <>{v.substring(0,limit)+'...'}</>
+                            if (v && v.length>limit) jsxValue = <>{v.substring(0,limit)+'...'}</>
                         }
 
                         if (style.includes('bold')) fontWeightStyle = '700'
 
                         valueStyle = style.filter(s => s.startsWith(valString+':'))
 
+                        let fixedColor = style.find(s => s.startsWith('color:'))
+                        if (fixedColor) valueStyle=[fixedColor]
+
                         let linkStyle= style.find(s => s.startsWith('link:'))
 
                         if (linkStyle && addLink) {
+                            // console.log('linkStyle')
                             let linkParts=linkStyle.split(':')
-                            for (let i=1;i<=2;i++) {
-                                if (!linkParts[i].startsWith('$')) 
-                                    linkParts[i] = _.get(obj,linkParts[i])
-                                else
-                                    linkParts[i] = linkParts[i].substring(1)
+                            if (linkParts.length<4) {
+                                console.log('link<4', linkStyle)
                             }
-                            jsxValue=<a href={`#`} onClick={() => props.onLink(linkParts[1], v, rootObj.metadata.namespace)}>{v}</a>
+                            for (let i=1;i<=3;i++) {
+                                if (linkParts[i].startsWith('$')) 
+                                    linkParts[i] = linkParts[i].substring(1)
+                                else
+                                    linkParts[i] = _.get(obj,linkParts[i])
+                            }
+                            if (linkParts[3]==='$namespace') linkParts[3] = rootObj.metadata.namespace
+                            jsxValue=<a href={`#`} onClick={() => props.onLink(linkParts[1], v, linkParts[3])}>{v}</a>
                         }
                     }
                     if (valueStyle.length>0) {
@@ -257,6 +290,9 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             case 'objectlist':
                 let items:any[]=[]
                 if (src==='@string[]' && invoke) {
+                    items = invoke(rootObj, obj)
+                }
+                else if (src==='@object[]' && invoke) {
                     items = invoke(rootObj, obj)
                 }
                 else {
@@ -344,16 +380,6 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         return <React.Fragment key={rowIndex}>
                             {content.map((c:IDetailsItem, index) => <React.Fragment key={index}>{renderItem(rootObj, row, c, labelWidth, level+1)}</React.Fragment>)}
                         </React.Fragment>
-                        // <React.Fragment key={rowIndex}>
-                        // {
-                        //     !content?
-                        //         <></>
-                        //         :
-                        //         <>{content.map((c:IDetailsItem, elIndex) => <React.Fragment key={elIndex}>{renderItem(rootObj, row, c, labelWidth, level+1)}</React.Fragment>)}</>
-                        // }
-
-                        // </React.Fragment>
-
                     })}</>
                 }
 

@@ -1,14 +1,24 @@
 ******************ERRORES
 RFM
 cuando cambiamos de pantalla en magnify (o lo que sea) y cambian las columnas, hay que resetear los widths de las columnas
+Uncaught TypeError: toolBarAction.onClick is not a function
+    at onToolbarFileActionClick (Toolbar.jsx:101:1)
+decimales en las props tipo number (cpu del pod) --> RFM
+
+
 
 MAGNIFY FRONT
 reconnect  NO VA!!!!
     hay que revisar el reconnect del node y el reconnect del front
-decimales en cpu del pod
 navigate (onlink) a un CRDi externo
-colores en las conditions de los nodes
+more events en el overview
+node: añadir taints en details
 
+VALILDATIONS
+añadir node validations
+añadir AllValidations on Overview
+añadir rolebinding clusterrolebinding validation
+añadir ingres/service validation
 
 PV: secrets
   csi:
@@ -81,6 +91,7 @@ MAGNIFY FRONT
     zona de avisos del cluster (implementar en filemanager, una campana)
     busquedas: buscar en los CRD y en los CRDi
     mejorar el resize column
+    cuando esta mostrandese un pagina de validaciones, si se produce n render, se lanza la validacion, si hay leases o algo que actualzia mcho, se dispara el consumo de cpu y empieza a ir lento
 
 RFM
     en los fileitem, cuando le fila es muy alta, el nombre del fileitem se esta alineando arriab, y deberia ir al centro

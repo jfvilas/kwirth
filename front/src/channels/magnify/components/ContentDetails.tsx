@@ -14,8 +14,6 @@ interface IContentDetailsProps {
     sections: IDetailsSection[]
     actions: ISpaceMenuItem[]
     onApply: (path:string, obj:any) => void
-    onEdit: (path:string) => void
-    onDelete: (path:string) => void
     onAction: (action:string, path:string, container?:string) => void
     onMinimize: (content:IContentDetailsObject) => void
     onClose: (content:IContentDetailsObject) => void
@@ -37,17 +35,7 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
     const [selectedAction, setSelectedAction] = useState('')
     
     const newObject = useRef()
-    let showEdit = false
-    let showDelete = false
     let items = props.actions.filter(a => a.name!=='details')
-    if (items.some(a => a.name==='edit')) {
-        items=items.filter(a => a.name!=='edit')
-        showEdit=true
-    }
-    if (items.some(a => a.name==='delete')) {
-        items=items.filter(a => a.name!=='delete')
-        showDelete=true
-    }
    
     useEffect(() => {
         const previousFocus = document.activeElement as HTMLElement
@@ -112,14 +100,6 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
         if (content.current) props.onClose(content.current)
     }
 
-    const editObject = () => {
-        if (content.current) props.onEdit(content.current.content.path)
-    }
-
-    const deleteObject = () => {
-        if (content.current) props.onDelete((content.current.content.path))
-    }
-
     const link = (kind:string, name:string, namespace:string) => {
         props.onLink(kind, name, namespace)
     }
@@ -181,12 +161,6 @@ const ContentDetails: React.FC<IContentDetailsProps> = (props:IContentDetailsPro
                             </Tooltip>
                         })
                     }
-                    {showEdit && <Tooltip title='Edit'>
-                        <IconButton color='primary' onClick={editObject}><Edit fontSize='small'/></IconButton>
-                    </Tooltip>}
-                    { showDelete && <Tooltip title='Delete'>
-                        <IconButton color='primary' onClick={deleteObject}><Delete fontSize='small'/></IconButton>
-                    </Tooltip>}
                     
 
                     <Typography sx={{flexGrow:1}}/>

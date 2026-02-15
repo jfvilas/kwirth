@@ -281,6 +281,9 @@ class MagnifyChannel implements IChannel {
                     channelObject.data?.refreshUsage?.()
                 })
             })
+            .catch ( () => {
+                
+            })
         }, 15000, channelObject))
 
         // pod cpu/mem & cluster cpu/mem
@@ -424,6 +427,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadSecret(magnifyData:IMagnifyData, obj:any): void {
+        if (obj.metadata.name.startsWith('sh.helm.release.')) return // +++ OPTIMIZE STORAGE
         obj.apiVersion = 'v1'
         obj.kind = 'Secret'
         this.updateObject(magnifyData, {
@@ -1070,7 +1074,6 @@ class MagnifyChannel implements IChannel {
         obj.kindName = obj.kind
         obj.apiVersion = 'v1'
         obj.kind = 'V1APIResource'
-        console.log(obj)
         this.updateObject(magnifyData, {
             name: obj.name,
             isDirectory: false,
@@ -1269,7 +1272,7 @@ const requestList = async (channelObject: IChannelObject) => {
             flow: EInstanceMessageFlow.REQUEST,
             type: EInstanceMessageType.DATA,
             channel: channelObject.channel.channelId,
-            params: [ 'V1APIResource', ...params ]
+            params: [ ...params ]
         }
         channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
         await new Promise(resolve => setTimeout(resolve, 250))

@@ -1,6 +1,10 @@
 declare module '@jfvilas/react-file-manager' {
     import { FC } from 'react'
 
+    export interface IFileManagerHandle {
+       changeFolder: (ruta: string) => void;
+    }
+
     export interface IFileUploadConfig {
         url: string
         method?: "POST" | "PUT"
@@ -105,59 +109,121 @@ declare module '@jfvilas/react-file-manager' {
         upload: boolean
     }
 
-    const FileManager : FC<{
-        actions?: Map<string, IAction[]>,
-        space?: string
-        spaces?: Map<string, ISpace>,
-        files?: IFileObject[],
-        fileUploadConfig?: IFileUploadConfig,
-        fileDownloadConfig?: IFileDownloadConfig,
-        icons?: Map<string, IIcon[]>,
-        isLoading?: boolean,
-        onCreateFolder? : (name: string, parentFolder: IFileObject) => void,
-        onFileUploaded? : (file:IFileObject, parentFolder: IFileObject) => void,
-        onFileUploading? : (file:IFileObject, parentFolder: IFileObject) => void,
-        onFileUploadError? : (file:IFileObject, parentFolder: IFileObject) => void,
-        onCut? : (files: IFileObject[]) => void,
-        onCopy? : (files: IFileObject[]) => void,
-        onPaste? : (files: IFileObject[], destFolder:IFileObject, operation:string) => void,
-        onRename? : (file: IFileObject, newName: string) => void,
-        onDownload? : (files: IFileObject[]) => void,
-        onDelete? : (files:IFileObject[]) => void,
-        onLayoutChange? : () => void,
-        onRefresh? : () => void,
-        onFileOpen? : () => void,
-        onFolderChange : (folder: string) => void,
-        onSelect? : (files:IFileObject[]) => void,
-        onSelectionChange? : (files:IFileObject[]) => void,
-        onError? : (error: IError, file: IFileObject) => void,
-        layout?: string,
-        enableFilePreview : boolean,
-        maxFileSize? : number,
-        filePreviewPath : string,
-        acceptedFileTypes? : string[],
-        height : string,
-        width? : string,
-        initialPath : string,
-        filePreviewComponent? : React.ReactNode,
-        primaryColor : string,
-        fontFamily : string,
-        language? : string,
-        permissions : IPermissions,
-        collapsibleNav? : boolean,
-        defaultNavExpanded? : boolean,
-        className? : string,
-        style? : any,
-        searchMode?: 'auto'|'hidden'|'visible',
-        searchRegex?: boolean,
-        searchCasing?: boolean,
-        showRefresh?: boolean,
-        showContextMenu?: boolean,
-        showBreadcrumb?: boolean,
-        categories?: ICategory[],
-        maxNavigationPaneLevel: number
-        minFileActionsLevel: number
-        formatDate? : string | number
-    }>  
-  
+    // const FileManager : FC<{
+    //     ref: React.MutableRefObject<HTMLDivElement | null | undefined>
+    //     actions?: Map<string, IAction[]>,
+    //     space?: string
+    //     spaces?: Map<string, ISpace>,
+    //     files?: IFileObject[],
+    //     fileUploadConfig?: IFileUploadConfig,
+    //     fileDownloadConfig?: IFileDownloadConfig,
+    //     icons?: Map<string, IIcon[]>,
+    //     isLoading?: boolean,
+    //     onCreateFolder? : (name: string, parentFolder: IFileObject) => void,
+    //     onFileUploaded? : (file:IFileObject, parentFolder: IFileObject) => void,
+    //     onFileUploading? : (file:IFileObject, parentFolder: IFileObject) => void,
+    //     onFileUploadError? : (file:IFileObject, parentFolder: IFileObject) => void,
+    //     onCut? : (files: IFileObject[]) => void,
+    //     onCopy? : (files: IFileObject[]) => void,
+    //     onPaste? : (files: IFileObject[], destFolder:IFileObject, operation:string) => void,
+    //     onRename? : (file: IFileObject, newName: string) => void,
+    //     onDownload? : (files: IFileObject[]) => void,
+    //     onDelete? : (files:IFileObject[]) => void,
+    //     onLayoutChange? : () => void,
+    //     onRefresh? : () => void,
+    //     onFileOpen? : () => void,
+    //     onFolderChange : (folder: string) => void,
+    //     onSelect? : (files:IFileObject[]) => void,
+    //     onSelectionChange? : (files:IFileObject[]) => void,
+    //     onError? : (error: IError, file: IFileObject) => void,
+    //     layout?: string,
+    //     enableFilePreview : boolean,
+    //     maxFileSize? : number,
+    //     filePreviewPath : string,
+    //     acceptedFileTypes? : string[],
+    //     height : string,
+    //     width? : string,
+    //     initialPath : string,
+    //     filePreviewComponent? : React.ReactNode,
+    //     primaryColor : string,
+    //     fontFamily : string,
+    //     language? : string,
+    //     permissions : IPermissions,
+    //     collapsibleNav? : boolean,
+    //     defaultNavExpanded? : boolean,
+    //     className? : string,
+    //     style? : any,
+    //     searchMode?: 'auto'|'hidden'|'visible',
+    //     searchRegex?: boolean,
+    //     searchCasing?: boolean,
+    //     showRefresh?: boolean,
+    //     showContextMenu?: boolean,
+    //     showBreadcrumb?: boolean,
+    //     categories?: ICategory[],
+    //     maxNavigationPaneLevel: number
+    //     minFileActionsLevel: number
+    //     formatDate? : string | number
+    // }>  
+
+    export interface IFileManagerProps {
+        actions?: Map<string, IAction[]>;
+        space?: string;
+        spaces?: Map<string, ISpace>;
+        files?: IFileObject[];
+        fileUploadConfig?: IFileUploadConfig;
+        fileDownloadConfig?: IFileDownloadConfig;
+        icons?: Map<string, IIcon[]>;
+        isLoading?: boolean;
+        onCreateFolder? : (name: string, parentFolder: IFileObject) => void;
+        onFileUploaded? : (file:IFileObject, parentFolder: IFileObject) => void;
+        onFileUploading? : (file:IFileObject, parentFolder: IFileObject) => void;
+        onFileUploadError? : (file:IFileObject, parentFolder: IFileObject) => void;
+        onCut? : (files: IFileObject[]) => void;
+        onCopy? : (files: IFileObject[]) => void;
+        onPaste? : (files: IFileObject[], destFolder:IFileObject, operation:string) => void;
+        onRename? : (file: IFileObject, newName: string) => void;
+        onDownload? : (files: IFileObject[]) => void;
+        onDelete? : (files:IFileObject[]) => void;
+        onLayoutChange? : () => void;
+        onRefresh? : () => void;
+        onFileOpen? : () => void;
+        onFolderChange : (folder: string) => void;
+        onSelect? : (files:IFileObject[]) => void;
+        onSelectionChange? : (files:IFileObject[]) => void;
+        onError? : (error: IError, file: IFileObject) => void;
+        layout?: string;
+        enableFilePreview: boolean;
+        maxFileSize? : number;
+        filePreviewPath: string;
+        acceptedFileTypes? : string[];
+        height: string;
+        width? : string;
+        initialPath: string;
+        filePreviewComponent? : React.ReactNode;
+        primaryColor: string;
+        fontFamily: string;
+        language? : string;
+        permissions: IPermissions;
+        collapsibleNav? : boolean;
+        defaultNavExpanded? : boolean;
+        className? : string;
+        style? : any;
+        searchMode?: 'auto'|'hidden'|'visible';
+        searchRegex?: boolean;
+        searchCasing?: boolean;
+        showRefresh?: boolean;
+        showContextMenu?: boolean;
+        showBreadcrumb?: boolean;
+        categories?: ICategory[];
+        maxNavigationPaneLevel: number;
+        minFileActionsLevel: number;
+        formatDate? : string | number;
+    }
+
+    // 2. Exportamos el componente usando ForwardRefExoticComponent
+    // Esto es lo que permite que el ref funcione correctamente en TS
+    export const FileManager: React.ForwardRefExoticComponent<
+        IFileManagerProps & React.RefAttributes<IFileManagerHandle>
+    >;
+
 }
