@@ -114,6 +114,7 @@ let conditions:IDetailsItem = {
                 'NoConflicts:green',
                 'InitialNamesAccepted:green',
                 'Unschedulable:red',
+                'BackoffLimitExceeded:red'
             ]
         },
         {
@@ -359,6 +360,7 @@ objectSections.set('StorageClass', [
                     }
                 ],
                 format: 'objectlist',
+                style: ['column']
            }
         ]
     },
@@ -950,6 +952,70 @@ objectSections.set('Node', [
             },
         ]
     },
+    {
+        name: 'storage',
+        text: 'Storage',
+        root: 'origin',
+        items: [
+            {
+                name: 'inuse',
+                text: 'In Use',
+                source: ['#status.volumesInUse'],
+                format: 'stringlist',
+                style: ['column', 'link:$PersistentVolume:.:.'],
+                processValue: (value) => {
+                    return value.split('/')[value.split('/').length-1]
+                }
+            },
+            {
+                name: 'attached',
+                text: 'Attached',
+                source: ['status.volumesAttached'],
+                format: 'objectlist',
+                style: ['column'],
+                items: [
+                    {
+                        name: 'name',
+                        text: '',
+                        source: ['#name'],
+                        format: 'string',
+                        style: ['column', 'link:$PersistentVolume:name:.'],
+                        processValue: (value) => {
+                            return value.split('/')[value.split('/').length-1]
+                        }
+                    },
+                ]
+            },
+        ]
+    },
+    {
+        name: 'network',
+        text: 'Network',
+        root: 'origin',
+        items: [
+            {
+                name: 'addresses',
+                text: 'Addresses',
+                source: ['status.addresses'],
+                format: 'objectlist',
+                style: ['table' ],
+                items: [
+                    {
+                        name: 'type',
+                        text: 'Type',
+                        source: ['type'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'value',
+                        text: 'Value',
+                        source: ['address'],
+                        format: 'string',
+                    }
+                ]
+            },
+        ]
+    },
     events
 ])
 
@@ -999,6 +1065,54 @@ objectSections.set('V1APIResource', [
                 format: 'stringlist',
                 source: ['verbs'],
                 style: ['ifpresent']
+            },
+        ]
+    }
+])
+
+objectSections.set('Image', [
+    {
+        name: 'properties',
+        text: 'Properties',
+        root: 'origin',
+        items: [
+            {
+                name: 'name',
+                text: 'Name',
+                source: ['displayName'],
+                format: 'string',
+            },
+            {
+                name: 'registry',
+                text: 'Registry',
+                source: ['registry'],
+                format: 'string',
+            },
+            {
+                name: 'tag',
+                text: 'Tag',
+                source: ['tag'],
+                format: 'string',
+            },
+            {
+                name: 'sha',
+                text: 'SHA',
+                source: ['sha'],
+                format: 'string',
+            },
+            {
+                name: 'names',
+                text: 'Names',
+                source: ['names'],
+                format: 'stringlist',
+                style: ['column']
+            },
+            {
+                name: 'nodes',
+                text: 'Nodes',
+                source: ['#nodes'],
+                format: 'stringlist',
+                style: ['column', 'link:$Node:.:.']
             },
         ]
     }
@@ -1688,8 +1802,9 @@ objectSections.set('Pod', [
                     {
                         name: 'image',
                         text: 'Image',
-                        source: ['image'],
+                        source: ['#image'],
                         format: 'string',
+                        style: ['link:$Image:image:.']
                         //style: ['edit']  //+++ pending impl
                     },
                     {
@@ -1902,8 +2017,9 @@ objectSections.set('DaemonSet', [
                     {
                         name: 'image',
                         text: '',
-                        source: ['image'],
-                        format: 'string'
+                        source: ['#image'],
+                        format: 'string',
+                        style: ['link:$Image:image:.']
                     },
                 ],
                 style:['column']

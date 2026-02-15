@@ -51,6 +51,12 @@ const menu:IFileObject[] = [
         class: 'classV1APIResource',
         children: 'V1APIResource'
     },
+    {   name: 'Images',
+        isDirectory: true,
+        path: '/cluster/Image',
+        class: 'classImage',
+        children: 'Image'
+    },
     {   name: 'Component status',
         isDirectory: true,
         path: '/cluster/ComponentStatus',
@@ -399,8 +405,7 @@ const menu:IFileObject[] = [
     },
 ]
 
-// General  (these empty classes are needed for showing icons on the navigation pane, they are referenced in the "icons" map)
-spaces.set('classmenu', {})
+// Cluster
 spaces.set('classclusteroverview', 
     {
         leftItems: [
@@ -413,13 +418,6 @@ spaces.set('classclusteroverview',
         ]
     }    
 )
-spaces.set('classnetwork', {})
-spaces.set('classworkload', {})
-spaces.set('classstorage', {})
-spaces.set('classaccess', {})
-spaces.set('classcustom', {})
-spaces.set('classsettings', {})
-
 
 // Network
 spaces.set('classService',
@@ -834,7 +832,6 @@ spaces.set('ConfigMap',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -904,7 +901,6 @@ spaces.set('Secret',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -983,7 +979,6 @@ spaces.set('ResourceQuota',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -1044,7 +1039,6 @@ spaces.set('LimitRange',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -1105,7 +1099,6 @@ spaces.set('HorizontalPodAutoscaler',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -1211,7 +1204,6 @@ spaces.set('PodDisruptionBudget',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -1308,7 +1300,6 @@ spaces.set('PriorityClass',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -1378,7 +1369,6 @@ spaces.set('RuntimeClass',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -1433,7 +1423,6 @@ spaces.set('Lease',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -1503,7 +1492,6 @@ spaces.set('ValidatingWebhookConfiguration',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -1564,7 +1552,6 @@ spaces.set('MutatingWebhookConfiguration',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -1690,7 +1677,6 @@ spaces.set('Node',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: true,
                 permission: true,
             },
             {
@@ -1777,6 +1763,41 @@ spaces.set('Node',
         ]
     }
 )
+
+spaces.set('classImage',
+    {
+        leftItems: [
+        ]
+    }
+)
+
+spaces.set('Image',
+    {
+        text: 'Name',
+        source: 'name',
+        width: 90,
+        leftItems: [
+            {
+                name:'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+        ],
+        properties: [
+            {
+                name: 'size',
+                text: 'Size',
+                source: 'size',
+                format: 'storage',
+                width: 10,
+                sortable: true,
+                visible: true
+            },
+        ]
+    }
+)
+
 spaces.set('classV1APIResource',
     {
         leftItems: [
@@ -1793,7 +1814,6 @@ spaces.set('V1APIResource',
                 name:'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
-                multi: false,
                 permission: true,
             },
             {
@@ -3647,14 +3667,25 @@ spaces.set('crdinstance',
     }
 )
 
+// General  (these empty classes are needed for showing icons on the navigation pane, they are referenced in the "icons" map)
+spaces.set('classoverview', {})
+spaces.set('classmenu', {})  // not needed
+spaces.set('classworkload', {})
+spaces.set('classconfig', {})
+spaces.set('classnetwork', {})
+spaces.set('classstorage', {})
+spaces.set('classaccess', {})
+spaces.set('classcustom', {})
+spaces.set('classsettings', {})
+
 const icons = new Map()
 icons.set('classoverview', { default: <Kubernetes size={'16'}/> } )
 icons.set('classcluster', { default: <Cluster size={'16'}/> } )
-icons.set('classnetwork', { default: <Network size={'16'}/> } )
 icons.set('classworkload', { default: <Pod size={'16'}/> } )
+icons.set('classconfig', { default: <Config size={'16'}/> } )
+icons.set('classnetwork', { default: <Network size={'16'}/> } )
 icons.set('classstorage', { default: <Storage size={'16'}/> } )
 icons.set('classaccess', { default: <Security size={'16'}/> } )
-icons.set('classconfig', { default: <Config size={'16'}/> } )
 icons.set('classcustom', { default: <Customize size={'16'}/> } )
 icons.set('classsettings', { default: <Settings size={'16'}/> } )
 

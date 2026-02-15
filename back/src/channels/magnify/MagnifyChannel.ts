@@ -737,7 +737,6 @@ class MagnifyChannel implements IChannel {
                     break
                 case 'V1APIResource':
                         let data = await this.getApiResources()
-                        //console.log(data)
                         this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LIST, JSON.stringify(data))
                     break
                 default:

@@ -625,6 +625,64 @@ class MagnifyChannel implements IChannel {
                 origin: obj
             }
         })
+
+        // we remove all references from images to this node
+        // console.log(magnifyData.files.length)
+        // for (let image of magnifyData.files.filter(f => f.path.startsWith('/cluster/Image/') && f.data.origin.nodes.includes(obj.metadata.name))) {
+        //     image.data.origin.nodes = image.data.origin.nodes.filter((n:any) => n!==obj.metadata.name)
+        // }
+        // console.log(magnifyData.files.length)
+        // magnifyData.files = magnifyData.files.filter(f => !(f.path.startsWith('/cluster/Image/') && f.data.origin.nodes.length===0))
+        // console.log(magnifyData.files.length)
+
+        // we add references to images from this node
+        for (let image of obj.status?.images) {
+            let names:string[] = image.names.filter((n:any) => !n.includes('@'))
+            if (names.length===0) names = image.names
+            let size = image.sizeBytes
+
+            let existing = magnifyData.files.find(f => f.path === '/cluster/Image/'+names[0])
+            if (existing) {
+                if (!existing.data.origin.nodes.includes(obj.metadata.name)) existing.data.origin.nodes.push(obj.metadata.name)
+            }
+            else {
+                let registry = undefined
+                let imageName = undefined
+                let tag = undefined
+                let sha = undefined
+                const regex = /^(?:((?:[a-z0-9-]+\.)+[a-z0-9]+(?::\d+)?)\/)?((?:[a-z0-9._-]+\/)*[a-z0-9._-]+)(?::([a-z0-9._-]+))?(?:@(sha256:[a-f0-9]{64}))?$/i
+                for (let x of image.names) {
+                    const match = x.match(regex)
+                    if (match) {
+                        if (!registry) registry = match[1]
+                        if (!imageName) imageName = match[2]
+                        if (!tag) tag = match[3]
+                        if (!sha) sha = match[4]
+                    }
+                }
+                let newImage:IFileObject = {
+                    name: names[0],
+                    displayName: imageName,
+                    isDirectory: false,
+                    path: '/cluster/Image/'+names[0],
+                    class: 'Image',
+                    data: {
+                        size: size,
+                        origin: {
+                            kind: 'Image',
+                            name: names[0],
+                            displayName: names[0],
+                            registry,
+                            tag,
+                            sha,
+                            names: image.names,
+                            nodes: [obj.metadata.name],
+                        }
+                    }
+                }
+                magnifyData.files.push(newImage)
+            }
+        }
     }
 
     loadService(magnifyData:IMagnifyData, obj:any): void {
@@ -1126,6 +1184,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadNodeMetrics(magnifyData:IMagnifyData, obj:any): void {
+        //+++ what for...?
     }
 
     loadComponentStatus(magnifyData:IMagnifyData, obj:any): void {
@@ -1220,14 +1279,14 @@ class MagnifyChannel implements IChannel {
 
 const buildPath = (kind:string, name:string, namespace:string|undefined) => {
     let section=''
-    if (' V1APIResource Node Namespace ComponentStatus '.includes(' '+kind+' ')) section='cluster'
+    if (' V1APIResource Node Namespace ComponentStatus Image '.includes(' '+kind+' ')) section='cluster'
     if (' Pod Deployment DaemonSet ReplicaSet ReplicationController StatefulSet Job CronJob '.includes(' '+kind+' ')) section='workload'
     if (' ConfigMap Secret ResourceQuota LimitRange HorizontalPodAutoscaler PodDisruptionBudget PriorityClass RuntimeClass Lease ValidatingWebhookConfiguration MutatingWebhookConfiguration '.includes(' '+kind+' ')) section='config'
     if (' Service Endpoints Ingress IngressClass NetworkPolicy '.includes(' '+kind+' ')) section='network'
     if (' PersistentVolumeClaim PersistentVolume StorageClass VolumeAttachment CSINode CSIDriver CSIStorageCapacity '.includes(' '+kind+' ')) section='storage'
     if (' ServiceAccount ClusterRole Role ClusterRoleBinding RoleBinding '.includes(' '+kind+' ')) section='access'
     if (' CustomResourceDefinition '.includes(' '+kind+' ')) section='custom'
-    if (' V1APIResource Node Namespace ComponentStatus ValidatingWebhookConfiguration MutatingWebhookConfiguration PersistentVolume StorageClass VolumeAttachment CSINode CSIDriver CSIStorageCapacity ClusterRole ClusterRoleBinding '.includes(' '+kind+' ')) 
+    if (' V1APIResource Node Namespace V1APIResource Image ComponentStatus ValidatingWebhookConfiguration MutatingWebhookConfiguration PersistentVolume StorageClass VolumeAttachment CSINode CSIDriver CSIStorageCapacity ClusterRole ClusterRoleBinding '.includes(' '+kind+' ')) 
         return '/'+section+'/'+kind+'/'+name
     else
         return '/'+section+'/'+kind+'/'+name+':'+namespace

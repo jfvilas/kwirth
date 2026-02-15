@@ -272,21 +272,6 @@ const createRunningInstance = async (context:string|undefined, kwirthData:Kwirth
         clusterInfo.logApi = new Log(clusterInfo.kubeConfig)
         clusterInfo.apisApi = kubeConfig.makeApiClient(ApisApi)
 
-        // let x1 = await clusterInfo.coreApi.getAPIResources()
-        // console.log(x1)
-        // let x2 = await clusterInfo.apisApi.getAPIVersions()
-        // console.log(x2.groups[1])
-        // console.log(await clusterInfo.appsApi.getAPIResources())
-        // let x = await clusterInfo.coreApi.getAPIResources()
-        // console.log(x)
-        // let x2 = await clusterInfo.objectsApi.list('apiregistration.k8s.io/v1', 'APIService')
-        // console.log(x2.items[10])
-        // console.log(x2.items[20])
-        // console.log(x2.items[12])
-        // console.log(x2.items[23])
-        // console.log(x2.items[14])
-        // console.log(x2.items[25])
-
         if (isElectron) {
             // do nothing, since we will use kubeconfig credentials
         }

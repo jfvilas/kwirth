@@ -15,6 +15,7 @@ interface IDetailsItem {
     invoke?: (ro:any, o:any) => any
     style?: string[]
     items?: IDetailsItem[]
+    processValue?: (value:any) => any
 }
 
 interface IDetailsSection {
@@ -185,6 +186,13 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                     valString = getValue(obj,src)
                 }
 
+                if (itemx?.processValue) {
+                    try {
+                        valString= itemx.processValue(valString)
+                    }
+                    catch {}
+                }
+
                 if (style && style.includes('mb')) {
                     valString=convertBytesToSize(convertSizeToBytes(valString))
                 }
@@ -270,6 +278,14 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 else
                     resultStringlist=_.get(obj,src)
                 if (!resultStringlist) return <></>
+
+                if (itemx?.processValue) {
+                    try {
+                        for (let i=0; i<resultStringlist.length;i++)
+                            resultStringlist[i] = itemx.processValue(resultStringlist[i])
+                    }
+                    catch {}
+                }
 
                 if (style.includes('column')) {
                     let linkIndicator = originalSrc.startsWith('#')? '#' : ''
@@ -547,6 +563,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             return (
                 <Stack direction={'row'} alignItems={'baseline'}>
                     {item.text==='' && <>
+                        {/* No label*/}
                         <Typography component='div' width={'100%'}>
                             {renderValues(rootObj, obj, item, level)}
                         </Typography>
@@ -554,7 +571,8 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                     {item.text!=='' && <>
                         {/* render label*/}
                         {
-                            numProps>1 && item.style && item.style.includes('collapse')? 
+                            numProps>1 && item.style && item.style.includes('collapse')?
+                                    // render a label with collapse button
                                     <Stack direction={'row'} width={`${width-2}%`} alignItems={'center'}>
                                         <Typography>{item.text}</Typography>
                                         <svg className={'svg-'+expander} width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"
@@ -575,16 +593,19 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                         </svg>                                        
                                     </Stack>
                                 :
+                                    // render a simple label
                                     <Typography width={`${width}%`}>{item.text}</Typography>
                         }
-                        {/* render content */}
                         {
+                            // render content
                             numProps>1 && item.style && item.style.includes('collapse')? 
+                                    // render collapsible content
                                     <div className={expander} style={{height:'22px', overflow:'hidden'}}>
                                         {renderValues(rootObj, obj, item, level)}
                                     </div>
                                 :
-                                renderValues(rootObj, obj, item, level)
+                                    //render standard content
+                                    renderValues(rootObj, obj, item, level)
                         }
                     </>}
                 </Stack>

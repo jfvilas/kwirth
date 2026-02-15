@@ -344,8 +344,11 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             // APIResource
             let spcAPIResource = spaces.get('V1APIResource')!
             setLeftItem(spcAPIResource,'details', launchObjectDetails)
-            //setLeftItem(spcAPIResource,'edit', launchObjectEdit)
             setLeftItem(spcAPIResource,'browse', launchObjectBrowse)
+            
+            // Image
+            let spcImage = spaces.get('Image')!
+            setLeftItem(spcImage,'details', launchObjectDetails)
             
             // ClusterOverview
             let spcClassClusterOverview = spaces.get('classclusteroverview')!
@@ -1263,7 +1266,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     <Typography>Cron jobs: {magnifyData.files.filter(f => f.class==='CronJob').length}</Typography>
                     <Divider sx={{mt:2, mb:2}}/>
                     <Typography>Validations</Typography>
-                    <Validations files={magnifyData.files} onLink={onMagnifyObjectDetailsLink} onNavigate={onFileManagerNavigate} options={{ replicaSet: true }}/>
+                    <Validations files={magnifyData.files} onLink={onMagnifyObjectDetailsLink} onNavigate={onFileManagerNavigate} options={{ replicaSet: true, daemonSet:true, deployment:true, statefulSet:true, job:true }}/>
                 </CardContent>
 
             </Card>
@@ -1406,6 +1409,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             launchObjectDetails([f.path], undefined)
         }
         else {
+            console.log(path)
             setMsgBox(MsgBoxOkError('Object details',<Box>Object with name '<b>{name}</b>' of kind '{kind}' has not been found on artifacts database.</Box>, setMsgBox))
         }
     }

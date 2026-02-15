@@ -2,7 +2,7 @@ import { Button, Stack, Typography } from "@mui/material"
 import { ENotifyLevel } from "../../../tools/Global"
 import { IFileObject } from "@jfvilas/react-file-manager"
 import { useMemo, useState } from "react"
-import { IconConfigMap, IconNode, IconPersistentVolumeClaim, IconReplicaSet, IconSecret } from "../../../tools/Constants-React"
+import { IconConfigMap, IconDaemonSet, IconDeployment, IconJob, IconNode, IconPersistentVolumeClaim, IconReplicaSet, IconSecret, IconStatefulSet } from "../../../tools/Constants-React"
 const _ = require('lodash')
 
 interface IIssue {
@@ -29,6 +29,49 @@ const validateReplicaSet = (files:IFileObject[]) => {
         }
         else if (rs.status?.replicas === 0 || rs.spec.availableReplicas === 0 ) {
             issues.push ({kind:'ReplicaSet', name:rs.metadata.name, namespace:rs.metadata.namespace, level: ENotifyLevel.WARNING, text: '0 replicas desired' })
+        }
+    }
+    return issues
+}
+
+const validateDeployment = (files:IFileObject[]) => {
+    let issues:IIssue[] = []
+
+    for (let dp of files.filter(f => f.path.startsWith('/workload/Deployment/')).map(f => f.data.origin)) {
+        if (dp.status?.replicas !== dp.status?.availableReplicas) {
+            console.log(dp)
+            issues.push ({kind:'ReplicaSet', name:dp.metadata.name, namespace:dp.metadata.namespace, level: ENotifyLevel.WARNING, text: 'Unready replicas' })
+        }
+    }
+    return issues
+}
+
+const validateJob = (files:IFileObject[]) => {
+    let issues:IIssue[] = []
+
+    for (let j of files.filter(f => f.path.startsWith('/workload/Job/')).map(f => f.data.origin)) {
+        if (j.status?.failed!==undefined && +j.status?.failed>0) issues.push ({kind:'Job', name:j.metadata.name, namespace:j.metadata.namespace, level: ENotifyLevel.ERROR, text: 'Failed Job' })
+    }
+    return issues
+}
+
+const validateStatefulSet = (files:IFileObject[]) => {
+    let issues:IIssue[] = []
+
+    for (let ss of files.filter(f => f.path.startsWith('/workload/Stateful/')).map(f => f.data.origin)) {
+        if (ss.status?.replicas !== ss.status?.availableReplicas) {
+            issues.push ({kind:'StatefulSet', name:ss.metadata.name, namespace:ss.metadata.namespace, level: ENotifyLevel.ERROR, text: 'SS Replicas unready' })
+        }
+    }
+    return issues
+}
+
+const validateDaemonSet = (files:IFileObject[]) => {
+    let issues:IIssue[] = []
+
+    for (let ds of files.filter(f => f.path.startsWith('/workload/Stateful/')).map(f => f.data.origin)) {
+        if (ds.status?.replicas !== ds.status?.availableReplicas) {
+            issues.push ({kind:'StatefulSet', name:ds.metadata.name, namespace:ds.metadata.namespace, level: ENotifyLevel.ERROR, text: 'DS replicas unready' })
         }
     }
     return issues
@@ -200,7 +243,11 @@ const validateSummary = (files:IFileObject[], onNavigate: (dest:string) => void)
             {showBadge(validateNode(files), <IconNode size={50}/>, onNavigate, '/cluster/Node')}
             {showBadge(validateConfigMap(files), <IconConfigMap height={50}/>, onNavigate, '/config/ConfigMap')}
             {showBadge(validateSecret(files), <IconSecret height={50}/>, onNavigate, '/config/Secret')}
+            {showBadge(validateDeployment(files), <IconDeployment size={50}/>, onNavigate, '/workload/Deployment')}
             {showBadge(validateReplicaSet(files), <IconReplicaSet size={50}/>, onNavigate, '/workload/ReplicaSet')}
+            {showBadge(validateStatefulSet(files), <IconStatefulSet size={50}/>, onNavigate, '/workload/StatefulSet')}
+            {showBadge(validateDaemonSet(files), <IconDaemonSet size={50}/>, onNavigate, '/workload/DaemonSet')}
+            {showBadge(validateJob(files), <IconJob size={50}/>, onNavigate, '/workload/Job')}
             {showBadge(validateVolumeAttachment(files), <IconPersistentVolumeClaim height={50}/>, onNavigate, '/storage/VolumeAttachment')}
         </Stack>
     )
@@ -214,7 +261,11 @@ interface IValidationsProps {
         node? :boolean
         configMap? :boolean
         secret? :boolean
+        deployment? :boolean
         replicaSet? :boolean
+        statefulSet? :boolean
+        daemonSet? :boolean
+        job? :boolean
         volumeAttachment? :boolean
         summary? :boolean
     }
@@ -224,14 +275,22 @@ const Validations: React.FC<IValidationsProps> = (props:IValidationsProps) => {
     const nodeVals = useMemo( () => validateNode(props.files), [])
     const cmVals = useMemo( () => validateConfigMap(props.files), [])
     const secretVals = useMemo( () => validateSecret(props.files), [])
+    const deploymentVals = useMemo( () => validateDeployment(props.files), [])
     const replicaSetVals = useMemo( () => validateReplicaSet(props.files), [])
+    const statefulSetVals = useMemo( () => validateStatefulSet(props.files), [])
+    const daemonSetVals = useMemo( () => validateDaemonSet(props.files), [])
+    const jobVals = useMemo( () => validateJob(props.files), [])
     const volumeAttachmentVals = useMemo( () => validateVolumeAttachment(props.files), [])
     const summary = useMemo( () => validateSummary(props.files, props.onNavigate), [])
     return (<>
         {props.options.node && formatIssues(nodeVals, props.onLink)}
         {props.options.configMap && formatIssues(cmVals, props.onLink)}
         {props.options.secret && formatIssues(secretVals, props.onLink)}
+        {props.options.deployment && formatIssues(deploymentVals, props.onLink)}
         {props.options.replicaSet && formatIssues(replicaSetVals, props.onLink)}
+        {props.options.statefulSet && formatIssues(statefulSetVals, props.onLink)}
+        {props.options.daemonSet && formatIssues(daemonSetVals, props.onLink)}
+        {props.options.job && formatIssues(jobVals, props.onLink)}
         {props.options.volumeAttachment && formatIssues(volumeAttachmentVals, props.onLink)}
         {props.options.summary && summary}
     </>)
