@@ -1,8 +1,6 @@
 ******************ERRORES
 RFM
 cuando cambiamos de pantalla en magnify (o lo que sea) y cambian las columnas, hay que resetear los widths de las columnas
-Uncaught TypeError: toolBarAction.onClick is not a function
-    at onToolbarFileActionClick (Toolbar.jsx:101:1)
 decimales en las props tipo number (cpu del pod) --> RFM
 
 
@@ -13,23 +11,19 @@ reconnect  NO VA!!!!
 navigate (onlink) a un CRDi externo
 more events en el overview
 node: añadir taints en details
+node: revisar el link desde los vols del node hacia los PV's (parece especifico de cada CaaS)
+crd instances duplicates
+en los templates no usar inCluster , usar $cluster  +++test
+refvisar iconos (JOB) y convertir a strings
 
-VALILDATIONS
-añadir node validations
-añadir AllValidations on Overview
+
+
+VALIDATIONS
 añadir rolebinding clusterrolebinding validation
 añadir ingres/service validation
 
-PV: secrets
-  csi:
-    driver: file.csi.azure.com
-    nodeStageSecretRef:
-      name: nextbpm-azure-secret
-      namespace: psd-nextbpm
 
 
-crd instances duplicates
-en los templates no usar inCluster , usar $cluster  +++test
 
 ELECTRON
 revisar el cambio o salida de cluster: parar las cosas antes de entrar en el otro

@@ -386,6 +386,92 @@ export const IconPod = (props:IconProps) => (
   </svg>
 )
 
+export const IconVolume = (props:IconProps) => (
+ <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="10.092"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      
+        <tspan
+          x="10.017"
+          y="16.812"
+          style={{
+            fontStyle: 'normal',
+            fontVariant: 'normal',
+            fontWeight: 400,
+            fontStretch: 'normal',
+            fontSize: '2.82222223px',
+            fontFamily: 'Arial, Helvetica, sans-serif',
+            textAlign: 'center',
+            fill: '#fff',
+            fillOpacity: 1,
+            strokeWidth: '.26458332px',
+            textTransform: 'lowercase',
+            textRendering: 'geometricPrecision' 
+          }}
+          textAnchor="middle"
+        >
+          volume</tspan>
+      
+    </text>
+    <path
+      fill="#fff"
+      fillRule="evenodd"
+      d="M4.389 7.019c0 .62 2.073 1.124 4.63 1.124s4.628-.503 4.628-1.124v3.042c0 .621-2.072 1.125-4.629 1.125s-4.629-.504-4.629-1.125z"
+    ></path>
+    <path
+      fill="#fff"
+      fillRule="evenodd"
+      d="M4.389 7.019c0-.621 2.073-1.125 4.63-1.125s4.628.504 4.628 1.125c0 .62-2.072 1.124-4.629 1.124S4.389 7.64 4.389 7.019"
+    ></path>
+    <path
+      fill="none"
+      stroke="#326ce5"
+      strokeLinejoin="round"
+      strokeMiterlimit="10"
+      strokeWidth="0.265"
+      d="M13.648 7.019c0 .62-2.073 1.124-4.63 1.124S4.389 7.64 4.389 7.019s2.073-1.125 4.63-1.125 4.628.504 4.628 1.125v3.042c0 .621-2.072 1.125-4.629 1.125s-4.629-.504-4.629-1.125V7.019"
+    ></path>
+  </svg>
+)
+
 export const IconK8sElectron = (props:IconProps) => (
   <svg xmlns="http://www.w3.org/2000/svg"
     width={props.size}

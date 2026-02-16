@@ -2,7 +2,7 @@ import { Button, Stack, Typography } from "@mui/material"
 import { ENotifyLevel } from "../../../tools/Global"
 import { IFileObject } from "@jfvilas/react-file-manager"
 import { useMemo, useState } from "react"
-import { IconConfigMap, IconDaemonSet, IconDeployment, IconJob, IconNode, IconPersistentVolumeClaim, IconReplicaSet, IconSecret, IconStatefulSet } from "../../../tools/Constants-React"
+import { IconConfigMap, IconDaemonSet, IconDeployment, IconIngress, IconJob, IconNode, IconPersistentVolumeClaim, IconReplicaSet, IconSecret, IconService, IconStatefulSet, IconVolume } from "../../../tools/Constants-React"
 const _ = require('lodash')
 
 interface IIssue {
@@ -39,7 +39,6 @@ const validateDeployment = (files:IFileObject[]) => {
 
     for (let dp of files.filter(f => f.path.startsWith('/workload/Deployment/')).map(f => f.data.origin)) {
         if (dp.status?.replicas !== dp.status?.availableReplicas) {
-            console.log(dp)
             issues.push ({kind:'ReplicaSet', name:dp.metadata.name, namespace:dp.metadata.namespace, level: ENotifyLevel.WARNING, text: 'Unready replicas' })
         }
     }
@@ -221,6 +220,48 @@ const validateNode = (files:IFileObject[]) => {
     return issues
 }
 
+const validateIngress = (files:IFileObject[]) => {
+    let issues:IIssue[] = []
+    let is = files.filter(f => f.path.startsWith('/network/Ingress/')).map(f => f.data.origin)
+    for (let i of is) {
+        let ns = i.metadata?.namespace
+        let rules = i.spec?.rules
+        for (let r of rules) {
+            let paths = r.http?.paths
+            for (let p of paths) {
+                let svc = p.backend?.service?.name
+                if (!files.find(f => f.path.startsWith('/network/Service/') && f.data.origin?.metadata?.name===svc && f.data.origin?.metadata?.namespace===ns))
+                    issues.push({kind: 'Ingress', name: i.metadata.name, namespace: i.metadata.namespace, level: ENotifyLevel.ERROR, text: "Inexistent service "+svc})
+            }
+        }
+    }
+    return issues
+}
+
+const validateService = (files:IFileObject[]) => {
+    let issues:IIssue[] = []
+    let ss = files.filter(f => f.path.startsWith('/network/Service/') && f.data.origin?.metadata?.namespace!=='kube-system').map(f => f.data.origin)
+    for (let s of ss) {
+        const ns = s.metadata?.namespace
+        const selector = s.spec.selector
+        if (selector) {
+            let found = false
+            for (let p of files.filter(f => f.path.startsWith('/workload/Pod/') && f.data.origin?.metadata?.namespace===ns).map(f => f.data.origin)) {
+                let x = 0
+                for (let k of Object.keys(selector)) {
+                    if (p.metadata?.labels?.[k]===selector[k]) x++
+                }
+                if (x===Object.keys(selector).length) {
+                    found=true
+                    break
+                }
+            }
+            if (!found) issues.push({kind: 'Service', name: s.metadata.name, namespace: s.metadata.namespace, level: ENotifyLevel.ERROR, text: 'Inexistent service destination pods'})
+        }
+    }
+    return issues
+}
+
 const showBadge = (issues:IIssue[], icon:JSX.Element, onNavigate:(dest:string)=> void, dest:string) => {
     let errors = issues.filter(i => i.level === ENotifyLevel.ERROR).length
     let warnings = issues.filter(i => i.level === ENotifyLevel.WARNING).length
@@ -248,7 +289,9 @@ const validateSummary = (files:IFileObject[], onNavigate: (dest:string) => void)
             {showBadge(validateStatefulSet(files), <IconStatefulSet size={50}/>, onNavigate, '/workload/StatefulSet')}
             {showBadge(validateDaemonSet(files), <IconDaemonSet size={50}/>, onNavigate, '/workload/DaemonSet')}
             {showBadge(validateJob(files), <IconJob size={50}/>, onNavigate, '/workload/Job')}
-            {showBadge(validateVolumeAttachment(files), <IconPersistentVolumeClaim height={50}/>, onNavigate, '/storage/VolumeAttachment')}
+            {showBadge(validateIngress(files), <IconIngress height={50}/>, onNavigate, '/network/Ingress')}
+            {showBadge(validateService(files), <IconService height={50}/>, onNavigate, '/network/Service')}
+            {showBadge(validateVolumeAttachment(files), <IconVolume size={50}/>, onNavigate, '/storage/VolumeAttachment')}
         </Stack>
     )
 }
@@ -267,6 +310,8 @@ interface IValidationsProps {
         daemonSet? :boolean
         job? :boolean
         volumeAttachment? :boolean
+        ingress? :boolean
+        service? :boolean
         summary? :boolean
     }
 }
@@ -281,6 +326,8 @@ const Validations: React.FC<IValidationsProps> = (props:IValidationsProps) => {
     const daemonSetVals = useMemo( () => validateDaemonSet(props.files), [])
     const jobVals = useMemo( () => validateJob(props.files), [])
     const volumeAttachmentVals = useMemo( () => validateVolumeAttachment(props.files), [])
+    const ingressVals = useMemo( () => validateIngress(props.files), [])
+    const serviceVals = useMemo( () => validateService(props.files), [])
     const summary = useMemo( () => validateSummary(props.files, props.onNavigate), [])
     return (<>
         {props.options.node && formatIssues(nodeVals, props.onLink)}
@@ -292,6 +339,8 @@ const Validations: React.FC<IValidationsProps> = (props:IValidationsProps) => {
         {props.options.daemonSet && formatIssues(daemonSetVals, props.onLink)}
         {props.options.job && formatIssues(jobVals, props.onLink)}
         {props.options.volumeAttachment && formatIssues(volumeAttachmentVals, props.onLink)}
+        {props.options.ingress && formatIssues(ingressVals, props.onLink)}
+        {props.options.service && formatIssues(serviceVals, props.onLink)}
         {props.options.summary && summary}
     </>)
 }

@@ -1298,6 +1298,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     <Divider sx={{mt:2, mb:2}}/>
                     <Typography>Ingresses: {magnifyData.files.filter(f => f.class==='Ingress').length}</Typography>
                     <Typography>Ingress classes: {magnifyData.files.filter(f => f.class==='IngressClass').length}</Typography>
+                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography fontSize={'16'}>Validations</Typography>
+                    <Validations files={magnifyData.files} onLink={onMagnifyObjectDetailsLink} onNavigate={onFileManagerNavigate} options={{ingress:true, service:true}}/>
                 </CardContent>
 
             </Card>
@@ -1305,7 +1308,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onFileManagerNavigate = (dest:string) => {
-        console.log('ruta', dest, 'ruta')
         fileManagerRef.current?.changeFolder(dest)
     }
 
@@ -1588,7 +1590,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         (props.channelObject.config as IMagnifyConfig).notify(channel, level, msg)
     }
 
-    console.log('render')
     return <>
         { magnifyData.started &&
             <Box ref={magnifyBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `${magnifyBoxHeight}px`, ml:1, mr:1}}>

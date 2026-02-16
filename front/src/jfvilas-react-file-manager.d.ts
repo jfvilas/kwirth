@@ -2,7 +2,7 @@ declare module '@jfvilas/react-file-manager' {
     import { FC } from 'react'
 
     export interface IFileManagerHandle {
-       changeFolder: (ruta: string) => void;
+       changeFolder: (dest: string) => void;
     }
 
     export interface IFileUploadConfig {
