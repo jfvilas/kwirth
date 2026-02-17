@@ -57,55 +57,6 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         setCardExpanded((prev) => !prev)
     }
 
-    // useEffect(() => {
-    //     if (homepageBoxRef.current) setHomepageBoxTop(homepageBoxRef.current.getBoundingClientRect().top)
-    // })
-    
-    // useEffect( () => {
-    //     let i = setInterval( () => {
-    //         let cluster = props.cluster
-    //         if (!cluster) cluster = props.clusters.find(x => x.source)!
-    //         try {
-    //             fetch(`${cluster.url}/metrics/usage`, addGetAuthorization(cluster.accessString)).then ( (result) => {
-    //                 result.json().then ( (data) => {
-    //                     setCpu(data.cpu)
-    //                     setDataCpu([...dataCpu, { value: data.cpu as number }])
-    //                     setMemory(data.memory)
-    //                     setDataMemory([...dataMemory, { value: data.memory as number}])
-    //                     setTxmbps(data.txmbps)
-    //                     setRxmbps(data.rxmbps)
-    //                     setDataNetwork([...dataNetwork, { value: (data.txmbps + data.rxmbps) || 0}])
-    //                 })
-    //             })
-    //         }
-    //         catch (err) {
-    //             console.log(err)
-    //         }
-    //     }, 3000)
-    //     return () => clearInterval(i)
-    // })
-
-    // useEffect( () => {
-    //     let i = setInterval( (c:Cluster) => {
-    //         try {
-    //             fetch(`${c.url}/metrics/usage/cluster`, addGetAuthorization(c.accessString)).then ( (result) => {
-    //                 result.json().then ( (data) => {
-    //                     setCpu(data.cpu)
-    //                     setDataCpu([...dataCpu, { value: data.cpu as number }])
-    //                     setMemory(data.memory)
-    //                     setDataMemory([...dataMemory, { value: data.memory as number}])
-    //                     setTxmbps(data.txmbps)
-    //                     setRxmbps(data.rxmbps)
-    //                     setDataNetwork([...dataNetwork, { value: (data.txmbps + data.rxmbps) || 0}])
-    //                 })
-    //             })
-    //         }
-    //         catch (err) {
-    //             console.log(err)
-    //         }
-    //     }, 3000, props.cluster || props.clusters.find(x => x.source))
-    //     return () => clearInterval(i)
-    // })
     useEffect(() => {
         // 1. Definimos el cluster objetivo fuera para mayor claridad
         const targetCluster = props.cluster || props.clusters.find(x => x.source);
@@ -118,29 +69,22 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                     return result.json();
                 })
                 .then((data) => {
-                    // 2. IMPORTANTE: Usamos la función de actualización (prev => ...) 
-                    // para evitar que los datos se dupliquen o se pierdan.
                     setCpu(data.cpu);
                     setDataCpu(prev => [...prev, { value: data.cpu as number }]);
                     
                     setMemory(data.memory);
-                    setDataMemory(prev => [...prev, { value: data.memory as number}]);
+                    setDataMemory(prev => [...prev, { value: data.memory as number}])
                     
-                    setTxmbps(data.txmbps);
-                    setRxmbps(data.rxmbps);
-                    setDataNetwork(prev => [...prev, { value: (data.txmbps + data.rxmbps) || 0}]);
+                    setTxmbps(data.txmbps)
+                    setRxmbps(data.rxmbps)
+                    setDataNetwork(prev => [...prev, { value: (data.txmbps + data.rxmbps) || 0}])
                 })
                 .catch((err) => {
-                    // 3. Si hay cualquier error (red, JSON malformado o throw manual), cancelamos.
-                    console.error("Fallo crítico en métricas. Cancelando intervalo:", err);
-                    clearInterval(i);
+                    console.error('Critical error receiving cluster metrics. Interval will be cancelled:', err)
+                    clearInterval(i)
                 });
-        }, 3000, targetCluster);
-
-        // Limpieza al desmontar el componente
-        return () => clearInterval(i);
-
-        // 4. Añade las dependencias para que el efecto se reinicie si el cluster cambia
+        }, 3000, targetCluster)
+        return () => clearInterval(i)
     }, [props.cluster, props.clusters]);
     
     const toFavTabs = (tab:ITabSummary) => {
@@ -167,7 +111,6 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
         if (i>=0) {
             list.splice(i,1)
             props.onUpdateTabs([...props.lastTabs], [...props.favTabs])
-            //setRefresh(Math.random())
         }
     }
 

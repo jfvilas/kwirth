@@ -10,7 +10,6 @@ reconnect  NO VA!!!!
     hay que revisar el reconnect del node y el reconnect del front
 navigate (onlink) a un CRDi externo
 more events en el overview
-node: añadir taints en details
 node: revisar el link desde los vols del node hacia los PV's (parece especifico de cada CaaS)
 crd instances duplicates
 en los templates no usar inCluster , usar $cluster  +++test

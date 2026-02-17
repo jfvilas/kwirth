@@ -72,8 +72,8 @@ class OpsChannel implements IChannel {
             console.log('ops no instance')
             return
         }
-        //let asset = instance.assets.find(a => a.podNamespace === instanceConfig.namespace && a.podName === instanceConfig.pod && a.containerName === instanceConfig.container)
-        let asset = instance.assets.find(a => a.podNamespace === instanceConfig.namespace && a.podName+'+'+a.containerName === instanceConfig.container)
+        let asset = instance.assets.find(a => a.podNamespace === instanceConfig.namespace && a.podName === instanceConfig.pod && a.containerName === instanceConfig.container)
+        //let asset = instance.assets.find(a => a.podNamespace === instanceConfig.namespace && a.podName+'+'+a.containerName === instanceConfig.container)
         if (!asset) {
             console.log('ops no asset for')
             console.log(instanceConfig)

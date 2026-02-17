@@ -60,8 +60,8 @@ import { Application } from 'express-serve-static-core'
 //     return originalFetch(...args);
 // }
 
-//const isElectron = true
-const isElectron = !!process.versions.electron;
+const isElectron = true
+//const isElectron = !!process.versions.electron;
 
 const app : Application = express()
 
@@ -227,7 +227,7 @@ const getKubernetesKwirthData = async ():Promise<KwirthData|undefined> => {
             }
             else {
                 // +++ kwirth is running outside, but wants tu use kubernetes secrets for storing creds
-                console.log('Cannot determine namespace while running outside cluster')
+                console.log('Cannot determine namespace while running outside cluster (trying to read users secret)')
                 process.exit(1)
             }
         }
@@ -1476,7 +1476,7 @@ const launchElectron = async (localKwirthData:KwirthData, expressApp:Application
                                     activateRunningInstance(runningInstance)
                                     await runKubernetes(runningInstance, expressApp)
 
-                                    console.log('Activating context', contextName)
+                                    console.log('Creating instance for context', contextName)
                                     // +++ we should be using a common function for creating api key
                                     let description = 'Volatile key for electron'
                                     let expire:number = Date.now() + 100000000000000

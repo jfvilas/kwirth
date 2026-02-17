@@ -12,7 +12,8 @@ import SvgIconEndpoints from '../kubernetes-icons-official/svg/resources/labeled
 import SvgIconIngress from '../kubernetes-icons-official/svg/resources/labeled/ing.svg'
 import SvgIconPersistentVolume from '../kubernetes-icons-official/svg/resources/labeled/pv.svg'
 import SvgIconPersistentVolumeClaim from '../kubernetes-icons-official/svg/resources/labeled/pvc.svg'
-import SvgIconClusterRole from '../kubernetes-icons-official/svg/resources/labeled/c-role.svg'
+import SvgIconServiceAccount from '../kubernetes-icons-official/svg/resources/labeled/role.svg'
+import SvgIconClusterRole from '../kubernetes-icons-official/svg/resources/labeled/sa.svg'
 import SvgIconClusterRoleBinding from '../kubernetes-icons-official/svg/resources/labeled/crb.svg'
 import SvgIconRole from '../kubernetes-icons-official/svg/resources/labeled/role.svg'
 import SvgIconRoleBinding from '../kubernetes-icons-official/svg/resources/labeled/rb.svg'
@@ -25,6 +26,7 @@ export const IconEndpoints = (props: {height?:number}) => <img src={SvgIconEndpo
 export const IconIngress = (props: {height?:number}) => <img src={SvgIconIngress} alt='ingress' height={`${props.height||16}||16px`}/>
 export const IconPersistentVolume = (props: {height?:number}) => <img src={SvgIconPersistentVolume} alt='secret' height={`${props.height||16}||16px`}/>
 export const IconPersistentVolumeClaim = (props: {height?:number}) => <img src={SvgIconPersistentVolumeClaim} alt='secret' height={`${props.height||16}||16px`}/>
+export const IconServiceAccount = (props: {height?:number}) => <img src={SvgIconServiceAccount} alt='cr' height={`${props.height||16}||16px`}/>
 export const IconRole = (props: {height?:number}) => <img src={SvgIconRole} alt='role' height={`${props.height||16}||16px`}/>
 export const IconRoleBinding = (props: {height?:number}) => <img src={SvgIconRoleBinding} alt='rb' height={`${props.height||16}||16px`}/>
 export const IconClusterRole = (props: {height?:number}) => <img src={SvgIconClusterRole} alt='cr' height={`${props.height||16}||16px`}/>
@@ -1335,6 +1337,7 @@ export const getIconFromKind = (kind:string, size:number) => {
         case 'Ingress': return <IconIngress height={size}/>
         case 'PersistentVolume': return <IconPersistentVolume height={size}/>
         case 'PersistentVolumeClaim': return <IconPersistentVolumeClaim height={size}/>
+        case 'ServiceAccount': return <IconServiceAccount height={size}/>
         case 'Role': return <IconRole height={size}/>
         case 'RoleBinding': return <IconRoleBinding height={size}/>
         case 'ClusterRole': return <IconClusterRole height={size}/>

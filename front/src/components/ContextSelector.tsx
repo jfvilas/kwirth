@@ -1,5 +1,5 @@
-import React, { useContext, useRef, useState } from 'react'
-import { Backdrop, Box, Button, Checkbox, CircularProgress, Dialog, DialogContent, DialogTitle, FormControlLabel, IconButton, List, ListItemButton, Stack, Tab, Tabs, TextField, Typography} from '@mui/material'
+import React, { useContext, useEffect, useRef, useState } from 'react'
+import { Backdrop, Box, Button, Checkbox, CircularProgress, Dialog, DialogContent, DialogTitle, FormControlLabel, IconButton, List, ListItemButton, Stack, Tab, Tabs, TextField, Tooltip, Typography} from '@mui/material'
 import { SessionContext, SessionContextType } from '../model/SessionContext'
 import { useAsync } from 'react-use'
 import { InputBox } from '../tools/FrontTools'
@@ -36,10 +36,58 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
     const [filterRemote, setFilterRemote] = useState('')
     const intId = useRef<any>()
 
-    const updateContextsStatus = async (
-        contexts: IContext[], 
-        onUpdate: (updatedCtx: IContext) => void
-    ) => {
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                let resp = await fetch(backendUrl + '/electron/kubeconfig')
+                let contexts = await resp.json() as IContext[]
+
+                setLocalContexts(contexts)
+                update(contexts)
+
+                if (props.isElectron) intId.current = setInterval(update, 5000, contexts)
+
+                let rc = localStorage.getItem('remoteClusters')
+                if (rc) setRemoteClusters(JSON.parse(rc))
+            }
+            catch (err) {
+                console.error("Error loading contexts:", err)
+            }
+        }
+
+        fetchData()
+
+        return () => {
+            if (intId.current) {
+                console.log('Limpiando intervalo:', intId.current)
+                clearInterval(intId.current)
+                intId.current = null
+            }
+        };
+    }, [props.isElectron, backendUrl])
+
+
+    // useAsync(async () => {
+    //     let resp = await fetch(backendUrl + '/electron/kubeconfig')
+    //     let contexts = await resp.json() as IContext[]
+
+    //     setLocalContexts(contexts)
+    //     update(contexts)
+    //     if (props.isElectron) intId.current = setInterval (update, 5000, contexts)
+
+    //     let rc = localStorage.getItem('remoteClusters')
+    //     if (rc) setRemoteClusters(JSON.parse(rc))
+        
+    //     return () => {
+    //         console.log()
+    //         if (intId.current)
+    //             clearInterval(intId.current)
+    //         else
+    //             console.log('cannot clear interval', intId.current)
+    //     }
+    // }, [])
+
+    const updateContextsStatus = async (contexts: IContext[], onUpdate: (updatedCtx: IContext) => void) => {
         const promises = contexts.map(async (context) => {
             try {
                 const isAvailable = await (window as any).kwirth.kubeApiAvailable(context.server);
@@ -65,22 +113,6 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
             })
         })
     }
-
-    useAsync(async () => {
-        let resp = await fetch(backendUrl + '/electron/kubeconfig')
-        let contexts = await resp.json() as IContext[]
-
-        setLocalContexts(contexts)
-        update(contexts)
-        if (props.isElectron) intId.current = setInterval (update, 5000, contexts)
-
-        let rc = localStorage.getItem('remoteClusters')
-        if (rc) setRemoteClusters(JSON.parse(rc))
-        
-        return () => {
-            if (intId.current) clearInterval(intId.current)
-        }
-    }, [])
 
     const addRemoteCluster = () => {
         setIinputBoxResult ( () => (name:any) => {
@@ -148,7 +180,9 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
                         {
                             localContexts.filter(c => c.cluster.includes(filterLocal)).filter(c => !showActive || (showActive && c.status)).map(c => 
                                 <ListItemButton key={c.cluster} onClick={() => selectLocal(c.cluster)}>
-                                    <Typography>{c.cluster.substring(0,50)+(c.cluster.length>60?'...':'')}</Typography>
+                                    <Tooltip title={c.cluster}>
+                                        <Typography>{c.cluster.substring(0,50)+(c.cluster.length>60?'...':'')}</Typography>
+                                    </Tooltip>
                                     <Typography flexGrow={1}></Typography>
                                     <Box sx={{width:12, height:12, borderRadius:'50%', bgcolor:c.status!==undefined? (c.status?'success.main':'error.main'):'gray', mr:1}}></Box>
                                 </ListItemButton>

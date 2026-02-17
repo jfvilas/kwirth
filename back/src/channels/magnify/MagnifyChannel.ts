@@ -801,7 +801,7 @@ class MagnifyChannel implements IChannel {
                     this.sendDataMessage(webSocket, instance, magnifyMessage.id, MagnifyCommandEnum.LISTCRD, JSON.stringify(resp))
                 }
                 catch (err) {
-                    console.log('error obtaining CRDi', params[0], params[1], params[2])
+                    console.log('error obtaining CRDi', params[0], params[1], params[2], err)
                 }
             })
         }

@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { IChannelObject, IContentProps } from '../IChannel'
 import { EMagnifyCommand, IMagnifyMessage, IMagnifyData } from './MagnifyData'
-import { Box, Button, Card, CardContent, CardHeader, Divider, Stack, Tooltip, Typography } from '@mui/material'
+import { Box, Button, Card, CardContent, Divider, Stack, Tooltip, Typography } from '@mui/material'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView } from '@jfvilas/kwirth-common'
 import { ICategory, IError, IFileManagerHandle, IFileObject, ISpace, ISpaceMenuItem } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
@@ -59,6 +59,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [contentExternalView, setContentExternalView] = useState<EInstanceConfigView>(EInstanceConfigView.POD)
     const [contentExternalTitle, setContentExternalTitle] = useState<string>('n/a')
     const [contentExternalContainer, setContentExternalContainer] = useState<string|undefined>('')
+    const [contentExternalTermId, setContentExternalTermId] = useState<string|undefined>()
     const [contentExternalOptions, setContentExternalOptions] = useState<IContentExternalOptions>({
         autostart:false, pauseable: true, stopable:true, configurable:false
     })
@@ -192,6 +193,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setPathFunction('/network/overview', showNetworkOverview)
             setPathFunction('/config/overview', showConfigOverview)
             setPathFunction('/storage/overview', showStorageOverview)
+            setPathFunction('/access/overview', showAccessOverview)
             setPathFunction('/preferences', showPreferences)
 
         // Workload
@@ -950,7 +952,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const launchPodShell = (p:string[], currentTarget:Element) => {
-        console.log(p)
         let f = magnifyData.files.filter(x => p.includes(x.path))
         setSelectedFiles(f)
         setContentExternalView(EInstanceConfigView.CONTAINER)
@@ -1237,13 +1238,17 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const showClusterOverview = () => {
         return <Box bgcolor={'#f1f1f1'} width={'100%'} height={'100%'}> 
             <Card sx={{m:1}}>
-                <CardHeader title={'Cluster overview'}/>
                 <CardContent>
+                    <Typography variant='h6'>Objects</Typography>
+                    <Divider sx={{mb:2}}/>
                     <Typography>Total CPU: {magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.cpu,0)}</Typography>
                     <Typography>Total Memory: {convertBytesToSize (magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + convertSizeToBytes(v.data.origin.status.capacity.memory),0))}</Typography>
-                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography mt={1}/>
                     <Typography>Actual pods: {magnifyData.files.filter(f => f.class==='Pod').length}</Typography>
                     <Typography>Max pods: {magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.pods,0)}</Typography>
+                    <Typography variant='h6' mt={2}>Validations</Typography>
+                    <Divider sx={{mb:2}}/>
+                    <Validations files={magnifyData.files} onLink={onMagnifyObjectDetailsLink} onNavigate={onFileManagerNavigate} options={{ node:true }}/>
                 </CardContent>
             </Card>
         </Box>
@@ -1252,20 +1257,22 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const showWorkloadOverview = () => {
         return <Box bgcolor={'#f1f1f1'} width={'100%'} height={'100%'}> 
             <Card sx={{m:1}}>
-                <CardHeader title={'Workload overview'}/>
                 <CardContent>
+                    <Typography variant='h6'>Objects</Typography>
+                    <Divider sx={{mb:2}}/>
                     <Typography>Pods: {magnifyData.files.filter(f => f.class==='Pod').length}</Typography>
-                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography mt={1}/>
                     <Typography>Deployments: {magnifyData.files.filter(f => f.class==='Deployment').length}</Typography>
                     <Typography>Daemon sets: {magnifyData.files.filter(f => f.class==='DaemonSet').length}</Typography>
                     <Typography>Replica sets: {magnifyData.files.filter(f => f.class==='ReplicaSet').length}</Typography>
                     <Typography>Replication Controllers: {magnifyData.files.filter(f => f.class==='ReplicationController').length}</Typography>
                     <Typography>Stateful sets: {magnifyData.files.filter(f => f.class==='StatefulSet').length}</Typography>
-                    <Divider sx={{mt:2, mb:2}}/>
+                    <Typography mt={1}/>
                     <Typography>Jobs: {magnifyData.files.filter(f => f.class==='Job').length}</Typography>
                     <Typography>Cron jobs: {magnifyData.files.filter(f => f.class==='CronJob').length}</Typography>
-                    <Divider sx={{mt:2, mb:2}}/>
-                    <Typography>Validations</Typography>
+                    <Typography mt={3}/>
+                    <Typography variant='h6' mt={2}>Validations</Typography>
+                    <Divider sx={{mb:2}}/>
                     <Validations files={magnifyData.files} onLink={onMagnifyObjectDetailsLink} onNavigate={onFileManagerNavigate} options={{ replicaSet: true, daemonSet:true, deployment:true, statefulSet:true, job:true }}/>
                 </CardContent>
 
@@ -1276,12 +1283,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const showConfigOverview = () => {
         return <Box bgcolor={'#f1f1f1'} width={'100%'} height={'100%'}> 
             <Card sx={{m:1}}>
-                <CardHeader title={'Config overview'}/>
                 <CardContent>
+                    <Typography variant='h6'>Objects</Typography>
+                    <Divider sx={{mb:2}}/>
                     <Typography>ConfigMap: {magnifyData.files.filter(f => f.class==='ConfigMap').length}</Typography>
                     <Typography>Secret: {magnifyData.files.filter(f => f.class==='Secret').length}</Typography>
-                    <Divider sx={{mt:2, mb:2}}/>
-                    <Typography fontSize={'16'}>Validations</Typography>
+                    <Typography variant='h6' mt={2}>Validations</Typography>
+                    <Divider sx={{mb:2}}/>
                     <Validations files={magnifyData.files} onLink={onMagnifyObjectDetailsLink} onNavigate={onFileManagerNavigate} options={{configMap:true, secret:true}}/>
                 </CardContent>
             </Card>
@@ -1291,15 +1299,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const showNetworkOverview = () => {
         return <Box bgcolor={'#f1f1f1'} width={'100%'} height={'100%'}> 
             <Card sx={{m:1}}>
-                <CardHeader title={'Config overview'}>
-                </CardHeader>
                 <CardContent>
+                    <Typography variant='h6'>Objects</Typography>
+                    <Divider sx={{mb:2}}/>
                     <Typography>Services: {magnifyData.files.filter(f => f.class==='Service').length}</Typography>
-                    <Divider sx={{mt:2, mb:2}}/>
                     <Typography>Ingresses: {magnifyData.files.filter(f => f.class==='Ingress').length}</Typography>
                     <Typography>Ingress classes: {magnifyData.files.filter(f => f.class==='IngressClass').length}</Typography>
-                    <Divider sx={{mt:2, mb:2}}/>
-                    <Typography fontSize={'16'}>Validations</Typography>
+                    <Typography variant='h6' mt={2}>Validations</Typography>
+                    <Divider sx={{mb:2}}/>
                     <Validations files={magnifyData.files} onLink={onMagnifyObjectDetailsLink} onNavigate={onFileManagerNavigate} options={{ingress:true, service:true}}/>
                 </CardContent>
 
@@ -1314,14 +1321,32 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const showStorageOverview = () => {
         return <Box bgcolor={'#f1f1f1'} width={'100%'} height={'100%'}> 
             <Card sx={{m:1}}>
-                <CardHeader title={'Storage overview'}>
-                </CardHeader>
                 <CardContent>
+                    <Typography variant='h6'>Objects</Typography>
+                    <Divider sx={{mb:2}}/>
+                    <Typography>Total PV's: {magnifyData.files.filter(f => f.class==='PersistentVolume').length}</Typography>
                     <Typography>Total PVC's: {magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').length}</Typography>
                     <Typography>Total storage: {convertBytesToSize(magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').reduce((ac, v) => ac+v.data.size, 0))}</Typography>
-                    <Divider sx={{mt:2, mb:2}}/>
-                    <Typography>Validations</Typography>
+                    <Typography variant='h6' mt={2}>Validations</Typography>
+                    <Divider sx={{mb:2}}/>
                     <Validations files={magnifyData.files} onLink={onMagnifyObjectDetailsLink} onNavigate={onFileManagerNavigate} options={{ volumeAttachment: true }}/>
+                </CardContent>
+            </Card>
+        </Box>
+    }
+
+    const showAccessOverview = () => {
+        return <Box bgcolor={'#f1f1f1'} width={'100%'} height={'100%'}> 
+            <Card sx={{m:1}}>
+                <CardContent>
+                    <Typography variant='h6'>Objects</Typography>
+                    <Divider sx={{mb:2}}/>
+                    <Typography>Total SA's: {magnifyData.files.filter(f => f.class==='ServiceAccount').length}</Typography>
+                    <Typography>Total Roles: {magnifyData.files.filter(f => f.class==='Role').length}</Typography>
+                    <Typography>Total Cluster Roles: {magnifyData.files.filter(f => f.class==='ClusterRole').length}</Typography>
+                    <Typography variant='h6' mt={2}>Validations</Typography>
+                    <Divider sx={{mb:2}}/>
+                    <Validations files={magnifyData.files} onLink={onMagnifyObjectDetailsLink} onNavigate={onFileManagerNavigate} options={{ serviceAccount:true, role: true, custerRole:true }}/>
                 </CardContent>
             </Card>
         </Box>
@@ -1429,6 +1454,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const onContentExternalMinimize = (content:IContentExternalObject) => {
         if (!magnifyData.contentWindows.includes(content)) magnifyData.contentWindows.push(content)
         contentWindowId.current = -1
+        setContentExternalTitle('')
         setContentExternalContainer('')
         setContentExternalType('')
         setContentExternalVisible(false)
@@ -1441,6 +1467,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setContentExternalTitle((magnifyData.contentWindows[index] as IContentExternalObject).title)
             setContentExternalType((magnifyData.contentWindows[index] as IContentExternalObject).channel.channelId)
             setContentExternalContainer((magnifyData.contentWindows[index] as IContentExternalObject).container)
+            setContentExternalTermId((magnifyData.contentWindows[index] as IContentExternalObject).termId)
             setContentExternalOptions((magnifyData.contentWindows[index] as IContentExternalObject).options)
             setContentExternalVisible(true) 
         })
@@ -1690,21 +1717,22 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
         { contentExternalVisible && 
             <ContentExternal 
-            content={contentWindowId.current < 0 ? undefined : magnifyData.contentWindows[contentWindowId.current] as IContentExternalObject}
-            channelObject={props.channelObject}
-            channelId={contentExternalType}
-            title={contentExternalTitle}
-            selectedFiles={selectedFiles}
-            frontChannels={props.channelObject.frontChannels!}
-            onClose={onContentExternalClose}
-            onMinimize={onContentExternalMinimize}
-            onRefresh={onContentExternalRefresh}
-            onNotify={onComponentNotify}
-            contentView={contentExternalView}
-            data-refresh={refresh}
-            container={contentExternalContainer}
-            settings={magnifyData.userPreferences}
-            options={contentExternalOptions}
+                content={contentWindowId.current < 0 ? undefined : magnifyData.contentWindows[contentWindowId.current] as IContentExternalObject}
+                channelObject={props.channelObject}
+                channelId={contentExternalType}
+                title={contentExternalTitle}
+                selectedFiles={selectedFiles}
+                frontChannels={props.channelObject.frontChannels!}
+                onClose={onContentExternalClose}
+                onMinimize={onContentExternalMinimize}
+                onRefresh={onContentExternalRefresh}
+                onNotify={onComponentNotify}
+                contentView={contentExternalView}
+                data-refresh={refresh}
+                container={contentExternalContainer}
+                settings={magnifyData.userPreferences}
+                options={contentExternalOptions}
+                termId={contentExternalTermId}
             />
 
         }

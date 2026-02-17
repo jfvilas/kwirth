@@ -2,7 +2,7 @@ import { Button, Stack, Typography } from "@mui/material"
 import { ENotifyLevel } from "../../../tools/Global"
 import { IFileObject } from "@jfvilas/react-file-manager"
 import { useMemo, useState } from "react"
-import { IconConfigMap, IconDaemonSet, IconDeployment, IconIngress, IconJob, IconNode, IconPersistentVolumeClaim, IconReplicaSet, IconSecret, IconService, IconStatefulSet, IconVolume } from "../../../tools/Constants-React"
+import { getIconFromKind, IconClusterRole, IconConfigMap, IconDaemonSet, IconDeployment, IconIngress, IconJob, IconNode, IconPersistentVolumeClaim, IconReplicaSet, IconRole, IconSecret, IconService, IconStatefulSet, IconVolume } from "../../../tools/Constants-React"
 const _ = require('lodash')
 
 interface IIssue {
@@ -23,7 +23,7 @@ const formatIssues = (issues:IIssue[], onLink:(kind:string, name:string, namespa
 const validateReplicaSet = (files:IFileObject[]) => {
     let issues:IIssue[] = []
 
-    for (let rs of files.filter(f => f.path.startsWith('/workload/ReplicaSet/')).map(f => f.data.origin)) {
+    for (let rs of files.filter(f => f.class==='ReplicaSet').map(f => f.data.origin)) {
         if (rs.status?.replicas === 0 || rs.status?.availableReplicas === 0 || rs.status?.readyReplicas ===0 ) {
             issues.push ({kind:'ReplicaSet', name:rs.metadata.name, namespace:rs.metadata.namespace, level: ENotifyLevel.WARNING, text: 'Unneeded ReplicaSet' })
         }
@@ -37,7 +37,7 @@ const validateReplicaSet = (files:IFileObject[]) => {
 const validateDeployment = (files:IFileObject[]) => {
     let issues:IIssue[] = []
 
-    for (let dp of files.filter(f => f.path.startsWith('/workload/Deployment/')).map(f => f.data.origin)) {
+    for (let dp of files.filter(f => f.class==='Deployment').map(f => f.data.origin)) {
         if (dp.status?.replicas !== dp.status?.availableReplicas) {
             issues.push ({kind:'ReplicaSet', name:dp.metadata.name, namespace:dp.metadata.namespace, level: ENotifyLevel.WARNING, text: 'Unready replicas' })
         }
@@ -48,7 +48,7 @@ const validateDeployment = (files:IFileObject[]) => {
 const validateJob = (files:IFileObject[]) => {
     let issues:IIssue[] = []
 
-    for (let j of files.filter(f => f.path.startsWith('/workload/Job/')).map(f => f.data.origin)) {
+    for (let j of files.filter(f => f.class==='Job').map(f => f.data.origin)) {
         if (j.status?.failed!==undefined && +j.status?.failed>0) issues.push ({kind:'Job', name:j.metadata.name, namespace:j.metadata.namespace, level: ENotifyLevel.ERROR, text: 'Failed Job' })
     }
     return issues
@@ -57,7 +57,7 @@ const validateJob = (files:IFileObject[]) => {
 const validateStatefulSet = (files:IFileObject[]) => {
     let issues:IIssue[] = []
 
-    for (let ss of files.filter(f => f.path.startsWith('/workload/Stateful/')).map(f => f.data.origin)) {
+    for (let ss of files.filter(f => f.class==='Stateful').map(f => f.data.origin)) {
         if (ss.status?.replicas !== ss.status?.availableReplicas) {
             issues.push ({kind:'StatefulSet', name:ss.metadata.name, namespace:ss.metadata.namespace, level: ENotifyLevel.ERROR, text: 'SS Replicas unready' })
         }
@@ -68,7 +68,7 @@ const validateStatefulSet = (files:IFileObject[]) => {
 const validateDaemonSet = (files:IFileObject[]) => {
     let issues:IIssue[] = []
 
-    for (let ds of files.filter(f => f.path.startsWith('/workload/Stateful/')).map(f => f.data.origin)) {
+    for (let ds of files.filter(f => f.class==='Stateful').map(f => f.data.origin)) {
         if (ds.status?.replicas !== ds.status?.availableReplicas) {
             issues.push ({kind:'StatefulSet', name:ds.metadata.name, namespace:ds.metadata.namespace, level: ENotifyLevel.ERROR, text: 'DS replicas unready' })
         }
@@ -77,7 +77,7 @@ const validateDaemonSet = (files:IFileObject[]) => {
 }
 
 const validateConfigMap = (files:IFileObject[]) => {
-    let configMaps = files.filter(f => f.path.startsWith('/config/ConfigMap/') && f.data?.origin?.metadata?.namespace!=='kube-system' && f.data?.origin?.metadata?.namespace!=='kube-public')
+    let configMaps = files.filter(f => f.class==='ConfigMap' && f.data?.origin?.metadata?.namespace!=='kube-system' && f.data?.origin?.metadata?.namespace!=='kube-public')
     let unused = [...configMaps]
 
     const isUsedInEnvs = (cont:any, name:string) : boolean => {
@@ -107,24 +107,24 @@ const validateConfigMap = (files:IFileObject[]) => {
     for (let configMap of configMaps) {
         let configMapName = configMap.data.origin.metadata.name
         if (' kwirth.keys kwirth-keys '.includes(configMapName)) unused = unused.filter(s => s !== configMap)
-        for (let pod of files.filter(f => f.path.startsWith('/workload/Pod/')).map(f => f.data.origin))
+        for (let pod of files.filter(f => f.class==='Pod/').map(f => f.data.origin))
             if (isUsedInPod(pod, configMapName)) unused = unused.filter(s => s !== configMap)
-        for (let ss of files.filter(f => f.path.startsWith('/workload/StatefulSet/')).map(f => f.data.origin))
+        for (let ss of files.filter(f => f.class==='StatefulSet').map(f => f.data.origin))
             if (isUsedInPod(ss.spec.template, configMapName)) unused = unused.filter(s => s !== configMap)
-        for (let rs of files.filter(f => f.path.startsWith('/workload/ReplicaSet/')).map(f => f.data.origin))
+        for (let rs of files.filter(f => f.class==='ReplicaSet').map(f => f.data.origin))
             if (isUsedInPod(rs.spec.template, configMapName)) unused = unused.filter(s => s !== configMap)
-        for (let dp of files.filter(f => f.path.startsWith('/workload/Deployment/')).map(f => f.data.origin))
+        for (let dp of files.filter(f => f.class==='Deployment').map(f => f.data.origin))
             if (isUsedInPod(dp.spec.template, configMapName)) unused = unused.filter(s => s !== configMap)
-        for (let ds of files.filter(f => f.path.startsWith('/workload/DaemonSet/')).map(f => f.data.origin))
+        for (let ds of files.filter(f => f.class==='DaemonSet').map(f => f.data.origin))
             if (isUsedInPod(ds.spec.template, configMapName)) unused = unused.filter(s => s !== configMap)
-        for (let rc of files.filter(f => f.path.startsWith('/workload/ReplicationController/')).map(f => f.data.origin))
+        for (let rc of files.filter(f => f.class==='ReplicationController').map(f => f.data.origin))
             if (isUsedInPod(rc.spec.template, configMapName)) unused = unused.filter(s => s !== configMap)
     }
     return unused.map(u => { return {name:u.data.origin.metadata.name, namespace:u.data.origin.metadata.namespace, kind:'ConfigMap', text:'Unreferenced ConfigMap', level: ENotifyLevel.WARNING}})
 }
 
 const validateSecret = (files:IFileObject[]) => {
-    let secrets = files.filter(f => f.path.startsWith('/config/Secret/') && f.data?.origin?.metadata?.namespace!=='kube-system' && f.data?.origin?.metadata?.namespace!=='kube-public')
+    let secrets = files.filter(f => f.class==='Secret' && f.data?.origin?.metadata?.namespace!=='kube-system' && f.data?.origin?.metadata?.namespace!=='kube-public')
     let unused = [...secrets]
 
     for (let secretx of secrets) {
@@ -132,7 +132,7 @@ const validateSecret = (files:IFileObject[]) => {
         if (' kwirth-sa-kwirthtoken kwirth-users kwirth.keys kwirth-keys '.includes(secretNamex)) unused = unused.filter(s => s !== secretx)
         if (secretx.data?.origin?.type?.startsWith('helm.sh/release.')) unused = unused.filter(s => s !== secretx)
 
-        for (let file of files.filter(f => f.path.startsWith('/workload/Pod/'))) {
+        for (let file of files.filter(f => f.class==='Pod')) {
             let pod = file.data.origin;
             if ((_.get(pod, 'spec.imagePullSecrets') as [] || []).map((s:any) => s.name).some((imgSecretName:any) => imgSecretName === secretNamex)) {
                 unused = unused.filter(s => s !== secretx)
@@ -155,22 +155,22 @@ const validateSecret = (files:IFileObject[]) => {
                 if (vol.projected?.sources?.some( (s:any) => s.secret?.name === secretNamex)) unused = unused.filter(s => s !== secretx)
             }
         }
-        for (let obj of files.filter(f => f.path.startsWith('/workload/Deployment/') || f.path.startsWith('/workload/Job/') || f.path.startsWith('/workload/ReplicaSet/') || f.path.startsWith('/workload/DaemonSet/') || f.path.startsWith('/workload/StatefulSet/')).map(f => f.data.origin)) {
+        for (let obj of files.filter(f => f.class==='Deployment' || f.class==='Job' || f.class==='ReplicaSet' || f.class==='DaemonSet' || f.class==='StatefulSet').map(f => f.data.origin)) {
             if ((_.get(obj, 'spec.template.spec.imagePullSecrets') as any[] || []).map((s:any) => s.name).some((imgSecretName:any) => imgSecretName === secretNamex)) {
                 unused = unused.filter(s => s !== secretx)
                 break
             }
         }
-        for (let file of files.filter(f => f.path.startsWith('/network/Ingress/'))) {
+        for (let file of files.filter(f => f.class==='Ingress')) {
             let pod = file.data.origin
             if ((_.get(pod, 'spec.tls') as [] || []).some((host:any) => host.secretName === secretNamex)) unused = unused.filter(s => s !== secretx)
         }
-        for (let file of files.filter(f => f.path.startsWith('/storage/PersistentVolume/'))) {
+        for (let file of files.filter(f => f.class==='PersistentVolume')) {
             let pv = file.data.origin
             if (_.get(pv, 'spec.csi.nodeStageSecretRef.name')===secretNamex) unused = unused.filter(s => s !== secretx)
             if (_.get(pv, 'spec.csi.volumeAttributes.secretName')===secretNamex) unused = unused.filter(s => s !== secretx)
         }
-        for (let file of files.filter(f => f.path.startsWith('/storage/StorageClass/'))) {
+        for (let file of files.filter(f => f.class==='StorageClass')) {
             let sc = file.data.origin
             if (_.get(sc, 'parameters.secretName')===secretNamex) unused = unused.filter(s => s !== secretx)
         }
@@ -180,7 +180,7 @@ const validateSecret = (files:IFileObject[]) => {
 }
 
 const validateVolumeAttachment = (files:IFileObject[]) => {
-    let vas = files.filter(f => f.path.startsWith('/storage/VolumeAttachment/'))
+    let vas = files.filter(f => f.class==='VolumeAttachment')
     let issues:IIssue[] = []
     for (let va of vas) {
         if (va.data.origin.status.attachError || va.data.origin.status.detachError) issues.push({
@@ -195,34 +195,25 @@ const validateVolumeAttachment = (files:IFileObject[]) => {
 }
 
 const validateNode = (files:IFileObject[]) => {
+    console.log('valnode')
     let issues:IIssue[] = []
-    let ns = files.filter(f => f.path.startsWith('/cluster/Node/')).map(f => f.data.origin)
-    for (let n of ns) {
-        let ready = n.status.conditions.some((c:any) => c.type==='Ready' && c.status==='True')
+    let nodes = files.filter(f => f.class==='Node').map(f => f.data.origin)
+    for (let node of nodes) {
+        let ready = node.status.conditions.some((c:any) => c.type==='Ready' && c.status==='True')
         if (!ready) issues.push({
-            name: n.metadata.name, 
+            name: node.metadata.name, 
             namespace:'', 
             kind:'Node', 
             text:'Node not ready', 
             level: ENotifyLevel.ERROR}
         )
-        else {
-            let warnings = n.status.conditions.filter((c:any) => c.type!=='Ready' && c.status==='True')
-            if (warnings.length>0) issues.push({
-                name: n.metadata.name, 
-                namespace:'', 
-                kind:'Node', 
-                text: warnings.join(', '), 
-                level: ENotifyLevel.ERROR}
-            )
-        }
     }
     return issues
 }
 
 const validateIngress = (files:IFileObject[]) => {
     let issues:IIssue[] = []
-    let is = files.filter(f => f.path.startsWith('/network/Ingress/')).map(f => f.data.origin)
+    let is = files.filter(f => f.class==='Ingress').map(f => f.data.origin)
     for (let i of is) {
         let ns = i.metadata?.namespace
         let rules = i.spec?.rules
@@ -230,7 +221,7 @@ const validateIngress = (files:IFileObject[]) => {
             let paths = r.http?.paths
             for (let p of paths) {
                 let svc = p.backend?.service?.name
-                if (!files.find(f => f.path.startsWith('/network/Service/') && f.data.origin?.metadata?.name===svc && f.data.origin?.metadata?.namespace===ns))
+                if (!files.find(f => f.class==='Service' && f.data.origin?.metadata?.name===svc && f.data.origin?.metadata?.namespace===ns))
                     issues.push({kind: 'Ingress', name: i.metadata.name, namespace: i.metadata.namespace, level: ENotifyLevel.ERROR, text: "Inexistent service "+svc})
             }
         }
@@ -240,13 +231,13 @@ const validateIngress = (files:IFileObject[]) => {
 
 const validateService = (files:IFileObject[]) => {
     let issues:IIssue[] = []
-    let ss = files.filter(f => f.path.startsWith('/network/Service/') && f.data.origin?.metadata?.namespace!=='kube-system').map(f => f.data.origin)
+    let ss = files.filter(f => f.class==='Service' && f.data.origin?.metadata?.namespace!=='kube-system').map(f => f.data.origin)
     for (let s of ss) {
         const ns = s.metadata?.namespace
         const selector = s.spec.selector
         if (selector) {
             let found = false
-            for (let p of files.filter(f => f.path.startsWith('/workload/Pod/') && f.data.origin?.metadata?.namespace===ns).map(f => f.data.origin)) {
+            for (let p of files.filter(f => f.class==='Pod' && f.data.origin?.metadata?.namespace===ns).map(f => f.data.origin)) {
                 let x = 0
                 for (let k of Object.keys(selector)) {
                     if (p.metadata?.labels?.[k]===selector[k]) x++
@@ -258,6 +249,40 @@ const validateService = (files:IFileObject[]) => {
             }
             if (!found) issues.push({kind: 'Service', name: s.metadata.name, namespace: s.metadata.namespace, level: ENotifyLevel.ERROR, text: 'Inexistent service destination pods'})
         }
+    }
+    return issues
+}
+
+const validateRole = (files:IFileObject[]) => {
+    let issues:IIssue[] = []
+    let rs = files.filter(f => f.class==='Role' && f.data.origin?.metadata?.namespace!=='kube-system').map(f => f.data.origin)
+    for (let r of rs) {
+        let inUse = false
+        for(let rb of files.filter(f => f.class==='RoleBinding').map(f => f.data.origin)) {
+            inUse = rb.subjects.some((s:any) => s.kind==='ServiceAccount' && s.name === r.metadata.name && s.namespace === r.metadata.namespace)
+            if (inUse) break
+        }
+        if (!inUse) issues.push({kind: 'Role', name: r.metadata.name, namespace: r.metadata.namespace, level: ENotifyLevel.ERROR, text: 'Role not in use'})
+    }
+    return issues
+}
+
+const validateClusterRole = (files:IFileObject[]) => {
+    let issues:IIssue[] = []
+    let crs = files.filter(f => f.class==='ClusterRole').map(f => f.data.origin)
+    for (let cr of crs) {
+        for(let crb of files.filter(f => f.class==='ClusterRoleBinding')) {
+            // +++Pending
+        }
+    }
+    return issues
+}
+
+const validateServiceAccount = (files:IFileObject[]) => {
+    let issues:IIssue[] = []
+    let sas = files.filter(f => f.class==='ServiceAccount').map(f => f.data.origin)
+    for (let sar of sas) {
+        // +++Pending
     }
     return issues
 }
@@ -292,6 +317,9 @@ const validateSummary = (files:IFileObject[], onNavigate: (dest:string) => void)
             {showBadge(validateIngress(files), <IconIngress height={50}/>, onNavigate, '/network/Ingress')}
             {showBadge(validateService(files), <IconService height={50}/>, onNavigate, '/network/Service')}
             {showBadge(validateVolumeAttachment(files), <IconVolume size={50}/>, onNavigate, '/storage/VolumeAttachment')}
+            {showBadge(validateServiceAccount(files), getIconFromKind('ServiceAccount', 50), onNavigate, '/access/ServiceAccount')}
+            {showBadge(validateRole(files), <IconRole height={50}/>, onNavigate, '/access/Role')}
+            {showBadge(validateClusterRole(files), <IconClusterRole height={50}/>, onNavigate, '/access/ClusterRole')}
         </Stack>
     )
 }
@@ -301,48 +329,69 @@ interface IValidationsProps {
     onLink: (kind:string, name:string, namespace:string) => void
     onNavigate: (dest:string) => void
     options: {
-        node? :boolean
-        configMap? :boolean
-        secret? :boolean
-        deployment? :boolean
-        replicaSet? :boolean
-        statefulSet? :boolean
-        daemonSet? :boolean
-        job? :boolean
+        node? : boolean
+        configMap? : boolean
+        secret? : boolean
+        deployment? : boolean
+        replicaSet? : boolean
+        statefulSet? : boolean
+        daemonSet? : boolean
+        job? : boolean
         volumeAttachment? :boolean
-        ingress? :boolean
-        service? :boolean
-        summary? :boolean
+        ingress? : boolean
+        service? : boolean
+        serviceAccount?: boolean
+        role? :boolean
+        custerRole? : boolean
+        summary? : boolean
     }
 }
 
-const Validations: React.FC<IValidationsProps> = (props:IValidationsProps) => {
-    const nodeVals = useMemo( () => validateNode(props.files), [])
-    const cmVals = useMemo( () => validateConfigMap(props.files), [])
-    const secretVals = useMemo( () => validateSecret(props.files), [])
-    const deploymentVals = useMemo( () => validateDeployment(props.files), [])
-    const replicaSetVals = useMemo( () => validateReplicaSet(props.files), [])
-    const statefulSetVals = useMemo( () => validateStatefulSet(props.files), [])
-    const daemonSetVals = useMemo( () => validateDaemonSet(props.files), [])
-    const jobVals = useMemo( () => validateJob(props.files), [])
-    const volumeAttachmentVals = useMemo( () => validateVolumeAttachment(props.files), [])
-    const ingressVals = useMemo( () => validateIngress(props.files), [])
-    const serviceVals = useMemo( () => validateService(props.files), [])
-    const summary = useMemo( () => validateSummary(props.files, props.onNavigate), [])
-    return (<>
-        {props.options.node && formatIssues(nodeVals, props.onLink)}
-        {props.options.configMap && formatIssues(cmVals, props.onLink)}
-        {props.options.secret && formatIssues(secretVals, props.onLink)}
-        {props.options.deployment && formatIssues(deploymentVals, props.onLink)}
-        {props.options.replicaSet && formatIssues(replicaSetVals, props.onLink)}
-        {props.options.statefulSet && formatIssues(statefulSetVals, props.onLink)}
-        {props.options.daemonSet && formatIssues(daemonSetVals, props.onLink)}
-        {props.options.job && formatIssues(jobVals, props.onLink)}
-        {props.options.volumeAttachment && formatIssues(volumeAttachmentVals, props.onLink)}
-        {props.options.ingress && formatIssues(ingressVals, props.onLink)}
-        {props.options.service && formatIssues(serviceVals, props.onLink)}
-        {props.options.summary && summary}
-    </>)
+const Validations: React.FC<IValidationsProps> = (props: IValidationsProps) => {
+    const results = useMemo(() => {
+        const data: any = {};
+        const { options, files, onNavigate } = props;
+
+        // Solo ejecutamos si la opción está habilitada
+        if (options.node) data.node = validateNode(files)
+        if (options.configMap) data.configMap = validateConfigMap(files)
+        if (options.secret) data.secret = validateSecret(files)
+        if (options.deployment) data.deployment = validateDeployment(files)
+        if (options.replicaSet) data.replicaSet = validateReplicaSet(files)
+        if (options.statefulSet) data.statefulSet = validateStatefulSet(files)
+        if (options.daemonSet) data.daemonSet = validateDaemonSet(files)
+        if (options.job) data.job = validateJob(files)
+        if (options.volumeAttachment) data.volumeAttachment = validateVolumeAttachment(files)
+        if (options.ingress) data.ingress = validateIngress(files)
+        if (options.service) data.service = validateService(files)
+        if (options.serviceAccount) data.serviceAccount = validateServiceAccount(files)
+        if (options.role) data.role = validateRole(files);
+        if (options.custerRole) data.clusterRole = validateClusterRole(files)
+        
+        if (options.summary) data.summary = validateSummary(files, onNavigate)
+
+        return data;
+    }, [props.files, props.options, props.onNavigate])
+
+    return (
+        <>
+            {props.options.node && formatIssues(results.node, props.onLink)}
+            {props.options.configMap && formatIssues(results.configMap, props.onLink)}
+            {props.options.secret && formatIssues(results.secret, props.onLink)}
+            {props.options.deployment && formatIssues(results.deployment, props.onLink)}
+            {props.options.replicaSet && formatIssues(results.replicaSet, props.onLink)}
+            {props.options.statefulSet && formatIssues(results.statefulSet, props.onLink)}
+            {props.options.daemonSet && formatIssues(results.daemonSet, props.onLink)}
+            {props.options.job && formatIssues(results.job, props.onLink)}
+            {props.options.volumeAttachment && formatIssues(results.volumeAttachment, props.onLink)}
+            {props.options.ingress && formatIssues(results.ingress, props.onLink)}
+            {props.options.service && formatIssues(results.service, props.onLink)}
+            {props.options.serviceAccount && formatIssues(results.serviceAccount, props.onLink)}
+            {props.options.role && formatIssues(results.role, props.onLink)}
+            {props.options.custerRole && formatIssues(results.clusterRole, props.onLink)}
+            {props.options.summary && results.summary}
+        </>
+    )
 }
 
 export { Validations }

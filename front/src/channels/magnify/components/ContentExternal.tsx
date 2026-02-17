@@ -41,6 +41,7 @@ interface IContentExternalProps {
     channelObject?: IChannelObject
     container?: string
     options: IContentExternalOptions
+    termId: string|undefined
 }
 
 export interface IContentExternalObject {
@@ -55,6 +56,7 @@ export interface IContentExternalObject {
     windowMaximized: boolean
     options: IContentExternalOptions
     title: string
+    termId: string|undefined
     container?: string
 }
 
@@ -92,17 +94,18 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
     },[])
 
     useEffect(() => {
-        // this Effect ust be executed after initial useEffect, because it uses content.current
-        console.log(props.channelId)
+        // this Effect must be executed after initial useEffect, because it uses content.current
         if (props.channelId==='ops') {
             console.log('setkey')
             const handleNativeKey = async (e: KeyboardEvent) => {
                 if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return
 
-                const id = props.selectedFiles[0]?.data?.origin?.metadata?.namespace + '/' + 
-                        props.selectedFiles[0]?.data?.origin?.metadata?.name + '/' + 
-                        props.container
-                
+                // we handle first start and restore (the id comes from a different source). This is needed because the id is included in the colusure of the keyboard handle)
+                let id = props.termId ||
+                    props.selectedFiles[0]?.data?.origin?.metadata?.namespace + '/' + 
+                    props.selectedFiles[0]?.data?.origin?.metadata?.name + '/' + 
+                    props.container
+
                 const terminalEntry = content.current?.channelObject?.data?.terminalManager?.terminals.get(id)
                 const socket = terminalEntry?.socket
                 if (!socket || socket.readyState !== WebSocket.OPEN) return
@@ -194,8 +197,15 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             settings: props.settings,
             options: objectClone(props.options),
             title: props.title,
-            container: props.container
+            container: props.container,
+            // termId: props.selectedFiles[0]?.data?.origin?.metadata?.namespace + '/' + 
+            //             props.selectedFiles[0]?.data?.origin?.metadata?.name + '/' + 
+            //             props.container
+            termId: props.selectedFiles[0]?.data?.origin?.metadata?.namespace + '/' + 
+                    props.selectedFiles[0]?.data?.origin?.metadata?.name.split('+')[0] + '/' + 
+                    props.container
         }
+        console.log('tedm',newContent.termId)
 
         if (newChannel.requiresMetrics()) newContent.channelObject.metricsList = props.channelObject?.metricsList
         if (newChannel.requiresClusterUrl()) newContent.channelObject.clusterUrl = props.channelObject?.clusterUrl
@@ -308,19 +318,20 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             terminalManager: new TerminalManager(),
             selectedTerminal: undefined
         }
+        let onlyContName = c.channelObject.container.split('+')[1]
+        let onlyPodName = c.channelObject.container.split('+')[0]
         let opsConfig:IOpsConfig = {
             accessKey: ESwitchKey.DISABLED,
             launchShell: true,
             shell: {
                 namespace: c.channelObject.namespace,
-                pod: c.channelObject.pod,
-                container: c.channelObject.container
+                pod: onlyPodName,
+                container: onlyContName
             }
         }
         let opsInstanceConfig:IOpsInstanceConfig = {
             sessionKeepAlive: false
         }
-
         c.channelObject!.webSocket = content.current!.ws
         c.channelObject!.data = opsData
         c.channelObject!.config = opsConfig
@@ -580,7 +591,6 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
 }
 
 const ANSI_MAP: Record<string, string> = {
-    // Teclas de navegación
     'ArrowUp':    '\x1b[A',
     'ArrowDown':  '\x1b[B',
     'ArrowRight': '\x1b[C',
@@ -615,63 +625,42 @@ const ANSI_MAP: Record<string, string> = {
 
 
 const getComplexCode = (e: KeyboardEvent): string | null => {
-    const { key, ctrlKey, altKey, shiftKey } = e;
+    const { key, ctrlKey, altKey, shiftKey } = e
 
-    // 1. Calculamos el número del modificador según el estándar ANSI
-    // Shift=2, Alt=3, Shift+Alt=4, Ctrl=5, Ctrl+Shift=6, Ctrl+Alt=7, Ctrl+Alt+Shift=8
-    let modifier = 1;
-    if (shiftKey) modifier += 1;
-    if (altKey)   modifier += 2;
-    if (ctrlKey)  modifier += 4;
+    let modifier = 1
+    if (shiftKey) modifier += 1
+    if (altKey)   modifier += 2
+    if (ctrlKey)  modifier += 4
 
-    // 2. Si no hay modificadores, dejamos que otras funciones lo manejen (o ANSI_MAP)
-    if (modifier === 1) return null;
+    if (modifier === 1) return null
 
-    // 3. Mapeo automático para Teclas de Función F1 - F4
-    // Estas son especiales porque usan secuencias tipo SS3 (ESC O ...)
-    const F1_F4: Record<string, string> = { 'F1': 'P', 'F2': 'Q', 'F3': 'R', 'F4': 'S' };
-    if (F1_F4[key]) {
-        return `\x1b[1;${modifier}${F1_F4[key]}`;
-    }
+    const F1_F4: Record<string, string> = { 'F1': 'P', 'F2': 'Q', 'F3': 'R', 'F4': 'S' }
+    if (F1_F4[key]) return `\x1b[1;${modifier}${F1_F4[key]}`
 
-    // 4. Mapeo para F5 - F12
     const F5_F12: Record<string, number> = {
         'F5': 15, 'F6': 17, 'F7': 18, 'F8': 19, 'F9': 20, 'F10': 21, 'F11': 23, 'F12': 24
-    };
-    if (F5_F12[key]) {
-        return `\x1b[${F5_F12[key]};${modifier}~`;
     }
+    if (F5_F12[key]) return `\x1b[${F5_F12[key]};${modifier}~`
 
     // 5. Mapeo para Flechas y navegación
     const Nav: Record<string, string> = {
         'ArrowUp': 'A', 'ArrowDown': 'B', 'ArrowRight': 'C', 'ArrowLeft': 'D',
         'Home': 'H', 'End': 'F'
     };
-    if (Nav[key]) {
-        return `\x1b[1;${modifier}${Nav[key]}`;
-    }
+    if (Nav[key]) return `\x1b[1;${modifier}${Nav[key]}`
 
     // 6. Mapeo para Edición (Insert, Delete, etc.)
-    const Edit: Record<string, number> = { 'Insert': 2, 'Delete': 3, 'PageUp': 5, 'PageDown': 6 };
-    if (Edit[key]) {
-        return `\x1b[${Edit[key]};${modifier}~`;
-    }
+    const Edit: Record<string, number> = { 'Insert': 2, 'Delete': 3, 'PageUp': 5, 'PageDown': 6 }
+    if (Edit[key]) return `\x1b[${Edit[key]};${modifier}~`
 
-    return null;
-};
-
-function getControlChar(key: string): string | null {
-    // Si pulsas Ctrl + C, key es "c"
-    const charCode = key.toLowerCase().charCodeAt(0);
-    
-    // El rango de 'a' a 'z' es 97 a 122
-    if (charCode >= 97 && charCode <= 122) {
-        // Restamos 96 para obtener el valor ASCII de control (1 al 26)
-        return String.fromCharCode(charCode - 96);
-    }
-    return null;
+    return null
 }
 
-
+function getControlChar(key: string): string | null {
+    const charCode = key.toLowerCase().charCodeAt(0)
+    if (charCode >= 97 && charCode <= 122) return String.fromCharCode(charCode - 96)
+    
+    return null
+}
 
 export { ContentExternal }

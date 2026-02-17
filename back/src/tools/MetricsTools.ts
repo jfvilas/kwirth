@@ -406,11 +406,13 @@ export class MetricsTools {
                                     newPodMetricValues.set(sampledMetricName, { value: newValue + newPodMetricValues.get(sampledMetricName)!.value, timestamp:timestamp } )
                                 }
                                 else {
-                                    console.log('Repeated pod metrics (will add values):')
-                                    console.log('Line:')
-                                    console.log(line)
-                                    console.log('Original metric:   ', sampledMetricName, newPodMetricValues.get(sampledMetricName))
-                                    console.log('Duplicated  metric:', sampledMetricName, newValue)
+                                    // this situation occurs when receiveng metrics for more than one container in the same pod
+                                    // so we just sum aup values
+                                    // console.log('Repeated pod metrics (will add values):')
+                                    // console.log('Line:')
+                                    // console.log(line)
+                                    // console.log('Original metric:   ', sampledMetricName, newPodMetricValues.get(sampledMetricName))
+                                    // console.log('Duplicated  metric:', sampledMetricName, newValue)
                                     newPodMetricValues.set(sampledMetricName, { value: newValue + newPodMetricValues.get(sampledMetricName)!.value, timestamp:timestamp } )
                                 }
                             }

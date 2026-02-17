@@ -50,8 +50,8 @@ export class OpsChannel implements IChannel {
                 socket: new WebSocket(channelObject.clusterUrl + '?challenge='+(instanceConfigResponse.data as string)),
                 terminal: undefined
             }
-            //opsData.terminalManager.createTerminal(`${newXterm.namespace+'/'+newXterm.pod+'/'+newXterm.container}`, newXterm.socket!)
-            opsData.terminalManager.createTerminal(newXterm.namespace+'/'+newXterm.container.split('+')[0]+'/'+newXterm.container.split('+')[1], newXterm.socket!)
+            opsData.terminalManager.createTerminal(`${newXterm.namespace+'/'+newXterm.pod+'/'+newXterm.container}`, newXterm.socket!)
+            //opsData.terminalManager.createTerminal(newXterm.namespace+'/'+newXterm.container.split('+')[0]+'/'+newXterm.container.split('+')[1], newXterm.socket!)
             refresh.action = EChannelRefreshAction.REFRESH
         }
         else {

@@ -804,21 +804,6 @@ objectSections.set('Node', [
                 style: ['column']
             },
             {
-                name: 'addresses',
-                text: 'Addresses',
-                source: ['status.addresses'],
-                format: 'objectlist',
-                items: [
-                    {
-                        name: 'type',
-                        text: '',
-                        source: ['type','$:\u00A0', 'address'],
-                        format: 'string'
-                    },
-                ],
-                style:['column']
-            },
-            {
                 name: 'os',
                 text: 'OS',
                 source: ['status.nodeInfo.operatingSystem', '$(', 'status.nodeInfo.architecture', '$)'],
@@ -849,6 +834,40 @@ objectSections.set('Node', [
                 format: 'string',
             },
             conditions
+        ]
+    },
+    {
+        name: 'workload',
+        text: 'Workload',
+        root: 'origin',
+        items: [
+            {
+                name: 'taints',
+                text: 'Taints',
+                source: ['spec.taints'],
+                format: 'objectlist',
+                style: ['table'],
+                items: [
+                    {
+                        name: 'taint',
+                        text: 'Taint',
+                        source: ['key'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'effect',
+                        text: 'Effect',
+                        source: ['effect'],
+                        format: 'string',
+                    },
+                    {
+                        name: 'age',
+                        text: 'Age',
+                        source: ['timeAdded'],
+                        format: 'age',
+                    }
+                ],
+            },
         ]
     },
     {

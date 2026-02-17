@@ -2,55 +2,12 @@ const { VERSION } = require('./version')
 const { app, BrowserWindow,  BaseWindow, nativeImage, ImageView, ipcMain } = require('electron')
 const path = require('path')
 const portfinder = require('portfinder')
-const https = require('https');
-
-
-// ipcMain.handle('kube-api-available', async (event, rawUrl) => {
-// 	//console.log('test', rawUrl)
-//     return new Promise((resolve) => {
-//         try {
-//             const parsedUrl = new URL(rawUrl);
-//             const options = {
-//                 hostname: parsedUrl.hostname,
-//                 port: parsedUrl.port || 443,
-//                 path: '/version',
-//                 method: 'GET',
-//                 rejectUnauthorized: false,
-//                 timeout: 2000
-//             }
-
-//             const req = https.request(options, res => {
-// 				console.log('toresolove', options)
-//                 let gotResponse = (res.statusCode === 200 || res.statusCode === 401)
-// 				console.log(options.hostname, options.port)
-// 				if (gotResponse) {
-// 					let x = JSON.parse(res)
-// 					console.log(x)
-// 					resolve(true)
-// 				}
-// 				else {
-// 					resolve(false)
-// 				}
-//             })
-
-//             req.on('error', () => resolve(false))
-//             req.on('timeout', () => {
-//                 req.destroy()
-//                 resolve(false)
-//             })
-//             req.end()
-//         }
-// 		catch (err) {
-// 			console.log('error', err)
-//             resolve(false)
-//         }
-//     })
-// })
+const https = require('https')
 
 ipcMain.handle('kube-api-available', async (event, rawUrl) => {
     return new Promise((resolve) => {
-        let timer;
-        let req;
+        let timer
+        let req
 
         try {
             const parsedUrl = new URL(rawUrl);
@@ -63,9 +20,9 @@ ipcMain.handle('kube-api-available', async (event, rawUrl) => {
             };
 
             timer = setTimeout(() => {
-                if (req) req.destroy();
-                resolve(false);
-            }, 2000);
+                if (req) req.destroy()
+                resolve(false)
+            }, 2500)
 
             req = https.request(options, (res) => {
                 let rawData = '';
@@ -75,42 +32,39 @@ ipcMain.handle('kube-api-available', async (event, rawUrl) => {
 
                 // 2. Cuando termina la respuesta, intentamos parsear
                 res.on('end', () => {
-                    clearTimeout(timer);
-                    
-                    // Si es 401 o 403, el API existe pero no tenemos permiso (es un "true" técnico)
-                    // if (res.statusCode === 401 || res.statusCode === 403) {
-                    //     return resolve(true);
-                    // }
-
+                    clearTimeout(timer)
+                
                     if (res.statusCode === 200 || res.statusCode === 401 || res.statusCode === 403) {
                         try {
-                            const json = JSON.parse(rawData);
+                            const json = JSON.parse(rawData)
 							console.log(json)
-                            // Verificamos si tiene campos típicos de la respuesta /version de K8s
-                            //const isK8s = !!(json.major || json.gitVersion);
-                            resolve(json.kind==='Status');
-                        } catch (e) {
-                            // Si responde 200 pero no es JSON, no es un Kube API válido
-                            resolve(false);
+                            //if we get a yaml with kind 'Status' its perfect
+                            // if we just get a minr, minr, gitVersion... (this is GKE way), it is also ok
+                            resolve(json.kind==='Status' || !!(json.major || json.gitVersion))
                         }
-                    } else {
-                        resolve(false);
+                        catch (e) {
+                            resolve(false)
+                        }
                     }
-                });
-            });
+                    else {
+                        resolve(false)
+                    }
+                })
+            })
 
             req.on('error', () => {
-                clearTimeout(timer);
-                resolve(false);
-            });
+                clearTimeout(timer)
+                resolve(false)
+            })
 
-            req.end();
-        } catch (err) {
-            if (timer) clearTimeout(timer);
-            resolve(false);
+            req.end()
         }
-    });
-});
+        catch (err) {
+            if (timer) clearTimeout(timer)
+            resolve(false)
+        }
+    })
+})
 
 async function createMainWindow() {
     console.log('Starting Kwirth Desktop...')

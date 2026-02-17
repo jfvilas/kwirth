@@ -168,7 +168,8 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     namespace: so.namespace,
                     group: '',
                     pod: so.pod,
-                    container: so.pod+'+'+so.container,
+                    //container: so.pod+'+'+so.container,
+                    container: so.container,
                     objects: EInstanceConfigObject.PODS,
                     scope: '',
                     view: EInstanceConfigView.NONE

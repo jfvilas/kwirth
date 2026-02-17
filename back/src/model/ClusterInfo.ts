@@ -132,6 +132,21 @@ export class ClusterInfo {
                     if (i>=0) this.name = hostname.substring(0,i)
                 }
             }
+            if (node.spec?.providerID && node.spec.providerID.toLowerCase().startsWith('gce://')) {
+                this.flavour = 'gke'
+                if (node.metadata?.labels?.['name']) {
+                    this.name = node.metadata.labels['name']
+                }
+                else {
+                    const parts = node.spec.providerID.split('/')
+                    const fullNodeName = parts[parts.length - 1]
+                    const gkeMatch = fullNodeName.match(/^gke-(.*)-[^-]+-[^-]+$/);
+                    if (gkeMatch && gkeMatch[1])
+                        this.name = gkeMatch[1]
+                    else
+                        this.name = node.metadata?.labels?.['cloud.google.com/gke-nodepool'] || 'unnamed'
+                }
+            }
         }
         catch (err) {
             console.log('Cannot set cluster namne', err)
