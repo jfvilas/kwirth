@@ -3,7 +3,7 @@ import { ClusterInfo } from '../../model/ClusterInfo'
 import { IChannel } from '../IChannel'
 import { Request, Response } from 'express'
 import { CoreV1EventList, V1APIResource, V1APIResourceList } from '@kubernetes/client-node'
-import { applyResource, cronJobStatus, cronJobTrigger, nodeCordon, nodeDrain, nodeUnCordon, podEvict, restartController, scaleController, setIngressClassAsDefault, throttleExcute } from '../../tools/KubernetesTools'
+import { applyResource, cronJobStatus, cronJobTrigger, imageDelete, nodeCordon, nodeDrain, nodeUnCordon, podEvict, podWork, restartController, scaleController, setIngressClassAsDefault, throttleExcute } from '../../tools/KubernetesTools'
 const yaml = require('js-yaml')
 
 export interface IMagnifyConfig {
@@ -25,6 +25,7 @@ export enum MagnifyCommandEnum {
     INGRESSCLASS = 'IngressClass',
     POD = 'Pod',
     NODE = 'Node',
+    IMAGE = 'Image',
     CONTROLLER = 'Controller',
 }
 
@@ -196,7 +197,6 @@ class MagnifyChannel implements IChannel {
     }
 
     addObject = async (webSocket: WebSocket, instanceConfig: IInstanceConfig, podNamespace: string, podName: string, containerName: string): Promise<boolean> => {
-        // +++ we should not recevie addObject, since is a 'clusterScoped' channel
         console.log(`Start instance ${instanceConfig.instance} ${podNamespace}/${podName}/${containerName} (view: ${instanceConfig.view})`)
 
         let socket = this.webSockets.find(s => s.ws === webSocket)
@@ -404,6 +404,10 @@ class MagnifyChannel implements IChannel {
                         case 'evict':
                             await podEvict(this.clusterInfo.coreApi, magnifyMessage.params![1], magnifyMessage.params![2])
                             break
+                        case 'work':
+                            let podName = await podWork(this.clusterInfo.coreApi, magnifyMessage.params![1])
+                            this.sendDataMessage(webSocket, instance, '1', MagnifyCommandEnum.POD, JSON.stringify(['work',podName]))
+                            break
                     }
                     break
 
@@ -411,6 +415,16 @@ class MagnifyChannel implements IChannel {
                     switch (magnifyMessage.params![0]) {
                         case 'default':
                             await setIngressClassAsDefault(this.clusterInfo.networkApi, magnifyMessage.params![1])
+                            break
+                    }
+                    break
+
+                case MagnifyCommandEnum.IMAGE:
+                    switch (magnifyMessage.params![0]) {
+                        case 'delete':
+                            for (let imageName of magnifyMessage.params!.slice(1)) {
+                                await imageDelete(this.clusterInfo.appsApi, imageName)
+                            }
                             break
                     }
                     break
@@ -438,6 +452,7 @@ class MagnifyChannel implements IChannel {
                     this.executeListCrd(webSocket, instance, magnifyMessage)
                     return
                 }
+
                 case MagnifyCommandEnum.CREATE: {
                     console.log(`Do CREATE`)
                     this.executeCreate(webSocket, instance, magnifyMessage.params!)

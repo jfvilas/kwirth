@@ -1,5 +1,5 @@
 import { IFileObject, ISpace } from '@jfvilas/react-file-manager'
-import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, EditOff, FolderCopy, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal } from '@mui/icons-material'
+import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, EditOff, FolderCopy, HomeRepairService, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal } from '@mui/icons-material'
 import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from '../icons/Icons'
 
 
@@ -1693,7 +1693,7 @@ spaces.set('Node',
                 multi: true,
                 permission: true,
             },
-            {   // +++ add 'visible' / 'enabled' properties as calculated invoking a function
+            {   // +++ add 'visible' / 'enabled' properties as calculated invoking a custom function
                 name: 'uncordon',
                 icon: <PlayCircle fontSize='small' />,
                 text: 'UnCordon',
@@ -1786,7 +1786,7 @@ spaces.set('Image',
     {
         text: 'Name',
         source: 'name',
-        width: 90,
+        width: 80,
         leftItems: [
             {
                 name:'details',
@@ -1794,8 +1794,24 @@ spaces.set('Image',
                 text: 'Details',
                 permission: true,
             },
+            {
+                name:'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
         ],
         properties: [
+            {
+                name: 'tag',
+                text: 'Tag',
+                source: 'tag',
+                format: 'string',
+                width: 10,
+                sortable: true,
+                visible: true
+            },
             {
                 name: 'size',
                 text: 'Size',
@@ -1922,6 +1938,12 @@ spaces.set('classPod',
                 name: 'create',
                 icon: <Add fontSize='small'/>,
                 text: 'New pod',
+                permission: true,
+            },
+            {
+                name: 'works',
+                icon: <HomeRepairService fontSize='small'/>,
+                text: 'Kube works',
                 permission: true,
             }
         ]
@@ -2095,6 +2117,21 @@ spaces.set('Deployment',
                 text: 'Details',
                 permission: true,
             },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {   name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
+            {   name: 'divider',
+                text: '',
+                permission: true,
+            },
             {   name: 'scale',
                 icon: <Iso fontSize='small'/>,
                 text: 'Scale',
@@ -2117,17 +2154,6 @@ spaces.set('Deployment',
                 text: 'Metrics',
                 multi: true,
                 permission: true
-            },
-            {   name: 'edit',
-                icon: <Edit fontSize='small'/>,
-                text: 'Edit',
-                permission: true,
-            },
-            {   name: 'delete',
-                icon: <Delete fontSize='small'/>,
-                text: 'Delete',
-                multi: true,
-                permission: true,
             },
         ],
         properties: [

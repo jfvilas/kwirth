@@ -37,7 +37,6 @@ export class ManageKwirthApi {
     restartController = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, controllerTypeName:string): Promise<void> => {
         try {
             let result = await AuthorizationManagement.getPodLabelSelectorsFromController(coreApi, appsApi, batchApi, namespace, controllerTypeName)
-            // +++ test & try if this is suitable for restarting jobs
 
             // Delete all pods, which forces kubernetes to recreate them
             for (const pod of result.pods) {

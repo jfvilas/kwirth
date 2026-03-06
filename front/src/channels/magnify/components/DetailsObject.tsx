@@ -3,7 +3,6 @@ import { Https } from '@mui/icons-material'
 import { LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextareaAutosize, TextField, Tooltip, Typography } from '@mui/material'
 import { convertBytesToSize, convertSizeToBytes } from '../Tools'
 import React from 'react'
-import { link } from 'fs'
 
 const _ = require('lodash')
 
@@ -12,7 +11,7 @@ interface IDetailsItem {
     text: string
     source: string[]
     format: 'string'|'stringlist'|'table'|'objectprops'|'objectlist'|'objectobject'|'boolean'|'booleankeyname'|'keylist'|'edit'|'bar'|'age'
-    invoke?: (ro:any, o:any) => any
+    invoke?: (ro:any, o:any, onLink:(kind:string, name:string, namespace:string) => void) => any
     style?: string[]
     items?: IDetailsItem[]
     processValue?: (value:any) => any
@@ -103,7 +102,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
         return value
     }
 
-    const renderValue = (rootObj:any, srcobj:any, src:string, format:string, style:string[], level:number, content?:IDetailsItem[], invoke?:(ro:any, o:any) => string[], itemx?:IDetailsItem) : JSX.Element => {
+    const renderValue = (rootObj:any, srcobj:any, src:string, format:string, style:string[], level:number, content?:IDetailsItem[], invoke?:(ro:any, o:any, onLink:(kind:string, name:string, namespace:string) => void) => string[], itemx?:IDetailsItem) : JSX.Element => {
         let originalSrc = src
         if (src.startsWith('$')) return <Typography fontWeight={style.includes('bold')?'700':''}>{src.substring(1)}</Typography>
         let addLink = false
@@ -152,7 +151,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             case 'boolean':
                 let valBoolean = false
                 if (src==='@string[]' && invoke)
-                    valBoolean = Boolean(invoke(rootObj, obj)[0])
+                    valBoolean = Boolean(invoke(rootObj, obj, props.onLink)[0])
                 else {
                     valBoolean = Boolean(_.get(obj,src))
                 }
@@ -176,11 +175,11 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             case 'string':
                 let valString = ''
                 if ((src==='@string' || src==='@jsx') && itemx?.invoke) {
-                    return <>{itemx.invoke(rootObj, obj) as JSX.Element}</>
+                    return <>{itemx.invoke(rootObj, obj, props.onLink) as JSX.Element}</>
                 }
 
                 if ((src==='@string[]') && invoke)
-                    valString = invoke(rootObj, obj)[0]
+                    valString = invoke(rootObj, obj, props.onLink)[0]
                 else {
                     //valString = _.get(obj,src)
                     valString = getValue(obj,src)
@@ -222,7 +221,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         let linkStyle= style.find(s => s.startsWith('link:'))
 
                         if (linkStyle && addLink) {
-                            // console.log('linkStyle')
+                            //console.log('linkStyle', linkStyle)
                             let linkParts=linkStyle.split(':')
                             if (linkParts.length<4) {
                                 console.log('link<4', linkStyle)
@@ -273,7 +272,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             case 'stringlist':
                 let resultStringlist:string[]=[]
                 if (src==='@string[]' && invoke) {
-                    resultStringlist = invoke(rootObj, obj)
+                    resultStringlist = invoke(rootObj, obj, props.onLink)
                 }
                 else
                     resultStringlist=_.get(obj,src)
@@ -306,10 +305,10 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             case 'objectlist':
                 let items:any[]=[]
                 if (src==='@string[]' && invoke) {
-                    items = invoke(rootObj, obj)
+                    items = invoke(rootObj, obj, props.onLink)
                 }
                 else if (src==='@object[]' && invoke) {
-                    items = invoke(rootObj, obj)
+                    items = invoke(rootObj, obj, props.onLink)
                 }
                 else {
                     items = _.get(obj,src)
@@ -455,12 +454,12 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         return <>{Object.keys(_.get(obj,src)).map((key:string,index:number) => {
                             if (style && style.includes('edit')) {
                                 return <Stack key={index} direction={'column'} sx={{mt:1}}>
-                                    <Tooltip title={key} placement='top'>
                                         <Stack direction={'row'}>
-                                            <Typography fontWeight={style.includes('keybold')?'700':''} >{key}</Typography>
+                                            <Tooltip title={key} placement='top'>
+                                                <Typography fontWeight={style.includes('keybold')?'700':''} >{key}</Typography>
+                                            </Tooltip>
                                             {style.includes('lockicon') && <Https fontSize={'small'} sx={{color:'red'}}/>}
                                         </Stack>
-                                    </Tooltip>
                                     {
                                         renderValue(rootObj, obj, src+'.[\''+key+'\']', 'edit', style, level+1, [], undefined)
                                     }                               
@@ -543,7 +542,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             if (item.invoke) {
                 return (
                     <Stack direction={item.style && item.style.includes('column')?'column':'row'} alignItems="stretch" sx={{ width: '100%' }}>
-                        {(item.invoke(rootObj, obj) as JSX.Element[]).map((element,index) => 
+                        {(item.invoke(rootObj, obj, props.onLink) as JSX.Element[]).map((element,index) => 
                             <React.Fragment key={index}>
                                 {element}
                             </React.Fragment>

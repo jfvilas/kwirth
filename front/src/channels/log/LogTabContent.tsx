@@ -1,32 +1,38 @@
 import { ILogLine, ILogData } from './LogData'
-import { Box, Card, CardContent, CardHeader, InputAdornment, Stack, TextField, Typography } from '@mui/material'
+import { Box, Card, CardContent, CardHeader, InputAdornment, Stack, TextField, Typography, useTheme } from '@mui/material'
 import { IContentProps } from '../IChannel'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Error, Warning } from '@mui/icons-material'
 
 const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
+    const theme = useTheme()
     let logData:ILogData = props.channelObject.data
     const logBoxRef = useRef<HTMLDivElement | null>(null)
+    const [logBoxTop, setLogBoxTop] = useState(0)
     const [logBoxHeight, setLogBoxHeight] = useState(0)
     const [filter, setFilter] = useState<string>('')
     const [filterCasing, setFilterCasing] = useState(false)
     const [filterRegex, setFilterRegex] = useState(false)
     const [isAtBottom, setIsAtBottom] = useState(true)
 
-    const adornmentSelected= { margin: 0, borderWidth:1, borderStyle:'solid', borderColor:'gray', paddingLeft:3, paddingRight:3, backgroundColor:'gray', cursor: 'pointer', color:'white'}
-    const adornmentNotSelected = { margin: 0, borderWidth:1, borderStyle: 'solid', borderColor:'#f0f0f0', backgroundColor:'#f0f0f0', paddingLeft:3, paddingRight:3, cursor:'pointer'}
+    const adornmentSelected= { margin: 0, borderWidth:1, borderStyle:'solid', borderColor:'gray', paddingLeft:3, paddingRight:3, color:theme.palette.background.default, backgroundColor:theme.palette.text.primary, cursor: 'pointer'}
+    const adornmentNotSelected = { margin: 0, borderWidth:1, borderStyle: 'solid', borderColor:'#f0f0f0', backgroundColor:theme.palette.background.default, color:theme.palette.text.primary, paddingLeft:3, paddingRight:3, cursor:'pointer'}
 
-    useLayoutEffect(() => {
-        const observer = new ResizeObserver(() => {
-            if (!logBoxRef.current) return
-            const { top } = logBoxRef.current.getBoundingClientRect()
-            let a = window.innerHeight - top
-            setLogBoxHeight(a)
-        })
-        observer.observe(document.body)
+    useEffect(() => {
+        if (logBoxRef.current) setLogBoxTop(logBoxRef.current.getBoundingClientRect().top)
+    })
 
-        return () => observer.disconnect()
-    }, [logBoxRef.current])
+    // useLayoutEffect(() => {
+    //     const observer = new ResizeObserver(() => {
+    //         if (!logBoxRef.current) return
+    //         const { top } = logBoxRef.current.getBoundingClientRect()
+    //         let a = window.innerHeight - top
+    //         setLogBoxHeight(a)
+    //     })
+    //     observer.observe(document.body)
+
+    //     return () => observer.disconnect()
+    // }, [logBoxRef.current])
 
     useEffect(() => {
         if (isAtBottom && logBoxRef.current) {
@@ -97,44 +103,40 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     return (<>
-        <Box sx={{ display:'flex', flexDirection:'column', flexGrow:1, height: `${logBoxHeight}px`, ml:1, mr:1}}>
-        {
-        <Card sx={{display: 'flex', flexDirection: 'column', flex: 1, width: '98%', alignSelf: 'center', marginTop: '8px',minHeight: 0}}>
-            <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0'}} title={
-                <Stack direction={'row'} alignItems={'center'}>
-                    <Typography marginRight={'32px'}><b>Lines:</b> {logData.messages.length}</Typography>
-                    <Typography marginRight={'32px'}><Warning fontSize='small' sx={{marginBottom:'2px', color:'orange'}} /><b>&nbsp;Warning:</b> {logData.messages.filter(m => m.text.includes('WARNING')).length}</Typography>
-                    <Typography marginRight={'32px'}><Error fontSize='small' sx={{marginBottom:'2px', color:'red'}}/><b>&nbsp;Error:</b> {logData.messages.filter(m => m.text.includes('ERROR')).length}</Typography>
-                    <Typography sx={{flexGrow:1}}></Typography>
-                    <TextField value={filter} onChange={onChangeFilter} disabled={!logData.started} size='small' variant='standard' placeholder='Filter...'
-                        InputProps={{ endAdornment: 
-                            <>
-                                <InputAdornment position="start" onClick={() => logData.started && setFilterRegex(!filterRegex)} style={{margin: 0}}>
-                                    <Typography style={filterRegex? adornmentSelected : adornmentNotSelected}>.*</Typography>
-                                </InputAdornment>
-                                <InputAdornment position="start" onClick={() => logData.started && setFilterCasing(!filterCasing)} style={{margin: 0, marginLeft:1}}>
-                                    <Typography style={filterCasing? adornmentSelected : adornmentNotSelected}>Aa</Typography>
-                                </InputAdornment>
-                            </>
-                        }}
-                    />
-                </Stack>}>
-            </CardHeader>
-            <CardContent
-                sx={{backgroundColor: '#f0f0f0', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, p: 0, "&:last-child": { pb: 0 } }}                
-            >
-                <Box ref={logBoxRef}
-                    sx={{ display:'flex', flexDirection:'column', width:'100%', overflowY:'auto', flexGrow:1, height: `100%`}}
-                    onScroll={handleScroll}
-                >
-                    <pre>
-                        {logData.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })}
-                    </pre>
-                </Box>
-            </CardContent>
+        {/* <Box sx={{ display:'flex', flexDirection:'column', flexGrow:1, height: `${logBoxHeight}px`, ml:1, mr:1}}> */}
+        {/* <Box sx={{ display:'flex', flexDirection:'column', flexGrow:1, height: `calc(100vh - ${logBoxTop}px)`, ml:1, mr:1}}> */}
+        { logData.started &&
+            <Card sx={{display: 'flex', flexDirection: 'column', flex: 1, width: '98%', alignSelf: 'center', marginTop: '8px',minHeight: 0}}>
+                <CardHeader title={
+                    <Stack direction={'row'} alignItems={'center'}>
+                        <Typography marginRight={'32px'}><b>Lines:</b> {logData.messages.length}</Typography>
+                        <Typography marginRight={'32px'}><Warning fontSize='small' sx={{marginBottom:'2px', color:'orange'}} /><b>&nbsp;Warning:</b> {logData.messages.filter(m => m.text.includes('WARNING')).length}</Typography>
+                        <Typography marginRight={'32px'}><Error fontSize='small' sx={{marginBottom:'2px', color:'red'}}/><b>&nbsp;Error:</b> {logData.messages.filter(m => m.text.includes('ERROR')).length}</Typography>
+                        <Typography sx={{flexGrow:1}}></Typography>
+                        <TextField value={filter} onChange={onChangeFilter} disabled={!logData.started} size='small' variant='standard' placeholder='Filter...'
+                            InputProps={{ endAdornment: 
+                                <>
+                                    <InputAdornment position="start" onClick={() => logData.started && setFilterRegex(!filterRegex)} style={{margin: 0}}>
+                                        <Typography style={filterRegex? adornmentSelected : adornmentNotSelected}>.*</Typography>
+                                    </InputAdornment>
+                                    <InputAdornment position="start" onClick={() => logData.started && setFilterCasing(!filterCasing)} style={{margin: 0, marginLeft:1}}>
+                                        <Typography style={filterCasing? adornmentSelected : adornmentNotSelected}>Aa</Typography>
+                                    </InputAdornment>
+                                </>
+                            }}
+                        />
+                    </Stack>}>
+                </CardHeader>
+                <CardContent sx={{flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, p: 0, "&:last-child": { pb: 0 } }}>
+                    <Box ref={logBoxRef} sx={{ display:'flex', flexDirection:'column', width:'100%', overflowY:'auto', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 16px)`}} onScroll={handleScroll}>
+                        <pre>
+                            {logData.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })}
+                        </pre>
+                    </Box>
+                </CardContent>
 
-        </Card>}
-        </Box>
+            </Card>}
+        {/* </Box> */}
     </>)
 }
 

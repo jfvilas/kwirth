@@ -178,7 +178,6 @@ export const IconReplicaSet = (props:IconProps) => (
         overflow="visible"
         style={{
           lineHeight: "normal",
-          //InkscapeFontSpecification: "Sans",
           textIndent: "0",
           textAlign: "start",
           textDecorationLine: "none",
@@ -193,11 +192,11 @@ export const IconReplicaSet = (props:IconProps) => (
       ></path>
     </g>
     <text
-      x="3.382"
+      x="3.8"
       y="12.092"
       fill="#FFEFEF"
       fontFamily="Arial, sans-serif"
-      fontSize="8"
+      fontSize="7"
       style={{ whiteSpace: "pre" }}
       transform="matrix(1.16478 0 0 1.25539 -1.388 -2.748)"
     >
@@ -745,7 +744,7 @@ export const IconDeployment = (props:IconProps) => (
       y="12.092"
       fill="#FFEFEF"
       fontFamily="Arial, sans-serif"
-      fontSize="8"
+      fontSize="7"
       style={{ whiteSpace: "pre" }}
       transform="matrix(1.16478 0 0 1.25539 -.766 -3.069)"
     >
@@ -779,10 +778,10 @@ export const IconJob = (props:IconProps) => (
     ></path>
     <text
       x="3.382"
-      y="12.092"
+      y="11.6"
       fill="#ffefef"
       fontFamily="Arial,sans-serif"
-      fontSize="7.169"
+      fontSize="5.8"
       style={{ whiteSpace: "pre" }}
       transform="matrix(1.16478 0 0 1.25539 -1.912 -2.889)"
     >
@@ -815,11 +814,11 @@ export const IconStatefulSet = (props:IconProps) => (
       transform="translate(15.91 -3.873)scale(1.01489)"
     ></path>
     <text
-      x="3.382"
+      x="4"
       y="12.092"
       fill="#ffefef"
       fontFamily="Arial,sans-serif"
-      fontSize="8"
+      fontSize="7"
       style={{ whiteSpace: "pre" }}
       transform="matrix(1.16478 0 0 1.25539 -1.388 -2.748)"
     >
@@ -852,11 +851,11 @@ export const IconDaemonSet = (props:IconProps) => (
       transform="translate(15.91 -3.873)scale(1.01489)"
     ></path>
     <text
-      x="3.382"
+      x="3.8"
       y="12.092"
       fill="#ffefef"
       fontFamily="Arial,sans-serif"
-      fontSize="8"
+      fontSize="7"
       style={{ whiteSpace: "pre" }}
       transform="matrix(1.16478 0 0 1.25539 -1.388 -2.748)"
     >

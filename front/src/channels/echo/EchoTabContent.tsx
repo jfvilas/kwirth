@@ -31,7 +31,7 @@ const EchoTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         <>
         { echoData.started && 
         <Card sx={{flex:1, width:'98%', alignSelf:'center', margin:'8px'}}>
-            <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0'}} title={
+            <CardHeader title={
                 <Stack direction={'row'} alignItems={'center'}>
                     <Typography marginRight={'32px'}><b>Lines:</b> {echoData.lines.length} / {echoConfig.maxLines}</Typography>
                     <Typography marginRight={'32px'}><b>Interval:</b> {echoInstanceConfig.interval}</Typography>

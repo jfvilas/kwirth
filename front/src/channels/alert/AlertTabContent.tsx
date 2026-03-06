@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, CardHeader, InputAdornment, Stack, TextField, Typography } from '@mui/material'
+import { Box, Card, CardContent, CardHeader, InputAdornment, Stack, TextField, Typography, useTheme } from '@mui/material'
 import { IAlertData } from './AlertData'
 import { IContentProps } from '../IChannel'
 import { useEffect, useRef, useState } from 'react'
@@ -6,6 +6,7 @@ import { Warning, Error, Info } from '@mui/icons-material'
 import { EAlertSeverity } from '@jfvilas/kwirth-common'
 
 const AlertTabContent: React.FC<IContentProps> = (props:IContentProps) => {
+    const theme = useTheme()
     const alertData:IAlertData = props.channelObject.data
     const alertBoxRef = useRef<HTMLDivElement | null>(null)
     const [alertBoxTop, setAlertBoxTop] = useState(0)
@@ -71,7 +72,7 @@ const AlertTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     return (<>
         { alertData.started && 
         <Card sx={{flex:1, width:'98%', alignSelf:'center', marginTop:'8px'}}>
-            <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0'}} title={
+            <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:theme.palette.grey[600]}} title={
                 <Stack direction={'row'} alignItems={'center'}>
                     <Typography marginRight={'32px'}><b>Alerts:</b> {alertData.firedAlerts.length}</Typography>
                     <Typography marginRight={'32px'}><Info fontSize='small' sx={{marginBottom:'2px', color:'blue'}} /><b>&nbsp;Info:</b> {alertData.firedAlerts.filter(a => a.severity === EAlertSeverity.INFO).length}</Typography>

@@ -353,7 +353,7 @@ const ResourceSelector: React.FC<IProps> = (props:IProps) => {
                 { allControllers && allControllers.map( (value) => 
                     <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
                         <Checkbox checked={controllers.includes (value)} />
-                        {value.startsWith('replicaset')? <IconReplicaSet size={18}/>: value.startsWith('daemonset')?<IconDaemonSet size={20}/>: value.startsWith('deployment')?<IconDeployment size={20}/>:value.startsWith('statefulset')?<IconStatefulSet size={20}/>:value.startsWith('replicationcontroller')?<IconReplicationController size={20}/>:<IconJob size={20}/>}&nbsp;{value.split('+')[1]}
+                        {value.startsWith('ReplicaSet')? <IconReplicaSet size={18}/>: value.startsWith('DaemonSet')?<IconDaemonSet size={20}/>: value.startsWith('Deployment')?<IconDeployment size={20}/>:value.startsWith('StatefulSet')?<IconStatefulSet size={20}/>:value.startsWith('ReplicationController')?<IconReplicationController size={20}/>:<IconJob size={20}/>}&nbsp;{value.split('+')[1]}
                     </MenuItem>
                 )}
                 </Select>

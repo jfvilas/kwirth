@@ -1,5 +1,4 @@
 import { ENotifyLevel } from "../../tools/Global"
-import { IChannel } from "../IChannel"
 
 interface IMagnifyConfig {
     notify: (channel:string|undefined, level:ENotifyLevel, msg:string) => void

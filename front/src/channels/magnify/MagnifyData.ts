@@ -1,9 +1,8 @@
 import { IInstanceMessage } from '@jfvilas/kwirth-common'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { IContentExternalObject } from './components/ContentExternal'
-import { IContentEditObject } from './components/ContentEdit'
-import { IContentDetailsObject } from './components/ContentDetails'
-import { MagnifyUserPreferences } from './MagnifyUserPreferences'
+import { MagnifyUserPreferences } from './components/MagnifyUserPreferences'
+import { IContentWindow } from './MagnifyTabContent'
 
 export interface IMagnifyData {
     clusterInfo: any
@@ -15,7 +14,8 @@ export interface IMagnifyData {
 
     timers: number[]
 
-    contentWindows : (IContentExternalObject|IContentEditObject|IContentDetailsObject)[]
+    contentWindows : (IContentExternalObject)[]
+    windows: IContentWindow[]
     leftMenuAnchorParent: Element | undefined
     pendingWebSocketRequests : Map<string, (value: any) => void>
 
@@ -35,6 +35,7 @@ export class MagnifyData implements IMagnifyData {
     clusterEvents = []
     currentPath = '/'
     timers = []
+    windows = []
     contentWindows = []
     leftMenuAnchorParent: undefined
     pendingWebSocketRequests = new Map<string, (value: any) => void>()
@@ -60,6 +61,7 @@ export enum EMagnifyCommand {
     INGRESSCLASS = 'IngressClass',
     POD = 'Pod',
     NODE = 'Node',
+    IMAGE = 'Image',
     CONTROLLER = 'Controller',
 }
 

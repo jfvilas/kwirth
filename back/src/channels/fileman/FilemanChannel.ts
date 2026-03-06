@@ -867,13 +867,13 @@ class FilemanChannel implements IChannel {
         let [dstNamespace,dstPod,dstContainer] = dstHomeDir.split('/').slice(1)
         let dstLocalPath = '/' + dstClusterPath.split('/').slice(4).join('/')
 
-        let linuxCommand = (operation === EFilemanCommand.MOVE? 'mv' : 'cp')
+        let linuxCommand = (operation === EFilemanCommand.MOVE? ['mv'] : ['cp', '-r'])
 
         if (srcHomeDir===dstHomeDir) {
             // copy/move on same container
             let fileInfo = await this.getFileInfo(srcClusterPath)
             if (fileInfo) {
-                let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, [linuxCommand, '-r', srcLocalPath+'/'+fname, dstLocalPath])
+                let result = await this.launchCommand(srcNamespace, srcPod, srcContainer, [ ...linuxCommand, srcLocalPath+'/'+fname, dstLocalPath])
                 if (result.stdend.status===ExecutionStatus.SUCCESS && result.stderr==='') {
                     this.sendUnsolicitedMessage(webSocket, instance.instanceId, EFilemanCommand.CREATE, JSON.stringify({ metadata: { object:dstClusterPath + '/' + fname, type:fileInfo.type, time:fileInfo.time, size:fileInfo.size }, status: ExecutionStatus.SUCCESS}))
                     if (operation === EFilemanCommand.MOVE) this.sendUnsolicitedMessage(webSocket, instance.instanceId, EFilemanCommand.DELETE, JSON.stringify({ metadata: { object:srcClusterPath }, status: ExecutionStatus.SUCCESS}))

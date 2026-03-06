@@ -1,7 +1,7 @@
 ******************ERRORES
 RFM
 cuando cambiamos de pantalla en magnify (o lo que sea) y cambian las columnas, hay que resetear los widths de las columnas
-decimales en las props tipo number (cpu del pod) --> RFM
+revisar ajuste de columnas
 
 
 
@@ -9,35 +9,28 @@ MAGNIFY FRONT
 reconnect  NO VA!!!!
     hay que revisar el reconnect del node y el reconnect del front
 navigate (onlink) a un CRDi externo
+crd instances duplicates
 more events en el overview
 node: revisar el link desde los vols del node hacia los PV's (parece especifico de cada CaaS)
-crd instances duplicates
-en los templates no usar inCluster , usar $cluster  +++test
-refvisar iconos (JOB) y convertir a strings
-
-
-
-VALIDATIONS
-añadir rolebinding clusterrolebinding validation
-añadir ingres/service validation
-
-
-
+iconos convertir a strings
+Onlink image > TIEN QUE VER CON el NOMBRE DEL RECURSO --> V2
+Image delete
+works configurables
+botones de contents arrancados, poner en filas: o poner un boton por tipo y desplegar un menu con las instancias de cada tipo
+    mejorar el tooltip de los botones, y el aspecto
+content external, poder hacer restart del content (por si se deconecta o lo que sea)
 
 ELECTRON
 revisar el cambio o salida de cluster: parar las cosas antes de entrar en el otro
     en el backend, parar las cosas si se pierde la comnicacion con el front??
-ocultar en el front lo que es de kwirth y no de magnify (to be lens-like)
-    eliminar menus  +++TEST AL FINAL
-    ocultar las partes del menu que no aplican, como gestion de usuarios o api keys
 implementar un read/store equivalente a los configmaps (para almacenamiento en local, asi popdemos gaurdar prefs o settings sin enviar nada al backend)
 revisar funcionamiento de conectar a cluster remoto
-añadir un color de si esta o no accesible el cluster (testear con una llamada al api de k8)
-conexion a cluster remoto
 
 MAGNIFY BACK
 
-KWIRTH FRONT
+KWIRTH FRONT-BACK
+revisar metricas de mbps
+
 
 
 
@@ -46,6 +39,7 @@ KWIRTH FRONT
 
 FILEMAN
 cuando se lanza una peticion deberia aparecer un backdrop en filelist indicando que estamos esperando
+añaidr ... en leftmenu cuando ha mas de xx opciones (xx configurable, con valor por defecto)
 
 MAGNIFY FRONT
 validation rules

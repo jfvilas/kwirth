@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Alert, Card, CardContent, CardHeader, Stack, Typography } from '@mui/material'
+import { Alert, Card, CardContent, CardHeader, Stack, Typography, useTheme } from '@mui/material'
 import { MetricDefinition } from './MetricDefinition'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, Treemap, XAxis, YAxis } from 'recharts'
 import { IMetricViewConfig, METRICSCOLOURS } from './MetricsConfig'
@@ -33,6 +33,7 @@ export interface IChartProps {
 }
 
 export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
+    const theme = useTheme()
     const [anchorMenuChart, setAnchorMenuChart] = useState<null | HTMLElement>(null)
     const [chartType, setChartType] = useState<EChartType>(props.viewConfig?.chartType? props.viewConfig.chartType : props.chartType)
     const [stack, setStack] = useState<boolean>(props.viewConfig?.stack? props.viewConfig.stack : props.stack)
@@ -287,7 +288,7 @@ export const Chart: React.FC<IChartProps> = (props:IChartProps) => {
 
     return (
         <Card sx={{margin:compact?'3px':'6px', width:'100%'}}>
-            <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0', height:compact?'0px':'24px'}} title= {
+            <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:theme.palette.grey[600], height:compact?'0px':'24px'}} title= {
                 <Stack direction={'column'} alignItems={'center'}>
                     <Stack direction={'row'} alignItems={'center'}>
                         <MUITooltip key={'tooltip'+props.metricDefinition.metric+JSON.stringify(props.names)} title={<Typography style={{fontSize:12}}><b>{props.metricDefinition.metric}</b><br/><br/>{props.metricDefinition.help}</Typography>}>

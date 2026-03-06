@@ -23,6 +23,7 @@ export class AlertChannel implements IChannel {
     requiresClusterInfo() { return false }
     requiresWebSocket() { return false }
     requiresUserSettings() { return false }
+    requiresPaletteChange() { return false }
     setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return EInstanceConfigScope.VIEW}

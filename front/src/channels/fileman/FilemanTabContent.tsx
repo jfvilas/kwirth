@@ -12,7 +12,7 @@ import { MsgBoxOk } from '../../tools/MsgBox'
 import { IFilemanConfig } from './FilemanConfig'
 import { ENotifyLevel } from '../../tools/Global'
 import '@jfvilas/react-file-manager/dist/style.css'
-import './custom-fm.css'
+import './custom-fm-fileman.css'
 
 interface IContentProps {
     webSocket?: WebSocket
@@ -229,7 +229,6 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onFileUploaded = () => { 
-        return 
     }
 
     const onFileUploadError = (file: IFileObject, parentFolder: IFileObject) => { 
@@ -262,7 +261,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     primaryColor='#1976d2'
                     fontFamily='Roboto, Helvetica, Arial, sans-serif'
                     height='100%'
-                    className='custom-fm'
+                    className='custom-fm-fileman'
                     searchMode='auto'
                     showBreadcrumb={true}
                     maxNavigationPaneLevel={3}

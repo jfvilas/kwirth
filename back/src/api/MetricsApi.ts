@@ -44,9 +44,9 @@ export class MetricsApi {
                         case '/usage/cluster':
                             this.sendUsageCluster(req,res)
                         break
-                        case '/usage/poddetail':
-                            this.sendUsagePodDetail(req,res)
-                        break
+                        // case '/usage/poddetail':
+                        //     this.sendUsagePodDetail(req,res)
+                        // break
                     }
                 }
                 catch (err) {
@@ -57,7 +57,6 @@ export class MetricsApi {
             })
         this.route.route('/debug/:action/:nodename')
             .all( async (req:Request,res:Response, next) => {
-                // if (! (await AuthorizationManagement.validKey(req, res, apiKeyApi))) return
                 next()
             })
             .get( async (req:Request, res:Response) => {
@@ -167,22 +166,20 @@ export class MetricsApi {
         }
     }
 
-    sendUsagePodDetail = (req:Request, res:Response) => {
-        // +++ pending implementing for showin % data on pod list view
-        if (this.clusterInfo.metrics) {
-            try {
-                res.status(200).send({})
-                
-            }
-            catch (err) {
-                console.error('Error calculating node resources', err)
-                res.status(200).send({})
-            }
-        }
-        else {
-            res.status(200).send({})
-        }
-
-    }
+    // sendUsagePodDetail = (req:Request, res:Response) => {
+    //     // pending decide to implement this for showing % data on pod list view
+    //     if (this.clusterInfo.metrics) {
+    //         try {
+    //             res.status(200).send({})                
+    //         }
+    //         catch (err) {
+    //             console.error('Error calculating node resources', err)
+    //             res.status(200).send({})
+    //         }
+    //     }
+    //     else {
+    //         res.status(200).send({})
+    //     }
+    // }
 
 }

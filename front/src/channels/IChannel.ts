@@ -53,6 +53,7 @@ interface IChannelObject {
     channel:IChannel
     readChannelUserPreferences?: (channelId:string) => Promise<any>
     writeChannelUserPreferences?: (channelId:string, data:any) => Promise<boolean>
+    setPaletteChange?: (palette:string) => void
 }
 
 interface IChannel {
@@ -69,6 +70,7 @@ interface IChannel {
     requiresAccessString(): boolean
     requiresWebSocket(): boolean
     requiresUserSettings(): boolean
+    requiresPaletteChange(): boolean
     setNotifier(notifier:(channelId:string|undefined, level:ENotifyLevel, message:string) => void): void
     getScope(): string
     getChannelIcon(): JSX.Element

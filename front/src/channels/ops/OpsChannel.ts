@@ -24,6 +24,7 @@ export class OpsChannel implements IChannel {
     requiresClusterInfo() { return false }
     requiresWebSocket() { return true }
     requiresUserSettings() { return false }
+    requiresPaletteChange() { return false }
     setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'ops$get' }

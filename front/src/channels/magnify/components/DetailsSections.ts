@@ -81,7 +81,7 @@ let conditions:IDetailsItem = {
             text: 'Type',
             source: ['type'],
             format: 'string',
-            style: ['property:status:True:black', 'property:status:False:#c0c0c0']
+            style: ['property:status:True:black', 'property:status:False:#c0c0c0']   //+++ variables segun el theme
         },
         {
             name: 'reason',
@@ -1743,7 +1743,7 @@ objectSections.set('Pod', [
                 text: 'Service Account',
                 source: ['#spec.serviceAccount'],
                 format: 'string',
-                style: ['link:$ServiceAccount:spec.serviceAccount:.']
+                style: ['link:$ServiceAccount:spec.serviceAccount:$$namespace']
             },
             {
                 name: 'qosclass',

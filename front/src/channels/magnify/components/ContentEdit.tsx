@@ -1,164 +1,167 @@
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, Typography } from '@mui/material'
+import { Button, DialogActions, DialogContent, DialogTitle, IconButton, Stack, Typography, useTheme } from '@mui/material'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { useEffect, useRef, useState } from 'react'
-import CodeMirror from '@uiw/react-codemirror';
-import { EditorState } from "@codemirror/state";
+import CodeMirror from '@uiw/react-codemirror'
+import { EditorState } from "@codemirror/state"
 import { yaml } from '@codemirror/lang-yaml'
-import { Close, Edit, EditOff, Fullscreen, FullscreenExit, Minimize } from '@mui/icons-material';
-import { objectEqual, reorderJsonYamlObject } from '../Tools';
-import { search, openSearchPanel, searchKeymap } from '@codemirror/search'; // Asegúrate de importar 'search'
-import { EditorView, keymap } from '@codemirror/view';
-import { defaultKeymap } from '@codemirror/commands';
+import { Close, Edit, EditOff, Fullscreen, FullscreenExit, Minimize, PinDrop, Place } from '@mui/icons-material'
+import { objectEqual, reorderJsonYamlObject } from '../Tools'
+import { search, openSearchPanel, searchKeymap } from '@codemirror/search'
+import { EditorView, keymap } from '@codemirror/view'
+import { defaultKeymap } from '@codemirror/commands'
+import { IContentWindow } from '../MagnifyTabContent'
+import { ResizableDialog } from './ResizableDialog'
+import { MsgBoxButtons, MsgBoxYesNo } from '../../../tools/MsgBox'
 
 const yamlParser = require('js-yaml');
 
-export interface IContentEditObject {
-    type: 'edit'
-    allowEdit:boolean,
-    content: { code:string, title: string, source?:IFileObject, maximized?:boolean}
+export interface IContentEditData {
+    oldCode: string|undefined
+    code: string|undefined
+    source?: IFileObject
+    isInitialized: boolean
+    selectedFile?: IFileObject
+    allowEdit: boolean
+    onOk?: (code:string, source?:IFileObject) => void
 }
 
-interface IContentEditProps {
-    selectedFile?: IFileObject
-    content?: IContentEditObject
-    newContent?: string
-    allowEdit: boolean
-    onMinimize: (content:IContentEditObject) => void
-    onClose: (content:IContentEditObject) => void
-    onOk: (content:{code:string, source?:IFileObject}) => void
+export interface IContentEditProps extends IContentWindow {
+    data: IContentEditData
 }
 
 const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
-    const content = useRef<IContentEditObject>({ type:'edit', allowEdit:true, content:{code:'', title:''}})
+    const theme = useTheme()
+    const [msgBox, setMsgBox] = useState(<></>)
     const [code, setCode] = useState<string>('')
-    const [percent, setPercent] = useState<number>(70)
-    const [editorUnChanged, setEditorUnChanged] = useState<boolean>(true)
+    const editorChanged = useRef<boolean>(false)
 
     const containerRef = useRef<HTMLDivElement>(null);
     const editorViewRef = useRef<EditorView | null>(null);
 
-    useEffect(() => {
-        const handleNativeKey = (e: KeyboardEvent) => {
-            if (!containerRef.current?.contains(document.activeElement)) return;
+    const [isMaximized, setIsMaximized] = useState(props.isMaximized)
+    let contentEditData:IContentEditData = props.data
 
-            const isCtrl = e.ctrlKey || e.metaKey;
+    const muiTheme = EditorView.theme({
+        "&": {
+            color: theme.palette.text.primary,
+            backgroundColor: theme.palette.background.default,
+            height: '100%'
+        },
+        ".cm-content": {
+            caretColor: theme.palette.error.main
+        }
+    }, { dark: theme.palette.mode==='dark' })
+
+    useEffect(() => {
+        const handleNativeKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') tryClose()
+
+            if (!containerRef.current?.contains(document.activeElement)) return
+
+            const isCtrl = event.ctrlKey || event.metaKey
             
-            if (isCtrl && e.key.toLowerCase() === 'f') {
-                e.preventDefault(); // Bloquea navegador
-                e.stopPropagation(); // Bloquea otros listeners
+            if (isCtrl && event.key.toLowerCase() === 'f') {
+                event.preventDefault()
+                event.stopPropagation()
                 
                 if (editorViewRef.current) {
-                    openSearchPanel(editorViewRef.current);
+                    openSearchPanel(editorViewRef.current)
                 }
             }
             
-            if (isCtrl && e.key.toLowerCase() === 'd') {
-                e.preventDefault();
-                e.stopPropagation();
+            if (isCtrl && event.key.toLowerCase() === 'd') {
+                event.preventDefault()
+                event.stopPropagation()
             }
-        };
+        }
 
-        window.addEventListener('keydown', handleNativeKey, true);
-        return () => window.removeEventListener('keydown', handleNativeKey, true);
-    }, []);
+        window.addEventListener('keydown', handleNativeKey, true)
+        return () => window.removeEventListener('keydown', handleNativeKey, true)
+    }, [])
+
+    const tryClose = () => {
+        if (!editorChanged.current)
+            props.onClose(props.id)
+        else {
+            setMsgBox(MsgBoxYesNo('Edit exit', 'You have some changes not applied. Are you sure you want to exit withou applying?', setMsgBox, (a) => {
+                if (a === MsgBoxButtons.Yes) props.onClose(props.id)
+            }))
+        }
+    }
 
     useEffect( () => {
-        if (props.content) {
-            content.current = props.content
-            setPercent(content.current.content.maximized? 100 : 70)
-            let areEqual = objectEqual(yamlParser.load(content.current.content.code), content.current.content.source)
-            setEditorUnChanged(areEqual)
-            setCode(content.current.content.code)
-        }
-        else if (props.selectedFile) {
-            if (props.selectedFile.data.origin.metadata)
-                content.current.content.title = (props.selectedFile.data.origin.metadata.namespace? props.selectedFile.data.origin.metadata.namespace+'/': '') + props.selectedFile.data.origin.metadata.name
-            else {
-                // this is valid for API Resources
-                content.current.content.title = props.selectedFile.data.origin.name
+        if (!contentEditData.isInitialized) {
+            contentEditData.isInitialized = true
+            if (contentEditData.code===undefined) {
+                let obj = props.selectedFiles[0].data.origin
+                let reorderedObj = reorderJsonYamlObject(obj)
+                contentEditData.code = yamlParser.dump(reorderedObj)
+                setCode(contentEditData.code!)
             }
-            let obj = props.selectedFile.data.origin
-            let reorderObj = reorderJsonYamlObject(obj)
-            content.current.content.code = yamlParser.dump(reorderObj)
-            content.current.content.source = props.selectedFile.data.origin
-            content.current.allowEdit = props.allowEdit
-            setCode(content.current.content.code)
-            setPercent(70)
+            else {
+                setCode(contentEditData.code)
+            }
+            contentEditData.oldCode = contentEditData.code
         }
-        else if (props.newContent) {
-            content.current.content.title = 'nonamespace/noname'
-            content.current.content.code = props.newContent
-            setCode(content.current.content.code)
-            setPercent(70)
+        else {
+            if (contentEditData.code) setCode(contentEditData.code)
         }
     },[])
 
+	const onFocus = () => {
+		if (props.onFocus) props.onFocus()
+	}
+
+	const handleIsMaximized = () => {
+		props.onWindowChange(props.id, !isMaximized, props.x, props.y, props.width, props.height)
+		setIsMaximized(!isMaximized)
+	}
+
     const updateEditorValue= (newCode:any) => {
-        content.current.content.code = newCode
-        let x = yamlParser.load(content.current.content.code)
-        setEditorUnChanged(objectEqual(x, content.current.content.source))
+        contentEditData.code = newCode
+        setCode(newCode)
+        let oldJson = yamlParser.load(contentEditData.oldCode)
+        let newJson = yamlParser.load(newCode)
+        let status=objectEqual(newJson, oldJson)
+        console.log(status)
+        editorChanged.current = !status
     }
 
-    const minimize = () => {
-        props.onMinimize(content.current)
-    }
-
-    const ok = () => {
-        props.onOk({ code: content.current.content.code})
-    }
-
-    const maximizeOrRestore = () => {
-        if (content.current.content.maximized) {
-            content.current.content.maximized = false
-            setPercent(70)
-        }
-        else {
-            content.current.content.maximized = true
-            setPercent(100)
-        }
-    }
-
-    const close = () => {
-        props.onClose(content.current!)
-    }
-
-    return (
-        <Dialog open={true} 
-            sx={{
-            '& .MuiDialog-paper': {
-                width: `${percent}vw`,
-                height: `${percent}vh`,
-                maxWidth: `${percent}vw`,
-                maxHeight: `${percent}vh`
-            },
-            }}>
-            <DialogTitle>
+    return (<>
+        <ResizableDialog id={props.id} isMaximized={isMaximized} onFocus={onFocus} onWindowChange={props.onWindowChange} x={props.x} y={props.y} width={props.width} height={props.height}>
+            <DialogTitle sx={{ cursor: isMaximized ? 'default' : 'move',  py: 1 }} id='draggable-dialog-title'>
                 <Stack direction={'row'} alignItems={'center'}>                    
                     <Typography sx={{flexGrow:1}}></Typography>
-                    <Typography>{props.allowEdit?<Edit />:<EditOff/>}&nbsp;{content.current.content.title}</Typography>
+                    <Typography>{contentEditData.allowEdit?<Edit />:<EditOff/>}&nbsp;{props.title}</Typography>
+
                     <Typography sx={{flexGrow:1}}></Typography>
-                    <IconButton onClick={minimize}>
-                        <Minimize />
+
+                    <IconButton size="small" onClick={() => props.onMinimize(props.id)}>
+                        <Minimize fontSize="small" />
                     </IconButton>
-                    <IconButton onClick={maximizeOrRestore}>
-                        { content.current?.content.maximized? <FullscreenExit/> : <Fullscreen/> }
+                    <IconButton size="small" onClick={() => props.onTop(props.id)}>
+                        {props.atTop? <PinDrop sx={{color:'blue'}} fontSize="small" /> : <Place fontSize="small" />}
                     </IconButton>
-                    <IconButton onClick={close}>
-                        <Close />
+                    <IconButton size="small" onClick={handleIsMaximized}>
+                        {isMaximized ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
+                    </IconButton>
+                    <IconButton size="small" onClick={tryClose} sx={{ '&:hover': { color: 'error.main' } }}>
+                        <Close fontSize="small" />
                     </IconButton>
                 </Stack>
             </DialogTitle>
 
             <DialogContent>
-                <p></p>
-                <div ref={containerRef} tabIndex={-1} style={{ height: '100%', width: '100%' }}>
+                <div ref={containerRef} tabIndex={-1} style={{ height: '100%', width: '100%', paddingTop: '2px' }}>
                     <CodeMirror value={code}
                         onChange={updateEditorValue} 
+                        theme={'none'}
                         onUpdate={(v) => { if (v.view) editorViewRef.current = v.view }}                    
                         extensions={[
-                            EditorState.readOnly.of(!props.allowEdit),
+                            EditorState.readOnly.of(!contentEditData.allowEdit),
                             yaml(),
                             search({ top: true }),
+                            muiTheme,
                             keymap.of([
                                 ...defaultKeymap,
                                 ...searchKeymap,
@@ -169,10 +172,10 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
             </DialogContent>
 
             <DialogActions>
-                <Button onClick={ok} disabled={editorUnChanged}>Ok</Button>
-                <Button onClick={minimize}>Cancel</Button>
+                <Button onClick={() => contentEditData.onOk?.(code, contentEditData.source)} disabled={!editorChanged.current}>Ok</Button>
             </DialogActions>
-        </Dialog>
-    )
+        </ResizableDialog>
+        {msgBox}
+    </>)
 }
 export { ContentEdit }

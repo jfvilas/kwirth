@@ -145,14 +145,15 @@ class MetricsChannel implements IChannel {
         try {
             const podResponse = await this.clusterInfo.coreApi.readNamespacedPod({ name:podName, namespace:podNamespace })
             const owner = podResponse.metadata?.ownerReferences?.find(owner => owner.controller)
-            if (!owner) {
-                console.log('No owner found')
-                this.sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `No owner found for starting instance ${instanceConfig.instance}: ${podNamespace}/${podName}/${containerName}`, instanceConfig)
-                return false
-            }
-            const gtype = owner.kind.toLocaleLowerCase()  // replicationcontroller, replicaset, daemonset or statefulset (this is never 'deployment', since owner of pod is replicaset)
-            const podGroup = gtype + '+' + owner.name  
             const podNode = podResponse.spec?.nodeName
+            let podGroup = undefined
+            if (owner) {
+                // group type is one of: replicationcontroller, replicaset, daemonset or statefulset (this is never 'deployment', since owner of pod is replicaset)
+                podGroup = owner.kind.toLocaleLowerCase() + '+' + owner.name  
+            }
+            else {
+                console.log(`No owner found for ${podName}, assume pod/container without controller`)
+            }
             
             switch ((instanceConfig.data as MetricsConfig).mode) {
                 case MetricsConfigModeEnum.SNAPSHOT:
@@ -543,6 +544,7 @@ class MetricsChannel implements IChannel {
             case EInstanceConfigView.GROUP:
                 let requestedGroups = instanceConfig.group.split(',')
                 return [...new Set (assets.map (a => {
+                    if (!a.podGroup) return undefined  // pods without controller
                     if (requestedGroups.includes(a.podGroup)) {
                         return a.podGroup
                     }

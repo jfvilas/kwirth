@@ -60,8 +60,8 @@ import { Application } from 'express-serve-static-core'
 //     return originalFetch(...args);
 // }
 
-const isElectron = true
-//const isElectron = !!process.versions.electron;
+//const isElectron = true
+const isElectron = !!process.versions.electron;
 
 const app : Application = express()
 
@@ -226,14 +226,14 @@ const getKubernetesKwirthData = async ():Promise<KwirthData|undefined> => {
                 return { clusterName: 'inCluster', namespace:usersSecret.metadata?.namespace!, deployment:'', inCluster:false, isElectron:isElectron, version:VERSION, lastVersion: VERSION, clusterType: EClusterType.KUBERNETES, metricsInterval:15, channels: [] }
             }
             else {
-                // +++ kwirth is running outside, but wants tu use kubernetes secrets for storing creds
+                // +++ kwirth is running outside, but wants to use kubernetes secrets for storing creds, and they don't exsit
                 console.log('Cannot determine namespace while running outside cluster (trying to read users secret)')
                 process.exit(1)
             }
         }
     }
     catch (err) {
-        console.log('Error obatingin KwirthData')
+        console.log('Error obatining KwirthData')
         console.log(err)
     }
     return undefined
@@ -414,7 +414,6 @@ const deleteObject = async (webSocket:WebSocket, _eventType:string, podNamespace
 }
 
 const processEvent = async (eventType:string, obj: any, webSocket:WebSocket, instanceConfig:IInstanceConfig, podNamespace:string, podName:string, containers:string[], ri:IRunningInstance) => {
-    // +++ if (eventType === 'ADDED' && (obj.status.phase.toLowerCase()==='running' || obj.status.phase.toLowerCase()==='succeeded')) {
     try {
         if (eventType === 'ADDED') {
             console.log('eventype',eventType, podNamespace, podName, obj.status.phase)
@@ -537,19 +536,15 @@ const watchDockerPods = async (ri:IRunningInstance, _apiPath:string, queryParams
 
 const watchKubernetesPods = async (ri:IRunningInstance, apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:IInstanceConfig) => {
     try {
+        console.log('watch', apiPath, queryParams, instanceConfig)
         const watch = new Watch(ri.clusterInfo.kubeConfig)
 
         await watch.watch(apiPath, queryParams, (eventType:string, obj:any) => {
             let podName:string = obj.metadata.name
             let podNamespace:string = obj.metadata.namespace
 
-            // +++ review event management
-            // if (obj.status.phase.toLowerCase()!=='running') {
-            //     console.log('Not running pod:', podNamespace+'/'+podName, obj.status.phase.toLowerCase())
-            //     return
-            // }
-            // console.log('Add containers if needed')
             let containerNames:string[] = obj.spec.containers.map( (c: any) => c.name)
+            console.log(eventType, obj, webSocket, instanceConfig, podNamespace, podName, containerNames, ri)
             processEvent(eventType, obj, webSocket, instanceConfig, podNamespace, podName, containerNames, ri)
         },
         (err) => {
@@ -657,7 +652,7 @@ const processReconnect = async (webSocket: WebSocket, instanceMessage: IInstance
             }
         }
         else {
-            console.log(`Instance '${instanceMessage.instance}' not found on channel ${channel.getChannelData().id} for reconnect`)
+            console.log(`Instance '${instanceMessage.instance}' not found for reconnect on channel ${channel.getChannelData().id}`)
         }
     }
     console.log(`Instance '${instanceMessage.instance}' found for reconnect in no channels`)
@@ -752,7 +747,17 @@ const processStartInstanceConfig = async (ri:IRunningInstance, webSocket: WebSoc
                                 await watchPods(ri, `/api/v1/${instanceConfig.objects}`, { labelSelector }, webSocket, specificInstanceConfig)
                             }
                             else {
-                                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: cannot get metadata labels for container '${podName}/${containerName}'`, instanceConfig, ri.channels)
+                                // we have no labels, so we use pod name
+                                try {
+                                    let fieldSelector = `metadata.name=${podName}`
+                                    let specificInstanceConfig: IInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
+                                    specificInstanceConfig.container = container
+                                    // we listen for pods path, so when watch starts kube will look after all pods included
+                                    await watchPods(ri, `/api/v1/namespaces/${validPod.metadata?.namespace}/pods`, { fieldSelector, watch: true }, webSocket, specificInstanceConfig)
+                                }
+                                catch (err) {
+                                    sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: cannot get metadata labels for container '${podName}/${containerName}'`, instanceConfig, ri.channels)
+                                }
                             }
                         }
                         else {
@@ -866,7 +871,7 @@ const processChannelRoute = async (ri:IRunningInstance, webSocket: WebSocket, in
             }
         }
         else {
-            console.log(`Instance '${instanceMessage.instance}' not found on channel ${channel.getChannelData().id} for route`)
+            console.log(`Instance '${instanceMessage.instance}' not found for route on channel ${channel.getChannelData().id}`)
             sendInstanceConfigSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for routing')
         }   
     }
@@ -899,7 +904,7 @@ const processChannelWebsocket = async (ri:IRunningInstance, webSocket: WebSocket
             webSocket.send(JSON.stringify(response))
         }
         else {
-            console.log(`Instance '${instanceConfig.instance}' not found on channel ${channel.getChannelData().id} for route`)
+            console.log(`Instance '${instanceConfig.instance}' not found for WebSocket on channel ${channel.getChannelData().id}`)
             sendInstanceConfigSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance has not been found for WEBSOCKET request')
         }   
     }
@@ -962,12 +967,11 @@ const processClientMessage = async (webSocket:WebSocket, message:string, ri:IRun
         }
         else {
             if (!ri.apiKeyApi || !ri.apiKeyApi.apiKeys.some(apiKey => accessKeySerialize(apiKey.accessKey)===instanceConfig.accessKey)) {
-                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Invalid API key ot no ApiKeyApi: ${instanceConfig.accessKey}`, instanceConfig, ri.channels)
+                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Invalid API key or no API key: ${instanceConfig.accessKey}`, instanceConfig, ri.channels)
                 return
             }
         }
 
-        // +++ maybe we can perform this things later when knowing what the action is
         let accessKeyResources = parseResources(accessKeyDeserialize(instanceConfig.accessKey).resources)
 
         let validNamespaces:string[] = []
@@ -1192,7 +1196,6 @@ const handleNodeProcessSignal = (signal:any) => {
     process.exit(0)
 }   
 
-//+++ capture more events?
 process.on('SIGTERM', () => handleNodeProcessSignal('SIGTERM'))
 process.on('SIGINT', () => handleNodeProcessSignal('SIGINT'))
 
@@ -1439,7 +1442,7 @@ const launchElectron = async (localKwirthData:KwirthData, expressApp:Application
                         if (contextName) {
                             let ri = runningInstances.find(r => r.electronContext === contextName)
                             if (ri) {
-                                // +++ remove runninginstance
+                                // +++ implement remove runninginstance
                                 res.status(200).json({})
                             }
                             else {
@@ -1467,7 +1470,6 @@ const launchElectron = async (localKwirthData:KwirthData, expressApp:Application
                                 res.status(200).json(ri.apiKeyApi?.apiKeys[0])  // we just reuse the first inElectron ApiKey (there should be no other kind of Api Keysstsored)
                             }
                             else {
-                                //+++ el id de la RI es correcto o tiene que se 'mas unico'? llega con contextName??
                                 let runningInstance = await createRunningInstance(contextName, localKwirthData) 
                                 if (runningInstance) {
                                     runningInstance.electronContext = contextName
@@ -1479,7 +1481,7 @@ const launchElectron = async (localKwirthData:KwirthData, expressApp:Application
                                     console.log('Creating instance for context', contextName)
                                     // +++ we should be using a common function for creating api key
                                     let description = 'Volatile key for electron'
-                                    let expire:number = Date.now() + 100000000000000
+                                    let expire:number = Date.now() + 100000000000000  //+++
                                     let days:number = 1
                                     let accessKey:AccessKey = { id: uuid(), type: 'volatile', resources: 'cluster::::' }
                                     let apiKey:ApiKey={ accessKey, description, expire, days }
@@ -1674,10 +1676,7 @@ const createHttpServers = (localKwirthData:KwirthData, expressApp:Application, i
             }
 
             webSocket.onclose = () => {
-                // we do not remove connections for the client to reconnect. previous code was:
-                // for (var channel of channels.keys()) {
-                //     channels.get(channel)?.removeConnection(ws)
-                // }
+                // we do not remove connections for the client to reconnect
                 console.log('Client disconnected')
                 let ri = instances.find(r => r.active)
                 if (!ri) {

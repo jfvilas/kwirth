@@ -1,0 +1,60 @@
+.custom-fm-magnify.file-explorer {
+  border: 1px solid #666;
+}
+
+.custom-fm-magnify .sb-folder-name {
+  color: var(--mui-palette-text-primary) !important;
+}
+
+.custom-fm-magnify .category-button {
+  color: var(--mui-palette-text-primary) !important;
+  background-color: var(--mui-palette-background-default) !important;
+}
+
+.custom-fm-magnify .category-button-active {
+  background-color: var(--mui-palette-text-primary) !important;
+  color: var(--mui-palette-background-default) !important;
+}
+
+.custom-fm-magnify .navigation-pane {
+  background-color: var(--mui-palette-background-paper) !important;
+}
+
+.custom-fm-magnify .sidebar-resize {
+  border-right: 1px solid #666 !important;
+}
+
+.custom-fm-magnify .toolbar {
+  background-color: var(--mui-palette-background-default) !important;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-bottom: 1px solid #666;
+  box-sizing: initial !important;
+}
+
+.custom-fm-magnify .files-container {
+  background-color: var(--mui-palette-background-default) !important;
+}
+
+.custom-fm-magnify .category-view, .custom-fm-magnify .toggle-view {
+    background-color: var(--mui-palette-background-paper) !important;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
+    box-shadow: var(--mui-shadows-8) !important;
+    color: var(--mui-palette-text-primary) !important;
+    border: none !important;
+    border-radius: var(--mui-shape-borderRadius) !important;
+    padding: 8px 16px;
+}
+
+.custom-fm-magnify .files-header {
+  border-top: 1px solid #666 !important;
+}
+
+.custom-fm-magnify .files.grid, .custom-fm-magnify .files.list, .custom-fm-magnify .statusbar, .custom-fm-magnify .files-header, .custom-fm-magnify .column-header, .custom-fm-magnify .bread-crumb-container,  .custom-fm-magnify .sb-folders-list {
+  background-color: var(--mui-palette-background-default) !important;
+  box-sizing: initial !important;
+}
+
+.custom-fm-magnify .item-action:hover {
+  background-color: var(--mui-palette-action-hover) !important;  
+}

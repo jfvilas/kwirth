@@ -1,8 +1,8 @@
 import { Button, Stack, Typography } from "@mui/material"
 import { ENotifyLevel } from "../../../tools/Global"
 import { IFileObject } from "@jfvilas/react-file-manager"
-import { useMemo, useState } from "react"
-import { getIconFromKind, IconClusterRole, IconConfigMap, IconDaemonSet, IconDeployment, IconIngress, IconJob, IconNode, IconPersistentVolumeClaim, IconReplicaSet, IconRole, IconSecret, IconService, IconStatefulSet, IconVolume } from "../../../tools/Constants-React"
+import { useMemo } from "react"
+import { getIconFromKind, IconClusterRole, IconConfigMap, IconDaemonSet, IconDeployment, IconIngress, IconJob, IconNode, IconReplicaSet, IconRole, IconSecret, IconService, IconStatefulSet, IconVolume } from "../../../tools/Constants-React"
 const _ = require('lodash')
 
 interface IIssue {
@@ -195,7 +195,6 @@ const validateVolumeAttachment = (files:IFileObject[]) => {
 }
 
 const validateNode = (files:IFileObject[]) => {
-    console.log('valnode')
     let issues:IIssue[] = []
     let nodes = files.filter(f => f.class==='Node').map(f => f.data.origin)
     for (let node of nodes) {
@@ -231,7 +230,7 @@ const validateIngress = (files:IFileObject[]) => {
 
 const validateService = (files:IFileObject[]) => {
     let issues:IIssue[] = []
-    let ss = files.filter(f => f.class==='Service' && f.data.origin?.metadata?.namespace!=='kube-system').map(f => f.data.origin)
+    let ss = files.filter(f => f.class==='Service' && f.data.origin?.metadata?.namespace!=='kube-system' && f.data.origin?.metadata?.namespace!=='kube-public').map(f => f.data.origin)
     for (let s of ss) {
         const ns = s.metadata?.namespace
         const selector = s.spec.selector
@@ -255,14 +254,14 @@ const validateService = (files:IFileObject[]) => {
 
 const validateRole = (files:IFileObject[]) => {
     let issues:IIssue[] = []
-    let rs = files.filter(f => f.class==='Role' && f.data.origin?.metadata?.namespace!=='kube-system').map(f => f.data.origin)
+    let rs = files.filter(f => f.class==='Role' && f.data.origin?.metadata?.namespace!=='kube-system' && f.data.origin?.metadata?.namespace!=='kube-public').map(f => f.data.origin)
     for (let r of rs) {
         let inUse = false
         for(let rb of files.filter(f => f.class==='RoleBinding').map(f => f.data.origin)) {
             inUse = rb.subjects.some((s:any) => s.kind==='ServiceAccount' && s.name === r.metadata.name && s.namespace === r.metadata.namespace)
             if (inUse) break
         }
-        if (!inUse) issues.push({kind: 'Role', name: r.metadata.name, namespace: r.metadata.namespace, level: ENotifyLevel.ERROR, text: 'Role not in use'})
+        if (!inUse) issues.push({kind: 'Role', name: r.metadata.name, namespace: r.metadata.namespace, level: ENotifyLevel.WARNING, text: 'Role not in use'})
     }
     return issues
 }
@@ -271,18 +270,12 @@ const validateClusterRole = (files:IFileObject[]) => {
     let issues:IIssue[] = []
     let crs = files.filter(f => f.class==='ClusterRole').map(f => f.data.origin)
     for (let cr of crs) {
-        for(let crb of files.filter(f => f.class==='ClusterRoleBinding')) {
-            // +++Pending
+        let inUse = false
+        for(let crb of files.filter(f => f.class==='ClusterRoleBinding').map(f => f.data.origin)) {
+            inUse = crb.subjects && crb.subjects.some((s:any) => s.kind==='ServiceAccount' && s.name === crb.metadata.name && s.namespace === crb.metadata.namespace)
+            if (inUse) break
         }
-    }
-    return issues
-}
-
-const validateServiceAccount = (files:IFileObject[]) => {
-    let issues:IIssue[] = []
-    let sas = files.filter(f => f.class==='ServiceAccount').map(f => f.data.origin)
-    for (let sar of sas) {
-        // +++Pending
+        if (!inUse) issues.push({kind: 'Role', name: cr.metadata.name, namespace: cr.metadata.namespace, level: ENotifyLevel.WARNING, text: 'ClusterRole not in use'})
     }
     return issues
 }
@@ -317,7 +310,6 @@ const validateSummary = (files:IFileObject[], onNavigate: (dest:string) => void)
             {showBadge(validateIngress(files), <IconIngress height={50}/>, onNavigate, '/network/Ingress')}
             {showBadge(validateService(files), <IconService height={50}/>, onNavigate, '/network/Service')}
             {showBadge(validateVolumeAttachment(files), <IconVolume size={50}/>, onNavigate, '/storage/VolumeAttachment')}
-            {showBadge(validateServiceAccount(files), getIconFromKind('ServiceAccount', 50), onNavigate, '/access/ServiceAccount')}
             {showBadge(validateRole(files), <IconRole height={50}/>, onNavigate, '/access/Role')}
             {showBadge(validateClusterRole(files), <IconClusterRole height={50}/>, onNavigate, '/access/ClusterRole')}
         </Stack>
@@ -340,7 +332,6 @@ interface IValidationsProps {
         volumeAttachment? :boolean
         ingress? : boolean
         service? : boolean
-        serviceAccount?: boolean
         role? :boolean
         custerRole? : boolean
         summary? : boolean
@@ -364,13 +355,12 @@ const Validations: React.FC<IValidationsProps> = (props: IValidationsProps) => {
         if (options.volumeAttachment) data.volumeAttachment = validateVolumeAttachment(files)
         if (options.ingress) data.ingress = validateIngress(files)
         if (options.service) data.service = validateService(files)
-        if (options.serviceAccount) data.serviceAccount = validateServiceAccount(files)
-        if (options.role) data.role = validateRole(files);
+        if (options.role) data.role = validateRole(files)
         if (options.custerRole) data.clusterRole = validateClusterRole(files)
         
         if (options.summary) data.summary = validateSummary(files, onNavigate)
 
-        return data;
+        return data
     }, [props.files, props.options, props.onNavigate])
 
     return (
@@ -386,7 +376,6 @@ const Validations: React.FC<IValidationsProps> = (props: IValidationsProps) => {
             {props.options.volumeAttachment && formatIssues(results.volumeAttachment, props.onLink)}
             {props.options.ingress && formatIssues(results.ingress, props.onLink)}
             {props.options.service && formatIssues(results.service, props.onLink)}
-            {props.options.serviceAccount && formatIssues(results.serviceAccount, props.onLink)}
             {props.options.role && formatIssues(results.role, props.onLink)}
             {props.options.custerRole && formatIssues(results.clusterRole, props.onLink)}
             {props.options.summary && results.summary}

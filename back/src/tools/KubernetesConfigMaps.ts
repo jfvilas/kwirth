@@ -57,7 +57,6 @@ export class KubernetesConfigMaps implements IConfigMaps {
             }
             else {
                 console.log('Error reading configMap',this.namespace,'/', name)
-                //+++console.log(err)
                 return undefined
             }
         }

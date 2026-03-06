@@ -1,11 +1,10 @@
 import { EInstanceConfigObject, EInstanceConfigScope, EInstanceConfigView, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EMetricsConfigMode, IInstanceConfig, IInstanceMessage, InstanceConfigScopeEnum } from '@jfvilas/kwirth-common'
 import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelObject, IContentProps } from '../../IChannel'
-import { Box, Dialog, DialogContent, DialogTitle, Divider, IconButton, Popover, Stack, Typography } from '@mui/material'
-import { Close, Fullscreen, FullscreenExit, Info, Minimize, PauseCircle, PlayCircle, Settings, StopCircle } from '@mui/icons-material'
-import { IFileObject } from '@jfvilas/react-file-manager'
+import { Box, DialogContent, DialogTitle, Divider, IconButton, Popover, Stack, Typography } from '@mui/material'
+import { Close, Fullscreen, FullscreenExit, Info, Minimize, PauseCircle, PinDrop, Place, PlayCircle, Settings, StopCircle } from '@mui/icons-material'
 import { ELogSortOrder, ILogConfig, ILogInstanceConfig } from '../../log/LogConfig'
 import { ILogData } from '../../log/LogData'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createChannelInstance } from '../../../tools/ChannelTools'
 import { ENotifyLevel } from '../../../tools/Global'
 import { IMetricsConfig, IMetricsInstanceConfig } from '../../metrics/MetricsConfig'
@@ -14,11 +13,12 @@ import { EChartType } from '../../metrics/MenuChart'
 import { IOpsData } from '../../ops/OpsData'
 import { ESwitchKey, IOpsConfig, IOpsInstanceConfig } from '../../ops/OpsConfig'
 import { TerminalManager } from '../../ops/Terminal/TerminalManager'
-import { MagnifyUserPreferences } from '../MagnifyUserPreferences'
+import { MagnifyUserPreferences } from './MagnifyUserPreferences'
 import { IFilemanData } from '../../fileman/FilemanData'
 import { IFilemanConfig } from '../../fileman/FilemanConfig'
 import { useAsync } from 'react-use'
-import { objectClone } from '../Tools'
+import { IContentWindow } from '../MagnifyTabContent'
+import { ResizableDialog } from './ResizableDialog'
 
 export interface IContentExternalOptions {
     pauseable: boolean
@@ -26,87 +26,80 @@ export interface IContentExternalOptions {
     autostart: boolean
     configurable: boolean
 }
-interface IContentExternalProps {
-    title: string
+
+export interface IContentExternalData {
+    isInitialized: boolean
     channelId: string
+    options: IContentExternalOptions
     contentView: EInstanceConfigView
     settings: MagnifyUserPreferences
     frontChannels: Map<string, TChannelConstructor>
-    selectedFiles:IFileObject[]
     onNotify: (channel:string|undefined, level: ENotifyLevel, msg: string) => void
-    onMinimize: (content:IContentExternalObject) => void
-    onClose: (content:IContentExternalObject) => void
     onRefresh: () => void
     content?: IContentExternalObject
-    channelObject?: IChannelObject
-    container?: string
-    options: IContentExternalOptions
-    termId: string|undefined
+    channelObject: IChannelObject
+}
+
+export interface IContentExternalProps extends IContentWindow {
+    data: IContentExternalData
 }
 
 export interface IContentExternalObject {
-    type: 'external'
     ws: WebSocket | undefined
     settings: MagnifyUserPreferences
-    channel: IChannel
-    channelObject: IChannelObject
-    channelStarted: boolean
-    channelPaused: boolean
-    channelPending: boolean
-    windowMaximized: boolean
-    options: IContentExternalOptions
-    title: string
+    externalChannel?: IChannel
+    externalChannelObject?: IChannelObject
+    externalChannelStarted: boolean
+    externalChannelPaused: boolean
+    externalChannelPending: boolean
     termId: string|undefined
-    container?: string
 }
 
 const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternalProps) => {
-    const content = useRef<IContentExternalObject>()
-    const [ percent, setPercent] = useState<number>(70)
     const [ anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-    const [refreshTick, setRefreshTick] = useState(0);
+    const [ , setRefreshTick] = useState(0);
     const forceUpdate = () => setRefreshTick(tick => tick + 1);
+    const [isMaximized, setIsMaximized] = useState(props.isMaximized)
+    let contentExternalData:IContentExternalData = props.data
 
     useEffect( () => {
-        // if we receive content, we show content (we don't create a new content)
-        if (props.content) {
-            content.current = props.content
-        }
-        else if (props.channelObject) {
-            content.current = createContent(props.channelId)
-            if (!content.current) return
-            switch(props.channelId) {
+        if (!contentExternalData.isInitialized) {
+            contentExternalData.isInitialized = true
+
+            contentExternalData.content = createContent(contentExternalData.channelId)
+            if (!contentExternalData.content) return
+
+            switch(contentExternalData.channelId) {
                 case 'log':
-                    setLogConfig(content.current)
+                    setLogConfig(contentExternalData.content)
                     break
                 case 'metrics':
-                    setMetricsConfig(content.current)
+                    setMetricsConfig(contentExternalData.content)
                     break
                 case 'ops':
-                    setOpsConfig(content.current)
+                    setOpsConfig(contentExternalData.content)
                     break
                 case 'fileman':
-                    setFilemanConfig(content.current)
+                    setFilemanConfig(contentExternalData.content)
                     break
             }
         }
-        setPercent(content.current?.windowMaximized? 100 : 70)
     },[])
 
     useEffect(() => {
         // this Effect must be executed after initial useEffect, because it uses content.current
-        if (props.channelId==='ops') {
+        if (contentExternalData.channelId==='ops') {
             console.log('setkey')
             const handleNativeKey = async (e: KeyboardEvent) => {
                 if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return
 
                 // we handle first start and restore (the id comes from a different source). This is needed because the id is included in the colusure of the keyboard handle)
-                let id = props.termId ||
+                let id = contentExternalData.content!.termId ||
                     props.selectedFiles[0]?.data?.origin?.metadata?.namespace + '/' + 
                     props.selectedFiles[0]?.data?.origin?.metadata?.name + '/' + 
                     props.container
 
-                const terminalEntry = content.current?.channelObject?.data?.terminalManager?.terminals.get(id)
+                const terminalEntry = contentExternalData.content?.externalChannelObject?.data?.terminalManager?.terminals.get(id)
                 const socket = terminalEntry?.socket
                 if (!socket || socket.readyState !== WebSocket.OPEN) return
 
@@ -153,65 +146,56 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 window.removeEventListener('keydown', handleNativeKey, true)
             }
         }
-    }, [props.container, props.selectedFiles, props.channelObject])
+    }, [props.container, props.selectedFiles, contentExternalData.content?.externalChannelObject])
 
     useAsync (async () => {
         // useAsync must be executed after useEffect, because it uses content.current
-        if (props.options.autostart) {
-            if (content.current && !content.current.channelStarted) {
-                while (content.current?.ws?.readyState !== WebSocket.OPEN) {
+        if (contentExternalData.options.autostart) {
+            if (contentExternalData.content && !contentExternalData.content.externalChannelStarted) {
+                while (contentExternalData.content?.ws?.readyState !== WebSocket.OPEN) {
                     await new Promise((resolve) => setTimeout(resolve, 10))
                 }
-                if (content.current?.ws?.readyState === WebSocket.OPEN) play()
+                if (contentExternalData.content?.ws?.readyState === WebSocket.OPEN) play()
             }
         }
     }, [])
 
-    const createContent = (channelId:string) => {
-        let newChannel = createChannelInstance(props.frontChannels.get(channelId), props.onNotify)
+    const createContent = (channelId:string) : IContentExternalObject|undefined => {
+        let newChannel = createChannelInstance(contentExternalData.frontChannels.get(channelId), contentExternalData.onNotify)
         if (!newChannel) {
             console.log('Invaid channel instance created')
             return undefined
         }
         let newContent:IContentExternalObject = {
-            type: 'external',
             ws: undefined,
-            channel: newChannel,
-            channelObject: {
-                clusterName: props.channelObject?.clusterName!,
+            externalChannel: newChannel,
+            externalChannelObject: {
+                clusterName: contentExternalData.channelObject?.clusterName!,
                 instanceId: '',
-                view: props.contentView,
+                view: contentExternalData.contentView,
                 namespace: [...new Set(props.selectedFiles.map(n => n.data.origin.metadata.namespace))].join(','),
-                group: props.contentView === EInstanceConfigView.GROUP? props.selectedFiles.map(g => 'Deployment+'+g.data.origin.metadata.name).join(',') : '',
-                pod: props.contentView === EInstanceConfigView.POD? props.selectedFiles.map(p => p.data.origin.metadata.name).join(',') : '',
-                container: props.contentView === EInstanceConfigView.CONTAINER? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
+                group: contentExternalData.contentView === EInstanceConfigView.GROUP ? props.selectedFiles.map(g => 'Deployment+' + g.data.origin.metadata.name).join(',') : '',
+                pod: contentExternalData.contentView === EInstanceConfigView.POD ? props.selectedFiles.map(p => p.data.origin.metadata.name).join(',') : '',
+                container: contentExternalData.contentView === EInstanceConfigView.CONTAINER ? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
                 config: undefined,
                 data: undefined,
                 instanceConfig: undefined,
-                channel: newChannel
-            },
-            channelStarted: false,
-            channelPaused: false,
-            channelPending: false,
-            windowMaximized: false,
-            settings: props.settings,
-            options: objectClone(props.options),
-            title: props.title,
-            container: props.container,
-            // termId: props.selectedFiles[0]?.data?.origin?.metadata?.namespace + '/' + 
-            //             props.selectedFiles[0]?.data?.origin?.metadata?.name + '/' + 
-            //             props.container
+                channel: newChannel,
+            } satisfies IChannelObject,
+            externalChannelStarted: false,
+            externalChannelPaused: false,
+            externalChannelPending: false,
+            settings: contentExternalData.settings,
             termId: props.selectedFiles[0]?.data?.origin?.metadata?.namespace + '/' + 
                     props.selectedFiles[0]?.data?.origin?.metadata?.name.split('+')[0] + '/' + 
                     props.container
         }
-        console.log('tedm',newContent.termId)
 
-        if (newChannel.requiresMetrics()) newContent.channelObject.metricsList = props.channelObject?.metricsList
-        if (newChannel.requiresClusterUrl()) newContent.channelObject.clusterUrl = props.channelObject?.clusterUrl
-        if (newChannel.requiresAccessString()) newContent.channelObject.accessString = props.channelObject?.accessString
+        if (newChannel.requiresMetrics()) newContent.externalChannelObject!.metricsList = contentExternalData.channelObject?.metricsList
+        if (newChannel.requiresClusterUrl()) newContent.externalChannelObject!.clusterUrl = contentExternalData.channelObject?.clusterUrl
+        if (newChannel.requiresAccessString()) newContent.externalChannelObject!.accessString = contentExternalData.channelObject?.accessString
 
-        newContent.ws = new WebSocket(props.channelObject?.clusterUrl!)
+        newContent.ws = new WebSocket(contentExternalData.channelObject?.clusterUrl!)
         newContent.ws.onmessage = (event:MessageEvent) => wsOnMessage(event)
         newContent.ws.onerror = (event) => () => { console.log('WebSocket error:'+event, new Date().toISOString()) }
         newContent.ws.onclose = (event:CloseEvent) => { console.log('WebSocket disconnect:'+event.reason, new Date().toISOString()) }
@@ -231,11 +215,11 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
 
         if (instanceMessage.action === EInstanceMessageAction.PING || instanceMessage.channel === '') return
 
-        if (props.channelObject!.frontChannels!.has(instanceMessage.channel)) {
-            let refreshAction = content.current?.channel.processChannelMessage(content.current?.channelObject!, wsEvent)
+        if (contentExternalData.frontChannels.has(instanceMessage.channel)) {
+            let refreshAction = contentExternalData.content!.externalChannel?.processChannelMessage(contentExternalData.content!.externalChannelObject!, wsEvent)
             if (refreshAction) {
                 if (refreshAction.action === EChannelRefreshAction.REFRESH) {
-                    props.onRefresh()
+                    contentExternalData.onRefresh()
                 }
                 else if (refreshAction.action === EChannelRefreshAction.STOP) {
                     stop()
@@ -251,7 +235,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
         let logConfig:ILogConfig = {
             startDiagnostics: false,
             follow: true,
-            maxMessages: props.settings.logLines,
+            maxMessages: contentExternalData.settings.logLines,
             maxPerPodMessages: 5000,
             sortOrder: ELogSortOrder.TIME
         }
@@ -269,9 +253,9 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             paused: false,
             started: false
         }
-        c.channelObject!.data = logData
-        c.channelObject!.config = logConfig
-        c.channelObject!.instanceConfig = logInstanceConfig
+        c.externalChannelObject!.data = logData
+        c.externalChannelObject!.config = logConfig
+        c.externalChannelObject!.instanceConfig = logInstanceConfig
     }
 
     const setMetricsConfig = (c:IContentExternalObject) => {
@@ -283,7 +267,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
         }
         let metricsConfig:IMetricsConfig = {
             depth: 50,
-            width: 2,
+            width: 3,
             lineHeight: 300,
             configurable: false,
             compact: true,
@@ -300,9 +284,9 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             metrics: ['kwirth_container_cpu_percentage','kwirth_container_memory_percentage', 'kwirth_container_transmit_mbps', 'kwirth_container_receive_mbps', 'kwirth_container_write_mbps', 'kwirth_container_read_mbps']
         }
 
-        c.channelObject!.data = metricsData
-        c.channelObject!.config = metricsConfig
-        c.channelObject!.instanceConfig = metricsInstanceConfig
+        c.externalChannelObject!.data = metricsData
+        c.externalChannelObject!.config = metricsConfig
+        c.externalChannelObject!.instanceConfig = metricsInstanceConfig
     }
 
     const setOpsConfig = (c:IContentExternalObject) => {
@@ -318,13 +302,13 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             terminalManager: new TerminalManager(),
             selectedTerminal: undefined
         }
-        let onlyContName = c.channelObject.container.split('+')[1]
-        let onlyPodName = c.channelObject.container.split('+')[0]
+        let onlyContName = c.externalChannelObject!.container.split('+')[1]
+        let onlyPodName = c.externalChannelObject!.container.split('+')[0]
         let opsConfig:IOpsConfig = {
             accessKey: ESwitchKey.DISABLED,
             launchShell: true,
             shell: {
-                namespace: c.channelObject.namespace,
+                namespace: c.externalChannelObject!.namespace,
                 pod: onlyPodName,
                 container: onlyContName
             }
@@ -332,10 +316,10 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
         let opsInstanceConfig:IOpsInstanceConfig = {
             sessionKeepAlive: false
         }
-        c.channelObject!.webSocket = content.current!.ws
-        c.channelObject!.data = opsData
-        c.channelObject!.config = opsConfig
-        c.channelObject!.instanceConfig = opsInstanceConfig
+        c.externalChannelObject!.webSocket = contentExternalData.content!.ws
+        c.externalChannelObject!.data = opsData
+        c.externalChannelObject!.config = opsConfig
+        c.externalChannelObject!.instanceConfig = opsInstanceConfig
     }
 
     const setFilemanConfig = (c:IContentExternalObject) => {
@@ -346,27 +330,27 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             currentPath: ''
         }
         let filemanConfig:IFilemanConfig = {
-            notify: props.onNotify
+            notify: contentExternalData.onNotify
         }
 
-        c.channelObject.webSocket = content.current!.ws
-        c.channelObject.data = filemanData
-        c.channelObject.config = filemanConfig
+        c.externalChannelObject!.webSocket = contentExternalData.content!.ws
+        c.externalChannelObject!.data = filemanData
+        c.externalChannelObject!.config = filemanConfig
     }
 
     const play = () => {
-        if (!content.current || !content.current.ws) return
+        if (!contentExternalData.content || !contentExternalData.content.ws || !contentExternalData.content.externalChannel || !contentExternalData.content.externalChannelObject) return
 
-        if (content.current.channelPaused) {
-            content.current.channel.continueChannel(content.current.channelObject)
+        if (contentExternalData.content.externalChannelPaused) {
+            contentExternalData.content.externalChannel.continueChannel(contentExternalData.content.externalChannelObject)
             let instanceConfig:IInstanceConfig = {
-                channel: content.current.channel.channelId,
+                channel: contentExternalData.content.externalChannel.channelId,
                 objects: EInstanceConfigObject.PODS,
                 action: EInstanceMessageAction.CONTINUE,
                 flow: EInstanceMessageFlow.REQUEST,
-                instance: content.current.channelObject.instanceId,
-                accessKey: props.channelObject!.accessString!,
-                view: props.contentView,
+                instance: contentExternalData.content.externalChannelObject.instanceId,
+                accessKey: contentExternalData.channelObject?.accessString!,
+                view: contentExternalData.contentView,
                 scope: InstanceConfigScopeEnum.NONE,
                 namespace: '',
                 group: '',
@@ -374,50 +358,50 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 container: '',
                 type: EInstanceMessageType.SIGNAL
             }
-            content.current.channelPaused = false
-            content.current.ws.send(JSON.stringify(instanceConfig))
+            contentExternalData.content.externalChannelPaused = false
+            contentExternalData.content.ws.send(JSON.stringify(instanceConfig))
         }
         else {
-            content.current.channel.startChannel(content.current.channelObject)
+            contentExternalData.content.externalChannel.startChannel(contentExternalData.content.externalChannelObject)
 
             let instanceConfig:IInstanceConfig = {
-                channel: content.current.channel.channelId,
+                channel: contentExternalData.content.externalChannel.channelId,
                 objects: EInstanceConfigObject.PODS,
                 action: EInstanceMessageAction.START,
                 flow: EInstanceMessageFlow.REQUEST,
                 instance: '',
-                accessKey: props.channelObject!.accessString!,
+                accessKey: contentExternalData.channelObject?.accessString!,
                 scope: EInstanceConfigScope.NONE,
-                view: props.contentView,
+                view: contentExternalData.contentView,
                 namespace: [...new Set(props.selectedFiles.map(n => n.data.origin.metadata.namespace))].join(','),
-                group: props.contentView === EInstanceConfigView.GROUP? props.selectedFiles.map(g => g.data.origin.kind+'+'+g.data.origin.metadata.name).join(',') : '',
-                pod: props.contentView === EInstanceConfigView.POD? props.selectedFiles.map(p => p.data.origin.metadata.name).join(',') : '',
-                container: props.contentView === EInstanceConfigView.CONTAINER? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
+                group: contentExternalData.contentView === EInstanceConfigView.GROUP? props.selectedFiles.map(g => g.data.origin.kind+'+'+g.data.origin.metadata.name).join(',') : '',
+                pod: contentExternalData.contentView === EInstanceConfigView.POD? props.selectedFiles.map(p => p.data.origin.metadata.name).join(',') : '',
+                container: contentExternalData.contentView === EInstanceConfigView.CONTAINER? props.selectedFiles[0].data.origin.metadata.name + '+' + props.container : '',
                 type: EInstanceMessageType.SIGNAL,
             }
-            instanceConfig.scope = content.current.channel.getScope() || ''
-            instanceConfig.data = content.current.channelObject.instanceConfig
-            content.current.ws.send(JSON.stringify(instanceConfig))
-            content.current.channelStarted = true
-            content.current.channelPaused = false
+            instanceConfig.scope = contentExternalData.content.externalChannel.getScope() || ''
+            instanceConfig.data = contentExternalData.content.externalChannelObject.instanceConfig
+            contentExternalData.content.ws.send(JSON.stringify(instanceConfig))
+            contentExternalData.content.externalChannelStarted = true
+            contentExternalData.content.externalChannelPaused = false
 
         }
         forceUpdate()
     }
 
     const pause = () => {
-        if (!content.current || !content.current.ws) return
+        if (!contentExternalData.content || !contentExternalData.content.ws || !contentExternalData.content.externalChannel || !contentExternalData.content.externalChannelObject) return
 
-        content.current.channel.pauseChannel(content.current?.channelObject!)
+        contentExternalData.content.externalChannel.pauseChannel(contentExternalData.content.externalChannelObject!)
 
         let instanceConfig:IInstanceConfig = {
-            channel: content.current.channel.channelId,
+            channel: contentExternalData.content.externalChannel.channelId,
             objects: EInstanceConfigObject.PODS,
             action: EInstanceMessageAction.PAUSE,
             flow: EInstanceMessageFlow.REQUEST,
-            instance: content.current.channelObject.instanceId,
-            accessKey: props.channelObject!.accessString!,
-            view: content.current.channelObject.view,
+            instance: contentExternalData.content.externalChannelObject.instanceId,
+            accessKey: contentExternalData.channelObject?.accessString!,
+            view: contentExternalData.content.externalChannelObject.view,
             scope: InstanceConfigScopeEnum.NONE,
             namespace: '',
             group: '',
@@ -426,23 +410,23 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             type: EInstanceMessageType.SIGNAL
         }
 
-        content.current.channelPaused = true
+        contentExternalData.content.externalChannelPaused = true
         instanceConfig.action = EInstanceMessageAction.PAUSE
-        content.current.ws.send(JSON.stringify(instanceConfig))
+        contentExternalData.content.ws.send(JSON.stringify(instanceConfig))
         forceUpdate()
     }
 
     const stop = () => {
-        if (!content.current || !content.current.ws) return
+        if (!contentExternalData.content || !contentExternalData.content.ws || !contentExternalData.content.externalChannel || !contentExternalData.content.externalChannelObject) return
 
         let instanceConfig: IInstanceConfig = {
-            channel: content.current.channel.channelId,
+            channel: contentExternalData.content.externalChannel.channelId,
             objects: EInstanceConfigObject.PODS,
             action: EInstanceMessageAction.STOP,
             flow: EInstanceMessageFlow.REQUEST,
-            instance: content.current.channelObject.instanceId,
-            accessKey: props.channelObject?.accessString!,
-            view: content.current.channelObject.view,
+            instance: contentExternalData.content.externalChannelObject.instanceId,
+            accessKey: contentExternalData.channelObject?.accessString!,
+            view: contentExternalData.content.externalChannelObject.view,
             scope: InstanceConfigScopeEnum.NONE,
             namespace: '',
             group: '',
@@ -450,37 +434,16 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             container: '',
             type: EInstanceMessageType.SIGNAL
         }
-        content.current.channel.stopChannel(content.current.channelObject)
-        content.current.ws.send(JSON.stringify(instanceConfig))
-        content.current.channelStarted = false
-        content.current.channelPaused = false
+        contentExternalData.content.externalChannel.stopChannel(contentExternalData.content.externalChannelObject)
+        contentExternalData.content.ws.send(JSON.stringify(instanceConfig))
+        contentExternalData.content.externalChannelStarted = false
+        contentExternalData.content.externalChannelPaused = false
         forceUpdate()
-    }
-
-    const minimize = () => {
-        props.onMinimize(content.current!)
-    }
-
-    const maximizeOrRestore = () => {
-        if (content.current!.windowMaximized) {
-            content.current!.windowMaximized = false
-            setPercent(70)
-        }
-        else {
-            content.current!.windowMaximized = true
-            setPercent(100)
-        }
-    }
-
-    const close = () => {
-        if (!content.current || !content.current.ws) return
-        content.current.ws.close()
-        props.onClose(content.current)
     }
 
     const showHelp = () => {
         let content = <></>
-        switch(props.channelId) {
+        switch(contentExternalData.channelId) {
             case 'log':
                 content = <>
                     <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>Log</Typography>
@@ -530,64 +493,70 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
     }
 
     const showContent = () => {
-        if (!content.current || !content.current.channel) return
-        let ChannelTabContent = content.current.channel.TabContent
+        if (!contentExternalData.content || !contentExternalData.content.ws || !contentExternalData.content.externalChannel || !contentExternalData.content.externalChannelObject) return
+
+        let ChannelTabContent = contentExternalData.content.externalChannel.TabContent
         let channelProps:IContentProps = {
-            channelObject: content.current.channelObject!,
+            channelObject: contentExternalData.content.externalChannelObject!
         }
         return <ChannelTabContent {...channelProps}/>
     }
 
-    return (
-        <>
-            <Dialog open={true} fullScreen={percent===100} sx={{ '& .MuiDialog-paper': {
-                                        width: `${percent}%`,
-                                        height: `${percent}%`,
-                                        maxWidth: `${percent}vw`,
-                                        maxHeight: `${percent}vh`
-                                    }}}
-            >
-                <DialogTitle>
-                    <Stack direction={'row'} alignItems={'center'}>
-                        <IconButton onClick={play} disabled={!props.options.autostart || content.current?.channelStarted && !content.current?.channelPaused}>
-                            <PlayCircle/>
-                        </IconButton>
-                        <IconButton onClick={pause} disabled={!props.options.pauseable || !content.current?.channelStarted || content.current?.channelPaused}>
-                            <PauseCircle/>
-                        </IconButton>
-                        <IconButton onClick={stop} disabled={!props.options.stopable || !content.current?.channelStarted}>
-                            <StopCircle/>
-                        </IconButton>
-                        <IconButton disabled={!props.options.configurable}>
-                            <Settings/>
-                        </IconButton>
-                        <IconButton onClick={(event) => setAnchorEl(event.currentTarget)}>
-                            <Info/>
-                        </IconButton>
-                        
-                        <Typography sx={{flexGrow:1}}></Typography>
-                        <Typography>{content.current?.channel.getChannelIcon()}&nbsp;{props.title}</Typography>
-                        <Typography sx={{flexGrow:1}}></Typography>
-                        <IconButton onClick={minimize}>
-                            <Minimize />
-                        </IconButton>
-                        <IconButton onClick={maximizeOrRestore}>
-                            { content.current?.windowMaximized? <FullscreenExit/> : <Fullscreen/> }
-                        </IconButton>
-                        <IconButton onClick={close}>
-                            <Close />
-                        </IconButton>
-                    </Stack>
-                </DialogTitle>
+	const onFocus = () => {
+		if (props.onFocus) props.onFocus()
+	}
+
+	const handleIsMaximized = () => {
+		props.onWindowChange(props.id, !isMaximized, props.x, props.y, props. width, props.height)
+		setIsMaximized(!isMaximized)
+	}
+
+    return (<>
+        <ResizableDialog id={props.id} isMaximized={isMaximized} onFocus={onFocus} onWindowChange={props.onWindowChange} x={props.x} y={props.y} width={props.width} height={props.height}>
+            <DialogTitle sx={{ cursor: isMaximized ? 'default' : 'move',  py: 1 }} id='draggable-dialog-title'>
+                <Stack direction={'row'} alignItems={'center'}>
+                    <IconButton onClick={play} disabled={!contentExternalData.options.autostart || (contentExternalData.content?.externalChannelStarted && !contentExternalData.content?.externalChannelPaused)}>
+                        <PlayCircle/>
+                    </IconButton>
+                    <IconButton onClick={pause} disabled={!contentExternalData.options.pauseable || !contentExternalData.content?.externalChannelStarted || contentExternalData.content?.externalChannelPaused}>
+                        <PauseCircle/>
+                    </IconButton>
+                    <IconButton onClick={stop} disabled={!contentExternalData.options.stopable || !contentExternalData.content?.externalChannelStarted}>
+                        <StopCircle/>
+                    </IconButton>
+                    <IconButton disabled={!contentExternalData.options.configurable}>
+                        <Settings/>
+                    </IconButton>
+                    <IconButton onClick={(event) => setAnchorEl(event.currentTarget)}>
+                        <Info/>
+                    </IconButton>
+                    
+                    <Typography sx={{flexGrow:1}}></Typography>
+                    <Typography>{contentExternalData.content?.externalChannel?.getChannelIcon()}&nbsp;{props.title}</Typography>
+                    <Typography sx={{flexGrow:1}}></Typography>
+
+                    <IconButton size="small" onClick={() => props.onMinimize(props.id)}>
+                        <Minimize fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => props.onTop(props.id)}>
+                        {props.atTop? <PinDrop sx={{color:'blue'}} fontSize="small" /> : <Place fontSize="small" />}
+                    </IconButton>
+                    <IconButton size="small" onClick={handleIsMaximized}>
+                        {isMaximized ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
+                    </IconButton>
+                    <IconButton size="small" onClick={() => props.onClose(props.id)} sx={{ '&:hover': { color: 'error.main' } }}>
+                        <Close fontSize="small" />
+                    </IconButton>
+                </Stack>
+            </DialogTitle>
 
 
-                <DialogContent sx={{ display: 'flex', flexDirection: 'column', p: 0, overflow: 'hidden', height: '100%', minHeight: 0, paddingBottom: 1}}>
-                    {showContent()}
-                </DialogContent>
-            </Dialog>        
-            {anchorEl && showHelp()}
-        </>
-    )
+            <DialogContent sx={{ display: 'flex', flexDirection: 'column', p: 0, overflow: 'hidden', height: '100%', minHeight: 0, paddingBottom: 1}}>
+                {showContent()}
+            </DialogContent>
+        </ResizableDialog>        
+        {anchorEl && showHelp()}
+    </>)
 }
 
 const ANSI_MAP: Record<string, string> = {

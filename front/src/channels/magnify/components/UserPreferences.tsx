@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react'
-import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Checkbox, FormControlLabel, Stack, TextField, Typography } from '@mui/material'
+import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Checkbox, FormControlLabel, MenuItem, Select, SelectChangeEvent, Stack, TextField, Typography } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
-import { allKinds, IKind, MagnifyUserPreferences } from '../MagnifyUserPreferences'
+import { allKinds, IKind, MagnifyUserPreferences } from './MagnifyUserPreferences'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { IChannelObject } from '../../IChannel'
 
@@ -12,25 +12,28 @@ interface IProps {
     onReload?: () => void
 }
 
-//+++ las userpreferences siguen dando undefined al arrancar el canal
+//+++ añadir custom pod actions
 const UserPreferences: React.FC<IProps> = (props:IProps) => {
+    const [palette, setPalette] = useState(props.preferences.palette || 'light')
     const [logLines, setLogLines] = useState(props.preferences.logLines)
     const [tracing, setTracing ] = useState(props.preferences.tracing)
     const [sourceList, setSourceList] = useState<IKind[]>(props.preferences.dataConfig?.source)
     const [syncList, setSyncList] = useState<IKind[]>(props.preferences.dataConfig?.sync)
+    const [displayChanged, setDisplayChanged] = useState(false)
     const [dataChanged, setDataChanged] = useState(false)
     const [debugChanged, setDebugChanged] = useState(false)
     const [externalChanged, setExternalChanged] = useState(false)
     const filterRef = useRef<HTMLInputElement>(null)
 
-
     const save = () => {
         if (!props.channelObject.writeChannelUserPreferences) return
+        props.preferences.palette = palette
         props.preferences.dataConfig.source = sourceList
         props.preferences.dataConfig.sync = syncList
         props.preferences.logLines = logLines
         props.preferences.tracing = tracing
         props.channelObject.writeChannelUserPreferences(props.channelObject.channel.channelId, props.preferences)
+        setDisplayChanged(false)
         setDataChanged(false)
         setDebugChanged(false)
         setExternalChanged(false)
@@ -57,16 +60,33 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
         setDataChanged(true)
     }
 
-    return <Box bgcolor={'#f1f1f1'} width={'100%'} minHeight={'calc(100% - 16px)'} sx={{p:1}}> 
+    const onChangePalette = (event: SelectChangeEvent) => {
+        setPalette(event.target.value)
+        props.channelObject.setPaletteChange?.(event.target.value)
+        setDisplayChanged(true)
+    }
+
+    return <Box width={'100%'} minHeight={'calc(100% - 16px)'} sx={{p:1}}> 
         <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography component="span"><b>General</b></Typography>
+                <Typography component="span"><b>Display</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse
-                malesuada lacus ex, sit amet blandit leo lobortis eget.
+                <Stack direction={'column'} >
+                    <Stack direction={'row'} alignItems={'center'}>
+                        <Typography sx={{flexGrow:1}}>Palette mode</Typography>
+                        <Select value={palette} onChange={onChangePalette} variant='standard' sx={{width:'100px'}}>
+                            <MenuItem value='light'>Light</MenuItem>
+                            <MenuItem value='dark'>Dark</MenuItem>
+                        </Select>
+                    </Stack>
+                </Stack>
             </AccordionDetails>
+            <AccordionActions>
+                <Button onClick={save} disabled={!displayChanged}>Save</Button>
+            </AccordionActions>
         </Accordion>
+
         <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
                 <Typography component="span"><b>External content</b></Typography>
@@ -138,6 +158,7 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
                 <Button onClick={save} disabled={!debugChanged}>Save</Button>
             </AccordionActions>
         </Accordion>
+
     </Box>
     }
 

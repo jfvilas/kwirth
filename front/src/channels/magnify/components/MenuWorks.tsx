@@ -1,0 +1,22 @@
+import { Menu, MenuItem, MenuList } from '@mui/material'
+import React from 'react'
+import { IconAlpine, IconDebian, IconUbuntu } from '../icons/Icons'
+
+interface IProps {
+    onClose?:() => void
+    onWorkSelected: (work:string) => void
+    anchorParent: Element
+}
+
+const MenuWorks: React.FC<IProps> = (props:IProps) => {
+    return <Menu id='menu-works' anchorEl={props.anchorParent} open={Boolean(props.anchorParent)} onClose={props.onClose}>
+        <MenuList dense sx={{minWidth: 140}}>
+            <MenuItem onClick={() => props.onWorkSelected('ubuntu')}><IconUbuntu size='18'/>&nbsp;Ubuntu</MenuItem>
+            <MenuItem onClick={() => props.onWorkSelected('alpine')}><IconAlpine size='18'/>&nbsp;Alpine</MenuItem>
+            <MenuItem onClick={() => props.onWorkSelected('dnsutils')}><IconDebian size='18'/>&nbsp;DNS Utils</MenuItem>
+            <MenuItem onClick={() => props.onWorkSelected('jubuntu')}><IconUbuntu size='18'/>&nbsp;jUbuntu</MenuItem>
+        </MenuList>
+    </Menu>
+}
+
+export { MenuWorks }

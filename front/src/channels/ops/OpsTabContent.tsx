@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Box, Button, Card, CardContent, CardHeader, IconButton, ListItem, ListItemButton, Stack, TextField, Tooltip, Typography } from '@mui/material'
+import { Box, Button, Card, CardContent, CardHeader, IconButton, ListItem, ListItemButton, Stack, TextField, Tooltip, Typography, useTheme } from '@mui/material'
 import { IOpsData, IScopedObject } from './OpsData'
 import { IInstanceConfig, EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageFlow, EInstanceMessageType, IOpsMessage, EMetricsConfigMode, EOpsCommand, EInstanceConfigObject, EInstanceConfigView } from '@jfvilas/kwirth-common'
 import { IContentProps } from '../IChannel'
@@ -18,6 +18,7 @@ import { IMetricsConfig, IMetricsInstanceConfig } from '../metrics/MetricsConfig
 import { EChartType } from '../metrics/MenuChart'
 
 const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
+    const theme = useTheme()
     let opsData:IOpsData = props.channelObject.data
     let opsConfig:IOpsConfig = props.channelObject.config
 
@@ -42,7 +43,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         const observer = new ResizeObserver(() => {
             if (!opsBoxRef.current) return
             const { top } = opsBoxRef.current.getBoundingClientRect()
-            let a = window.innerHeight - top -16
+            let a = window.innerHeight - top
             setOpsBoxHeight(a)
         })
         observer.observe(document.body)
@@ -360,20 +361,20 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     return (<>
-        <Box ref={opsBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `${opsBoxHeight}px`, ml:1, mr:1}}>
+        <Box ref={opsBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `${opsBoxHeight}px`, p:2, gap: 2}}>
             { showSelector && !opsConfig.launchShell && formatSelector() }
 
             { opsData.started && !opsConfig.launchShell && !selectedTerminal &&
-                <Stack direction={'row'} spacing={2} alignItems={'start'}>
-                    <Card sx={{width:'60%'}}>
-                        <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0'}} title={
+                <Stack direction={'row'} spacing={2} alignItems={'stretch'} sx={{ flexGrow: 1, minHeight: 0 }}>
+                    <Card sx={{ width: '60%', display: 'flex', flexDirection: 'column', maxHeight: '100%' }}>
+                        <CardHeader title={
                             <Stack direction={'row'} alignItems={'center'}>
                                 <Typography fontSize={24}>Objects</Typography>
                                 <Typography flex={1}></Typography>
                                 <TextField value={filter} onChange={onChangeFilter} disabled={!opsData.started} variant='standard' placeholder='Filter...'/>
                             </Stack>
                         }/>
-                        <CardContent sx={{backgroundColor:'#f0f0f0'}}>
+                        <CardContent sx={{overflowY:'auto'}}>
                             {
                                 opsData.scopedObjects.filter(so => so.namespace.includes(filter) || so.pod.includes(filter) || so.container.includes(filter)).map( (scopedObject,index) => {
                                 return (
@@ -402,9 +403,9 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                         </CardContent>
                     </Card>
                     
-                    <Card sx={{width:'40%'}}>
-                        <CardHeader sx={{border:0, borderBottom:1, borderStyle:'solid', borderColor: 'divider', backgroundColor:'#e0e0e0'}} title={<>XTerm</>}></CardHeader>
-                        <CardContent sx={{backgroundColor:'#f0f0f0'}}>
+                    <Card sx={{ width: '40%', display: 'flex', flexDirection: 'column', maxHeight: '100%' }}>
+                        <CardHeader title={<>XTerm</>}></CardHeader>
+                        <CardContent sx={{overflowY:'auto'}}>
                             { opsData.terminalManager.terminals.size===0 &&
                                 <>You have no open terminals.</>
                             }

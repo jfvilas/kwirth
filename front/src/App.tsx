@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 
 // material & icons
-import { Alert, AppBar, Box, Drawer, IconButton, Snackbar, SnackbarCloseReason, Stack, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
+import { Alert, AppBar, Box, createTheme, CssBaseline, Drawer, FormControlLabel, IconButton, PaletteMode, Snackbar, SnackbarCloseReason, Stack, Switch, Tab, Tabs, ThemeProvider, Toolbar, Tooltip, Typography } from '@mui/material'
 import { Settings as SettingsIcon, Menu, Person, Home, Notifications, NotificationsActive } from '@mui/icons-material'
 
 // model
@@ -57,6 +57,99 @@ interface IAppProps {
 
 const App: React.FC<IAppProps> = (props:IAppProps) => {
     let backendUrl = props.backendUrl
+    
+    const [mode, setMode] = useState<PaletteMode>('light');
+    // Use memo for not recalc theme on every render
+    const theme = useMemo( () => createTheme({
+        cssVariables: true,
+        palette: { mode },
+        components: {
+            MuiCardHeader: {
+                styleOverrides: {
+                    root: ({ theme }) => ({
+                        backgroundColor: theme.palette.mode === 'dark' 
+                            ? theme.palette.grey[900] 
+                            : theme.palette.grey[100],
+                        borderBottom: `1px solid ${theme.palette.divider}`,
+                    })
+                }
+            },
+
+            MuiPaper: {
+                styleOverrides: {
+                    root: ({ theme }) => ({
+                        // Eliminamos el overlay blanco de elevación en modo oscuro
+                        backgroundImage: 'none !important', 
+                        // Si es modo oscuro, usamos tu gris oscuro de las cards
+                        backgroundColor: theme.palette.mode === 'dark' 
+                            ? theme.palette.grey[900] 
+                            : theme.palette.background.paper,
+                    }),
+                },
+            },
+
+            MuiDialog: {
+                styleOverrides: {
+                    root: ({ theme }) => ({
+                        border: '1px',
+                        borderColor: '#333',
+                        borderStyle: 'solid',
+                    }),        
+                    paper: ({ theme }) => ({
+                        // Esto quita el filtro blanco que MUI pone en modo oscuro por la elevación
+                        backgroundImage: 'none !important',
+                        // Opcional: si quieres que el fondo de TODO el diálogo sea negro puro o gris oscuro
+                        backgroundColor: theme.palette.mode === 'dark' ? '#121212' : '#fff',
+                    }),
+                },
+            },
+
+            MuiDialogTitle: {
+                styleOverrides: {
+                    root: ({ theme }) => ({
+                        // Usamos un selector más fuerte para asegurar que gane al estilo base
+                        '&.MuiDialogTitle-root': {
+                            backgroundColor: theme.palette.mode === 'dark' 
+                                ? theme.palette.grey[900] 
+                                : theme.palette.grey[100],
+                            backgroundImage: 'none !important', // Esto quita el brillo gris claro
+                            borderBottom: `1px solid ${theme.palette.divider}`,
+                            paddingTop: theme.spacing(1),
+                            paddingBottom: theme.spacing(1),
+                            color: theme.palette.text.primary,
+                        }
+                    }),
+                },
+            },
+
+            MuiDialogContent: {
+                styleOverrides: {
+                    root: ({ theme }) => ({
+                        // Si usas el prop 'dividers', esto controla su color
+                        '&.MuiDialogContent-dividers': {
+                            borderColor: theme.palette.divider,
+                        },
+                    }),
+                },
+            },
+
+            MuiDialogActions: {
+                styleOverrides: {
+                    root: ({ theme }) => ({
+                        backgroundColor: theme.palette.mode === 'dark' 
+                            ? theme.palette.grey[900] 
+                            : theme.palette.grey[50], // Un gris muy ligero en Light
+                        borderTop: `1px solid ${theme.palette.divider}`,
+                        padding: theme.spacing(1.5, 2),
+                    }),
+                },
+            },
+        },
+    }), [mode])
+
+    const toggleColorMode = () => {
+        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'))
+    }
 
     const [frontChannels] = useState<Map<string, TChannelConstructor>>(new Map())
     const [user, setUser] = useState<IUser>()
@@ -68,12 +161,11 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const [msgBox, setMsgBox] =useState(<></>)
 
     const [clusters, setClusters] = useState<Cluster[]>([])
-    // const clustersRef = useRef(clusters)
-    // clustersRef.current = clusters
     const [selectedClusterName, setSelectedClusterName] = useState<string>()
 
     const tabs = useRef<ITabObject[]>([])
     const selectedTab = useRef<ITabObject>()
+    const [ fullscreenTab, setFullscreenTab ] = useState<ITabObject|undefined>(undefined)
     const [channelMessageAction, setChannelMessageAction] = useState<IChannelMessageAction>({action: EChannelRefreshAction.NONE})
 
     const userSettingsRef = useRef<Settings>(new Settings())
@@ -133,14 +225,34 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         frontChannels.set('magnify', MagnifyChannel)
     },[])
 
+    useEffect(() => {
+        const previousFocus = document.activeElement as HTMLElement
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            event.stopPropagation()
+            if (event.key === 'F11' && event.ctrlKey && !event.altKey && !event.shiftKey) {
+                setFullscreenTab( (prev) => {
+                    if (prev!==undefined) 
+                        return undefined
+                    else {
+                        if (selectedTab.current && selectedTab.current.channelStarted) return selectedTab.current
+                    }
+                })
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown, true)
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown, true)
+            previousFocus?.focus()
+        }
+    }, [])
+
     useEffect ( () => {
         // only when user logs on / off
         if (!logged) return
 
-        //+++if (clustersRef.current.length === 0) getClusters()
         getClusters()
-            
-        //if (!userSettingsRef.current || userSettingsRef.current === null) readLoggedUserSettings() 
         readLoggedUserSettings() 
 
         // load user tabs
@@ -404,6 +516,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         if (newTab.channel.requiresClusterInfo()) newTab.channelObject.clusterInfo = cluster.clusterInfo
         if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
         if (newTab.channel.requiresFrontChannels()) newTab.channelObject.frontChannels = frontChannels
+        if (newTab.channel.requiresPaletteChange()) newTab.channelObject.setPaletteChange = (palette:string) => setMode(palette as 'light'|'dark')
         if (newTab.channel.requiresUserSettings()) {
             newTab.channelObject.readChannelUserPreferences = readChannelUserPreferences
             newTab.channelObject.writeChannelUserPreferences = writeChannelUserPreferences
@@ -531,7 +644,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         if (!tab.headerEl) return
         let colorTable:IColors = TABBRIGHTCOLORS
         if (selectedTab.current === tab) colorTable = TABBASECOLORS
-        if (tab.channelStarted) {  //+++ maybe channel is started but communicartions interrupted, so we shoould set to red/salmon
+        if (tab.channelStarted) {  //+++ maybe channel is started but communicartions interrupted, so we should set to red/salmon
             if (tab.channelPaused) {
                 tab.headerEl.style.backgroundColor = colorTable.pause
             }
@@ -953,6 +1066,9 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                         channelId: selectedTab.current.channel.channelId
                     })
                 }
+                break
+            case MenuTabOption.FullScreen:
+                setFullscreenTab(selectedTab.current)
                 break
             case MenuTabOption.ChannelStart:
                 onClickChannelStart()
@@ -1410,99 +1526,109 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     }
 
     return (
-        <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
-            <AppBar position='sticky' elevation={0} sx={{ zIndex: 99, height:'64px' }}>
-                <Toolbar>
-                    <IconButton size='large' edge='start' color='inherit' sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
-                    <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth - {clusters.find(c => c.name === selectedClusterName)?.clusterInfo?.name}</Typography>
-                    <Tooltip title={<div style={{textAlign:'center'}}>{currentWorkspaceName}<br/><br/>{currentWorkspaceDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
-                        <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentWorkspaceName}</Typography>
-                    </Tooltip>
-                    <Tooltip title={<>Notifications</>}>
-                        {notifications.length>0? 
-                            <IconButton onClick={showNotifications}>
-                                <NotificationsActive sx={{color:notifications.some(n => n.level === ENotifyLevel.ERROR)? 'red':notifications.some(n => n.level === ENotifyLevel.WARNING)?'orange':'lightgray'}}/>
-                            </IconButton>
-                            :
-                            <IconButton onClick={showNotifications}>
-                                <Notifications sx={{color:'white'}}/>
-                            </IconButton>
-                        }
-                    </Tooltip>
-                    <Typography sx={{mr:2}}></Typography>
-                    <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user && parseResources(user.accessKey.resources).map(r=>r.scopes).join(',')}]</div>} sx={{ mr:2 }} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -6]}}]}}}>
-                        <Person/>
-                    </Tooltip>
-                </Toolbar>
-            </AppBar>
-
-            <Drawer sx={{ flexShrink: 0, '& .MuiDrawer-paper': {mt: '64px'} }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
-                <Stack direction={'column'}>
-                    <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} selectedClusterName={selectedClusterName} hasClusterScope={hasClusterScope()}/>
-                    <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>
-                </Stack>
-            </Drawer>
-
-            <ResourceSelector clusters={clusters} backChannels={backChannels} onAdd={(res) => onResourceSelectorAdd(res, false, undefined)} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }} tabs={tabs.current} data-refresh={channelMessageAction} resourceSelected={resourceSelected}/>
-            
-            {/* <Stack direction={'column'} display={'flex'} flexDirection={'column'} sx={{minHeight:0, height:'100%', flexGrow:1}}> */}
-            <Stack direction={'column'} display={'flex'} flexDirection={'column'} sx={{minHeight:0, height:'calc(100vh - 130px)', flexGrow:1}}>
-                <Stack direction={'row'} alignItems={'end'} sx={{mb:1, borderBottom: 1, borderColor: 'divider'}}>                    
-                    <Tabs value={selectedTab.current? false : 0} sx={{minWidth:'100px'}}>
-                        <Tab key={'0'} label={<Home/>} value={0} onClick={onSelectHome} sx={{height:'60px'}}/>
-                    </Tabs>
-                    { tabs.current.length>0 &&
-                        <Tabs value={selectedTab.current? tabs.current.indexOf(selectedTab.current) : false} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' TabIndicatorProps={{ style: { display: 'none' } }} sx={{ml:"-16px"}}>
-                            {   tabs.current.map((tab:ITabObject, index) => {
-                                    return <Tab component='span' ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={
-                                                tab === selectedTab.current ? 
-                                                    <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>
-                                                    :
-                                                    <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{
-                                                        borderRadius: '10px 10px 0 0',
-                                                        backgroundColor:'#ebebeb',
-                                                        '& .MuiTouchRipple-root': {
-                                                            borderTopLeftRadius: '8px',
-                                                            borderTopRightRadius: '8px',
-                                                        }}}/>
-                                })
+        <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
+                { !fullscreenTab &&
+                    <AppBar position='sticky' elevation={0} sx={{ zIndex: 99, height:'64px' }}>
+                    <Toolbar>
+                        <IconButton size='large' edge='start' color='inherit' sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
+                        <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth - {clusters.find(c => c.name === selectedClusterName)?.clusterInfo?.name}</Typography>
+                        <Tooltip title={<div style={{textAlign:'center'}}>{currentWorkspaceName}<br/><br/>{currentWorkspaceDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
+                            <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentWorkspaceName}</Typography>
+                        </Tooltip>
+                        <Tooltip title={<>Notifications</>}>
+                            {notifications.length>0? 
+                                <IconButton onClick={showNotifications}>
+                                    <NotificationsActive sx={{color:notifications.some(n => n.level === ENotifyLevel.ERROR)? 'red':notifications.some(n => n.level === ENotifyLevel.WARNING)?'orange':'lightgray'}}/>
+                                </IconButton>
+                                :
+                                <IconButton onClick={showNotifications}>
+                                    <Notifications sx={{color:'white'}}/>
+                                </IconButton>
                             }
-                        </Tabs>
+                        </Tooltip>
+                        <FormControlLabel control={<Switch size='small' onClick={toggleColorMode} checked={mode==='dark'}/>} label={mode === 'light' ? 'light' : 'dark'} labelPlacement='bottom'/>
+                        <Tooltip title={<div style={{textAlign:'center'}}>{user?.id}<br/>{user?.name}<br/>[{user && parseResources(user.accessKey.resources).map(r=>r.scopes).join(',')}]</div>} sx={{ mr:2 }} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -6]}}]}}}>
+                            <Person/>
+                        </Tooltip>
+                    </Toolbar>
+                    </AppBar>
+                }
+
+                { !fullscreenTab &&
+                    <Drawer sx={{ flexShrink: 0, '& .MuiDrawer-paper': {mt: '64px'} }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
+                        <Stack direction={'column'}>
+                            <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} selectedClusterName={selectedClusterName} hasClusterScope={hasClusterScope()}/>
+                            <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>
+                        </Stack>
+                    </Drawer>
+                }
+
+                { !fullscreenTab && 
+                    <ResourceSelector clusters={clusters} backChannels={backChannels} onAdd={(res) => onResourceSelectorAdd(res, false, undefined)} onChangeCluster={onChangeCluster} sx={{ mt:1, ml:1 }} tabs={tabs.current} data-refresh={channelMessageAction} resourceSelected={resourceSelected}/>
+                }
+                
+                <Stack direction={'column'} display={'flex'} flexDirection={'column'} sx={{minHeight:0, height:'100%', flexGrow:1}}>
+                    { !fullscreenTab && 
+                        <Stack direction={'row'} alignItems={'end'} sx={{borderBottom: 1, borderColor: 'divider'}}>                    
+                            <Tabs value={selectedTab.current? false : 0} sx={{minWidth:'100px'}}>
+                                <Tab key={'0'} label={<Home/>} value={0} onClick={onSelectHome} sx={{height:'60px'}}/>
+                            </Tabs>
+                            { tabs.current.length>0 &&
+                                <Tabs value={selectedTab.current? tabs.current.indexOf(selectedTab.current) : false} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' TabIndicatorProps={{ style: { display: 'none' } }} sx={{ml:"-16px"}}>
+                                    {   tabs.current.map((tab:ITabObject, index) => {
+                                            return <Tab component='span' ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={
+                                                        tab === selectedTab.current ? 
+                                                            <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>
+                                                            :
+                                                            <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{
+                                                                borderRadius: '10px 10px 0 0',
+                                                                backgroundColor:'#ebebeb',
+                                                                '& .MuiTouchRipple-root': {
+                                                                    borderTopLeftRadius: '8px',
+                                                                    borderTopRightRadius: '8px',
+                                                                }}}/>
+                                        })
+                                    }
+                                </Tabs>
+                            }
+                            <Typography sx={{ flexGrow: 1 }}></Typography>
+                        </Stack>
                     }
-                    <Typography sx={{ flexGrow: 1 }}></Typography>
+                    { selectedTab.current &&
+                        <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow:1, height:'100%', minHeight:0 }}>
+                            { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs.current} selectedTab={selectedTab.current} selectedTabIndex={selectedTab.current? tabs.current.indexOf(selectedTab.current) : -1} backChannels={backChannels}/>}
+                            <TabContent key={selectedTab.current?.name} channel={selectedTab.current?.channel} channelObject={selectedTab.current?.channelObject} />
+                        </Box>
+                    }
+                    { !selectedTab.current && 
+                        <Box sx={{ display: 'flex', flexDirection: 'column', height:'100%', minHeight:0 }}>
+                            <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onHomepageSelectTab={onHomepageSelectTab} onRestoreTabParameters={onHomepageRestoreParameters} onSelectWorkspace={onHomepageSelectWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces}/>
+                        </Box>
+                    }
+
                 </Stack>
-                { selectedTab.current &&
-                    <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow:1, height:'100%', minHeight:0 }}>
-                        { anchorMenuTab && <MenuTab onClose={() => setAnchorMenuTab(null)} optionSelected={menuTabOptionSelected} anchorMenuTab={anchorMenuTab} tabs={tabs.current} selectedTab={selectedTab.current} selectedTabIndex={selectedTab.current? tabs.current.indexOf(selectedTab.current) : -1} backChannels={backChannels}/>}
-                        <TabContent key={selectedTab.current?.name} channel={selectedTab.current?.channel} channelObject={selectedTab.current?.channelObject} />
-                    </Box>
-                }
-                { !selectedTab.current && 
-                    <Box sx={{ display: 'flex', flexDirection: 'column', height:'100%', minHeight:0 }}>
-                        <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onHomepageSelectTab={onHomepageSelectTab} onRestoreTabParameters={onHomepageRestoreParameters} onSelectWorkspace={onHomepageSelectWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces}/>
-                    </Box>
-                }
 
-            </Stack>
-
-            { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs.current} oldname={selectedTab.current?.name}/> }
-            { showSaveWorkspace && <SaveWorkspace onClose={onSaveWorkspaceClosed} name={currentWorkspaceName} description={currentWorkspaceDescription} values={workspaces} /> }
-            { showSelectWorkspace && <SelectWorkspace onSelect={onSelectWorkspaceClosed} values={workspaces} action={selectWorkspaceAction}/> }
-            { showManageClusters && <ManageClusters onClose={onManageClustersClosed} clusters={clusters} notify={notify}/> }
-            { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
-            { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
-            { showChannelSetup() }
-            { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={userSettingsRef.current} /> }
-            { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.kwirthData?.metricsInterval} /> }
-            { showSettingsTrivy && selectedClusterName && <SettingsTrivy onClose={onSettingsTrivyClosed} cluster={clusters.find(c => c.name===selectedClusterName)!}/> }
-            { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
-            { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
-            <Snackbar open={notifySnackbarOpen} autoHideDuration={3000} anchorOrigin={{vertical: 'bottom', horizontal:'center'}} onClose={onNotifySnackbarClose}>
-                <Alert severity={notifySnackbarLevel} variant="filled" onClose={onNotifySnackbarClose} sx={{ width: '100%' }}>{notifySnackbarMessage}</Alert>
-            </Snackbar>
-            { msgBox }
-            { notificationMenuAnchorEl && <NotificationMenu open={true} anchorEl={notificationMenuAnchorEl} messages={notifications} onClose={() => setNotificationMenuAnchorEl(null)} onDelete={onMessageDelete} onClear={() => {setNotifications([]); setNotificationMenuAnchorEl(null)}} channels={frontChannels}/>}
-        </SessionContext.Provider>
+                { showRenameTab && <RenameTab onClose={onRenameTabClosed} tabs={tabs.current} oldname={selectedTab.current?.name}/> }
+                { showSaveWorkspace && <SaveWorkspace onClose={onSaveWorkspaceClosed} name={currentWorkspaceName} description={currentWorkspaceDescription} values={workspaces} /> }
+                { showSelectWorkspace && <SelectWorkspace onSelect={onSelectWorkspaceClosed} values={workspaces} action={selectWorkspaceAction}/> }
+                { showManageClusters && <ManageClusters onClose={onManageClustersClosed} clusters={clusters} notify={notify}/> }
+                { showApiSecurity && <ManageApiSecurity onClose={() => setShowApiSecurity(false)} /> }
+                { showUserSecurity && <ManageUserSecurity onClose={() => setShowUserSecurity(false)} /> }
+                { showChannelSetup() }
+                { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={userSettingsRef.current} /> }
+                { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.kwirthData?.metricsInterval} /> }
+                { showSettingsTrivy && selectedClusterName && <SettingsTrivy onClose={onSettingsTrivyClosed} cluster={clusters.find(c => c.name===selectedClusterName)!}/> }
+                { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
+                { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
+                <Snackbar open={notifySnackbarOpen} autoHideDuration={3000} anchorOrigin={{vertical: 'bottom', horizontal:'center'}} onClose={onNotifySnackbarClose}>
+                    <Alert severity={notifySnackbarLevel} variant="filled" onClose={onNotifySnackbarClose} sx={{ width: '100%' }}>{notifySnackbarMessage}</Alert>
+                </Snackbar>
+                { msgBox }
+                { notificationMenuAnchorEl && <NotificationMenu open={true} anchorEl={notificationMenuAnchorEl} messages={notifications} onClose={() => setNotificationMenuAnchorEl(null)} onDelete={onMessageDelete} onClear={() => {setNotifications([]); setNotificationMenuAnchorEl(null)}} channels={frontChannels}/>}
+            </SessionContext.Provider>
+        </ThemeProvider>
     )
 }
 

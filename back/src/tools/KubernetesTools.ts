@@ -1,4 +1,4 @@
-import { BatchV1Api, CoreV1Api, NetworkingV1Api, V1Eviction, V1Job } from '@kubernetes/client-node'
+import { AppsV1Api, BatchV1Api, CoreV1Api, NetworkingV1Api, V1Eviction, V1Job } from '@kubernetes/client-node'
 import { ClusterInfo } from '../model/ClusterInfo'
 const yaml = require('js-yaml')
 
@@ -394,6 +394,71 @@ async function podEvict (coreApi: CoreV1Api, namespace: string, name:string): Pr
         console.error('Error evicting:', err.response?.body?.message || err.message);
     }
 }
+async function podWork (coreApi: CoreV1Api, work: string): Promise<string|undefined> {
+    const podDefinition = {
+        metadata: {
+            name: 'kwirth-ubuntu-pod',
+        },
+        spec: {
+            containers: [
+                {
+                    name: 'kwirth-container',
+                    image: 'ubuntu:latest',
+                    command: ['sleep', 'infinity']
+                },
+            ],
+        },
+    }
+    switch (work) {
+        case 'ubuntu':
+            break
+        case 'alpine':
+            podDefinition.metadata.name = 'kwirth-alpine-pod'
+            podDefinition.spec.containers[0].image = 'alpine:latest'
+            break
+        case 'dnsutils':
+            podDefinition.metadata.name = 'kwirth-dnsutils-pod'
+            podDefinition.spec.containers[0].image = 'tutum/dnsutils'
+            break
+        case 'jubuntu':
+            podDefinition.metadata.name = 'kwirth-jubuntu-pod'
+            podDefinition.spec.containers[0].image = 'jfvilasoutlook/jubuntu'
+            break
+        default:
+            return undefined
+    }
+
+    try {
+        const response = await coreApi.createNamespacedPod({
+            namespace:'default',
+            body:podDefinition
+        })
+
+        let isRunning = false
+        while (!isRunning) {
+            try {
+                const res = await coreApi.readNamespacedPodStatus({
+                    name:podDefinition.metadata.name,
+                    namespace:'default'
+                });
+                const phase = res.status?.phase;                
+                if (phase === 'Running') {
+                    isRunning = true
+                    break
+                }
+            }
+            catch (e) {
+                console.log("Waiting for pod...");
+            }
+            await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+        return podDefinition.metadata.name
+    }
+    catch (err: any) {
+        console.error('Error evicting:', err.response?.body?.message || err.message);
+    }
+    return undefined
+}
 
 async function setIngressClassAsDefault (networkApi: NetworkingV1Api, name:string) {
     const patch = {
@@ -412,4 +477,65 @@ async function setIngressClassAsDefault (networkApi: NetworkingV1Api, name:strin
     }        
 }
 
-export { applyResource, applyAllResources, deleteAllResources, nodeDrain, nodeCordon, nodeUnCordon, throttleExcute, cronJobStatus, cronJobTrigger, podEvict, setIngressClassAsDefault, restartController, scaleController }
+async function imageDelete (appsApi:AppsV1Api, imageName:string) {
+    // +++ finish implementation
+    /*
+        chroot /host /usr/local/bin/crictl rmi ${imageName} && sleep 30
+
+        /run/containerd/containerd.sock
+        /run/k3s/containerd/containerd.sock
+        /var/snap/microk8s/common/run/containerd.sock
+        /run/containerd/containerd.sock (dentro del contenedor nodo)
+        /run/dockershim.sock
+
+        export CONTAINER_RUNTIME_ENDPOINT=unix:///run/containerd/containerd.sock    
+    */
+    const daemonSet = {
+        metadata: {
+            name: 'kwirth-image-purger',
+            labels: { app: 'kwirth-image-purger' }
+        },
+        spec: {
+            selector: { matchLabels: { app: 'kwirth-image-purger' } },
+            template: {
+                metadata: { labels: { app: 'kwirth-image-purger' } },
+                spec: {
+                    containers: [{
+                        name: 'worker',
+                        image: 'rancher/crictl:v1.19.0',
+                        command: ["/bin/sh", "-c"],
+                        args: [`chroot /host /usr/local/bin/crictl rmi ${imageName} && sleep 30`],
+                        securityContext: { privileged: true },
+                        volumeMounts: [
+                            { name: 'host-root', mountPath: '/host' },
+                            { name: 'cri-socket', mountPath: '/run/containerd/containerd.sock' }
+                        ]
+                    }],
+                    volumes: [
+                        { name: 'host-root', hostPath: { path: '/' } },
+                        { name: 'cri-socket', hostPath: { path: '/run/containerd/containerd.sock' } }
+                    ],
+                    hostPID: true
+                }
+            }
+        }
+    }
+
+    try {
+        let response = await appsApi.createNamespacedDaemonSet({
+            namespace: 'default',
+            body: daemonSet
+        })
+        console.log(`DaemonSet created for deleting image '${imageName}'`);
+        await new Promise((resolve) => setTimeout(resolve, 30000))
+        let response2 = await appsApi.deleteNamespacedDaemonSet({
+            namespace: 'default',
+            name: 'kwirth-image-purger'
+        })
+    }
+    catch (err:any) {
+        console.error('Error:', err.response ? err.response.body : err);
+    }
+}
+
+export { applyResource, applyAllResources, deleteAllResources, nodeDrain, nodeCordon, nodeUnCordon, throttleExcute, cronJobStatus, cronJobTrigger, podEvict, setIngressClassAsDefault, restartController, scaleController, imageDelete, podWork }

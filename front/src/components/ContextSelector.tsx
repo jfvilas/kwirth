@@ -1,7 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { Backdrop, Box, Button, Checkbox, CircularProgress, Dialog, DialogContent, DialogTitle, FormControlLabel, IconButton, List, ListItemButton, Stack, Tab, Tabs, TextField, Tooltip, Typography} from '@mui/material'
 import { SessionContext, SessionContextType } from '../model/SessionContext'
-import { useAsync } from 'react-use'
 import { InputBox } from '../tools/FrontTools'
 import { Delete } from '@mui/icons-material'
 import { AccessKey } from '@jfvilas/kwirth-common'
@@ -66,26 +65,6 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
         };
     }, [props.isElectron, backendUrl])
 
-
-    // useAsync(async () => {
-    //     let resp = await fetch(backendUrl + '/electron/kubeconfig')
-    //     let contexts = await resp.json() as IContext[]
-
-    //     setLocalContexts(contexts)
-    //     update(contexts)
-    //     if (props.isElectron) intId.current = setInterval (update, 5000, contexts)
-
-    //     let rc = localStorage.getItem('remoteClusters')
-    //     if (rc) setRemoteClusters(JSON.parse(rc))
-        
-    //     return () => {
-    //         console.log()
-    //         if (intId.current)
-    //             clearInterval(intId.current)
-    //         else
-    //             console.log('cannot clear interval', intId.current)
-    //     }
-    // }, [])
 
     const updateContextsStatus = async (contexts: IContext[], onUpdate: (updatedCtx: IContext) => void) => {
         const promises = contexts.map(async (context) => {

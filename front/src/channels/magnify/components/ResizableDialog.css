@@ -1,0 +1,135 @@
+.react-resizable {
+  position: relative;
+}
+
+.react-resizable-handle {
+  background: none !important;
+}
+
+#draggable-dialog-title {
+  user-select: none;
+}
+
+.MuiDialogContent-root::-webkit-scrollbar {
+  width: 8px;
+}
+.MuiDialogContent-root::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+.MuiDialogContent-root::-webkit-scrollbar-thumb:hover {
+  background: #bbb;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* .react-resizable-handle {
+  transition: none !important;
+}
+.react-resizable-handle {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  z-index: 2000;
+}
+.react-resizable-handle-se { right: 0; bottom: 0; cursor: se-resize; }
+.react-resizable-handle-sw { left: 0; bottom: 0; cursor: sw-resize; } */
+
+
+
+
+
+
+
+
+
+/* .react-resizable {
+  position: relative;
+}
+
+.react-resizable-handle-se {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+  z-index: 1000;
+}
+
+.react-resizable-handle-sw {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  left: 0;
+  cursor: sw-resize;
+  z-index: 1000;
+}
+
+.react-resizable-handle-se::after,
+.react-resizable-handle-sw::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-bottom: 2px solid #999;
+}
+
+.react-resizable-handle-se::after {
+  right: 4px;
+  bottom: 4px;
+  border-right: 2px solid #999;
+}
+
+.react-resizable-handle-sw::after {
+  left: 4px;
+  bottom: 4px;
+  border-left: 2px solid #999;
+}
+ */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* .react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  background: bottomRightIcon;
+  cursor: se-resize;
+  z-index: 1000;
+}
+
+.react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
+  border-right: 2px solid #999;
+  border-bottom: 2px solid #999;
+} */

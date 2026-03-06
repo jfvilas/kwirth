@@ -3,11 +3,11 @@ import { EInstanceConfigView, InstanceConfigViewEnum } from "@jfvilas/kwirth-com
 import { NodeMetrics } from "../model/INodeMetrics"
 
 export interface AssetData {
-    podNode:string
-    podNamespace:string
-    podGroup:string
-    podName:string 
-    containerName:string
+    podNode: string
+    podNamespace: string
+    podGroup?: string
+    podName: string 
+    containerName: string
 }
 
 export interface MetricDefinition {
@@ -503,7 +503,6 @@ export class MetricsTools {
                 return  { value, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
             }
             else {
-                console.log(`Metric '${metricName}' not found on node ${node.name}.`)
                 return  { value: 0, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
             }    
         }
@@ -517,7 +516,6 @@ export class MetricsTools {
                 if (podValue)
                     return  { value: podValue, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
                 else {
-                    //+++ console.log(`Pod metric value not found for: ${asset.podNamespace + '/' + asset.podName+'/'+requestedMetricName}`)
                     return  { value: 0, timestamp: clusterInfo.nodes.get(node.name)?.timestamp }
                 }
             }

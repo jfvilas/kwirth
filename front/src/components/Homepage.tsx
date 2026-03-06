@@ -14,6 +14,7 @@ import { EInstanceConfigView } from '@jfvilas/kwirth-common'
 // svg optimizer: https://jakearchibald.github.io/svgomg/ (optmizes size and removes namespaces)
 // Open source icons: https://iconbuddy.com/
 // transform svg to JSX https://svg2jsx.com/
+// remove background https://www.iloveimg.com/remove-background
 
 interface IProps {
     cluster:Cluster|undefined,
@@ -137,8 +138,8 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     const drawTabCard = (tabList:ITabSummary[], listType:EListType) => {
         return <>
             <Card>
-                <CardHeader title={`${listType=== EListType.LAST? 'Last':'Fav'} tabs`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
-                <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>                                    
+                <CardHeader title={`${listType=== EListType.LAST? 'Last':'Fav'} tabs`} sx={{borderBottom:1, borderColor:'divider'}}/>
+                    <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px' }}>
                     {
                         tabList.map(tab => {
                             let channelIcon = <Box sx={{minWidth:'24px'}}/>
@@ -189,7 +190,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                 
                                 { listType !== EListType.FAV && 
                                     <IconButton onClick={() => toFavTabs(tab)} disabled={disabled}>
-                                        <Star sx={{ color: 'gray' }} /> 
+                                        <Star/>
                                     </IconButton>
                                 }
                                 <IconButton onClick={() => deleteFromTabsList(tabList, tab)}>
@@ -206,19 +207,19 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     const drawWorkspaceCard = (workspaceList:IWorkspaceSummary[], listType:EListType) => {
         return <>
             <Card>
-                <CardHeader title={`${listType === EListType.LAST? 'Last':'Fav'} workspaces`} sx={{borderBottom:1, borderColor:'divider', backgroundColor:'#e0e0e0'}}/>
-                <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px', backgroundColor:'#f0f0f0'}}>
+                <CardHeader title={`${listType === EListType.LAST? 'Last':'Fav'} workspaces`} sx={{borderBottom:1, borderColor:'divider'}}/>
+                <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px'}}>
                     { workspaceList.map (workspace => {
                         return <Stack key={listType+workspace.name} direction={'row'} spacing={1} alignItems={'baseline'}>
                             <Typography>{workspace.name}</Typography>
-                            <Typography color='gray' fontSize={'12px'}>{workspace.description}</Typography>                            
+                            <Typography fontSize={'12px'}>{workspace.description}</Typography>                            
                             <Typography flexGrow={1}/>
                             <IconButton onClick={() => openWorkspace(workspace)}>
                                 <OpenInBrowser/>
                             </IconButton>
                             { listType !== EListType.FAV && 
                                 <IconButton onClick={() => toFavWorkspaces(workspace)}>
-                                    <Star sx={{ color: 'gray' }} /> 
+                                    <Star/>
                                 </IconButton>
                             }
                             <IconButton onClick={() => deleteFromWorkspacesList(workspaceList, workspace)}>
@@ -320,7 +321,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
     return (
         <Box sx={{ display:'flex', flexDirection:'column', ml:1, mr:1}}>
             <Card sx={{width:'95%', alignSelf:'center', marginTop:'8px', transition: 'all 0.3s ease'}}>
-                <CardHeader sx={{borderBottom:(cardExpanded?1:0), borderColor:'divider', backgroundColor:'#e0e0e0'}}
+                <CardHeader sx={{borderBottom:(cardExpanded?1:0), borderColor:'divider'}}
                     title={<>
                         {cardExpanded && <Typography variant="h6">Cluster details</Typography>}
                         {!cardExpanded && <Stack direction={'row'}>
@@ -336,9 +337,9 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                         const channelClass = props.frontChannels.get(c.trim())
                                         if (channelClass) {
                                             let icon = new channelClass()!.getChannelIcon()
-                                            let color = '#333333'
-                                            if ( ! props.clusters.find(c => c.name===props.cluster!.name)!.kwirthData!.channels.some(ch => ch.id === c.trim())) color = '#b4b4b4'
-                                            let newElement = React.cloneElement(icon, { fontSize: 'small', sx:{ color } })
+                                            const isChannelActive = props.clusters.find(c => c.name === props.cluster!.name)!.kwirthData!.channels.some(ch => ch.id === c.trim())
+                                            const colorToken = isChannelActive ? 'text.primary' : 'text.disabled';
+                                            let newElement = React.cloneElement(icon, { fontSize: 'small', sx:{ color:colorToken } })
                                             return <Tooltip key={ci} title={c.trim()}>{newElement}</Tooltip>
                                         }
                                         return <></>
@@ -381,7 +382,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                     }
                 />
                 <Collapse in={cardExpanded} timeout="auto" unmountOnExit>
-                    <CardContent sx={{backgroundColor:'#f0f0f0'}}>
+                    <CardContent>
                         <Stack direction={'row'} spacing={2} sx={{mt:'4px'}}>
                             <Stack width={'30%'}> 
                                 <Typography fontSize={20}><b>Context</b></Typography>

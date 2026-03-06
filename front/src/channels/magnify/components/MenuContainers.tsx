@@ -1,35 +1,37 @@
+import { IFileObject } from '@jfvilas/react-file-manager'
 import { Box, Divider, Menu, MenuItem, MenuList, Stack, Typography } from '@mui/material'
 import React from 'react'
 
-
 interface IProps {
-    f: any
+    file: IFileObject|undefined
+    channel: string
     onClose?:() => void
-    onContainerSelected: (container:string) => void
+    onContainerSelected: (channel:string, file:IFileObject, container:string) => void
     includeAllContainers: boolean
     anchorParent: Element
 }
 
-const ContainersMenu: React.FC<IProps> = (props:IProps) => {
-    if (props.f.data.origin.status.containerStatuses.length===1) {
-        props.onContainerSelected(props.f.data.origin.status.containerStatuses[0].name)
+const MenuContainers: React.FC<IProps> = (props:IProps) => {
+    if (!props.file || !props.file.data.origin.status.containerStatuses) return <></>
+    if (props.file.data.origin.status.containerStatuses.length===1) {
+        props.onContainerSelected(props.channel, props.file, props.file.data.origin.status.containerStatuses[0].name)
         return <></>
     }
 
     return <Menu id='menu-logs' anchorEl={props.anchorParent} open={Boolean(props.anchorParent)} onClose={props.onClose}>
         <MenuList dense sx={{minWidth: 120}}>
             {
-                props.f.data.origin.status.containerStatuses.map ( (cs:any) =>  {
+                props.file.data.origin.status.containerStatuses.map ( (cs:any) =>  {
 
                     let color='orange'
                     if (cs.started) {
                         color='green'
-                        if (props.f.data.origin.metadata.deletionTimestamp) color = 'blue'
+                        if (props.file && props.file.data.origin.metadata.deletionTimestamp) color = 'blue'
                     }
                     else {
                         if (cs.state.terminated) color = 'gray'
                     }
-                    return <MenuItem key={cs.name} onClick={() => props.onContainerSelected(cs.name)}>
+                    return <MenuItem key={cs.name} onClick={() => props.onContainerSelected(props.channel, props.file!, cs.name)}>
                         <Stack direction={'row'} alignItems={'center'}>
                             <Box sx={{ width: '10px', height: '10px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>
                             <Typography>&nbsp;{cs.name}</Typography>
@@ -40,7 +42,7 @@ const ContainersMenu: React.FC<IProps> = (props:IProps) => {
             { props.includeAllContainers && 
                 <>
                     <Divider/>
-                    <MenuItem key={'all'} onClick={() => props.onContainerSelected('*all')}>
+                    <MenuItem key={'all'} onClick={() => props.onContainerSelected(props.channel, props.file!, '*all')}>
                         <Typography>All containers</Typography>
                     </MenuItem>
                 </>
@@ -49,4 +51,4 @@ const ContainersMenu: React.FC<IProps> = (props:IProps) => {
     </Menu>
 }
 
-export { ContainersMenu }
+export { MenuContainers }

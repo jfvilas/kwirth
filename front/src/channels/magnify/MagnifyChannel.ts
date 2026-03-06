@@ -9,7 +9,7 @@ import { v4 as uuid } from 'uuid'
 import { ENotifyLevel } from '../../tools/Global'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { convertSizeToBytes } from './Tools'
-import { MagnifyUserPreferences } from './MagnifyUserPreferences'
+import { MagnifyUserPreferences } from './components/MagnifyUserPreferences'
 import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 
 interface IMagnifyMessage extends IInstanceMessage {
@@ -28,7 +28,8 @@ interface IMagnifyMessage extends IInstanceMessage {
 
 class MagnifyChannel implements IChannel {
     private setupVisible = false
-    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = (channel:string|undefined, level:ENotifyLevel, message:string) => {}
+    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = () => {}
+    private onPaletteChange: (palette:string) => void = () =>{}
     SetupDialog: FC<ISetupProps> = MagnifySetup
     TabContent: FC<IContentProps> = MagnifyTabContent
     channelId = 'magnify'
@@ -43,6 +44,7 @@ class MagnifyChannel implements IChannel {
     requiresClusterInfo() { return true }
     requiresWebSocket() { return true }
     requiresUserSettings() { return true }
+    requiresPaletteChange() { return true }
     setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
 
     getScope() { return 'magnify$read'}
@@ -52,9 +54,7 @@ class MagnifyChannel implements IChannel {
     setSetupVisibility(visibility:boolean): void { this.setupVisible = visibility }
 
     processChannelMessage(channelObject: IChannelObject, wsEvent: MessageEvent): IChannelMessageAction {
-        // +++
-        // +++ very important: modifying 'files' re-renders, so it is important to decide if it necesary (it depends on current view in file manager)
-        // +++
+        // very important: modifying 'files' re-renders, so it is important to decide if it os necesary (it depends on current view in file manager)
 
         let msg:IMagnifyMessage = JSON.parse(wsEvent.data)
         let magnifyData:IMagnifyData = channelObject.data
@@ -83,6 +83,15 @@ class MagnifyChannel implements IChannel {
                             case EMagnifyCommand.CLUSTERINFO:
                                 let cInfo = JSON.parse(response.data)
                                 magnifyData.clusterInfo = cInfo
+                                break
+                            case EMagnifyCommand.POD:
+                                let podData = JSON.parse(response.data) as string[]
+                                switch(podData[0]) {
+                                    case 'work':
+                                        //+++ response should be received when pod is in running phase
+                                        // so we will launch shell from 'poddata[1]'
+                                        break
+                                }
                                 break
                             case EMagnifyCommand.LIST:
                             case EMagnifyCommand.LISTCRD:
@@ -270,7 +279,6 @@ class MagnifyChannel implements IChannel {
 
     launchTasks = (channelObject:IChannelObject) => {
 
-        // cluster usage +++ maybe nodemetrics is enough to get this data
         this.tasks.push (window.setInterval( (c:IChannelObject) => {
             fetch(`${c.clusterUrl}/metrics/usage/cluster`, addGetAuthorization(c.accessString!)).then ( (result) => {
                 result.json().then ( (data) => {
@@ -427,7 +435,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadSecret(magnifyData:IMagnifyData, obj:any): void {
-        if (obj.metadata.name.startsWith('sh.helm.release.')) return // +++ OPTIMIZE STORAGE
+        if (obj.metadata.name.startsWith('sh.helm.release.')) return  //+++ add option to preferences (this is for optimizing storage)
         obj.apiVersion = 'v1'
         obj.kind = 'Secret'
         this.updateObject(magnifyData, {
@@ -668,8 +676,12 @@ class MagnifyChannel implements IChannel {
                     class: 'Image',
                     data: {
                         size: size,
+                        tag: tag,
                         origin: {
                             kind: 'Image',
+                            metadata: {
+                                name: names[0]
+                            },
                             name: names[0],
                             displayName: names[0],
                             registry,
@@ -1130,6 +1142,9 @@ class MagnifyChannel implements IChannel {
 
     loadApiResource(magnifyData:IMagnifyData, obj:any): void {
         obj.kindName = obj.kind
+        obj.metadata = {
+            name: obj.kind
+        }
         obj.apiVersion = 'v1'
         obj.kind = 'V1APIResource'
         this.updateObject(magnifyData, {
@@ -1179,12 +1194,15 @@ class MagnifyChannel implements IChannel {
                 if (c.usage.cpu.endsWith('m')) cpu = +c.usage.cpu.replace('m','') / 1000000
                 if (c.usage.cpu.endsWith('k')) cpu = +c.usage.cpu.replace('k','') / 1000
                 return a + cpu} ,0) as number
+            pod.data.cpu = (+pod.data.cpu).toFixed(3)
             pod.data.memory = obj.containers.reduce ( (a:any,c:any) => a + convertSizeToBytes(c.usage.memory),0)
         }
     }
 
     loadNodeMetrics(magnifyData:IMagnifyData, obj:any): void {
-        //+++ what for...?
+        console.log('****************RECEIVED NODEMETRICS')
+        console.log(obj)
+        //+++ add to node list view (cpu and memory)
     }
 
     loadComponentStatus(magnifyData:IMagnifyData, obj:any): void {
