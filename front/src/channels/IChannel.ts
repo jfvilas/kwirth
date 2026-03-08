@@ -43,35 +43,43 @@ interface IChannelObject {
     data: any
     metricsList?: Map<string, MetricDefinition>
     accessString?: string
+    isElectron: boolean
     frontChannels?: Map<string, TChannelConstructor>
     webSocket?: WebSocket
     clusterUrl?: string
     clusterInfo?: IClusterInfo
-    onUpdateChannelSettings?: (channelSettings:IChannelSettings) => void
-    onCreateTab?: (resource:IResourceSelected, start:boolean, settings:any) => void
     channelSettings?: IChannelSettings
     channel:IChannel
+    updateChannelSettings?: (channelSettings:IChannelSettings) => void
+    createTab?: (resource:IResourceSelected, start:boolean, settings:any) => void
     readChannelUserPreferences?: (channelId:string) => Promise<any>
     writeChannelUserPreferences?: (channelId:string, data:any) => Promise<boolean>
-    setPaletteChange?: (palette:string) => void
+    setPalette?: (palette:string) => void
+    notify?:(channelId:string|undefined, level:ENotifyLevel, message:string) => void
+    exit?: () => void
+}
+
+export interface IChannelRequirements {
+    setup: boolean
+    settings: boolean
+    frontChannels: boolean
+    metrics: boolean
+    notifier: boolean
+    clusterUrl: boolean
+    clusterInfo: boolean
+    accessString: boolean
+    webSocket: boolean
+    userSettings: boolean
+    palette: boolean
+    exit: boolean
 }
 
 interface IChannel {
     SetupDialog: React.FC<ISetupProps>
     TabContent: React.FC<IContentProps>
     readonly channelId: string
+    requirements: IChannelRequirements
 
-    requiresSetup(): boolean
-    requiresSettings(): boolean
-    requiresFrontChannels(): boolean
-    requiresMetrics(): boolean
-    requiresClusterUrl(): boolean
-    requiresClusterInfo(): boolean
-    requiresAccessString(): boolean
-    requiresWebSocket(): boolean
-    requiresUserSettings(): boolean
-    requiresPaletteChange(): boolean
-    setNotifier(notifier:(channelId:string|undefined, level:ENotifyLevel, message:string) => void): void
     getScope(): string
     getChannelIcon(): JSX.Element
     getSetupVisibility(): boolean

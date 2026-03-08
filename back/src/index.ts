@@ -60,8 +60,8 @@ import { Application } from 'express-serve-static-core'
 //     return originalFetch(...args);
 // }
 
-//const isElectron = true
-const isElectron = !!process.versions.electron;
+const isElectron = true
+//const isElectron = !!process.versions.electron;
 
 const app : Application = express()
 
@@ -720,7 +720,15 @@ const processStartInstanceConfig = async (ri:IRunningInstance, webSocket: WebSoc
                                 await watchPods(ri, `/api/v1/${instanceConfig.objects}`, { labelSelector }, webSocket, specificInstanceConfig)
                             }
                             else {
-                                sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: cannot get metadata labels for pod '${podName}'`, instanceConfig, ri.channels)
+                                try {
+                                    let fieldSelector = `metadata.name=${podName}`
+                                    let specificInstanceConfig: IInstanceConfig = JSON.parse(JSON.stringify(instanceConfig))
+                                    // we listen for pods path, so when watch starts kube will look after all pods included
+                                    await watchPods(ri, `/api/v1/namespaces/${validPod.metadata?.namespace}/pods`, { fieldSelector, watch: true }, webSocket, specificInstanceConfig)
+                                }
+                                catch (err) {
+                                    sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: cannot get metadata labels for pod '${podName}'`, instanceConfig, ri.channels)
+                                }
                             }
                         }
                         else {

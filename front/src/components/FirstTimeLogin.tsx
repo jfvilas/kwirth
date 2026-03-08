@@ -8,11 +8,11 @@ import { v4 as uuid } from 'uuid'
 
 const copy = require('clipboard-copy')
 
-interface IProps {
+interface IFirstTimeLoginProps {
     onClose: (exit:boolean) => void
 }
 
-const FirstTimeLogin: React.FC<IProps> = (props:IProps) => {
+const FirstTimeLogin: React.FC<IFirstTimeLoginProps> = (props:IFirstTimeLoginProps) => {
     const {accessString, backendUrl} = useContext(SessionContext) as SessionContextType;
     const [msgBox, setMsgBox] = useState(<></>)
 

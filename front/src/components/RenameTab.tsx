@@ -2,13 +2,13 @@ import React, { useState, ChangeEvent } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material'
 import { ITabObject } from '../model/ITabObject'
 
-interface IProps {
+interface IRenameTabProps {
     onClose:(a:string|undefined) => void
     tabs: ITabObject[]
     oldname?: string
 }
 
-const RenameTab: React.FC<IProps> = (props:IProps) => {
+const RenameTab: React.FC<IRenameTabProps> = (props:IRenameTabProps) => {
     const [newname, setNewname] = useState(props.oldname)
 
     const onChangeNewname = (event:ChangeEvent<HTMLInputElement>) => {

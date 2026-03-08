@@ -932,39 +932,39 @@ objectSections.set('Node', [
                     {
                         name: 'cpu',
                         text: 'CPU',
-                        source: ['status.capacity.cpu'],
+                        source: ['status.allocatable.cpu'],
                         format: 'string',
                     },
                     {
                         name: 'storage',
                         text: 'Storage',
-                        source: ['status.capacity.ephemeral-storage'],
+                        source: ['status.allocatable.ephemeral-storage'],
                         format: 'string',
                         style: ['mb'],
                     },
                     {
                         name: 'hp1gi',
                         text: 'Hugepages-1Gi',
-                        source: ['status.capacity.hugepages-2Mi'],
+                        source: ['status.allocatable.hugepages-2Mi'],
                         format: 'string',
                     },
                     {
                         name: 'hp2m',
                         text: 'Hugepages-2Mi',
-                        source: ['status.capacity.hugepages-1Gi'],
+                        source: ['status.allocatable.hugepages-1Gi'],
                         format: 'string',
                     },                    
                     {
                         name: 'memory',
                         text: 'Memory',
-                        source: ['status.capacity.memory'],
+                        source: ['status.allocatable.memory'],
                         format: 'string',
                         style: ['mb'],
                     },
                     {
                         name: 'pods',
                         text: 'Pods',
-                        source: ['status.capacity.pods'],
+                        source: ['status.allocatable.pods'],
                         format: 'string',
                     }                    
                 ]
@@ -1066,7 +1066,7 @@ objectSections.set('V1APIResource', [
             },
             {
                 name: 'singularName',
-                text:'Singular name',
+                text:'Singular',
                 format: 'string',
                 source: ['singularName'],
                 style: ['ifpresent']
@@ -1824,7 +1824,6 @@ objectSections.set('Pod', [
                         source: ['#image'],
                         format: 'string',
                         style: ['link:$Image:image:.']
-                        //style: ['edit']  //+++ pending impl
                     },
                     {
                         name: 'ports',

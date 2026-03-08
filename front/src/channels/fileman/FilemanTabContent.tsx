@@ -130,14 +130,12 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
                 else {
                     console.error(`Error downloading file: ${file.path}`)
-                    let uiConfig = props.channelObject.config as IFilemanConfig
-                    uiConfig.notify(undefined, ENotifyLevel.ERROR, `Error downloading file ${file.path}: (${response.status}) ${await response.text()}`)
+                    props.channelObject.notify?.(undefined, ENotifyLevel.ERROR, `Error downloading file ${file.path}: (${response.status}) ${await response.text()}`)
                 }
             }
             catch (error) {
                 console.error(`Error downloading file: ${file.path}`, error)
-                let uiConfig = props.channelObject.config as IFilemanConfig
-                uiConfig.notify(props.channelObject.channel.channelId, ENotifyLevel.ERROR, `Error downloading file ${file.path}: ${error}`)
+                props.channelObject.notify?.(props.channelObject.channel.channelId, ENotifyLevel.ERROR, `Error downloading file ${file.path}: ${error}`)
             }
         }
     }
@@ -151,8 +149,9 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onError = (error: IError, file: IFileObject) => {
-        let uiConfig = props.channelObject.config as IFilemanConfig
-        uiConfig.notify(props.channelObject.channel.channelId, ENotifyLevel.ERROR, error.message)
+        // let uiConfig = props.channelObject.config as IFilemanConfig
+        // uiConfig.notify(props.channelObject.channel.channelId, ENotifyLevel.ERROR, error.message)
+        props.channelObject.notify?.(props.channelObject.channel.channelId, ENotifyLevel.ERROR, error.message)
     }
 
     const onRename	= (file: IFileObject, newName: string) => {

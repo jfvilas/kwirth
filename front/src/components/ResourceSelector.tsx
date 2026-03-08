@@ -19,7 +19,7 @@ interface IResourceSelected {
     name: string
 }
 
-interface IProps {
+interface IResourceSelectorProps {
     onAdd: (resource:IResourceSelected, tab?:ITabObject) => void
     onChangeCluster: (clusterName:string) => void
     resourceSelected: IResourceSelected|undefined
@@ -35,7 +35,7 @@ interface IController {
     name:string
 }
 
-const ResourceSelector: React.FC<IProps> = (props:IProps) => {
+const ResourceSelector: React.FC<IResourceSelectorProps> = (props:IResourceSelectorProps) => {
     const [cluster, setCluster] = useState<Cluster>(new Cluster())
     const [view, setView] = useState('')
     const [allNamespaces, setAllNamespaces] = useState<string[]>([])

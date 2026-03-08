@@ -2,13 +2,13 @@ import { Stack, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typog
 import { IOpsData } from '../OpsData'
 import { useEffect, useState } from 'react'
 
-interface IProps {
+interface ISelectTerminalProps {
     onSelect:(id?:string) => void
     current: string
     opsData:IOpsData
 }
 
-const SelectTerminal: React.FC<IProps> = (props:IProps) => {
+const SelectTerminal: React.FC<ISelectTerminalProps> = (props:ISelectTerminalProps) => {
     const [selectedIndex, setSelectedIndex] = useState(Array.from(props.opsData.terminalManager.terminals.keys()).indexOf(props.current))
     
     const handleKeyDown = (event: KeyboardEvent) => {

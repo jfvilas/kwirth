@@ -2,12 +2,12 @@ import React, { useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material'
 import { Settings } from '../../model/Settings'
 
-interface IProps {
+interface ISettingsUserProps {
     onClose:(ok:boolean) => void
     settings:Settings | null
 }
 
-const SettingsUser: React.FC<IProps> = (props:IProps) => {
+const SettingsUser: React.FC<ISettingsUserProps> = (props:ISettingsUserProps) => {
     const [keepAliveInterval, setKeepAliveInterval] = useState<number>(props.settings? props.settings.keepAliveInterval : 60)
 
     const ok = () =>{

@@ -1,6 +1,6 @@
 import { Stack, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, List, ListItemButton, ListItem } from '@mui/material'
 
-interface IProps {
+interface ISelectWorkspaceProps {
     onSelect:(action:string, a?:string) => {},
     values:IValue[]
     action:string
@@ -11,7 +11,7 @@ interface IValue {
     description:string
 }
 
-const SelectWorkspace: React.FC<IProps> = (props:IProps) => {
+const SelectWorkspace: React.FC<ISelectWorkspaceProps> = (props:ISelectWorkspaceProps) => {
    return (
         <Dialog open={true}>
             <DialogTitle>

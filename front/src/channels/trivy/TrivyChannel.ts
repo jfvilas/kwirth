@@ -1,30 +1,31 @@
 import { FC } from 'react'
-import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IChannelRequirements, IContentProps, ISetupProps } from '../IChannel'
 import { IKnown, EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageType, ITrivyMessage, ITrivyMessageResponse, IUnknown, ISignalMessage, ETrivyCommand, EInstanceMessageFlow, ESignalMessageLevel } from '@jfvilas/kwirth-common'
 import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
 import { ITrivyData, TrivyData } from './TrivyData'
 import { TrivyConfig, TrivyInstanceConfig } from './TrivyConfig'
-import { ENotifyLevel } from '../../tools/Global'
 
 export class TrivyChannel implements IChannel {
     private setupVisible = false
-    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = (channel:string|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = TrivySetup
     TabContent: FC<IContentProps> = TrivyTabContent
     channelId = 'trivy'
     
-    requiresSetup() { return true }
-    requiresSettings() { return false }
-    requiresMetrics() { return false }
-    requiresAccessString() { return true }
-    requiresFrontChannels() { return true }
-    requiresClusterUrl() { return false }
-    requiresClusterInfo() { return false }
-    requiresWebSocket() { return true }
-    requiresUserSettings() { return false }
-    requiresPaletteChange() { return false }
-    setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    requirements:IChannelRequirements = {
+        accessString: true,
+        clusterUrl: false,
+        clusterInfo: false,
+        exit: false,
+        frontChannels: false,
+        metrics: false,
+        notifier: true,
+        setup: true,
+        settings: false,
+        palette: false,
+        userSettings: false,
+        webSocket: true
+    }
 
     getScope() { return 'trivy$workload' }
     getChannelIcon(): JSX.Element { return TrivyIcon }

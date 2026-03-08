@@ -4,13 +4,13 @@ import { TabContentTrivyAssetVulns } from './TrivyTabContentAssetVuln'
 import { ITrivyInstanceConfig } from './TrivyConfig'
 import { IKnown } from '@jfvilas/kwirth-common'
 
-interface IProps {
+interface ITabContentTrivyAssetDetailsProps {
     asset: IKnown
     trivyInstanceConfig: ITrivyInstanceConfig
     onClose: () => void
 }
 
-const TabContentTrivyAssetDetails: React.FC<IProps> = (props:IProps) => {
+const TabContentTrivyAssetDetails: React.FC<ITabContentTrivyAssetDetailsProps> = (props:ITabContentTrivyAssetDetailsProps) => {
     let report = props.asset.report
     let asset = props.asset
     let trivyInstanceConfig = props.trivyInstanceConfig

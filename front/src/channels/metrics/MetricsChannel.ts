@@ -1,30 +1,31 @@
 import { FC } from 'react'
-import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IChannelRequirements, IContentProps, ISetupProps } from '../IChannel'
 import { InstanceConfigScopeEnum, IInstanceMessage, ISignalMessage, EInstanceMessageType, EInstanceMessageFlow, EInstanceMessageAction, ESignalMessageLevel } from '@jfvilas/kwirth-common'
 import { MetricsIcon, MetricsSetup } from './MetricsSetup'
 import { MetricsTabContent } from './MetricsTabContent'
 import { MetricsData, IAssetMetricsValues, EMetricsEventSeverity, IMetricsData } from './MetricsData'
 import { IMetricsConfig, MetricsInstanceConfig, MetricsConfig } from './MetricsConfig'
-import { ENotifyLevel } from '../../tools/Global'
 
 export class MetricsChannel implements IChannel {
     private setupVisible = false
-    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = (channel:string|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = MetricsSetup
     TabContent: FC<IContentProps> = MetricsTabContent
     channelId = 'metrics'
     
-    requiresSetup() { return true }
-    requiresSettings() { return true }
-    requiresFrontChannels() { return true }
-    requiresMetrics() { return true }
-    requiresAccessString() { return true }
-    requiresClusterUrl() { return false }
-    requiresClusterInfo() { return false }
-    requiresWebSocket() { return true }
-    requiresUserSettings() { return false }
-    requiresPaletteChange() { return false }
-    setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    requirements:IChannelRequirements = {
+        accessString: true,
+        clusterUrl: false,
+        clusterInfo: false,
+        exit: false,
+        frontChannels: false,
+        metrics: true,
+        notifier: true,
+        setup: true,
+        settings: true,
+        palette: false,
+        userSettings: false,
+        webSocket: true,
+    }
 
     getScope() { return InstanceConfigScopeEnum.STREAM }
     getChannelIcon(): JSX.Element { return MetricsIcon }

@@ -31,6 +31,7 @@ const InputBox: React.FC<IInputBoxProps> = (props:IInputBoxProps) => {
 
     if (!props.title) return <></>
 
+    console.log('render', props.default)
     return (
         <Dialog open={true} onClose={() => { props.onClose(<></>); if (props.onResult) props.onResult(undefined)}}>
             <DialogTitle>
@@ -43,7 +44,8 @@ const InputBox: React.FC<IInputBoxProps> = (props:IInputBoxProps) => {
                             :
                             props.message
                          }
-                         <TextField inputRef={inputRef} defaultValue={props.default}></TextField>
+                         {/* key forces rerender */}
+                         <TextField key={props.message?.toString()} inputRef={inputRef}></TextField>
                     </Stack>
             </DialogContent>
             <DialogActions>

@@ -29,6 +29,7 @@ export interface IContentExternalOptions {
 
 export interface IContentExternalData {
     isInitialized: boolean
+    isElectron: boolean
     channelId: string
     options: IContentExternalOptions
     contentView: EInstanceConfigView
@@ -89,7 +90,6 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
     useEffect(() => {
         // this Effect must be executed after initial useEffect, because it uses content.current
         if (contentExternalData.channelId==='ops') {
-            console.log('setkey')
             const handleNativeKey = async (e: KeyboardEvent) => {
                 if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return
 
@@ -161,7 +161,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
     }, [])
 
     const createContent = (channelId:string) : IContentExternalObject|undefined => {
-        let newChannel = createChannelInstance(contentExternalData.frontChannels.get(channelId), contentExternalData.onNotify)
+        let newChannel = createChannelInstance(contentExternalData.frontChannels.get(channelId))
         if (!newChannel) {
             console.log('Invaid channel instance created')
             return undefined
@@ -170,6 +170,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             ws: undefined,
             externalChannel: newChannel,
             externalChannelObject: {
+                isElectron: contentExternalData.isElectron,
                 clusterName: contentExternalData.channelObject?.clusterName!,
                 instanceId: '',
                 view: contentExternalData.contentView,
@@ -191,9 +192,10 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                     props.container
         }
 
-        if (newChannel.requiresMetrics()) newContent.externalChannelObject!.metricsList = contentExternalData.channelObject?.metricsList
-        if (newChannel.requiresClusterUrl()) newContent.externalChannelObject!.clusterUrl = contentExternalData.channelObject?.clusterUrl
-        if (newChannel.requiresAccessString()) newContent.externalChannelObject!.accessString = contentExternalData.channelObject?.accessString
+        if (newChannel.requirements.notifier) newContent.externalChannelObject!.notify = contentExternalData.channelObject?.notify
+        if (newChannel.requirements.metrics) newContent.externalChannelObject!.metricsList = contentExternalData.channelObject?.metricsList
+        if (newChannel.requirements.clusterUrl) newContent.externalChannelObject!.clusterUrl = contentExternalData.channelObject?.clusterUrl
+        if (newChannel.requirements.accessString) newContent.externalChannelObject!.accessString = contentExternalData.channelObject?.accessString
 
         newContent.ws = new WebSocket(contentExternalData.channelObject?.clusterUrl!)
         newContent.ws.onmessage = (event:MessageEvent) => wsOnMessage(event)
@@ -235,6 +237,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
         let logConfig:ILogConfig = {
             startDiagnostics: false,
             follow: true,
+            showNames: false,
             maxMessages: contentExternalData.settings.logLines,
             maxPerPodMessages: 5000,
             sortOrder: ELogSortOrder.TIME
@@ -272,7 +275,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             configurable: false,
             compact: true,
             legend: true,
-            merge: false,
+            merge: true,
             stack: false,
             chart: EChartType.LineChart,
             metricsDefault: {}
@@ -524,7 +527,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                     <IconButton onClick={stop} disabled={!contentExternalData.options.stopable || !contentExternalData.content?.externalChannelStarted}>
                         <StopCircle/>
                     </IconButton>
-                    <IconButton disabled={!contentExternalData.options.configurable}>
+                    <IconButton disabled={true || !contentExternalData.options.configurable}>
                         <Settings/>
                     </IconButton>
                     <IconButton onClick={(event) => setAnchorEl(event.currentTarget)}>

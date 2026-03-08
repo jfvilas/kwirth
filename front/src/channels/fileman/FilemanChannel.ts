@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IChannelRequirements, IContentProps, ISetupProps } from '../IChannel'
 import { FilemanInstanceConfig, FilemanConfig } from './FilemanConfig'
 import { FilemanSetup, FilemanIcon } from './FilemanSetup'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageEvent, IInstanceMessage, ISignalMessage } from "@jfvilas/kwirth-common"
@@ -24,22 +24,24 @@ interface IFilemanMessage extends IInstanceMessage {
 
 export class FilemanChannel implements IChannel {
     private setupVisible = false
-    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = (channel:string|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = FilemanSetup
     TabContent: FC<IContentProps> = FilemanTabContent
     channelId = 'fileman'
     
-    requiresSetup() { return false }
-    requiresSettings() { return false }
-    requiresMetrics() { return false }
-    requiresAccessString() { return true }
-    requiresFrontChannels() { return true }
-    requiresClusterUrl() { return true }
-    requiresClusterInfo() { return false }
-    requiresWebSocket() { return true }
-    requiresUserSettings() { return false }
-    requiresPaletteChange() { return false }
-    setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    requirements:IChannelRequirements = {
+        accessString: true,
+        clusterUrl: true,
+        clusterInfo: false,
+        exit: false,
+        frontChannels: false,
+        metrics: false,
+        notifier: true,
+        setup: false,
+        settings: false,
+        palette: false,
+        userSettings: false,
+        webSocket: true,
+    }
 
     getScope() { return 'fileman$read'}
     getChannelIcon(): JSX.Element { return FilemanIcon }
@@ -101,7 +103,7 @@ export class FilemanChannel implements IChannel {
                             case EFilemanCommand.DIR:
                                 let content = JSON.parse(response.data)
                                 if (content.status!=='Success') {
-                                    this.notify('fileman', ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
+                                    channelObject.notify?.('fileman', ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 else {
                                     for (let o of content.metadata.object) {
@@ -126,7 +128,7 @@ export class FilemanChannel implements IChannel {
                             case EFilemanCommand.RENAME: {
                                 let content = JSON.parse(response.data)
                                 if (content.status!=='Success') {
-                                    this.notify('fileman', ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
+                                    channelObject.notify?.('fileman', ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return {
                                     action: EChannelRefreshAction.REFRESH
@@ -140,7 +142,7 @@ export class FilemanChannel implements IChannel {
                                     filemanData.files = filemanData.files.filter(f => !f.path.startsWith(fname+'/'))
                                 }
                                 else {
-                                    this.notify('fileman', ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
+                                    channelObject.notify?.('fileman', ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return {
                                     action: EChannelRefreshAction.REFRESH
@@ -165,7 +167,7 @@ export class FilemanChannel implements IChannel {
                                     filemanData.files.push(e)
                                 }
                                 else {
-                                    this.notify('fileman', ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
+                                    channelObject.notify?.('fileman', ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
                                 }
                                 return {
                                     action: EChannelRefreshAction.REFRESH
@@ -185,10 +187,10 @@ export class FilemanChannel implements IChannel {
                         channelObject.instanceId = signalMessage.instance
                     }
                     else if (signalMessage.action === EInstanceMessageAction.COMMAND) {
-                        if (signalMessage.text) this.notify('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
+                        if (signalMessage.text) channelObject.notify?.('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                     else {
-                        if (signalMessage.text) this.notify('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
+                        if (signalMessage.text) channelObject.notify?.('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                 }
                 if (signalMessage.flow === EInstanceMessageFlow.UNSOLICITED) {
@@ -213,15 +215,15 @@ export class FilemanChannel implements IChannel {
                         let payload = JSON.stringify( filemanMessage )
                         channelObject.webSocket!.send(payload)
 
-                        if (signalMessage.text) this.notify('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
+                        if (signalMessage.text) channelObject.notify?.('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                     else if (signalMessage.event === ESignalMessageEvent.DELETE) {
                         filemanData.files = filemanData.files.filter(f => !f.path.startsWith('/'+signalMessage.namespace+'/'+signalMessage.pod+'/'))
                         filemanData.files = filemanData.files.filter(f => f.path!=='/'+signalMessage.namespace+'/'+signalMessage.pod)
-                        if (signalMessage.text) this.notify('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
+                        if (signalMessage.text) channelObject.notify?.('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                     else {
-                        if (signalMessage.text) this.notify('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
+                        if (signalMessage.text) channelObject.notify?.('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                 }
                 return {
@@ -238,7 +240,7 @@ export class FilemanChannel implements IChannel {
     async initChannel(channelObject:IChannelObject): Promise<boolean> {
         channelObject.instanceConfig = new FilemanInstanceConfig()
         let config = new FilemanConfig()
-        config.notify = this.notify
+        //config.notify = channelObject.notify
         let data = new FilemanData()
 
         channelObject.config = config

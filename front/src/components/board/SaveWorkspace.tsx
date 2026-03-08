@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Stack, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material'
 
-interface IProps {
+interface ISaveWorkspaceProps {
     onClose:(name?:string, description?:string) => void
     name:string
     description:string
@@ -13,7 +13,7 @@ interface IValue {
     description:string
 }
 
-const SaveWorkspace: React.FC<IProps> = (props:IProps) => {
+const SaveWorkspace: React.FC<ISaveWorkspaceProps> = (props:ISaveWorkspaceProps) => {
     const [newname, setNewname] = useState(props.name)
     const [desc, setDesc] = useState(props.description)
 

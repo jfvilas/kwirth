@@ -20,7 +20,7 @@ enum MenuTabOption {
     ChannelStop
 }
 
-interface IProps {
+interface IMenuTabProps {
     onClose:() => void
     optionSelected: (opt:MenuTabOption) => void
     anchorMenuTab: Element
@@ -30,7 +30,7 @@ interface IProps {
     backChannels: BackChannelData[]
 }
 
-const MenuTab: React.FC<IProps> = (props:IProps) => {
+const MenuTab: React.FC<IMenuTabProps> = (props:IMenuTabProps) => {
     const [subMenuTabOpen, setSubmenuTabOpen] = React.useState(false)
 
     const pauseable = props.backChannels.find(c => c.id === props.selectedTab?.channel.channelId)

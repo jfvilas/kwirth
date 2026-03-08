@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Box, Button, Card, CardContent, CardHeader, IconButton, ListItem, ListItemButton, Stack, TextField, Tooltip, Typography, useTheme } from '@mui/material'
+import { Box, Button, Card, CardContent, CardHeader, IconButton, ListItem, ListItemButton, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import { IOpsData, IScopedObject } from './OpsData'
 import { IInstanceConfig, EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageFlow, EInstanceMessageType, IOpsMessage, EMetricsConfigMode, EOpsCommand, EInstanceConfigObject, EInstanceConfigView } from '@jfvilas/kwirth-common'
 import { IContentProps } from '../IChannel'
@@ -18,7 +18,6 @@ import { IMetricsConfig, IMetricsInstanceConfig } from '../metrics/MetricsConfig
 import { EChartType } from '../metrics/MenuChart'
 
 const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    const theme = useTheme()
     let opsData:IOpsData = props.channelObject.data
     let opsConfig:IOpsConfig = props.channelObject.config
 
@@ -310,7 +309,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     config:metricsConfig,
                     instanceConfig:metricsInstanceConfig
                 }
-                if (props.channelObject.onCreateTab) props.channelObject.onCreateTab(metricsResource, true, metricsSettings)
+                props.channelObject.createTab?.(metricsResource, true, metricsSettings)
                 break
             case EMenuObjectOption.VIEWLOG:
                 let logResource:IResourceSelected = {
@@ -326,6 +325,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 let logConfig:ILogConfig = {
                     startDiagnostics: false,
                     follow: true,
+                    showNames: false,
                     maxMessages: 5000,
                     maxPerPodMessages: 5000,
                     sortOrder: ELogSortOrder.TIME
@@ -339,7 +339,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     config:logConfig,
                     instanceConfig:logInstanceConfig
                 }
-                if (props.channelObject.onCreateTab) props.channelObject.onCreateTab(logResource, true, logSettings)
+                if (props.channelObject.createTab) props.channelObject.createTab(logResource, true, logSettings)
                 break
         }
     }

@@ -21,10 +21,10 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const onSetMetricDefault = (name:string, mvc: IMetricViewConfig) => {
         console.log(props.channelObject.channelSettings)
-        if (props.channelObject.onUpdateChannelSettings && props.channelObject.channelSettings) {
+        if (props.channelObject.updateChannelSettings && props.channelObject.channelSettings) {
             if (!props.channelObject.channelSettings.channelConfig) props.channelObject.channelSettings.channelConfig = new MetricsConfig()
             props.channelObject.channelSettings.channelConfig.metricsDefault[name] = mvc
-            props.channelObject.onUpdateChannelSettings(props.channelObject.channelSettings)
+            props.channelObject.updateChannelSettings(props.channelObject.channelSettings)
         }
     }
 

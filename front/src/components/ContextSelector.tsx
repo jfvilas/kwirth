@@ -5,10 +5,10 @@ import { InputBox } from '../tools/FrontTools'
 import { Delete } from '@mui/icons-material'
 import { AccessKey } from '@jfvilas/kwirth-common'
 
-interface IProps {
+interface IContextSelectorProps {
     isElectron: boolean
-    onContextSelectorLocal: (id:string, accessKey:AccessKey) => void,
-    onContextSelectorRemote: (id:string, url:string) => void
+    onContextSelectorLocal: (name:string, accessKey:AccessKey) => void,
+    onContextSelectorRemote: (name:string, url:string, accessString:string) => void
 }
 
 interface IContext {
@@ -20,15 +20,15 @@ interface IContext {
     status?: boolean
 }
 
-const ContextSelector: React.FC<IProps> = (props:IProps) => {
+const ContextSelector: React.FC<IContextSelectorProps> = (props:IContextSelectorProps) => {
     const {backendUrl} = useContext(SessionContext) as SessionContextType
     const [selectedTab, setSelectedTab] = useState(0)
     const [localContexts, setLocalContexts] = useState<IContext[]>([])
-    const [remoteClusters, setRemoteClusters] = useState<{name:string, url:string}[]>([])
-    const newCluster = useRef<string>('')
+    const [remoteClusters, setRemoteClusters] = useState<{name:string, url:string, accessString:string}[]>([])
+    // const newCluster = useRef<string>('')
     const [inputBoxTitle, setInputBoxTitle] = useState<any>()
     const [inputBoxMessage, setInputBoxMessage] = useState<any>()
-    const [inputBoxResult, setIinputBoxResult] = useState<(result:any) => void>()
+    const [inputBoxResult, setInputBoxResult] = useState<(result:any) => void>()
     const [showActive, setShowActive] = useState(false)
     const [waiting, setWaiting] = useState(false)
     const [filterLocal, setFilterLocal] = useState('')
@@ -58,12 +58,11 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
 
         return () => {
             if (intId.current) {
-                console.log('Limpiando intervalo:', intId.current)
                 clearInterval(intId.current)
                 intId.current = null
             }
         };
-    }, [props.isElectron, backendUrl])
+    }, [])
 
 
     const updateContextsStatus = async (contexts: IContext[], onUpdate: (updatedCtx: IContext) => void) => {
@@ -94,12 +93,16 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
     }
 
     const addRemoteCluster = () => {
-        setIinputBoxResult ( () => (name:any) => {
-            newCluster.current = name
-            setIinputBoxResult ( () => (url:any) => {
-                let newRemotes = [...remoteClusters, { name:newCluster.current, url}]
-                localStorage.setItem('remoteClusters', JSON.stringify(newRemotes))
-                setRemoteClusters(newRemotes)
+        setInputBoxResult ( () => (name:any) => {
+            setInputBoxResult ( () => (url:any) => {
+                setInputBoxResult ( () => (accessString:any) => {
+                    console.log(name, url, accessString)
+                    let newRemotes = [...remoteClusters, { name, url, accessString }]
+                    localStorage.setItem('remoteClusters', JSON.stringify(newRemotes))
+                    setRemoteClusters(newRemotes)
+                })
+                setInputBoxMessage('Enter Kwirth access string')
+                setInputBoxTitle('Add cluster')
             })
             setInputBoxMessage('Enter Kwirth URL')
             setInputBoxTitle('Add cluster')
@@ -127,11 +130,10 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
                     let resp2 = await fetch(backendUrl+'/config/info')
                     sc = resp2.status
                 } while (sc!==200)
-                console.log('name', name)
                 props.onContextSelectorLocal(name, jresp.accessKey as AccessKey)
             }
             else {
-                console.log('ERROR')
+                console.log('ERROR obtaining config info')
             }
         }
         catch (err) {
@@ -178,7 +180,7 @@ const ContextSelector: React.FC<IProps> = (props:IProps) => {
                         {
                             remoteClusters.filter(c => c.name.includes(filterRemote)).map(c => 
                                 <Stack key={c.name} direction={'row'} sx={{wodth:'100%'}}>
-                                    <ListItemButton onClick={() => props.onContextSelectorRemote(c.name, c.url)}>
+                                    <ListItemButton onClick={() => props.onContextSelectorRemote(c.name, c.url, c.accessString)}>
                                         <Typography>{c.name}</Typography>
                                     </ListItemButton>
                                     <IconButton onClick={() => deleteRemoteCluster(c.name)}>

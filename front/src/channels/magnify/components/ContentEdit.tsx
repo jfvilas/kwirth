@@ -83,7 +83,7 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
         if (!editorChanged.current)
             props.onClose(props.id)
         else {
-            setMsgBox(MsgBoxYesNo('Edit exit', 'You have some changes not applied. Are you sure you want to exit withou applying?', setMsgBox, (a) => {
+            setMsgBox(MsgBoxYesNo('Edit exit', 'You have some changes not applied. Are you sure you want to exit without applying?', setMsgBox, (a) => {
                 if (a === MsgBoxButtons.Yes) props.onClose(props.id)
             }))
         }
@@ -171,7 +171,7 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
                 </div>
             </DialogContent>
 
-            <DialogActions>
+            <DialogActions sx={{ p: '4px 4px', pr:2 }}>
                 <Button onClick={() => contentEditData.onOk?.(code, contentEditData.source)} disabled={!editorChanged.current}>Ok</Button>
             </DialogActions>
         </ResizableDialog>

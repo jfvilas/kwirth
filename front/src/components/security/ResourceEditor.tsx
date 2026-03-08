@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { Button, Checkbox, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Stack, TextField, Typography} from '@mui/material'
 import { buildResource, parseResource } from '@jfvilas/kwirth-common'
 
-interface IProps {
+interface IResourceEditorProps {
     resources:string[]
     onUpdate:(resources:string[]) => void
 }
 
-const ResourceEditor: React.FC<IProps> = (props:IProps) => {
+const ResourceEditor: React.FC<IResourceEditorProps> = (props:IResourceEditorProps) => {
     const [scopes, setScopes] = useState<string[]>([])
     const [allResources, setAllResources] = useState<string[]>(props.resources)
     const [selectedResource, setSelectedResource] = useState<string>('')

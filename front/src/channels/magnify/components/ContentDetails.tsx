@@ -142,14 +142,9 @@ const ContentDetails: React.FC<IContentWindow> = (props:IContentWindow) => {
 				</Box>
 			</DialogContent>
 
-			<DialogActions sx={{ px: 2, py: 1.5 }}>
-				<Button 
-					variant="contained"
-					size="small"
-					onClick={() => props.data.onApply(contentDetailsData.path, newObject.current)} 
-					disabled={!containsEdit || !dataChanged}
-				>
-					Apply Changes
+			<DialogActions sx={{ p: '4px 4px', pr:2 }}>
+				<Button onClick={() => props.data.onApply(contentDetailsData.path, newObject.current)} disabled={!containsEdit || !dataChanged} variant='contained' size='small'>
+					Apply
 				</Button>
 			</DialogActions>
 		</ResizableDialog>

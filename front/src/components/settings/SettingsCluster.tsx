@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material'
 
-interface IProps {
+interface ISettingsClusterProps {
     onClose:(interval?:number) => void
     clusterName?: string
     clusterMetricsInterval?:number
 }
 
-const SettingsCluster: React.FC<IProps> = (props:IProps) => {
+const SettingsCluster: React.FC<ISettingsClusterProps> = (props:ISettingsClusterProps) => {
     const [clusterMetricsInterval, setClusterMetricsInterval] = useState(props.clusterMetricsInterval)
 
     return (<>

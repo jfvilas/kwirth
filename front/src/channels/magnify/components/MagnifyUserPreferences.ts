@@ -1,3 +1,5 @@
+import { ICustomAction } from "./UserPreferences"
+
 export interface IKind {
     name: string
     priority: number
@@ -58,5 +60,7 @@ export class MagnifyUserPreferences {
     palette = 'light'
     logLines = 5000
     dataConfig = new MagnifyDataConfig()
+    dataHelm = false
     tracing = false
+    customActions:ICustomAction[] = []
 }

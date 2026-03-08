@@ -1,5 +1,5 @@
 import { FC } from 'react'
-import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IChannelRequirements, IContentProps, ISetupProps } from '../IChannel'
 import { ILogMessage, IInstanceMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ISignalMessage, EInstanceConfigScope } from '@jfvilas/kwirth-common'
 import { LogIcon, LogSetup } from './LogSetup'
 import { LogTabContent } from './LogTabContent'
@@ -9,23 +9,24 @@ import { ENotifyLevel } from '../../tools/Global'
 
 export class LogChannel implements IChannel {
     private setupVisible = false
-    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = (channel:string|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = LogSetup
     TabContent: FC<IContentProps> = LogTabContent
     channelId = 'log'
+    requirements:IChannelRequirements = {
+        accessString: false,
+        clusterUrl: false,
+        clusterInfo: false,
+        exit: false,
+        frontChannels: false,
+        metrics: false,
+        notifier: true,
+        setup: true,
+        settings: false,
+        palette: false,
+        userSettings: false,
+        webSocket: false,
+    }
     
-    requiresSetup() { return true }
-    requiresSettings() { return false }
-    requiresMetrics() { return false }
-    requiresAccessString() { return false }
-    requiresFrontChannels() { return true }
-    requiresClusterUrl() { return false }
-    requiresClusterInfo() { return false }
-    requiresWebSocket() { return false }
-    requiresUserSettings() { return false }
-    requiresPaletteChange() { return false }
-    setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
-
     getScope() { return EInstanceConfigScope.VIEW }
     getChannelIcon(): JSX.Element { return LogIcon }
     
@@ -114,7 +115,7 @@ export class LogChannel implements IChannel {
                         channelObject.instanceId = instanceMessage.instance
                     else {
                         let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
-                        this.notify('log', ENotifyLevel.ERROR, signalMessage.text|| signalMessage.event || '')
+                        channelObject.notify?.('log', ENotifyLevel.ERROR, signalMessage.text|| signalMessage.event || '')
                     }
                 }
                 else if (instanceMessage.flow === EInstanceMessageFlow.RESPONSE && instanceMessage.action === EInstanceMessageAction.RECONNECT) {

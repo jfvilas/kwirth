@@ -1,24 +1,35 @@
 import React, { useRef, useState } from 'react'
-import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Checkbox, FormControlLabel, MenuItem, Select, SelectChangeEvent, Stack, TextField, Typography } from '@mui/material'
+import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Checkbox, FormControlLabel, MenuItem, Select, SelectChangeEvent, Stack, TextareaAutosize, TextField, Typography } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
 import { allKinds, IKind, MagnifyUserPreferences } from './MagnifyUserPreferences'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { IChannelObject } from '../../IChannel'
 
-interface IProps {
+interface IUserPreferencesProps {
     channelObject: IChannelObject
     preferences: MagnifyUserPreferences
     files: IFileObject[]
-    onReload?: () => void
+    onDataReload?: () => void
 }
 
-//+++ añadir custom pod actions
-const UserPreferences: React.FC<IProps> = (props:IProps) => {
+export interface ICustomAction {
+    type: 'kwirth'|'kube'
+    name: string
+    podYaml: string
+    onReady: 'shell'|'http'|'https'
+    url?: string
+    forward?: boolean
+}
+
+const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferencesProps) => {
     const [palette, setPalette] = useState(props.preferences.palette || 'light')
     const [logLines, setLogLines] = useState(props.preferences.logLines)
     const [tracing, setTracing ] = useState(props.preferences.tracing)
     const [sourceList, setSourceList] = useState<IKind[]>(props.preferences.dataConfig?.source)
     const [syncList, setSyncList] = useState<IKind[]>(props.preferences.dataConfig?.sync)
+    const [dataHelm, setDataHelm] = useState<boolean>(props.preferences.dataHelm)
+    const [customActions, setCustomActions] = useState<ICustomAction[]>(props.preferences.customActions || [])
+    
     const [displayChanged, setDisplayChanged] = useState(false)
     const [dataChanged, setDataChanged] = useState(false)
     const [debugChanged, setDebugChanged] = useState(false)
@@ -28,10 +39,12 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
     const save = () => {
         if (!props.channelObject.writeChannelUserPreferences) return
         props.preferences.palette = palette
+        props.preferences.dataHelm = dataHelm
         props.preferences.dataConfig.source = sourceList
         props.preferences.dataConfig.sync = syncList
         props.preferences.logLines = logLines
         props.preferences.tracing = tracing
+        props.preferences.customActions = customActions
         props.channelObject.writeChannelUserPreferences(props.channelObject.channel.channelId, props.preferences)
         setDisplayChanged(false)
         setDataChanged(false)
@@ -40,7 +53,7 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
     }
     
     const reload = () => {
-        if (props.onReload) props.onReload()
+        if (props.onDataReload) props.onDataReload()
     }
 
     const showFiles = () => {
@@ -62,8 +75,13 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
 
     const onChangePalette = (event: SelectChangeEvent) => {
         setPalette(event.target.value)
-        props.channelObject.setPaletteChange?.(event.target.value)
+        props.channelObject.setPalette?.(event.target.value)
         setDisplayChanged(true)
+    }
+
+    const removeCustomAction = (index:number) => {
+        customActions.splice(index,1)
+        setCustomActions([...customActions])
     }
 
     return <Box width={'100%'} minHeight={'calc(100% - 16px)'} sx={{p:1}}> 
@@ -89,6 +107,45 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
 
         <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography component="span"><b>Custom actions</b></Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+                {
+                    customActions.map((ca,index) => {
+                        return (
+                            <Stack key={'action'+index} direction={'column'} gap={1} sx={{mb:2}}>
+                                <Stack direction={'row'} gap={1} alignItems={'center'}>
+                                    <Select value={ca.type} onChange={(event) => { ca.type = event.target.value; setCustomActions([...customActions])}} variant='standard' sx={{width:'100px'}}>
+                                        <MenuItem value='kwirth'>Kwirth</MenuItem>
+                                        <MenuItem value='kube'>Kube</MenuItem>
+                                    </Select>
+                                    <TextField value={ca.name} onChange={(event) => { ca.name = event.target.value; setCustomActions([...customActions])}} variant='standard'>Name</TextField>
+                                    <Select value={ca.onReady} onChange={(event) => { ca.onReady = event.target.value; setCustomActions([...customActions])}} variant='standard' sx={{width:'100px'}}>
+                                        <MenuItem value='shell'>Shell</MenuItem>
+                                        <MenuItem value='http'>HTTP</MenuItem>
+                                        <MenuItem value='https'>HTTPS</MenuItem>
+                                    </Select>
+                                    <FormControlLabel control={<Checkbox onChange={(event) => { ca.forward=event.target.checked; setCustomActions([...customActions])}} checked={ca.forward} disabled={ca.onReady==='shell'}/>} label={'Forward'}/>
+                                    <TextField value={ca.url} onChange={(event) => { ca.url=event.target.value; setCustomActions([...customActions])}} disabled={ca.onReady==='shell' || ca.forward} fullWidth variant='standard'>Url</TextField>
+                                    <Typography sx={{flexGrow:1}}/>
+                                    <Button onClick={() => removeCustomAction(index)}>Remove</Button>
+                                </Stack>
+                                <TextareaAutosize key={'yaml'+index} value={ca.podYaml} onChange={(event) => { ca.podYaml=event.target.value; setCustomActions([...customActions])}} style={{height: '100px'}}></TextareaAutosize>
+                            </Stack>
+                        )
+                    })
+                }
+                <Stack direction={'row'} justifyContent={'end'}>
+                    <Button onClick={() => setCustomActions([...customActions, { type:'kube', name: '', podYaml: '', onReady: 'shell'}])}>Add</Button>
+                </Stack>
+            </AccordionDetails>
+            <AccordionActions>
+                <Button onClick={save}>Save</Button>
+            </AccordionActions>
+        </Accordion>
+
+        <Accordion>
+            <AccordionSummary expandIcon={<ExpandMore />}>
                 <Typography component="span"><b>External content</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
@@ -105,6 +162,11 @@ const UserPreferences: React.FC<IProps> = (props:IProps) => {
             </AccordionSummary>
             <AccordionDetails>
                 <Stack direction={'row'}>
+                    <Stack direction={'column'} sx={{width:'59%'}}>
+                        <Typography fontWeight={700}>Storage</Typography>
+                        <FormControlLabel control={<Checkbox onChange={(event) => {setDataHelm(event.target.checked); setDataChanged(true)}} checked={dataHelm}/>} label={'Keep Helm data'}/>
+                    </Stack>
+
                     <Stack direction={'column'} sx={{width:'59%'}}>
                         <Typography fontWeight={700}>Source</Typography>
                         { allKinds.map(kind => {

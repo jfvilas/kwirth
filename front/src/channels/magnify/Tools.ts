@@ -79,11 +79,21 @@ function convertBytesToSize(bytes: number, decimals: number = 2): string {
     return calculatedValue + ' ' + units[i]
 }        
 
+function coresToNumber(size:string) {
+        let result = size
+        if (size.endsWith('n')) result = (+size.replace('n','') / 1000000000).toString()
+        if (size.endsWith('m')) result = (+size.replace('m','') / 1000000).toString()
+        if (size.endsWith('k')) result = (+size.replace('k','') / 1000).toString()
+        return +result
+    }
+
 function convertSizeToBytes(fileSizeString: string): number {
     if (!fileSizeString) return 0
+    fileSizeString = fileSizeString.toString()  // somtimes filesizestringn receives a number instead of a string
     const match = fileSizeString.trim().match(/^([\d.]+)\s*([KMGTPE]i?)B?$/i)
     if (!match) {
-        console.error(`Formato de tamaño de archivo no reconocido: ${fileSizeString}`)
+        if (/^\d+$/.test(fileSizeString)) return +fileSizeString
+        console.error(`'size' format is not recognized: ${fileSizeString}`)
         return 0
     }
 
@@ -171,4 +181,4 @@ function getNextCronExecution(cronExpression: string): INextExecution|undefined 
 }
 
 export { type INextExecution }
-export { reorderJsonYamlObject, objectEqual, convertBytesToSize, convertSizeToBytes, getNextCronExecution, objectClone, objectSearch }
+export { reorderJsonYamlObject, objectEqual, convertBytesToSize, convertSizeToBytes, getNextCronExecution, objectClone, objectSearch, coresToNumber }

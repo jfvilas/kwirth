@@ -5,10 +5,7 @@
 	"version": "1.0.0",
 	"scripts": {
 		"start": "electron .",
-		"dist": "electron-builder",
-		"dist:win": "electron-builder --win",
-    	"dist:linux": "electron-builder --linux",
-    	"dist:mac": "electron-builder --mac"
+		"dist": "electron-builder"
 	},
 	"build": {
 		"appId": "com.github.kwirth",
@@ -21,27 +18,7 @@
 		],
 		"asar": false,
 		"directories": {
-			"output": "dist" 
-		},
-		"win": {
-			"target": [
-				{
-					"target": "nsis", 
-					"arch": ["x64"]
-				},
-				{
-					"target": "portable", 
-					"arch": ["x64"]
-				}
-			]
-		},
-		"linux": {
-			"target": ["AppImage", "deb"], 
-			"category": "Utility"
-		},
-		"mac": {
-			"target": ["dmg", "zip"],
-			"category": "public.app-category.utilities"
+			"output": "dist"
 		}
 	},
 	"dependencies": {

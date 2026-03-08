@@ -3,12 +3,12 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typog
 import { Cluster } from '../../model/Cluster'
 import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 
-interface IProps {
+interface ISettingsTrivyProps {
     onClose:(action:string) => void
     cluster: Cluster
 }
 
-const SettingsTrivy: React.FC<IProps> = (props:IProps) => {
+const SettingsTrivy: React.FC<ISettingsTrivyProps> = (props:ISettingsTrivyProps) => {
     const [status, setStatus] = useState('?')
 
     const getStatus = async () => {

@@ -7,11 +7,11 @@ import { IUser } from '@jfvilas/kwirth-common'
 import { ResourceEditor } from './ResourceEditor'
 const copy = require('clipboard-copy')
 
-interface IProps {
+interface IManageUserSecurityProps {
     onClose:() => void
 }
 
-const ManageUserSecurity: React.FC<IProps> = (props:IProps) => {
+const ManageUserSecurity: React.FC<IManageUserSecurityProps> = (props:IManageUserSecurityProps) => {
     const {accessString, backendUrl} = useContext(SessionContext) as SessionContextType
     const [users, setUsers] = useState<string[]>([])
     const [selectedUser, setSelectedUser] = useState<IUser|undefined>(undefined)

@@ -21,7 +21,7 @@ enum EMenuChartOption {
     Export='export'
 }
 
-interface IProps {
+interface IMenuChartProps {
     onClose:() => void
     onOptionSelected: (opt:EMenuChartOption, data?:string) => void
     anchorMenu: Element
@@ -33,7 +33,7 @@ interface IProps {
     setDefault: boolean
 }
 
-const MenuChart: React.FC<IProps> = (props:IProps) => {
+const MenuChart: React.FC<IMenuChartProps> = (props:IMenuChartProps) => {
 
     return <Menu id='menu-logs' anchorEl={props.anchorMenu} open={Boolean(props.anchorMenu)} onClose={props.onClose}>
         <MenuList dense sx={{width:'180px'}}>

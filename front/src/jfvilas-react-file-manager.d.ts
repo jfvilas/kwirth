@@ -72,6 +72,8 @@ declare module '@jfvilas/react-file-manager' {
         permission: boolean,
         multi?: boolean,
         onClick?: (paths:string[], currentTraget:Element) => void
+        isVisible?: (name:string, path:string) => boolean
+        isEnabled?: (name:string, path:string) => boolean
     }
 
     export interface ISpaceProperty {

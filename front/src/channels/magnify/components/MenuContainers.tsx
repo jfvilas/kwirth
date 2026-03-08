@@ -2,7 +2,7 @@ import { IFileObject } from '@jfvilas/react-file-manager'
 import { Box, Divider, Menu, MenuItem, MenuList, Stack, Typography } from '@mui/material'
 import React from 'react'
 
-interface IProps {
+interface IMenuContainersProps {
     file: IFileObject|undefined
     channel: string
     onClose?:() => void
@@ -11,7 +11,7 @@ interface IProps {
     anchorParent: Element
 }
 
-const MenuContainers: React.FC<IProps> = (props:IProps) => {
+const MenuContainers: React.FC<IMenuContainersProps> = (props:IMenuContainersProps) => {
     if (!props.file || !props.file.data.origin.status.containerStatuses) return <></>
     if (props.file.data.origin.status.containerStatuses.length===1) {
         props.onContainerSelected(props.channel, props.file, props.file.data.origin.status.containerStatuses[0].name)

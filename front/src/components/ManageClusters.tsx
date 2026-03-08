@@ -6,13 +6,13 @@ import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { ENotifyLevel, readClusterInfo } from '../tools/Global'
 import { KwirthData } from '@jfvilas/kwirth-common'
 
-interface IProps {
+interface IManageClustersProps {
   onClose:(clusters:Cluster[]) => void
   notify: (channel:string|undefined, level:ENotifyLevel, msg:string) => void
   clusters?: Cluster[]
 }
 
-const ManageClusters: React.FC<IProps> = (props:IProps) => {
+const ManageClusters: React.FC<IManageClustersProps> = (props:IManageClustersProps) => {
     const [clusters, setClusters] = useState<Cluster[]>(props.clusters || [])
     const [selectedCluster, setSelectedCluster] = useState<Cluster|null>()
     const [name, setName] = useState<string>('')

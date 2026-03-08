@@ -7,7 +7,7 @@ import { TChannelConstructor } from '../channels/IChannel'
 import { Cluster } from '../model/Cluster'
 import { GaugeComponent } from 'react-gauge-component'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
-import { IconAks, IconBlank, IconContainer, IconController, IconEks, IconGke, IconK3d, IconK3s, IconK8s, IconNamespace, IconOcp, IconPod, IconRk2e } from '../tools/Constants-React'
+import { IconAks, IconContainer, IconController, IconEks, IconGke, IconK3d, IconK3s, IconK8s, IconK8sBlank, IconNamespace, IconOcp, IconPod, IconRk2e } from '../tools/Constants-React'
 import { Area, AreaChart } from 'recharts'
 import { EInstanceConfigView } from '@jfvilas/kwirth-common'
 
@@ -16,7 +16,7 @@ import { EInstanceConfigView } from '@jfvilas/kwirth-common'
 // transform svg to JSX https://svg2jsx.com/
 // remove background https://www.iloveimg.com/remove-background
 
-interface IProps {
+interface IHomepageProps {
     cluster:Cluster|undefined,
     clusters:Cluster[]
     frontChannels: Map<string, TChannelConstructor>
@@ -36,7 +36,7 @@ enum EListType {
     LAST='last'
 }
 
-const Homepage: React.FC<IProps> = (props:IProps) => {
+const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
     const [cpu, setCpu] = useState(0)
     const [memory, setMemory] = useState(0)
     const [txmbps, setTxmbps] = useState(0)
@@ -162,7 +162,7 @@ const Homepage: React.FC<IProps> = (props:IProps) => {
                                     viewIcon = <IconContainer size={20}/>
                                     break
                                 default:
-                                    viewIcon = <IconBlank size={20}/>
+                                    viewIcon = <IconK8sBlank size={20}/>
                                     break
                             }
 

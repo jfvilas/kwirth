@@ -1,11 +1,11 @@
 import { IChannel, IChannelObject, IContentProps } from '../channels/IChannel'
 
-interface IProps {
+interface ITabContentProps {
     channel?:IChannel
     channelObject?: IChannelObject
 }
 
-const TabContent: React.FC<IProps> = (props:IProps) => {
+const TabContent: React.FC<ITabContentProps> = (props:ITabContentProps) => {
     const showContent = () => {
         if (!props.channel) return
         let ChannelTabContent = props.channel.TabContent

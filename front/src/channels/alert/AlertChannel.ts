@@ -1,30 +1,30 @@
 import { FC } from 'react'
-import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IChannelRequirements, IContentProps, ISetupProps } from '../IChannel'
 import { EAlertSeverity, IAlertMessage, IInstanceMessage, ISignalMessage, EInstanceMessageFlow, EInstanceMessageType, EInstanceMessageAction, EInstanceConfigScope } from '@jfvilas/kwirth-common'
 import { AlertIcon, AlertSetup } from './AlertSetup'
 import { AlertTabContent } from './AlertTabContent'
 import { AlertData, IAlertData } from './AlertData'
 import { AlertInstanceConfig, AlertConfig, IAlertConfig } from './AlertConfig'
-import { ENotifyLevel } from '../../tools/Global'
 
 export class AlertChannel implements IChannel {
     private setupVisible = false
-    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = (channel:string|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = AlertSetup
     TabContent: FC<IContentProps> = AlertTabContent
     channelId = 'alert'
-
-    requiresSetup() { return true }
-    requiresSettings() { return false }
-    requiresMetrics() { return false }
-    requiresAccessString() { return false }
-    requiresFrontChannels() { return true }
-    requiresClusterUrl() { return false }
-    requiresClusterInfo() { return false }
-    requiresWebSocket() { return false }
-    requiresUserSettings() { return false }
-    requiresPaletteChange() { return false }
-    setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    requirements:IChannelRequirements = {
+        accessString: false,
+        clusterUrl: false,
+        clusterInfo: false,
+        exit: false,
+        frontChannels: false,
+        metrics: false,
+        notifier: true,
+        setup: true,
+        settings: false,
+        palette: false,
+        userSettings: false,
+        webSocket: false,
+    }
 
     getScope() { return EInstanceConfigScope.VIEW}
     getChannelIcon(): JSX.Element { return AlertIcon }

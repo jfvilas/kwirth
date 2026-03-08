@@ -20,14 +20,14 @@ enum MenuDrawerOption {
     Exit
 }
 
-interface IProps {
+interface IMenuDrawerProps {
     optionSelected: (opt:MenuDrawerOption) => void
     uploadSelected: (a:React.ChangeEvent<HTMLInputElement>) => void
     selectedClusterName?: string
     hasClusterScope:boolean
   }
   
-const MenuDrawer: React.FC<IProps> = (props:IProps) => {
+const MenuDrawer: React.FC<IMenuDrawerProps> = (props:IMenuDrawerProps) => {
 
     const optionSelected = (opt:MenuDrawerOption) => {
         props.optionSelected(opt);

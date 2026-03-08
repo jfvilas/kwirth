@@ -1,5 +1,6 @@
 import { AppsV1Api, BatchV1Api, CoreV1Api, NetworkingV1Api, V1Eviction, V1Job } from '@kubernetes/client-node'
 import { ClusterInfo } from '../model/ClusterInfo'
+import { v4 as uuid } from 'uuid'
 const yaml = require('js-yaml')
 
 async function getSelector(kind:string, namespace:string, name:string, clusterInfo:ClusterInfo) {
@@ -478,7 +479,7 @@ async function setIngressClassAsDefault (networkApi: NetworkingV1Api, name:strin
 }
 
 async function imageDelete (appsApi:AppsV1Api, imageName:string) {
-    // +++ finish implementation
+    // +++ TEST OTHER Kubes
     /*
         chroot /host /usr/local/bin/crictl rmi ${imageName} && sleep 30
 
@@ -490,30 +491,30 @@ async function imageDelete (appsApi:AppsV1Api, imageName:string) {
 
         export CONTAINER_RUNTIME_ENDPOINT=unix:///run/containerd/containerd.sock    
     */
+    let uniqueName = 'kwirth-image-purger-'+uuid()
+
     const daemonSet = {
         metadata: {
-            name: 'kwirth-image-purger',
-            labels: { app: 'kwirth-image-purger' }
+            name: uniqueName,
+            labels: { app: uniqueName }
         },
         spec: {
-            selector: { matchLabels: { app: 'kwirth-image-purger' } },
+            selector: { matchLabels: { app: uniqueName } },
             template: {
-                metadata: { labels: { app: 'kwirth-image-purger' } },
+                metadata: { labels: { app: uniqueName } },
                 spec: {
                     containers: [{
                         name: 'worker',
                         image: 'rancher/crictl:v1.19.0',
                         command: ["/bin/sh", "-c"],
-                        args: [`chroot /host /usr/local/bin/crictl rmi ${imageName} && sleep 30`],
+                        args: [`/usr/local/bin/crictl rmi ${imageName} && sleep 10`],
                         securityContext: { privileged: true },
                         volumeMounts: [
-                            { name: 'host-root', mountPath: '/host' },
-                            { name: 'cri-socket', mountPath: '/run/containerd/containerd.sock' }
+                            { name: 'cri-k3s-socket', mountPath: '/run/containerd/containerd.sock' }
                         ]
                     }],
                     volumes: [
-                        { name: 'host-root', hostPath: { path: '/' } },
-                        { name: 'cri-socket', hostPath: { path: '/run/containerd/containerd.sock' } }
+                        { name: 'cri-k3s-socket', hostPath: { path: '/run/k3s/containerd/containerd.sock' } }
                     ],
                     hostPID: true
                 }
@@ -522,15 +523,15 @@ async function imageDelete (appsApi:AppsV1Api, imageName:string) {
     }
 
     try {
-        let response = await appsApi.createNamespacedDaemonSet({
+        await appsApi.createNamespacedDaemonSet({
             namespace: 'default',
             body: daemonSet
         })
-        console.log(`DaemonSet created for deleting image '${imageName}'`);
+        console.log(`DaemonSet ${uniqueName} created for deleting image '${imageName}'`);
         await new Promise((resolve) => setTimeout(resolve, 30000))
-        let response2 = await appsApi.deleteNamespacedDaemonSet({
+        await appsApi.deleteNamespacedDaemonSet({
             namespace: 'default',
-            name: 'kwirth-image-purger'
+            name: uniqueName
         })
     }
     catch (err:any) {

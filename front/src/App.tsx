@@ -30,7 +30,7 @@ import { IWorkspace, IWorkspaceSummary } from './model/IWorkspace'
 import { VERSION } from './version'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
-import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, IInstanceConfig, InstanceMessageChannelEnum, parseResources, KwirthData, BackChannelData, IUser, ISignalMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView, EInstanceConfigObject, AccessKey } from '@jfvilas/kwirth-common'
+import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, IInstanceConfig, InstanceMessageChannelEnum, parseResources, KwirthData, BackChannelData, IUser, ISignalMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView, EInstanceConfigObject, AccessKey, accessKeyDeserialize } from '@jfvilas/kwirth-common'
 import { ITabObject, ITabSummary } from './model/ITabObject'
 
 import { TChannelConstructor, EChannelRefreshAction, IChannel, IChannelMessageAction, ISetupProps } from './channels/IChannel'
@@ -49,6 +49,7 @@ import { createChannelInstance } from './tools/ChannelTools'
 import { NotificationMenu, NotificationMessage } from './components/NotificationMenu'
 import { ContextSelector } from './components/ContextSelector'
 import { v4 as uuid } from 'uuid'
+import { flushSync } from 'react-dom'
 
 interface IAppProps {
     backendUrl:string
@@ -56,9 +57,7 @@ interface IAppProps {
 }
 
 const App: React.FC<IAppProps> = (props:IAppProps) => {
-    let backendUrl = props.backendUrl
-    
-    const [mode, setMode] = useState<PaletteMode>('light');
+    const [mode, setMode] = useState<PaletteMode>('light')
     // Use memo for not recalc theme on every render
     const theme = useMemo( () => createTheme({
         cssVariables: true,
@@ -157,7 +156,8 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const [firstLogin,setFirstLogin]=useState(false)
     const [refresh,setRefresh]=useState(0)
 
-    const [accessString,setAccessString]=useState('')
+    const [backendUrl,setBackendUrl] = useState(props.backendUrl)
+    const [accessString,setAccessString] = useState('')
     const [msgBox, setMsgBox] =useState(<></>)
 
     const [clusters, setClusters] = useState<Cluster[]>([])
@@ -250,7 +250,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
     useEffect ( () => {
         // only when user logs on / off
-        if (!logged) return
+        if (!logged || !backendUrl) return
 
         getClusters()
         readLoggedUserSettings() 
@@ -272,7 +272,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             setLastWorkspaces([])
         let favBoards = localStorage.getItem('favWorkspaces')
         if (favBoards) setFavWorkspaces(JSON.parse(favBoards))
-    },[logged])
+    },[logged, backendUrl])
 
     useEffect( () => {
         let c = clusters.find(c => c.source)
@@ -334,26 +334,38 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
     }
 
+    const loadSourceCluster = async (url:string, myAccessString:string) : Promise<Cluster|undefined> => {
+        let response = await fetch(`${url}/config/info`, addGetAuthorization(myAccessString))
+        let srcCluster = new Cluster()
+        srcCluster.kwirthData = await response.json() as KwirthData
+        if (!srcCluster.kwirthData) {
+            console.log('No KwirthData received from source cluster')
+            return
+        }
+        let responseCluster = await fetch(`${url}/config/cluster`, addGetAuthorization(myAccessString))
+        srcCluster.clusterInfo = await responseCluster.json() as IClusterInfo
+
+        srcCluster.name = srcCluster.kwirthData.clusterName
+        srcCluster.url = url
+        srcCluster.accessString = myAccessString
+        srcCluster.source = true
+        srcCluster.enabled = true
+        let srcMetricsRequired = Array.from(srcCluster.kwirthData.channels).reduce( (prev, current) => { return prev || current.metrics}, false)
+        if (srcMetricsRequired) getMetricsNames(srcCluster)
+        return srcCluster
+    }
+
     const getClusters = async () => {
         // get current cluster
         try {
-            let response = await fetch(`${backendUrl}/config/info`, addGetAuthorization(accessString))
-            let srcCluster = new Cluster()
-            srcCluster.kwirthData = await response.json() as KwirthData
-            if (!srcCluster.kwirthData) {
-                console.log('No KwirthData received from source cluster')
+            console.log(accessString)
+            let srcCluster = await loadSourceCluster(backendUrl, accessString)
+            if (!srcCluster || !srcCluster.kwirthData) {
+                setMsgBox(MsgBoxOkError('Kwirth start', 'Could not get source cluster info, so you will back to login page for starting again (... and trying to get more luck)', setMsgBox,  (b:MsgBoxButtons) => {
+                    setLogged(false)
+                }))
                 return
             }
-            let responseCluster = await fetch(`${backendUrl}/config/cluster`, addGetAuthorization(accessString))
-            srcCluster.clusterInfo = await responseCluster.json() as IClusterInfo
-
-            srcCluster.name = srcCluster.kwirthData.clusterName
-            srcCluster.url = backendUrl
-            srcCluster.accessString = accessString
-            srcCluster.source = true
-            srcCluster.enabled = true
-            let srcMetricsRequired = Array.from(srcCluster.kwirthData.channels).reduce( (prev, current) => { return prev || current.metrics}, false)
-            if (srcMetricsRequired) getMetricsNames(srcCluster)
             if (versionGreaterThan(srcCluster.kwirthData.version, srcCluster.kwirthData.lastVersion)) {
                 setInitialMessage(`You have Kwirth version ${srcCluster.kwirthData.version} installed. A new version is available (${srcCluster.kwirthData.version}), it is recommended to update your Kwirth deployment. If you're a Kwirth admin and you're using 'latest' tag, you can update Kwirth from the main menu.`)
             }
@@ -361,10 +373,10 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             // get previously configured clusters
             let clusterList:Cluster[]=[]
             if (!props.isElectron) {
-                response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString))
+                let response = await fetch (`${backendUrl}/store/${user?.id}/clusters/list`, addGetAuthorization(accessString))
                 if (response.status===200) {
                     clusterList = JSON.parse (await response.json())
-                    clusterList = clusterList.filter (c => c.name !== srcCluster.name)
+                    clusterList = clusterList.filter (c => c.name !== srcCluster!.name)
                 }
             }
 
@@ -375,6 +387,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         }
         catch (err) {
+            console.trace('xx')
             notify(undefined, ENotifyLevel.ERROR, 'Cannot build clusters list: '+err)
         }
     }
@@ -439,7 +452,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
 
         if (frontChannels.has(selection.channelId)) {
-           await populateTabObject(selection.name, selection.channelId, cluster, selection.view, selection.namespaces.join(','), selection.controllers.join(','), selection.pods.join(','), selection.containers.join(','), start, settings)
+           await populateTabObject(selection.name, selection.channelId, cluster, selection.view as EInstanceConfigView, selection.namespaces.join(','), selection.controllers.join(','), selection.pods.join(','), selection.containers.join(','), start, settings)
         }
         else {
             console.log(`Error, invalid channel: `, selection.channelId)
@@ -453,14 +466,12 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     }
 
     const readChannelUserPreferences = async (channelId:string) : Promise<any> => {
-        console.log('readpref', channelId, userSettingsRef.current)
         let chanPref = userSettingsRef.current.channelUserPreferences?.find(c => c.channelId===channelId)
         if (chanPref) {
-            console.log(chanPref.data)
             return chanPref.data
         }
         else {
-            console.log('undef')
+            console.log('Channel preferes are undefined')
             return undefined
         }
     }
@@ -481,8 +492,8 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
     }
 
-    const populateTabObject = async (name:string, channelId:string, cluster:Cluster, view:string, namespaces:string, controllers:string, pods:string, containers:string, start:boolean, settings:any, tab?:ITabObject) : Promise<ITabObject> => {
-        let newChannel = createChannelInstance(frontChannels.get(channelId), notify)
+    const populateTabObject = async (name:string, channelId:string, cluster:Cluster, view:EInstanceConfigView, namespaces:string, controllers:string, pods:string, containers:string, start:boolean, settings:any, tab?:ITabObject) : Promise<ITabObject> => {
+        let newChannel = createChannelInstance(frontChannels.get(channelId))
         if (!newChannel) {
             throw 'Invalid channel instance'
         }
@@ -501,6 +512,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 pod: pods,
                 container: containers,
                 config: undefined,
+                isElectron: props.isElectron,
                 data: undefined,
                 instanceConfig: undefined,
                 channel: newChannel
@@ -511,20 +523,22 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             headerEl: undefined
         }
 
-        if (newTab.channel.requiresMetrics()) newTab.channelObject.metricsList = cluster.metricsList
-        if (newTab.channel.requiresClusterUrl()) newTab.channelObject.clusterUrl = cluster.url
-        if (newTab.channel.requiresClusterInfo()) newTab.channelObject.clusterInfo = cluster.clusterInfo
-        if (newTab.channel.requiresAccessString()) newTab.channelObject.accessString = cluster?.accessString
-        if (newTab.channel.requiresFrontChannels()) newTab.channelObject.frontChannels = frontChannels
-        if (newTab.channel.requiresPaletteChange()) newTab.channelObject.setPaletteChange = (palette:string) => setMode(palette as 'light'|'dark')
-        if (newTab.channel.requiresUserSettings()) {
+        if (newTab.channel.requirements.clusterUrl) newTab.channelObject.clusterUrl = cluster.url
+        if (newTab.channel.requirements.clusterInfo) newTab.channelObject.clusterInfo = cluster.clusterInfo
+        if (newTab.channel.requirements.accessString) newTab.channelObject.accessString = cluster?.accessString
+        if (newTab.channel.requirements.metrics) newTab.channelObject.metricsList = cluster.metricsList
+        if (newTab.channel.requirements.frontChannels) newTab.channelObject.frontChannels = frontChannels
+        if (newTab.channel.requirements.notifier) newTab.channelObject.notify = notify
+        if (newTab.channel.requirements.palette) newTab.channelObject.setPalette = (palette:string) => setMode(palette as 'light'|'dark')
+        if (newTab.channel.requirements.exit) newTab.channelObject.exit = () => setLogged(false)
+        if (newTab.channel.requirements.userSettings) {
             newTab.channelObject.readChannelUserPreferences = readChannelUserPreferences
             newTab.channelObject.writeChannelUserPreferences = writeChannelUserPreferences
         }
         newTab.channelObject.config = userSettingsRef.current?.channelSettings?.find(c => c.channelId === newTab.channel.channelId)
         if ((await newTab.channel.initChannel(newTab.channelObject))) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         if (tab) newTab.channelObject.instanceConfig = tab.channelObject.instanceConfig
-        if (newTab.channel.requiresSettings()) {
+        if (newTab.channel.requirements.settings) {
             // this 'requiresSettings' must be executed after managing config and instanceConfig
             if (userSettingsRef.current) {
                 let thisChannnel = userSettingsRef.current.channelSettings.find(c => c.channelId === newTab.channel.channelId)
@@ -543,7 +557,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     }
                 }
             }
-            newTab.channelObject.onUpdateChannelSettings = (channelSettings:IChannelSettings) => {
+            newTab.channelObject.updateChannelSettings = (channelSettings:IChannelSettings) => {
                 if (userSettingsRef.current) {
                     let thisChannnel = userSettingsRef.current.channelSettings.find(c => c.channelId === newTab.channel.channelId)
                     if (!thisChannnel) {
@@ -561,17 +575,17 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 }
             }
         }
-        newTab.channelObject.onCreateTab = (xresource:IResourceSelected, sstart:boolean, ssettings:any) => {
+        newTab.channelObject.createTab = (xresource:IResourceSelected, sstart:boolean, ssettings:any) => {
             onResourceSelectorAdd(xresource, sstart, ssettings)
         }
         startSocket(newTab, cluster, () => {
             console.log(`WebSocket connected: ${newTab.ws?.url}`, new Date().toISOString())
             setKeepAlive(newTab)
-            if (newTab.channel.requiresWebSocket()) newTab.channelObject.webSocket = newTab.ws
+            if (newTab.channel.requirements.webSocket) newTab.channelObject.webSocket = newTab.ws
             if (newTab && (newTab.channelStarted || start)) {
                 newTab.channelObject.config = settings.config
                 newTab.channelObject.instanceConfig = settings.instanceConfig
-                startTabChannel(newTab)
+                startTabChannel(newTab, cluster)
                 setChannelMessageAction({action : EChannelRefreshAction.REFRESH})  // we force rendering
             }
         })
@@ -621,7 +635,14 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         selectedTab.current.channelObject.config = channelSettings.channelConfig
         selectedTab.current.channelObject.instanceConfig = channelSettings.channelInstanceConfig
         setChannelMessageAction({action : EChannelRefreshAction.REFRESH})  // we force rendering
-        startTabChannel(selectedTab.current)
+
+        let cluster = clusters.find(c => c.name === selectedTab.current!.channelObject.clusterName)
+        if (!cluster) {
+            setMsgBox(MsgBoxOk('Kwirth',`Cluster (${selectedTab.current!.channelObject.clusterName}) could not be found.`, setMsgBox))
+            return
+        }
+
+        startTabChannel(selectedTab.current, cluster)
     }
 
     const setKeepAlive = (tab:ITabObject) => {
@@ -641,10 +662,11 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     }
 
     const colorizeTab = (tab:ITabObject) => {
+        //+++ review channel colorizing system in order to make it compatible with palettes
         if (!tab.headerEl) return
         let colorTable:IColors = TABBRIGHTCOLORS
         if (selectedTab.current === tab) colorTable = TABBASECOLORS
-        if (tab.channelStarted) {  //+++ maybe channel is started but communicartions interrupted, so we should set to red/salmon
+        if (tab.channelStarted) { 
             if (tab.channelPaused) {
                 tab.headerEl.style.backgroundColor = colorTable.pause
             }
@@ -738,11 +760,16 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
     const onClickChannelStart = () => {
         if (selectedTab.current && selectedTab.current.channel) {
-            if (selectedTab.current.channel.requiresSetup()) {
+            if (selectedTab.current.channel.requirements.setup) {
                 selectedTab.current.channel.setSetupVisibility(true)
             }
             else {
-                startTabChannel(selectedTab.current)
+                let cluster = clusters.find(c => c.name === selectedTab.current!.channelObject.clusterName)
+                if (!cluster) {
+                    setMsgBox(MsgBoxOk('Kwirth',`Cluster (${selectedTab.current!.channelObject.clusterName}) could not be found.`, setMsgBox))
+                    return
+                }
+                startTabChannel(selectedTab.current, cluster)
             }
         }
         else {
@@ -826,16 +853,17 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
     }
     
-    const startTabChannel = (tab:ITabObject) => {
+    const startTabChannel = (tab:ITabObject, cluster:Cluster) => {
+        // +++ i think cluster can be obtained from tab object: tab.channelObject
         if (!tab || !tab.channelObject) {
             console.log('No active tab found')
             return
         }
-        let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
-        if (!cluster) {
-            setMsgBox(MsgBoxOk('Kwirth',`Cluster set at channel configuration (${tab.channelObject.clusterName}) does not exist.`, setMsgBox))
-            return
-        }
+        // let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
+        // if (!cluster) {
+        //     setMsgBox(MsgBoxOk('Kwirth',`Cluster set at channel configuration (${tab.channelObject.clusterName}) does not exist.`, setMsgBox))
+        //     return
+        // }
 
         if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
             tab.ws.onerror = (event) => socketDisconnect(event)
@@ -1472,7 +1500,8 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
     }
 
-    const onContextSelectorLocal = async (id:string, accessKey: AccessKey) => {
+    const onContextSelectorLocal = async (name:string, accessKey: AccessKey) => {
+        console.log(name)
         setCurrentWorkspaceName('untitled')
         setCurrentWorkspaceDescription('No description yet')
         clearTabs()
@@ -1486,24 +1515,65 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             name: 'Kwirth Electron',
             password: '',
             accessKey: accessKey,
-            resources: ''
+            resources: '',
         }
-        setAccessString(user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources)
+        let asStr = user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources
+        setAccessString(asStr)
         setUser(user)
+
+        let srcCluster = await loadSourceCluster(backendUrl, asStr)
+        if (!srcCluster) {
+            setMsgBox(MsgBoxOkError('KwirthDesktop start', 'Could not get source cluster info, so you will back to login page trying to be more lucky.', setMsgBox,  (b:MsgBoxButtons) => {
+                setLogged(false)
+            }))
+            return
+        }
+
+        let magnifySettings = {
+            config: undefined,
+            instanceConfig: undefined
+        }
+        await populateTabObject('ELECTRON', 'magnify', srcCluster, EInstanceConfigView.NAMESPACE  , 'default', '', '', '', true, magnifySettings)
         setFirstLogin(false)
         setLogged(true)
     }
     
-    const onContextSelectorRemote = (id:string, url:string) => {
-        setIsClusterRemoteSelected(true)
-        setLogged(false)
-        setFirstLogin(false)
+    const onContextSelectorRemote = async (name:string, url:string, accessString:string) => {
+        console.log(name)
+        setBackendUrl(url)
+        setAccessString(accessString)
         setCurrentWorkspaceName('untitled')
         setCurrentWorkspaceDescription('No description yet')
         clearTabs()
-        console.log('change to ', url)
-        //backendUrlRef.current = url
-        //props.onBackendChange(url)
+        let userId = localStorage.getItem('electronUser')
+        if (!userId) {
+            userId = uuid()
+            localStorage.setItem('electronUser', userId)
+        }
+        let user:IUser = {
+            id: userId,
+            name: 'Kwirth Electron',
+            password: '',
+            accessKey: accessKeyDeserialize(accessString),
+            resources: '',
+        }
+        setUser(user)
+
+        let srcCluster = await loadSourceCluster(url, accessString)
+        if (!srcCluster) {
+            setMsgBox(MsgBoxOkError('KwirthDesktop start', 'Could not get source cluster info, so you will back to login page trying to be more lucky.', setMsgBox,  (b:MsgBoxButtons) => {
+                setLogged(false)
+            }))
+            return
+        }
+
+        let magnifySettings = {
+            config: undefined,
+            instanceConfig: undefined
+        }
+        await populateTabObject('ELECTRON', 'magnify', srcCluster, EInstanceConfigView.NAMESPACE  , 'default', '', '', '', true, magnifySettings)
+        setFirstLogin(false)
+        setLogged(true)
     }
     
     if (!logged) {

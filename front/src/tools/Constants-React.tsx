@@ -38,6 +38,175 @@ export const IconRk2e = (props: {height?:number}) => { return <img src={SvgIconR
 export const IconK3d = (props: {height?:number}) => { return <img src={SvgIconK3d} alt='ns' height={`${props.height||16}px`}/> }
 export const IconK3s = (props: {height?:number}) => { return <img src={SvgIconK3s} alt='ns' height={`${props.height||16}px`}/> }
 export const IconOcp = (props: {height?:number}) => { return <img src={SvgIconOcp} alt='ns' height={`${props.height||16}px`}/> }
+export const IconAks = (props:IconProps) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"  width={props.size}    height={props.size}>
+    <defs>
+      <linearGradient
+        id="a"
+        x1="2.94"
+        x2="8.67"
+        y1="3.74"
+        y2="3.74"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0" stopColor="#b77af4"></stop>
+        <stop offset="1" stopColor="#773adc"></stop>
+      </linearGradient>
+      <linearGradient
+        id="b"
+        x1="9.13"
+        x2="14.85"
+        y1="3.79"
+        y2="3.79"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0" stopColor="#b77af4"></stop>
+        <stop offset="1" stopColor="#773adc"></stop>
+      </linearGradient>
+      <linearGradient
+        id="c"
+        x1="0.01"
+        x2="5.73"
+        y1="9.12"
+        y2="9.12"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0" stopColor="#b77af4"></stop>
+        <stop offset="1" stopColor="#773adc"></stop>
+      </linearGradient>
+      <linearGradient
+        id="d"
+        x1="6.18"
+        x2="11.9"
+        y1="9.08"
+        y2="9.08"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0" stopColor="#b77af4"></stop>
+        <stop offset="1" stopColor="#773adc"></stop>
+      </linearGradient>
+      <linearGradient
+        id="e"
+        x1="12.35"
+        x2="18.08"
+        y1="9.13"
+        y2="9.13"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0" stopColor="#b77af4"></stop>
+        <stop offset="1" stopColor="#773adc"></stop>
+      </linearGradient>
+      <linearGradient
+        id="f"
+        x1="2.87"
+        x2="8.6"
+        y1="14.56"
+        y2="14.56"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0" stopColor="#b77af4"></stop>
+        <stop offset="1" stopColor="#773adc"></stop>
+      </linearGradient>
+      <linearGradient
+        id="g"
+        x1="9.05"
+        x2="14.78"
+        y1="14.6"
+        y2="14.6"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0" stopColor="#b77af4"></stop>
+        <stop offset="1" stopColor="#773adc"></stop>
+      </linearGradient>
+    </defs>
+    <path
+      fill="url(#a)"
+      d="m5.8 1.22-2.86.53v3.9l2.86.61 2.87-1.15V2.2z"
+    ></path>
+    <path
+      fill="none"
+      d="m5.91 6.2 2.62-1.06A.2.2 0 0 0 8.65 5V2.36a.21.21 0 0 0-.13-.18l-2.65-.9h-.12l-2.6.48a.2.2 0 0 0-.15.18v3.53a.19.19 0 0 0 .15.19l2.63.55a.3.3 0 0 0 .13-.01"
+    ></path>
+    <path
+      fill="#341a6e"
+      d="M2.94 1.75v3.9l2.89.61v-5Zm1.22 3.6-.81-.16v-3l.81-.13Zm1.26.23-.93-.15V2l.93-.16Z"
+    ></path>
+    <path
+      fill="url(#b)"
+      d="m11.99 1.27-2.86.53v3.9l2.86.61 2.86-1.16v-2.9z"
+    ></path>
+    <path
+      fill="#341a6e"
+      d="M9.13 1.8v3.9l2.87.61v-5Zm1.21 3.6-.81-.16v-3l.81-.13Zm1.26.23-.93-.15V2.05l.93-.17Z"
+    ></path>
+    <path
+      fill="url(#c)"
+      d="m2.87 6.6-2.86.53v3.9l2.86.61 2.87-1.15V7.58z"
+    ></path>
+    <path
+      fill="#341a6e"
+      d="M0 7.13V11l2.89.61v-5Zm1.21 3.61-.81-.17v-3l.81-.14Zm1.27.26-.93-.15V7.38l.93-.16Z"
+    ></path>
+    <path
+      fill="url(#d)"
+      d="m9.04 6.56-2.86.53v3.9l2.86.62 2.86-1.16V7.54z"
+    ></path>
+    <path
+      fill="#341a6e"
+      d="M6.18 7.09V11l2.88.61v-5Zm1.21 3.61-.81-.17v-3l.81-.14Zm1.26.22-.93-.15V7.34l.93-.16Z"
+    ></path>
+    <path
+      fill="url(#e)"
+      d="m15.21 6.61-2.86.53v3.9l2.86.61 2.87-1.15V7.59z"
+    ></path>
+    <path
+      fill="#341a6e"
+      d="M12.35 7.14V11l2.89.61v-5Zm1.22 3.61-.81-.17v-3l.81-.14Zm1.26.22-.93-.15V7.39l.93-.16Z"
+    ></path>
+    <path
+      fill="url(#f)"
+      d="m5.73 12.04-2.86.52v3.9l2.86.62 2.87-1.16v-2.9z"
+    ></path>
+    <path
+      fill="none"
+      d="m5.84 17 2.61-1a.18.18 0 0 0 .12-.18v-2.6a.2.2 0 0 0-.13-.22l-2.64-.9a.17.17 0 0 0-.12 0l-2.6.47a.19.19 0 0 0-.16.19v3.54a.19.19 0 0 0 .15.19L5.7 17a.23.23 0 0 0 .14 0"
+    ></path>
+    <path
+      fill="#341a6e"
+      d="M2.87 12.56v3.9l2.89.62V12Zm1.22 3.61L3.28 16v-3l.81-.14Zm1.26.23-.93-.15v-3.44l.93-.16Z"
+    ></path>
+    <path
+      fill="url(#g)"
+      d="m11.91 12.08-2.86.53v3.9l2.86.61 2.87-1.15v-2.91z"
+    ></path>
+    <path
+      fill="#341a6e"
+      d="M9.05 12.61v3.9l2.89.61v-5Zm1.22 3.61-.81-.17v-3l.81-.14Zm1.26.22-.93-.15v-3.43l.93-.16Z"
+    ></path>
+  </svg>
+)
+export const IconEks = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 80 80"
+  >
+    <defs>
+      <linearGradient id="a" x1="0%" x2="100%" y1="100%" y2="0%">
+        <stop offset="0%" stopColor="#c8511b"></stop>
+        <stop offset="100%" stopColor="#f90"></stop>
+      </linearGradient>
+    </defs>
+    <g fill="none" fillRule="evenodd">
+      <path fill="url(#a)" d="M0 0h80v80H0z"></path>
+      <path
+        fill="#fff"
+        d="m61.239 61.377-21.502-.022c-2.604-.003-4.831-1.939-5.07-4.406a7 7 0 0 1-.031-.644c0-3.376 2.332-4.507 3.755-4.883a1 1 0 0 0 .788-1.122 8 8 0 0 1-.051-.904c0-2.783 1.918-5.775 4.366-6.812 4.251-1.798 7.26.567 8.358 1.669.899.901 1.601 2.056 2.086 3.431a1.001 1.001 0 0 0 1.748.261c.636-.86 1.666-1.237 2.621-.957 1.17.342 1.946 1.553 2.086 3.25a1 1 0 0 0 .825 1.082c1.369.236 4.551 1.197 4.551 5.036 0 4.483-4.143 4.982-4.53 5.021m-23.795 4.485L14 53.398V26.57l20-11.818v9.699l-10.537 6.705A1 1 0 0 0 23 32v16c0 .373.208.714.538.887l9.363 4.871.139.077a7.7 7.7 0 0 0-.404 2.47q.001.433.041.835c.335 3.481 3.436 6.211 7.058 6.215l2.247.001zm15.06-34.726L41 24.425v-9.673L61 26.57v19.897a4.4 4.4 0 0 0-2.132-1.399 4.31 4.31 0 0 0-3.623.569 10.5 10.5 0 0 0-1.977-2.796c-.086-.086-.18-.152-.268-.235V32a1 1 0 0 0-.496-.864M63 49.726V26a1 1 0 0 0-.491-.861l-22-13A1 1 0 0 0 39 13v12c0 .355.188.684.496.863L51 32.574v8.544c-2.517-1.404-5.463-1.57-8.285-.376-.99.419-1.888 1.086-2.678 1.887l-3.026-3.509 6.831-7.921H41.18L35 38v-7h-2v17h2v-8l3.682 4.311c-.968 1.53-1.554 3.322-1.554 5.085q0 .164.005.327c-1.348.493-2.421 1.304-3.187 2.35L25 47.393V32.548l10.537-6.705A1 1 0 0 0 36 25V13c0-.359-.193-.691-.504-.869a1 1 0 0 0-1.005.008l-22 13A1 1 0 0 0 12 26v28a1 1 0 0 0 .53.882l24.453 13a1 1 0 0 0 .953-.007l8.178-4.515 15.205.014c2.232-.182 6.45-1.882 6.45-7.018 0-3.678-2.264-5.753-4.769-6.63"
+      ></path>
+    </g>
+  </svg>  
+)
 
 type IconProps = { size: number }
 
@@ -205,31 +374,31 @@ export const IconReplicaSet = (props:IconProps) => (
   </svg>
 )
 
-export const IconBlank = (props:IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5" width={props.size} height={props.size}>
-    <path
-      fill="#326ce5"
-      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
-    ></path>
-    <path
-      fill="#fff"
-      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
-      color="#000"
-      fontFamily="Sans"
-      fontWeight="400"
-      overflow="visible"
-      style={{
-        lineHeight: "normal",
-        textIndent: "0",
-        textAlign: "start",
-        textDecorationLine: "none",
-        textTransform: "none",
-        marker: "none",
-      }}
-      transform="translate(15.91 -3.873)scale(1.01489)"
-    ></path>
-  </svg>
-)
+// export const IconBlank = (props:IconProps) => (
+//   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5" width={props.size} height={props.size}>
+//     <path
+//       fill="#326ce5"
+//       d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+//     ></path>
+//     <path
+//       fill="#fff"
+//       d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+//       color="#000"
+//       fontFamily="Sans"
+//       fontWeight="400"
+//       overflow="visible"
+//       style={{
+//         lineHeight: "normal",
+//         textIndent: "0",
+//         textAlign: "start",
+//         textDecorationLine: "none",
+//         textTransform: "none",
+//         marker: "none",
+//       }}
+//       transform="translate(15.91 -3.873)scale(1.01489)"
+//     ></path>
+//   </svg>
+// )
 
 export const IconContainer = (props:IconProps) => (
 <svg
@@ -1050,154 +1219,6 @@ export const IconAPIResource = (props:IconProps) => (
   </svg>
 )
 
-export const IconAks = (props:IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"  width={props.size}    height={props.size}>
-    <defs>
-      <linearGradient
-        id="a"
-        x1="2.94"
-        x2="8.67"
-        y1="3.74"
-        y2="3.74"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset="0" stopColor="#b77af4"></stop>
-        <stop offset="1" stopColor="#773adc"></stop>
-      </linearGradient>
-      <linearGradient
-        id="b"
-        x1="9.13"
-        x2="14.85"
-        y1="3.79"
-        y2="3.79"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset="0" stopColor="#b77af4"></stop>
-        <stop offset="1" stopColor="#773adc"></stop>
-      </linearGradient>
-      <linearGradient
-        id="c"
-        x1="0.01"
-        x2="5.73"
-        y1="9.12"
-        y2="9.12"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset="0" stopColor="#b77af4"></stop>
-        <stop offset="1" stopColor="#773adc"></stop>
-      </linearGradient>
-      <linearGradient
-        id="d"
-        x1="6.18"
-        x2="11.9"
-        y1="9.08"
-        y2="9.08"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset="0" stopColor="#b77af4"></stop>
-        <stop offset="1" stopColor="#773adc"></stop>
-      </linearGradient>
-      <linearGradient
-        id="e"
-        x1="12.35"
-        x2="18.08"
-        y1="9.13"
-        y2="9.13"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset="0" stopColor="#b77af4"></stop>
-        <stop offset="1" stopColor="#773adc"></stop>
-      </linearGradient>
-      <linearGradient
-        id="f"
-        x1="2.87"
-        x2="8.6"
-        y1="14.56"
-        y2="14.56"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset="0" stopColor="#b77af4"></stop>
-        <stop offset="1" stopColor="#773adc"></stop>
-      </linearGradient>
-      <linearGradient
-        id="g"
-        x1="9.05"
-        x2="14.78"
-        y1="14.6"
-        y2="14.6"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset="0" stopColor="#b77af4"></stop>
-        <stop offset="1" stopColor="#773adc"></stop>
-      </linearGradient>
-    </defs>
-    <path
-      fill="url(#a)"
-      d="m5.8 1.22-2.86.53v3.9l2.86.61 2.87-1.15V2.2z"
-    ></path>
-    <path
-      fill="none"
-      d="m5.91 6.2 2.62-1.06A.2.2 0 0 0 8.65 5V2.36a.21.21 0 0 0-.13-.18l-2.65-.9h-.12l-2.6.48a.2.2 0 0 0-.15.18v3.53a.19.19 0 0 0 .15.19l2.63.55a.3.3 0 0 0 .13-.01"
-    ></path>
-    <path
-      fill="#341a6e"
-      d="M2.94 1.75v3.9l2.89.61v-5Zm1.22 3.6-.81-.16v-3l.81-.13Zm1.26.23-.93-.15V2l.93-.16Z"
-    ></path>
-    <path
-      fill="url(#b)"
-      d="m11.99 1.27-2.86.53v3.9l2.86.61 2.86-1.16v-2.9z"
-    ></path>
-    <path
-      fill="#341a6e"
-      d="M9.13 1.8v3.9l2.87.61v-5Zm1.21 3.6-.81-.16v-3l.81-.13Zm1.26.23-.93-.15V2.05l.93-.17Z"
-    ></path>
-    <path
-      fill="url(#c)"
-      d="m2.87 6.6-2.86.53v3.9l2.86.61 2.87-1.15V7.58z"
-    ></path>
-    <path
-      fill="#341a6e"
-      d="M0 7.13V11l2.89.61v-5Zm1.21 3.61-.81-.17v-3l.81-.14Zm1.27.26-.93-.15V7.38l.93-.16Z"
-    ></path>
-    <path
-      fill="url(#d)"
-      d="m9.04 6.56-2.86.53v3.9l2.86.62 2.86-1.16V7.54z"
-    ></path>
-    <path
-      fill="#341a6e"
-      d="M6.18 7.09V11l2.88.61v-5Zm1.21 3.61-.81-.17v-3l.81-.14Zm1.26.22-.93-.15V7.34l.93-.16Z"
-    ></path>
-    <path
-      fill="url(#e)"
-      d="m15.21 6.61-2.86.53v3.9l2.86.61 2.87-1.15V7.59z"
-    ></path>
-    <path
-      fill="#341a6e"
-      d="M12.35 7.14V11l2.89.61v-5Zm1.22 3.61-.81-.17v-3l.81-.14Zm1.26.22-.93-.15V7.39l.93-.16Z"
-    ></path>
-    <path
-      fill="url(#f)"
-      d="m5.73 12.04-2.86.52v3.9l2.86.62 2.87-1.16v-2.9z"
-    ></path>
-    <path
-      fill="none"
-      d="m5.84 17 2.61-1a.18.18 0 0 0 .12-.18v-2.6a.2.2 0 0 0-.13-.22l-2.64-.9a.17.17 0 0 0-.12 0l-2.6.47a.19.19 0 0 0-.16.19v3.54a.19.19 0 0 0 .15.19L5.7 17a.23.23 0 0 0 .14 0"
-    ></path>
-    <path
-      fill="#341a6e"
-      d="M2.87 12.56v3.9l2.89.62V12Zm1.22 3.61L3.28 16v-3l.81-.14Zm1.26.23-.93-.15v-3.44l.93-.16Z"
-    ></path>
-    <path
-      fill="url(#g)"
-      d="m11.91 12.08-2.86.53v3.9l2.86.61 2.87-1.15v-2.91z"
-    ></path>
-    <path
-      fill="#341a6e"
-      d="M9.05 12.61v3.9l2.89.61v-5Zm1.22 3.61-.81-.17v-3l.81-.14Zm1.26.22-.93-.15v-3.43l.93-.16Z"
-    ></path>
-  </svg>
-)
-
 export const IconNode = (props:IconProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -1293,30 +1314,6 @@ export const IconNode = (props:IconProps) => (
   </svg>
 )
 
-export const IconEks = (props:IconProps) => (
-
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
-    viewBox="0 0 80 80"
-  >
-    <defs>
-      <linearGradient id="a" x1="0%" x2="100%" y1="100%" y2="0%">
-        <stop offset="0%" stopColor="#c8511b"></stop>
-        <stop offset="100%" stopColor="#f90"></stop>
-      </linearGradient>
-    </defs>
-    <g fill="none" fillRule="evenodd">
-      <path fill="url(#a)" d="M0 0h80v80H0z"></path>
-      <path
-        fill="#fff"
-        d="m61.239 61.377-21.502-.022c-2.604-.003-4.831-1.939-5.07-4.406a7 7 0 0 1-.031-.644c0-3.376 2.332-4.507 3.755-4.883a1 1 0 0 0 .788-1.122 8 8 0 0 1-.051-.904c0-2.783 1.918-5.775 4.366-6.812 4.251-1.798 7.26.567 8.358 1.669.899.901 1.601 2.056 2.086 3.431a1.001 1.001 0 0 0 1.748.261c.636-.86 1.666-1.237 2.621-.957 1.17.342 1.946 1.553 2.086 3.25a1 1 0 0 0 .825 1.082c1.369.236 4.551 1.197 4.551 5.036 0 4.483-4.143 4.982-4.53 5.021m-23.795 4.485L14 53.398V26.57l20-11.818v9.699l-10.537 6.705A1 1 0 0 0 23 32v16c0 .373.208.714.538.887l9.363 4.871.139.077a7.7 7.7 0 0 0-.404 2.47q.001.433.041.835c.335 3.481 3.436 6.211 7.058 6.215l2.247.001zm15.06-34.726L41 24.425v-9.673L61 26.57v19.897a4.4 4.4 0 0 0-2.132-1.399 4.31 4.31 0 0 0-3.623.569 10.5 10.5 0 0 0-1.977-2.796c-.086-.086-.18-.152-.268-.235V32a1 1 0 0 0-.496-.864M63 49.726V26a1 1 0 0 0-.491-.861l-22-13A1 1 0 0 0 39 13v12c0 .355.188.684.496.863L51 32.574v8.544c-2.517-1.404-5.463-1.57-8.285-.376-.99.419-1.888 1.086-2.678 1.887l-3.026-3.509 6.831-7.921H41.18L35 38v-7h-2v17h2v-8l3.682 4.311c-.968 1.53-1.554 3.322-1.554 5.085q0 .164.005.327c-1.348.493-2.421 1.304-3.187 2.35L25 47.393V32.548l10.537-6.705A1 1 0 0 0 36 25V13c0-.359-.193-.691-.504-.869a1 1 0 0 0-1.005.008l-22 13A1 1 0 0 0 12 26v28a1 1 0 0 0 .53.882l24.453 13a1 1 0 0 0 .953-.007l8.178-4.515 15.205.014c2.232-.182 6.45-1.882 6.45-7.018 0-3.678-2.264-5.753-4.769-6.63"
-      ></path>
-    </g>
-  </svg>  
-)
-
 
 export const getIconFromKind = (kind:string, size:number) => {
     switch (kind) {
@@ -1343,6 +1340,6 @@ export const getIconFromKind = (kind:string, size:number) => {
         case 'ClusterRoleBinding': return <IconClusterRoleBinding height={size}/>
         case 'V1APIResource': return <IconAPIResource size={size}/>
         
-        default: return <IconBlank size={size}/>
+        default: return <IconK8sBlank size={size}/>
     }
 }

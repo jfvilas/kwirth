@@ -8,7 +8,7 @@ import { IChannelObject } from '../IChannel'
 import { ITrivyInstanceConfig } from './TrivyConfig'
 import { EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageFlow, EInstanceMessageType, IKnown, ITrivyMessage, ETrivyCommand } from '@jfvilas/kwirth-common'
 
-interface IProps {
+interface ITabContentTrivyAssetProps {
     asset: IKnown
     channelObject: IChannelObject
     view: string
@@ -16,7 +16,7 @@ interface IProps {
     onDelete: (asset:IKnown) => void
 }
 
-const TabContentTrivyAsset: React.FC<IProps> = (props:IProps) => {
+const TabContentTrivyAsset: React.FC<ITabContentTrivyAssetProps> = (props:ITabContentTrivyAssetProps) => {
     let report = props.asset.report
     let trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig
     const [anchorMenu, setAnchorMenu] = useState<HTMLElement|null>(null)

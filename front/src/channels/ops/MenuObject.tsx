@@ -12,14 +12,14 @@ enum EMenuObjectOption {
     VIEWMETRICS
 }
 
-interface IProps {
+interface IMenuObjectProps {
     onClose:() => void
     onOptionSelected: (opt:EMenuObjectOption, scopedObject:IScopedObject) => void
     anchorParent: Element
     scopedObject: IScopedObject
 }
 
-const MenuObject: React.FC<IProps> = (props:IProps) => {
+const MenuObject: React.FC<IMenuObjectProps> = (props:IMenuObjectProps) => {
 
     return <Menu id='menu-logs' anchorEl={props.anchorParent} open={Boolean(props.anchorParent)} onClose={props.onClose}>
         <MenuList dense sx={{width:'180px'}}>

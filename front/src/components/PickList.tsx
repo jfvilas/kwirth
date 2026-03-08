@@ -1,11 +1,11 @@
 import { Stack, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, List , ListItemButton , ListItem } from '@mui/material'
 import { PickListConfig } from '../model/PickListConfig'
 
-interface IProps {
+interface IPickListProps {
     config:PickListConfig
 }
 
-const PickList: React.FC<IProps> = (props:IProps) => {
+const PickList: React.FC<IPickListProps> = (props:IPickListProps) => {
     return (
         <Dialog open={true}>
             <DialogTitle>

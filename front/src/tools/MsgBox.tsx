@@ -28,16 +28,17 @@ const MsgBoxShow = (title:string, message:string|JSX.Element, onClose:Dispatch<S
                 {title}
             </DialogTitle>
             <DialogContent>
-                <Stack sx={{mt:2}} direction='row' alignItems={'top'}>
+                <Stack sx={{mt:2}} direction='row' alignItems={'center'}>
                     {icon}
+                    <Box sx={{width:'12px'}}/>
                     { typeof(message)==='string' ?
-                        <Typography sx={{ml:2}}><div dangerouslySetInnerHTML={{__html: message}}/></Typography>
+                        <Typography ><div dangerouslySetInnerHTML={{__html: message}}/></Typography>
                         :
                         message
                         }                        
                 </Stack>
             </DialogContent>
-            <DialogActions>
+            <DialogActions sx={{ p: '4px 4px' }}>
                 { (buttons & MsgBoxButtons.Ok)? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Ok)}}>ok</Button>:<></>}
                 { (buttons & MsgBoxButtons.Yes)? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.Yes)}}>yes</Button>:<></>}
                 { (buttons & MsgBoxButtons.No)? <Button onClick={() => { onClose(<></>); if (onResult) onResult(MsgBoxButtons.No)}}>no</Button>:<></>}
@@ -53,8 +54,8 @@ const MsgBoxWaitShow = (title:string, message:string|JSX.Element, onClose:Dispat
             <DialogTitle>
                 {title}
             </DialogTitle>
-            <DialogContent >
-                <Stack direction={'row'} alignItems={'center'} alignContent={'center'}>
+            <DialogContent>
+                <Stack direction={'row'} alignItems={'center'} alignContent={'center'} sx={{m:2}}>
                     <Box>
                         <CircularProgress size={50} />
                     </Box>

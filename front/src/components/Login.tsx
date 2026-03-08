@@ -5,11 +5,11 @@ import { SessionContext, SessionContextType } from '../model/SessionContext'
 import { addPostAuthorization } from '../tools/AuthorizationManagement'
 import { ILoginResponse, IUser } from '@jfvilas/kwirth-common'
 
-interface IProps {
+interface ILoginProps {
     onClose:(user:IUser|undefined, firstTime:boolean) => void
 }
 
-const Login: React.FC<IProps> = (props:IProps) => {
+const Login: React.FC<ILoginProps> = (props:ILoginProps) => {
     const {backendUrl} = useContext(SessionContext) as SessionContextType
     const [msgBox, setMsgBox] = useState(<></>)
     const [user, setUser] = useState('')

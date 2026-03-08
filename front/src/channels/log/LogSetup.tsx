@@ -15,6 +15,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
 
     const [selectedTab, setSelectedTab] = useState(logConfig.startDiagnostics? 'sd':'log')
     const [maxMessages, setMaxMessages] = useState(logConfig.maxMessages)
+    const [showNames, setShowNames] = useState(logConfig.showNames)
     const [maxPerPodMessages, setMaxPerPodMessages] = useState(logConfig.maxPerPodMessages)
     const [follow, setFollow] = useState(logConfig.follow)
     const [sortOrder, setSortOrder] = useState(logConfig.sortOrder)
@@ -26,6 +27,7 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
 
     const ok = () => {
         logConfig.follow = follow
+        logConfig.showNames = showNames
         logConfig.maxMessages = maxMessages
         logConfig.maxPerPodMessages = maxPerPodMessages
         logConfig.sortOrder = sortOrder
@@ -82,9 +84,12 @@ const LogSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     return (
         <Dialog open={true}>
             <DialogTitle>Configure log stream</DialogTitle>
-            <DialogContent sx={{height:'350px'}}>
-                <Stack  spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh' }}>
-                    <TextField value={maxMessages} onChange={onChangeMaxMessages} variant='standard' label='Max messages' SelectProps={{native: true}} type='number' fullWidth />
+            <DialogContent sx={{height:'350px', overflow:'hidden'}}>
+                <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column', width: '50vh', pt:1 }}>
+                    <Stack direction={'row'} alignItems={'baseline'} gap={2}>
+                        <TextField value={maxMessages} onChange={onChangeMaxMessages} variant='standard' label='Max messages' SelectProps={{native: true}} type='number' sx={{width:'50%'}}/>
+                        <FormControlLabel control={<Checkbox checked={showNames} onChange={(event) => setShowNames(event.target.checked)}/>} label='Show names' sx={{width:'50%'}}/>
+                    </Stack>
 
                     <Tabs value={selectedTab} onChange={(_: React.SyntheticEvent, newValue: string) => { setSelectedTab(newValue)}}>
                         <Tab key='log' label='Logging' value='log' sx={{width:'50%'}}/>

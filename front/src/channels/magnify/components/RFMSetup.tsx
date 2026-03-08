@@ -20,9 +20,31 @@ const setPropertyFunction = (space:ISpace, propName:string, invoke:(p:string) =>
     prop.source = invoke
 }
 
-const setLeftItem = (space:ISpace, name:string, invoke:(paths:string[], target?:any) => void) => {
+const setLeftItem = (
+        space:ISpace,
+        name:string,
+        onClick:(paths:string[], target?:any) => void,
+        isVisible?:(name:string, path:string) => boolean,
+        isEnabled?:(name:string, path:string) => boolean
+    ) => {
     let x = space.leftItems?.find(li => li.name===name)
-    if (x) x.onClick = invoke
+    if (x) {
+        x.onClick = onClick
+        if (isVisible) x.isVisible = isVisible
+        if (isEnabled) x.isEnabled = isEnabled
+    }
+}
+
+const buildForward = (rootObj:any, portName:string, portProtocol:string, portNumber:string) => {
+    let url = '/kwirth/port-forward/pod/' + rootObj.metadata.namespace + '/' + rootObj.metadata.name + '/' + portNumber
+    return <Stack direction={'row'} alignItems={'center'}>
+        <Stack direction={'row'} alignItems={'center'} >
+            {portName && <Typography>{portName}:</Typography>}
+            <Typography>{portNumber.toString().toLowerCase().replace('https','443').replace('http','80')}/{portProtocol}&nbsp;&nbsp;</Typography>
+        </Stack>
+        <Box sx={{ flexGrow: 1 }} />
+        <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
+    </Stack>
 }
 
 const rfmSetup = (
@@ -60,7 +82,7 @@ const rfmSetup = (
             flow: EInstanceMessageFlow.REQUEST,
             type: EInstanceMessageType.DATA,
             channel: channelObject.channel.channelId,
-            params: [ 'cluster', '', '', '', '50']
+            params: [ 'cluster', '', '', '', '500']
         }
         if (channelObject.webSocket) channelObject.webSocket.send(JSON.stringify( magnifyMessage ))
 
@@ -69,15 +91,16 @@ const rfmSetup = (
     const showOverview = () => {
         if (!magnifyData.clusterInfo) return <></>
         
-        return <Box bgcolor={theme.palette.background.default} width={'100%'} height={'100%'}>
+        return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'}>
             <Card sx={{m:2, display: 'flex', flexDirection: 'column', height: 'calc(100% - 55px)'}}>
                 <CardContent sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', p: 2}}>
                     <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
-                        <Typography>Cluster: {channelObject.clusterInfo?.name}</Typography>
-                        <Typography>Version: {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
-                        <Typography>Platform: {magnifyData.clusterInfo.platform}</Typography>
-                        <Typography>Nodes: {magnifyData.files.filter(f => f.class==='Node').length}</Typography>
-
+                        <Stack direction={'row'} justifyContent={'space-between'} width={'100%'}>
+                            <Typography variant="body2"><b>Cluster:</b> {channelObject.clusterInfo?.name}</Typography>
+                            <Typography variant="body2"><b>Version:</b> {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
+                            <Typography variant="body2"><b>Platform:</b> {magnifyData.clusterInfo.platform}</Typography>
+                            <Typography variant="body2"><b>Nodes:</b> {magnifyData.files.filter(f => f.class==='Node').length}</Typography>
+                        </Stack>
                         <Divider sx={{mt:1, mb:1}}/>
 
                         <ClusterMetrics channelObject={channelObject}/>
@@ -116,13 +139,13 @@ const rfmSetup = (
     const showBackground = (f:IFileObject) => {
         let id = f.path.replaceAll('/','')
         const imagePath = require(`./images/${id}.png`);
-        return <Box width={'100%'} height={'100%'} bgcolor={theme.palette.background.default} display={'flex'} justifyContent={'center'} alignItems={'center'}>
+        return <Box width={'100%'} height={'100%'} sx={{bgcolor: 'background.default'}} display={'flex'} justifyContent={'center'} alignItems={'center'}>
                 <img src={imagePath}/>
         </Box>
     }
     
     const showClusterOverview = () => {
-        return <Box bgcolor={theme.palette.background.default} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2} sx={{borderBottomRightRadius:'8px'}}> 
+        return <Box width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2} sx={{bgcolor: 'background.default', borderBottomRightRadius:'8px'}}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -143,7 +166,7 @@ const rfmSetup = (
     }
 
     const showWorkloadOverview = () => {
-        return <Box bgcolor={theme.palette.background.default} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2} sx={{borderBottomRightRadius:'8px', overflowY: 'auto'}}> 
+        return <Box width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2} sx={{bgcolor: 'background.default', borderBottomRightRadius:'8px', overflowY: 'auto'}}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -169,7 +192,7 @@ const rfmSetup = (
     }
 
     const showNetworkOverview = () => {
-        return <Box bgcolor={theme.palette.background.default} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
+        return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -188,7 +211,7 @@ const rfmSetup = (
     }
 
     const showConfigOverview = () => {
-        return <Box bgcolor={theme.palette.background.default} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
+        return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -206,7 +229,7 @@ const rfmSetup = (
     }
 
     const showAccessOverview = () => {
-        return <Box bgcolor={theme.palette.background.default} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
+        return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -225,7 +248,7 @@ const rfmSetup = (
     }
 
     const showStorageOverview = () => {
-        return <Box bgcolor={theme.palette.background.default} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
+        return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -244,8 +267,8 @@ const rfmSetup = (
     }
 
     const showPreferences = () => {
-        return <Box bgcolor={theme.palette.background.default} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
-            <UserPreferences preferences={magnifyData.userPreferences} files={magnifyData.files} onReload={onUserPreferencesReload} channelObject={channelObject}/>
+        return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
+            <UserPreferences preferences={magnifyData.userPreferences} files={magnifyData.files} onDataReload={onUserPreferencesReload} channelObject={channelObject}/>
         </Box>
     }
     
@@ -298,6 +321,10 @@ const rfmSetup = (
     setPathFunction('/storage/overview', showStorageOverview)
     setPathFunction('/access/overview', showAccessOverview)
     setPathFunction('/preferences', showPreferences)
+
+    //Overview ***************************************************************************
+    let spcClassOverview = spaces.get('classOverview')!
+    setLeftItem(spcClassOverview, 'create', () => onObjectCreate('Pod'))
 
     //Workload ***************************************************************************
         // Pod ***************************************************************************
@@ -871,19 +898,6 @@ const rfmSetup = (
             setLeftItem(spcCrdInstance, 'details', onObjectDetails)
             setLeftItem(spcCrdInstance, 'delete', onObjectDelete)
 
-
-}
-
-const buildForward = (rootObj:any, portName:string, portProtocol:string, portNumber:string) => {
-    let url = '/kwirth/port-forward/pod/' + rootObj.metadata.namespace + '/' + rootObj.metadata.name + '/' + portNumber
-    return <Stack direction={'row'} alignItems={'center'}>
-        <Stack direction={'row'} alignItems={'center'} >
-            {portName && <Typography>{portName}:</Typography>}
-            <Typography>{portNumber.toString().toLowerCase().replace('https','443').replace('http','80')}/{portProtocol}&nbsp;&nbsp;</Typography>
-        </Stack>
-        <Box sx={{ flexGrow: 1 }} />
-        <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
-    </Stack>
 }
 
 export { rfmSetup, buildForward, setLeftItem, setPropertyFunction }

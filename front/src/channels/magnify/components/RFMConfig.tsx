@@ -2,19 +2,13 @@ import { IFileObject, ISpace } from '@jfvilas/react-file-manager'
 import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, EditOff, FolderCopy, HomeRepairService, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal } from '@mui/icons-material'
 import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from '../icons/Icons'
 
-
-// const nameProcessor = (name:string) => {
-//     if (name.includes(':')) return name.split(':')[0]
-//     return name
-// }
-
 const spaces = new Map<string, ISpace>()
 
 const menu:IFileObject[] = [
     {   name: 'Overview',
         isDirectory: true,
         path: '/overview',
-        class: 'classoverview',
+        class: 'classOverview',
         layout: 'own'
     },
 
@@ -1675,9 +1669,9 @@ spaces.set('Namespace',
 )
 spaces.set('Node',
     {
-        text:'Name',
-        source:'name',
-        width:40,
+        text: 'Name',
+        source: 'name',
+        width: 30,
         configurable: true,
         leftItems: [
             {
@@ -1723,11 +1717,31 @@ spaces.set('Node',
         ],
         properties: [
             {
+                name: 'cpu',
+                text: 'CPU',
+                source: 'cpu',
+                format: 'string',
+                width: 6,
+                removable: true,
+                sortable: true,
+                visible: true
+            },
+            {
+                name: 'memory',
+                text: 'Memory',
+                source: 'memory',
+                format: 'string',
+                width: 10,
+                removable: true,
+                sortable: true,
+                visible: true
+            },
+            {
                 name: 'taints',
                 text: 'Taints',
                 source: 'taints',
                 format: 'string',
-                width: 15,
+                width: 6,
                 removable: true,
                 sortable: true,
                 visible: true
@@ -1737,7 +1751,7 @@ spaces.set('Node',
                 text: 'Roles',
                 source: 'roles',
                 format: 'string',
-                width: 30,
+                width: 20,
                 removable: true,
                 sortable: false,
                 visible: true
@@ -1767,7 +1781,7 @@ spaces.set('Node',
                 text: 'Age',
                 source: 'creationTimestamp',
                 format: 'age',
-                width: 10,
+                width: 8,
                 sortable: true,
                 visible: true
             },
@@ -1939,12 +1953,6 @@ spaces.set('classPod',
                 icon: <Add fontSize='small'/>,
                 text: 'New pod',
                 permission: true,
-            },
-            {
-                name: 'works',
-                icon: <HomeRepairService fontSize='small'/>,
-                text: 'Kube works',
-                permission: true,
             }
         ]
     }
@@ -1962,7 +1970,7 @@ spaces.set('Pod',
                 permission: true,
             },
             {
-                name: 'shell',
+                name: 'ops',
                 icon: <Terminal fontSize='small'/>,
                 text: 'Shell',
                 permission: true
@@ -1991,7 +1999,7 @@ spaces.set('Pod',
                 name:'fileman',
                 icon: <FolderCopy fontSize='small'/>,
                 text: 'Fileman',
-                multi: false,
+                multi: true,
                 permission: true
             },
             {
@@ -3705,7 +3713,27 @@ spaces.set('crdinstance',
 )
 
 // General  (these empty classes are needed for showing icons on the navigation pane, they are referenced in the "icons" map)
-spaces.set('classoverview', {})
+spaces.set('classOverview', {
+    leftItems: [
+        {
+            name: 'kwirthworks',
+            icon: <HomeRepairService fontSize='small'/>,
+            text: 'Kwirth works',
+            permission: true,
+        },
+        {
+            name: 'kubeworks',
+            icon: <HomeRepairService fontSize='small'/>,
+            text: 'Kube works',
+            permission: true,
+        },
+        {
+            name: 'exit',
+            text: 'Exit',
+            permission: true
+        },
+    ]
+})
 spaces.set('classmenu', {})  // not needed
 spaces.set('classworkload', {})
 spaces.set('classconfig', {})
@@ -3716,7 +3744,7 @@ spaces.set('classcustom', {})
 spaces.set('classsettings', {})
 
 const icons = new Map()
-icons.set('classoverview', { default: <Kubernetes size={'16'}/> } )
+icons.set('classOverview', { default: <Kubernetes size={'16'}/> } )
 icons.set('classcluster', { default: <Cluster size={'16'}/> } )
 icons.set('classworkload', { default: <Pod size={'16'}/> } )
 icons.set('classconfig', { default: <Config size={'16'}/> } )

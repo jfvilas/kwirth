@@ -1,15 +1,17 @@
 import { ILogLine, ILogData } from './LogData'
 import { Box, Card, CardContent, CardHeader, InputAdornment, Stack, TextField, Typography, useTheme } from '@mui/material'
 import { IContentProps } from '../IChannel'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Error, Warning } from '@mui/icons-material'
+import { ILogConfig, ILogInstanceConfig } from './LogConfig'
+import { EInstanceConfigView } from '@jfvilas/kwirth-common'
 
 const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    const theme = useTheme()
     let logData:ILogData = props.channelObject.data
+    let logConfig:ILogConfig = props.channelObject.config
+    const theme = useTheme()
     const logBoxRef = useRef<HTMLDivElement | null>(null)
     const [logBoxTop, setLogBoxTop] = useState(0)
-    const [logBoxHeight, setLogBoxHeight] = useState(0)
     const [filter, setFilter] = useState<string>('')
     const [filterCasing, setFilterCasing] = useState(false)
     const [filterRegex, setFilterRegex] = useState(false)
@@ -21,18 +23,6 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     useEffect(() => {
         if (logBoxRef.current) setLogBoxTop(logBoxRef.current.getBoundingClientRect().top)
     })
-
-    // useLayoutEffect(() => {
-    //     const observer = new ResizeObserver(() => {
-    //         if (!logBoxRef.current) return
-    //         const { top } = logBoxRef.current.getBoundingClientRect()
-    //         let a = window.innerHeight - top
-    //         setLogBoxHeight(a)
-    //     })
-    //     observer.observe(document.body)
-
-    //     return () => observer.disconnect()
-    // }, [logBoxRef.current])
 
     useEffect(() => {
         if (isAtBottom && logBoxRef.current) {
@@ -78,14 +68,11 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
 
         let podPrefix = <></>
-        // if (selectedPodNames.length !== 1 || kwirthLogOptionsRef.current.showNames) {  // +++ log channel doesnt show pod nor container
-        //     podPrefix  = <span style={{color:"green"}}>{logLine.pod+' '}</span>
-        // }
-
         let containerPrefix = <></>
-        // if (selectedContainerNames.length !== 1){
-        //     containerPrefix = <span style={{color:"blue"}}>{logLine.container+' '}</span>
-        // }
+        if (logConfig.showNames) {
+            podPrefix  = <span style={{color:"green"}}>{logLine.pod+' '}</span>
+            containerPrefix = <span style={{color:"blue"}}>{logLine.container+' '}</span>
+        }
         return <>{podPrefix}{containerPrefix}{logLine.text+'\n'}</>
     }
 
@@ -103,8 +90,6 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     return (<>
-        {/* <Box sx={{ display:'flex', flexDirection:'column', flexGrow:1, height: `${logBoxHeight}px`, ml:1, mr:1}}> */}
-        {/* <Box sx={{ display:'flex', flexDirection:'column', flexGrow:1, height: `calc(100vh - ${logBoxTop}px)`, ml:1, mr:1}}> */}
         { logData.started &&
             <Card sx={{display: 'flex', flexDirection: 'column', flex: 1, width: '98%', alignSelf: 'center', marginTop: '8px',minHeight: 0}}>
                 <CardHeader title={
@@ -116,10 +101,10 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                         <TextField value={filter} onChange={onChangeFilter} disabled={!logData.started} size='small' variant='standard' placeholder='Filter...'
                             InputProps={{ endAdornment: 
                                 <>
-                                    <InputAdornment position="start" onClick={() => logData.started && setFilterRegex(!filterRegex)} style={{margin: 0}}>
+                                    <InputAdornment position='start' onClick={() => logData.started && setFilterRegex(!filterRegex)} style={{margin: 0}}>
                                         <Typography style={filterRegex? adornmentSelected : adornmentNotSelected}>.*</Typography>
                                     </InputAdornment>
-                                    <InputAdornment position="start" onClick={() => logData.started && setFilterCasing(!filterCasing)} style={{margin: 0, marginLeft:1}}>
+                                    <InputAdornment position='start' onClick={() => logData.started && setFilterCasing(!filterCasing)} style={{margin: 0, marginLeft:1}}>
                                         <Typography style={filterCasing? adornmentSelected : adornmentNotSelected}>Aa</Typography>
                                     </InputAdornment>
                                 </>
@@ -129,14 +114,12 @@ const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 </CardHeader>
                 <CardContent sx={{flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, p: 0, "&:last-child": { pb: 0 } }}>
                     <Box ref={logBoxRef} sx={{ display:'flex', flexDirection:'column', width:'100%', overflowY:'auto', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 16px)`}} onScroll={handleScroll}>
-                        <pre>
+                        <pre style={{fontSize: '12px'}}>
                             {logData.messages.map((message, index) => { return <div key={index}>{formatLogLine(message)}</div> })}
                         </pre>
                     </Box>
                 </CardContent>
-
             </Card>}
-        {/* </Box> */}
     </>)
 }
 

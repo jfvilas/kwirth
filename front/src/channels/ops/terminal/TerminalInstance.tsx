@@ -1,12 +1,12 @@
 import React, { useEffect, useRef } from 'react'
 import { TerminalManager } from './TerminalManager'
 
-interface IProps {
+interface ITerminalInstanceProps {
     id: string|undefined
     terminalManager:TerminalManager
 }
 
-export const TerminalInstance: React.FC<IProps> = (props:IProps) => {
+export const TerminalInstance: React.FC<ITerminalInstanceProps> = (props:ITerminalInstanceProps) => {
     const containerRef = useRef<HTMLDivElement | null>(null)
 
     useEffect ( () => {

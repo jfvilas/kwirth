@@ -8,11 +8,11 @@ import { ResourceEditor } from './ResourceEditor'
 import { v4 as uuid } from 'uuid'
 const copy = require('clipboard-copy')
 
-interface IProps {
+interface IManageApiSecurityProps {
     onClose:() => void
 }
 
-const ManageApiSecurity: React.FC<IProps> = (props:IProps) => {
+const ManageApiSecurity: React.FC<IManageApiSecurityProps> = (props:IManageApiSecurityProps) => {
     const {accessString, backendUrl} = useContext(SessionContext) as SessionContextType;
     const [msgBox, setMsgBox] = useState(<></>)
     const [keys, setKeys] = useState<ApiKey[]>([])

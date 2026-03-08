@@ -10,6 +10,7 @@ interface ILogConfig {
     // for general log viewing
     follow: boolean
     maxMessages: number
+    showNames: boolean
 
     // for start diagnostics
     maxPerPodMessages: number
@@ -22,6 +23,7 @@ class LogConfig implements ILogConfig{
     maxMessages = 5000
     maxPerPodMessages = 1000
     sortOrder = ELogSortOrder.TIME
+    showNames = false
 }
 
 interface ILogInstanceConfig {

@@ -7,12 +7,11 @@ import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EIn
 import { ICategory, IError, IFileManagerHandle, IFileObject } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
 import { v4 as uuid } from 'uuid'
-import { IMagnifyConfig } from './MagnifyConfig'
 import { ENotifyLevel } from '../../tools/Global'
 import { actions, icons, menu, spaces } from './components/RFMConfig'
 import { objectSections } from './components/DetailsSections'
 import { Edit, EditOff, List, Search } from '@mui/icons-material'
-import { MsgBoxButtons, MsgBoxOkError, MsgBoxYesNo } from '../../tools/MsgBox'
+import { MsgBoxButtons, MsgBoxOkError, MsgBoxWaitCancel, MsgBoxYesNo } from '../../tools/MsgBox'
 import { ContentExternal, IContentExternalData } from './components/ContentExternal'
 import { ContentDetails, IDetailsData } from './components/ContentDetails'
 import { ContentEdit, IContentEditData } from './components/ContentEdit'
@@ -24,9 +23,19 @@ import '@jfvilas/react-file-manager/dist/style.css'
 import './custom-fm-magnify.css'
 import { ArtifactSearch, IArtifactSearchData } from './components/ArtifactSearch'
 import { rfmSetup, setLeftItem, setPropertyFunction } from './components/RFMSetup'
-import { MenuWorks } from './components/MenuWorks'
+import { MenuKubeWorks } from './components/MenuKubeWorks'
 import {useTheme } from '@mui/material';
+import { MenuKwirthWorks } from './components/MenuKwirthWorks'
+import { ICustomAction } from './components/UserPreferences'
 const yamlParser = require('js-yaml')
+
+type WindowClass = 'ContentDetails' | 'ArtifactSearch' | 'ContentEdit' | 'ContentBrowse' | 'ContentExternal';
+const ICON_WINDOW : Record<string, JSX.Element> = {
+    ContentDetails: <List />,
+    ArtifactSearch: <Search />,
+    ContentEdit: <Edit />,
+    ContentBrowse: <EditOff />,
+}
 
 export interface IContentWindow {
     id: string
@@ -76,7 +85,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [inputBoxDefault, setInputBoxDefault] = useState<any>()
     const [inputBoxResult, setInputBoxResult] = useState<(result:any) => void>()
 
-    const [menuWorksAnchorParent, setMenuWorksAnchorParent] = useState<Element>()
+    const [menuKubeWorksAnchorParent, setMenuKubeWorksAnchorParent] = useState<Element>()
+    const [menuKwirthWorksAnchorParent, setMenuKwirthWorksAnchorParent] = useState<Element>()
 
     const [menuContainersAnchorParent, setMenuContainersAnchorParent] = useState<Element>()
     const [menuContainersFile, setMenuContainersFile] = useState<IFileObject>()
@@ -217,17 +227,65 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const onMenuContainersClose = () => {
-        setMenuContainersAnchorParent(undefined)
+    const executeCustomAction = (ca:ICustomAction) => {
+        let podJson = yamlParser.load(ca.podYaml)
+        // custom actions
+        sendCommand(EMagnifyCommand.APPLY, [ca.podYaml])
+        let url = ca.url!
+        if (ca.onReady=== 'http' || ca.onReady==='https') {
+            // +++ test
+            if (ca.forward) url='http://localhost:3000/kwirth/port-forward/pod/default/galaga/80'
+            let id = window.setInterval( async () => {
+                try {
+                    let x = await fetch(url)
+                    if (x.status>=200 && x.status<400) {
+                        clearInterval(id)
+                        setMsgBox(<></>)
+                    }
+                }
+                catch(err){
+                    console.log(err)
+                }
+            }, 1000)
+            setMsgBox (MsgBoxWaitCancel('Launch Work',`We are waiting for the ${ca.name} work to start (waitng for... ${url})...`, setMsgBox, (a:MsgBoxButtons) => {
+                if (a=== MsgBoxButtons.Cancel) clearInterval(id)
+            }))
+        }
+        else if (ca.onReady === 'shell') {
+            let id = window.setInterval( async () => {
+                try {
+                    let pod = magnifyData.files.find(p => p.class==='Pod' && p.data.origin.metadata.namespace === (podJson.metadata.namespace || 'default') && p.data.origin.metadata.name === podJson.metadata.name)
+                    if (pod) {
+                        let status = pod.data.origin.status.phase
+                        if (status === 'Running') {
+                            clearInterval(id)
+                            setMsgBox(<></>)
+                            launchObjectExternal('ops',[pod],EInstanceConfigView.CONTAINER, pod.data.origin.spec.containers[0].name)
+                        }
+                    }
+                }
+                catch(err){
+                    console.log(err)
+                }
+            }, 1000)
+            setMsgBox (MsgBoxWaitCancel('Launch Work',`We are waiting for the ${ca.name} work to start (waiting for shell)...`, setMsgBox, (a:MsgBoxButtons) => {
+                if (a=== MsgBoxButtons.Cancel) clearInterval(id)
+            }))
+        }
     }
 
-    const onMenuWorksClose = () => {
-        setMenuWorksAnchorParent(undefined)
+    const onMenuKubeWorksSelected = (action:string) => {
+        setMenuKubeWorksAnchorParent(undefined)
+        let ca = magnifyData.userPreferences.customActions.find(ca => ca.name === action)
+        if (!ca)
+            sendCommand(EMagnifyCommand.POD, [ 'work', action])
+        else
+            executeCustomAction(ca)
     }
 
-    const onMenuWorksSelected = (action:string) => {
-        setMenuWorksAnchorParent(undefined)
-        sendCommand(EMagnifyCommand.POD, [ 'work', action])
+    const onMenuKwirthWorksSelected = (action:string) => {
+        let ca = magnifyData.userPreferences.customActions.find(ca => ca.name === action)
+        if (ca) executeCustomAction(ca)
     }
 
     // *********************************************************
@@ -238,8 +296,12 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         magnifyData.windows.forEach(w => w.atFront = false)
         const win = magnifyData.windows.find(w => w.id === id)
         if (win) {
+            console.log(id, win)
+            win.visible = true
             win.atFront = true
+            console.log(magnifyData.windows)
             setTick(t=>t+1)
+            return
         }
     }
 
@@ -253,14 +315,21 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         existingWindow.height = height
     }
 
+    //+++ REVIEW COMPLETELY CRD and CRDi
     const launchObjectDetails = (p:string[], currentTarget?:Element) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
+        console.log(f)
         if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/')) {
-            //+++setDetailsSections(objectSections.get('#crdinstance#')!)
+            //setDetailsSections(objectSections.get('#crdinstance#')!)
         }
         else {
+            console.log('ew')
+            console.log(f)
+            console.log(f[0].path)
+            console.log(magnifyData.windows)
             let existingWin = magnifyData.windows.find(w => w.selectedFiles.find(x => x.path === f[0].path))
             if (existingWin) {
+                console.log('ew', existingWin.id)
                 bringWindowToFront(existingWin.id)
             }
             else {
@@ -286,7 +355,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                         onApply: onContentDetailsApply,
                         onAction: onContentDetailsAction,
                         onLink: onMagnifyObjectDetailsLink,
-                        containerSelectionOptions: new Map([['log',2],['metrics',2],['fileman',2],['shell',1],['evict',0],['cordon',0], ['uncordon',0], ['drain',0], ['scale',0], ['restart',0], ['trigger',0], ['suspend',0], ['resume',0],  ])
+                        containerSelectionOptions: new Map([['log',2],['metrics',2],['fileman',2],['ops',1],['evict',0],['cordon',0], ['uncordon',0], ['drain',0], ['scale',0], ['restart',0], ['trigger',0], ['suspend',0], ['resume',0],  ])
                     } satisfies IDetailsData,
                     selectedFiles: [f[0]],
                     onWindowChange: onWindowChange,
@@ -303,11 +372,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 // objects APIResource doesnt contain metadata
                 if (f[0].data.events) delete f[0].data.events
                 sendCommand(EMagnifyCommand.EVENTS, ['object', f[0].data.origin.metadata.namespace, f[0].data.origin.kind, f[0].data.origin.metadata.name])
-            }
-            else {
-                // +++ para api resources, images... esto no es necesario, no hay eventos
-                // pero lanzando esto, cuando ser recibe una respusta a la consulta se dispara una action de REFRESH y se refresca la vista
-                sendCommand(EMagnifyCommand.EVENTS, ['object', undefined, f[0].data.origin.kind, f[0].data.origin.name])
             }
         }
     }
@@ -412,6 +476,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             height: 600,
             data: {
                 isInitialized: false,
+                isElectron: props.channelObject.isElectron,
                 channelObject: props.channelObject,
                 settings: magnifyData.userPreferences,
                 channelId: channel,
@@ -419,7 +484,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 frontChannels: props.channelObject.frontChannels!,
                 onNotify: onComponentNotify,
                 onRefresh: onContentExternalRefresh,
-                options: channel === 'shell'?
+                options: channel === 'ops'?
                     { autostart:true, pauseable:false, stopable:false, configurable:false}
                     :
                     { autostart:true, pauseable:true, stopable:true, configurable:true}
@@ -483,6 +548,22 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     // Specific actions for some objects
     // *********************************************************
 
+    let spcClassOverview = spaces.get('classOverview')!
+    setLeftItem(spcClassOverview, 'exit', 
+        (p:string[], currentTarget:Element) => {
+            setMsgBox(MsgBoxYesNo('Exit magnify', 'Are you sure you want to exit magnify?', setMsgBox, (b:MsgBoxButtons)=> {
+                if (b === MsgBoxButtons.Yes) props.channelObject.exit?.()
+            }))
+        },
+        (name:string,path:string) => props.channelObject.isElectron,
+        (name:string,path:string) => true
+    )
+    setLeftItem(spcClassOverview, 'kwirthworks', (p:string[],
+        currentTarget:Element) => setMenuKwirthWorksAnchorParent(currentTarget),
+        () => true,
+        () => magnifyData.userPreferences.customActions.filter(ca => ca.type==='kwirth').length>0 )
+    setLeftItem(spcClassOverview, 'kubeworks', (p:string[], currentTarget:Element) => setMenuKubeWorksAnchorParent(currentTarget) )
+
     // cluster actions
     const setClusterActions = () => {
             // Node
@@ -515,19 +596,28 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     // workload actions
     const setPodActions = () => {
-        let spcClassPod = spaces.get('classPod')!
-        setLeftItem(spcClassPod, 'works', (p:string[], currentTarget:Element) => {
-            setMenuWorksAnchorParent(currentTarget)
-        })
-        let spcPod = spaces.get('Pod')!
-        setLeftItem(spcPod,'shell', (p:string[], currentTarget:Element) => {
+        const podGroupAction = (action:string, p:string[], currentTarget:Element) => {
             let f = magnifyData.files.filter(x => p.includes(x.path))
-            setMenuContainersChannel('ops')
+            if (f.length>1) {
+                launchObjectExternal(action, f, EInstanceConfigView.POD, undefined)
+            }
+            else {
+                setMenuContainersChannel(action)
+                setMenuContainersFile(f[0])
+                setMenuContainersIncludeAllContainers(true)
+                setMenuContainersAnchorParent(currentTarget)
+            }
+        }
+
+        const podSingleAction = (action:string, p:string[], currentTarget:Element) => {
+            let f = magnifyData.files.filter(x => p.includes(x.path))
+            setMenuContainersChannel(action)
             setMenuContainersFile(f[0])
             setMenuContainersIncludeAllContainers(false)
             setMenuContainersAnchorParent(currentTarget)
-        })
+        }
 
+        let spcPod = spaces.get('Pod')!
         setLeftItem(spcPod,'forward', (p:string[], currentTarget:Element) => {
             let f = magnifyData.files.filter(x => p.includes(x.path))
             setMenuContainersFile(f[0])
@@ -535,30 +625,11 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setMenuContainersAnchorParent(currentTarget)
         })
 
-        setLeftItem(spcPod,'log', (p:string[], currentTarget:Element) => {
-        let f = magnifyData.files.filter(x => p.includes(x.path))
-            setMenuContainersChannel('log')
-            setMenuContainersFile(f[0])
-            setMenuContainersIncludeAllContainers(true)
-            setMenuContainersAnchorParent(currentTarget)
-        })
+        setLeftItem(spcPod,'log', (p:string[], currentTarget:Element) => podGroupAction('log', p, currentTarget))
+        setLeftItem(spcPod,'metrics', (p:string[], currentTarget:Element) => podGroupAction('metrics', p, currentTarget))
+        setLeftItem(spcPod,'ops', (p:string[], currentTarget:Element) => podSingleAction('ops', p, currentTarget))
+        setLeftItem(spcPod,'fileman', (p:string[], currentTarget:Element) => podGroupAction('fileman', p, currentTarget))
 
-        setLeftItem(spcPod,'metrics', (p:string[], currentTarget:Element) => {
-            let f = magnifyData.files.filter(x => p.includes(x.path))
-            if (!f) return
-            setMenuContainersChannel('metrics')
-            setMenuContainersFile(f[0])
-            setMenuContainersIncludeAllContainers(true)
-            setMenuContainersAnchorParent(currentTarget)
-        })
-
-        setLeftItem(spcPod,'fileman', (p:string[], currentTarget:Element) => {
-            let f = magnifyData.files.filter(x => p.includes(x.path))
-            setMenuContainersChannel('fileman')
-            setMenuContainersFile(f[0])
-            setMenuContainersIncludeAllContainers(false)
-            setMenuContainersAnchorParent(currentTarget)
-        })
         setLeftItem(spcPod,'evict', launchPodEvict)
     }
 
@@ -681,7 +752,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     // Image actions
     const launchImageDelete = (p:string[]) => {
         let f = magnifyData.files.filter(f => p.includes(f.path))
-        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to delete {f[0].data.origin.kind}<b> {f[0].displayName}</b>{p.length>1?` (and other ${p.length-1} items)`:''}?</Box>, setMsgBox, (a) => {
+        setMsgBox(MsgBoxYesNo('Delete '+f[0].data.origin.kind,<Box>Are you sure you want to delete image <b>{f[0].displayName}</b>{p.length>1?` (and other ${p.length-1} items)`:''} (take into account that removing images is an asynchronous process and may take up to 30 seconds)?</Box>, setMsgBox, (a) => {
             if (a === MsgBoxButtons.Yes) {
                 sendCommand(EMagnifyCommand.IMAGE, ['delete',...f.map(image => image.data.origin.metadata.name)])
             }
@@ -748,8 +819,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     // FileManager handlers
     const onError = (error: IError, file: IFileObject) => {
-        let uiConfig = props.channelObject.config as IMagnifyConfig
-        uiConfig.notify(props.channelObject.channel.channelId, ENotifyLevel.ERROR, error.message)
+        props.channelObject.notify?.(props.channelObject.channel.channelId, ENotifyLevel.ERROR, error.message)
     }
 
     const onFolderChange = (folder:string) => {
@@ -839,7 +909,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             case 'browse':
                 launchObjectBrowse([path])
                 break
-            case 'shell':
+            case 'ops':
                 launchObjectExternal('ops', [file], EInstanceConfigView.CONTAINER, container)
                 break
             case 'log':
@@ -886,12 +956,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onComponentNotify = (channel:string|undefined, level: ENotifyLevel, msg: string)  => {
-        msg = 'Channel message: '+ msg;
-        (props.channelObject.config as IMagnifyConfig).notify(channel, level, msg)
+        msg = 'Channel message: '+ msg
+        console.log(props.channelObject)
+        //(props.channelObject.config as IMagnifyConfig).notify(channel, level, msg)
     }
 
     const getContentExternalIcon = (w:IContentWindow) => {
-        // +++ optimize, we should not need to instantiate a channel fer getting an icon
+        // +++ optimize, we should not need to instantiate a channel for getting an icon
         let channelConstructor = props.channelObject.frontChannels!.get(w.data.channelId)!
         if (!channelConstructor) {
             console.log('Inexistent channel:', w.data.channelId)
@@ -907,30 +978,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         if (w.visible && w.atFront===front && w.atTop===top) {
             switch (w.class) {
                 case 'ContentDetails':
-                    return  <ContentDetails 
-                        key={w.id}
-                        onFocus={() => bringWindowToFront(w.id)}
-                        {...w} 
-                    />
+                    return  <ContentDetails key={w.id} onFocus={() => bringWindowToFront(w.id)} {...w} />
                 case 'ArtifactSearch':
-                    return  <ArtifactSearch 
-                        key={w.id}
-                        onFocus={() => bringWindowToFront(w.id)}
-                        {...w} 
-                    />
+                    return  <ArtifactSearch key={w.id} onFocus={() => bringWindowToFront(w.id)} {...w} />
                 case 'ContentBrowse':
                 case 'ContentEdit':
-                    return  <ContentEdit 
-                        key={w.id}
-                        onFocus={() => bringWindowToFront(w.id)}
-                        {...w} 
-                    />
+                    return  <ContentEdit key={w.id} onFocus={() => bringWindowToFront(w.id)} {...w} />
                 case 'ContentExternal':
-                    return  <ContentExternal 
-                        key={w.id}
-                        onFocus={() => bringWindowToFront(w.id)}
-                        {...w} 
-                    />
+                    return  <ContentExternal key={w.id} onFocus={() => bringWindowToFront(w.id)} {...w}/>
                 default:
                     console.error('Invalid window class:', w.class)
             }
@@ -972,10 +1027,13 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     minFileActionsLevel={2}
                     />
                 {
-                    menuContainersAnchorParent && <MenuContainers channel={menuContainersChannel} file={menuContainersFile} onClose={onMenuContainersClose} onContainerSelected={onContainerSelected} anchorParent={menuContainersAnchorParent} includeAllContainers={menuContainersIncludeAllContainers} />
+                    menuContainersAnchorParent && <MenuContainers channel={menuContainersChannel} file={menuContainersFile} onClose={() => setMenuContainersAnchorParent(undefined)} onContainerSelected={onContainerSelected} anchorParent={menuContainersAnchorParent} includeAllContainers={menuContainersIncludeAllContainers} />
                 }
                 {
-                    menuWorksAnchorParent && <MenuWorks onWorkSelected={onMenuWorksSelected} onClose={onMenuWorksClose} anchorParent={menuWorksAnchorParent} />
+                    menuKubeWorksAnchorParent && <MenuKubeWorks onWorkSelected={onMenuKubeWorksSelected} onClose={() => setMenuKubeWorksAnchorParent(undefined)} anchorParent={menuKubeWorksAnchorParent} customActions={magnifyData.userPreferences.customActions}/>
+                }
+                {
+                    menuKwirthWorksAnchorParent && <MenuKwirthWorks onWorkSelected={onMenuKwirthWorksSelected} onClose={() => setMenuKwirthWorksAnchorParent(undefined)} anchorParent={menuKwirthWorksAnchorParent} customActions={magnifyData.userPreferences.customActions}/>
                 }
                 <Stack direction={'row'} sx={{mt:1}}>
                     {
@@ -983,50 +1041,17 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                             let extContentTitle = w.title || 'notitle'
                             let extContentTitleShort = extContentTitle
                             if (extContentTitleShort.length>20) extContentTitleShort = extContentTitleShort.substring(0,10) + '...' + extContentTitleShort.substring(extContentTitleShort.length-10)
-                            switch (w.class) {
-                                case 'ContentDetails':
-                                    return (
-                                        <Tooltip key={w.id} title={extContentTitle}>
-                                            <Button onClick={() => onWindowRestore(w.id)}>
-                                                <List/>{extContentTitleShort}
-                                            </Button>
-                                        </Tooltip>
-                                    )
-                                case 'ArtifactSearch':
-                                    return (
-                                        <Tooltip key={w.id} title={w.title}>
-                                            <Button onClick={() => onWindowRestore(w.id)}>
-                                                <Search/>{extContentTitleShort}
-                                            </Button>
-                                        </Tooltip>
-                                    )
-                                case 'ContentEdit':
-                                    return (
-                                        <Tooltip key={w.id} title={w.title}>
-                                            <Button onClick={() => onWindowRestore(w.id)}>
-                                                <Edit/>{extContentTitleShort}
-                                            </Button>
-                                        </Tooltip>
-                                    )
-                                case 'ContentBrowse':
-                                    return (
-                                        <Tooltip key={w.id} title={w.title}>
-                                            <Button onClick={() => onWindowRestore(w.id)}>
-                                                <EditOff/>{extContentTitleShort}
-                                            </Button>
-                                        </Tooltip>
-                                    )
-                                case 'ContentExternal':
-                                    return (
-                                        <Tooltip key={w.id} title={w.title}>
-                                            <Button onClick={() => onWindowRestore(w.id)}>
-                                                {getContentExternalIcon(w)}{extContentTitleShort}
-                                            </Button>
-                                        </Tooltip>
-                                    )
-                                default:
-                                    return <></>
-                            }
+                            const icon = ICON_WINDOW[w.class] || (w.class === 'ContentExternal' ? getContentExternalIcon(w) : null);
+                            const title = w.class === 'ContentDetails' ? extContentTitle : w.title;
+
+                            return (
+                                <Tooltip key={w.id} title={title}>
+                                    <Button onClick={() => onWindowRestore(w.id)}>
+                                        {icon}
+                                        {extContentTitleShort}
+                                    </Button>
+                                </Tooltip>
+                            );                                
                         })
                     }
                 </Stack>
@@ -1035,10 +1060,14 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             </Box>
         }
 
-        { magnifyData.windows.sort((a,b) => a.startTime-b.startTime).map((w) => renderWindow(w, false, false)) }
+        {/* { magnifyData.windows.sort((a,b) => a.startTime-b.startTime).map((w) => renderWindow(w, false, false)) }
         { magnifyData.windows.sort((a,b) => a.startTime-b.startTime).map((w) => renderWindow(w, true, false)) }
         { magnifyData.windows.sort((a,b) => a.startTime-b.startTime).map((w) => renderWindow(w, false, true)) }
-        { magnifyData.windows.sort((a,b) => a.startTime-b.startTime).map((w) => renderWindow(w, true, true)) }
+        { magnifyData.windows.sort((a,b) => a.startTime-b.startTime).map((w) => renderWindow(w, true, true)) } */}
+        { magnifyData.windows.map((w) => renderWindow(w, false, false)) }
+        { magnifyData.windows.map((w) => renderWindow(w, true, false)) }
+        { magnifyData.windows.map((w) => renderWindow(w, false, true)) }
+        { magnifyData.windows.map((w) => renderWindow(w, true, true)) }
     </>
 }
 export { MagnifyTabContent }

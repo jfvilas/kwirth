@@ -1,31 +1,33 @@
 import { FC } from 'react'
-import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IContentProps, ISetupProps } from '../IChannel'
+import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IChannelRequirements, IContentProps, ISetupProps } from '../IChannel'
 import { IOpsMessageResponse, EOpsCommand, ISignalMessage, IInstanceConfigResponse, IInstanceConfig, EInstanceMessageFlow, EInstanceMessageType, EInstanceMessageAction, EInstanceMessageChannel, ESignalMessageLevel, ESignalMessageEvent, EInstanceConfigObject, EInstanceConfigView } from '@jfvilas/kwirth-common'
 import { OpsIcon, OpsSetup } from './OpsSetup'
 import { OpsTabContent } from './OpsTabContent'
 import { OpsData, IOpsData, IXTerm, IScopedObject } from './OpsData'
 import { OpsInstanceConfig, OpsConfig, IOpsConfig } from './OpsConfig'
-import { ENotifyLevel } from '../../tools/Global'
 import 'xterm/css/xterm.css'
+import { ENotifyLevel } from '../../tools/Global'
 
 export class OpsChannel implements IChannel {
     private setupVisible = false
-    private notify: (channel:string|undefined, level:ENotifyLevel, message:string) => void = (channel:string|undefined, level:ENotifyLevel, message:string) => {}
     SetupDialog: FC<ISetupProps> = OpsSetup
     TabContent: FC<IContentProps> = OpsTabContent
     channelId = 'ops'
     
-    requiresSetup() { return true }
-    requiresSettings() { return false }
-    requiresMetrics() { return false }
-    requiresAccessString() { return true }
-    requiresFrontChannels() { return true }
-    requiresClusterUrl() { return true }
-    requiresClusterInfo() { return false }
-    requiresWebSocket() { return true }
-    requiresUserSettings() { return false }
-    requiresPaletteChange() { return false }
-    setNotifier(notifier: (channel:string|undefined, level:ENotifyLevel, message:string) => void) { this.notify = notifier }
+    requirements:IChannelRequirements = {
+        accessString: true,
+        clusterUrl: true,
+        clusterInfo: false,
+        exit: false,
+        frontChannels: false,
+        metrics: false,
+        notifier: true,
+        setup: true,
+        settings: false,
+        palette: false,
+        userSettings: false,
+        webSocket: false,
+    }
 
     getScope() { return 'ops$get' }
     getChannelIcon(): JSX.Element { return OpsIcon }
@@ -66,7 +68,7 @@ export class OpsChannel implements IChannel {
                                 if (scopedObject)
                                     refresh.data = JSON.parse(opsMessage.data)
                                 else
-                                    this.notify('ops', ENotifyLevel.INFO, 'Data received for a non-scoped object')
+                                    channelObject.notify?.('ops', ENotifyLevel.INFO, 'Data received for a non-scoped object')
                                 if (opsData.onDescribeResponse) opsData.onDescribeResponse({event:'describe', data:refresh.data})
                                 refresh.action = EChannelRefreshAction.REFRESH
                                 break
@@ -80,14 +82,14 @@ export class OpsChannel implements IChannel {
                 case EInstanceMessageType.SIGNAL:
                     let signalMessage:ISignalMessage = JSON.parse(wsEvent.data)
                     if (signalMessage.flow === EInstanceMessageFlow.RESPONSE && signalMessage.action === EInstanceMessageAction.COMMAND) {
-                        this.notify('ops', signalMessage.level as any as ENotifyLevel, signalMessage.text||'No info')
+                        channelObject.notify?.('ops', signalMessage.level as any as ENotifyLevel, signalMessage.text||'No info')
                         refresh.action = EChannelRefreshAction.REFRESH
                     }
                     else if (opsMessage.flow === EInstanceMessageFlow.UNSOLICITED) {
                         if (signalMessage.text) {
-                            if (signalMessage.level === ESignalMessageLevel.WARNING) this.notify('ops', ENotifyLevel.WARNING, signalMessage.text)
-                            else if (signalMessage.level === ESignalMessageLevel.ERROR) this.notify('ops', ENotifyLevel.ERROR, signalMessage.text)
-                            else this.notify('ops', ENotifyLevel.INFO, signalMessage.text)
+                            if (signalMessage.level === ESignalMessageLevel.WARNING) channelObject.notify?.('ops', ENotifyLevel.WARNING, signalMessage.text)
+                            else if (signalMessage.level === ESignalMessageLevel.ERROR) channelObject.notify?.('ops', ENotifyLevel.ERROR, signalMessage.text)
+                            else channelObject.notify?.('ops', ENotifyLevel.INFO, signalMessage.text)
                             
                             refresh.action = EChannelRefreshAction.REFRESH
                         }
@@ -114,7 +116,7 @@ export class OpsChannel implements IChannel {
                             channelObject.instanceId = signalMessage.instance
                             if (signalMessage.text) {
                                 refresh.action = EChannelRefreshAction.REFRESH
-                                this.notify('ops', ENotifyLevel.INFO, signalMessage.text)
+                                channelObject.notify?.('ops', ENotifyLevel.INFO, signalMessage.text)
                             }
                         }
                         else {
