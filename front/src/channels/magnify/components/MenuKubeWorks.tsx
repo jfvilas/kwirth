@@ -19,7 +19,7 @@ const MenuKubeWorks: React.FC<IMenuWorkProps> = (props:IMenuWorkProps) => {
             <MenuItem onClick={() => props.onWorkSelected('dnsutils')}><IconDebian size='18'/>&nbsp;DNS Utils</MenuItem>
             <MenuItem onClick={() => props.onWorkSelected('jubuntu')}><IconUbuntu size='18'/>&nbsp;jUbuntu</MenuItem>
             {
-                props.customActions.filter(ca => ca.type==='kube').map( (ca, index) => {
+                props.customActions && props.customActions.filter(ca => ca.type==='kube').map( (ca, index) => {
                     return <MenuItem key={index} onClick={() => props.onWorkSelected(ca.name)}><Construction sx={{fontSize:'18px'}}/>&nbsp;{ca.name}</MenuItem>
                 })
             }

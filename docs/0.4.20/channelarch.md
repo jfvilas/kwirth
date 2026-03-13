@@ -6,7 +6,7 @@ Starting with Kwirth 0.3.160 the core has been split into 2 separete blocks:
   1. The core in itself, that is, the Kwirth component that handles WebSockets, security, connections to cluster or HTTP serving.
   2. The interface for implementing features in Kwirth, that is what we call **back channels**, where each channel is a feature (logs, metrics, alerts...)
 
-Starting with Kiwrth 0.4, the React front application has also been rearchitected to refect the way Kwirth core is build:
+Starting with Kwirth 0.4, the React front application has also been rearchitected to refect the way Kwirth core is build:
 
   1. Having a core front application with minimun functionalities, like security, store, etc...
   2. Add capabilities via **front channels**, that correspond in fact to the above mentioned back channels .

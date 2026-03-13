@@ -1,29 +1,23 @@
 ******************ERRORES
-FILEMAN
-cuando lanzas un fileman con varios pods, se reciben errores de:  Instance has not been found for command
-
 RFM
 cuando cambiamos de pantalla en magnify (o lo que sea) y cambian las columnas, hay que resetear los widths de las columnas
 revisar ajuste de columnas
-
+ordenar los CRDi, y a lo mejor utilizar como nombre de la carpeta el Kind
 
 
 MAGNIFY FRONT
+mostrar en EL rfm el estado del socket de magnify (conexion al back)
+convertir a WS los datos de usage del overview
+palette al arrancar magnify
 reconnect  NO VA!!!!
   hay que revisar el reconnect del node y el reconnect del front
 iconos
   convertir a strings
-link
-  navigate (onlink) a un CRDi externo
-  node: revisar el link desde los vols del node hacia los PV's (parece especifico de cada CaaS)
-  onlink desde details de un pod a Image > TIENE QUE VER CON el NOMBRE DEL RECURSO --> V2
-botones de contents arrancados, poner en filas: o poner un boton por tipo y desplegar un menu con las instancias de cada tipo
-  mejorar el tooltip de los botones, y el aspecto
 
 ELECTRON
 revisar el cambio o salida de cluster: parar las cosas antes de entrar en el otro
   en el backend, parar las cosas si se pierde la comnicacion con el front??
-revisar funcionamiento de conectar a cluster remoto
+cuadno seleccionas un cluster no accesibel entra a magnify, y no deberia
 
 MAGNIFY BACK
 
@@ -36,15 +30,11 @@ KWIRTH FRONT-BACK
 
 
 FILEMAN
-cuando se lanza una peticion deberia aparecer un backdrop en filelist indicando que estamos esperando
 añaidr ... en leftmenu cuando ha mas de xx opciones (xx configurable, con valor por defecto)
+añadir right items configurables
 
 MAGNIFY FRONT
 content external, poder hacer restart del content (por si se deconecta o lo que sea)
-en la vista de lista, acciones multi item (metrics, logs...)
-contentexternal
-    configuracion
-    chartmenu
 details
     +++ cm/secret: textarea, > tamaño inicial fijo (no todo el contenido)
     +++ servaccnt: tokens ifpresent
@@ -55,35 +45,31 @@ details
 
 
 KWIRTH
-  añadir logging selectivo en el backend: SEC, METRICS, CHANNEL...., para poder ver solo los mensaje squ enos intenresan
+  añadir logging selectivo en el backend de kwirth: SEC, METRICS, CHANNEL...., para poder ver solo los mensajes que nos intenresan
   en los last tabs deberiamos poder saber a que nos vamos a conectar antes de conectarnos (un tooltip o asin)
-  mostrar el nombre del cluster en la appbar
 
 
     
 
 *********V2*********
 KWIRTH
-log de jobs: revisar "started &&"
 channel metrics: añadir metricas sinteticas: numero de pods en nodo, percentage de pods
 añadir gestion centralizada de timeouts e intervasl en front y en back [codigo mas abajo]
-añadir info del cluster al que se est alogando el usuario en el card de login
+fileman: mantener la conexion con el pod abierta para que la navegacion por el filesystem sea mas fluida
+
 
 MAGNIFY FRONT
+    busquedas: buscar en los CRD y en los CRDi
     improve DetailsObject
         always use rootObj, and just change the path, so trace-back can be used ofr detecting data changed origin
     zona de avisos del cluster (implementar en filemanager, una campana)
-    busquedas: buscar en los CRD y en los CRDi
+    zona de notifications
     mejorar el resize column
-    cuando esta mostrandese un pagina de validaciones, si se produce n render, se lanza la validacion, si hay leases o algo que actualzia mcho, se dispara el consumo de cpu y empieza a ir lento
 
 RFM
     en los fileitem, cuando le fila es muy alta, el nombre del fileitem se esta alineando arriab, y deberia ir al centro
 
 KWIRTH
-crear un permiso para indicar que cosas del front puede ver el usuario
-crear un setting del usuario tipo "autoexec.bat"
-mover los settigns de trivy a trivy
 
 
 ==============================================================================

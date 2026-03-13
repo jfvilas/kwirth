@@ -35,7 +35,7 @@ const MenuTab: React.FC<IMenuTabProps> = (props:IMenuTabProps) => {
 
     const pauseable = props.backChannels.find(c => c.id === props.selectedTab?.channel.channelId)
 
-    return <Menu id='menu-logs' anchorEl={props.anchorMenuTab} open={Boolean(props.anchorMenuTab)} onClose={props.onClose}>
+    return <Menu anchorEl={props.anchorMenuTab} open={Boolean(props.anchorMenuTab)} onClose={props.onClose}>
         <MenuList dense sx={{width:'40vh'}}>
             <MenuItem key='subtab' onClick={() => setSubmenuTabOpen(!subMenuTabOpen)} sx={{ml:3}}>Tab<Typography sx={{flexGrow:1}}></Typography>{subMenuTabOpen ? <ExpandLess/> : <ExpandMore/>}</MenuItem>
             <Collapse in={subMenuTabOpen} timeout="auto" unmountOnExit sx={{ml:5}}>

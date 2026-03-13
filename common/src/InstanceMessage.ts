@@ -48,6 +48,7 @@ export enum InstanceMessageActionEnum {
 
 export enum EInstanceMessageAction {
     NONE = 'none',
+    RI = 'ri',
     ROUTE = 'route',
     START = 'start',
     STOP = 'stop',

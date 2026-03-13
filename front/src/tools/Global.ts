@@ -21,7 +21,7 @@ export const getMetricsNames = async (cluster:Cluster) => {
     }
     catch (err) {
         console.log(err)
-        console.trace('Error obtaining metrics list')
+        console.log('Error obtaining metrics list')
     }
 }
 

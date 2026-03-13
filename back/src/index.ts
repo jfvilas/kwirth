@@ -60,8 +60,8 @@ import { Application } from 'express-serve-static-core'
 //     return originalFetch(...args);
 // }
 
-const isElectron = true
-//const isElectron = !!process.versions.electron;
+//const isElectron = true
+const isElectron = !!process.versions.electron;
 
 const app : Application = express()
 
@@ -536,7 +536,6 @@ const watchDockerPods = async (ri:IRunningInstance, _apiPath:string, queryParams
 
 const watchKubernetesPods = async (ri:IRunningInstance, apiPath:string, queryParams:any, webSocket:WebSocket, instanceConfig:IInstanceConfig) => {
     try {
-        console.log('watch', apiPath, queryParams, instanceConfig)
         const watch = new Watch(ri.clusterInfo.kubeConfig)
 
         await watch.watch(apiPath, queryParams, (eventType:string, obj:any) => {
@@ -544,7 +543,6 @@ const watchKubernetesPods = async (ri:IRunningInstance, apiPath:string, queryPar
             let podNamespace:string = obj.metadata.namespace
 
             let containerNames:string[] = obj.spec.containers.map( (c: any) => c.name)
-            console.log(eventType, obj, webSocket, instanceConfig, podNamespace, podName, containerNames, ri)
             processEvent(eventType, obj, webSocket, instanceConfig, podNamespace, podName, containerNames, ri)
         },
         (err) => {
@@ -667,8 +665,8 @@ const processStartInstanceConfig = async (ri:IRunningInstance, webSocket: WebSoc
             let channel = ri.channels.get(instanceConfig.channel)
             if (channel) {
                 instanceConfig.instance = uuid()
-                await channel.addObject(webSocket, instanceConfig, '*all', '*all', '*all')
                 sendInstanceConfigSignalMessage(webSocket,EInstanceMessageAction.START, EInstanceMessageFlow.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
+                await channel.addObject(webSocket, instanceConfig, '*all', '*all', '*all')
             }
             else {
                 sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Channel not found for adding object`, instanceConfig, ri.channels)
@@ -683,6 +681,7 @@ const processStartInstanceConfig = async (ri:IRunningInstance, webSocket: WebSoc
             
             // we confirm startInstance is ok prior to launching watchPods (because client needs to know instanceId)
             instanceConfig.instance = uuid()
+            sendInstanceConfigSignalMessage(webSocket,EInstanceMessageAction.START, EInstanceMessageFlow.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
 
             switch (instanceConfig.view) {
                 case EInstanceConfigView.NAMESPACE:
@@ -777,7 +776,6 @@ const processStartInstanceConfig = async (ri:IRunningInstance, webSocket: WebSoc
                     sendChannelSignal(webSocket, ESignalMessageLevel.ERROR, `Access denied: invalid view '${instanceConfig.view}'`, instanceConfig, ri.channels)
                     break
             }
-            sendInstanceConfigSignalMessage(webSocket,EInstanceMessageAction.START, EInstanceMessageFlow.RESPONSE, instanceConfig.channel, instanceConfig, 'Instance Config accepted')
         }
     }
     catch (err) {
@@ -842,8 +840,9 @@ const processChannelCommand = async (webSocket: WebSocket, instanceMessage: IIns
                     channel.processCommand(webSocket, instanceMessage, podNamespace, podName, containerName)
                 }
                 else {
-                    console.log(`Instance '${instanceMessage.instance}' not found for command`)
-                    sendInstanceConfigSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, instanceMessage.channel, instanceMessage, 'Instance has not been found for command')
+                    console.log(`Instance '${instanceMessage.instance}' and flow ${instanceMessage.flow} not found for command`)
+                    console.log(instanceMessage)
+                    sendInstanceConfigSignalMessage(webSocket, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.RESPONSE, instanceMessage.channel, instanceMessage, `Instance '${instanceMessage.instance}' has not been found for command`)
                 }
             }   
         }
@@ -933,6 +932,11 @@ const processClientMessage = async (webSocket:WebSocket, message:string, ri:IRun
 
         if (instanceMessage.action === EInstanceMessageAction.PING) {
             processPing(webSocket, instanceMessage, ri.channels)
+            return
+        }
+
+        if (instanceMessage.action === EInstanceMessageAction.RI) {
+            sendInstanceConfigSignalMessage(webSocket, EInstanceMessageAction.RI, EInstanceMessageFlow.RESPONSE, instanceMessage.channel, instanceMessage, 'Sending RI', ri.id)
             return
         }
 
@@ -1072,7 +1076,7 @@ const processClientMessage = async (webSocket:WebSocket, message:string, ri:IRun
     }
 }
 
-const setUpRoutes = async (ri:IRunningInstance) : Promise<ApiKeyApi|undefined> => {
+const setUpRoutesOld = async (ri:IRunningInstance) : Promise<ApiKeyApi|undefined> => {
     try {
         const riRouter = express.Router()
 
@@ -1109,31 +1113,117 @@ const setUpRoutes = async (ri:IRunningInstance) : Promise<ApiKeyApi|undefined> =
     return undefined
 }
 
-const runKubernetes = async (ri:IRunningInstance, expressApp:Application) => {
-    const processHttpChannelRequest = async (channel: IChannel, endpointName:string, aka:ApiKeyApi, req:Request, res:Response) : Promise<void> => {
-        try {
-            console.log('AccessKey should not be validated on electron')
-            let accessKey = await AuthorizationManagement.getKey(req, res, aka)
-            if (accessKey) {
-                channel.endpointRequest(endpointName, req, res, accessKey)
-            }
-            else {
-                console.log('Could not get accessKey')
-                res.status(400).send()
-            }
+const setUpRoutes = async (ri:IRunningInstance) : Promise<boolean> => {
+    try {
+        const riRouter = express.Router()
+
+        let result = await ApiKeyApi.create(ri.configMaps, envMasterKey, isElectron)
+        if (!result) {
+            console.log('Could not get apikeyapi')
+            return false
         }
-        catch (err) {
-            console.log('Error on GET endpoint')
-            console.log(err)
+        let apiKeyApi = result
+        riRouter.use(`/key`, apiKeyApi.route)
+        ri.apiKeyApi = apiKeyApi
+        let configApi:ConfigApi = new ConfigApi(apiKeyApi, ri.kwirthData, ri.clusterInfo)
+        riRouter.use(`/config`, configApi.route)
+        let storeApi:StoreApi = new StoreApi(ri.configMaps, apiKeyApi)
+        riRouter.use(`/store`, storeApi.route)
+        let userApi:UserApi = new UserApi(ri.secrets, apiKeyApi)
+        riRouter.use(`/user`, userApi.route)
+        let loginApi:LoginApi = new LoginApi(ri.secrets, ri.configMaps, ri.apiKeyApi)
+        riRouter.use(`/login`, loginApi.route)
+        let manageKwirthApi:ManageKwirthApi = new ManageKwirthApi(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, ri.clusterInfo.batchApi, apiKeyApi, ri.kwirthData)
+        riRouter.use(`/managekwirth`, manageKwirthApi.route)
+        let manageCluster:ManageClusterApi = new ManageClusterApi(ri.clusterInfo.coreApi, ri.clusterInfo.appsApi, apiKeyApi)
+        riRouter.use(`/managecluster`, manageCluster.route)
+        let metricsApi:MetricsApi = new MetricsApi(ri.clusterInfo, apiKeyApi)
+        riRouter.use(`/metrics`, metricsApi.route)
+
+        ri.router = riRouter
+        return true
+    }
+    catch (err) {
+        console.log('Error setting up routes')
+        console.log(err)
+    }
+    return false
+}
+
+const processHttpChannelRequest = async (channel: IChannel, endpointName:string, aka:ApiKeyApi, req:Request, res:Response) : Promise<void> => {
+    try {
+        console.log('*********************************************')
+        console.log('AccessKey should not be validated on electron')
+        console.log('*********************************************')
+        let accessKey = await AuthorizationManagement.getKey(req, res, aka)
+        if (accessKey) {
+            channel.endpointRequest(endpointName, req, res, accessKey)
+        }
+        else {
+            console.log('Could not get accessKey')
             res.status(400).send()
         }
     }
+    catch (err) {
+        console.log('Error on GET endpoint')
+        console.log(err)
+        res.status(400).send()
+    }
+}
 
+const startChannelEndpoints = (ri:IRunningInstance, expressApp:Application) => {
+    for (let channel of ri.channels.values()) {
+        let channelData = channel.getChannelData()
+        if (channelData.endpoints.length>0) {
+            channelData
+            for (let endpoint of channelData.endpoints) {
+                console.log(`Will listen on ${envRootPath}/${ri.id}/channel/${channelData.id}/${endpoint.name}`)
+                const router = express.Router()
+                router.route('*')
+                    .all( async (req:Request,res:Response, next) => {
+                        if (endpoint.requiresAccessKey) {
+                            if (! (await AuthorizationManagement.validKey(req,res, ri.apiKeyApi!))) return
+                        }
+                        next()
+                    })
+                    .get( async (req:Request, res:Response) => {
+                        if (endpoint.methods.includes('GET')) {
+                            processHttpChannelRequest(channel, endpoint.name, ri.apiKeyApi!, req, res)
+                        }
+                        else
+                            res.status(405).send()
+                    })
+                    .post( async (req:Request, res:Response) => {
+                        if (endpoint.methods.includes('POST')) {
+                            processHttpChannelRequest(channel, endpoint.name, ri.apiKeyApi!, req, res)
+                        }
+                        else
+                            res.status(405).send()
+                    })
+                    .put( async (req:Request, res:Response) => {
+                        if (endpoint.methods.includes('PUT'))
+                            processHttpChannelRequest(channel, endpoint.name, ri.apiKeyApi!, req, res)
+                        else
+                            res.status(405).send()
+                    })
+                    .delete( async (req:Request, res:Response) => {
+                        if (endpoint.methods.includes('DELETE'))
+                            processHttpChannelRequest(channel, endpoint.name, ri.apiKeyApi!, req, res)
+                        else
+                            res.status(405).send()
+                    })
+                expressApp.use(`${envRootPath}/${ri.id}/channel/${channelData.id}/${endpoint.name}`, router)
+            }
+        }
+    }
+}
+
+const startRunningInstance = async (ri:IRunningInstance, expressApp:Application) => {
     try {
         let lastVersion = await getLastKwirthVersion(ri.kwirthData)
         if (lastVersion) ri.kwirthData.lastVersion = lastVersion
     
-        // show root contents for debuggunng purposes
+        // show root contents for electron debuggunng purposes
         const fs = require('fs')
         fs.readdir('.', (err:any, archivos:any) => {
             if (err) {
@@ -1143,55 +1233,11 @@ const runKubernetes = async (ri:IRunningInstance, expressApp:Application) => {
             console.log('File list at project root when starting instance:', archivos.join(', '))
         })
 
-        let apiKeyApi = await setUpRoutes(ri)
-        if (apiKeyApi) {
-            for (let channel of ri.channels.values()) {
-                let channelData = channel.getChannelData()
-                if (channelData.endpoints.length>0) {
-                    for (let endpoint of channelData.endpoints) {
-                        console.log(`Will listen on ${envRootPath}/channel/${channelData.id}/${endpoint.name}`)
-                        const router = express.Router()
-                        router.route('*')
-                            .all( async (req:Request,res:Response, next) => {
-                                if (endpoint.requiresAccessKey) {
-                                    if (! (await AuthorizationManagement.validKey(req,res, apiKeyApi))) return
-                                }
-                                next()
-                            })
-                            .get( async (req:Request, res:Response) => {
-                                if (endpoint.methods.includes('GET'))
-                                    processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
-                                else
-                                    res.status(405).send()
-                            })
-                            .post( async (req:Request, res:Response) => {
-                                if (endpoint.methods.includes('POST')) {
-                                    processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
-                                }
-                                else
-                                    res.status(405).send()
-                            })
-                            .put( async (req:Request, res:Response) => {
-                                if (endpoint.methods.includes('PUT'))
-                                    processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
-                                else
-                                    res.status(405).send()
-                            })
-                            .delete( async (req:Request, res:Response) => {
-                                if (endpoint.methods.includes('DELETE'))
-                                    processHttpChannelRequest(channel, endpoint.name, apiKeyApi, req, res)
-                                else
-                                    res.status(405).send()
-                            })
-                        expressApp.use(`${envRootPath}/channel/${channelData.id}/${endpoint.name}`, router)
-                    }
-                }
-            }
-        }
-        else {
-            console.log('Could not set up routes. Exiting')
+        if (! (await setUpRoutes(ri))) {
+            console.log('Could not set up HTTP routes. Exiting')
             process.exit(1)
         }
+        startChannelEndpoints(ri, expressApp)
     }
     catch (err) {
         console.log('Error in runKubernetes')
@@ -1262,7 +1308,7 @@ const setKubernetesClusterKwirthRequirements = async (localKwirthData: KwirthDat
     }
 }
 
-const prepareKubernetes = async (localKwirthData:KwirthData, runningInstance:IRunningInstance) : Promise<void> => {
+const prepareRunningInstance = async (localKwirthData:KwirthData, runningInstance:IRunningInstance) : Promise<void> => {
     try {
         if (envChannelLogEnabled) runningInstance.channels.set('log', new LogChannel(runningInstance.clusterInfo))
         if (envChannelAlertEnabled) runningInstance.channels.set('alert', new AlertChannel(runningInstance.clusterInfo))
@@ -1273,8 +1319,7 @@ const prepareKubernetes = async (localKwirthData:KwirthData, runningInstance:IRu
         if (envChannelFilemanEnabled) runningInstance.channels.set('fileman', new FilemanChannel(runningInstance.clusterInfo))
         if (envChannelMagnifyEnabled) runningInstance.channels.set('magnify', new MagnifyChannel(runningInstance.clusterInfo, localKwirthData))
 
-        // +++ OJO, los channels ya no deben estar en kwirth data, ya que dependen del cluster
-        // en el banckend se puede quitar de kwirthdata, pero los forntend INCLUIDO BACKSTAGE lo usan
+        // this '.channels' object is sent to clients when they want to know something about support channels on the backend they're connected to
         localKwirthData.channels =  Array.from(runningInstance.channels.keys()).map(k => {
             return runningInstance.channels.get(k)?.getChannelData()!
         })
@@ -1334,10 +1379,10 @@ const launchKubernetes = async (localKwirthData:KwirthData, expressApp:Applicati
             try {
                 let runningInstance = await createRunningInstance(undefined, localKwirthData)
                 if (runningInstance) {
-                    await prepareKubernetes(localKwirthData, runningInstance)
+                    await prepareRunningInstance(localKwirthData, runningInstance)
                     runningInstances.push(runningInstance)
                     activateRunningInstance(runningInstance)
-                    await runKubernetes(runningInstance, expressApp)
+                    await startRunningInstance(runningInstance, expressApp)
                 }
                 else {
                     console.log('Cannot get a running instance')
@@ -1471,20 +1516,20 @@ const launchElectron = async (localKwirthData:KwirthData, expressApp:Application
                         let contextName:string = req.body.context
                         console.log('Activating context for electron use:', contextName)
                         if (contextName) {
-                            let ri = runningInstances.find(r => r.electronContext === contextName)
-                            if (ri) {
+                            let existingRunningInstance = runningInstances.find(r => r.electronContext === contextName)
+                            if (existingRunningInstance) {
                                 console.log('Already activated', contextName)
-                                activateRunningInstance(ri)
-                                res.status(200).json(ri.apiKeyApi?.apiKeys[0])  // we just reuse the first inElectron ApiKey (there should be no other kind of Api Keysstsored)
+                                activateRunningInstance(existingRunningInstance)
+                                res.status(200).json(existingRunningInstance.apiKeyApi?.apiKeys[0])  // we just reuse the first inElectron ApiKey (there should be no other kind of Api Keysstsored)
                             }
                             else {
                                 let runningInstance = await createRunningInstance(contextName, localKwirthData) 
                                 if (runningInstance) {
                                     runningInstance.electronContext = contextName
-                                    await prepareKubernetes(localKwirthData, runningInstance)
+                                    await prepareRunningInstance(localKwirthData, runningInstance)
                                     runningInstances.push(runningInstance)
                                     activateRunningInstance(runningInstance)
-                                    await runKubernetes(runningInstance, expressApp)
+                                    await startRunningInstance(runningInstance, expressApp)
 
                                     console.log('Creating instance for context', contextName)
                                     // +++ we should be using a common function for creating api key
@@ -1493,6 +1538,10 @@ const launchElectron = async (localKwirthData:KwirthData, expressApp:Application
                                     let days:number = 1
                                     let accessKey:AccessKey = { id: uuid(), type: 'volatile', resources: 'cluster::::' }
                                     let apiKey:ApiKey={ accessKey, description, expire, days }
+                                    console.log('****************** CREATED')
+                                    console.log('****************** CREATED')
+                                    console.log('****************** CREATED')
+                                    console.log(accessKey)
                                     if (runningInstance.apiKeyApi) 
                                         runningInstance.apiKeyApi.apiKeys.push(apiKey)
                                     else

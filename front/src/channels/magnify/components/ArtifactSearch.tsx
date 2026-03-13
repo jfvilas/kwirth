@@ -1,7 +1,7 @@
 import { Checkbox, DialogContent, DialogTitle, FormControlLabel, IconButton, Stack, TextField, Typography } from '@mui/material'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { ChangeEvent, useEffect, useState } from 'react'
-import { Close, Fullscreen, FullscreenExit, Minimize, Search } from '@mui/icons-material'
+import { Close, Fullscreen, FullscreenExit, Minimize, PinDrop, Place, Search } from '@mui/icons-material'
 import { objectClone, objectSearch } from '../Tools'
 import { getIconFromKind } from '../../../tools/Constants-React'
 import './ResizableDialog.css'
@@ -50,7 +50,7 @@ const ArtifactSearch: React.FC<IArtifactSearchProps> = (props:IArtifactSearchPro
 	}
 
 	const handleIsMaximized = () => {
-		props.onWindowChange(props.id, !isMaximized, props.x, props.y, props. width, props.height)
+		props.onWindowChange(props.id, !isMaximized, props.x, props.y, props.width, props.height)
 		setIsMaximized(!isMaximized)
 	}
 
@@ -119,11 +119,12 @@ const ArtifactSearch: React.FC<IArtifactSearchProps> = (props:IArtifactSearchPro
                     <IconButton size="small" onClick={() => props.onMinimize(props.id)}>
                         <Minimize fontSize="small" />
                     </IconButton>
-
+                    <IconButton size="small" onClick={() => props.onTop(props.id)}>
+                        {props.atTop? <PinDrop sx={{color:'blue'}} fontSize="small" /> : <Place fontSize="small" />}
+                    </IconButton>
                     <IconButton size="small" onClick={handleIsMaximized}>
                         {isMaximized ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
                     </IconButton>
-
                     <IconButton size="small" onClick={() => props.onClose(props.id)} sx={{ '&:hover': { color: 'error.main' } }}>
                         <Close fontSize="small" />
                     </IconButton>

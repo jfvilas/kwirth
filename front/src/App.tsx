@@ -19,7 +19,6 @@ import { ResourceSelector, IResourceSelected } from './components/ResourceSelect
 import { TabContent } from './components/TabContent'
 import { SettingsCluster } from './components/settings/SettingsCluster'
 import { SettingsUser } from './components/settings/SettingsUser'
-import { SettingsTrivy } from './components/settings/SettingsTrivy'
 import { MenuTab, MenuTabOption } from './menus/MenuTab'
 import { MenuDrawer, MenuDrawerOption } from './menus/MenuDrawer'
 import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxYesNo } from './tools/MsgBox'
@@ -27,7 +26,6 @@ import { IChannelSettings, Settings } from './model/Settings'
 import { FirstTimeLogin } from './components/FirstTimeLogin'
 import { IWorkspace, IWorkspaceSummary } from './model/IWorkspace'
 
-import { VERSION } from './version'
 import { SessionContext } from './model/SessionContext'
 import { addGetAuthorization, addDeleteAuthorization, addPostAuthorization } from './tools/AuthorizationManagement'
 import { IInstanceMessage, versionGreaterThan, InstanceConfigScopeEnum, IInstanceConfig, InstanceMessageChannelEnum, parseResources, KwirthData, BackChannelData, IUser, ISignalMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView, EInstanceConfigObject, AccessKey, accessKeyDeserialize } from '@jfvilas/kwirth-common'
@@ -38,18 +36,18 @@ import { LogChannel } from './channels/log/LogChannel'
 import { EchoChannel } from './channels/echo/EchoChannel'
 import { AlertChannel } from './channels/alert/AlertChannel'
 import { MetricsChannel } from './channels/metrics/MetricsChannel'
-import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { OpsChannel } from './channels/ops/OpsChannel'
+import { TrivyChannel } from './channels/trivy/TrivyChannel'
 import { MagnifyChannel } from './channels/magnify/MagnifyChannel'
 import { getMetricsNames, ENotifyLevel, readClusterInfo } from './tools/Global'
 import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
-import { DEFAULTLASTTABS, IColors, TABBASECOLORS, TABBRIGHTCOLORS } from './tools/Constants'
+import { DEFAULTLASTTABS, IColors, TABSELECTEDCOLORS, TABUNSELECTEDCOLORS } from './tools/Constants'
 import { createChannelInstance } from './tools/ChannelTools'
 import { NotificationMenu, NotificationMessage } from './components/NotificationMenu'
 import { ContextSelector } from './components/ContextSelector'
 import { v4 as uuid } from 'uuid'
-import { flushSync } from 'react-dom'
+import { About } from './components/About'
 
 interface IAppProps {
     backendUrl:string
@@ -143,12 +141,18 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     }),
                 },
             },
+            MuiAppBar: {
+                styleOverrides: {
+                    root: ({ theme }) => ({
+                        backgroundImage: 'none', 
+                        backgroundColor: theme.palette.mode === 'dark' 
+                            ? theme.palette.grey[900]
+                            : theme.palette.primary.main,
+                    }),
+                },
+            },            
         },
     }), [mode])
-
-    const toggleColorMode = () => {
-        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'))
-    }
 
     const [frontChannels] = useState<Map<string, TChannelConstructor>>(new Map())
     const [user, setUser] = useState<IUser>()
@@ -185,6 +189,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const [selectWorkspaceAction, setSelectWorkspaceAction] = useState('')
 
     // components
+    const [showAbout, setShowAbout]=useState<boolean>(false)
     const [showRenameTab, setShowRenameLog]=useState<boolean>(false)
     const [showManageClusters, setShowManageClusters]=useState<boolean>(false)
     const [showSaveWorkspace, setShowSaveWorkspace]=useState<boolean>(false)
@@ -193,7 +198,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const [showUserSecurity, setShowUserSecurity]=useState<boolean>(false)
     const [showSettingsUser, setShowSettingsUser]=useState<boolean>(false)
     const [showSettingsCluster, setShowSettingsCluster]=useState<boolean>(false)
-    const [showSettingsTrivy, setShowSettingsTrivy]=useState<boolean>(false)
     const [initialMessage, setInitialMessage]=useState<string>('')
 
     // last & favs
@@ -211,8 +215,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     
     const [resourceSelected, setResourceSelected] = useState<IResourceSelected|undefined>(undefined)
 
-    const [ isClusterRemoteSelected, setIsClusterRemoteSelected] = useState(false)
-    
     useEffect( () => {
         // only first time
         frontChannels.set('log', LogChannel)
@@ -253,7 +255,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         if (!logged || !backendUrl) return
 
         getClusters()
-        readLoggedUserSettings() 
+        readLoggedUserSettings()
 
         // load user tabs
         let lastTabs = localStorage.getItem('lastTabs')
@@ -278,6 +280,10 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         let c = clusters.find(c => c.source)
         if (c) onChangeCluster(c.name)
     }, [clusters])
+
+    const toggleColorMode = () => {
+        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'))
+    }
 
     const onNotifySnackbarClose = (event?: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
         if (reason === 'clickaway') return
@@ -358,7 +364,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const getClusters = async () => {
         // get current cluster
         try {
-            console.log(accessString)
             let srcCluster = await loadSourceCluster(backendUrl, accessString)
             if (!srcCluster || !srcCluster.kwirthData) {
                 setMsgBox(MsgBoxOkError('Kwirth start', 'Could not get source cluster info, so you will back to login page for starting again (... and trying to get more luck)', setMsgBox,  (b:MsgBoxButtons) => {
@@ -387,7 +392,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         }
         catch (err) {
-            console.trace('xx')
             notify(undefined, ENotifyLevel.ERROR, 'Cannot build clusters list: '+err)
         }
     }
@@ -395,13 +399,16 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const readLoggedUserSettings = async () => {
         if (props.isElectron) {
             let settingsStr = localStorage.getItem('settingsGeneral')
-            if (settingsStr && userSettingsRef) userSettingsRef.current = JSON.parse(settingsStr) as Settings
+            if (settingsStr) {
+                userSettingsRef.current = JSON.parse(settingsStr) as Settings
+                return
+            }
         }
         else {
             let resp = await fetch (`${backendUrl}/store/${user?.id}/settings/general`, addGetAuthorization(accessString))
             if (resp.status===200) {
                 let json=await resp.json()
-                if (json && userSettingsRef) {
+                if (json) {
                     userSettingsRef.current = JSON.parse(json) as Settings
                     return
                 }
@@ -410,7 +417,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         userSettingsRef.current = { channelSettings: [], keepAliveInterval: 60, channelUserPreferences:[] }
     }
 
-    const writeLoggedUserSettings = async () => {
+    const writeLoggedUserSettings = async (user:IUser) => {
         if (user) {
             if (props.isElectron) {
                 localStorage.setItem('settingsGeneral', JSON.stringify(userSettingsRef.current))
@@ -419,6 +426,9 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 let payload = JSON.stringify(userSettingsRef.current)
                 fetch (`${backendUrl}/store/${user.id}/settings/general`, addPostAuthorization(accessString, payload))
             }
+        }
+        else {
+            console.log('nouser')
         }
     }
 
@@ -446,13 +456,13 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
     const onResourceSelectorAdd = async (selection:IResourceSelected, start:boolean, settings:any) : Promise<void> => {
         let cluster = clusters.find(c => c.name===selection.clusterName)
-        if (!cluster) {
+        if (!cluster || !user) {
             setMsgBox(MsgBoxOkError('Kwirth',`Cluster established at tab configuration ${selection.clusterName} does not exist.`, setMsgBox))
             return
         }
 
         if (frontChannels.has(selection.channelId)) {
-           await populateTabObject(selection.name, selection.channelId, cluster, selection.view as EInstanceConfigView, selection.namespaces.join(','), selection.controllers.join(','), selection.pods.join(','), selection.containers.join(','), start, settings)
+           await populateTabObject(user, selection.name, selection.channelId, cluster, selection.view as EInstanceConfigView, selection.namespaces.join(','), selection.controllers.join(','), selection.pods.join(','), selection.containers.join(','), start, false, settings)
         }
         else {
             console.log(`Error, invalid channel: `, selection.channelId)
@@ -471,28 +481,26 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             return chanPref.data
         }
         else {
-            console.log('Channel preferes are undefined')
+            console.log('Channel preferences are undefined')
             return undefined
         }
     }
 
-    const writeChannelUserPreferences = async (channelId:string, data:any) : Promise<boolean> => {
+    const writeChannelUserPreferences = async (user:IUser, channelId:string, data:any) : Promise<boolean> => {
         if (!userSettingsRef.current?.channelUserPreferences) userSettingsRef.current.channelUserPreferences = []
 
-        let chanPref = userSettingsRef.current?.channelUserPreferences?.find(c => c.channelId===channelId)
-        if (chanPref) {
-            chanPref.data = data
-            await writeLoggedUserSettings()
-            return true
+        let channelPreferences = userSettingsRef.current?.channelUserPreferences?.find(c => c.channelId===channelId)
+        if (channelPreferences) {
+            channelPreferences.data = data
         }
         else {
             userSettingsRef.current.channelUserPreferences.push ({ channelId, data })
-            await writeLoggedUserSettings()
-            return true
         }
+        await writeLoggedUserSettings(user)
+        return true
     }
 
-    const populateTabObject = async (name:string, channelId:string, cluster:Cluster, view:EInstanceConfigView, namespaces:string, controllers:string, pods:string, containers:string, start:boolean, settings:any, tab?:ITabObject) : Promise<ITabObject> => {
+    const populateTabObject = async (user:IUser, name:string, channelId:string, cluster:Cluster, view:EInstanceConfigView, namespaces:string, controllers:string, pods:string, containers:string, start:boolean, fullscreen: boolean, settings:any, tab?:ITabObject) : Promise<ITabObject> => {
         let newChannel = createChannelInstance(frontChannels.get(channelId))
         if (!newChannel) {
             throw 'Invalid channel instance'
@@ -530,10 +538,19 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         if (newTab.channel.requirements.frontChannels) newTab.channelObject.frontChannels = frontChannels
         if (newTab.channel.requirements.notifier) newTab.channelObject.notify = notify
         if (newTab.channel.requirements.palette) newTab.channelObject.setPalette = (palette:string) => setMode(palette as 'light'|'dark')
-        if (newTab.channel.requirements.exit) newTab.channelObject.exit = () => setLogged(false)
+        if (newTab.channel.requirements.exit) newTab.channelObject.exit = () => {
+            setBackendUrl(props.backendUrl)
+            setLogged(false)
+        }
         if (newTab.channel.requirements.userSettings) {
+            // console.log(user)
+            // this is reallyreallyreally tricky. 
+            // we recieve user as parm in this function (we ignore the 'user' in the useState), since readchanneluserprefs y writechanneluserprefs do use a variable named
+            // 'user', so this 'user' value will be added to the newly create closure when invoking writechanneluserprefs original function
             newTab.channelObject.readChannelUserPreferences = readChannelUserPreferences
-            newTab.channelObject.writeChannelUserPreferences = writeChannelUserPreferences
+            newTab.channelObject.writeChannelUserPreferences = (channelId:string, data:any) => {
+                return writeChannelUserPreferences(user, channelId, data)
+            }
         }
         newTab.channelObject.config = userSettingsRef.current?.channelSettings?.find(c => c.channelId === newTab.channel.channelId)
         if ((await newTab.channel.initChannel(newTab.channelObject))) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
@@ -571,7 +588,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     else {
                         thisChannnel.channelConfig = channelSettings.channelConfig
                     }
-                    writeLoggedUserSettings()
+                    writeLoggedUserSettings(user)
                 }
             }
         }
@@ -591,6 +608,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         })
         selectedTab.current = newTab
         tabs.current.push(newTab)
+        if (fullscreen) setFullscreenTab(newTab)
         setChannelMessageAction({action : EChannelRefreshAction.REFRESH})  // force re-render for showing new tab
         return newTab
     }
@@ -629,7 +647,8 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 channelInstanceConfig: channelSettings.channelInstanceConfig,
                 channelConfig: channelSettings.channelConfig
             })
-            writeLoggedUserSettings()
+            if (user)
+            writeLoggedUserSettings(user)
         }
 
         selectedTab.current.channelObject.config = channelSettings.channelConfig
@@ -661,34 +680,36 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }, (userSettingsRef.current?.keepAliveInterval || 60) * 1000, tab)
     }
 
-    const colorizeTab = (tab:ITabObject) => {
-        //+++ review channel colorizing system in order to make it compatible with palettes
-        if (!tab.headerEl) return
-        let colorTable:IColors = TABBRIGHTCOLORS
-        if (selectedTab.current === tab) colorTable = TABBASECOLORS
+    const getTabColor = (tab:ITabObject) => {
+        let colorTable:IColors = TABUNSELECTEDCOLORS
+        if (selectedTab.current === tab) colorTable = TABSELECTEDCOLORS
+        if (mode === 'dark') {
+            let colorTable:IColors = TABSELECTEDCOLORS
+            if (selectedTab.current === tab) colorTable = TABUNSELECTEDCOLORS
+        }
         if (tab.channelStarted) { 
             if (tab.channelPaused) {
-                tab.headerEl.style.backgroundColor = colorTable.pause
+                return colorTable.pause
             }
             else {
                 if (tab.channelPending) {
-                    tab.headerEl.style.backgroundColor = colorTable.pending
+                    return colorTable.pending
                 }
                 else {
                     if (selectedTab.current?.ws?.readyState) {
                         if (selectedTab.current?.ws?.readyState === 1)
-                            tab.headerEl.style.backgroundColor = colorTable.start
+                            return colorTable.start
                         else
-                            tab.headerEl.style.backgroundColor = colorTable.interrupt
+                            return colorTable.interrupt
                     }
                     else {
-                        tab.headerEl.style.backgroundColor = colorTable.start
+                        return colorTable.start
                     }
                 }
             }
         }
         else {
-            tab.headerEl.style.backgroundColor = colorTable.stop
+            return colorTable.stop
         }
     }
 
@@ -698,8 +719,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             if (newTab.channelObject) {
                 newTab.channelPending = false
                 setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
-                if (selectedTab.current) colorizeTab(selectedTab.current)
-                colorizeTab(newTab)
                 let cluster = clusters.find(c => c.name === newTab.channelObject.clusterName)
                 if (cluster) setUsablechannels(cluster)
             }
@@ -743,10 +762,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     setChannelMessageAction({action: EChannelRefreshAction.REFRESH})
                 }
                 else {
-                    if (!tab.channelPending) {
-                        tab.channelPending = true
-                        colorizeTab(tab)
-                    }
+                    if (!tab.channelPending) tab.channelPending = true
                 }
             }
             else if (refresh.action === EChannelRefreshAction.STOP) {
@@ -755,6 +771,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
         else {
             console.log('Received invalid channel in message: ', instanceMessage)
+            notify(undefined, ENotifyLevel.ERROR, `'Received invalid channel in message: ${instanceMessage.channel}`)
         }
     }
 
@@ -783,7 +800,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         let tab = tabs.current.find(tab => tab.ws === wsEvent.target)
         if (!tab || !tab.channelObject) return
 
-        colorizeTab(tab)
         let instanceConfig:IInstanceConfig = {
             channel: tab.channel.channelId,
             objects: EInstanceConfigObject.PODS,
@@ -817,7 +833,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         if (!tab || !tab.channelObject) return
 
         notify(undefined, ENotifyLevel.ERROR, `Websocket for channel '${tab.channel.channelId}' has been interrupted`)
-        colorizeTab(tab)
         const reconnectable = backChannels.find(c => c.id === tab!.channel.channelId && c.reconnectable)
         if (reconnectable) {
             console.log(`Trying to reconnect...`)
@@ -894,7 +909,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 tab.channelPaused = false
                 
                 tab.channel.startChannel(tab.channelObject)
-                colorizeTab(tab)
 
                 if (!lastTabs.some(t => t.name === tab.name && t.channel === tab.channel.channelId)) {
                     let newTab:ITabSummary = {
@@ -955,7 +969,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             if (tab.ws) tab.ws.send(JSON.stringify(instanceConfig))
             tab.channelStarted = false
             tab.channelPaused = false
-            colorizeTab(tab)
         }
         else {
             console.log('Channel is not supported on stop:',tab.channel.channelId)
@@ -986,13 +999,11 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
         if (selectedTab.current.channelPaused) {
             selectedTab.current.channelPaused = false
-            colorizeTab(selectedTab.current)
             instanceConfig.action = EInstanceMessageAction.CONTINUE
             if (selectedTab.current.channel.continueChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         }
         else {
             selectedTab.current.channelPaused = true
-            colorizeTab(selectedTab.current)
             instanceConfig.action = EInstanceMessageAction.PAUSE
             if (selectedTab.current.channel.pauseChannel(selectedTab.current.channelObject)) setChannelMessageAction({action : EChannelRefreshAction.REFRESH})
         }
@@ -1017,10 +1028,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
         if (current >= newTabs.length) current--
         if (current >= 0 && current<newTabs.length) newTabs[current].channelPending = false
-        if (current>=0) {
-            selectedTab.current = newTabs[current]
-            colorizeTab(selectedTab.current)
-        }
+        if (current>=0) selectedTab.current = newTabs[current]
         tabs.current = newTabs
         selectedTab.current = undefined
     }
@@ -1052,8 +1060,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     tabs.current[selectedTabIndex] = tabs.current[selectedTabIndex-1]
                     tabs.current[selectedTabIndex-1] = selectedTab.current
                     selectedTab.current = tabs.current[selectedTabIndex]
-                    colorizeTab(tabs.current[selectedTabIndex])
-                    colorizeTab(tabs.current[selectedTabIndex-1])
                 }
                 break
             case MenuTabOption.TabMoveRight:
@@ -1323,8 +1329,8 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     }
                 }))
                 break
-            case MenuDrawerOption.SettingsTrivy:
-                setShowSettingsTrivy(true)
+            case MenuDrawerOption.About:
+                setShowAbout(true)
                 break
             case MenuDrawerOption.Exit:
                 setLogged(false)
@@ -1363,7 +1369,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
     const onSettingsUserClosed = (ok:boolean) => {
         setShowSettingsUser(false)
-        if (ok) writeLoggedUserSettings()
+        if (ok && user) writeLoggedUserSettings(user)
     }
 
     const onSettingsClusterClosed = (readMetricsInterval:number|undefined) => {
@@ -1376,19 +1382,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 cluster.kwirthData.metricsInterval = readMetricsInterval
                 let payload = JSON.stringify( { metricsInterval: readMetricsInterval } )
                 fetch (`${cluster.url}/metrics/config`, addPostAuthorization(cluster.accessString, payload))
-            }
-        }
-    }
-
-    const onSettingsTrivyClosed = async (action:string) => {
-        setShowSettingsTrivy(false)
-        if (action!=='') {
-            let result = await (await fetch (`${backendUrl}/config/trivy?action=${action}`, addGetAuthorization(accessString)))
-            if (result.status === 200) {
-                setMsgBox(MsgBoxOk('Trivy',`Action ${action} succesfully launched.`, setMsgBox))
-            }
-            else {
-                setMsgBox(MsgBoxOkError('Trivy',`Trivy action has shown some errors: ${result.text()}.`, setMsgBox))
             }
         }
     }
@@ -1429,10 +1422,10 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
     const onHomepageSelectTab = async (tab: ITabSummary): Promise<void> => {
         let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
-        if (cluster) {
+        if (cluster && user) {
             let clonedTab:ITabSummary = JSON.parse(JSON.stringify(tab))
             await fillTabSummary(clonedTab)
-            await populateTabObject(clonedTab.name, clonedTab.channel, cluster, clonedTab.channelObject.view, clonedTab.channelObject.namespace, clonedTab.channelObject.group, clonedTab.channelObject.pod, clonedTab.channelObject.container, false, undefined)
+            await populateTabObject(user, clonedTab.name, clonedTab.channel, cluster, clonedTab.channelObject.view, clonedTab.channelObject.namespace, clonedTab.channelObject.group, clonedTab.channelObject.pod, clonedTab.channelObject.container, false, false, undefined)
             onClickChannelStart()
             setRefresh(Math.random())
         }
@@ -1520,6 +1513,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         let asStr = user.accessKey.id + '|' + user.accessKey.type + '|' + user.accessKey.resources
         setAccessString(asStr)
         setUser(user)
+        await readLoggedUserSettings()
 
         let srcCluster = await loadSourceCluster(backendUrl, asStr)
         if (!srcCluster) {
@@ -1533,13 +1527,12 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             config: undefined,
             instanceConfig: undefined
         }
-        await populateTabObject('ELECTRON', 'magnify', srcCluster, EInstanceConfigView.NAMESPACE  , 'default', '', '', '', true, magnifySettings)
+        await populateTabObject(user, 'ELECTRON', 'magnify', srcCluster, EInstanceConfigView.NAMESPACE  , 'default', '', '', '', true, true, magnifySettings)
         setFirstLogin(false)
         setLogged(true)
     }
     
     const onContextSelectorRemote = async (name:string, url:string, accessString:string) => {
-        console.log(name)
         setBackendUrl(url)
         setAccessString(accessString)
         setCurrentWorkspaceName('untitled')
@@ -1558,6 +1551,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             resources: '',
         }
         setUser(user)
+        await readLoggedUserSettings()
 
         let srcCluster = await loadSourceCluster(url, accessString)
         if (!srcCluster) {
@@ -1571,13 +1565,13 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             config: undefined,
             instanceConfig: undefined
         }
-        await populateTabObject('ELECTRON', 'magnify', srcCluster, EInstanceConfigView.NAMESPACE  , 'default', '', '', '', true, magnifySettings)
+        await populateTabObject(user, 'ELECTRON', 'magnify', srcCluster, EInstanceConfigView.NAMESPACE  , 'default', '', '', '', true, true, magnifySettings)
         setFirstLogin(false)
         setLogged(true)
     }
     
     if (!logged) {
-        if (props.isElectron && !isClusterRemoteSelected) {
+        if (props.isElectron) {
             return <div style={{ backgroundImage:`url('./turbo-pascal.png')`, backgroundPosition: 'center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '100vw', height: '100vh' }} >
                 <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
                     <ContextSelector onContextSelectorLocal={onContextSelectorLocal} onContextSelectorRemote={onContextSelectorRemote} isElectron={props.isElectron}/>
@@ -1600,9 +1594,9 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             <CssBaseline />
             <SessionContext.Provider value={{ user, accessString: accessString, logged, backendUrl }}>
                 { !fullscreenTab &&
-                    <AppBar position='sticky' elevation={0} sx={{ zIndex: 99, height:'64px' }}>
+                    <AppBar position='sticky' elevation={0} sx={{ zIndex: 1300, height:'64px'}}>
                     <Toolbar>
-                        <IconButton size='large' edge='start' color='inherit' sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(true)}><Menu /></IconButton>
+                        <IconButton size='large' edge='start' color='inherit' sx={{ mr: 1 }} onClick={() => setMenuDrawerOpen(prev => !prev)}><Menu /></IconButton>
                         <Typography sx={{ ml:1,flexGrow: 1 }}>KWirth - {clusters.find(c => c.name === selectedClusterName)?.clusterInfo?.name}</Typography>
                         <Tooltip title={<div style={{textAlign:'center'}}>{currentWorkspaceName}<br/><br/>{currentWorkspaceDescription}</div>} sx={{ mr:2}} slotProps={{popper: {modifiers: [{name: 'offset', options: {offset: [0, -12]}}]}}}>
                             <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentWorkspaceName}</Typography>
@@ -1630,7 +1624,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     <Drawer sx={{ flexShrink: 0, '& .MuiDrawer-paper': {mt: '64px'} }} anchor="left" open={menuDrawerOpen} onClose={() => setMenuDrawerOpen(false)}>
                         <Stack direction={'column'}>
                             <MenuDrawer optionSelected={menuDrawerOptionSelected} uploadSelected={handleUpload} selectedClusterName={selectedClusterName} hasClusterScope={hasClusterScope()}/>
-                            <Typography fontSize={'small'} color={'#cccccc'} sx={{ml:1}}>Version: {VERSION}</Typography>
                         </Stack>
                     </Drawer>
                 }
@@ -1641,24 +1634,42 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 
                 <Stack direction={'column'} display={'flex'} flexDirection={'column'} sx={{minHeight:0, height:'100%', flexGrow:1}}>
                     { !fullscreenTab && 
-                        <Stack direction={'row'} alignItems={'end'} sx={{borderBottom: 1, borderColor: 'divider'}}>                    
-                            <Tabs value={selectedTab.current? false : 0} sx={{minWidth:'100px'}}>
-                                <Tab key={'0'} label={<Home/>} value={0} onClick={onSelectHome} sx={{height:'60px'}}/>
+                        <Stack direction={'row'} alignItems={'end'} sx={{borderBottom: 1, borderColor: 'divider', mt:1}}>
+                            <Tabs value={selectedTab.current? false : 0} sx={{minWidth:'100px', minHeight: '48px', height: '48px'}}>
+                                <Tab key={'0'} label={<Home/>} value={0} onClick={onSelectHome}/>
                             </Tabs>
                             { tabs.current.length>0 &&
-                                <Tabs value={selectedTab.current? tabs.current.indexOf(selectedTab.current) : false} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' TabIndicatorProps={{ style: { display: 'none' } }} sx={{ml:"-16px"}}>
+                                <Tabs value={selectedTab.current? tabs.current.indexOf(selectedTab.current) : false} onChange={onChangeTab} variant='scrollable' scrollButtons='auto' TabIndicatorProps={{ style: { display: 'none' } }} 
+                                    sx={{
+                                        ml: "-16px",
+                                        minHeight: '48px',
+                                        height: '48px',
+                                        '& .MuiTab-root': {
+                                            minHeight: '48px', height: '48px', paddingTop: 0, paddingBottom: 0, borderRadius: '8px 8px 0 0', backgroundColor: 'background.paper', textTransform: 'none', paddingLeft: '12px',
+                                        },
+                                        '& .MuiTab-root .MuiTouchRipple-root': {
+                                            borderTopLeftRadius: '8px',
+                                            borderTopRightRadius: '8px'
+                                        }
+                                    }}
+                                >
                                     {   tabs.current.map((tab:ITabObject, index) => {
-                                            return <Tab component='span' ref={(el) => tab.headerEl = el} key={index} label={formatTabName(tab)} value={index} icon={
-                                                        tab === selectedTab.current ? 
-                                                            <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}><SettingsIcon fontSize='small' color='primary'/></IconButton>
-                                                            :
-                                                            <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{
-                                                                borderRadius: '10px 10px 0 0',
-                                                                backgroundColor:'#ebebeb',
-                                                                '& .MuiTouchRipple-root': {
-                                                                    borderTopLeftRadius: '8px',
-                                                                    borderTopRightRadius: '8px',
-                                                                }}}/>
+                                            return <Tab component='span' ref={(el) => tab.headerEl === el} key={index} label={formatTabName(tab)} value={index} 
+                                                style={{ borderLeft: `6px solid ${getTabColor(tab)}` }}
+                                                icon={
+                                                tab === selectedTab.current ? 
+                                                    <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}>
+                                                        <SettingsIcon fontSize='small' color='primary'/>
+                                                    </IconButton>
+                                                    :
+                                                    <Box sx={{minWidth:'36px'}}/>} iconPosition='end' sx={{
+                                                        borderRadius: '10px 10px 0 0',
+                                                        backgroundColor:'#ebebeb',
+                                                        '& .MuiTouchRipple-root': {
+                                                            borderTopLeftRadius: '8px',
+                                                            borderTopRightRadius: '8px',
+                                                        }}}
+                                            />
                                         })
                                     }
                                 </Tabs>
@@ -1689,14 +1700,15 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 { showChannelSetup() }
                 { showSettingsUser && <SettingsUser onClose={onSettingsUserClosed} settings={userSettingsRef.current} /> }
                 { showSettingsCluster && clusters && <SettingsCluster onClose={onSettingsClusterClosed} clusterName={selectedClusterName} clusterMetricsInterval={clusters.find(c => c.name===selectedClusterName)?.kwirthData?.metricsInterval} /> }
-                { showSettingsTrivy && selectedClusterName && <SettingsTrivy onClose={onSettingsTrivyClosed} cluster={clusters.find(c => c.name===selectedClusterName)!}/> }
+                
                 { initialMessage !== '' && MsgBoxOk('Kwirth',initialMessage, () => setInitialMessage(''))}
                 { firstLogin && <FirstTimeLogin onClose={onFirstTimeLoginClose}/> }
                 <Snackbar open={notifySnackbarOpen} autoHideDuration={3000} anchorOrigin={{vertical: 'bottom', horizontal:'center'}} onClose={onNotifySnackbarClose}>
                     <Alert severity={notifySnackbarLevel} variant="filled" onClose={onNotifySnackbarClose} sx={{ width: '100%' }}>{notifySnackbarMessage}</Alert>
                 </Snackbar>
-                { msgBox }
                 { notificationMenuAnchorEl && <NotificationMenu open={true} anchorEl={notificationMenuAnchorEl} messages={notifications} onClose={() => setNotificationMenuAnchorEl(null)} onDelete={onMessageDelete} onClear={() => {setNotifications([]); setNotificationMenuAnchorEl(null)}} channels={frontChannels}/>}
+                { msgBox }
+                { showAbout && <About onClose={() => setShowAbout(false)}/>}
             </SessionContext.Provider>
         </ThemeProvider>
     )

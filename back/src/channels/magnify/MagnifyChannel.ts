@@ -745,7 +745,6 @@ class MagnifyChannel implements IChannel {
                     break
                 case 'RoleBinding':
                     throttleExcute(param, async () => {
-                        console.log(await this.clusterInfo.rbacApi.listRoleBindingForAllNamespaces())
                         this.sendDataMessage(webSocket, instance, magnifyMessage.id, EMagnifyCommand.LIST, JSON.stringify(await this.clusterInfo.rbacApi.listRoleBindingForAllNamespaces()))
                     })
                     break
@@ -811,17 +810,12 @@ class MagnifyChannel implements IChannel {
         try {
             let params = magnifyMessage.params!
             throttleExcute('listcrd', async () => {
-                try {
-                    let resp = await this.clusterInfo.crdApi.listCustomObjectForAllNamespaces({
-                        group: params[0],
-                        version: params[1],
-                        plural: params[2]
-                    })
-                    this.sendDataMessage(webSocket, instance, magnifyMessage.id, EMagnifyCommand.LISTCRD, JSON.stringify(resp))
-                }
-                catch (err) {
-                    console.log('error obtaining CRDi', params[0], params[1], params[2], err)
-                }
+                let resp = await this.clusterInfo.crdApi.listCustomObjectForAllNamespaces({
+                    group: params[0],
+                    version: params[1],
+                    plural: params[2]
+                })
+                this.sendDataMessage(webSocket, instance, magnifyMessage.id, EMagnifyCommand.LISTCRD, JSON.stringify(resp))
             })
         }
         catch (err:any) {

@@ -9,20 +9,20 @@ interface IColors {
     pending: string
 }
 
-const TABBASECOLORS: IColors = {
-    stop: '#ebebeb',
-    start: '#28a745',
-    interrupt: 'salmon',
-    pause: '#6c757d',
+const TABSELECTEDCOLORS: IColors = {
+    stop: '#dfd7df',
+    start: '#34d058',
+    interrupt: 'red',
+    pause: '#0000d0',
     pending: '#ffc107'
 }
 
-const TABBRIGHTCOLORS: IColors = {
-    stop: '#cbcbcb',
-    start: '#34d058',
-    interrupt: 'red',
-    pause: '#dfd7df',
-    pending: '#ffca2c',
+const TABUNSELECTEDCOLORS: IColors = {
+    stop: '#2c353d',
+    start: '#084725',
+    interrupt: '#500000',
+    pause: '#000070',
+    pending: '#dfaa0c',
 }
 
 const DEFAULTLASTTABS:ITabSummary[] = [
@@ -81,4 +81,4 @@ const DEFAULTLASTTABS:ITabSummary[] = [
 ]
 
 export type { IColors }
-export { DEFAULTLASTTABS, TABBASECOLORS, TABBRIGHTCOLORS }
+export { DEFAULTLASTTABS, TABUNSELECTEDCOLORS, TABSELECTEDCOLORS }

@@ -26,7 +26,7 @@ It is important to undertand what a **view** means:
 Simply put, scope is the action you want to perform, and view is a set of objects your want to work with.
 
 ## Messaging
-When a client opens a web socket, the next action is to send an 'start instance' message, that is, to send a message to the Kiwrth server explaining what kind of **streaming data** the client wants to receive.
+When a client opens a web socket, the next action is to send an 'start instance' message, that is, to send a message to the Kwirth server explaining what kind of **streaming data** the client wants to receive.
 
 When the server receives a message like that, it performs the following actions:
 

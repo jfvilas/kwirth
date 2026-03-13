@@ -16,7 +16,7 @@ enum MenuDrawerOption {
     UserSecurity,
     ApiSecurity,
     UpdateKwirth,
-    SettingsTrivy,
+    About,
     Exit
 }
 
@@ -35,30 +35,29 @@ const MenuDrawer: React.FC<IMenuDrawerProps> = (props:IMenuDrawerProps) => {
 
     const menu=(
         <MenuList sx={{height:'85vh'}}>
-            <MenuItem key='new' onClick={() => optionSelected(MenuDrawerOption.NewWorkspace)}><CreateNewFolderTwoTone/>&nbsp;New workspace</MenuItem>
-            <MenuItem key='open' onClick={() => optionSelected(MenuDrawerOption.LoadWorkspace)}><FileOpenTwoTone/>&nbsp;Load workspace</MenuItem>
-            <MenuItem key='save' onClick={() => optionSelected(MenuDrawerOption.SaveWorkspace)}><SaveTwoTone/>&nbsp;Save workspace</MenuItem>
-            <MenuItem key='saveas' onClick={() => optionSelected(MenuDrawerOption.SaveWorkspaceAs)}><SaveAsTwoTone/>&nbsp;Save workspace as...</MenuItem>
-            <MenuItem key='delete' onClick={() => optionSelected(MenuDrawerOption.DeleteWorkspace)}><DeleteTwoTone/>&nbsp;Delete workspace...</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.NewWorkspace)}><CreateNewFolderTwoTone/>&nbsp;New workspace</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.LoadWorkspace)}><FileOpenTwoTone/>&nbsp;Load workspace</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.SaveWorkspace)}><SaveTwoTone/>&nbsp;Save workspace</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.SaveWorkspaceAs)}><SaveAsTwoTone/>&nbsp;Save workspace as...</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.DeleteWorkspace)}><DeleteTwoTone/>&nbsp;Delete workspace...</MenuItem>
             <Divider/>
-            <MenuItem key='workspaceexp' onClick={() => optionSelected(MenuDrawerOption.ExportWorkspaces)}><ImportExport/>&nbsp;Export all workspaces (to downloadable file)</MenuItem>
-            <MenuItem key='workspaceimp' component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new workspaces from file (and merge overwriting)</MenuItem>
-            <MenuItem key='settingsu' onClick={() => optionSelected(MenuDrawerOption.SettingsUser)}><Settings/>&nbsp;User settings</MenuItem>
-            <MenuItem key='settingsc' onClick={() => optionSelected(MenuDrawerOption.SettingsCluster)} disabled={props.selectedClusterName===undefined}><Settings/>&nbsp;Cluster Settings</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.ExportWorkspaces)}><ImportExport/>&nbsp;Export all workspaces (to downloadable file)</MenuItem>
+            <MenuItem component='label'><input type="file" hidden accept=".kwirth.json" onChange={(event) => props.uploadSelected(event)}/><ImportExport/>&nbsp;Import new workspaces from file (and merge overwriting)</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.SettingsUser)}><Settings/>&nbsp;User settings</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.SettingsCluster)} disabled={props.selectedClusterName===undefined}><Settings/>&nbsp;Cluster Settings</MenuItem>
             <Divider/>
-            <MenuItem key='mc' onClick={() => optionSelected(MenuDrawerOption.ManageCluster)}><Edit/>&nbsp;Manage cluster list</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.ManageCluster)}><Edit/>&nbsp;Manage cluster list</MenuItem>
             <Divider/>
             { props.hasClusterScope && 
                 <div>
-                    <MenuItem key='asec' onClick={() => optionSelected(MenuDrawerOption.ApiSecurity)}><Key/>&nbsp;API Security</MenuItem>
-                    <MenuItem key='usec' onClick={() => optionSelected(MenuDrawerOption.UserSecurity)}><Person />&nbsp;User security</MenuItem>
-                    <Divider/>
-                    <MenuItem key='ukwirth' onClick={() => optionSelected(MenuDrawerOption.UpdateKwirth)}><BrowserUpdated />&nbsp;Update Kwirth</MenuItem>
-                    <MenuItem key='trivy' onClick={() => optionSelected(MenuDrawerOption.SettingsTrivy)}><BrowserUpdated />&nbsp;Manage Trivy</MenuItem>
+                    <MenuItem onClick={() => optionSelected(MenuDrawerOption.ApiSecurity)}><Key/>&nbsp;API Security</MenuItem>
+                    <MenuItem onClick={() => optionSelected(MenuDrawerOption.UserSecurity)}><Person />&nbsp;User security</MenuItem>
+                    <MenuItem onClick={() => optionSelected(MenuDrawerOption.UpdateKwirth)}><BrowserUpdated />&nbsp;Update Kwirth</MenuItem>
                     <Divider/>
                 </div>
             }
-            <MenuItem key='exit' onClick={() => optionSelected(MenuDrawerOption.Exit)}><ExitToApp />&nbsp;Exit Kwirth</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.About)}><ExitToApp />&nbsp;About Kwirth...</MenuItem>
+            <MenuItem onClick={() => optionSelected(MenuDrawerOption.Exit)}><ExitToApp />&nbsp;Exit Kwirth</MenuItem>
         </MenuList>
     )
 

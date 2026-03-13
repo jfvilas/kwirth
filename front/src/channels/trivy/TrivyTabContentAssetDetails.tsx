@@ -1,70 +1,80 @@
 import { Avatar, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
-import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
-import { TabContentTrivyAssetVulns } from './TrivyTabContentAssetVuln'
+import { assetScore, assetScoreColor, getAvatarContent, TReportType } from './TrivyCommon'
 import { ITrivyInstanceConfig } from './TrivyConfig'
-import { IKnown } from '@jfvilas/kwirth-common'
+import { TrivyTabContentAssetAudit } from './TrivyTabContentAssetAudit'
+import { TrivyTabContentAssetVulns } from './TrivyTabContentAssetVulns'
+import { IAsset } from './TrivyData'
 
-interface ITabContentTrivyAssetDetailsProps {
-    asset: IKnown
+interface ITrivyTabContentAssetDetailsProps {
+    asset: IAsset
     trivyInstanceConfig: ITrivyInstanceConfig
+    detail: TReportType
     onClose: () => void
 }
 
-const TabContentTrivyAssetDetails: React.FC<ITabContentTrivyAssetDetailsProps> = (props:ITabContentTrivyAssetDetailsProps) => {
-    let report = props.asset.report
-    let asset = props.asset
-    let trivyInstanceConfig = props.trivyInstanceConfig
-
-    let summary = () => {
-        return (
-            <TableContainer component={Paper} sx={{mt:1}}>
-                <Table sx={{ minWidth: '100%' }} size='small'>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell align='center'><b>KwirthScore</b></TableCell>
-                            <TableCell align='center'><b>Critical</b></TableCell>
-                            <TableCell align='center'><b>High</b></TableCell>
-                            <TableCell align='center'><b>Medium</b></TableCell>
-                            <TableCell align='center'><b>Low</b></TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                            <TableCell align='center' color={assetScoreColor(asset,trivyInstanceConfig)}>{assetScore(asset,trivyInstanceConfig)}</TableCell>
-                            <TableCell align='center'>{asset.report.summary.criticalCount}</TableCell>
-                            <TableCell align='center'>{asset.report.summary.highCount}</TableCell>
-                            <TableCell align='center'>{asset.report.summary.mediumCount}</TableCell>
-                            <TableCell align='center'>{asset.report.summary.lowCount}</TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
-            </TableContainer>            
-        )
-    }
-    let levels = ['CRITICAL','HIGH','MEDIUM','LOW']
-    let vulns:any[] = (asset.report.vulnerabilities as any[]).sort((a,b) => levels.indexOf(a.severity)-levels.indexOf(b.severity))
+let summary = (asset:IAsset, trivyInstanceConfig: ITrivyInstanceConfig, detail:TReportType) => {
+    let report = detail==='vulnerabilityreports'? asset.vulnerabilityreports.report : asset.configauditreports.report
 
     return (
-        <Dialog open={true} PaperProps={{ sx: {backgroundColor: '#f5f5f5'} }}>
+        <TableContainer component={Paper} sx={{mt:1}}>
+            <Table sx={{ minWidth: '100%' }} size='small'>
+                <TableHead>
+                    <TableRow>
+                        <TableCell align='center'><b>KwirthScore</b></TableCell>
+                        <TableCell align='center'><b>Critical</b></TableCell>
+                        <TableCell align='center'><b>High</b></TableCell>
+                        <TableCell align='center'><b>Medium</b></TableCell>
+                        <TableCell align='center'><b>Low</b></TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                        <TableCell align='center' color={assetScoreColor(asset,trivyInstanceConfig, detail)}>{assetScore(asset, trivyInstanceConfig, detail).toFixed(2)}%</TableCell>
+                        <TableCell align='center'>{report.summary.criticalCount}</TableCell>
+                        <TableCell align='center'>{report.summary.highCount}</TableCell>
+                        <TableCell align='center'>{report.summary.mediumCount}</TableCell>
+                        <TableCell align='center'>{report.summary.lowCount}</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+        </TableContainer>            
+    )
+}
+const TrivyTabContentAssetDetails: React.FC<ITrivyTabContentAssetDetailsProps> = (props:ITrivyTabContentAssetDetailsProps) => {
+    let asset = props.asset
+    let report = props.detail==='vulnerabilityreports'? asset.vulnerabilityreports.report : asset.configauditreports.report
+
+    let levels = ['CRITICAL','HIGH','MEDIUM','LOW']
+    let vulns:any[] = asset.vulnerabilityreports.report?.vulnerabilities? asset.vulnerabilityreports.report.vulnerabilities.sort((a:any,b:any) => levels.indexOf(a.severity)-levels.indexOf(b.severity)) : []
+    let checks:any[] = asset.configauditreports.report?.checks? asset.configauditreports.report.checks.sort((a:any,b:any) => levels.indexOf(a.severity)-levels.indexOf(b.severity)) : []
+
+    return (
+        <Dialog open={true} PaperProps={{ sx: {backgroundColor: 'background.paper'} }}>
             <DialogTitle>
                 <Stack direction={'row'} spacing={2} alignItems={'center'}>
-                    <Avatar sx={{ bgcolor: assetAvatarColor(report.os.family) }} aria-label="recipe">{report.os.family.substring(0,1).toUpperCase()}</Avatar>
+                    <Avatar>{getAvatarContent(props.asset.vulnerabilityreports?.report?.os?.family||'X')}</Avatar>
                     <Stack direction={'column'}>
-                        <Typography fontSize={14}>{asset.namespace}</Typography>
-                        <Typography fontSize={14}>{asset.name}/{asset.container}</Typography>
+                        <Typography variant='body2'>{asset.namespace}</Typography>
+                        <Typography variant='body2'>{asset.name}/{asset.container}</Typography>
                     </Stack>
                 </Stack>
             </DialogTitle>
             <DialogContent sx={{overflowY:'hidden'}}>
-                <Stack direction='column' spacing={1}>
-                    {summary()}
+                <Stack direction='column' spacing={1} mt={1}>
+                    {summary(props.asset, props.trivyInstanceConfig, props.detail)}
+                    
                     <Card sx={{p:1}}>
-                        <Typography><b>Image:</b> {`${asset.report.registry.server}/${asset.report.artifact.repository}:${asset.report.artifact.tag}`}</Typography>
-                        <Typography><b>OS:</b> {`${asset.report.os.family}/${asset.report.os.name}`}</Typography>
-                        <Typography><b>Scan:</b> {`${asset.report.scanner.name} ${asset.report.scanner.version} (${asset.report.scanner.vendor}) on ${asset.report.updateTimestamp}`}</Typography>
+                        { props.detail === 'vulnerabilityreports' && <>
+                                <Typography variant='body2'><b>Image:</b> {`${report.registry.server}/${report.artifact.repository}:${report.artifact.tag}`}</Typography>
+                                <Typography variant='body2'><b>OS:</b> {`${report.os.family}/${report.os.name}`}</Typography>
+                        </>}
+                        <Typography variant='body2'><b>Scan:</b> {`${report.scanner.name} ${report.scanner.version} (${report.scanner.vendor}) on ${report.updateTimestamp}`}</Typography>
                     </Card>
                     <Box sx={{display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height:'50vh'}}>
-                        {vulns.map((vuln,index) => <TabContentTrivyAssetVulns key={index} vuln={vuln}/>)}
+                        {
+                            (props.detail==='vulnerabilityreports' && vulns.map((vuln,index) => <TrivyTabContentAssetVulns key={index} vuln={vuln}/>)) ||
+                            (props.detail==='configauditreports' && checks.map((check,index) => <TrivyTabContentAssetAudit key={index} check={check}/>))
+                        }
                     </Box>
                 </Stack>
             </DialogContent>
@@ -75,4 +85,4 @@ const TabContentTrivyAssetDetails: React.FC<ITabContentTrivyAssetDetailsProps> =
     )
 }
 
-export { TabContentTrivyAssetDetails }
+export { TrivyTabContentAssetDetails }

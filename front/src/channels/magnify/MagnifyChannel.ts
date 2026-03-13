@@ -116,7 +116,6 @@ class MagnifyChannel implements IChannel {
                             case EMagnifyCommand.EVENTS:
                                 let result:{type:string, events:any} = JSON.parse(response.data)
                                 if (result.type==='cluster') {
-                                    //magnifyData.clusterEvents = result.events
                                     for (let ev of result.events) {
                                         let exist = false
                                         for (let eev of magnifyData.clusterEvents) {
@@ -160,7 +159,19 @@ class MagnifyChannel implements IChannel {
                                     case 'DELETED':
                                         if (response.data.kind==='Namespace' && magnifyData.updateNamespaces) magnifyData.updateNamespaces('DELETED', response.data.metadata.name)
                                         let path = buildPath(response.data.kind, response.data.metadata.name, response.data.metadata.namespace)
-                                        magnifyData.files = magnifyData.files.filter (f => f.path !== path)
+                                        console.log('deleted', path)
+                                        let crd = magnifyData.files.find (f => f.path === path)
+                                        if (crd) {
+                                            // +++ sould we be listening for changes to CRDi's?
+                                            let groupName = crd.data.origin.apiVersion.replace('/','-')+'-'+crd.data.origin.kind
+                                            console.log(magnifyData.files.length)
+                                            console.log('/custom/'+groupName)
+                                            magnifyData.files = magnifyData.files.filter(f => !f.path.startsWith('/custom/'+groupName))
+                                            console.log(magnifyData.files.length)
+                                        }
+                                        else {
+                                            console.log('Not found for delete', path)
+                                        }
                                         break
                                 }
                                 return {
@@ -353,7 +364,9 @@ class MagnifyChannel implements IChannel {
     }
 
     loadObject (event:string, channelObject:IChannelObject, kind:string, magnifyData:IMagnifyData, obj:any): void {
-        if (obj.metadata?.managedFields) delete obj.metadata.managedFields
+        if (obj.metadata?.managedFields) {
+            if (!magnifyData.userPreferences.dataManagedFields) delete obj.metadata.managedFields
+        }
         if (kind==='Pod') this.loadPod(magnifyData, obj)
         else if (kind==='ConfigMap') this.loadConfigMap(magnifyData, obj)
         else if (kind==='Secret') this.loadSecret(magnifyData, obj)
@@ -398,7 +411,6 @@ class MagnifyChannel implements IChannel {
         else if (kind==='NodeMetrics') this.loadNodeMetrics(magnifyData, obj)
         else if (kind==='ComponentStatus') this.loadComponentStatus(magnifyData, obj)
         else {
-            console.log('received kind:', kind, '. Try CRDi parsing.')
             if (!this.loadCustomResourceDefinitionInstance(event, magnifyData, obj)) {
                 console.log('*** ERR INVALID Kind:', kind)
             }
@@ -1268,17 +1280,9 @@ class MagnifyChannel implements IChannel {
 
         // we must  previosusly remove +++
         // for each CRD, we create an entry in the navigation pane for each group
-        let groupName = obj.spec.group + (version?'-'+version:'') + '-' + obj.spec.names.kind.toLowerCase()
-        // magnifyData.files = magnifyData.files.filter(f => f.path!=='/custom/'+groupName)
-        // magnifyData.files.push( {
-        //     name: `${obj.spec.group}${(version?'/'+version:'')} (${obj.spec.names.kind.toLowerCase()})`,
-        //     isDirectory: true,
-        //     path: '/custom/'+groupName,
-        //     class: 'crdgroup',
-        //     children: 'crdinstance'
-        // })
+        let groupName = obj.spec.group + (version?'-'+version:'') + '-' + obj.spec.names.kind
         this.upsertObject(magnifyData, {
-            name: `${obj.spec.group}${(version?'/'+version:'')} (${obj.spec.names.kind.toLowerCase()})`,
+            name: `${obj.spec.group}${(version?'/'+version:'')} (${obj.spec.names.kind})`,
             isDirectory: true,
             path: '/custom/'+groupName,
             class: 'crdgroup',
@@ -1308,7 +1312,7 @@ class MagnifyChannel implements IChannel {
     }
 
     loadCustomResourceDefinitionInstance(event: string, magnifyData:IMagnifyData, obj:any): boolean {
-        let groupName = obj.apiVersion.replace('/','-')+'-'+obj.kind.toLowerCase()
+        let groupName = obj.apiVersion.replace('/','-')+'-'+obj.kind
 
         this.upsertObject(magnifyData, {
             name: obj.metadata.name,

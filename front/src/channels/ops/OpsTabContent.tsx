@@ -178,7 +178,7 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 if (props.channelObject.webSocket) 
                     props.channelObject.webSocket.send(JSON.stringify( instanceConfig ))
                 else
-                    console.log('No webSocket for terminal launch')
+                    console.log('No webSocket for terminal trying to launch')
                 break
             case LaunchActionEnum.RESTART:
                 let opsMessage:IOpsMessage = {

@@ -1,54 +1,57 @@
-import { Avatar, Box, Card, CardContent, CardHeader, CardMedia, IconButton, Menu, MenuItem, MenuList, Stack, Typography } from '@mui/material'
+import { Avatar, Box, Card, CardContent, CardHeader, CardMedia, Divider, IconButton, Menu, MenuItem, MenuList, Stack, Typography } from '@mui/material'
 import { MoreVert as MoreVertIcon } from '@mui/icons-material'
 import { Visibility as VisibilityIcon } from '@mui/icons-material'
 import { Replay as ReplayIcon } from '@mui/icons-material'
-import { assetAvatarColor, assetScore, assetScoreColor } from './TrivyCommon'
+import { assetAvatarColor, assetScore, assetScoreColor, getAvatarContent } from './TrivyCommon'
 import { useState } from 'react'
 import { IChannelObject } from '../IChannel'
-import { ITrivyInstanceConfig } from './TrivyConfig'
-import { EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageFlow, EInstanceMessageType, IKnown, ITrivyMessage, ETrivyCommand } from '@jfvilas/kwirth-common'
+import { ITrivyInstanceConfig, TrivyInstanceConfig } from './TrivyConfig'
+import { EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageFlow, EInstanceMessageType } from '@jfvilas/kwirth-common'
+import { ETrivyCommand, IAsset, ITrivyMessage } from './TrivyData'
 
-interface ITabContentTrivyAssetProps {
-    asset: IKnown
+interface ITrivyTabContentAssetProps {
+    asset: IAsset
     channelObject: IChannelObject
     view: string
-    onDetails: (asset:IKnown) => void
-    onDelete: (asset:IKnown) => void
+    onVulns: (asset:IAsset) => void
+    onAudit: (asset:IAsset) => void
+    onRescan: (asset:IAsset) => void
 }
 
-const TabContentTrivyAsset: React.FC<ITabContentTrivyAssetProps> = (props:ITabContentTrivyAssetProps) => {
-    let report = props.asset.report
+const simpleBarChart = (reportVulns:any, reportAudit:any, trivyInstanceConfig:TrivyInstanceConfig) => {
+    let vulns = (reportVulns?.summary?.criticalCount +  reportVulns?.summary?.highCount + reportVulns?.summary?.mediumCount + reportVulns?.summary?.lowCount) || 0
+    let audit = (reportAudit?.summary?.criticalCount +  reportAudit?.summary?.highCount + reportAudit?.summary?.mediumCount + reportAudit?.summary?.lowCount) || 0
+    let height = 100
+    let factor = 1
+    const getColor = (v:number, max:number) => {
+        if (max<0) return '#dddddd'
+        if (v>=max) return '#d32f2f'
+        if (v>max*0.75) return '#fbc02d'
+        return '#388e3c'
+    }
+    const bars = [
+        { label: `Vulns (${vulns})`, height: Math.min(vulns*factor,height), color: getColor(vulns, trivyInstanceConfig.maxCritical) },
+        { label: `Audit (${audit})`, height: Math.min(audit*factor,height), color: getColor(audit, trivyInstanceConfig.maxHigh) },
+    ]
+
+    return (
+        <Box display="flex" alignItems="flex-end" justifyContent="space-around" height={height+40} width="100%" padding={2} bgcolor='background.paper'>
+            {bars.map((bar, index) => (
+                <Box key={index} textAlign="center">
+                    <Box width={40} height={bar.height} bgcolor={bar.color} marginX={1} />
+                    <Typography variant="caption">{bar.label}</Typography>
+                </Box>
+            ))}
+        </Box>
+    )
+}
+
+const TrivyTabContentAsset: React.FC<ITrivyTabContentAssetProps> = (props:ITrivyTabContentAssetProps) => {
     let trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig
     const [anchorMenu, setAnchorMenu] = useState<HTMLElement|null>(null)
 
-    const simpleBarChart = (c:number, h:number, m:number, l:number) => {
-        let height = 140
-        let factor = 20
-        const getColor = (v:number, max:number) => {
-            if (max<0) return '#dddddd'
-            if (v>=max) return '#d32f2f'
-            if (v>max*0.75) return '#fbc02d'
-            return '#388e3c'
-        }
-        const bars = [
-            { label: `Critical (${c})`, height: Math.min(c*factor,height), color: getColor(c, trivyInstanceConfig.maxCritical) },
-            { label: `High (${h})`, height: Math.min(h*factor,height), color: getColor(h, trivyInstanceConfig.maxHigh) },
-            { label: `Medium (${m})`, height: Math.min(m*factor,height), color: getColor(m, trivyInstanceConfig.maxMedium) },
-            { label: `Low (${l})`, height: Math.min(l*factor,height), color: getColor(l, trivyInstanceConfig.maxLow) },
-        ]
-
-        return (
-            <Box display="flex" alignItems="flex-end" justifyContent="space-around" height={height+10} width="100%" padding={2} bgcolor="#f5f5f5">
-                {bars.map((bar, index) => (
-                    <Box key={index} textAlign="center">
-                        <Box width={40} height={bar.height} bgcolor={bar.color} marginX={1} />
-                        <Typography variant="caption">{bar.label}</Typography>
-                    </Box>
-                ))}
-            </Box>
-    )}
-
-    const rescan = (asset:IKnown) => {
+    const rescan = (asset:IAsset) => {
+        console.log(props.channelObject.webSocket)
         if (props.channelObject.webSocket) {
             let trivyMessage: ITrivyMessage = {
                 msgtype: 'trivymessage',
@@ -66,40 +69,39 @@ const TabContentTrivyAsset: React.FC<ITabContentTrivyAssetProps> = (props:ITabCo
                 channel: EInstanceMessageChannel.TRIVY
             }
             props.channelObject.webSocket.send(JSON.stringify(trivyMessage))
-            props.onDelete(asset)
+            props.onRescan(asset)
         }
     }
 
     let assetMenu = (
         <Menu anchorEl={anchorMenu} open={Boolean(anchorMenu)} onClose={() => setAnchorMenu(null)}>
             <MenuList dense sx={{width:'150px'}}>
-                <MenuItem key='ad' onClick={() => { setAnchorMenu(null); props.onDetails(props.asset)}}><VisibilityIcon/>&nbsp;&nbsp;Details</MenuItem>
+                <MenuItem key='av' onClick={() => { setAnchorMenu(null); props.onVulns(props.asset)}}><VisibilityIcon/>&nbsp;&nbsp;Vulnareabilities</MenuItem>
+                <MenuItem key='aa' onClick={() => { setAnchorMenu(null); props.onAudit(props.asset)}}><VisibilityIcon/>&nbsp;&nbsp;Audit</MenuItem>
                 <MenuItem key='ar' onClick={() => { setAnchorMenu(null); rescan(props.asset)}}><ReplayIcon/>&nbsp;&nbsp;Re-scan</MenuItem>
             </MenuList>
         </Menu>
     )
     
     if (props.view === 'card') return ( <>
-        <Card sx={{width:'100%', height:'380px'}}>
+        <Card sx={{width:'100%', height:'280px', borderStyle:'solid', border:'1px'}}>
             <CardHeader
-                avatar={<Avatar sx={{ bgcolor: assetAvatarColor(report.os.family) }} aria-label="recipe">{report.os.family.substring(0,1).toUpperCase()}</Avatar>}
+                avatar={<Avatar sx={{background: assetAvatarColor(props.asset.vulnerabilityreports?.report?.os?.family||'X')}}>{getAvatarContent(props.asset.vulnerabilityreports?.report?.os?.family||'X')}</Avatar>}
+                title={<>
+                    <Typography variant='body2' color='textPrimary'>{`${props.asset.name?.substring(0,30)}...`}</Typography>
+                    <Typography variant='body2' color='textPrimary'>{`${props.asset.container?.substring(0,30)||'NA'}...`}</Typography>
+                </>}
                 action={<IconButton onClick={(event) => setAnchorMenu(event?.currentTarget)}><MoreVertIcon /></IconButton>}
-                title={`${props.asset.name}/${props.asset.container}`}
-                subheader={`${report.updateTimestamp}`}
             />
             <CardMedia>
-                {simpleBarChart(report.summary.criticalCount,report.summary.highCount,report.summary.mediumCount,report.summary.lowCount)}
+                {simpleBarChart(props.asset.vulnerabilityreports.report, props.asset.configauditreports.report, trivyInstanceConfig)}
             </CardMedia>
             <CardContent>
                 <Stack direction='row'>
+                    <Divider/>
                     <Stack direction='column' sx={{flex:1}}>
-                        <Typography fontSize={14} fontWeight={800}>Image</Typography>
-                        <Typography fontSize={12}>{`${report.registry.server}/${report.artifact.repository}:${report.artifact.tag}`}</Typography>
-                        <Typography fontSize={14} fontWeight={800}>OS</Typography>
-                        <Typography fontSize={12}>{`${report.os.family}/${report.os.name}`}</Typography>
-                    </Stack>
-                    <Stack direction='row' alignItems='center'>
-                        <Typography color={assetScoreColor(props.asset, trivyInstanceConfig)} fontWeight={700}>{assetScore(props.asset, trivyInstanceConfig).toFixed(0)}%</Typography>
+                        <Typography variant='body2'><b>Score:&nbsp;</b>{assetScore(props.asset, trivyInstanceConfig, 'vulnerabilityreports').toFixed(2)}%</Typography>
+                        <Typography variant='body2'><b>Date:&nbsp;</b>{props.asset.vulnerabilityreports?.report?.updateTimestamp || props.asset.configauditreports?.report?.updateTimestamp}</Typography>
                     </Stack>
                 </Stack>
             </CardContent>
@@ -111,27 +113,25 @@ const TabContentTrivyAsset: React.FC<ITabContentTrivyAssetProps> = (props:ITabCo
     if (props.view === 'list') return (
         <Card sx={{width:'100%'}}>
             <Stack direction={'row'}>
-                <CardHeader sx={{width:'50%'}}
-                    avatar={<Avatar sx={{ bgcolor: assetAvatarColor(report.os.family) }} aria-label="recipe">{report.os.family.substring(0,1).toUpperCase()}</Avatar>}
-                    title={`${props.asset.name}/${props.asset.container}`}
-                    subheader={`${report.updateTimestamp}`}
-                />
-                <Stack direction={'row'} alignItems={'center'} sx={{width:'30%'}}>
-                    <Typography color={assetScoreColor(props.asset, trivyInstanceConfig)}>{assetScore(props.asset, trivyInstanceConfig).toFixed(2)}%</Typography>
+                <Stack direction={'row'} width={'50%'} p={1}  alignItems={'center'}>
+                    <Avatar sx={{background: assetAvatarColor(props.asset.vulnerabilityreports?.report?.os?.family||'X')}}>{getAvatarContent(props.asset.vulnerabilityreports?.report?.os?.family||'X')}</Avatar>
+                    <Stack direction={'column'} ml={1}>
+                        <Typography variant='body2'><b>{`${props.asset.name.substring(0.20)}.../${props.asset.container.substring(0,10)}...`}</b></Typography>
+                        <Typography variant='body2'>{`${props.asset.vulnerabilityreports?.report?.updateTimestamp || props.asset.configauditreports?.report?.updateTimestamp}`}</Typography>                        
+                    </Stack>
+                </Stack>
+                <Stack direction={'row'} alignItems={'center'} sx={{width:'10%'}}>
+                    <Typography color={assetScoreColor(props.asset, trivyInstanceConfig, 'vulnerabilityreports')}>{assetScore(props.asset, trivyInstanceConfig, 'vulnerabilityreports').toFixed(2)}%</Typography>
                 </Stack>
                 <Stack direction={'row'} sx={{display:'flex'}} display={'flex'} flexDirection={'row'} width={'100%'} flexGrow={1} alignItems={'center'}>
-                    <Stack direction={'column'}>
-                        <Typography fontSize={12}><b>Image</b> {`${report.registry.server}/${report.artifact.repository}:${report.artifact.tag}`}</Typography>
-                        <Typography fontSize={12}><b>OS</b> {`${report.os.family}/${report.os.name}`}</Typography>
-                    </Stack>
                     <Typography sx={{flex:1}}></Typography>
-                    <IconButton onClick={() => props.onDetails(props.asset)}><VisibilityIcon/></IconButton>
+                    <IconButton onClick={() => props.onVulns(props.asset)}><VisibilityIcon/></IconButton>
+                    <IconButton onClick={() => props.onAudit(props.asset)}><VisibilityIcon/></IconButton>
                 </Stack>
             </Stack>
         </Card>
-
     )
     return <></>
 }
 
-export { TabContentTrivyAsset }
+export { TrivyTabContentAsset }

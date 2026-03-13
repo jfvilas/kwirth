@@ -1,6 +1,6 @@
 import React from 'react'
 import { Divider, Menu, MenuItem, MenuList } from '@mui/material'
-import { Analytics, AreaChart, BarChart, Delete, DoneAll, ImportExport, Info, LocalOffer, PieChart, ShowChart, StackedLineChart, ThirtyFps } from '@mui/icons-material'
+import { Analytics, AreaChart, BarChart, Delete, DoneAll, ImportExport, Info, LegendToggle, LocalOffer, PieChart, ShowChart, StackedLineChart, ThirtyFps } from '@mui/icons-material'
 
 enum EChartType {
     LineChart='line',
@@ -16,6 +16,7 @@ enum EMenuChartOption {
     Stack='stack',
     Tooltip='tooltip',
     Labels='labels',
+    Legend='legend',
     Default='default',
     Remove='remove',
     Export='export'
@@ -29,13 +30,14 @@ interface IMenuChartProps {
     stacked: boolean
     tooltip: boolean
     labels: boolean
+    legend: boolean
     numSeries: number
     setDefault: boolean
 }
 
 const MenuChart: React.FC<IMenuChartProps> = (props:IMenuChartProps) => {
 
-    return <Menu id='menu-logs' anchorEl={props.anchorMenu} open={Boolean(props.anchorMenu)} onClose={props.onClose}>
+    return <Menu anchorEl={props.anchorMenu} open={Boolean(props.anchorMenu)} onClose={props.onClose}>
         <MenuList dense sx={{width:'180px'}}>
             <MenuItem key='chartline' onClick={() => props.onOptionSelected(EMenuChartOption.Chart, EChartType.LineChart)} selected={props.selected===EChartType.LineChart}><ShowChart/>&nbsp;Line chart</MenuItem>
             <MenuItem key='chartarea' onClick={() => props.onOptionSelected(EMenuChartOption.Chart, EChartType.AreaChart)} selected={props.selected===EChartType.AreaChart}><AreaChart/>&nbsp;Area chart</MenuItem>
@@ -47,6 +49,7 @@ const MenuChart: React.FC<IMenuChartProps> = (props:IMenuChartProps) => {
             <MenuItem key='chartstack' onClick={() => props.onOptionSelected(EMenuChartOption.Stack)} selected={props.stacked} disabled={props.selected!==EChartType.AreaChart && props.selected!==EChartType.BarChart}><StackedLineChart/>&nbsp;Stack values</MenuItem>
             <MenuItem key='charttooltip' onClick={() => props.onOptionSelected(EMenuChartOption.Tooltip)} selected={props.tooltip}><Info/>&nbsp;Show tooltip</MenuItem>
             <MenuItem key='chartlabel' onClick={() => props.onOptionSelected(EMenuChartOption.Labels)} selected={props.labels}><LocalOffer/>&nbsp;Show labels</MenuItem>
+            <MenuItem key='chartlegend' onClick={() => props.onOptionSelected(EMenuChartOption.Legend)} selected={props.legend}><LegendToggle/>&nbsp;Show legend</MenuItem>
             { props.setDefault && <MenuItem key='chartdefault' onClick={() => props.onOptionSelected(EMenuChartOption.Default)}><DoneAll/>&nbsp;Set default</MenuItem>}
 
             <Divider/>

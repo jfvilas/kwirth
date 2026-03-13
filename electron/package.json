@@ -1,5 +1,5 @@
 {
-	"name": "kwirth-desktop",
+	"name": "kwirth-magnify",
 	"author": "Julio Fernandez",
 	"main": "main.js",
 	"version": "1.0.0",
@@ -17,13 +17,14 @@
 			"./preload.js",
 			"./splash.png",
 			"./version.js",
-			"./build/**/*"
+			"./bundle/**/*"
 		],
 		"asar": false,
 		"directories": {
 			"output": "dist" 
 		},
 		"win": {
+			"icon": "km-transparent.ico",
 			"target": [
 				{
 					"target": "nsis", 

@@ -3,13 +3,12 @@ import { IChannelObject } from '../IChannel'
 import { EFilemanCommand, IFilemanMessage, IFilemanData } from './FilemanData'
 import { Box, Typography } from '@mui/material'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@jfvilas/kwirth-common'
-import { IError, IFileObject } from '@jfvilas/react-file-manager'
+import { IError, IFileManagerHandle, IFileObject } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
 import { IconContainer, IconNamespace, IconPod } from '../../tools/Constants-React'
 import { v4 as uuid } from 'uuid'
 import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 import { MsgBoxOk } from '../../tools/MsgBox'
-import { IFilemanConfig } from './FilemanConfig'
 import { ENotifyLevel } from '../../tools/Global'
 import '@jfvilas/react-file-manager/dist/style.css'
 import './custom-fm-fileman.css'
@@ -21,6 +20,7 @@ interface IContentProps {
 
 const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const filemanBoxRef = useRef<HTMLDivElement | null>(null)
+    const fileManagerRef = useRef<IFileManagerHandle>(null)
     const [logBoxTop, setLogBoxTop] = useState(0)
     const [msgBox, setMsgBox] =useState(<></>)
 
@@ -34,6 +34,11 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         rename: true,
         upload: true
     }
+
+    useEffect( () => {
+        console.log('assgn')
+        filemanData.unlock = fileManagerRef.current?.unlock
+    }, [fileManagerRef.current])
 
     let icons = new Map()
     icons.set('namespace', { open:<IconNamespace size={18}/>, closed:<IconNamespace size={18}/>, grid:<IconNamespace size={50}/>, list:<IconNamespace size={18}/>, default:<IconNamespace size={18}/> })
@@ -89,7 +94,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     let fileUploadConfig:IFileUploadConfig = {
-        url: `${props.channelObject.clusterUrl}/channel/fileman/upload?key=${props.channelObject.instanceId}`,
+        url: `${props.channelObject.clusterUrl}/${filemanData.ri}/channel/fileman/upload?key=${props.channelObject.instanceId}`,
         method:'POST',
         headers: {
             'Authorization': 'Bearer '+ props.channelObject.accessString
@@ -111,7 +116,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const onDownload = async (files: IFileObject[]) => {
         for (let file of files) {
-            const url = `${props.channelObject.clusterUrl}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
+            const url = `${props.channelObject.clusterUrl}/${filemanData.ri}/channel/fileman/download?key=${props.channelObject.instanceId}&filename=${file.path}`
             
             try {
                 const response = await fetch(url, addGetAuthorization(props.channelObject.accessString || 'have-no-access-string'))
@@ -149,8 +154,6 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onError = (error: IError, file: IFileObject) => {
-        // let uiConfig = props.channelObject.config as IFilemanConfig
-        // uiConfig.notify(props.channelObject.channel.channelId, ENotifyLevel.ERROR, error.message)
         props.channelObject.notify?.(props.channelObject.channel.channelId, ENotifyLevel.ERROR, error.message)
     }
 
@@ -220,7 +223,10 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         filemanData.currentPath = folder
         folder +='/'
         let level = folder.split('/').length - 1
-        if (level > 3) getLocalDir(folder)
+        if (level > 3) {
+            fileManagerRef.current?.lock()
+            getLocalDir(folder)
+        }
     }
 
     const onFileUploading = (file: IFileObject, parentFolder: IFileObject) => { 
@@ -238,6 +244,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         { filemanData.started &&
             <Box ref={filemanBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', flexGrow:1, height: `calc(100vh - ${logBoxTop}px - 16px)`, paddingLeft: '5px', paddingRight:'5px', marginTop:'8px'}}>
                 <FileManager
+                    ref={fileManagerRef}
                     files={filemanData.files}
                     actions={actions}
                     icons={icons}

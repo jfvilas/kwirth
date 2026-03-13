@@ -13,7 +13,7 @@ The API management tool (named **API Security**) is accessible from the main men
 An API key requires the following information to be created:
 
 - **Description**. For obious reasons it is important to write down what an API key has been created for.
-- **Lease time**. This is the number of days that the key will be valid. Beyond that date, it will be rejected by Kiwrth Core.
+- **Lease time**. This is the number of days that the key will be valid. Beyond that date, it will be rejected by Kwirth Core.
 - **Type**. There exist 3 types ok keys, but only 1 of them can be created in the UI: 'permanent'. PErmanent API keys are stored in a secure site and keep alive even if Kwirth crashes. Other types like 'volatile' or 'bearer' are explained bellow, right now you only need to know that 'volatile' and 'bearer' key types are expected to be used by applications, not by people.
 - **Resource list** (we will explain later the details), it is a list of the resources that this key gives access to.
 

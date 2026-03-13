@@ -28,6 +28,7 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
     const [sourceList, setSourceList] = useState<IKind[]>(props.preferences.dataConfig?.source)
     const [syncList, setSyncList] = useState<IKind[]>(props.preferences.dataConfig?.sync)
     const [dataHelm, setDataHelm] = useState<boolean>(props.preferences.dataHelm)
+    const [dataManagedFields, setDataManagedFields] = useState<boolean>(props.preferences.dataManagedFields)
     const [customActions, setCustomActions] = useState<ICustomAction[]>(props.preferences.customActions || [])
     
     const [displayChanged, setDisplayChanged] = useState(false)
@@ -40,6 +41,7 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
         if (!props.channelObject.writeChannelUserPreferences) return
         props.preferences.palette = palette
         props.preferences.dataHelm = dataHelm
+        props.preferences.dataManagedFields = dataManagedFields
         props.preferences.dataConfig.source = sourceList
         props.preferences.dataConfig.sync = syncList
         props.preferences.logLines = logLines
@@ -165,6 +167,7 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
                     <Stack direction={'column'} sx={{width:'59%'}}>
                         <Typography fontWeight={700}>Storage</Typography>
                         <FormControlLabel control={<Checkbox onChange={(event) => {setDataHelm(event.target.checked); setDataChanged(true)}} checked={dataHelm}/>} label={'Keep Helm data'}/>
+                        <FormControlLabel control={<Checkbox onChange={(event) => {setDataManagedFields(event.target.checked); setDataChanged(true)}} checked={dataManagedFields}/>} label={'Keep managed fields'}/>
                     </Stack>
 
                     <Stack direction={'column'} sx={{width:'59%'}}>

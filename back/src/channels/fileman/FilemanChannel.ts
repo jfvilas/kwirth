@@ -173,18 +173,27 @@ class FilemanChannel implements IChannel {
                         catch {}
                     }
                     else if (fileInfo.type === 1) {
-                        let tmpName='/tmp/'+uuid()
-                        await this.downloadFolder(srcNamespace, srcPod, srcContainer, filepath, tmpName)
-                        res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}.tar.gz"`)
-                        res.status(200).send(fs.readFileSync(tmpName))
-                        fs.unlinkSync(tmpName)
+                        try {
+                            let tmpName='/tmp/'+uuid()
+                            await this.downloadFolder(srcNamespace, srcPod, srcContainer, filepath, tmpName)
+                            res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}.tar.gz"`)
+                            res.status(200).send(fs.readFileSync(tmpName))
+                            fs.unlinkSync(tmpName)
+                        }
+                        catch (err) {
+                            console.log('error downloading folder')
+                            console.log(err)
+                            this.sendSignalMessage(socket.ws, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.UNSOLICITED, ESignalMessageLevel.ERROR, instance.instanceId, 'Error building tar for download: '+err)
+                        }
                     }
                     else {
                         console.error('Unmanaged fileInfo/Type', fileInfo.type)
+                        this.sendSignalMessage(socket.ws, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.UNSOLICITED, ESignalMessageLevel.ERROR, instance.instanceId, 'File type not supported')
                     }
                 }
                 else {
                     console.error('No fileInfo/Type', fileInfo)
+                    this.sendSignalMessage(socket.ws, EInstanceMessageAction.COMMAND, EInstanceMessageFlow.UNSOLICITED, ESignalMessageLevel.ERROR, instance.instanceId, 'Could not get file type')
                 }
                 break
             case 'upload': {
@@ -227,7 +236,8 @@ class FilemanChannel implements IChannel {
     }
 
     async websocketRequest(newWebSocket:WebSocket) : Promise<void> {
-    }
+        // +++ is this method needed? is it handled by kwirth main process?
+    }  
 
     containsInstance = (instanceId: string): boolean => {
         return this.webSockets.some(socket => socket.instances.find(i => i.instanceId === instanceId))

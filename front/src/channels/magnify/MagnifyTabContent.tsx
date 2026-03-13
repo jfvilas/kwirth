@@ -29,7 +29,7 @@ import { MenuKwirthWorks } from './components/MenuKwirthWorks'
 import { ICustomAction } from './components/UserPreferences'
 const yamlParser = require('js-yaml')
 
-type WindowClass = 'ContentDetails' | 'ArtifactSearch' | 'ContentEdit' | 'ContentBrowse' | 'ContentExternal';
+//type WindowClass = 'ContentDetails' | 'ArtifactSearch' | 'ContentEdit' | 'ContentBrowse' | 'ContentExternal';
 const ICON_WINDOW : Record<string, JSX.Element> = {
     ContentDetails: <List />,
     ArtifactSearch: <Search />,
@@ -43,7 +43,7 @@ export interface IContentWindow {
     visible: boolean
     atFront: boolean
     atTop: boolean
-    startTime: number
+    //startTime: number
     x: number
     y: number
     width: number
@@ -296,10 +296,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         magnifyData.windows.forEach(w => w.atFront = false)
         const win = magnifyData.windows.find(w => w.id === id)
         if (win) {
-            console.log(id, win)
             win.visible = true
             win.atFront = true
-            console.log(magnifyData.windows)
             setTick(t=>t+1)
             return
         }
@@ -315,64 +313,56 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         existingWindow.height = height
     }
 
-    //+++ REVIEW COMPLETELY CRD and CRDi
     const launchObjectDetails = (p:string[], currentTarget?:Element) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        console.log(f)
-        if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/')) {
-            //setDetailsSections(objectSections.get('#crdinstance#')!)
+
+        let sections = objectSections.get(f[0].data.origin.kind)!
+        if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/')) sections = objectSections.get('#crdinstance#')!
+
+        let existingWin = magnifyData.windows.find(w => w.selectedFiles.find(x => x.path === f[0].path) && w.class==='ContentDetails')  
+        if (existingWin) {
+            bringWindowToFront(existingWin.id)
         }
         else {
-            console.log('ew')
-            console.log(f)
-            console.log(f[0].path)
-            console.log(magnifyData.windows)
-            let existingWin = magnifyData.windows.find(w => w.selectedFiles.find(x => x.path === f[0].path))
-            if (existingWin) {
-                console.log('ew', existingWin.id)
-                bringWindowToFront(existingWin.id)
+            let spc = spaces.get(f[0].data.origin.kind)
+            let win:IContentWindow = {
+                id: 'details-' + f[0].path + '-' + uuid(),
+                class: 'ContentDetails',
+                visible: true,
+                atTop: false,
+                atFront: true,
+                //startTime: Date.now(),
+                title: f[0].data.origin.metadata?.name,
+                isMaximized: false,
+                x: 100,
+                y: 50,
+                width: 800,
+                height: 600,
+                data: {
+                    source: f[0],
+                    path: f[0].path,
+                    sections,
+                    actions: spc && spc.leftItems? spc.leftItems : [],
+                    onApply: onContentDetailsApply,
+                    onAction: onContentDetailsAction,
+                    onLink: onMagnifyObjectDetailsLink,
+                    containerSelectionOptions: new Map([['log',2],['metrics',2],['fileman',2],['trivy',0],['ops',1],['evict',0],['cordon',0], ['uncordon',0], ['drain',0], ['scale',0], ['restart',0], ['trigger',0], ['suspend',0], ['resume',0],  ])
+                } satisfies IDetailsData,
+                selectedFiles: [f[0]],
+                onWindowChange: onWindowChange,
+                onMinimize: onWindowMinimize,
+                onTop: onWindowTop,
+                onClose: onWindowClose,
             }
-            else {
-                let spc = spaces.get(f[0].data.origin.kind)
-                let win:IContentWindow = {
-                    id: 'details-' + f[0].path + '-' + uuid(),
-                    class: 'ContentDetails',
-                    visible: true,
-                    atTop: false,
-                    atFront: true,
-                    startTime: Date.now(),
-                    title: f[0].data.origin.metadata?.name,
-                    isMaximized: false,
-                    x: 100,
-                    y: 50,
-                    width: 800,
-                    height: 600,
-                    data: {
-                        source: f[0],
-                        path: f[0].path,
-                        sections: objectSections.get(f[0].data.origin.kind)!,
-                        actions: spc && spc.leftItems? spc.leftItems : [],
-                        onApply: onContentDetailsApply,
-                        onAction: onContentDetailsAction,
-                        onLink: onMagnifyObjectDetailsLink,
-                        containerSelectionOptions: new Map([['log',2],['metrics',2],['fileman',2],['ops',1],['evict',0],['cordon',0], ['uncordon',0], ['drain',0], ['scale',0], ['restart',0], ['trigger',0], ['suspend',0], ['resume',0],  ])
-                    } satisfies IDetailsData,
-                    selectedFiles: [f[0]],
-                    onWindowChange: onWindowChange,
-                    onMinimize: onWindowMinimize,
-                    onTop: onWindowTop,
-                    onClose: onWindowClose,
-                }
-                magnifyData.windows.push(win)
-                setTick(t => t+1)
-            }
+            magnifyData.windows.push(win)
+            setTick(t => t+1)
+        }
 
-            // we request a fresh events list
-            if (f[0].data.origin.metadata) {
-                // objects APIResource doesnt contain metadata
-                if (f[0].data.events) delete f[0].data.events
-                sendCommand(EMagnifyCommand.EVENTS, ['object', f[0].data.origin.metadata.namespace, f[0].data.origin.kind, f[0].data.origin.metadata.name])
-            }
+        // we request a fresh events list
+        if (f[0].data.origin.metadata) {
+            // objects APIResource doesnt contain metadata
+            if (f[0].data.events) delete f[0].data.events
+            sendCommand(EMagnifyCommand.EVENTS, ['object', f[0].data.origin.metadata.namespace, f[0].data.origin.kind, f[0].data.origin.metadata.name])
         }
     }
 
@@ -385,7 +375,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             visible: true,
             atTop: false,
             atFront: true,
-            startTime: Date.now(),
             title: 'Create ' + kind,
             isMaximized: false,
             x: 100,
@@ -433,7 +422,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             visible: true,
             atTop: false,
             atFront: true,
-            startTime: Date.now(),
             title: (allowEdit?'Edit ':'Browse ')+f[0].name,
             isMaximized: false,
             x: 100,
@@ -467,7 +455,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             visible: true,
             atTop: false,
             atFront: true,
-            startTime: Date.now(),
             title: files[0].data.origin.metadata.name + (container || ''),
             isMaximized: false,
             x: 100,
@@ -487,7 +474,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 options: channel === 'ops'?
                     { autostart:true, pauseable:false, stopable:false, configurable:false}
                     :
-                    { autostart:true, pauseable:true, stopable:true, configurable:true}
+                    { autostart:true, pauseable:true, stopable:true, configurable:(channel!=='fileman' && channel!=='trivy')}
             } satisfies IContentExternalData,
             selectedFiles: files,
             container: container,
@@ -501,6 +488,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const launchSearch = (p:string[]) => {
+        console.log(p)
         let f = magnifyData.files.filter(x => p.includes(x.path))
         let selFiles=[]
         let scope
@@ -518,7 +506,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             visible: true,
             atTop: false,
             atFront: true,
-            startTime: Date.now(),
+            //startTime: Date.now(),
             title: 'Search...',
             isMaximized: false,
             x: 100,
@@ -551,7 +539,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let spcClassOverview = spaces.get('classOverview')!
     setLeftItem(spcClassOverview, 'exit', 
         (p:string[], currentTarget:Element) => {
-            setMsgBox(MsgBoxYesNo('Exit magnify', 'Are you sure you want to exit magnify?', setMsgBox, (b:MsgBoxButtons)=> {
+            setMsgBox(MsgBoxYesNo('Exit cluster', 'Are you sure you leave this cluster and go back to initial cluster selection?', setMsgBox, (b:MsgBoxButtons)=> {
                 if (b === MsgBoxButtons.Yes) props.channelObject.exit?.()
             }))
         },
@@ -561,7 +549,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     setLeftItem(spcClassOverview, 'kwirthworks', (p:string[],
         currentTarget:Element) => setMenuKwirthWorksAnchorParent(currentTarget),
         () => true,
-        () => magnifyData.userPreferences.customActions.filter(ca => ca.type==='kwirth').length>0 )
+        () => magnifyData.userPreferences.customActions && magnifyData.userPreferences.customActions.filter(ca => ca.type==='kwirth').length>0 )
     setLeftItem(spcClassOverview, 'kubeworks', (p:string[], currentTarget:Element) => setMenuKubeWorksAnchorParent(currentTarget) )
 
     // cluster actions
@@ -629,6 +617,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setLeftItem(spcPod,'metrics', (p:string[], currentTarget:Element) => podGroupAction('metrics', p, currentTarget))
         setLeftItem(spcPod,'ops', (p:string[], currentTarget:Element) => podSingleAction('ops', p, currentTarget))
         setLeftItem(spcPod,'fileman', (p:string[], currentTarget:Element) => podGroupAction('fileman', p, currentTarget))
+        setLeftItem(spcPod,'trivy', (p:string[], currentTarget:Element) => podGroupAction('trivy', p, currentTarget))
 
         setLeftItem(spcPod,'evict', launchPodEvict)
     }
@@ -828,15 +817,43 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const onMagnifyObjectDetailsLink = (kind:string, name:string, namespace:string) => {
         let path = buildPath(kind, name, namespace)
-        if (kind==='Image') {
-            console.log(name, namespace, path)
-        }
         let f = magnifyData.files.find(f => f.path === path)
         if (f) {
             launchObjectDetails([f.path], undefined)
         }
         else {
-            setMsgBox(MsgBoxOkError('Object details',<Box>Object with name '<b>{name}</b>' of kind '{kind}' in namesapce '${namespace}' has not been found on artifacts database.</Box>, setMsgBox))
+            // no found, we loook for special resources
+            if (kind==='Image') {
+                let imgName = 'docker.io/library/'+name
+                if (name.includes('/')) imgName = 'docker.io/' + name
+                let f = magnifyData.files.find(f => f.class==='Image' && f.data.origin?.names?.includes(imgName))
+                if (f) {
+                    launchObjectDetails([f.path], undefined)
+                    return
+                }
+                // we now try to find an image with the same SHA
+                if (name.includes('@sha256:')) {
+                    let x=name.indexOf('@sha256:')
+                    let sha = name.substring(x).toLowerCase()
+                    let f = magnifyData.files.find(f => f.class==='Image' && f.data.origin?.names?.some((img:string) => img.toLowerCase().endsWith(sha)))
+                    if (f) {
+                        launchObjectDetails([f.path], undefined)
+                        return
+                    }
+                }                  
+                setMsgBox(MsgBoxOkError('Object details',<Box>Image '<b>{name}</b>' has not been found on artifacts database. Maybe it exist but is stored with any kind of prefix</Box>, setMsgBox))
+            }
+            else {
+                // not found, so we look for a CRD instance.
+                let crd = magnifyData.files.find(f => f.class==='CustomResourceDefinition' && f.data.origin.spec?.names?.kind===kind)
+                if (crd) {
+                    let crdiPath = '/custom/'+crd.data.group+(crd.data.version?'-'+crd.data.version:'')+'-'+kind+'/'+name
+                    launchObjectDetails([crdiPath], undefined)
+                }
+                else {
+                    setMsgBox(MsgBoxOkError('Object details',<Box>Object with name '<b>{name}</b>' of kind '{kind}' in namesapce '${namespace}' has not been found on artifacts database.</Box>, setMsgBox))
+                }
+            }
         }
     }
 
@@ -915,6 +932,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             case 'log':
             case 'metrics':
             case 'fileman':
+            case 'trivy':
                 if (container==='*all') {
                     launchObjectExternal(action, [file], EInstanceConfigView.POD, undefined)
                 }
@@ -1060,10 +1078,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             </Box>
         }
 
-        {/* { magnifyData.windows.sort((a,b) => a.startTime-b.startTime).map((w) => renderWindow(w, false, false)) }
-        { magnifyData.windows.sort((a,b) => a.startTime-b.startTime).map((w) => renderWindow(w, true, false)) }
-        { magnifyData.windows.sort((a,b) => a.startTime-b.startTime).map((w) => renderWindow(w, false, true)) }
-        { magnifyData.windows.sort((a,b) => a.startTime-b.startTime).map((w) => renderWindow(w, true, true)) } */}
         { magnifyData.windows.map((w) => renderWindow(w, false, false)) }
         { magnifyData.windows.map((w) => renderWindow(w, true, false)) }
         { magnifyData.windows.map((w) => renderWindow(w, false, true)) }

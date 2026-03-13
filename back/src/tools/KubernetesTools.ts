@@ -152,52 +152,76 @@ async function deleteAllResources(yamlContent: string, clusterInfo:ClusterInfo) 
             switch (kind) {
                 case 'Namespace':
                     console.log(`Removing Namespace: ${resource.metadata.name}`)
-                    await clusterInfo.coreApi.deleteNamespace(resource.metadata.name)
+                    await clusterInfo.coreApi.deleteNamespace({ name: resource.metadata.name })
                     break
 
                 case 'ConfigMap':
                     console.log(`Removing ConfigMap: ${resource.metadata.name}`)
-                    await clusterInfo.coreApi.deleteNamespacedConfigMap(resource.metadata.name, namespace)
+                    await clusterInfo.coreApi.deleteNamespacedConfigMap({
+                        name: resource.metadata.name,
+                        namespace
+                    })
                     break
 
                 case 'Secret':
                     console.log(`Removing Secret: ${resource.metadata.name}`)
-                    await clusterInfo.coreApi.deleteNamespacedSecret(resource.metadata.name, namespace)
+                    await clusterInfo.coreApi.deleteNamespacedSecret({
+                        name: resource.metadata.name,
+                        namespace
+                    })
                     break
 
                 case 'CustomResourceDefinition':
                     console.log(`Removing CRD: ${resource.metadata.name}`)
-                    await clusterInfo.extensionApi.deleteCustomResourceDefinition(resource.metadata.name)
+                    await clusterInfo.extensionApi.deleteCustomResourceDefinition({
+                        name: resource.metadata.name
+                    })
                     break
 
                 case 'Deployment':
                     console.log(`Removing Deployment: ${resource.metadata.name}`)
-                    await clusterInfo.appsApi.deleteNamespacedDeployment(resource.metadata.name, namespace)
+                    await clusterInfo.appsApi.deleteNamespacedDeployment({
+                        name: resource.metadata.name,
+                        namespace
+                    })
                     break
 
                 case 'Service':
                     console.log(`Removing Service: ${resource.metadata.name}`)
-                    await clusterInfo.coreApi.deleteNamespacedService(resource.metadata.name, namespace)
+                    await clusterInfo.coreApi.deleteNamespacedService({
+                        name: resource.metadata.name,
+                        namespace
+                    })
                     break
 
                 case 'ClusterRole':
                     console.log(`Removing ClusterRole: ${resource.metadata.name}`)
-                    await clusterInfo.rbacApi.deleteClusterRole(resource.metadata.name)
+                    await clusterInfo.rbacApi.deleteClusterRole({
+                        name: resource.metadata.name
+                    })
                     break
 
                 case 'ClusterRoleBinding':
                     console.log(`Removing ClusterRoleBinding: ${resource.metadata.name}`)
-                    await clusterInfo.rbacApi.deleteClusterRoleBinding(resource.metadata.name)
+                    await clusterInfo.rbacApi.deleteClusterRoleBinding({
+                        name: resource.metadata.name,
+                    })
                     break
 
                 case 'RoleBinding':
                     console.log(`Removing RoleBinding: ${resource.metadata.name}`)
-                    await clusterInfo.rbacApi.deleteNamespacedRoleBinding(resource.metadata.name, namespace)
+                    await clusterInfo.rbacApi.deleteNamespacedRoleBinding({
+                        name: resource.metadata.name,
+                        namespace
+                    })
                     break
 
                 case 'ServiceAccount':
                     console.log(`Removing ServiceAccount: ${resource.metadata.name}`)
-                    await clusterInfo.coreApi.deleteNamespacedServiceAccount(resource.metadata.name, namespace)
+                    await clusterInfo.coreApi.deleteNamespacedServiceAccount({
+                        name: resource.metadata.name,
+                        namespace
+                    })
                     break
 
                 default:

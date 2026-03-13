@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Button, Grid, IconButton, Menu, MenuItem, MenuList, Slider, Stack, Typography } from '@mui/material'
-import { TabContentTrivyAsset } from './TrivyTabContentAsset'
 import { Check as CheckIcon } from '@mui/icons-material'
-import { assetScore } from './TrivyCommon'
-import { TabContentTrivyAssetDetails } from './TrivyTabContentAssetDetails'
+import { assetScore, TReportType } from './TrivyCommon'
 import { IContentProps } from '../IChannel'
 import { ITrivyInstanceConfig } from './TrivyConfig'
-import { ITrivyData } from './TrivyData'
-import { IKnown } from '@jfvilas/kwirth-common'
+import { IAsset, ITrivyData } from './TrivyData'
 import { Error as ErrorIcon } from '@mui/icons-material'
 import { MsgBoxOkError } from '../../tools/MsgBox'
+import { TrivyTabContentAssetDetails } from './TrivyTabContentAssetDetails'
+import { TrivyTabContentAsset } from './TrivyTabContentAsset'
 
 // +++ add filters to trivy content: name, namespace...
 // +++ add info (number of vuln analysis)
@@ -18,16 +17,18 @@ import { MsgBoxOkError } from '../../tools/MsgBox'
 // +++ add avatars for common containers plus kwirth (azure, aws...)
 // +++ add scope validations per channel
 
+// +++ back: si se desinstala trivy, parar los informers (todo el channel)
+
 const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    let trivyObject:ITrivyData = props.channelObject.data
+    let trivyData:ITrivyData = props.channelObject.data
     let trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig
     const trivyBoxRef = useRef<HTMLDivElement | null>(null)
     const [trivyBoxTop, setTrivyBoxTop] = useState(0)
     
     const [showMode, setShowMode] = useState('card')
-    const [selectedAsset, setSelectedAsset] = useState<IKnown>()
+    const [selectedType, setSelectedType] = useState<TReportType>('vulnerabilityreports')
+    const [selectedAsset, setSelectedAsset] = useState<IAsset>()
     const [anchorMenu, setAnchorMenu] = useState<HTMLElement|null>(null)
-    //const [refresh, setRefresh] = useState(0)
     const [order, setOrder] = useState('scd')
     const [filterScore, setFilterScore] = useState<number>(0)
     const [maxScore, setMaxScore] = useState<number>(0)
@@ -35,11 +36,11 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [msgBox, setMsgBox] =useState(<></>)
 
     useEffect(() => {
-        if (trivyObject.known.length>0) {
+        if (trivyData.assets.length>0) {
             let min = Number.MAX_VALUE
             let max = Number.MIN_VALUE
-            for (let asset of trivyObject.known) {
-                let score = assetScore(asset, trivyInstanceConfig)
+            for (let asset of trivyData.assets) {
+                let score = assetScore(asset, trivyInstanceConfig, 'vulnerabilityreports')
                 if (score<min) min=score
                 if (score>max) max=score
             }
@@ -48,38 +49,37 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             setFilterScore(min)
             orderBy(order)
         }
-    }, [trivyObject.known, trivyObject.score])
+    }, [trivyData.assets, trivyData.score])
 
     useEffect(() => {
         if (trivyBoxRef.current) setTrivyBoxTop(trivyBoxRef.current.getBoundingClientRect().top)
     })
 
-    const showDetails = (asset:IKnown) => {
-        return <TabContentTrivyAssetDetails asset={asset} trivyInstanceConfig={trivyInstanceConfig} onClose={() => setSelectedAsset(undefined)}/>
+    const showDetails = (asset:IAsset, type:TReportType) => {
+        return <TrivyTabContentAssetDetails asset={asset} trivyInstanceConfig={trivyInstanceConfig} onClose={() => setSelectedAsset(undefined)} detail={type}/>
     }
 
     const orderBy = (orderName:string) => {
         setAnchorMenu(null)
 
-        let known = trivyObject.known as IKnown[]
+        let assets = trivyData.assets
         switch(orderName) {
             case 'scd':
-                known.sort((a,b) => new Date(b.report.updateTimestamp).getTime() - new Date(a.report.updateTimestamp).getTime())
+                assets.sort((a,b) => new Date(b.vulnerabilityreports.report?.updateTimestamp).getTime() - new Date(a.vulnerabilityreports.report?.updateTimestamp).getTime())
                 break
             case 'sca':
-                known.sort((a,b) => new Date(a.report.updateTimestamp).getTime() - new Date(b.report.updateTimestamp).getTime())
+                assets.sort((a,b) => new Date(a.vulnerabilityreports.report?.updateTimestamp).getTime() - new Date(b.vulnerabilityreports.report?.updateTimestamp).getTime())
                 break
             case 'sd':
-                known.sort((a,b) => assetScore(b, trivyInstanceConfig) - assetScore(a, trivyInstanceConfig))
+                assets.sort((a,b) => assetScore(b, trivyInstanceConfig, 'vulnerabilityreports') - assetScore(a, trivyInstanceConfig, 'vulnerabilityreports'))
                 break
             case 'sa':
-                known.sort((a,b) => assetScore(a, trivyInstanceConfig) - assetScore(b, trivyInstanceConfig))
+                assets.sort((a,b) => assetScore(a, trivyInstanceConfig, 'vulnerabilityreports') - assetScore(b, trivyInstanceConfig, 'vulnerabilityreports'))
                 break
 
         }
-        trivyObject.known = known
+        //trivyData.assets = assets
         setOrder(orderName)
-        //setRefresh(Math.random())
     }
 
     let orderMenu = (
@@ -97,27 +97,26 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         setFilterScore(v as number)
     }
 
-    const removeAsset = (asset:IKnown) => {
-        trivyObject.known = (trivyObject.known).filter(a => a.namespace!==asset.namespace || a.name!==asset.name || a.container!==asset.container)
-        //setRefresh(Math.random())
+    const rescanAsset = (asset:IAsset) => {
+        trivyData.assets = (trivyData.assets).filter(a => a.namespace!==asset.namespace || a.name!==asset.name || a.container!==asset.container)
     }
 
     const showErrors = () => {
-        let msg = trivyObject.unknown.reduce( (prev,current) => prev + `${current.namespace}/${current.name}/${current.container}: ${current.statusMessage}<br/>`, '')
+        let msg = trivyData.assets.reduce( (prev,current) => prev + `${current.namespace}/${current.name}/${current.container}: ${current.unknown.statusMessage}<br/>`, '')
         setMsgBox(MsgBoxOkError('Trivy', msg, setMsgBox))
     }
 
     return (
         <Box sx={{ ml:1, mr:1, display:'flex', flexDirection: 'column'}}>
-            { trivyObject.started && <>
+            { trivyData.started && <>
                 <Stack direction={'row'} sx={{overflow:'hidden'}}>
-                    <Typography sx={{ml:2,mr:2}}><b>KwirthScore: </b>{trivyObject.score.toPrecision(4)}%</Typography>
+                    <Typography sx={{ml:2,mr:2}}><b>KwirthScore: </b>{trivyData.score?.toPrecision(4)}%</Typography>
                     <Typography>Filter score</Typography>
-                    <Slider max={maxScore} min={minScore} value={filterScore} onChange={handleFilter} size='small' sx={{width:'10%', ml:2}} disabled={trivyObject.known.length + trivyObject.unknown.length === 0}/>
+                    <Slider max={maxScore} min={minScore} value={filterScore} onChange={handleFilter} size='small' sx={{width:'10%', ml:2}}/>
                     <Typography sx={{width:'5%', ml:2}}>{filterScore?.toFixed(0)}</Typography>
                     <Typography sx={{flex:1}}></Typography>
-                    <IconButton title="Some errors have been detected" onClick={showErrors} disabled={trivyObject.unknown.length === 0}>
-                        <ErrorIcon style={{ color: trivyObject.unknown.length>0?'red':'#BDBDBD'}}/>
+                    <IconButton title="Some errors have been detected" onClick={showErrors}>
+                        <ErrorIcon style={{ color: trivyData.assets.length>0?'red':'#BDBDBD'}}/>
                     </IconButton>
                     <Button onClick={(event) => setAnchorMenu(event.currentTarget)}>Order</Button>
                     <Button onClick={() => setShowMode('list')}>List</Button>
@@ -125,12 +124,12 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 </Stack>
 
                 <Box ref={trivyBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${trivyBoxTop}px - 25px)`}}>
-                    { showMode==='card' && trivyObject.known && 
+                    { showMode==='card' && trivyData.assets && 
                         <Grid container sx={{ml:1,mr:1}}>
-                            {(trivyObject.known).filter(asset => assetScore(asset,trivyInstanceConfig) >= filterScore).map( (asset,index) => {
+                            {trivyData.assets.map( (asset,index) => {
                                 return (
                                     <Box key={index} sx={{margin:1, width:'24%'}}>
-                                        <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view={'card'}/>
+                                        <TrivyTabContentAsset asset={asset} channelObject={props.channelObject} onVulns={() => {setSelectedAsset(asset); setSelectedType('vulnerabilityreports')}} onAudit={() => {setSelectedAsset(asset); setSelectedType('configauditreports')}} onRescan={() => rescanAsset(asset)} view={'card'}/>
                                     </Box>
                                 )
                             })}
@@ -139,10 +138,10 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
                     { showMode==='list' && 
                         <Grid container sx={{ml:1,mr:1}}>
-                            {(trivyObject.known).filter(asset => assetScore(asset,trivyInstanceConfig)>=filterScore).map( (asset,index) => {
+                            {trivyData.assets.filter(asset => assetScore(asset,trivyInstanceConfig, 'vulnerabilityreports')>=filterScore).map( (asset,index) => {
                                 return (
                                     <Grid key={index} sx={{margin:1, width:'100%'}}>
-                                        <TabContentTrivyAsset asset={asset} channelObject={props.channelObject} onDetails={() => setSelectedAsset(asset)} onDelete={() => removeAsset(asset)} view='list'/>
+                                        <TrivyTabContentAsset asset={asset} channelObject={props.channelObject} onVulns={() => { setSelectedAsset(asset); setSelectedType('vulnerabilityreports')}} onRescan={() => rescanAsset(asset)} onAudit={() => { setSelectedAsset(asset); setSelectedType('configauditreports')}} view='list'/>
                                     </Grid>
                                 )
                             })}
@@ -151,7 +150,7 @@ const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 </Box>
             </>}
             { anchorMenu && orderMenu }
-            { selectedAsset!==undefined && showDetails(selectedAsset) }
+            { selectedAsset!==undefined && showDetails(selectedAsset, selectedType) }
             { msgBox }
         </Box>
     )

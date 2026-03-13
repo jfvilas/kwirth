@@ -4,8 +4,8 @@ import { SnackbarProvider } from 'notistack'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 
-const isElectron = true
-//const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') >= 0
+//const isElectron = true
+const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') >= 0
 
 var rootPath = (window.__PUBLIC_PATH__ || '/').trim().toLowerCase()
 if (rootPath.endsWith('/')) rootPath=rootPath.substring(0,rootPath.length-1)
@@ -20,15 +20,15 @@ backendUrl = backendUrl + rootPath
 console.log(`Backend URL: ${backendUrl}`)
 
 const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
+	document.getElementById('root') as HTMLElement
 )
 
 root.render(
-  //<React.StrictMode>
-    <BrowserRouter basename={rootPath}>
-      <SnackbarProvider>
-        <App backendUrl={backendUrl} isElectron={isElectron}/>
-      </SnackbarProvider>
-    </BrowserRouter>
-  //</React.StrictMode>
-);
+	//<React.StrictMode>
+	<BrowserRouter basename={rootPath}>
+		<SnackbarProvider>
+			<App backendUrl={backendUrl} isElectron={isElectron}/>
+		</SnackbarProvider>
+	</BrowserRouter>
+	//</React.StrictMode>
+)

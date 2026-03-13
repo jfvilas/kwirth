@@ -43,6 +43,8 @@ export class AuthorizationManagement {
                         key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessKeyStr)
                         if (!key) {
                             console.log('Inexistent key on validKey: '+receivedAccessKeyStr)
+                            console.trace('********************')
+                            console.log(apiKeyApi.apiKeys)
                             res.status(403).json({})
                             return false
                         }            

@@ -32,7 +32,7 @@ It is important to undertand what a **view** really means:
   - Using the same scope, if your view is set to **container** you will receive a stream of log lines that are produced by all the containers that fulfill your scope declaration.
 
 ## Messaging
-When a client opens a web socket, the next action is to send an 'start instance' message, that is, te client sends a message to the Kiwrth server explaining what kind of streaming **service** the client wants to use.
+When a client opens a web socket, the next action is to send an 'start instance' message, that is, te client sends a message to the Kwirth server explaining what kind of streaming **service** the client wants to use.
 
 When the server receives a message like that, it performs the following actions:
 

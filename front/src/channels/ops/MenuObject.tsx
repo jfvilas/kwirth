@@ -21,7 +21,7 @@ interface IMenuObjectProps {
 
 const MenuObject: React.FC<IMenuObjectProps> = (props:IMenuObjectProps) => {
 
-    return <Menu id='menu-logs' anchorEl={props.anchorParent} open={Boolean(props.anchorParent)} onClose={props.onClose}>
+    return <Menu anchorEl={props.anchorParent} open={Boolean(props.anchorParent)} onClose={props.onClose}>
         <MenuList dense sx={{width:'180px'}}>
             <MenuItem key='describe' onClick={() => props.onOptionSelected(EMenuObjectOption.DESCRIBE, props.scopedObject)}>&nbsp;Object info</MenuItem>
             <Divider/>

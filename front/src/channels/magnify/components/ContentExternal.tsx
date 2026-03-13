@@ -19,6 +19,9 @@ import { IFilemanConfig } from '../../fileman/FilemanConfig'
 import { useAsync } from 'react-use'
 import { IContentWindow } from '../MagnifyTabContent'
 import { ResizableDialog } from './ResizableDialog'
+import { FormSimple } from './FormSimple'
+import { ITrivyConfig, ITrivyInstanceConfig } from '../../trivy/TrivyConfig'
+import { ITrivyData } from '../../trivy/TrivyData'
 
 export interface IContentExternalOptions {
     pauseable: boolean
@@ -57,10 +60,12 @@ export interface IContentExternalObject {
 }
 
 const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternalProps) => {
-    const [ anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+    const [ anchorHelp, setAnchorHelp ] = useState<undefined | HTMLElement>(undefined)
+    const [ anchorConfig, setAnchorConfig ] = useState<undefined | HTMLElement>(undefined)
     const [ , setRefreshTick] = useState(0);
     const forceUpdate = () => setRefreshTick(tick => tick + 1);
     const [isMaximized, setIsMaximized] = useState(props.isMaximized)
+    const [ channelConfig, setChannelConfig ] = useState<any>()
     let contentExternalData:IContentExternalData = props.data
 
     useEffect( () => {
@@ -72,16 +77,24 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
 
             switch(contentExternalData.channelId) {
                 case 'log':
+                    setChannelConfig({ lines: 5000, showNames:false, timestamp:false })
                     setLogConfig(contentExternalData.content)
                     break
                 case 'metrics':
+                    setChannelConfig({ aggregate: true, merge: false, type:{value:'line', options:['line','bar','area']}, width:3, depth:50, legend:true})
                     setMetricsConfig(contentExternalData.content)
                     break
                 case 'ops':
+                    setChannelConfig({})
                     setOpsConfig(contentExternalData.content)
                     break
                 case 'fileman':
+                    setChannelConfig({})
                     setFilemanConfig(contentExternalData.content)
+                    break
+                case 'trivy':
+                    setChannelConfig({})
+                    setTrivyConfig(contentExternalData.content)
                     break
             }
         }
@@ -122,7 +135,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                         if (text) socket.send(text)
                     }
                     catch (err) {
-                        console.error("No se pudo acceder al portapapeles:", err)
+                        console.error('Clipboard could not be accessed', err)
                     }
                     return
                 }
@@ -230,6 +243,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
         }
         else {
             console.log('Received invalid channel in message: ', instanceMessage)
+            contentExternalData.onNotify(undefined, ENotifyLevel.ERROR, `'Received invalid channel in message: ${instanceMessage.channel}`)
         }
     }
 
@@ -272,17 +286,17 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             depth: 50,
             width: 3,
             lineHeight: 300,
-            configurable: false,
+            configurable: true,
             compact: true,
             legend: true,
-            merge: true,
+            merge: false,
             stack: false,
             chart: EChartType.LineChart,
             metricsDefault: {}
         }
         let metricsInstanceConfig:IMetricsInstanceConfig = {
             mode: EMetricsConfigMode.STREAM,
-            aggregate: false,
+            aggregate: true,
             interval: 15,
             metrics: ['kwirth_container_cpu_percentage','kwirth_container_memory_percentage', 'kwirth_container_transmit_mbps', 'kwirth_container_receive_mbps', 'kwirth_container_write_mbps', 'kwirth_container_read_mbps']
         }
@@ -330,7 +344,8 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             paused: false,
             started: false,
             files: [],
-            currentPath: ''
+            currentPath: '',
+            ri: undefined
         }
         let filemanConfig:IFilemanConfig = {
             notify: contentExternalData.onNotify
@@ -339,6 +354,25 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
         c.externalChannelObject!.webSocket = contentExternalData.content!.ws
         c.externalChannelObject!.data = filemanData
         c.externalChannelObject!.config = filemanConfig
+    }
+
+    const setTrivyConfig = (c:IContentExternalObject) => {
+        let trivyInstanceConfig:ITrivyInstanceConfig = {
+            maxCritical: 0,
+            maxHigh: 0,
+            maxMedium: 0,
+            maxLow: 0
+        }
+        let trivyData:ITrivyData = {
+            paused: false,
+            started: false,
+            score: 0,
+            assets: [],
+            ri: undefined
+        }
+        c.externalChannelObject!.webSocket = contentExternalData.content!.ws
+        c.externalChannelObject!.data = trivyData
+        c.externalChannelObject!.instanceConfig = trivyInstanceConfig
     }
 
     const play = () => {
@@ -477,17 +511,24 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                     <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>Fileman</Typography>
                     <Divider/>
                     <Typography fontSize={12}>You can refresh filesystem data everytime you suspect what you are viewing is not acccurate. Just click on top-righ icon to refresh content.</Typography>
-                    <Typography fontSize={12}>Upload and Download capabilities depend on your kind of Kiwrth deployment. These actions are not available for all architectures. They should be available, at least, on Kubernetes Deployment. Accessing them via Electron may not be working.</Typography>
+                    <Typography fontSize={12}>Upload and Download capabilities depend on your kind of Kwirth deployment. These actions are not available for all architectures. They should be available, at least, on Kubernetes Deployment. Accessing them via Electron may not be working.</Typography>
+                </>
+                break
+            case 'trivy':
+                content = <>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>Trivy</Typography>
+                    <Divider/>
+                    <Typography fontSize={12}>Yes, you're right this is WIP.</Typography>
                 </>
                 break
         }
         return <Popover
-                anchorEl={anchorEl}
+                anchorEl={anchorHelp}
                 open={true}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'left' }}
                 slotProps={{paper: { sx: { width: 400, maxHeight: 500 } }}}
-                onClose={() => setAnchorEl(null)}
+                onClose={() => setAnchorHelp(undefined)}
             >
             <Box sx={{ p: 2, display: 'flex', alignItems: 'left', gap: 1, flexDirection:'column' }}>
                 {content}
@@ -514,6 +555,39 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
 		setIsMaximized(!isMaximized)
 	}
 
+    const onConfigApply = (values:any) => {
+        setAnchorConfig(undefined)
+        setChannelConfig(values)
+        switch(contentExternalData.channelId) {
+            case 'log':
+                let lConf = contentExternalData.content!.externalChannelObject!.config as ILogConfig
+                lConf.maxMessages = values.lines
+                lConf.showNames = values.showNames
+                let lIConf = contentExternalData.content!.externalChannelObject!.instanceConfig as ILogInstanceConfig
+                lIConf.timestamp = values.timestamp
+                stop()
+                play()
+                break
+            case 'metrics':
+                let mConf = contentExternalData.content!.externalChannelObject!.config as IMetricsConfig
+                let mIConf = contentExternalData.content!.externalChannelObject!.instanceConfig as IMetricsInstanceConfig
+                mConf.width = values.width
+                mConf.merge = values.merge
+                mConf.depth = values.depth
+                mConf.legend = values.legend
+                mIConf.aggregate = values.aggregate
+                stop()
+                play()
+                break
+            case 'shell':
+                break
+            case 'log':
+                break
+            case 'trivy':
+                break
+        }
+    }
+
     return (<>
         <ResizableDialog id={props.id} isMaximized={isMaximized} onFocus={onFocus} onWindowChange={props.onWindowChange} x={props.x} y={props.y} width={props.width} height={props.height}>
             <DialogTitle sx={{ cursor: isMaximized ? 'default' : 'move',  py: 1 }} id='draggable-dialog-title'>
@@ -527,10 +601,10 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                     <IconButton onClick={stop} disabled={!contentExternalData.options.stopable || !contentExternalData.content?.externalChannelStarted}>
                         <StopCircle/>
                     </IconButton>
-                    <IconButton disabled={true || !contentExternalData.options.configurable}>
+                    <IconButton disabled={!contentExternalData.options.configurable} onClick={(event) => setAnchorConfig(event.target as HTMLElement)}>
                         <Settings/>
                     </IconButton>
-                    <IconButton onClick={(event) => setAnchorEl(event.currentTarget)}>
+                    <IconButton onClick={(event) => setAnchorHelp(event.currentTarget)}>
                         <Info/>
                     </IconButton>
                     
@@ -558,7 +632,10 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 {showContent()}
             </DialogContent>
         </ResizableDialog>        
-        {anchorEl && showHelp()}
+        {anchorHelp && showHelp()}
+        {
+            anchorConfig && <FormSimple anchorParent={anchorConfig} model={channelConfig} onApply={onConfigApply} onClose={() => setAnchorConfig(undefined)}/>
+        }
     </>)
 }
 

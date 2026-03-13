@@ -1112,7 +1112,7 @@ export const IconCronJob = (props:IconProps) => (
       transform="translate(-.993 -1.174)"
       wordSpacing="0"
     >
-      <tspan x="10.011" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} text-anchor="middle">cronjob</tspan>
+      <tspan x="10.011" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">cronjob</tspan>
     </text>
     <path
       fill="#fff"
@@ -1198,7 +1198,7 @@ export const IconAPIResource = (props:IconProps) => (
       >
 <tspan
          style={{fontStyle:'normal',fontVariant:'normal',fontWeight:'normal',fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#ffffff',fillOpacity:1,strokeWidth:'0.26458332px'}}
-         text-anchor="middle"
+         textAnchor="middle"
          y="16.811775"
          x="10.055769"
          id="tspan2064">api</tspan>

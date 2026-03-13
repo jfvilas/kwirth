@@ -40,7 +40,7 @@ export class FilemanChannel implements IChannel {
         settings: false,
         palette: false,
         userSettings: false,
-        webSocket: true,
+        webSocket: true
     }
 
     getScope() { return 'fileman$read'}
@@ -62,23 +62,6 @@ export class FilemanChannel implements IChannel {
                             case EFilemanCommand.HOME:
                                 let data = response.data as string[]
                                 let nss = Array.from (new Set (data.map(n => n.split('/')[0])))
-                                // nss.map(ns => {
-                                //     if (!filemanData.files.some(f => f.path === '/'+ ns)) {
-                                //         filemanData.files.push ({ name: ns, isDirectory: true, path: '/'+ ns, class:'namespace' })
-                                //     }
-                                //     let podNames = Array.from (new Set (data.filter(a => a.split('/')[0]===ns).map(o => o.split('/')[1])))
-                                //     podNames.map(p => {
-                                //         if (!filemanData.files.some(f => f.path === '/'+ns+'/'+p)) {
-                                //             filemanData.files.push({ name: p, isDirectory: true, path: '/'+ns+'/'+p, class:'pod' })
-                                //         }
-                                //         let conts = Array.from (new Set (data.filter(a => a.split('/')[0]===ns && a.split('/')[1]===p).map(o => o.split('/')[2])))
-                                //         conts.map(c => {
-                                //             if (!filemanData.files.some(f => f.path === '/'+ns+'/'+p+'/'+c)) {
-                                //                 filemanData.files.push ({ name: c, isDirectory: true, path: '/'+ns+'/'+p+'/'+c, class:'container' })
-                                //             }
-                                //         })
-                                //     })
-                                // })
                                 nss.forEach(ns => {
                                     if (!filemanData.files.some(f => f.path === '/'+ ns)) {
                                         filemanData.files.push ({ name: ns, isDirectory: true, path: '/'+ ns, class:'namespace' })
@@ -101,6 +84,7 @@ export class FilemanChannel implements IChannel {
                                     action: EChannelRefreshAction.REFRESH
                                 }
                             case EFilemanCommand.DIR:
+                                filemanData.unlock?.()
                                 let content = JSON.parse(response.data)
                                 if (content.status!=='Success') {
                                     channelObject.notify?.('fileman', ENotifyLevel.ERROR, 'ERROR: '+ (content.text || content.message))
@@ -183,19 +167,36 @@ export class FilemanChannel implements IChannel {
             case EInstanceMessageType.SIGNAL:
                 let signalMessage = JSON.parse(wsEvent.data) as ISignalMessage
                 if (signalMessage.flow === EInstanceMessageFlow.RESPONSE) {
-                    if (signalMessage.action === EInstanceMessageAction.START) {
-                        channelObject.instanceId = signalMessage.instance
-                    }
-                    else if (signalMessage.action === EInstanceMessageAction.COMMAND) {
-                        if (signalMessage.text) channelObject.notify?.('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
-                    }
-                    else {
-                        if (signalMessage.text) channelObject.notify?.('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
+                    switch(signalMessage.action) {
+                        case EInstanceMessageAction.START:
+                            channelObject.instanceId = signalMessage.instance
+                            break
+                        case EInstanceMessageAction.RI:
+                            filemanData.ri = signalMessage.data
+                            break
+                        case EInstanceMessageAction.COMMAND:
+                            if (signalMessage.text) channelObject.notify?.('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
+                            break
+                        default:
+                            if (signalMessage.text) channelObject.notify?.('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
                 }
-                if (signalMessage.flow === EInstanceMessageFlow.UNSOLICITED) {
+                else if (signalMessage.flow === EInstanceMessageFlow.UNSOLICITED) {
 
                     if (signalMessage.event === ESignalMessageEvent.ADD) {
+                        if (!filemanData.ri) {
+                            // just connected, we request endpoints id for uload/dload
+                            let instanceConfig:IInstanceMessage = {
+                                action: EInstanceMessageAction.RI,
+                                channel: 'fileman',
+                                flow: EInstanceMessageFlow.REQUEST,
+                                type: EInstanceMessageType.SIGNAL,
+                                instance: channelObject.instanceId
+                            }
+                            channelObject.webSocket!.send(JSON.stringify( instanceConfig ))
+                        }
+
+                        // just connected, we request HOME dir
                         let filemanMessage:IFilemanMessage = {
                             flow: EInstanceMessageFlow.REQUEST,
                             action: EInstanceMessageAction.COMMAND,
@@ -212,8 +213,7 @@ export class FilemanChannel implements IChannel {
                             params: [],
                             msgtype: 'filemanmessage'
                         }
-                        let payload = JSON.stringify( filemanMessage )
-                        channelObject.webSocket!.send(payload)
+                        channelObject.webSocket!.send(JSON.stringify( filemanMessage ))
 
                         if (signalMessage.text) channelObject.notify?.('fileman', signalMessage.level as any as ENotifyLevel, signalMessage.text)
                     }
@@ -240,11 +240,11 @@ export class FilemanChannel implements IChannel {
     async initChannel(channelObject:IChannelObject): Promise<boolean> {
         channelObject.instanceConfig = new FilemanInstanceConfig()
         let config = new FilemanConfig()
-        //config.notify = channelObject.notify
         let data = new FilemanData()
 
         channelObject.config = config
         channelObject.data = data
+
         return false
     }
 

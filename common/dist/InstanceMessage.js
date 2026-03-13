@@ -52,6 +52,7 @@ var InstanceMessageActionEnum;
 var EInstanceMessageAction;
 (function (EInstanceMessageAction) {
     EInstanceMessageAction["NONE"] = "none";
+    EInstanceMessageAction["RI"] = "ri";
     EInstanceMessageAction["ROUTE"] = "route";
     EInstanceMessageAction["START"] = "start";
     EInstanceMessageAction["STOP"] = "stop";

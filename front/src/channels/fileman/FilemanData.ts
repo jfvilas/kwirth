@@ -6,14 +6,16 @@ export interface IFilemanData {
     started: boolean
     files: IFileObject[]
     currentPath: string
+    ri: string|undefined
+    unlock?: () => void
 }
 
 export class FilemanData implements IFilemanData {
-    lines: string[] = []
     paused = false
     started = false
     files = []
     currentPath = '/'
+    ri = undefined
 }
 
 export enum EFilemanCommand {

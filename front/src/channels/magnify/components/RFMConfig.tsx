@@ -1,5 +1,5 @@
 import { IFileObject, ISpace } from '@jfvilas/react-file-manager'
-import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, EditOff, FolderCopy, HomeRepairService, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal } from '@mui/icons-material'
+import { Add, BarChart, CheckCircle, Delete, DeleteSweep, Edit, EditOff, FolderCopy, HomeRepairService, Info, Iso, PauseCircle, PauseCircleOutline, PlayCircle, PlayCircleOutline, RestartAlt, Search, StopCircle, Subject, Terminal, VerifiedUser } from '@mui/icons-material'
 import { Cluster, Config, Customize, Kubernetes, Network, Pod, Security, Settings, Storage } from '../icons/Icons'
 
 const spaces = new Map<string, ISpace>()
@@ -2003,6 +2003,13 @@ spaces.set('Pod',
                 permission: true
             },
             {
+                name:'trivy',
+                icon: <VerifiedUser fontSize='small'/>,
+                text: 'Trivy',
+                multi: true,
+                permission: true
+            },
+            {
                 name:'delete',
                 icon: <Delete fontSize='small'/>,
                 text: 'Delete',
@@ -3661,6 +3668,11 @@ spaces.set('crdinstance',
             {   name: 'details',
                 icon: <Info fontSize='small'/>,
                 text: 'Details',
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
                 permission: true,
             },
             {

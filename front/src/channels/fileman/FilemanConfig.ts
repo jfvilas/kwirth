@@ -1,6 +1,3 @@
-import { ENotifyLevel } from "../../tools/Global"
-import { IChannel } from "../IChannel"
-
 interface IFilemanConfig {
     //notify: (channel:string|undefined, level:ENotifyLevel, msg:string) => void
 }

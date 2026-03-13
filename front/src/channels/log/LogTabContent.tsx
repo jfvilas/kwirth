@@ -3,8 +3,7 @@ import { Box, Card, CardContent, CardHeader, InputAdornment, Stack, TextField, T
 import { IContentProps } from '../IChannel'
 import { useEffect, useRef, useState } from 'react'
 import { Error, Warning } from '@mui/icons-material'
-import { ILogConfig, ILogInstanceConfig } from './LogConfig'
-import { EInstanceConfigView } from '@jfvilas/kwirth-common'
+import { ILogConfig } from './LogConfig'
 
 const LogTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     let logData:ILogData = props.channelObject.data

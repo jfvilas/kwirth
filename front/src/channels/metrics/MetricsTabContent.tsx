@@ -20,7 +20,6 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     })
 
     const onSetMetricDefault = (name:string, mvc: IMetricViewConfig) => {
-        console.log(props.channelObject.channelSettings)
         if (props.channelObject.updateChannelSettings && props.channelObject.channelSettings) {
             if (!props.channelObject.channelSettings.channelConfig) props.channelObject.channelSettings.channelConfig = new MetricsConfig()
             props.channelObject.channelSettings.channelConfig.metricsDefault[name] = mvc
@@ -120,7 +119,7 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     return data.get(assetName)!.get(metric)!
                 })
                 allCharts.push(
-                    <Chart key={metricDefinition.metric} metricDefinition={metricDefinition} names={assetNames} series={series} colour={''} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} tooltip={true} labels={true} onSetDefault={onSetMetricDefault} viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig} onRemove={onChartRemove}
+                    <Chart key={metricDefinition.metric} metricDefinition={metricDefinition} names={assetNames} series={series} colour={'#888'} chartType={metricsConfig.chart} stack={metricsConfig.stack} numSeries={series.length} tooltip={true} labels={true} onSetDefault={onSetMetricDefault} viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig} onRemove={onChartRemove}
                         configurable={metricsConfig.configurable}
                         height={metricsConfig.lineHeight}
                         compact={metricsConfig.compact}
@@ -147,9 +146,13 @@ const MetricsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 return Array.from(data.get(asset)?.keys()!).map ( metric => {
                     let metricDefinition = props.channelObject.metricsList?.get(metric)!
                     var series = data.get(asset)?.get(metric)!
-                    return <Chart key={metricDefinition.metric} colour={METRICSCOLOURS[index]} labels={true} tooltip={true} 
+                    return <Chart key={metricDefinition.metric}
+                        colour={METRICSCOLOURS[index]}
+                        labels={true}
+                        tooltip={true} 
                         names={[asset]}
-                        series={[series]} chartType={metricsConfig.chart} 
+                        series={[series]}
+                        chartType={metricsConfig.chart} 
                         stack={metricsConfig.stack}
                         viewConfig={metricsConfig.metricsDefault[metricDefinition.metric] as IMetricViewConfig} 
                         numSeries={series.length}

@@ -1,6 +1,6 @@
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { Box, Divider, Menu, MenuItem, MenuList, Stack, Typography } from '@mui/material'
-import React from 'react'
+import React, { useEffect } from 'react'
 
 interface IMenuContainersProps {
     file: IFileObject|undefined
@@ -12,13 +12,20 @@ interface IMenuContainersProps {
 }
 
 const MenuContainers: React.FC<IMenuContainersProps> = (props:IMenuContainersProps) => {
-    if (!props.file || !props.file.data.origin.status.containerStatuses) return <></>
-    if (props.file.data.origin.status.containerStatuses.length===1) {
-        props.onContainerSelected(props.channel, props.file, props.file.data.origin.status.containerStatuses[0].name)
-        return <></>
-    }
+    useEffect(() => {
+        if (props.file && props.file.data.origin.status.containerStatuses?.length === 1) {
+            props.onContainerSelected(
+                props.channel, 
+                props.file, 
+                props.file.data.origin.status.containerStatuses[0].name
+            )
+        }
+    }, [props.file, props.channel, props.onContainerSelected])
 
-    return <Menu id='menu-logs' anchorEl={props.anchorParent} open={Boolean(props.anchorParent)} onClose={props.onClose}>
+    if (!props.file || !props.file.data.origin.status.containerStatuses) return null
+    if (props.file.data.origin.status.containerStatuses.length === 1) return null
+   
+    return <Menu anchorEl={props.anchorParent} open={Boolean(props.anchorParent)} onClose={props.onClose}>
         <MenuList dense sx={{minWidth: 120}}>
             {
                 props.file.data.origin.status.containerStatuses.map ( (cs:any) =>  {

@@ -2,7 +2,7 @@ import { Button, Stack, Typography } from "@mui/material"
 import { ENotifyLevel } from "../../../tools/Global"
 import { IFileObject } from "@jfvilas/react-file-manager"
 import { useMemo } from "react"
-import { getIconFromKind, IconClusterRole, IconConfigMap, IconDaemonSet, IconDeployment, IconIngress, IconJob, IconNode, IconReplicaSet, IconRole, IconSecret, IconService, IconStatefulSet, IconVolume } from "../../../tools/Constants-React"
+import { IconClusterRole, IconConfigMap, IconDaemonSet, IconDeployment, IconIngress, IconJob, IconNode, IconReplicaSet, IconRole, IconSecret, IconService, IconStatefulSet, IconVolume } from "../../../tools/Constants-React"
 const _ = require('lodash')
 
 interface IIssue {

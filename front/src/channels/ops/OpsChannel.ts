@@ -26,7 +26,7 @@ export class OpsChannel implements IChannel {
         settings: false,
         palette: false,
         userSettings: false,
-        webSocket: false,
+        webSocket: true
     }
 
     getScope() { return 'ops$get' }
@@ -135,7 +135,7 @@ export class OpsChannel implements IChannel {
 
     waitForInstanceAndStart = async (channelObject:IChannelObject, shell:IScopedObject) : Promise<void> => {
         if (!channelObject.webSocket) {
-            console.log('No webSocket for terminal launch')
+            console.log('No webSocket for terminal launch while waiting for instance')
             return
         }
 

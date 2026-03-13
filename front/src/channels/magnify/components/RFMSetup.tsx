@@ -145,7 +145,7 @@ const rfmSetup = (
     }
     
     const showClusterOverview = () => {
-        return <Box width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2} sx={{bgcolor: 'background.default', borderBottomRightRadius:'8px'}}> 
+        return <Box width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2} sx={{bgcolor: 'background.default', borderBottomRightRadius:'8px', overflowY: 'auto'}}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -192,7 +192,7 @@ const rfmSetup = (
     }
 
     const showNetworkOverview = () => {
-        return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
+        return <Box width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2} sx={{bgcolor: 'background.default', borderBottomRightRadius:'8px', overflowY: 'auto'}}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -211,7 +211,7 @@ const rfmSetup = (
     }
 
     const showConfigOverview = () => {
-        return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
+        return <Box width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2} sx={{bgcolor: 'background.default', borderBottomRightRadius:'8px', overflowY: 'auto'}}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -229,7 +229,7 @@ const rfmSetup = (
     }
 
     const showAccessOverview = () => {
-        return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
+        return <Box width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2} sx={{bgcolor: 'background.default', borderBottomRightRadius:'8px', overflowY: 'auto'}}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -248,7 +248,7 @@ const rfmSetup = (
     }
 
     const showStorageOverview = () => {
-        return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2}> 
+        return <Box width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} gap={2} p={2} sx={{bgcolor: 'background.default', borderBottomRightRadius:'8px', overflowY: 'auto'}}> 
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
@@ -896,6 +896,7 @@ const rfmSetup = (
             // crd instance ****************************************************
             let spcCrdInstance = spaces.get('crdinstance')!
             setLeftItem(spcCrdInstance, 'details', onObjectDetails)
+            setLeftItem(spcCrdInstance, 'edit', onObjectEdit)
             setLeftItem(spcCrdInstance, 'delete', onObjectDelete)
 
 }

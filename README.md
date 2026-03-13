@@ -18,7 +18,7 @@ Basically, Kwirth receives live streams of **observability data** that comes fro
   - It can also be used by development teams for viewing real-time logs of the containers deployed to your Kubernetes cluster (Log Channel)
   - You can analyze your kubernetes objects performance and resource usage (CPU%, Memory%, bandwith usage, latencies, filesystem access...) using Kwirth provided metrics (Metrics Channel).
   - You can analyze your containers secrity posture by using the Trivy Operator inside Kwirth (by adding the Trivy Channel).
-  - You can perform day-to-day operations like: restarting objectos, shell to objects, send commands, get object information... by using the Kiwrth Ops Channel.
+  - You can perform day-to-day operations like: restarting objectos, shell to objects, send commands, get object information... by using the Kwirth Ops Channel.
 
 And, specially...:
 

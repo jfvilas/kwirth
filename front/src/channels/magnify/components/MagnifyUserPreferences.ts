@@ -61,6 +61,7 @@ export class MagnifyUserPreferences {
     logLines = 5000
     dataConfig = new MagnifyDataConfig()
     dataHelm = false
+    dataManagedFields = false
     tracing = false
     customActions:ICustomAction[] = []
 }

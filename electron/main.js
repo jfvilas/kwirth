@@ -103,13 +103,12 @@ async function createMainWindow() {
 		try {
 			process.env.PORT = String(port)
 			process.env.NODE_ENV = 'production'
-			// +++ process.env.ROOTPATH = ''  
 			
-			const backendDir = path.join(__dirname, 'build');
+			const backendDir = path.join(__dirname, 'bundle')
 			process.chdir(backendDir)
 			
 			console.log(`Starting Kwirth Desktop backend at port: '${port}' and home path '${backendDir}'`)
-			require('./build/bundle.js')
+			require('./bundle/bundle.js')
 		}
 		catch (err) {
 			console.error("Error loading backend:", err);

@@ -17,7 +17,7 @@
   background-color: #f0f0f0;
 }
 
-.custom-fm-fileman .category-view, .custom-fm-fileman .toggle-view {
+.custom-fm-fileman .category-view, .custom-fm-fileman .toggle-view, .fm-context-menu {
 	background: var(--mui-palette-background-default) !important;
 	color: var(--mui-palette-text-primary) !important;
 }

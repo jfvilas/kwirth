@@ -238,7 +238,7 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
                 <GaugeComponent 
                     type='radial'
                     labels={{
-                        valueLabel:{ style: {fontSize: "30px", fill: "#000000", textShadow: "none"} }
+                        valueLabel:{ style: {fontSize: "30px", fill: "currentColor", textShadow: "none"} }
                     }}
                     arc={{
                         subArcs: [
@@ -267,7 +267,7 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
                     }}                
                     labels={{
                         valueLabel:{
-                            style: {fontSize: "30px", fill: "#000000", textShadow: "none" },
+                            style: {fontSize: "30px", fill: "currentColor", textShadow: "none" },
                             formatTextValue: (v) => v
                         },
                         tickLabels: {
@@ -319,8 +319,8 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
     }
     
     return (
-        <Box sx={{ display:'flex', flexDirection:'column', ml:1, mr:1}}>
-            <Card sx={{width:'95%', alignSelf:'center', marginTop:'8px', transition: 'all 0.3s ease'}}>
+        <Stack sx={{ display:'flex', flexDirection:'column', m:3}} spacing={2}>
+            <Card sx={{width:'100%', alignSelf:'center', transition: 'all 0.3s ease'}}>
                 <CardHeader sx={{borderBottom:(cardExpanded?1:0), borderColor:'divider'}}
                     title={<>
                         {cardExpanded && <Typography variant="h6">Cluster details</Typography>}
@@ -432,23 +432,21 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
                 
             </Card>
 
-            <Box sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', marginTop:'16px', alignItems: 'center', justifyContent: 'center'}}>
-                <Stack direction={'column'} spacing={2} width={'95%'} mb={'4px'}>
+            <Stack direction={'column'} spacing={2} width={'100%'}>
 
-                    <Stack direction={'row'} spacing={2} sx={{width:'100%'}}>
-                        <Stack direction={'column'} width='100%' spacing={2} height='100%'>
-                            {drawTabCard(props.lastTabs, EListType.LAST)}
-                            {drawTabCard(props.favTabs, EListType.FAV)}
-                        </Stack>
-                        <Stack direction={'column'} width='100%' spacing={2} height='100%'>
-                            {drawWorkspaceCard(props.lastWorkspaces, EListType.LAST)}
-                            {drawWorkspaceCard(props.favWorkspaces, EListType.FAV)}
-                        </Stack>
+                <Stack direction={'row'} spacing={2} sx={{width:'100%'}}>
+                    <Stack direction={'column'} width='100%' spacing={2} height='100%'>
+                        {drawTabCard(props.lastTabs, EListType.LAST)}
+                        {drawTabCard(props.favTabs, EListType.FAV)}
                     </Stack>
-
+                    <Stack direction={'column'} width='100%' spacing={2} height='100%'>
+                        {drawWorkspaceCard(props.lastWorkspaces, EListType.LAST)}
+                        {drawWorkspaceCard(props.favWorkspaces, EListType.FAV)}
+                    </Stack>
                 </Stack>
-            </Box>
-        </Box>
+
+            </Stack>
+        </Stack>
     )
 }
 

@@ -9,9 +9,11 @@ import { objectEqual, reorderJsonYamlObject } from '../Tools'
 import { search, openSearchPanel, searchKeymap } from '@codemirror/search'
 import { EditorView, keymap } from '@codemirror/view'
 import { defaultKeymap } from '@codemirror/commands'
+import { foldCode } from '@codemirror/language'
 import { IContentWindow } from '../MagnifyTabContent'
 import { ResizableDialog } from './ResizableDialog'
 import { MsgBoxButtons, MsgBoxYesNo } from '../../../tools/MsgBox'
+
 
 const yamlParser = require('js-yaml');
 
@@ -43,14 +45,30 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
 
     const muiTheme = EditorView.theme({
         "&": {
-            color: theme.palette.text.primary,
-            backgroundColor: theme.palette.background.default,
-            height: '100%'
+            height: '100%',
         },
-        ".cm-content": {
-            caretColor: theme.palette.error.main
+        // ".cm-gutters": {
+        //     backgroundColor: theme.palette.background.default,
+        //     border: "none",
+        //     color: theme.palette.text.secondary,
+        //     pointerEvents: "auto !important",
+        //     zIndex: 10,
+        // },
+        ".cm-foldGutter": {
+            width: "25px",
+            pointerEvents: "auto !important",
+        },
+        ".cm-gutterElement": {
+            display: "flex !important",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer !important",
+            pointerEvents: "auto !important",
+        },
+        ".cm-foldGutter span": {
+            pointerEvents: "none" 
         }
-    }, { dark: theme.palette.mode==='dark' })
+    }, { dark: theme.palette.mode === 'dark' })
 
     useEffect(() => {
         const handleNativeKey = (event: KeyboardEvent) => {
@@ -130,7 +148,7 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
     return (<>
         <ResizableDialog id={props.id} isMaximized={isMaximized} onFocus={onFocus} onWindowChange={props.onWindowChange} x={props.x} y={props.y} width={props.width} height={props.height}>
             <DialogTitle sx={{ cursor: isMaximized ? 'default' : 'move',  py: 1 }} id='draggable-dialog-title'>
-                <Stack direction={'row'} alignItems={'center'}>                    
+                <Stack direction={'row'} alignItems={'center'}>
                     <Typography sx={{flexGrow:1}}></Typography>
                     <Typography>{contentEditData.allowEdit?<Edit />:<EditOff/>}&nbsp;{props.title}</Typography>
 
@@ -152,9 +170,23 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
             </DialogTitle>
 
             <DialogContent>
-                <div ref={containerRef} tabIndex={-1} style={{ height: '100%', width: '100%', paddingTop: '2px' }}>
+                <div ref={containerRef} 
+                    style={{ height: '100%', width: '100%', paddingTop: '2px' }} 
+                    onMouseDownCapture={(e) => {
+                        const target = e.target as HTMLElement;
+                        if (target.closest('.cm-foldGutter')) {
+                            if (editorViewRef.current) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                editorViewRef.current.focus();
+                                foldCode(editorViewRef.current);
+                            }
+                        }
+                    }}
+                    className="no-drag"
+                >
                     <CodeMirror value={code}
-                        onChange={updateEditorValue} 
+                        onChange={updateEditorValue}
                         theme={'none'}
                         onUpdate={(v) => { if (v.view) editorViewRef.current = v.view }}                    
                         extensions={[
