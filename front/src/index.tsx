@@ -4,8 +4,8 @@ import { SnackbarProvider } from 'notistack'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 
-//const isElectron = true
-const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') >= 0
+const isElectron = true
+//const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') >= 0
 
 var rootPath = (window.__PUBLIC_PATH__ || '/').trim().toLowerCase()
 if (rootPath.endsWith('/')) rootPath=rootPath.substring(0,rootPath.length-1)

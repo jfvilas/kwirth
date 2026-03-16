@@ -581,7 +581,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 break
             case 'shell':
                 break
-            case 'log':
+            case 'fileman':
                 break
             case 'trivy':
                 break

@@ -21,6 +21,7 @@ export enum EMagnifyCommand {
     WATCH = 'watch',
     EVENTS = 'events',
     K8EVENT = 'k8event',
+    USAGE = 'usage',
     CRONJOB = 'CronJob',
     INGRESSCLASS = 'IngressClass',
     POD = 'Pod',
@@ -397,6 +398,10 @@ class MagnifyChannel implements IChannel {
                 
                 case EMagnifyCommand.CLUSTERINFO:
                     this.sendDataMessage(webSocket, instance, '1', EMagnifyCommand.CLUSTERINFO, JSON.stringify((await this.clusterInfo.versionApi.getCode())))
+                    break
+
+                case EMagnifyCommand.USAGE:
+                    this.sendDataMessage(webSocket, instance, '1', EMagnifyCommand.USAGE, JSON.stringify(await this.getUsage(magnifyMessage.params![0])))
                     break
 
                 case EMagnifyCommand.POD:
@@ -861,6 +866,7 @@ class MagnifyChannel implements IChannel {
 
     private async executeApply (webSocket:WebSocket, instance:IInstance, params:string[]) {
         try {
+            console.log(params)
             for (let param of params) {
                 try {
                     const res = yaml.load(param)
@@ -893,7 +899,17 @@ class MagnifyChannel implements IChannel {
         }
     }
 
-    getEventsForObject = async (command:string, namespace:string,  objectKind:string, objectName:string, limit:number) => {
+    private getUsage = async (scope:string) => {
+        switch(scope) {
+            case 'cluster':
+                return this.clusterInfo.metrics.getClusterUsage()
+            default:
+                console.log('Invalid scope por getUsage:', scope)
+        }
+        return {}
+    }
+
+    private getEventsForObject = async (command:string, namespace:string,  objectKind:string, objectName:string, limit:number) => {
         try {
             let res: CoreV1EventList = {
                 items: []

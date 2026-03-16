@@ -31,7 +31,6 @@ const InputBox: React.FC<IInputBoxProps> = (props:IInputBoxProps) => {
 
     if (!props.title) return <></>
 
-    console.log('render', props.default)
     return (
         <Dialog open={true} onClose={() => { props.onClose(<></>); if (props.onResult) props.onResult(undefined)}}>
             <DialogTitle>

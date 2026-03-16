@@ -7,6 +7,7 @@ import { IContentWindow } from '../MagnifyTabContent'
 import { IFileObject, ISpaceMenuItem } from '@jfvilas/react-file-manager'
 import { DetailsObject, IDetailsSection } from './DetailsObject'
 import { MenuContainers } from './MenuContainers'
+import { objectClone } from '../Tools'
 
 const _ = require('lodash')
 const copy = require('clipboard-copy')
@@ -44,6 +45,8 @@ const ContentDetails: React.FC<IContentWindow> = (props:IContentWindow) => {
 			if (event.key === 'Escape') props.onClose(props.id)
 		}
 		window.addEventListener('keydown', handleKeyDown, true)
+		console.log(props.data.source)
+		newObject.current = objectClone(props.data.source.data.origin)
 		return () => {
 			window.removeEventListener('keydown', handleKeyDown, true)
 			previousFocus?.focus()
@@ -76,6 +79,18 @@ const ContentDetails: React.FC<IContentWindow> = (props:IContentWindow) => {
 		props.onWindowChange(props.id, !isMaximized, props.x, props.y, props.width, props.height)
 		setIsMaximized(!isMaximized)
 	}
+
+    const onChangeData = (path:string, data:any) => {
+		console.log('changedata', newObject.current)
+        if (props.data.source.data.origin.kind === 'ConfigMap') {
+            _.set(newObject.current, path, data)
+        }
+        if (props.data.source.data.origin.kind === 'Secret') {
+            _.set(newObject.current, path, btoa(data))
+        }
+		//_.set(newObject.current, path, data)
+        setDataChanged(true)
+    }
 
 	return (<>
 		<ResizableDialog id={props.id} isMaximized={isMaximized} onFocus={onFocus} onWindowChange={props.onWindowChange} x={props.x} y={props.y} width={props.width} height={props.height}>
@@ -131,10 +146,7 @@ const ContentDetails: React.FC<IContentWindow> = (props:IContentWindow) => {
 						<DetailsObject 
 							object={contentDetailsData.source}
 							sections={contentDetailsData.sections} 
-							onChangeData={(path, data) => {
-								_.set(newObject.current, path, data)
-								setDataChanged(true)
-							}}
+							onChangeData={onChangeData}
 							onLink={onLink} 
 							onContainsEdit={setContainsEdit}
 						/>

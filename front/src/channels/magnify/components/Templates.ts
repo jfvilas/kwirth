@@ -586,7 +586,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: sample-sa
-    namespace: my-namesapce
+    namespace: my-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

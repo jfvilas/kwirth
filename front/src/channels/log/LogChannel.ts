@@ -20,6 +20,7 @@ export class LogChannel implements IChannel {
         frontChannels: false,
         metrics: false,
         notifier: true,
+        notifications: true,
         setup: true,
         settings: false,
         palette: false,

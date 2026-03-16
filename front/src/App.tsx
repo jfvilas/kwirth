@@ -44,7 +44,7 @@ import { FilemanChannel } from './channels/fileman/FilemanChannel'
 import { Homepage } from './components/Homepage'
 import { DEFAULTLASTTABS, IColors, TABSELECTEDCOLORS, TABUNSELECTEDCOLORS } from './tools/Constants'
 import { createChannelInstance } from './tools/ChannelTools'
-import { NotificationMenu, NotificationMessage } from './components/NotificationMenu'
+import { MenuNotification, INotification } from './components/MenuNotification'
 import { ContextSelector } from './components/ContextSelector'
 import { v4 as uuid } from 'uuid'
 import { About } from './components/About'
@@ -210,9 +210,9 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const [notifySnackbarOpen, setNotifySnackbarOpen] = useState(false)
     const [notifySnackbarMessage, setNotifySnackbarMessage] = useState('')
     const [notifySnackbarLevel, setNotifySnackbarLevel] = useState<ENotifyLevel>(ENotifyLevel.INFO)
-    const [notifications, setNotifications] = useState<NotificationMessage[]>([])
-    const [notificationMenuAnchorEl, setNotificationMenuAnchorEl] = useState<null | HTMLElement>(null)
-    
+    //const [notifications, setNotifications] = useState<INotification[]>([])
+    const [notificationMenuAnchorParent, setNotificationMenuAnchorParent] = useState<null | HTMLElement>(null)
+    const notifications = useRef<INotification[]>([])
     const [resourceSelected, setResourceSelected] = useState<IResourceSelected|undefined>(undefined)
 
     useEffect( () => {
@@ -294,7 +294,8 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         setNotifySnackbarMessage(message)
         setNotifySnackbarLevel(level)
         setNotifySnackbarOpen(true)
-        setNotifications((prev) => [...prev, { timestamp: new Date(), level, message, channelId }])
+        notifications.current.push({ timestamp: new Date(), level, text: message, channelId })
+        setRefresh(Math.random())
     }
 
     const fillTabSummary = async (tab:ITabSummary) => {
@@ -470,10 +471,10 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
     }
 
-    const onMessageDelete = (indexToDelete: number) => {
-        if (notifications.length===1) setNotificationMenuAnchorEl(null)
-        setNotifications((prev) => prev.filter((_, index) => index !== indexToDelete))
-    }
+    // const onMessageDelete = (indexToDelete: number) => {
+    //     if (notifications.length===1) setNotificationMenuAnchorParent(null)
+    //     setNotifications((prev) => prev.filter((_, index) => index !== indexToDelete))
+    // }
 
     const readChannelUserPreferences = async (channelId:string) : Promise<any> => {
         let chanPref = userSettingsRef.current.channelUserPreferences?.find(c => c.channelId===channelId)
@@ -537,6 +538,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         if (newTab.channel.requirements.metrics) newTab.channelObject.metricsList = cluster.metricsList
         if (newTab.channel.requirements.frontChannels) newTab.channelObject.frontChannels = frontChannels
         if (newTab.channel.requirements.notifier) newTab.channelObject.notify = notify
+        if (newTab.channel.requirements.notifications) newTab.channelObject.notifications = notifications.current
         if (newTab.channel.requirements.palette) newTab.channelObject.setPalette = (palette:string) => setMode(palette as 'light'|'dark')
         if (newTab.channel.requirements.exit) newTab.channelObject.exit = () => {
             setBackendUrl(props.backendUrl)
@@ -1474,7 +1476,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     }
 
     const showNotifications = (event:any) => {
-        setNotificationMenuAnchorEl(event.currentTarget)
+        setNotificationMenuAnchorParent(event.currentTarget)
     }
 
     const onLoginClosed = (user:IUser|undefined, firstTime:boolean) => {
@@ -1602,9 +1604,9 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                             <Typography variant='h6' component='div' sx={{mr:2, cursor:'default'}}>{currentWorkspaceName}</Typography>
                         </Tooltip>
                         <Tooltip title={<>Notifications</>}>
-                            {notifications.length>0? 
+                            {notifications.current.length>0? 
                                 <IconButton onClick={showNotifications}>
-                                    <NotificationsActive sx={{color:notifications.some(n => n.level === ENotifyLevel.ERROR)? 'red':notifications.some(n => n.level === ENotifyLevel.WARNING)?'orange':'lightgray'}}/>
+                                    <NotificationsActive sx={{color:notifications.current.some(n => n.level === ENotifyLevel.ERROR)? 'red':notifications.current.some(n => n.level === ENotifyLevel.WARNING)?'orange':'lightgray'}}/>
                                 </IconButton>
                                 :
                                 <IconButton onClick={showNotifications}>
@@ -1706,7 +1708,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 <Snackbar open={notifySnackbarOpen} autoHideDuration={3000} anchorOrigin={{vertical: 'bottom', horizontal:'center'}} onClose={onNotifySnackbarClose}>
                     <Alert severity={notifySnackbarLevel} variant="filled" onClose={onNotifySnackbarClose} sx={{ width: '100%' }}>{notifySnackbarMessage}</Alert>
                 </Snackbar>
-                { notificationMenuAnchorEl && <NotificationMenu open={true} anchorEl={notificationMenuAnchorEl} messages={notifications} onClose={() => setNotificationMenuAnchorEl(null)} onDelete={onMessageDelete} onClear={() => {setNotifications([]); setNotificationMenuAnchorEl(null)}} channels={frontChannels}/>}
+                { notificationMenuAnchorParent && <MenuNotification anchorParent={notificationMenuAnchorParent} notifications={notifications.current} onRefresh={() => { setRefresh(Math.random())}} onClose={() => setNotificationMenuAnchorParent(null)} channels={frontChannels} />}
                 { msgBox }
                 { showAbout && <About onClose={() => setShowAbout(false)}/>}
             </SessionContext.Provider>

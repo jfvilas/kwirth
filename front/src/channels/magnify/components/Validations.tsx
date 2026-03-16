@@ -39,7 +39,7 @@ const validateDeployment = (files:IFileObject[]) => {
 
     for (let dp of files.filter(f => f.class==='Deployment').map(f => f.data.origin)) {
         if (dp.status?.replicas !== dp.status?.availableReplicas) {
-            issues.push ({kind:'ReplicaSet', name:dp.metadata.name, namespace:dp.metadata.namespace, level: ENotifyLevel.WARNING, text: 'Unready replicas' })
+            issues.push ({kind:'Deployment', name:dp.metadata.name, namespace:dp.metadata.namespace, level: ENotifyLevel.WARNING, text: 'Unready replicas' })
         }
     }
     return issues
@@ -275,7 +275,7 @@ const validateClusterRole = (files:IFileObject[]) => {
             inUse = crb.subjects && crb.subjects.some((s:any) => s.kind==='ServiceAccount' && s.name === crb.metadata.name && s.namespace === crb.metadata.namespace)
             if (inUse) break
         }
-        if (!inUse) issues.push({kind: 'Role', name: cr.metadata.name, namespace: cr.metadata.namespace, level: ENotifyLevel.WARNING, text: 'ClusterRole not in use'})
+        if (!inUse) issues.push({kind: 'ClusterRole', name: cr.metadata.name, namespace: '', level: ENotifyLevel.WARNING, text: 'ClusterRole not in use'})
     }
     return issues
 }

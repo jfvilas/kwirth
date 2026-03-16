@@ -36,7 +36,6 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     useEffect( () => {
-        console.log('assgn')
         filemanData.unlock = fileManagerRef.current?.unlock
     }, [fileManagerRef.current])
 

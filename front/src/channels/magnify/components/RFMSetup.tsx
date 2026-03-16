@@ -279,32 +279,7 @@ const rfmSetup = (
         requestList(channelObject)
     }
 
-    /******************************************************************************************************* */
-    // common section for showing Pods information con ContentDetail
-    let podsItem = podsSection.items.find(item => item.name === 'pods')
-    if (podsItem) {
-        podsItem.invoke = (rootObj, port) => { 
-            let controllerKind = rootObj.kind
-            let allPods = magnifyData.files.filter(f => f.class===('Pod'))
-            allPods = allPods.filter(f => {
-                let isOwner = false
-                if (controllerKind === 'Deployment') {
-                    let rsOwners = f.data.origin.metadata.ownerReferences?.filter((o:any) => o.kind === 'ReplicaSet') || []
-                    if (rsOwners && rsOwners.length>0) {
-                        let rs = magnifyData.files.find(f => f.path===`/workload/ReplicaSet/${rsOwners[0].name}:${rootObj.metadata.namespace}`)
-                        isOwner = rs && rs.data.origin.metadata.ownerReferences.some((or:any) => or.kind==='Deployment' && or.name===rootObj.metadata.name)
-                    }
-                }
-                else {
-                    isOwner = f.data.origin.metadata.ownerReferences?.some((o:any) => o.kind === controllerKind && o.name === rootObj.metadata.name) || false
-                }
-                if (isOwner) return f
-            })
-            return allPods.map(f => f.data.origin)
-        }
-    }
-
-
+    // first level menu
     setPathFunction('/overview', showOverview)
     setPathFunction('/cluster', showBackground)
     setPathFunction('/workload', showBackground)
@@ -314,6 +289,7 @@ const rfmSetup = (
     setPathFunction('/access', showBackground)
     setPathFunction('/custom', showBackground)
 
+    // second level menu (overview sections)
     setPathFunction('/cluster/overview', showClusterOverview)
     setPathFunction('/workload/overview', showWorkloadOverview)
     setPathFunction('/network/overview', showNetworkOverview)
@@ -328,6 +304,31 @@ const rfmSetup = (
 
     //Workload ***************************************************************************
         // Pod ***************************************************************************
+
+            // common section for showing Pods information con ContentDetail
+            let podsItem = podsSection.items.find(item => item.name === 'pods')
+            if (podsItem) {
+                podsItem.invoke = (rootObj, port) => { 
+                    let controllerKind = rootObj.kind
+                    let allPods = magnifyData.files.filter(f => f.class===('Pod'))
+                    allPods = allPods.filter(f => {
+                        let isOwner = false
+                        if (controllerKind === 'Deployment') {
+                            let rsOwners = f.data.origin.metadata.ownerReferences?.filter((o:any) => o.kind === 'ReplicaSet') || []
+                            if (rsOwners && rsOwners.length>0) {
+                                let rs = magnifyData.files.find(f => f.path===`/workload/ReplicaSet/${rsOwners[0].name}:${rootObj.metadata.namespace}`)
+                                isOwner = rs && rs.data.origin.metadata.ownerReferences.some((or:any) => or.kind==='Deployment' && or.name===rootObj.metadata.name)
+                            }
+                        }
+                        else {
+                            isOwner = f.data.origin.metadata.ownerReferences?.some((o:any) => o.kind === controllerKind && o.name === rootObj.metadata.name) || false
+                        }
+                        if (isOwner) return f
+                    })
+                    return allPods.map(f => f.data.origin)
+                }
+            }
+
             const showListPodContainers = (p:any) => {
                 let f = magnifyData.files.find(x => p===x.path)
                 if (!f || !f.data.origin.status?.containerStatuses) return <></>

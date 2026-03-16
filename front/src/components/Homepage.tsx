@@ -59,7 +59,6 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
     }
 
     useEffect(() => {
-        // 1. Definimos el cluster objetivo fuera para mayor claridad
         const targetCluster = props.cluster || props.clusters.find(x => x.source);
         if (!targetCluster) return;
 

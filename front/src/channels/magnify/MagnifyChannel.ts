@@ -41,6 +41,7 @@ class MagnifyChannel implements IChannel {
         frontChannels: true,
         metrics: true,
         notifier: true,
+        notifications: true,
         setup: false,
         settings: false,
         palette: true,
@@ -84,6 +85,13 @@ class MagnifyChannel implements IChannel {
                             case EMagnifyCommand.CLUSTERINFO:
                                 let cInfo = JSON.parse(response.data)
                                 magnifyData.clusterInfo = cInfo
+                                break
+                            case EMagnifyCommand.USAGE:
+                                let usageData = JSON.parse(response.data)
+                                usageData.timestamp = new Date().toLocaleTimeString('en-GB')
+                                magnifyData.metricsCluster.push(usageData)
+                                if (magnifyData.metricsCluster.length>50) magnifyData.metricsCluster.shift()
+                                channelObject.data?.refreshUsage?.()                                
                                 break
                             case EMagnifyCommand.POD:
                                 let podData = JSON.parse(response.data) as string[]
@@ -158,20 +166,22 @@ class MagnifyChannel implements IChannel {
                                         break
                                     case 'DELETED':
                                         if (response.data.kind==='Namespace' && magnifyData.updateNamespaces) magnifyData.updateNamespaces('DELETED', response.data.metadata.name)
-                                        let path = buildPath(response.data.kind, response.data.metadata.name, response.data.metadata.namespace)
-                                        console.log('deleted', path)
-                                        let crd = magnifyData.files.find (f => f.path === path)
-                                        if (crd) {
-                                            // +++ sould we be listening for changes to CRDi's?
-                                            let groupName = crd.data.origin.apiVersion.replace('/','-')+'-'+crd.data.origin.kind
-                                            console.log(magnifyData.files.length)
-                                            console.log('/custom/'+groupName)
-                                            magnifyData.files = magnifyData.files.filter(f => !f.path.startsWith('/custom/'+groupName))
-                                            console.log(magnifyData.files.length)
-                                        }
-                                        else {
-                                            console.log('Not found for delete', path)
-                                        }
+                                        let path=buildPath(response.data.kind, response.data.metadata.name, response.data.metadata.namespace)
+                                        magnifyData.files = magnifyData.files.filter (f => f.path !== path)
+                                        // +++ remove CRDi: PENDING IMPL
+
+                                        // let crd = magnifyData.files.find (f => f.path === path)
+                                        // if (crd) {
+                                        //     // +++ sould we be listening for changes to CRDi's?
+                                        //     let groupName = crd.data.origin.apiVersion.replace('/','-')+'-'+crd.data.origin.kind
+                                        //     console.log(magnifyData.files.length)
+                                        //     console.log('/custom/'+groupName)
+                                        //     magnifyData.files = magnifyData.files.filter(f => !f.path.startsWith('/custom/'+groupName))
+                                        //     console.log(magnifyData.files.length)
+                                        // }
+                                        // else {
+                                        //     console.log('Not found for delete', path)
+                                        // }
                                         break
                                 }
                                 return {
@@ -304,21 +314,43 @@ class MagnifyChannel implements IChannel {
 
     launchTasks = (channelObject:IChannelObject) => {
 
-        this.tasks.push (window.setInterval( (c:IChannelObject) => {
-            fetch(`${c.clusterUrl}/metrics/usage/cluster`, addGetAuthorization(c.accessString!)).then ( (result) => {
-                result.json().then ( (data) => {
-                    let md:IMagnifyData = c.data
-                    data.timestamp = new Date().toLocaleTimeString('en-GB')
-                    md.metricsCluster.push(data)
-                    if (md.metricsCluster.length>50) md.metricsCluster.shift();
-                    channelObject.data?.refreshUsage?.()
-                })
-            })
-            .catch ( () => {
+        // this.tasks.push (window.setInterval( (c:IChannelObject) => {
+        //     fetch(`${c.clusterUrl}/metrics/usage/cluster`, addGetAuthorization(c.accessString!)).then ( (result) => {
+        //         result.json().then ( (data) => {
+        //             let md:IMagnifyData = c.data
+        //             data.timestamp = new Date().toLocaleTimeString('en-GB')
+        //             md.metricsCluster.push(data)
+        //             if (md.metricsCluster.length>50) md.metricsCluster.shift();
+        //             channelObject.data?.refreshUsage?.()
+        //         })
+        //     })
+        //     .catch ( () => {
                 
-            })
+        //     })
+        // }, 15000, channelObject))
+
+        this.tasks.push (window.setInterval( (c:IChannelObject) => {
+            let magnifyMessage:IMagnifyMessage = {
+                msgtype: 'magnifymessage',
+                accessKey: channelObject.accessString!,
+                instance: channelObject.instanceId,
+                id: uuid(),
+                namespace: '',
+                group: '',
+                pod: '',
+                container: '',
+                command: EMagnifyCommand.USAGE,
+                action: EInstanceMessageAction.COMMAND,
+                flow: EInstanceMessageFlow.REQUEST,
+                type: EInstanceMessageType.DATA,
+                channel: this.channelId,
+                params: [ 'cluster' ]
+            }
+            if (channelObject.webSocket) channelObject.webSocket.send(JSON.stringify( magnifyMessage ))
+
         }, 15000, channelObject))
 
+        
         // pod cpu/mem & cluster cpu/mem
         this.tasks.push(window.setInterval( (c:IChannelObject) => {
             let magnifyMessage:IMagnifyMessage = {

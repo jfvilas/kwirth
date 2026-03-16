@@ -36,6 +36,7 @@ export class FilemanChannel implements IChannel {
         frontChannels: false,
         metrics: false,
         notifier: true,
+        notifications: true,
         setup: false,
         settings: false,
         palette: false,

@@ -118,6 +118,7 @@ declare module '@jfvilas/react-file-manager' {
         actions?: Map<string, IAction[]>
         space?: string
         spaces?: Map<string, ISpace>
+        rightItems?: any[]
         files?: IFileObject[]
         fileUploadConfig?: IFileUploadConfig
         fileDownloadConfig?: IFileDownloadConfig

@@ -57,6 +57,7 @@ export enum EMagnifyCommand {
     WATCH = 'watch',
     EVENTS = 'events',
     K8EVENT = 'k8event',
+    USAGE = 'usage',
     CRONJOB = 'CronJob',
     INGRESSCLASS = 'IngressClass',
     POD = 'Pod',

@@ -4,6 +4,7 @@ import { ENotifyLevel } from '../tools/Global'
 import { IChannelSettings } from '../model/Settings'
 import { IResourceSelected } from '../components/ResourceSelector'
 import { IClusterInfo } from '../model/Cluster'
+import { INotification } from '../components/MenuNotification'
 
 type TChannelConstructor = (new () => IChannel)|undefined
 
@@ -45,6 +46,7 @@ interface IChannelObject {
     accessString?: string
     isElectron: boolean
     frontChannels?: Map<string, TChannelConstructor>
+    notifications?: INotification[]
     webSocket?: WebSocket
     clusterUrl?: string
     clusterInfo?: IClusterInfo
@@ -65,6 +67,7 @@ export interface IChannelRequirements {
     frontChannels: boolean
     metrics: boolean
     notifier: boolean
+    notifications: boolean
     clusterUrl: boolean
     clusterInfo: boolean
     accessString: boolean

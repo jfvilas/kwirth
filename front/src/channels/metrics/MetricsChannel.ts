@@ -19,6 +19,7 @@ export class MetricsChannel implements IChannel {
         exit: false,
         frontChannels: false,
         metrics: true,
+        notifications: true,
         notifier: true,
         setup: true,
         settings: true,

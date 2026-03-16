@@ -60,8 +60,8 @@ import { Application } from 'express-serve-static-core'
 //     return originalFetch(...args);
 // }
 
-//const isElectron = true
-const isElectron = !!process.versions.electron;
+const isElectron = true
+//const isElectron = !!process.versions.electron;
 
 const app : Application = express()
 
@@ -1330,7 +1330,7 @@ const prepareRunningInstance = async (localKwirthData:KwirthData, runningInstanc
         let metricsRequired = Array.from(runningInstance.channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)
         console.log('Metrics required: ', metricsRequired)
         if (!envChannelMetricsEnabled) console.log('❌ Metrics have not been enabled on Kwirth, so it will not be available.')
-        if (!isElectron && !runningInstance.clusterInfo.token) console.log('❌ A SA Token could not be obtained, so metrics will not be available.')
+        if (!isElectron && !runningInstance.clusterInfo.token) console.log('❌ An SA Token could not be obtained, so metrics will not be available.')
         metricsRequired = metricsRequired && envChannelMetricsEnabled && (isElectron || Boolean(runningInstance.clusterInfo.token))
 
         await setKubernetesClusterKwirthRequirements(localKwirthData, runningInstance.clusterInfo, metricsRequired, eventsRequired)

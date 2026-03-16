@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid'
 import { ENotifyLevel } from '../../tools/Global'
 import { actions, icons, menu, spaces } from './components/RFMConfig'
 import { objectSections } from './components/DetailsSections'
-import { Edit, EditOff, List, Search } from '@mui/icons-material'
+import { Cloud, CloudOff, CloudQueue, Edit, EditOff, List, Notifications, NotificationsActive, Search } from '@mui/icons-material'
 import { MsgBoxButtons, MsgBoxOkError, MsgBoxWaitCancel, MsgBoxYesNo } from '../../tools/MsgBox'
 import { ContentExternal, IContentExternalData } from './components/ContentExternal'
 import { ContentDetails, IDetailsData } from './components/ContentDetails'
@@ -27,6 +27,7 @@ import { MenuKubeWorks } from './components/MenuKubeWorks'
 import {useTheme } from '@mui/material';
 import { MenuKwirthWorks } from './components/MenuKwirthWorks'
 import { ICustomAction } from './components/UserPreferences'
+import { MenuNotification } from '../../components/MenuNotification'
 const yamlParser = require('js-yaml')
 
 //type WindowClass = 'ContentDetails' | 'ArtifactSearch' | 'ContentEdit' | 'ContentBrowse' | 'ContentExternal';
@@ -93,6 +94,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const [menuContainersChannel, setMenuContainersChannel] = useState<string>('')
     const [menuContainersIncludeAllContainers, setMenuContainersIncludeAllContainers] = useState<boolean>(false)
 
+    const [notificationMenuAnchorParent, setNotificationMenuAnchorParent] = useState<HTMLElement|undefined>(undefined)
+
     const [ , setTick] = useState<number>(0)
 
     // RFM categories
@@ -149,6 +152,43 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             isFilterActive: isFilterActive
         }
     ])
+
+    const drawRightItem = (name:string) => {
+        switch(name) {
+            case 'notifications':
+                return props.channelObject.notifications!.length>0? <NotificationsActive sx={{color: 'green'}}/> : <Notifications sx={{color: 'gray'}}/>
+            case 'cloud':
+                return props.channelObject.webSocket?.readyState===1? 
+                    <Tooltip title={<div style={{textAlign:'center'}}>Communications to<br/> Kwirth backend are ok</div>}>
+                        <CloudQueue sx={{color: 'green'}}/>
+                    </Tooltip>
+                    :
+                    <Tooltip title={<div style={{textAlign:'center'}}>Communications to Kwirth backend<br/>have been interrupted.<br/>You need to exit cluster and reenter.</div>}>
+                        <CloudOff sx={{color: 'red', animation: 'blink 1.5s infinite', '@keyframes blink': { '0%': { opacity: 1 }, '50%': { opacity: 0.1 }, '100%': { opacity: 1 }} }}/>
+                    </Tooltip>
+        }
+    }
+
+    const clickRightItem = (name:string, target:HTMLElement) => {
+        switch(name) {
+            case 'notifications':
+                setNotificationMenuAnchorParent(target)
+                break
+        }
+    }
+
+    const rightItems = [
+        {
+            name: 'cloud',
+            //onClick: (name:string, target:HTMLElement) => clickRightItem(name, target),
+            onDraw: (name:string) => drawRightItem(name)
+        },
+        {
+            name: 'notifications',
+            onClick: (name:string, target:HTMLElement) => clickRightItem(name, target),
+            onDraw: (name:string) => drawRightItem(name)
+        },
+    ]
 
     useLayoutEffect(() => {
         const observer = new ResizeObserver(() => {
@@ -818,6 +858,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     const onMagnifyObjectDetailsLink = (kind:string, name:string, namespace:string) => {
         let path = buildPath(kind, name, namespace)
         let f = magnifyData.files.find(f => f.path === path)
+        console.log(path)
         if (f) {
             launchObjectDetails([f.path], undefined)
         }
@@ -851,7 +892,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     launchObjectDetails([crdiPath], undefined)
                 }
                 else {
-                    setMsgBox(MsgBoxOkError('Object details',<Box>Object with name '<b>{name}</b>' of kind '{kind}' in namesapce '${namespace}' has not been found on artifacts database.</Box>, setMsgBox))
+                    setMsgBox(MsgBoxOkError('Object details',<Box>Object with name '<b>{name}</b>' of kind '{kind}' in namespace '${namespace}' has not been found on artifacts database.</Box>, setMsgBox))
                 }
             }
         }
@@ -909,6 +950,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onContentDetailsApply = (path:string, obj:any) => {
+        console.log(path, obj)
         sendCommand(EMagnifyCommand.APPLY, [yamlParser.dump(obj, { indent: 2 })])
     }
 
@@ -1017,6 +1059,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                     ref={fileManagerRef}
                     files={magnifyData.files}
                     spaces={spaces}
+                    rightItems={rightItems}
                     actions={actions}
                     icons={icons}
                     initialPath={magnifyData.currentPath}
@@ -1052,6 +1095,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
                 {
                     menuKwirthWorksAnchorParent && <MenuKwirthWorks onWorkSelected={onMenuKwirthWorksSelected} onClose={() => setMenuKwirthWorksAnchorParent(undefined)} anchorParent={menuKwirthWorksAnchorParent} customActions={magnifyData.userPreferences.customActions}/>
+                }
+                {
+                    notificationMenuAnchorParent && <MenuNotification anchorParent={notificationMenuAnchorParent} notifications={props.channelObject.notifications!} onRefresh={() => setTick((t) => t+1)} onClose={() => setNotificationMenuAnchorParent(undefined)} channels={props.channelObject.frontChannels!}/>
                 }
                 <Stack direction={'row'} sx={{mt:1}}>
                     {
