@@ -10,6 +10,8 @@ const TRIVY_API_VERSION = 'v1alpha1'
 const TRIVY_API_GROUP = 'aquasecurity.github.io'
 const TRIVY_API_VULN_PLURAL = 'vulnerabilityreports'
 const TRIVY_API_AUDIT_PLURAL = 'configauditreports'
+const TRIVY_API_SBOM_PLURAL = 'sbomreports'
+const TRIVY_API_EXPOSED_PLURAL = 'exposedsecretreports'
 
 type TInformer = (Informer<KubernetesObject> & ObjectCache<KubernetesObject>) | undefined
 
@@ -294,18 +296,68 @@ class TrivyChannel implements IChannel {
             payload.data = resultAudit
             webSocket.send(JSON.stringify(payload))
         }
+
+        let resultSbom = await this.getAssetSbomReport(instance, asset)
+        if (resultSbom.known) {
+            let payload:ITrivyMessageResponse = {
+                msgtype: 'trivymessageresponse',
+                msgsubtype: 'add',
+                id: '',
+                namespace: asset.podNamespace,
+                group: '',
+                pod: asset.podName,
+                container: asset.containerName,
+                action: EInstanceMessageAction.NONE,
+                flow: EInstanceMessageFlow.UNSOLICITED,
+                type: EInstanceMessageType.DATA,
+                channel: EInstanceMessageChannel.TRIVY,
+                instance: instance.instanceId
+            }
+            payload.data = resultSbom
+            webSocket.send(JSON.stringify(payload))
+        }
+
+        let resultExposed = await this.getAssetExposedReport(instance, asset)
+        if (resultExposed.known) {
+            let payload:ITrivyMessageResponse = {
+                msgtype: 'trivymessageresponse',
+                msgsubtype: 'add',
+                id: '',
+                namespace: asset.podNamespace,
+                group: '',
+                pod: asset.podName,
+                container: asset.containerName,
+                action: EInstanceMessageAction.NONE,
+                flow: EInstanceMessageFlow.UNSOLICITED,
+                type: EInstanceMessageType.DATA,
+                channel: EInstanceMessageChannel.TRIVY,
+                instance: instance.instanceId
+            }
+            payload.data = resultExposed
+            webSocket.send(JSON.stringify(payload))
+        }
         
         instance.assets.push(asset)
 
         if (!this.informers.has(TRIVY_API_VULN_PLURAL)) {
             console.log('======================================================addedinformer vuln')
-            let informer = this.createInformer(webSocket, instance, asset, TRIVY_API_VULN_PLURAL)
+            let informer = this.createInformer(webSocket, instance, TRIVY_API_VULN_PLURAL)
             this.informers.set(TRIVY_API_VULN_PLURAL, informer)
             informer.start()
         }
         if (!this.informers.has(TRIVY_API_AUDIT_PLURAL)) {
-            let informer = this.createInformer(webSocket, instance, asset, TRIVY_API_AUDIT_PLURAL)
+            let informer = this.createInformer(webSocket, instance, TRIVY_API_AUDIT_PLURAL)
             this.informers.set(TRIVY_API_AUDIT_PLURAL, informer)
+            informer.start()
+        }
+        if (!this.informers.has(TRIVY_API_SBOM_PLURAL)) {
+            let informer = this.createInformer(webSocket, instance, TRIVY_API_SBOM_PLURAL)
+            this.informers.set(TRIVY_API_SBOM_PLURAL, informer)
+            informer.start()
+        }
+        if (!this.informers.has(TRIVY_API_EXPOSED_PLURAL)) {
+            let informer = this.createInformer(webSocket, instance, TRIVY_API_EXPOSED_PLURAL)
+            this.informers.set(TRIVY_API_EXPOSED_PLURAL, informer)
             informer.start()
         }
         return true
@@ -421,7 +473,7 @@ class TrivyChannel implements IChannel {
         return canPerform
     }
 
-    createInformer = (webSocket:WebSocket, instance:IInstance, asset:IAsset, plural:string) => {
+    createInformer = (webSocket:WebSocket, instance:IInstance, plural:string) => {
         const path = `/apis/${TRIVY_API_GROUP}/${TRIVY_API_VERSION}/${plural}`
 
         const listFunction = () =>
@@ -503,7 +555,6 @@ class TrivyChannel implements IChannel {
     }
 
     getAssetAuditReport = async (instance:IInstance, asset:IAsset): Promise<{resource: string, known?: IKnown, unknown?: IUnknown }> => {
-        console.log('gaar')
         let known:IKnown = {
             name: '',
             namespace: '',
@@ -557,6 +608,116 @@ class TrivyChannel implements IChannel {
         }
     }
 
+    getAssetSbomReport = async (instance:IInstance, asset:IAsset): Promise<{resource: string, known?: IKnown, unknown?: IUnknown }> => {
+        console.log('sbomr')
+        let known:IKnown = {
+            name: '',
+            namespace: '',
+            container: '',
+            report: undefined
+        }
+        let unknown:IUnknown = {
+            name: '',
+            namespace: '',
+            container: '',
+            statusCode: 0,
+            statusMessage: ''
+        }
+        try {
+            let crdName = await this.getCrdName(asset.podNamespace, asset.podName, asset.containerName)
+            console.log('Search for ', TRIVY_API_SBOM_PLURAL,crdName)
+            try {
+                let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject({ group: TRIVY_API_GROUP, version: TRIVY_API_VERSION, namespace: asset.podNamespace, plural: TRIVY_API_SBOM_PLURAL, name: crdName })
+                
+                console.log('Got sbom report for', crdName)
+                known = {
+                    container: asset.containerName,
+                    name: asset.podName,
+                    namespace: asset.podNamespace,
+                    report: crdObject.report
+                }
+                return {resource: TRIVY_API_SBOM_PLURAL, known, unknown:undefined}
+            }
+            catch(err:any) {
+                console.log(`SobmReport not found for ${crdName}`)
+                unknown = {
+                    container: asset.containerName,
+                    name: asset.podName,
+                    namespace: asset.podNamespace,
+                    statusCode: 0,
+                    statusMessage: err.toString()
+                }
+                return {resource: TRIVY_API_SBOM_PLURAL, known:undefined, unknown}
+            }
+        }
+        catch (err:any){
+            unknown = {
+                container: asset.containerName,
+                name: asset.podName,
+                namespace: asset.podNamespace,
+                statusCode: 999,
+                statusMessage: err
+            }
+            console.log('Caught Trivy error', err)
+            return {resource: TRIVY_API_SBOM_PLURAL, known:undefined, unknown}
+        }
+    }
+
+    getAssetExposedReport = async (instance:IInstance, asset:IAsset): Promise<{resource: string, known?: IKnown, unknown?: IUnknown }> => {
+        console.log('esr')
+        let known:IKnown = {
+            name: '',
+            namespace: '',
+            container: '',
+            report: undefined
+        }
+        let unknown:IUnknown = {
+            name: '',
+            namespace: '',
+            container: '',
+            statusCode: 0,
+            statusMessage: ''
+        }
+        try {
+            let crdName = await this.getCrdName(asset.podNamespace, asset.podName, asset.containerName)
+
+            try {
+                let crdObject = await this.clusterInfo.crdApi.getNamespacedCustomObject({ group: TRIVY_API_GROUP, version: TRIVY_API_VERSION, namespace: asset.podNamespace, plural: TRIVY_API_EXPOSED_PLURAL, name: crdName })
+                
+                console.log('Got exposed report for', crdName)
+                known = {
+                    container: asset.containerName,
+                    name: asset.podName,
+                    namespace: asset.podNamespace,
+                    report: crdObject.report
+                }
+                return {resource: TRIVY_API_EXPOSED_PLURAL, known, unknown:undefined}
+            }
+            catch(err:any) {
+                console.log(`ExposedSecretsReport not found for ${crdName}`)
+                unknown = {
+                    container: asset.containerName,
+                    name: asset.podName,
+                    namespace: asset.podNamespace,
+                    statusCode: 0,
+                    statusMessage: err.toString()
+                }
+                return {resource: TRIVY_API_EXPOSED_PLURAL, known:undefined, unknown}
+            }
+        }
+        catch (err:any){
+            unknown = {
+                container: asset.containerName,
+                name: asset.podName,
+                namespace: asset.podNamespace,
+                statusCode: 999,
+                statusMessage: err
+            }
+            console.log('Caught Trivy error', err)
+            return {resource: TRIVY_API_EXPOSED_PLURAL, known:undefined, unknown}
+        }
+    }
+
     private calculateScore = async (instance: IInstance) => {
         let score = 0
         let maxScore =
@@ -599,7 +760,7 @@ class TrivyChannel implements IChannel {
                 let score = await this.calculateScore(instance)
                 resp.data = { score }
                 break
-            case ETrivyCommand.RESCAN:
+            case ETrivyCommand.RESCAN: //+++ rescan of different reports (not only vuln)
                 let crdName = await this.getCrdName(instanceMessage.namespace, instanceMessage.pod, instanceMessage.container)
                 try {
                     await this.clusterInfo.crdApi.deleteNamespacedCustomObject({ group:TRIVY_API_GROUP, version:TRIVY_API_VERSION, namespace:instanceMessage.namespace, plural:TRIVY_API_VULN_PLURAL, name:crdName })
@@ -617,16 +778,23 @@ class TrivyChannel implements IChannel {
     }
 
     private processInformerEvent = async (webSocket:WebSocket, instance:IInstance, plural:string, event:string, obj:any) => {
-        console.log('k',obj.metadata.labels['trivy-operator.resource.kind'])
-        console.log('ns',obj.metadata.labels['trivy-operator.resource.namespace'])
-        console.log('m',obj.metadata.labels['trivy-operator.resource.name'])
-        console.log('c',obj.metadata.labels['trivy-operator.container.name'])
         let asset = instance.assets.find (a =>
             'Pod' === obj.metadata.labels['trivy-operator.resource.kind'] &&
             a.containerName === obj.metadata.labels['trivy-operator.container.name'] &&
             a.podNamespace === obj.metadata.labels['trivy-operator.resource.namespace'] &&
             a.podName.startsWith(obj.metadata.labels['trivy-operator.resource.name'])
         )
+        if (asset) {
+            // console.log(event, plural, asset)
+            // if (asset.podName==='alpine')  console.log(obj)
+        }
+        else {
+            // Trivy reports have different targets, for example, you can have a SBOM for a controller or for just a pod
+            // console.log('obj.metadata.labels')
+            // console.log(obj.metadata.labels)
+            // console.log(instance.assets)
+            return
+        }
         console.log('plural, event, asset:', plural, event, asset)
         if (asset) {
             let payload:ITrivyMessageResponse = {
@@ -651,12 +819,20 @@ class TrivyChannel implements IChannel {
                     case TRIVY_API_AUDIT_PLURAL:
                         payload.data = await this.getAssetAuditReport(instance, asset)
                         break
+                    case TRIVY_API_SBOM_PLURAL:
+                        payload.data = await this.getAssetSbomReport(instance, asset)
+                        break
+                    case TRIVY_API_EXPOSED_PLURAL:
+                        payload.data = await this.getAssetExposedReport(instance, asset)
+                        break
                 }
             }
             else {
                 switch (plural) {
                     case TRIVY_API_VULN_PLURAL:
                     case TRIVY_API_AUDIT_PLURAL:
+                    case TRIVY_API_SBOM_PLURAL:
+                    case TRIVY_API_EXPOSED_PLURAL:
                         payload.data = {
                             known: {
                                 name: asset.podName,

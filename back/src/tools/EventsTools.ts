@@ -27,15 +27,13 @@ export class EventsTools {
                     resourcePath,
                     {},  //{ timeoutSeconds: 300 }, // Optional: restarts every 5 minutes
                     (type, apiObj) => {
-                        if (apiObj && apiObj.metadata) {
-                            eventHandler(type, apiObj, this.subscribers)
-                        }
+                        if (apiObj && apiObj.metadata) eventHandler(type, apiObj, this.subscribers)
                     },
                     (err) => {
                         console.log(`[${resourcePath}] Watcher ended or error (${err}). Restarting...`)
                         setTimeout(watchLoop, 5000)
                     }
-                );
+                )
             }
             catch (error: any) {
                 console.error(`[${resourcePath}] Error configuring watcher: ${error.message}`)
@@ -47,11 +45,13 @@ export class EventsTools {
 
     handleEvent (type: string, obj: any, subscribersList:Map<IChannel, string[]>) {
         for (let subscriber of subscribersList.entries()) {
-            if (subscriber[1].includes(obj.kind)) subscriber[0].processObjectEvent(type, obj)
+            // we assume that a user who wants to watch CustomResourceDefinition's also wants to watch CRD resources (instances)
+            // but this behavior could change in the future
+            if (subscriber[1].includes(obj.kind) || subscriber[1].includes('CustomResourceDefinition')) subscriber[0].processObjectEvent(type, obj)
         }
     }
 
-    startEvents() {
+    async startEvents () {
         console.log('Event reception started...')
         this.startResourceWatcher('/api/v1/nodes', this.handleEvent)
         this.startResourceWatcher('/api/v1/namespaces', this.handleEvent)
@@ -75,7 +75,6 @@ export class EventsTools {
         this.startResourceWatcher('/apis/coordination.k8s.io/v1/leases', this.handleEvent)
         this.startResourceWatcher('/apis/admissionregistration.k8s.io/v1/validatingwebhookconfigurations', this.handleEvent)
         this.startResourceWatcher('/apis/admissionregistration.k8s.io/v1/mutatingwebhookconfigurations', this.handleEvent)
-
 
 
         this.startResourceWatcher('/api/v1/pods', this.handleEvent)
@@ -105,6 +104,12 @@ export class EventsTools {
 
 
         this.startResourceWatcher('/apis/apiextensions.k8s.io/v1/customresourcedefinitions', this.handleEvent)
+        let crds = await this.clusterInfo.extensionApi.listCustomResourceDefinition()        
+        for (let crd of crds.items) {
+            let apiPath = `/apis/${crd.spec.group}/${crd.spec.versions[0].name}/${crd.spec.names.plural}`
+            console.log('Watching resources in api path:', apiPath)
+            if (crd.spec.versions && crd.spec.versions.length>1) console.warn(`Only first version of resource ${crd.spec.names.kind} will be watched. Available versions are:`, crd.spec.versions.map(v => v.name+' '))
+            this.startResourceWatcher(apiPath, this.handleEvent)
+        }
     }
-
 }

@@ -5,6 +5,7 @@ import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
 import { ITrivyData, ITrivyMessage, ITrivyMessageResponse, IAsset, TrivyData } from './TrivyData'
 import { TrivyConfig, TrivyInstanceConfig } from './TrivyConfig'
+import { MagnifyData } from '../magnify/MagnifyData'
 
 export class TrivyChannel implements IChannel {
     private setupVisible = false
@@ -39,6 +40,36 @@ export class TrivyChannel implements IChannel {
         let trivyData:ITrivyData = channelObject.data
         let trivyMessageResponse:ITrivyMessageResponse = JSON.parse(wsEvent.data)
 
+        const getAsset = (namespace:string, name:string, container:string) : IAsset => {
+            let asset = trivyData.assets.find(a => a.namespace===namespace && a.name===name && a.container===container)
+            if (!asset) {
+                asset = {
+                    name,
+                    namespace,
+                    container,
+                    unknown: {
+                        statusCode: 0,
+                        statusMessage: ''
+                    },
+                    vulnerabilityreports: {
+                        score: 0,
+                        report: undefined
+                    },
+                    configauditreports: {
+                        report: undefined
+                    },
+                    sbomreports: {
+                        report: undefined
+                    },
+                    exposedsecretreports: {
+                        report: undefined
+                    }
+                }
+                trivyData.assets.push(asset)
+            }
+            return asset
+        }
+
         switch (trivyMessageResponse.type) {
             case EInstanceMessageType.DATA:
                 if (trivyMessageResponse.flow === EInstanceMessageFlow.RESPONSE && trivyMessageResponse.action === EInstanceMessageAction.COMMAND) {
@@ -53,61 +84,30 @@ export class TrivyChannel implements IChannel {
                             trivyData.score = trivyMessageResponse.data.score
                             break
                         case 'add':
+                            console.log(trivyMessageResponse.data.resource)
+                            let asset = getAsset(trivyMessageResponse.data.known.namespace, trivyMessageResponse.data.known.name, trivyMessageResponse.data.known.container)
+                            console.log(asset)
                             switch(trivyMessageResponse.data.resource) {
                                 case 'vulnerabilityreports':
-                                    let assetv:IAsset = {
-                                        name: trivyMessageResponse.data.known.name,
-                                        namespace: trivyMessageResponse.data.known.namespace,
-                                        container: trivyMessageResponse.data.known.container,
-                                        unknown: {
-                                            statusCode: 0,
-                                            statusMessage: ''
-                                        },
-                                        vulnerabilityreports: {
-                                            score: trivyMessageResponse.data.known.score,
-                                            report: trivyMessageResponse.data.known.report
-                                        },
-                                        configauditreports: {
-                                            report: undefined
-                                        }
-                                    }
-                                    let existingv = trivyData.assets.find(a => a.name===trivyMessageResponse.data.known.name && a.namespace===trivyMessageResponse.data.known.namespace && a.container===trivyMessageResponse.data.known.container)
-                                    if (existingv) {
-                                        console.log('exist')
-                                        existingv.vulnerabilityreports = {
-                                            score: trivyMessageResponse.data.known.score,
-                                            report: trivyMessageResponse.data.known.report
-                                        }
-                                    }
-                                    else {
-                                        trivyData.assets.push(assetv)
+                                    asset.vulnerabilityreports = {
+                                        score: trivyMessageResponse.data.known.score,
+                                        report: trivyMessageResponse.data.known.report
                                     }
                                     break
                                 case 'configauditreports':
-                                    let assetc:IAsset = {
-                                        name: trivyMessageResponse.data.known.name,
-                                        namespace: trivyMessageResponse.data.known.namespace,
-                                        container: trivyMessageResponse.data.known.container,
-                                        unknown: {
-                                            statusCode: 0,
-                                            statusMessage: ''
-                                        },
-                                        vulnerabilityreports: {
-                                            score: 0,
-                                            report: undefined
-                                        },
-                                        configauditreports: {
-                                            report: trivyMessageResponse.data.known.report
-                                        }
+                                    asset.configauditreports = {
+                                        report: trivyMessageResponse.data.known.report
                                     }
-                                    let existingc = trivyData.assets.find(a => a.name===trivyMessageResponse.data.known.name && a.namespace===trivyMessageResponse.data.known.namespace && a.container===trivyMessageResponse.data.known.container)
-                                    if (existingc) {
-                                        existingc.configauditreports = {
-                                            report: trivyMessageResponse.data.known.report
-                                        }
+                                    break
+                                case 'sbomreports':
+                                    asset.sbomreports = {
+                                        report: trivyMessageResponse.data.known.report
                                     }
-                                    else {
-                                        trivyData.assets.push(assetc)
+                                    console.log(trivyMessageResponse.data.known.report)
+                                    break
+                                case 'exposedsecretreports':
+                                    asset.exposedsecretreports = {
+                                        report: trivyMessageResponse.data.known.report
                                     }
                                     break
                             }
@@ -123,6 +123,10 @@ export class TrivyChannel implements IChannel {
                                     // }
                                     break
                                 case 'configauditreports':
+                                    break
+                                case 'sbomreports':
+                                    break
+                                case 'exposedsecretreports':
                                     break
                             }
                             break
@@ -140,7 +144,7 @@ export class TrivyChannel implements IChannel {
                         case EInstanceMessageAction.START:
                             channelObject.instanceId = signalMessage.instance
                             if (!channelObject.data.ri) {
-                                // just connected, we request endpoints id for uload/dload
+                                // just connected, we request HTTP endpoints
                                 let instanceConfig:IInstanceMessage = {
                                     action: EInstanceMessageAction.RI,
                                     channel: 'trivy',

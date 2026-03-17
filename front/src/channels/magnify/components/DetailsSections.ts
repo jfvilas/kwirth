@@ -114,7 +114,8 @@ let conditions:IDetailsItem = {
                 'NoConflicts:green',
                 'InitialNamesAccepted:green',
                 'Unschedulable:red',
-                'BackoffLimitExceeded:red'
+                'BackoffLimitExceeded:red',
+                'ContainersNotReady:red'
             ]
         },
         {

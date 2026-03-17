@@ -60,4 +60,10 @@ export interface IAsset {
     configauditreports: {
         report: any
     }
+    sbomreports: {
+        report: any
+    }
+    exposedsecretreports: {
+        report: any
+    }
 }

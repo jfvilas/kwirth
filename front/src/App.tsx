@@ -685,10 +685,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const getTabColor = (tab:ITabObject) => {
         let colorTable:IColors = TABUNSELECTEDCOLORS
         if (selectedTab.current === tab) colorTable = TABSELECTEDCOLORS
-        if (mode === 'dark') {
-            let colorTable:IColors = TABSELECTEDCOLORS
-            if (selectedTab.current === tab) colorTable = TABUNSELECTEDCOLORS
-        }
         if (tab.channelStarted) { 
             if (tab.channelPaused) {
                 return colorTable.pause
@@ -1491,7 +1487,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     }
 
     const onContextSelectorLocal = async (name:string, accessKey: AccessKey) => {
-        console.log(name)
         setCurrentWorkspaceName('untitled')
         setCurrentWorkspaceDescription('No description yet')
         clearTabs()

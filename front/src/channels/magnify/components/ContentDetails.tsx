@@ -38,15 +38,14 @@ const ContentDetails: React.FC<IContentWindow> = (props:IContentWindow) => {
 	let contentDetailsData:IDetailsData = props.data
 
 	useEffect(() => {
-		const previousFocus = document.activeElement as HTMLElement
+		newObject.current = objectClone(props.data.source.data.origin)
 
+		const previousFocus = document.activeElement as HTMLElement
 		const handleKeyDown = (event: KeyboardEvent) => {
 			event.stopPropagation()
 			if (event.key === 'Escape') props.onClose(props.id)
 		}
 		window.addEventListener('keydown', handleKeyDown, true)
-		console.log(props.data.source)
-		newObject.current = objectClone(props.data.source.data.origin)
 		return () => {
 			window.removeEventListener('keydown', handleKeyDown, true)
 			previousFocus?.focus()

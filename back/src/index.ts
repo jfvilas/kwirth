@@ -60,8 +60,8 @@ import { Application } from 'express-serve-static-core'
 //     return originalFetch(...args);
 // }
 
-const isElectron = true
-//const isElectron = !!process.versions.electron;
+//const isElectron = true
+const isElectron = !!process.versions.electron;
 
 const app : Application = express()
 

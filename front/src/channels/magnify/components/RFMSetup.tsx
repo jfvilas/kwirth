@@ -119,9 +119,9 @@ const rfmSetup = (
                                     if (severity==='W') color='orange'
                                     if (severity==='E') color='red'
                                     return <Stack key={index} direction={'row'}>
-                                        <Typography sx={{width:'5%', color}}>{severity}</Typography>
-                                        <Typography sx={{width:'25%', color}}>{e.eventTime||e.firstTimestamp||e.lastTimestamp}</Typography>
-                                        <Typography sx={{width:'70%', color}}>{e.message}</Typography>
+                                        <Typography variant='body2' sx={{width:'5%', color}}>{severity}</Typography>
+                                        <Typography variant='body2' sx={{width:'25%', color}}>{e.eventTime||e.firstTimestamp||e.lastTimestamp}</Typography>
+                                        <Typography variant='body2' sx={{width:'70%', color}}>{e.message}</Typography>
                                     </Stack>
                                 })
                             }
@@ -333,8 +333,9 @@ const rfmSetup = (
                 let f = magnifyData.files.find(x => p===x.path)
                 if (!f || !f.data.origin.status?.containerStatuses) return <></>
                 let result:JSX.Element[]=[]
-                if (f.data.origin.status.containerStatuses && f.data.origin.status.containerStatuses.length>0) {
-                    f.data.origin.status.containerStatuses.map((c:any, index:number) => {
+
+                const renderSet = (prefix:number, cStatuses:any) => {
+                    cStatuses.map((c:any, index:number) => {
                         let color='orange'
                         if (c.started) {
                             color='green'
@@ -343,9 +344,12 @@ const rfmSetup = (
                         else {
                             if (c.state.terminated) color = 'gray'
                         }
-                        result.push(<Box key={index} sx={{ width: '8px', height: '8px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>)
+                        result.push(<Box key={prefix*1000+index} sx={{ width: '8px', height: '8px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>)
                     })
+
                 }
+                if (f.data.origin.status.initContainerStatuses && f.data.origin.status.initContainerStatuses.length>0) renderSet(0, f.data.origin.status.initContainerStatuses)
+                if (f.data.origin.status.containerStatuses && f.data.origin.status.containerStatuses.length>0) renderSet(1, f.data.origin.status.containerStatuses)
                 return result
             }
 

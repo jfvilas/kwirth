@@ -419,6 +419,7 @@ async function podEvict (coreApi: CoreV1Api, namespace: string, name:string): Pr
         console.error('Error evicting:', err.response?.body?.message || err.message);
     }
 }
+
 async function podWork (coreApi: CoreV1Api, work: string): Promise<string|undefined> {
     const podDefinition = {
         metadata: {

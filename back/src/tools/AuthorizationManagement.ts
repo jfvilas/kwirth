@@ -43,8 +43,6 @@ export class AuthorizationManagement {
                         key = apiKeyApi.apiKeys.find(apiKey => accessKeySerialize(apiKey.accessKey)===receivedAccessKeyStr)
                         if (!key) {
                             console.log('Inexistent key on validKey: '+receivedAccessKeyStr)
-                            console.trace('********************')
-                            console.log(apiKeyApi.apiKeys)
                             res.status(403).json({})
                             return false
                         }            
@@ -273,9 +271,10 @@ export class AuthorizationManagement {
                 groupNames = (await appsApi.listNamespacedStatefulSet({namespace})).items.filter(ss => ss.status?.replicas!>0).map (n => n?.metadata?.name!)
                 break
             case 'Job':
-                console.log('job')
                 groupNames = (await batchApi.listNamespacedJob({namespace})).items.map(j => j.metadata?.name!)       
-                console.log(groupNames)
+                break
+            default:
+                //+++ Not Applicable
                 break
         }
         result.push(...groupNames)        
@@ -459,7 +458,7 @@ export class AuthorizationManagement {
         }
     }
 
-    public static getAllowedPods = async (coreApi: CoreV1Api, appsApi:AppsV1Api, namespace:string, group:string, accessKey:AccessKey): Promise<string[]> => {
+    public static getAllowedPods = async (coreApi: CoreV1Api, appsApi:AppsV1Api, namespace:string, controller:string, accessKey:AccessKey): Promise<string[]> => {
         let pods:V1Pod[] = []
         let result:string[]=[]
     
@@ -474,13 +473,16 @@ export class AuthorizationManagement {
                 if (AuthorizationManagement.getValidValues([pod.metadata.namespace], resource.namespaces.split(',')).length>0) {
                     let validPodNames = AuthorizationManagement.getValidValues([pod.metadata.name], resource.pods.split(','))
                     if (validPodNames.includes(pod.metadata.name)) {
-                        if (group==='') {
+                        if (controller==='') {
                             result.push(pod.metadata.name)
                         }
                         else {
                             if (pod.metadata.ownerReferences) {
                                 let controllerName = await this.getPodControllerName(appsApi, pod, true)
-                                if (controllerName === group || pod.metadata.name.startsWith(group)) result.push(pod.metadata.name)
+                                if (controllerName === controller || pod.metadata.name.startsWith(controller)) result.push(pod.metadata.name)
+                            }
+                            else {
+                                if (validPodNames.includes(pod.metadata.name)) result.push(pod.metadata.name)
                             }
                         }
                     }

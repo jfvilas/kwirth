@@ -3,7 +3,8 @@ import { ITrivyInstanceConfig } from './TrivyConfig'
 import { IconAlpine, IconDebian, IconUbuntu } from '../magnify/icons/Icons'
 import { IAsset } from './TrivyData'
 
-export type TReportType = 'vulnerabilityreports'|'configauditreports'
+export type TReportType = 'vulnerabilityreports'|'configauditreports'|'sbomreports'|'exposedsecretreports'
+
 export const getAvatarContent = (os:string) => {
     if (os.toLocaleLowerCase()==='alpine') return <IconAlpine size={'24'}/>
     if (os.toLocaleLowerCase()==='debian') return <IconDebian size={'24'}/>
@@ -18,9 +19,9 @@ const assetScore = (asset:IAsset, trivyInstanceConfig:ITrivyInstanceConfig, type
         (trivyInstanceConfig.maxMedium>=0? trivyInstanceConfig.maxMedium*4:0) +
         (trivyInstanceConfig.maxLow>=0? trivyInstanceConfig.maxLow*4:0)
 
-    let asssumm = type==='vulnerabilityreports'? asset.vulnerabilityreports.report?.summary : asset.configauditreports.report?.summary
-    if (asssumm) {
-        let score = (trivyInstanceConfig.maxCritical>=0? asssumm.criticalCount*4 : 0) + (trivyInstanceConfig.maxHigh>=0? asssumm.highCount*4 : 0) + (trivyInstanceConfig.maxMedium>=0? asssumm.mediumCount*4 : 0) + (trivyInstanceConfig.maxLow>=0? asssumm.lowCount*4 : 0)
+    let assetSumm = (asset as any)[type].report?.summary
+    if (assetSumm) {
+        let score = (trivyInstanceConfig.maxCritical>=0? assetSumm.criticalCount*4 : 0) + (trivyInstanceConfig.maxHigh>=0? assetSumm.highCount*4 : 0) + (trivyInstanceConfig.maxMedium>=0? assetSumm.mediumCount*4 : 0) + (trivyInstanceConfig.maxLow>=0? assetSumm.lowCount*4 : 0)
         let value = (1.0 - (score / maxScore)) * 100.0
         return value
     }

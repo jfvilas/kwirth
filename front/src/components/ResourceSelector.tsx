@@ -159,7 +159,7 @@ const ResourceSelector: React.FC<IResourceSelectorProps> = (props:IResourceSelec
         }
         else {
             setNamespaces(nss)
-            setAllControllers([])
+            setAllControllers([...( view==='pod' || view==='container'? ['Pod+Not Applicable']:[])])
             setControllers([])
             setPods([])
             setAllContainers([])
@@ -168,7 +168,7 @@ const ResourceSelector: React.FC<IResourceSelectorProps> = (props:IResourceSelec
         }
     }
 
-    const onChangeGroup = (event: SelectChangeEvent<typeof controllers>) => {
+    const onChangeController = (event: SelectChangeEvent<typeof controllers>) => {
         let controllers  = event.target.value as string[]
         setControllers(controllers)
         setAllPods([])
@@ -278,8 +278,8 @@ const ResourceSelector: React.FC<IResourceSelectorProps> = (props:IResourceSelec
             if (v===EInstanceConfigView.POD || v===EInstanceConfigView.CONTAINER) {
                 let allp:string[] = []
                 for (let namespace of props.resourceSelected!.namespaces) {
-                    for (let group of props.resourceSelected!.controllers) {
-                        let [gtype,gname] = group.split('+')
+                    for (let controller of props.resourceSelected!.controllers) {
+                        let [gtype,gname] = controller.split('+')
                         let ps = await (await fetch(`${c.url}/config/${namespace}/${gname}/pods?type=${gtype}`, addGetAuthorization(c.accessString))).json()
                         allp.push (...ps)
                     }
@@ -327,7 +327,7 @@ const ResourceSelector: React.FC<IResourceSelectorProps> = (props:IResourceSelec
                 <InputLabel>View</InputLabel>
                 <Select value={view} onChange={onChangeView} >
                     <MenuItem key={EInstanceConfigView.NAMESPACE} value={EInstanceConfigView.NAMESPACE} disabled={isDocker}>namespace</MenuItem>
-                    <MenuItem key={EInstanceConfigView.GROUP} value={EInstanceConfigView.GROUP} disabled={isDocker}>group</MenuItem>
+                    <MenuItem key={EInstanceConfigView.GROUP} value={EInstanceConfigView.GROUP} disabled={isDocker}>controller</MenuItem>
                     <MenuItem key={EInstanceConfigView.POD} value={EInstanceConfigView.POD}>pod</MenuItem>
                     <MenuItem key={EInstanceConfigView.CONTAINER} value={EInstanceConfigView.CONTAINER}>container</MenuItem>
                 </Select>
@@ -348,12 +348,12 @@ const ResourceSelector: React.FC<IResourceSelectorProps> = (props:IResourceSelec
             </FormControl>
 
             <FormControl variant='standard' sx={{ m: 1, minWidth: 100, width:'14%' }} disabled={namespaces.length===0 || view==='namespace' || isDocker}>
-                <InputLabel>Group</InputLabel>
-                <Select onChange={onChangeGroup} value={controllers} multiple renderValue={(selected) => selected.join(', ')}>
+                <InputLabel>Controller</InputLabel>
+                <Select onChange={onChangeController} value={controllers} multiple renderValue={(selected) => selected.map(v => v.split('+')[1]).join(', ')}>
                 { allControllers && allControllers.map( (value) => 
                     <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
                         <Checkbox checked={controllers.includes (value)} />
-                        {value.startsWith('ReplicaSet')? <IconReplicaSet size={18}/>: value.startsWith('DaemonSet')?<IconDaemonSet size={20}/>: value.startsWith('Deployment')?<IconDeployment size={20}/>:value.startsWith('StatefulSet')?<IconStatefulSet size={20}/>:value.startsWith('ReplicationController')?<IconReplicationController size={20}/>:<IconJob size={20}/>}&nbsp;{value.split('+')[1]}
+                        {value.startsWith('ReplicaSet')? <IconReplicaSet size={18}/>: value.startsWith('DaemonSet')?<IconDaemonSet size={20}/>: value.startsWith('Deployment')?<IconDeployment size={20}/>:value.startsWith('StatefulSet')?<IconStatefulSet size={20}/>:value.startsWith('ReplicationController')?<IconReplicationController size={20}/>:value.startsWith('ReplicationController')?<IconJob size={20}/>:<IconK8sBlank size={20}/>}&nbsp;{value.split('+')[1]}
                     </MenuItem>
                 )}
                 </Select>

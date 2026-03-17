@@ -6,8 +6,8 @@ ordenar los CRDi, y a lo mejor utilizar como nombre de la carpeta el Kind
 
 
 MAGNIFY FRONT
-mostrar en EL rfm el estado del socket de magnify (conexion al back)
 palette al arrancar magnify
+
 reconnect  NO VA!!!!
   hay que revisar el reconnect del node y el reconnect del front
 iconos
@@ -21,7 +21,7 @@ cuadno seleccionas un cluster no accesibel entra a magnify, y no deberia
 MAGNIFY BACK
 
 KWIRTH FRONT-BACK
-
+el resource selector no deja elegir pods sin controller
 
 
 
