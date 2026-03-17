@@ -45,11 +45,11 @@ const simpleBarChart = (asset:IAsset, trivyInstanceConfig:TrivyInstanceConfig) =
     ]
 
     return (
-        <Box display="flex" alignItems="flex-end" justifyContent="space-around" height={height+40} width="100%" padding={2} bgcolor='background.paper'>
+        <Box display='flex' alignItems='flex-end' justifyContent='space-around' height={height+40} width='100%' padding={2} bgcolor='background.paper'>
             {bars.map((bar, index) => (
-                <Box key={index} textAlign="center">
+                <Box key={index} textAlign='center'>
                     <Box width={40} height={bar.height} bgcolor={bar.color} marginX={1} />
-                    <Typography variant="caption">{bar.label}</Typography>
+                    <Typography variant='caption'>{bar.label}</Typography>
                 </Box>
             ))}
         </Box>
