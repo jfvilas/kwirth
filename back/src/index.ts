@@ -95,66 +95,61 @@ const envChannelEchoEnabled = (process.env.CHANNEL_ECHO || 'true').toLowerCase()
 const envChannelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLowerCase() === 'true'
 const envChannelMagnifyEnabled = (process.env.CHANNEL_MAGNIFY || 'true').toLowerCase() === 'true'
 
-// 1. Definimos la estructura de la información del timer
-interface TimerInfo {
-  type: 'Interval' | 'Timeout';
-  createdAt: string;
-  ms: number | undefined;
-}
-
-// 2. Extendemos el objeto global para que TS reconozca 'activeTimers'
 // +++TEST
-declare global {
-  // Usamos 'any' aquí para el ID para evitar el conflicto entre number (Browser) y Timeout (Node)
-  var activeTimers: Map<any, TimerInfo>;
-}
-global.activeTimers = new Map();
+// interface TimerInfo {
+//   type: 'Interval' | 'Timeout';
+//   createdAt: string;
+//   ms: number | undefined;
+// }
 
-const originalSetInterval = global.setInterval;
-const originalClearInterval = global.clearInterval;
+// declare global {
+//   // Usamos 'any' aquí para el ID para evitar el conflicto entre number (Browser) y Timeout (Node)
+//   var activeTimers: Map<any, TimerInfo>;
+// }
+// global.activeTimers = new Map();
 
-(global as any).setInterval = (handler: TimerHandler, timeout?: number, ...args: any[]) => {
-  const id = originalSetInterval(handler, timeout, ...args);
-  global.activeTimers.set(id, {
-    type: 'Interval',
-    createdAt: new Date().toLocaleTimeString(),
-    ms: timeout
-  });
-  return id;
-};
+// const originalSetInterval = global.setInterval;
+// const originalClearInterval = global.clearInterval;
 
-(global as any).clearInterval = (id: any) => {
-  global.activeTimers.delete(id);
-  originalClearInterval(id);
-};
+// (global as any).setInterval = (handler: TimerHandler, timeout?: number, ...args: any[]) => {
+//   const id = originalSetInterval(handler, timeout, ...args);
+//   global.activeTimers.set(id, {
+//     type: 'Interval',
+//     createdAt: new Date().toLocaleTimeString(),
+//     ms: timeout
+//   });
+//   return id;
+// };
 
-// --- Interceptar TIMEOUTS ---
-const originalSetTimeout = global.setTimeout;
-const originalClearTimeout = global.clearTimeout;
+// (global as any).clearInterval = (id: any) => {
+//   global.activeTimers.delete(id);
+//   originalClearInterval(id);
+// };
 
-(global as any).setTimeout = (handler: TimerHandler, timeout?: number, ...args: any[]) => {
-  const id = originalSetTimeout((...innerArgs: any[]) => {
-    global.activeTimers.delete(id);
-    if (typeof handler === 'function') {
-      handler(...innerArgs);
-    }
-  }, timeout, ...args);
+// // --- Interceptar TIMEOUTS ---
+// const originalSetTimeout = global.setTimeout;
+// const originalClearTimeout = global.clearTimeout;
 
-  global.activeTimers.set(id, {
-    type: 'Timeout',
-    createdAt: new Date().toLocaleTimeString(),
-    ms: timeout
-  });
-  return id;
-};
+// (global as any).setTimeout = (handler: TimerHandler, timeout?: number, ...args: any[]) => {
+//   const id = originalSetTimeout((...innerArgs: any[]) => {
+//     global.activeTimers.delete(id);
+//     if (typeof handler === 'function') {
+//       handler(...innerArgs);
+//     }
+//   }, timeout, ...args);
 
-(global as any).clearTimeout = (id: any) => {
-  global.activeTimers.delete(id);
-  originalClearTimeout(id);
-};
+//   global.activeTimers.set(id, {
+//     type: 'Timeout',
+//     createdAt: new Date().toLocaleTimeString(),
+//     ms: timeout
+//   });
+//   return id;
+// };
 
-
-
+// (global as any).clearTimeout = (id: any) => {
+//   global.activeTimers.delete(id);
+//   originalClearTimeout(id);
+// };
 
 
 
@@ -226,7 +221,7 @@ const getKubernetesKwirthData = async ():Promise<KwirthData|undefined> => {
                 return { clusterName: 'inCluster', namespace:usersSecret.metadata?.namespace!, deployment:'', inCluster:false, isElectron:isElectron, version:VERSION, lastVersion: VERSION, clusterType: EClusterType.KUBERNETES, metricsInterval:15, channels: [] }
             }
             else {
-                // +++ kwirth is running outside, but wants to use kubernetes secrets for storing creds, and they don't exsit
+                // kwirth is running outside, but wants to use kubernetes secrets for storing creds, and they don't exsit
                 console.log('Cannot determine namespace while running outside cluster (trying to read users secret)')
                 process.exit(1)
             }
@@ -1534,14 +1529,10 @@ const launchElectron = async (localKwirthData:KwirthData, expressApp:Application
                                     console.log('Creating instance for context', contextName)
                                     // +++ we should be using a common function for creating api key
                                     let description = 'Volatile key for electron'
-                                    let expire:number = Date.now() + 100000000000000  //+++
+                                    let expire:number = Date.now() + 10000000000  // 4 months
                                     let days:number = 1
                                     let accessKey:AccessKey = { id: uuid(), type: 'volatile', resources: 'cluster::::' }
                                     let apiKey:ApiKey={ accessKey, description, expire, days }
-                                    console.log('****************** CREATED')
-                                    console.log('****************** CREATED')
-                                    console.log('****************** CREATED')
-                                    console.log(accessKey)
                                     if (runningInstance.apiKeyApi) 
                                         runningInstance.apiKeyApi.apiKeys.push(apiKey)
                                     else
@@ -1754,12 +1745,10 @@ const createHttpServers = (localKwirthData:KwirthData, expressApp:Application, i
         console.log('Listening...')
         httpServer.listen(PORT, () => {
             console.log(`Server is listening on port ${PORT}`)
-            //console.log(`Context being used: ${ri.clusterInfo.kubeConfig.currentContext}`)
             if (localKwirthData.inCluster) {
                 console.log(`Kwirth is running INSIDE cluster`)
             }
             else {
-                //console.log(`Cluster name (according to kubeconfig context): ${ri.clusterInfo.kubeConfig.getCluster(ri.clusterInfo.kubeConfig.currentContext)?.name}.`)
                 console.log(`Kwirth is running OUTSIDE a cluster`)
             }
         })

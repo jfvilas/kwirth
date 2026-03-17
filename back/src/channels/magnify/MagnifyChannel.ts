@@ -410,6 +410,7 @@ class MagnifyChannel implements IChannel {
                             await podEvict(this.clusterInfo.coreApi, magnifyMessage.params![1], magnifyMessage.params![2])
                             break
                         case 'work':
+                            // +++ this is expectoed to be used for KubeWorks
                             let podName = await podWork(this.clusterInfo.coreApi, magnifyMessage.params![1])
                             this.sendDataMessage(webSocket, instance, '1', EMagnifyCommand.POD, JSON.stringify(['work',podName]))
                             break

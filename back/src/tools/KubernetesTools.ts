@@ -504,9 +504,8 @@ async function setIngressClassAsDefault (networkApi: NetworkingV1Api, name:strin
 
 async function imageDelete (appsApi:AppsV1Api, imageName:string) {
     // +++ TEST OTHER Kubes
-    /*
-        chroot /host /usr/local/bin/crictl rmi ${imageName} && sleep 30
 
+    /*
         /run/containerd/containerd.sock
         /run/k3s/containerd/containerd.sock
         /var/snap/microk8s/common/run/containerd.sock

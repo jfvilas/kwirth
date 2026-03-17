@@ -876,11 +876,6 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             console.log('No active tab found')
             return
         }
-        // let cluster = clusters.find(c => c.name === tab.channelObject.clusterName)
-        // if (!cluster) {
-        //     setMsgBox(MsgBoxOk('Kwirth',`Cluster set at channel configuration (${tab.channelObject.clusterName}) does not exist.`, setMsgBox))
-        //     return
-        // }
 
         if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
             tab.ws.onerror = (event) => socketDisconnect(event)

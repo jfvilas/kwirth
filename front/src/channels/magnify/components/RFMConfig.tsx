@@ -1687,7 +1687,7 @@ spaces.set('Node',
                 multi: true,
                 permission: true,
             },
-            {   // +++ add 'visible' / 'enabled' properties as calculated invoking a custom function
+            {
                 name: 'uncordon',
                 icon: <PlayCircle fontSize='small' />,
                 text: 'UnCordon',

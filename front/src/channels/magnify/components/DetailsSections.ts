@@ -81,7 +81,7 @@ let conditions:IDetailsItem = {
             text: 'Type',
             source: ['type'],
             format: 'string',
-            style: ['property:status:True:black', 'property:status:False:#c0c0c0']   //+++ variables segun el theme
+            style: ['property:status:True:text.primary', 'property:status:False:text.disabled']
         },
         {
             name: 'reason',

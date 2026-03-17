@@ -172,7 +172,6 @@ class MagnifyChannel implements IChannel {
 
                                         // let crd = magnifyData.files.find (f => f.path === path)
                                         // if (crd) {
-                                        //     // +++ sould we be listening for changes to CRDi's?
                                         //     let groupName = crd.data.origin.apiVersion.replace('/','-')+'-'+crd.data.origin.kind
                                         //     console.log(magnifyData.files.length)
                                         //     console.log('/custom/'+groupName)
@@ -1310,7 +1309,6 @@ class MagnifyChannel implements IChannel {
             }
         })
 
-        // we must  previosusly remove +++
         // for each CRD, we create an entry in the navigation pane for each group
         let groupName = obj.spec.group + (version?'-'+version:'') + '-' + obj.spec.names.kind
         this.upsertObject(magnifyData, {

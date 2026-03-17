@@ -762,7 +762,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const launchControllerMetrics = (p:string[]) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
-        //+++ falta decidir como agrupamos, group o merge: neceistamos un pequeño menu en externlaContent
+        // by default, we GROUP. User can change options in ContentExternal (after data is shown)
         launchObjectExternal('metrics', f, EInstanceConfigView.GROUP, undefined)
     }
 
