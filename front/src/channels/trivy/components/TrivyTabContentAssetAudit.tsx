@@ -22,15 +22,15 @@ const TrivyTabContentAssetAudit: React.FC<ITabContentTrivyAssetAuditProps> = (pr
                 </Stack>
             </AccordionSummary>
             <AccordionDetails>
-                <Typography><b>Id: </b><a href={check.primaryLink} target='_blank' rel='noreferrer'>{check.checkID}</a>{date.getFullYear()? <>&nbsp;&nbsp;(published {published})</>:<></>}</Typography>
-                <Typography><b>Category: </b>{check.category}</Typography>
-                <Typography><b>Description: </b>{check.description}</Typography>
-                <Typography><b>Remediation: </b>{check.remediation}</Typography>
-                <Typography><b>Messages: </b></Typography>
+                <Typography variant='body2'><b>Id: </b><a href={check.primaryLink} target='_blank' rel='noreferrer'>{check.checkID}</a>{date.getFullYear()? <>&nbsp;&nbsp;(published {published})</>:<></>}</Typography>
+                <Typography variant='body2'><b>Category: </b>{check.category}</Typography>
+                <Typography variant='body2'><b>Description: </b>{check.description}</Typography>
+                <Typography variant='body2'><b>Remediation: </b>{check.remediation}</Typography>
+                <Typography variant='body2'><b>Messages: </b></Typography>
                 <List>
                     {
                         check.messages.map( (m:string,index:number) => 
-                            <ListItem key={index}>{m}</ListItem>
+                            <ListItem key={index}><Typography variant='body2'>{m}</Typography></ListItem>
                         )
                     }
                 </List>

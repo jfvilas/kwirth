@@ -84,7 +84,7 @@ const ResizableDialog: React.FC<IResizableDialogProps> = ({ id, children, isMaxi
 
     return (
         <Dialog
-            open={true} hideBackdrop disableEnforceFocus disablePortal maxWidth={false}
+            open={true} hideBackdrop disableEnforceFocus disableRestoreFocus disablePortal maxWidth={false}
             onMouseDown={onFocus} PaperComponent={PaperComponent as any}
             PaperProps={{ nodeRef: paperRef, position: { x: layout.x, y: layout.y }, onStart: handleDragStart, onDrag: handleDrag, onStop: handleDragStop, disabled: isMaximized }}
             sx={{

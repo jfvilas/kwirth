@@ -13,7 +13,7 @@ import { foldCode } from '@codemirror/language'
 import { IContentWindow } from '../MagnifyTabContent'
 import { ResizableDialog } from './ResizableDialog'
 import { MsgBoxButtons, MsgBoxYesNo } from '../../../tools/MsgBox'
-
+import { oneDark } from '@codemirror/theme-one-dark'
 
 const yamlParser = require('js-yaml');
 
@@ -33,6 +33,8 @@ export interface IContentEditProps extends IContentWindow {
 
 const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
     const theme = useTheme()
+    const editorTheme = theme.palette.mode === 'dark' ? oneDark : 'light';
+
     const [msgBox, setMsgBox] = useState(<></>)
     const [code, setCode] = useState<string>('')
     const editorChanged = useRef<boolean>(false)
@@ -46,6 +48,8 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
     const muiTheme = EditorView.theme({
         "&": {
             height: '100%',
+            fontSize: "12px",
+            fontFamily: "'Fira Code', 'Source Code Pro', monospace"
         },
         // ".cm-gutters": {
         //     backgroundColor: theme.palette.background.default,
@@ -187,8 +191,9 @@ const ContentEdit: React.FC<IContentEditProps> = (props:IContentEditProps) => {
                 >
                     <CodeMirror value={code}
                         onChange={updateEditorValue}
-                        theme={'none'}
-                        onUpdate={(v) => { if (v.view) editorViewRef.current = v.view }}                    
+                        //theme={'none'}
+                        theme={editorTheme}
+                        onUpdate={(viewUpdate) => { if (viewUpdate.view) editorViewRef.current = viewUpdate.view }}
                         extensions={[
                             EditorState.readOnly.of(!contentEditData.allowEdit),
                             yaml(),

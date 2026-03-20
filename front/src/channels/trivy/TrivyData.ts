@@ -1,14 +1,20 @@
 import { IInstanceMessage } from "@jfvilas/kwirth-common"
 
+export const TRIVY_API_VULN_PLURAL = 'vulnerabilityreports'
+export const TRIVY_API_AUDIT_PLURAL = 'configauditreports'
+export const TRIVY_API_SBOM_PLURAL = 'sbomreports'
+export const TRIVY_API_EXPOSED_PLURAL = 'exposedsecretreports'
+
 export interface ITrivyData {
     paused:boolean
     started:boolean
-    score: number
     assets: IAsset[]
     ri:string|undefined
+    mode: 'list'|'card'
 }
 
 export class TrivyData implements ITrivyData{
+    mode: 'list' | 'card' = 'card'
     started = false
     paused = false
     score = 0
@@ -17,7 +23,6 @@ export class TrivyData implements ITrivyData{
 }
 
 export enum ETrivyCommand {
-    SCORE = 'score',
     RESCAN = 'rescan'
 }
 
@@ -54,7 +59,6 @@ export interface IAsset {
         statusMessage: string
     }
     vulnerabilityreports: {
-        score: number
         report: any
     }
     configauditreports: {

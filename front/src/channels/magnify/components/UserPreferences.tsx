@@ -86,7 +86,7 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
         setCustomActions([...customActions])
     }
 
-    return <Box width={'100%'} minHeight={'calc(100% - 16px)'} sx={{p:1}}> 
+    return <Box width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} p={2} sx={{bgcolor: 'background.default', borderBottomRightRadius:'8px', overflowY: 'auto'}}> 
         <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMore />}>
                 <Typography component="span"><b>Display</b></Typography>

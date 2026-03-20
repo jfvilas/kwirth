@@ -44,7 +44,6 @@ export interface IContentWindow {
     visible: boolean
     atFront: boolean
     atTop: boolean
-    //startTime: number
     x: number
     y: number
     width: number
@@ -288,7 +287,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 }
             }, 1000)
             setMsgBox (MsgBoxWaitCancel('Launch Work',`We are waiting for the ${ca.name} work to start (waitng for... ${url})...`, setMsgBox, (a:MsgBoxButtons) => {
-                if (a=== MsgBoxButtons.Cancel) clearInterval(id)
+                if (a === MsgBoxButtons.Cancel) clearInterval(id)
             }))
         }
         else if (ca.onReady === 'shell') {
@@ -357,7 +356,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         let f = magnifyData.files.filter(x => p.includes(x.path))
 
         let sections = objectSections.get(f[0].data.origin.kind)!
-        if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/')) sections = objectSections.get('#crdinstance#')!
+        if (f[0].path.startsWith('/custom/') && !f[0].path.startsWith('/custom/CustomResourceDefinition/')) sections = objectSections.get('#crdInstance#')!
 
         let existingWin = magnifyData.windows.find(w => w.selectedFiles.find(x => x.path === f[0].path) && w.class==='ContentDetails')  
         if (existingWin) {
@@ -371,7 +370,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 visible: true,
                 atTop: false,
                 atFront: true,
-                //startTime: Date.now(),
                 title: f[0].data.origin.metadata?.name,
                 isMaximized: false,
                 x: 100,
@@ -489,6 +487,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const launchObjectExternal = (channel:string, files:IFileObject[], view: EInstanceConfigView, container: string|undefined ) => {
+        let width = channel==='trivy'? window.innerWidth * 0.9 : 800
+        let height = channel==='trivy'? window.innerHeight * 0.9 : 600
         let win:IContentWindow = {
             id: 'external-' + channel + '-' + uuid(),
             class: 'ContentExternal',
@@ -499,8 +499,8 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             isMaximized: false,
             x: 100,
             y: 50,
-            width: 800,
-            height: 600,
+            width,
+            height,
             data: {
                 isInitialized: false,
                 isElectron: props.channelObject.isElectron,
@@ -514,7 +514,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 options: channel === 'ops'?
                     { autostart:true, pauseable:false, stopable:false, configurable:false}
                     :
-                    { autostart:true, pauseable:true, stopable:true, configurable:(channel!=='fileman' && channel!=='trivy')}
+                    { autostart:true, pauseable:true, stopable:true, configurable:(channel!=='fileman')}
             } satisfies IContentExternalData,
             selectedFiles: files,
             container: container,
@@ -528,7 +528,6 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const launchSearch = (p:string[]) => {
-        console.log(p)
         let f = magnifyData.files.filter(x => p.includes(x.path))
         let selFiles=[]
         let scope
@@ -857,45 +856,45 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     const onMagnifyObjectDetailsLink = (kind:string, name:string, namespace:string) => {
         let path = buildPath(kind, name, namespace)
-        let f = magnifyData.files.find(f => f.path === path)
-        console.log(path)
-        if (f) {
-            launchObjectDetails([f.path], undefined)
+        if (path.startsWith('//')) {
+            // this may be a CRD instance, since we found no top level category
+            let crd = magnifyData.files.find(f => f.class==='crdInstance' && f.data.origin.metadata.name===name && f.data.origin.kind===kind)
+            if (crd) {
+                let crdiPath = `/custom/${kind}/`+name+(namespace? ':'+namespace : '')
+                launchObjectDetails([crdiPath], undefined)
+                return
+            }
         }
         else {
-            // no found, we loook for special resources
-            if (kind==='Image') {
-                let imgName = 'docker.io/library/'+name
-                if (name.includes('/')) imgName = 'docker.io/' + name
-                let f = magnifyData.files.find(f => f.class==='Image' && f.data.origin?.names?.includes(imgName))
-                if (f) {
-                    launchObjectDetails([f.path], undefined)
-                    return
-                }
-                // we now try to find an image with the same SHA
-                if (name.includes('@sha256:')) {
-                    let x=name.indexOf('@sha256:')
-                    let sha = name.substring(x).toLowerCase()
-                    let f = magnifyData.files.find(f => f.class==='Image' && f.data.origin?.names?.some((img:string) => img.toLowerCase().endsWith(sha)))
+            let f = magnifyData.files.find(f => f.path === path)
+            if (f) {
+                launchObjectDetails([f.path], undefined)
+                return
+            }
+            else {
+                // no found, we loook for special resources
+                if (kind==='Image') {
+                    let imgName = 'docker.io/library/'+name
+                    if (name.includes('/')) imgName = 'docker.io/' + name
+                    let f = magnifyData.files.find(f => f.class==='Image' && f.data.origin?.names?.includes(imgName))
                     if (f) {
                         launchObjectDetails([f.path], undefined)
                         return
                     }
-                }                  
-                setMsgBox(MsgBoxOkError('Object details',<Box>Image '<b>{name}</b>' has not been found on artifacts database. Maybe it exist but is stored with any kind of prefix</Box>, setMsgBox))
-            }
-            else {
-                // not found, so we look for a CRD instance.
-                let crd = magnifyData.files.find(f => f.class==='CustomResourceDefinition' && f.data.origin.spec?.names?.kind===kind)
-                if (crd) {
-                    let crdiPath = '/custom/'+crd.data.group+(crd.data.version?'-'+crd.data.version:'')+'-'+kind+'/'+name
-                    launchObjectDetails([crdiPath], undefined)
-                }
-                else {
-                    setMsgBox(MsgBoxOkError('Object details',<Box>Object with name '<b>{name}</b>' of kind '{kind}' in namespace '${namespace}' has not been found on artifacts database.</Box>, setMsgBox))
+                    // we now try to find an image with the same SHA
+                    if (name.includes('@sha256:')) {
+                        let x=name.indexOf('@sha256:')
+                        let sha = name.substring(x).toLowerCase()
+                        let f = magnifyData.files.find(f => f.class==='Image' && f.data.origin?.names?.some((img:string) => img.toLowerCase().endsWith(sha)))
+                        if (f) {
+                            launchObjectDetails([f.path], undefined)
+                            return
+                        }
+                    }                  
                 }
             }
         }
+        setMsgBox(MsgBoxOkError('Object details',<Box>Image '<b>{name}</b>' has not been found on artifacts database. Maybe it exist but is stored with any kind of prefix</Box>, setMsgBox))
     }
 
     const onContentExternalRefresh = () => setTick(t=>t+1)

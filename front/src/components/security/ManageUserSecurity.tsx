@@ -30,7 +30,7 @@ const ManageUserSecurity: React.FC<IManageUserSecurityProps> = (props:IManageUse
 
     useEffect( () => {
         getUsers()
-    },[]);
+    },[])
 
     const onClickUser = async (id:string) => {
         let user:IUser = (await (await fetch(`${backendUrl}/user/${id}`, addGetAuthorization(accessString))).json())

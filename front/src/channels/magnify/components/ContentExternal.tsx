@@ -20,8 +20,10 @@ import { useAsync } from 'react-use'
 import { IContentWindow } from '../MagnifyTabContent'
 import { ResizableDialog } from './ResizableDialog'
 import { FormSimple } from './FormSimple'
-import { ITrivyConfig, ITrivyInstanceConfig } from '../../trivy/TrivyConfig'
+import { ITrivyInstanceConfig } from '../../trivy/TrivyConfig'
 import { ITrivyData } from '../../trivy/TrivyData'
+import { addGetAuthorization } from '../../../tools/AuthorizationManagement'
+import { MsgBoxOk, MsgBoxWait } from '../../../tools/MsgBox'
 
 export interface IContentExternalOptions {
     pauseable: boolean
@@ -60,6 +62,7 @@ export interface IContentExternalObject {
 }
 
 const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternalProps) => {
+    const [msgBox, setMsgBox] = useState(<></>)
     const [ anchorHelp, setAnchorHelp ] = useState<undefined | HTMLElement>(undefined)
     const [ anchorConfig, setAnchorConfig ] = useState<undefined | HTMLElement>(undefined)
     const [ , setRefreshTick] = useState(0);
@@ -81,7 +84,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                     setLogConfig(contentExternalData.content)
                     break
                 case 'metrics':
-                    setChannelConfig({ aggregate: true, merge: false, type:{value:'line', options:['line','bar','area']}, width:3, depth:50, legend:true})
+                    setChannelConfig({ aggregate: true, merge: false, type: {value:'line', options:['line','bar','area']}, width:3, depth:50, legend:true})
                     setMetricsConfig(contentExternalData.content)
                     break
                 case 'ops':
@@ -93,7 +96,44 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                     setFilemanConfig(contentExternalData.content)
                     break
                 case 'trivy':
-                    setChannelConfig({})
+                    console.log('xx')
+                    setChannelConfig({
+                        'Status': {
+                            text: 'Status',
+                            asyncAction: async () => {
+                                try  {
+                                    if (contentExternalData.content?.externalChannelObject?.data.ri)
+                                        return await (await fetch (`${contentExternalData.content?.externalChannelObject?.clusterUrl}/${contentExternalData.content?.externalChannelObject?.data.ri}/channel/trivy/operator?action=status`, addGetAuthorization(contentExternalData.content?.externalChannelObject?.accessString!))).text()
+                                    else
+                                        return 'No RI. Wait a few seconds.'
+                                }
+                                catch {
+                                    return 'N/A'
+                                }
+                            }
+                        },
+                        'Install Trivy operator': { 
+                            button:'Install',
+                            action: async () => {
+                                if (contentExternalData.content?.externalChannelObject?.data.ri) {
+                                    setMsgBox(MsgBoxWait('Trivy install', 'Wait for Trivy to start installation', setMsgBox, ))
+                                    await fetch (`${contentExternalData.content?.externalChannelObject?.clusterUrl}/${contentExternalData.content?.externalChannelObject?.data.ri}/channel/trivy/operator?action=install`, addGetAuthorization(contentExternalData.content?.externalChannelObject?.accessString!))
+
+                                }
+                                else
+                                    setMsgBox(MsgBoxOk('Trivy install', 'Running instance is not yet available, please try again in a few seconds', setMsgBox))
+                            } 
+                        },
+                        'Remove Trivy operator': { 
+                            button:'Remove',
+                            action: async () => {
+                                if (contentExternalData.content?.externalChannelObject?.data.ri)
+                                    await fetch (`${contentExternalData.content?.externalChannelObject?.clusterUrl}/${contentExternalData.content?.externalChannelObject?.data.ri}/channel/trivy/operator?action=remove`, addGetAuthorization(contentExternalData.content?.externalChannelObject?.accessString!))
+                                else
+                                    setMsgBox(MsgBoxOk('Trivy install', 'Running instance is not yet available, please try again in a few seconds', setMsgBox))
+                            } 
+                        }
+                    })
                     setTrivyConfig(contentExternalData.content)
                     break
             }
@@ -364,9 +404,9 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             maxLow: 0
         }
         let trivyData:ITrivyData = {
+            mode: 'card',
             paused: false,
             started: false,
-            score: 0,
             assets: [],
             ri: undefined
         }
@@ -483,7 +523,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
         switch(contentExternalData.channelId) {
             case 'log':
                 content = <>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>Log</Typography>
+                    <Typography variant='subtitle1' sx={{ fontWeight: 700, flexGrow: 1 }}>Log</Typography>
                     <Divider/>
                     <Typography fontSize={12}>You can configure log depth (number of lines) on the configuration menu.</Typography>
                     <Typography fontSize={12}>Other configuration options, like Start Diagnostics, are not available to Magnify, but you can use them in log channel.</Typography>
@@ -491,7 +531,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 break
             case 'metrics':
                 content = <>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>Metrics</Typography>
+                    <Typography variant='subtitle1' sx={{ fontWeight: 700, flexGrow: 1 }}>Metrics</Typography>
                     <Divider/>
                     <Typography fontSize={12}>You can change every individual chart type, but it won't be saved. Next time you'll need to reconfigure it again.</Typography>
                     <Typography fontSize={12}>Data visualization refreshment depends on your Kwirth front configuration, your Magnify configuration.</Typography>
@@ -500,7 +540,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 break
             case 'ops':
                 content = <>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>Ops</Typography>
+                    <Typography variant='subtitle1' sx={{ fontWeight: 700, flexGrow: 1 }}>Ops</Typography>
                     <Divider/>
                     <Typography fontSize={12}>You can use clipboard functions by pressing <b>Ctrl+Shift+C</b> for copying and <b>Ctrl+Shift+V</b> for pasting</Typography>
                     <Typography fontSize={12}>You can minimize this window and the connection will keep open, or you can close this window and the connection to the container will be closed.</Typography>
@@ -508,7 +548,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 break
             case 'fileman':
                 content = <>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>Fileman</Typography>
+                    <Typography variant='subtitle1' sx={{ fontWeight: 700, flexGrow: 1 }}>Fileman</Typography>
                     <Divider/>
                     <Typography fontSize={12}>You can refresh filesystem data everytime you suspect what you are viewing is not acccurate. Just click on top-righ icon to refresh content.</Typography>
                     <Typography fontSize={12}>Upload and Download capabilities depend on your kind of Kwirth deployment. These actions are not available for all architectures. They should be available, at least, on Kubernetes Deployment. Accessing them via Electron may not be working.</Typography>
@@ -516,9 +556,11 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 break
             case 'trivy':
                 content = <>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>Trivy</Typography>
+                    <Typography variant='subtitle1' sx={{ fontWeight: 700, flexGrow: 1 }}>Trivy</Typography>
                     <Divider/>
-                    <Typography fontSize={12}>Yes, you're right this is WIP.</Typography>
+                    <Typography variant='body2'>Kwirth Trivy channel is a powerful tool for managing your workload security. It is based on Trivy Operator, which you can install by your own or use Kwirth for deploying Trivy without any effort (perform installation from a Trivy channel or from 'Settings' on this window).</Typography>
+                    <Typography variant='body2'>Once Trivy Operator is installed, you will see here Trivy information related to artifacts you've selected in Magnify. You can select, for instance, several pods and access this Trivy channel for viewing Trivy information about those set of pods.</Typography>
+                    <Typography variant='body2'>From the asset list you will be able to see: Vulnerabilities report, Config Audit report, Exposed secrets report and also a SBOM (Software Bill of Materials, where you can analyze pacakges and its dependencies).</Typography>
                 </>
                 break
         }
@@ -569,13 +611,13 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 play()
                 break
             case 'metrics':
-                let mConf = contentExternalData.content!.externalChannelObject!.config as IMetricsConfig
-                let mIConf = contentExternalData.content!.externalChannelObject!.instanceConfig as IMetricsInstanceConfig
-                mConf.width = values.width
-                mConf.merge = values.merge
-                mConf.depth = values.depth
-                mConf.legend = values.legend
-                mIConf.aggregate = values.aggregate
+                let metricsConf = contentExternalData.content!.externalChannelObject!.config as IMetricsConfig
+                let metricsIConf = contentExternalData.content!.externalChannelObject!.instanceConfig as IMetricsInstanceConfig
+                metricsConf.width = values.width
+                metricsConf.merge = values.merge
+                metricsConf.depth = values.depth
+                metricsConf.legend = values.legend
+                metricsIConf.aggregate = values.aggregate
                 stop()
                 play()
                 break
@@ -584,6 +626,12 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
             case 'fileman':
                 break
             case 'trivy':
+                let trivyConf = contentExternalData.content!.externalChannelObject!.config as IMetricsConfig
+                let trivyIConf = contentExternalData.content!.externalChannelObject!.instanceConfig as IMetricsInstanceConfig
+                trivyConf.width = values.width
+                trivyConf.merge = values.merge
+                trivyConf.depth = values.depth
+                trivyIConf.aggregate = values.aggregate
                 break
         }
     }
@@ -632,10 +680,9 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 {showContent()}
             </DialogContent>
         </ResizableDialog>        
-        {anchorHelp && showHelp()}
-        {
-            anchorConfig && <FormSimple anchorParent={anchorConfig} model={channelConfig} onApply={onConfigApply} onClose={() => setAnchorConfig(undefined)}/>
-        }
+        { anchorHelp && showHelp() }
+        { anchorConfig && <FormSimple anchorParent={anchorConfig} model={channelConfig} onApply={onConfigApply} onClose={() => setAnchorConfig(undefined)}/> }
+        { msgBox }
     </>)
 }
 

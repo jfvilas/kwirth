@@ -31,6 +31,7 @@ export class EventsTools {
                     },
                     (err) => {
                         console.log(`[${resourcePath}] Watcher ended or error (${err}). Restarting...`)
+                        console.log(err)
                         setTimeout(watchLoop, 5000)
                     }
                 )

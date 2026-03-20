@@ -1,8 +1,7 @@
 import { IInstanceMessage } from "@jfvilas/kwirth-common"
 
-export declare enum ETrivyCommand {
-    SCORE = "score",
-    RESCAN = "rescan"
+export enum ETrivyCommand {
+    RESCAN = 'rescan'
 }
 
 export interface ITrivyMessage extends IInstanceMessage {

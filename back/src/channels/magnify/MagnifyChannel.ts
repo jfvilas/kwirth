@@ -635,6 +635,7 @@ class MagnifyChannel implements IChannel {
                     })
                     break
                 case 'Service':
+                    console.log('*************************************')
                     throttleExcute(param, async () => {
                         this.sendDataMessage(webSocket, instance, magnifyMessage.id, EMagnifyCommand.LIST, JSON.stringify(await this.clusterInfo.coreApi.listServiceForAllNamespaces()))
                     })

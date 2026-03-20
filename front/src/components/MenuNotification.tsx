@@ -23,7 +23,7 @@ interface MenuNotificationProps {
     onRefresh: () => void
 }
 
-const MenuNotification: React.FC<MenuNotificationProps> = ({ anchorParent: anchorParent, onClose, notifications, channels, onRefresh }) => {
+const MenuNotification: React.FC<MenuNotificationProps> = ({ anchorParent, onClose, notifications, channels, onRefresh }) => {
     const getSeverityColor = (level: ENotifyLevel) => {
 		const colors = {
 			[ENotifyLevel.ERROR]: 'error.main',

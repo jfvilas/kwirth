@@ -1,12 +1,13 @@
 ******************ERRORES
 RFM
-cuando cambiamos de pantalla en magnify (o lo que sea) y cambian las columnas, hay que resetear los widths de las columnas
-revisar ajuste de columnas
-ordenar los CRDi, y a lo mejor utilizar como nombre de la carpeta el Kind
+revisar ajuste de columnas (config, resize, add, remove....)
+sort en columna tipo "age" esta al reves
 
 
 MAGNIFY FRONT
 palette al arrancar magnify
+window arrange (left-right, small on bottom, 4 windows, etc...)
+revisar ordenacion de more events
 
 reconnect  NO VA!!!!
   hay que revisar el reconnect del node y el reconnect del front
@@ -22,53 +23,46 @@ MAGNIFY BACK
 
 KWIRTH FRONT-BACK
 el resource selector no deja elegir pods sin controller
-
+cando se instala trivy, no refresca los reports a medida que llegan (creo que no se ha lanzado el "subscribe" a los eventos desde el cliente, dado que los CRD so nnuevos)
 
 
 *******************MEJORAS
 
-
 FILEMAN
-añaidr ... en leftmenu cuando ha mas de xx opciones (xx configurable, con valor por defecto)
-añadir right items configurables
+añadir ... en leftmenu cuando ha mas de xx opciones (xx configurable, con valor por defecto)
+
 
 MAGNIFY FRONT
 content external, poder hacer restart del content (por si se deconecta o lo que sea)
+add keys to existing CM or secret
 details
     +++ cm/secret: textarea, > tamaño inicial fijo (no todo el contenido)
     +++ servaccnt: tokens ifpresent
     events > revisar orden 23h59m, y revisar orden si no hay fechahora (en blanco) +++TEST
 💖💖💖 portforward con smart proxy
     running, just manage to detect rootpath in order to enable/disable forwarding
-    portforward con electorn
+    portforward con electron
 
 
-KWIRTH
-  añadir logging selectivo en el backend de kwirth: SEC, METRICS, CHANNEL...., para poder ver solo los mensajes que nos intenresan
-  en los last tabs deberiamos poder saber a que nos vamos a conectar antes de conectarnos (un tooltip o asin)
 
-
-    
-
+==============================================================================
 *********V2*********
 KWIRTH
+en los last tabs deberiamos poder saber a que nos vamos a conectar antes de conectarnos (un tooltip o asin)
+añadir logging selectivo en el backend de kwirth: SEC, METRICS, CHANNEL...., para poder ver solo los mensajes que nos intenresan en el log de kwirth
 channel metrics: añadir metricas sinteticas: numero de pods en nodo, percentage de pods
 añadir gestion centralizada de timeouts e intervasl en front y en back [codigo mas abajo]
 fileman: mantener la conexion con el pod abierta para que la navegacion por el filesystem sea mas fluida
 
 
 MAGNIFY FRONT
-    busquedas: buscar en los CRD y en los CRDi
+    headers ajustables en ancho y presencia
     improve DetailsObject
         always use rootObj, and just change the path, so trace-back can be used ofr detecting data changed origin
-    zona de avisos del cluster (implementar en filemanager, una campana)
-    zona de notifications
-    mejorar el resize column
 
 RFM
     en los fileitem, cuando le fila es muy alta, el nombre del fileitem se esta alineando arriab, y deberia ir al centro
 
-KWIRTH
 
 
 ==============================================================================

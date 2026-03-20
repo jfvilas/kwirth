@@ -1,55 +1,73 @@
 import { Avatar, Box, Card, CardContent, CardHeader, CardMedia, Divider, IconButton, Menu, MenuItem, MenuList, Stack, Typography } from '@mui/material'
-import { MoreVert as MoreVertIcon, PropaneSharp } from '@mui/icons-material'
+import { MoreVert } from '@mui/icons-material'
 import { Visibility as VisibilityIcon } from '@mui/icons-material'
 import { Replay as ReplayIcon } from '@mui/icons-material'
-import { assetAvatarColor, assetScore, assetScoreColor, getAvatarContent } from '../TrivyCommon'
+import { assetAvatarColor, getAvatarContent } from '../TrivyCommon'
 import { useState } from 'react'
 import { IChannelObject } from '../../IChannel'
-import { ITrivyInstanceConfig, TrivyInstanceConfig } from '../TrivyConfig'
+import { ITrivyInstanceConfig } from '../TrivyConfig'
 import { EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageFlow, EInstanceMessageType } from '@jfvilas/kwirth-common'
 import { ETrivyCommand, IAsset, ITrivyMessage } from '../TrivyData'
 
 interface ITrivyTabContentAssetProps {
     asset: IAsset
     channelObject: IChannelObject
-    view: string
-    onVulns: (asset:IAsset) => void
-    onAudit: (asset:IAsset) => void
-    onSbom: (asset:IAsset) => void
-    onExposed: (asset:IAsset) => void
+    mode: 'list'|'card'
+    onShowVulns: (asset:IAsset) => void
+    onShowAudit: (asset:IAsset) => void
+    onShowSbom: (asset:IAsset) => void
+    onShowExposed: (asset:IAsset) => void
     onRescan: (asset:IAsset) => void
 }
 
-const simpleBarChart = (asset:IAsset, trivyInstanceConfig:TrivyInstanceConfig) => {
+export const getVulns = (asset:IAsset) => {
     let reportVulns = asset.vulnerabilityreports.report
+    return (reportVulns?.summary?.criticalCount +  reportVulns?.summary?.highCount + reportVulns?.summary?.mediumCount + reportVulns?.summary?.lowCount) || 0
+}
+
+export const getAudit = (asset:IAsset) => {
     let reportAudit = asset.configauditreports.report
-    let reportSbom = asset.sbomreports.report
+    return (reportAudit?.summary?.criticalCount +  reportAudit?.summary?.highCount + reportAudit?.summary?.mediumCount + reportAudit?.summary?.lowCount) || 0
+}
+
+export const getExposed = (asset:IAsset) => {
     let reportExposed = asset.exposedsecretreports.report
-    let vulns = (reportVulns?.summary?.criticalCount +  reportVulns?.summary?.highCount + reportVulns?.summary?.mediumCount + reportVulns?.summary?.lowCount) || 0
-    let audit = (reportAudit?.summary?.criticalCount +  reportAudit?.summary?.highCount + reportAudit?.summary?.mediumCount + reportAudit?.summary?.lowCount) || 0
-    let sbom = (reportSbom?.components.components?.length) || 0
-    let exposed = (reportExposed?.secrets.length) || 0
-    let height = 100
-    let factor = 1
-    const getColor = (v:number, max:number) => {
-        if (max<0) return '#dddddd'
-        if (v>=max) return '#d32f2f'
-        if (v>max*0.75) return '#fbc02d'
+    return (reportExposed?.summary?.criticalCount +  reportExposed?.summary?.highCount + reportExposed?.summary?.mediumCount + reportExposed?.summary?.lowCount) || 0
+}
+
+const simpleBarChart = (asset: IAsset, trivyInstanceConfig: ITrivyInstanceConfig) => {
+    const reportSbom = asset.sbomreports.report
+    const vulns = getVulns(asset)
+    const audit = getAudit(asset)
+    const sbom = (reportSbom?.components?.components?.length) || 0
+    const exposed = getExposed(asset)
+    
+    const maxHeightPx = 100
+    const maxDataValue = Math.max(vulns, audit, sbom, exposed, 1)
+
+    const calculateHeight = (value: number) => (value / maxDataValue) * maxHeightPx
+
+    const getColor = (v: number, max: number) => {
+        if (max < 0) return '#dddddd'
+        if (v >= max) return '#d32f2f'
+        if (v > max * 0.75) return '#fbc02d'
         return '#388e3c'
     }
+
     const bars = [
-        { label: `Vulns (${vulns})`, height: Math.min(vulns*factor,height), color: getColor(vulns, trivyInstanceConfig.maxCritical) },
-        { label: `Audit (${audit})`, height: Math.min(audit*factor,height), color: getColor(audit, trivyInstanceConfig.maxHigh) },
-        { label: `SBOM (${sbom})`, height: Math.min(sbom*factor,height), color: 'green' },
-        { label: `Exposed (${exposed})`, height: Math.min(exposed*factor,height), color: 'red' },
+        { label: `Vulns`, value: vulns, height: calculateHeight(vulns), color: getColor(vulns, trivyInstanceConfig.maxCritical) },
+        { label: `Audit`, value: audit, height: calculateHeight(audit), color: getColor(audit, trivyInstanceConfig.maxHigh) },
+        { label: `SBOM`, value: sbom, height: calculateHeight(sbom), color: '#388e3c' },
+        { label: `Exposed`, value: exposed, height: calculateHeight(exposed), color: '#d32f2f' },
     ]
 
     return (
-        <Box display='flex' alignItems='flex-end' justifyContent='space-around' height={height+40} width='100%' padding={2} bgcolor='background.paper'>
+        <Box display='flex' alignItems='flex-end' justifyContent='space-around' height={maxHeightPx + 40} width='100%' padding={1} bgcolor='background.paper'>
             {bars.map((bar, index) => (
-                <Box key={index} textAlign='center'>
-                    <Box width={40} height={bar.height} bgcolor={bar.color} marginX={1} />
-                    <Typography variant='caption'>{bar.label}</Typography>
+                <Box key={index} textAlign='center' sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <Typography variant='caption' sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>{bar.value}</Typography>                    
+                    <Box width={30} height={bar.height} bgcolor={bar.color} marginX={1} sx={{ transition: 'height 0.3s ease', borderRadius: '2px 2px 0 0' }}/>                    
+                    <Typography variant='caption' sx={{ fontSize: '0.65rem' }}>{bar.label}</Typography>
                 </Box>
             ))}
         </Box>
@@ -58,10 +76,9 @@ const simpleBarChart = (asset:IAsset, trivyInstanceConfig:TrivyInstanceConfig) =
 
 const TrivyTabContentAsset: React.FC<ITrivyTabContentAssetProps> = (props:ITrivyTabContentAssetProps) => {
     let trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig
-    const [anchorMenu, setAnchorMenu] = useState<HTMLElement|null>(null)
+    const [anchorMenu, setAnchorMenu] = useState<HTMLElement|undefined>(undefined)
 
     const rescan = (asset:IAsset) => {
-        console.log(props.channelObject.webSocket)
         if (props.channelObject.webSocket) {
             let trivyMessage: ITrivyMessage = {
                 msgtype: 'trivymessage',
@@ -84,47 +101,45 @@ const TrivyTabContentAsset: React.FC<ITrivyTabContentAssetProps> = (props:ITrivy
     }
 
     let assetMenu = (
-        <Menu anchorEl={anchorMenu} open={Boolean(anchorMenu)} onClose={() => setAnchorMenu(null)}>
+        <Menu anchorEl={anchorMenu} open={Boolean(anchorMenu)} onClose={() => setAnchorMenu(undefined)}>
             <MenuList dense sx={{width:'200px'}}>
-                <MenuItem onClick={() => { setAnchorMenu(null); props.onVulns(props.asset)}} disabled={!props.asset.vulnerabilityreports.report}><VisibilityIcon/>&nbsp;&nbsp;Vulnerabilities</MenuItem>
-                <MenuItem onClick={() => { setAnchorMenu(null); props.onAudit(props.asset)}} disabled={!props.asset.configauditreports.report}><VisibilityIcon/>&nbsp;&nbsp;Audit</MenuItem>
-                <MenuItem onClick={() => { setAnchorMenu(null); props.onSbom(props.asset)}} disabled={!props.asset.sbomreports.report}><VisibilityIcon/>&nbsp;&nbsp;SBOM</MenuItem>
-                <MenuItem onClick={() => { setAnchorMenu(null); props.onExposed(props.asset)}} disabled={!props.asset.exposedsecretreports.report}><VisibilityIcon/>&nbsp;&nbsp;Exposed secrets</MenuItem>
-                <MenuItem onClick={() => { setAnchorMenu(null); rescan(props.asset)}}><ReplayIcon/>&nbsp;&nbsp;Re-scan</MenuItem>
+                <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowVulns(props.asset)}} disabled={!props.asset.vulnerabilityreports.report}><VisibilityIcon/>&nbsp;&nbsp;Vulnerabilities</MenuItem>
+                <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowAudit(props.asset)}} disabled={!props.asset.configauditreports.report}><VisibilityIcon/>&nbsp;&nbsp;Audit</MenuItem>
+                <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowSbom(props.asset)}} disabled={!props.asset.sbomreports.report}><VisibilityIcon/>&nbsp;&nbsp;SBOM</MenuItem>
+                <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowExposed(props.asset)}} disabled={!props.asset.exposedsecretreports.report}><VisibilityIcon/>&nbsp;&nbsp;Exposed secrets</MenuItem>
+                <MenuItem onClick={() => { setAnchorMenu(undefined); rescan(props.asset)}}><ReplayIcon/>&nbsp;&nbsp;Re-scan</MenuItem>
             </MenuList>
         </Menu>
     )
     
-    if (props.view === 'card') return ( <>
-        <Card sx={{width:'100%', height:'280px', borderStyle:'solid', border:'1px'}}>
+    if (props.mode === 'card') return (<>
+        <Card sx={{width:'100%', height:'280px', borderWidth: '1px', borderStyle:'solid', borderColor:'divider'}}>
             <CardHeader
                 avatar={<Avatar sx={{background: assetAvatarColor(props.asset.vulnerabilityreports?.report?.os?.family||'X')}}>{getAvatarContent(props.asset.vulnerabilityreports?.report?.os?.family||'X')}</Avatar>}
                 title={<>
-                    <Typography variant='body2' color='textPrimary'>{`${props.asset.name?.substring(0,30)}...`}</Typography>
-                    <Typography variant='body2' color='textPrimary'>{`${props.asset.container?.substring(0,30)||'NA'}...`}</Typography>
+                    <Typography variant='body2' color='textPrimary'>{`${props.asset.name?.substring(0,20)}...`}</Typography>
+                    <Typography variant='body2' color='textPrimary'>{`${props.asset.container?.substring(0,20)||'NA'}...`}</Typography>
                 </>}
-                action={<IconButton onClick={(event) => setAnchorMenu(event?.currentTarget)}><MoreVertIcon /></IconButton>}
+                action={<IconButton onClick={(event) => setAnchorMenu(event?.currentTarget)}><MoreVert/></IconButton>}
             />
             <CardMedia>
                 {simpleBarChart(props.asset, trivyInstanceConfig)}
             </CardMedia>
-            <CardContent>
+            <CardContent sx={{borderTopWidth: '1px', borderTopStyle:'solid', borderTopColor:'divider'}}>
                 <Stack direction='row'>
                     <Divider/>
                     <Stack direction='column' sx={{flex:1}}>
-                        <Typography variant='body2'><b>Score:&nbsp;</b>{assetScore(props.asset, trivyInstanceConfig, 'vulnerabilityreports').toFixed(2)}%</Typography>
                         <Typography variant='body2'><b>Date:&nbsp;</b>{props.asset.vulnerabilityreports?.report?.updateTimestamp || props.asset.configauditreports?.report?.updateTimestamp}</Typography>
                     </Stack>
                 </Stack>
             </CardContent>
         </Card>
         { anchorMenu && assetMenu }
-        </>
+    </>)
 
-    )
-    if (props.view === 'list') return (
+    if (props.mode === 'list') return (<>
         <Card sx={{width:'100%'}}>
-            <Stack direction={'row'}>
+            <Stack direction={'row'} alignItems={'center'}>
                 <Stack direction={'row'} width={'50%'} p={1}  alignItems={'center'}>
                     <Avatar sx={{background: assetAvatarColor(props.asset.vulnerabilityreports?.report?.os?.family||'X')}}>{getAvatarContent(props.asset.vulnerabilityreports?.report?.os?.family||'X')}</Avatar>
                     <Stack direction={'column'} ml={1}>
@@ -132,17 +147,25 @@ const TrivyTabContentAsset: React.FC<ITrivyTabContentAssetProps> = (props:ITrivy
                         <Typography variant='body2'>{`${props.asset.vulnerabilityreports?.report?.updateTimestamp || props.asset.configauditreports?.report?.updateTimestamp}`}</Typography>                        
                     </Stack>
                 </Stack>
-                <Stack direction={'row'} alignItems={'center'} sx={{width:'10%'}}>
-                    <Typography color={assetScoreColor(props.asset, trivyInstanceConfig, 'vulnerabilityreports')}>{assetScore(props.asset, trivyInstanceConfig, 'vulnerabilityreports').toFixed(2)}%</Typography>
+                <Stack direction={'column'} sx={{width:'10%'}} alignItems={'center'}>
+                    <Typography fontSize={'18px'}>{getVulns(props.asset)}</Typography>
+                    <Typography fontSize={'8px'}>Vulnerabilities</Typography>
                 </Stack>
-                <Stack direction={'row'} sx={{display:'flex'}} display={'flex'} flexDirection={'row'} width={'100%'} flexGrow={1} alignItems={'center'}>
-                    <Typography sx={{flex:1}}></Typography>
-                    <IconButton onClick={() => props.onVulns(props.asset)}><VisibilityIcon/></IconButton>
-                    <IconButton onClick={() => props.onAudit(props.asset)}><VisibilityIcon/></IconButton>
+                <Stack direction={'column'} sx={{width:'10%'}} alignItems={'center'}>
+                    <Typography fontSize={'18px'}>{getAudit(props.asset)}</Typography>
+                    <Typography fontSize={'8px'}>ConfigAudit</Typography>
                 </Stack>
+                <Stack direction={'column'} sx={{width:'10%'}} alignItems={'center'}>
+                    <Typography fontSize={'18px'}>{getExposed(props.asset)}</Typography>
+                    <Typography fontSize={'8px'}>ExposedSecrets</Typography>
+                </Stack>
+                <Typography sx={{flex:1}}></Typography>
+                <IconButton onClick={(event) => setAnchorMenu(event.currentTarget)}><MoreVert/></IconButton>
             </Stack>
         </Card>
-    )
+        { anchorMenu && assetMenu }
+    </>)
+
     return <></>
 }
 

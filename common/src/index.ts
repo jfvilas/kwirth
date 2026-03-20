@@ -32,8 +32,8 @@ export * from './MetricsInstanceConfig'
 export * from './OpsMessage'
 export * from './OpsInstanceConfig'
 
-export * from './TrivyMessage'
-export * from './TrivyInstanceConfig'
+// export * from './TrivyMessage'
+// export * from './TrivyInstanceConfig'
 
 export * from './RouteMessage'
 

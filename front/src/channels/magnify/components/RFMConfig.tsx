@@ -18,13 +18,13 @@ const menu:IFileObject[] = [
     {   name: 'Cluster',
         isDirectory: true,
         path: '/cluster',
-        class: 'classcluster',
+        class: 'classCluster',
         layout: 'own',
     },
     {   name: 'Overview',
         isDirectory: true,
         path: '/cluster/overview',
-        class: 'classclusteroverview',
+        class: 'classClusterOverview',
         layout: 'own',
     },
     {   name: 'Nodes',
@@ -64,7 +64,7 @@ const menu:IFileObject[] = [
     {   name: 'Workload',
         isDirectory: true,
         path: '/workload',
-        class: 'classworkload',
+        class: 'classWorkload',
         layout: 'own',
     },
     {   name: 'Overview',
@@ -79,7 +79,6 @@ const menu:IFileObject[] = [
         layout: 'list',  
         class: 'classPod',
         categories: [ 'namespace', 'controller' ],
-        // features: ['breadcrumb']
         children: 'Pod'
     },
     {   name: 'Deployments',
@@ -138,7 +137,7 @@ const menu:IFileObject[] = [
     {   name: 'Config',
         isDirectory: true,
         path: '/config',
-        class: 'classconfig',
+        class: 'classConfig',
         layout: 'own',
     },
     {   name: 'Overview',
@@ -226,7 +225,7 @@ const menu:IFileObject[] = [
     {   name: 'Network',
         isDirectory: true,
         path: '/network',
-        class: 'classnetwork',
+        class: 'classNetwork',
         layout: 'own',
     },
     {   name: 'Overview',
@@ -281,7 +280,7 @@ const menu:IFileObject[] = [
     {   name: 'Storage',
         isDirectory: true,
         path: '/storage',
-        class: 'classstorage',
+        class: 'classStorage',
         layout: 'own',
     },
     {   name: 'Overview',
@@ -339,7 +338,7 @@ const menu:IFileObject[] = [
     {   name: 'Access',
         isDirectory: true,
         path: '/access',
-        class: 'classaccess',
+        class: 'classAccess',
         layout: 'own',
     },
     {   name: 'Overview',
@@ -386,7 +385,7 @@ const menu:IFileObject[] = [
     {   name: 'Custom',
         isDirectory: true,
         path: '/custom',
-        class: 'classcustom',
+        class: 'classCustom',
         layout: 'own',
     },
     {   name: 'Definitions',
@@ -400,13 +399,13 @@ const menu:IFileObject[] = [
     {   name: 'Preferences',
         isDirectory: true,
         path: '/preferences',
-        class: 'classsettings',
+        class: 'classSettings',
         layout: 'own'
     },
 ]
 
 // Cluster
-spaces.set('classclusteroverview', 
+spaces.set('classClusterOverview', 
     {
         leftItems: [
             {
@@ -1672,7 +1671,7 @@ spaces.set('Node',
         text: 'Name',
         source: 'name',
         width: 30,
-        configurable: true,
+        configurable: false,
         leftItems: [
             {
                 name:'details',
@@ -1722,7 +1721,7 @@ spaces.set('Node',
                 source: 'cpu',
                 format: 'string',
                 width: 6,
-                removable: true,
+                removable: false,
                 sortable: true,
                 visible: true
             },
@@ -1732,7 +1731,7 @@ spaces.set('Node',
                 source: 'memory',
                 format: 'string',
                 width: 10,
-                removable: true,
+                removable: false,
                 sortable: true,
                 visible: true
             },
@@ -1742,7 +1741,7 @@ spaces.set('Node',
                 source: 'taints',
                 format: 'string',
                 width: 6,
-                removable: true,
+                removable: false,
                 sortable: true,
                 visible: true
             },
@@ -1752,7 +1751,7 @@ spaces.set('Node',
                 source: 'roles',
                 format: 'string',
                 width: 20,
-                removable: true,
+                removable: false,
                 sortable: false,
                 visible: true
             },
@@ -1762,7 +1761,7 @@ spaces.set('Node',
                 source: 'version',
                 format: 'string',
                 width: 10,
-                removable: true,
+                removable: false,
                 sortable: true,
                 visible: true
             },
@@ -1772,7 +1771,7 @@ spaces.set('Node',
                 source: 'conditions',
                 format: 'string',
                 width: 10,
-                removable: true,
+                removable: false,
                 sortable: true,
                 visible: true
             },
@@ -3649,17 +3648,81 @@ spaces.set('CustomResourceDefinition',
         ]
     }
 )
-spaces.set('crdgroup',
+spaces.set('crdGroup',
+    {
+        text:'Name',
+        source:'name',
+        width:40,
+        leftItems: [],
+        properties: []
+    }
+)
+spaces.set('crdInstance',
     {
         text:'Name',
         source:'name',
         width:40,
         leftItems: [
+            {   name: 'details',
+                icon: <Info fontSize='small'/>,
+                text: 'Details',
+                permission: true,
+            },
+            {   name: 'edit',
+                icon: <Edit fontSize='small'/>,
+                text: 'Edit',
+                permission: true,
+            },
+            {
+                name: 'delete',
+                icon: <Delete fontSize='small'/>,
+                text: 'Delete',
+                multi: true,
+                permission: true,
+            },
         ],
-        properties: []
+        properties: [
+            {
+                name: 'namespace',
+                text: 'Namespace',
+                source: 'namespace',
+                format: 'string',
+                width: 15,
+                sortable: true,
+                visible: true
+            },
+            {
+                name: 'source',
+                text: 'Source',
+                source: 'source',
+                format: 'string',
+                width: 15,
+                sortable: true,
+                visible: true
+            },
+            {
+                name: 'checksum',
+                text: 'Checksum',
+                source: 'checksum',
+                format: 'string',
+                width: 15,
+                sortable: true,
+                visible: true
+            },
+            {
+                name: 'creationTimestamp',
+                text: 'Age',
+                source: 'creationTimestamp',
+                format: 'age',
+                width: 10,
+                sortable: true,
+                visible: true
+            }
+        ]
     }
 )
-spaces.set('crdinstance',
+
+spaces.set('crdNamespacedInstance',
     {
         text:'Name',
         source:'name',
@@ -3726,46 +3789,46 @@ spaces.set('crdinstance',
 
 // General  (these empty classes are needed for showing icons on the navigation pane, they are referenced in the "icons" map)
 spaces.set('classOverview', {
-    leftItems: [
-        {
-            name: 'kwirthworks',
-            icon: <HomeRepairService fontSize='small'/>,
-            text: 'Kwirth works',
-            permission: true,
-        },
-        {
-            name: 'kubeworks',
-            icon: <HomeRepairService fontSize='small'/>,
-            text: 'Kube works',
-            permission: true,
-        },
-        {
-            name: 'exit',
-            text: 'Exit',
-            permission: true
-        },
-    ]
-})
+        leftItems: [
+            {
+                name: 'kwirthworks',
+                icon: <HomeRepairService fontSize='small'/>,
+                text: 'Kwirth works',
+                permission: true,
+            },
+            {
+                name: 'kubeworks',
+                icon: <HomeRepairService fontSize='small'/>,
+                text: 'Kube works',
+                permission: true,
+            },
+            {
+                name: 'exit',
+                text: 'Exit',
+                permission: true
+            },
+        ]
+    }
+)
 spaces.set('classmenu', {})  // not needed
-spaces.set('classworkload', {})
-spaces.set('classconfig', {})
-spaces.set('classnetwork', {})
-spaces.set('classstorage', {})
-spaces.set('classaccess', {})
-spaces.set('classcustom', {})
-spaces.set('classsettings', {})
+spaces.set('classWorkload', {})
+spaces.set('classConfig', {})
+spaces.set('classNetwork', {})
+spaces.set('classStorage', {})
+spaces.set('classAccess', {})
+spaces.set('classCustom', {})
+spaces.set('classSettings', {})
 
 const icons = new Map()
 icons.set('classOverview', { default: <Kubernetes size={'16'}/> } )
-icons.set('classcluster', { default: <Cluster size={'16'}/> } )
-icons.set('classworkload', { default: <Pod size={'16'}/> } )
-icons.set('classconfig', { default: <Config size={'16'}/> } )
-icons.set('classnetwork', { default: <Network size={'16'}/> } )
-icons.set('classstorage', { default: <Storage size={'16'}/> } )
-icons.set('classaccess', { default: <Security size={'16'}/> } )
-icons.set('classcustom', { default: <Customize size={'16'}/> } )
-icons.set('classsettings', { default: <Settings size={'16'}/> } )
-
+icons.set('classCluster', { default: <Cluster size={'16'}/> } )
+icons.set('classWorkload', { default: <Pod size={'16'}/> } )
+icons.set('classConfig', { default: <Config size={'16'}/> } )
+icons.set('classNetwork', { default: <Network size={'16'}/> } )
+icons.set('classStorage', { default: <Storage size={'16'}/> } )
+icons.set('classAccess', { default: <Security size={'16'}/> } )
+icons.set('classCustom', { default: <Customize size={'16'}/> } )
+icons.set('classSettings', { default: <Settings size={'16'}/> } )
 
 const actions = new Map()
 

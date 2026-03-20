@@ -1,157 +1,211 @@
-import { useEffect, useRef, useState } from 'react'
-import { Box, Button, Grid, IconButton, Menu, MenuItem, MenuList, Slider, Stack, Typography } from '@mui/material'
-import { Check as CheckIcon } from '@mui/icons-material'
-import { assetScore, TReportType } from './TrivyCommon'
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { Box, Button, Stack, Typography, Slider, TextField, InputAdornment, Card, useTheme } from '@mui/material'
+import { Search as SearchIcon } from '@mui/icons-material'
+import { TReportType } from './TrivyCommon'
 import { IContentProps } from '../IChannel'
 import { ITrivyInstanceConfig } from './TrivyConfig'
-import { IAsset, ITrivyData } from './TrivyData'
-import { Error as ErrorIcon } from '@mui/icons-material'
-import { MsgBoxOkError } from '../../tools/MsgBox'
+import { IAsset, ITrivyData, TRIVY_API_AUDIT_PLURAL, TRIVY_API_EXPOSED_PLURAL, TRIVY_API_SBOM_PLURAL, TRIVY_API_VULN_PLURAL } from './TrivyData'
 import { TrivyTabContentAssetDetails } from './components/TrivyTabContentAssetDetails'
-import { TrivyTabContentAsset } from './components/TrivyTabContentAsset'
+import { getAudit, getExposed, getVulns, TrivyTabContentAsset } from './components/TrivyTabContentAsset'
+import { MenuOrder } from './components/MenuOrder'
 
-// +++ add filters to trivy content: name, namespace...
-// +++ add info (number of vuln analysis)
-// +++ add download report
-// +++ add more sort options
-// +++ add avatars for common containers plus kwirth (azure, aws...)
-// +++ add scope validations per channel
-
-// +++ back: si se desinstala trivy, parar los informers (todo el channel)
-
-const TrivyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
-    let trivyData:ITrivyData = props.channelObject.data
-    let trivyInstanceConfig:ITrivyInstanceConfig = props.channelObject.instanceConfig
+const TrivyTabContent: React.FC<IContentProps> = (props: IContentProps) => {
+    const theme = useTheme()
+    let trivyData: ITrivyData = props.channelObject.data
+    let trivyInstanceConfig: ITrivyInstanceConfig = props.channelObject.instanceConfig
     const trivyBoxRef = useRef<HTMLDivElement | null>(null)
     const [trivyBoxTop, setTrivyBoxTop] = useState(0)
-    
-    const [showMode, setShowMode] = useState('card')
-    const [selectedType, setSelectedType] = useState<TReportType>('vulnerabilityreports')
-    const [selectedAsset, setSelectedAsset] = useState<IAsset>()
-    const [anchorMenu, setAnchorMenu] = useState<HTMLElement|null>(null)
-    const [order, setOrder] = useState('scd')
-    const [filterScore, setFilterScore] = useState<number>(0)
-    const [maxScore, setMaxScore] = useState<number>(0)
-    const [minScore, setMinScore] = useState<number>(0)
-    const [msgBox, setMsgBox] =useState(<></>)
 
-    useEffect(() => {
-        if (trivyData.assets.length>0) {
-            let min = Number.MAX_VALUE
-            let max = Number.MIN_VALUE
-            for (let asset of trivyData.assets) {
-                let score = assetScore(asset, trivyInstanceConfig, 'vulnerabilityreports')
-                if (score<min) min=score
-                if (score>max) max=score
-            }
-            setMinScore(min)
-            setMaxScore(max)
-            setFilterScore(min)
-            orderBy(order)
-        }
-    }, [trivyData.assets, trivyData.score])
+    const [showMode, setShowMode] = useState<'list'|'card'>(trivyData.mode)
+    const [selectedType, setSelectedType] = useState<TReportType>(TRIVY_API_VULN_PLURAL)
+    const [selectedAsset, setSelectedAsset] = useState<IAsset>()
+    const [anchorMenu, setAnchorMenu] = useState<Element | undefined>(undefined)
+
+    const [orderType, setOrderType] = useState<'a' | 'd'>('d')
+    const [orderSource, setOrderSource] = useState<'vuln' | 'audit' | 'exposed'>('vuln')
+    const [assetList, setAssetList] = useState<IAsset[]>(trivyData.assets)
+
+    const [filterText, setFilterText] = useState('')
+    const [minVulns, setMinVulns] = useState(0)
+    const [minAudit, setMinAudit] = useState(0)
+    const [minExposed, setMinExposed] = useState(0)
 
     useEffect(() => {
         if (trivyBoxRef.current) setTrivyBoxTop(trivyBoxRef.current.getBoundingClientRect().top)
+    }, [])
+
+    useEffect(() => {
+        const newAssets = [...trivyData.assets];
+        const sorted = newAssets.sort((a, b) => {
+            let valA = 0; let valB = 0;
+            if (orderSource === 'vuln') { valA = getVulns(a); valB = getVulns(b) }
+            else if (orderSource === 'audit') { valA = getAudit(a); valB = getAudit(b) }
+            else if (orderSource === 'exposed') { valA = getExposed(a); valB = getExposed(b) }
+            return orderType === 'a' ? valA - valB : valB - valA
+        });
+        setAssetList(sorted);
+    }, [trivyData.assets]);
+
+    const maxLimits = useMemo(() => {
+        const assets = trivyData.assets || []
+        return {
+            vulns: assets.length > 0 ? Math.max(...assets.map(getVulns)) : 0,
+            audit: assets.length > 0 ? Math.max(...assets.map(getAudit)) : 0,
+            exposed: assets.length > 0 ? Math.max(...assets.map(getExposed)) : 0
+        }
+    }, [trivyData.assets])
+
+    const onReorder = (source: 'vuln' | 'audit' | 'exposed', type: 'a' | 'd') => {
+        setAnchorMenu(undefined)
+        setOrderSource(source)
+        setOrderType(type)
+
+        const sorted = [...assetList].sort((a, b) => {
+            let valA = 0; let valB = 0
+            if (source === 'vuln') { valA = getVulns(a); valB = getVulns(b) }
+            else if (source === 'audit') { valA = getAudit(a); valB = getAudit(b) }
+            else if (source === 'exposed') { valA = getExposed(a); valB = getExposed(b) }
+            return type === 'a' ? valA - valB : valB - valA
+        })
+        setAssetList(sorted)
+    }
+
+    const filteredAssets = assetList.filter(asset => {
+        const search = filterText.toLowerCase();
+        const matchesText = !filterText || 
+            asset.name.toLowerCase().includes(search) || 
+            asset.namespace.toLowerCase().includes(search) || 
+            asset.container.toLowerCase().includes(search);
+
+        const matchesMetrics = 
+            getVulns(asset) >= minVulns &&
+            getAudit(asset) >= minAudit &&
+            getExposed(asset) >= minExposed;
+
+        return matchesText && matchesMetrics;
     })
 
-    const showDetails = (asset:IAsset, type:TReportType) => {
-        return <TrivyTabContentAssetDetails asset={asset} trivyInstanceConfig={trivyInstanceConfig} onClose={() => setSelectedAsset(undefined)} detail={type}/>
+    const rescanAsset = (asset: IAsset) => {
+        setAssetList((prev) => prev.filter(a => a.namespace !== asset.namespace || a.name !== asset.name || a.container !== asset.container))
     }
 
-    const orderBy = (orderName:string) => {
-        setAnchorMenu(null)
-
-        let assets = trivyData.assets
-        switch(orderName) {
-            case 'sdd':
-                assets.sort((a,b) => new Date(b.vulnerabilityreports.report?.updateTimestamp).getTime() - new Date(a.vulnerabilityreports.report?.updateTimestamp).getTime())
-                break
-            case 'sda':
-                assets.sort((a,b) => new Date(a.vulnerabilityreports.report?.updateTimestamp).getTime() - new Date(b.vulnerabilityreports.report?.updateTimestamp).getTime())
-                break
-            case 'ssd':
-                assets.sort((a,b) => assetScore(b, trivyInstanceConfig, 'vulnerabilityreports') - assetScore(a, trivyInstanceConfig, 'vulnerabilityreports'))
-                break
-            case 'ssa':
-                assets.sort((a,b) => assetScore(a, trivyInstanceConfig, 'vulnerabilityreports') - assetScore(b, trivyInstanceConfig, 'vulnerabilityreports'))
-                break
-
+    const sliderStyle = {
+        '& .MuiSlider-valueLabel': {
+            fontSize: '0.65rem',
+            lineHeight: 1.2,
+            width: 20,
+            height: 20,
+            borderRadius: '50% 50% 50% 0',
+            padding: '2px',
+            top: -2,
         }
-        setOrder(orderName)
-    }
-
-    let orderMenu = (
-        <Menu anchorEl={anchorMenu} open={Boolean(anchorMenu)} onClose={() => setAnchorMenu(null)}>
-            <MenuList dense sx={{width:'180px'}}>
-                <MenuItem onClick={() => orderBy('sdd')}>{order==='sdd'?<CheckIcon/>:<Box sx={{width:'26px'}}/>}Scan date desc</MenuItem>
-                <MenuItem onClick={() => orderBy('sda')}>{order==='sda'?<CheckIcon/>:<Box sx={{width:'26px'}}/>}Scan date asc</MenuItem>
-                <MenuItem onClick={() => orderBy('ssd')}>{order==='ssd'?<CheckIcon/>:<Box sx={{width:'26px'}}/>}Score desc</MenuItem>
-                <MenuItem onClick={() => orderBy('ssa')}>{order==='ssa'?<CheckIcon/>:<Box sx={{width:'26px'}}/>}Score asc</MenuItem>
-            </MenuList>
-        </Menu>
-    )
-    
-    const handleFilter = (e:Event,v:number|number[]) => {
-        setFilterScore(v as number)
-    }
-
-    const rescanAsset = (asset:IAsset) => {
-        trivyData.assets = (trivyData.assets).filter(a => a.namespace!==asset.namespace || a.name!==asset.name || a.container!==asset.container)
-    }
-
-    const showErrors = () => {
-        let msg = trivyData.assets.reduce( (prev,current) => prev + `${current.namespace}/${current.name}/${current.container}: ${current.unknown.statusMessage}<br/>`, '')
-        setMsgBox(MsgBoxOkError('Trivy', msg, setMsgBox))
     }
 
     return (
-        <Box sx={{ ml:1, mr:1, display:'flex', flexDirection: 'column'}}>
-            { trivyData.started && <>
-                <Stack direction={'row'} sx={{overflow:'hidden'}}>
-                    <Typography sx={{ml:2,mr:2}}><b>KwirthScore: </b>{trivyData.score?.toPrecision(4)}%</Typography>
-                    <Typography>Filter score</Typography>
-                    <Slider max={maxScore} min={minScore} value={filterScore} onChange={handleFilter} size='small' sx={{width:'10%', ml:2}}/>
-                    <Typography sx={{width:'5%', ml:2}}>{filterScore?.toFixed(0)}</Typography>
-                    <Typography sx={{flex:1}}></Typography>
-                    <IconButton title='Some errors have been detected' onClick={showErrors}>
-                        <ErrorIcon style={{ color: trivyData.assets.length>0?'red':'#BDBDBD'}}/>
-                    </IconButton>
-                    <Button onClick={(event) => setAnchorMenu(event.currentTarget)}>Order</Button>
-                    <Button onClick={() => setShowMode('list')}>List</Button>
-                    <Button onClick={() => setShowMode('card')}>Card</Button>
-                </Stack>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', p: 1, color: 'text.primary' }}>
+            {trivyData.started && <>
+                <Card 
+                    variant="outlined" 
+                    sx={{ 
+                        p: 1.5, 
+                        mb: 2, 
+                        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fafafa',
+                        borderColor: 'divider'
+                    }}
+                >
+                    <Stack direction={'row'} spacing={2} alignItems="center">
+                        
+                        <TextField
+                            size="small"
+                            placeholder="Search asset, ns..."
+                            variant="outlined"
+                            value={filterText}
+                            onChange={(e) => setFilterText(e.target.value)}
+                            sx={{ 
+                                width: '220px', 
+                                '& .MuiInputBase-root': { height: '32px', fontSize: '0.8rem' } 
+                            }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ fontSize: '1.1rem', color: 'text.secondary' }} />
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
 
-                <Box ref={trivyBoxRef} sx={{ display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden', width:'100%', flexGrow:1, height: `calc(100vh - ${trivyBoxTop}px - 25px)`}}>
-                    { showMode==='card' && trivyData.assets && 
-                        <Grid container sx={{ml:1,mr:1}}>
-                            {trivyData.assets.map( (asset,index) => {
-                                return (
-                                    <Box key={index} sx={{margin:1, width:'24%'}}>
-                                        <TrivyTabContentAsset asset={asset} channelObject={props.channelObject} onVulns={() => {setSelectedAsset(asset); setSelectedType('vulnerabilityreports')}} onAudit={() => {setSelectedAsset(asset); setSelectedType('configauditreports')}} onSbom={() => {setSelectedAsset(asset); setSelectedType('sbomreports')}} onExposed={() => {setSelectedAsset(asset); setSelectedType('exposedsecretreports')}} onRescan={() => rescanAsset(asset)} view={'card'}/>
-                                    </Box>
-                                )
-                            })}
-                        </Grid>
+                        <Stack flexDirection={'row'} sx={{ width: '150px' }} alignItems={'center'}>
+                            <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 'bold', mr: 1, color: 'text.secondary' }}>Vulns</Typography>
+                            <Slider size="small" value={minVulns} onChange={(_, v) => setMinVulns(v as number)} max={maxLimits.vulns} valueLabelDisplay="auto" sx={sliderStyle} />
+                            <Typography variant="caption" sx={{ fontSize: '0.7rem', minWidth: '15px', fontWeight: 'bold', ml: 1, color: 'text.primary' }}>{minVulns}</Typography>
+                        </Stack>
+
+                        <Stack flexDirection={'row'} sx={{ width: '150px' }} alignItems={'center'}>
+                            <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 'bold', mr: 1, color: 'text.secondary' }}>Audit</Typography>
+                            <Slider size="small" value={minAudit} onChange={(_, v) => setMinAudit(v as number)} max={maxLimits.audit} valueLabelDisplay="auto" sx={sliderStyle} />
+                            <Typography variant="caption" sx={{ fontSize: '0.7rem', minWidth: '15px', fontWeight: 'bold', ml: 1, color: 'text.primary' }}>{minAudit}</Typography>
+                        </Stack>
+
+                        <Stack flexDirection={'row'} sx={{ width: '150px' }} alignItems={'center'}>
+                            <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 'bold', mr: 1, color: 'text.secondary' }}>Exposed</Typography>
+                            <Slider size="small" value={minExposed} onChange={(_, v) => setMinExposed(v as number)} max={maxLimits.exposed} valueLabelDisplay="auto" sx={sliderStyle} />
+                            <Typography variant="caption" sx={{ fontSize: '0.7rem', minWidth: '15px', fontWeight: 'bold', ml: 1, color: 'text.primary' }}>{minExposed}</Typography>
+                        </Stack>
+
+                        <Box sx={{ flex: 1 }} />
+
+                        <Stack direction="row" spacing={1}>
+                            <Button size="small" variant="contained" disableElevation onClick={(event) => setAnchorMenu(event.currentTarget)} sx={{ textTransform: 'none', height: '30px' }}>Order</Button>
+                            <Button size="small" variant={showMode === 'list' ? 'contained' : 'outlined'} disableElevation onClick={() => { setShowMode('list'); trivyData.mode='list'}} sx={{ textTransform: 'none', height: '30px' }}>List</Button>
+                            <Button size="small" variant={showMode === 'card' ? 'contained' : 'outlined'} disableElevation onClick={() => { setShowMode('card'); trivyData.mode='card'}} sx={{ textTransform: 'none', height: '30px' }}>Card</Button>
+                        </Stack>
+                    </Stack>
+                </Card>
+
+                <Box ref={trivyBoxRef} sx={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', width: '100%', flexGrow: 1, height: `calc(100vh - ${trivyBoxTop}px - 25px)` }}>
+                    {showMode === 'card' &&
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {filteredAssets.map((asset, index) => (
+                                <Box key={`${asset.name}-${index}`} sx={{ width: { xs: '100%', sm: '48%', md: '32%', lg: '19%' } }}>
+                                    <TrivyTabContentAsset
+                                        asset={asset}
+                                        channelObject={props.channelObject}
+                                        onShowVulns={() => { setSelectedAsset(asset); setSelectedType(TRIVY_API_VULN_PLURAL) }}
+                                        onShowAudit={() => { setSelectedAsset(asset); setSelectedType(TRIVY_API_AUDIT_PLURAL) }}
+                                        onShowSbom={() => { setSelectedAsset(asset); setSelectedType(TRIVY_API_SBOM_PLURAL) }}
+                                        onShowExposed={() => { setSelectedAsset(asset); setSelectedType(TRIVY_API_EXPOSED_PLURAL) }}
+                                        onRescan={() => rescanAsset(asset)}
+                                        mode='card'
+                                    />
+                                </Box>
+                            ))}
+                        </Box>
                     }
 
-                    { showMode==='list' && 
-                        <Grid container sx={{ml:1,mr:1}}>
-                            {trivyData.assets.filter(asset => assetScore(asset,trivyInstanceConfig, 'vulnerabilityreports')>=filterScore).map( (asset,index) => {
-                                return (
-                                    <Grid key={index} sx={{margin:1, width:'100%'}}>
-                                        <TrivyTabContentAsset asset={asset} channelObject={props.channelObject} onVulns={() => { setSelectedAsset(asset); setSelectedType('vulnerabilityreports')}} onRescan={() => rescanAsset(asset)} onAudit={() => { setSelectedAsset(asset); setSelectedType('configauditreports')}} onSbom={() => {setSelectedAsset(asset); setSelectedType('sbomreports')}} onExposed={() => {setSelectedAsset(asset); setSelectedType('exposedsecretreports')}} view='list'/>
-                                    </Grid>
-                                )
-                            })}
-                        </Grid>
-                    } 
+                    {showMode === 'list' &&
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, px:1 }}>
+                            {filteredAssets.map((asset, index) => (
+                                <TrivyTabContentAsset
+                                    key={`${asset.name}-${index}`}
+                                    asset={asset}
+                                    channelObject={props.channelObject}
+                                    onShowVulns={() => { setSelectedAsset(asset); setSelectedType(TRIVY_API_VULN_PLURAL) }}
+                                    onRescan={() => rescanAsset(asset)}
+                                    onShowAudit={() => { setSelectedAsset(asset); setSelectedType(TRIVY_API_AUDIT_PLURAL) }}
+                                    onShowSbom={() => { setSelectedAsset(asset); setSelectedType(TRIVY_API_SBOM_PLURAL) }}
+                                    onShowExposed={() => { setSelectedAsset(asset); setSelectedType(TRIVY_API_EXPOSED_PLURAL) }}
+                                    mode={showMode}
+                                />
+                            ))}
+                        </Box>
+                    }
                 </Box>
             </>}
-            { anchorMenu && orderMenu }
-            { selectedAsset!==undefined && showDetails(selectedAsset, selectedType) }
-            { msgBox }
+
+            {selectedAsset !== undefined && <TrivyTabContentAssetDetails asset={selectedAsset} trivyInstanceConfig={trivyInstanceConfig} onClose={() => setSelectedAsset(undefined)} detail={selectedType} />}
+            {anchorMenu !== undefined && <MenuOrder anchorParent={anchorMenu} onClose={() => setAnchorMenu(undefined)} onReorder={onReorder} orderSource={orderSource} orderType={orderType} />}
         </Box>
     )
 }
+
 export { TrivyTabContent }

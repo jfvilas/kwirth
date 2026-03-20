@@ -115,7 +115,9 @@ let conditions:IDetailsItem = {
                 'InitialNamesAccepted:green',
                 'Unschedulable:red',
                 'BackoffLimitExceeded:red',
-                'ContainersNotReady:red'
+                'ContainersNotReady:red',
+                'NoVMEventScheduled:green',
+                'FilesystemIsNotReadOnly:orange',
             ]
         },
         {
@@ -2796,7 +2798,7 @@ objectSections.set('CustomResourceDefinition', [
     events
 ])
 
-objectSections.set('#crdinstance#', [
+objectSections.set('#crdInstance#', [
     {
         name: 'properties',
         text: 'Properties',

@@ -3,7 +3,7 @@ import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Fo
 import { ISetupProps } from '../IChannel'
 import { ITrivyConfig, ITrivyInstanceConfig, TrivyConfig, TrivyInstanceConfig } from './TrivyConfig'
 import { VerifiedUser } from '@mui/icons-material'
-import { MsgBoxOk, MsgBoxOkError } from '../../tools/MsgBox'
+import { MsgBoxButtons, MsgBoxOk, MsgBoxOkError, MsgBoxWaitCancel } from '../../tools/MsgBox'
 import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 import { TrivyOperator } from './TrivyOperator'
 import { ITrivyData } from './TrivyData'
@@ -48,13 +48,16 @@ const TrivySetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     const onOperatorManageClosed = async (action?:string) => {
         setShowOperatorManage(false)
         if (action) {
+            setMsgBox (MsgBoxWaitCancel('Manage Trivy',`We are waiting for the action to complete...`, setMsgBox, (a:MsgBoxButtons) => {
+                setMsgBox(<></>)
+            }))
             let result = await fetch (`${props.channelObject.clusterUrl}/${trivyData.ri}/channel/trivy/operator?action=${action}`, addGetAuthorization(props.channelObject.accessString!))
             
             if (result.status === 200) {
-                setMsgBox(MsgBoxOk('Trivy',`Action ${action} succesfully sent, check results on your cluster.`, setMsgBox))
+                setMsgBox(MsgBoxOk('Trivy',`Action '${action}' succesfully sent, check results on your cluster.`, setMsgBox))
             }
             else {
-                setMsgBox(MsgBoxOkError('Trivy',`Trivy action has shown some errors: ${result.text()}.`, setMsgBox))
+                setMsgBox(MsgBoxOkError('Trivy',`Trivy action has shown some errors: ${await result.text()}.`, setMsgBox))
             }
         }
     }

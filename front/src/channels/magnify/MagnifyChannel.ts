@@ -166,14 +166,19 @@ class MagnifyChannel implements IChannel {
                                     case 'DELETED':
                                         if (response.data.kind==='Namespace' && magnifyData.updateNamespaces) magnifyData.updateNamespaces('DELETED', response.data.metadata.name)
                                         let path = buildPath(response.data.kind, response.data.metadata.name, response.data.metadata.namespace)
-                                        console.log('DELETE', response.data)
-                                        console.log('DELETE', path)
                                         if (path.startsWith('//')) {
                                             // no top level section found (like custom, workload, network...), so this could be a CRDi
                                             magnifyData.files = magnifyData.files.filter(f => f.path !== '/custom/'+response.data.kind+'/'+response.data.metadata.name + (response.data.metadata.namespace? ':'+response.data.metadata.namespace : ''))
                                         }
                                         else {
                                             magnifyData.files = magnifyData.files.filter (f => f.path !== path)
+                                            if (path.startsWith('/custom/CustomResourceDefinition/')) {
+                                                let kind = response.data?.spec?.names?.kind
+                                                if (kind) {
+                                                    magnifyData.files = magnifyData.files.filter(f => !f.path.startsWith(`/custom/${kind}/`))
+                                                    magnifyData.files = magnifyData.files.filter(f => f.path !== `/custom/${kind}`)
+                                                }
+                                            }
                                         }
                                         break
                                 }
@@ -268,7 +273,7 @@ class MagnifyChannel implements IChannel {
         magnifyData.paused = false
         magnifyData.started = true
         magnifyData.files = magnifyData.files.filter(f => f.isDirectory && f.path.split('/').length-1 <= 2)
-        magnifyData.files = magnifyData.files.filter(f => f.class!=='crdgroup')
+        magnifyData.files = magnifyData.files.filter(f => f.class!=='crdGroup')
         magnifyData.currentPath='/overview'
         this.launchTasks(channelObject)
         return true
@@ -307,21 +312,6 @@ class MagnifyChannel implements IChannel {
     //*************************************************************************************************
 
     launchTasks = (channelObject:IChannelObject) => {
-
-        // this.tasks.push (window.setInterval( (c:IChannelObject) => {
-        //     fetch(`${c.clusterUrl}/metrics/usage/cluster`, addGetAuthorization(c.accessString!)).then ( (result) => {
-        //         result.json().then ( (data) => {
-        //             let md:IMagnifyData = c.data
-        //             data.timestamp = new Date().toLocaleTimeString('en-GB')
-        //             md.metricsCluster.push(data)
-        //             if (md.metricsCluster.length>50) md.metricsCluster.shift();
-        //             channelObject.data?.refreshUsage?.()
-        //         })
-        //     })
-        //     .catch ( () => {
-                
-        //     })
-        // }, 15000, channelObject))
 
         this.tasks.push (window.setInterval( (c:IChannelObject) => {
             let magnifyMessage:IMagnifyMessage = {
@@ -1304,15 +1294,20 @@ class MagnifyChannel implements IChannel {
             }
         })
 
-        // for each CRD, we create an entry in the navigation pane for each group
-        this.upsertObject(magnifyData, {
+        // for each CRD, we create an entry in the navigation pane for each resource type
+        let file:IFileObject = {
             name: obj.spec.names.kind,
             isDirectory: true,
             path: '/custom/' + obj.spec.names.kind,
-            class: 'crdgroup',
-            children: 'crdinstance'
-        })
-
+            class: 'crdGroup',
+                children: 'crdInstance'
+        }
+        if (obj.spec.scope === 'Namespaced') {
+            file.categories = ['namespace']
+            file.children = 'crdNamespacedInstance'
+        }
+        this.upsertObject(magnifyData, file)
+        
         // for each CRD, we request the exsistent objects in that CRD (these are the CRD instances)
         if (obj.spec.versions && obj.spec.versions.length>0) {
             let magnifyMessage:IMagnifyMessage = {
@@ -1341,7 +1336,7 @@ class MagnifyChannel implements IChannel {
             displayName: obj.metadata.name,
             isDirectory: false,
             path: '/custom/' + obj.kind + '/' + obj.metadata.name + (obj.metadata.namespace? ':'+obj.metadata.namespace : ''),
-            class: 'crdinstance',
+            class: 'crdInstance',
             data: {
                 namespace: obj.metadata.namespace,
                 source: obj.spec?.source,

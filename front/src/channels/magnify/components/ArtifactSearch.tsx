@@ -7,6 +7,7 @@ import { getIconFromKind } from '../../../tools/Constants-React'
 import './ResizableDialog.css'
 import { ResizableDialog } from './ResizableDialog'
 import { IContentWindow } from '../MagnifyTabContent'
+import { useEscape } from '../../../tools/useEscape'
 
 export interface IArtifactSearchData {
     scope: string
@@ -30,20 +31,7 @@ const ArtifactSearch: React.FC<IArtifactSearchProps> = (props:IArtifactSearchPro
 
     const [isMaximized, setIsMaximized] = useState(props.isMaximized)
     let artifactSearchData:IArtifactSearchData = props.data
-
-    useEffect(() => {
-        const previousFocus = document.activeElement as HTMLElement
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            event.stopPropagation()
-            if (event.key === 'Escape') props.onClose(props.id)
-        }
-        window.addEventListener('keydown', handleKeyDown, true)
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown, true)
-            previousFocus?.focus()
-        }
-    }, [])
+    useEscape(props.onClose, props.id)
 
 	const onFocus = () => {
 		if (props.onFocus) props.onFocus()

@@ -56,7 +56,6 @@ interface IAppProps {
 
 const App: React.FC<IAppProps> = (props:IAppProps) => {
     const [mode, setMode] = useState<PaletteMode>('light')
-    // Use memo for not recalc theme on every render
     const theme = useMemo( () => createTheme({
         cssVariables: true,
         palette: { mode },
@@ -141,6 +140,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     }),
                 },
             },
+
             MuiAppBar: {
                 styleOverrides: {
                     root: ({ theme }) => ({

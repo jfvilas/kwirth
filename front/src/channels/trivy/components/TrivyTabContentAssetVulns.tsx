@@ -17,16 +17,16 @@ const TrivyTabContentAssetVulns: React.FC<ITrivyTabContentAssetVulnsProps> = (pr
         <Accordion sx={{m:0.1}}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Stack direction='row' alignItems={'center'}>
-                    <Typography sx={{width:'120px'}}>{vuln.severity}</Typography>
-                    <Typography fontSize={12}>{title}</Typography>
+                    <Typography sx={{width:'120px'}} variant='body2'>{vuln.severity}</Typography>
+                    <Typography fontSize={12} variant='body2'>{title}</Typography>
                 </Stack>
             </AccordionSummary>
             <AccordionDetails>
-                <Typography><b>Id: </b><a href={vuln.primaryLink} target='_blank' rel='noreferrer'>{vuln.vulnerabilityID}</a>{date.getFullYear()? <>&nbsp;&nbsp;(published {published})</>:<></>}</Typography>
-                <Typography><b>Resource: </b>{vuln.resource}</Typography>
-                {vuln.title && <Typography><b>Description: </b>{vuln.title}</Typography>}
-                <Typography><b>Installed: </b>{vuln.installedVersion}</Typography>
-                <Typography><b>Fixed: </b>{vuln.fixedVersion || 'n/a'}</Typography>
+                <Typography variant='body2'><b>Id: </b><a href={vuln.primaryLink} target='_blank' rel='noreferrer'>{vuln.vulnerabilityID}</a>{date.getFullYear()? <>&nbsp;&nbsp;(published {published})</>:<></>}</Typography>
+                <Typography variant='body2'><b>Resource: </b>{vuln.resource}</Typography>
+                {vuln.title && <Typography variant='body2'><b>Description: </b>{vuln.title}</Typography>}
+                <Typography variant='body2'><b>Installed: </b>{vuln.installedVersion}</Typography>
+                <Typography variant='body2'><b>Fixed: </b>{vuln.fixedVersion || 'n/a'}</Typography>
             </AccordionDetails>
         </Accordion>
     )

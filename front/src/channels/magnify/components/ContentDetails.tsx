@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import { DialogTitle, DialogContent, DialogActions, Button, Typography, Stack, Tooltip, IconButton, Box } from '@mui/material'
 import { Close, ContentCopy, FullscreenExit, Fullscreen, Minimize, PinDrop, Place } from '@mui/icons-material'
 import './ResizableDialog.css'
@@ -7,7 +7,7 @@ import { IContentWindow } from '../MagnifyTabContent'
 import { IFileObject, ISpaceMenuItem } from '@jfvilas/react-file-manager'
 import { DetailsObject, IDetailsSection } from './DetailsObject'
 import { MenuContainers } from './MenuContainers'
-import { objectClone } from '../Tools'
+import { useEscape } from '../../../tools/useEscape'
 
 const _ = require('lodash')
 const copy = require('clipboard-copy')
@@ -37,20 +37,21 @@ const ContentDetails: React.FC<IContentWindow> = (props:IContentWindow) => {
 	const [isMaximized, setIsMaximized] = useState(props.isMaximized)
 	let contentDetailsData:IDetailsData = props.data
 
-	useEffect(() => {
-		newObject.current = objectClone(props.data.source.data.origin)
+	useEscape(props.onClose, props.id)
+	// useEffect(() => {
+	// 	newObject.current = objectClone(props.data.source.data.origin)
 
-		const previousFocus = document.activeElement as HTMLElement
-		const handleKeyDown = (event: KeyboardEvent) => {
-			event.stopPropagation()
-			if (event.key === 'Escape') props.onClose(props.id)
-		}
-		window.addEventListener('keydown', handleKeyDown, true)
-		return () => {
-			window.removeEventListener('keydown', handleKeyDown, true)
-			previousFocus?.focus()
-		}
-	}, [])
+	// 	const previousFocus = document.activeElement as HTMLElement
+	// 	const handleKeyDown = (event: KeyboardEvent) => {
+	// 		event.stopPropagation()
+	// 		if (event.key === 'Escape') props.onClose(props.id)
+	// 	}
+	// 	window.addEventListener('keydown', handleKeyDown, true)
+	// 	return () => {
+	// 		window.removeEventListener('keydown', handleKeyDown, true)
+	// 		previousFocus?.focus()
+	// 	}
+	// }, [])
 
 	const onLink = (k:string, n:string, ns:string) => {
 		props.onClose(props.id)

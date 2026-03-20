@@ -94,14 +94,16 @@ const rfmSetup = (
         return <Box sx={{bgcolor: 'background.default'}} width={'100%'} height={'100%'}>
             <Card sx={{m:2, display: 'flex', flexDirection: 'column', height: 'calc(100% - 55px)'}}>
                 <CardContent sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', p: 2}}>
+                    <Stack direction={'row'} justifyContent={'space-between'} width={'100%'} px={1}>
+                        <Typography variant="body2"><b>Cluster:</b> {channelObject.clusterInfo?.name}</Typography>
+                        <Typography variant="body2"><b>Version:</b> {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
+                        <Typography variant="body2"><b>Platform:</b> {magnifyData.clusterInfo.platform}</Typography>
+                        <Typography variant="body2"><b>Nodes:</b> {magnifyData.files.filter(f => f.class==='Node').length}</Typography>
+                    </Stack>
+
+                    <Divider sx={{mt:1, mb:1}}/>
+
                     <Box sx={{ flex:1, overflowY: 'auto', ml:1, mr:1 }}>
-                        <Stack direction={'row'} justifyContent={'space-between'} width={'100%'}>
-                            <Typography variant="body2"><b>Cluster:</b> {channelObject.clusterInfo?.name}</Typography>
-                            <Typography variant="body2"><b>Version:</b> {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
-                            <Typography variant="body2"><b>Platform:</b> {magnifyData.clusterInfo.platform}</Typography>
-                            <Typography variant="body2"><b>Nodes:</b> {magnifyData.files.filter(f => f.class==='Node').length}</Typography>
-                        </Stack>
-                        <Divider sx={{mt:1, mb:1}}/>
 
                         <ClusterMetrics channelObject={channelObject}/>
                         
@@ -274,7 +276,7 @@ const rfmSetup = (
     
     const onUserPreferencesReload = () => {
         magnifyData.files = magnifyData.files.filter(f => f.isDirectory && f.path.split('/').length-1 <= 2)
-        magnifyData.files = magnifyData.files.filter(f => f.class!=='crdgroup')
+        magnifyData.files = magnifyData.files.filter(f => f.class!=='crdGroup')
         magnifyData.currentPath='/overview'
         requestList(channelObject)
     }
@@ -346,7 +348,6 @@ const rfmSetup = (
                         }
                         result.push(<Box key={prefix*1000+index} sx={{ width: '8px', height: '8px', backgroundColor: color, margin: '1px', display: 'inline-block' }}/>)
                     })
-
                 }
                 if (f.data.origin.status.initContainerStatuses && f.data.origin.status.initContainerStatuses.length>0) renderSet(0, f.data.origin.status.initContainerStatuses)
                 if (f.data.origin.status.containerStatuses && f.data.origin.status.containerStatuses.length>0) renderSet(1, f.data.origin.status.containerStatuses)
@@ -506,7 +507,7 @@ const rfmSetup = (
 
         // ClusterOverview ***************************************************************************
 
-            let spcClassClusterOverview = spaces.get('classclusteroverview')!
+            let spcClassClusterOverview = spaces.get('classClusterOverview')!
             setLeftItem(spcClassClusterOverview,'search', onObjectSearch)
 
         // Namespace *****************************************************************
@@ -899,10 +900,15 @@ const rfmSetup = (
             setLeftItem(spcCustomResourceDefinition,'delete', onObjectDelete)
 
             // crd instance ****************************************************
-            let spcCrdInstance = spaces.get('crdinstance')!
+            let spcCrdInstance = spaces.get('crdInstance')!
             setLeftItem(spcCrdInstance, 'details', onObjectDetails)
             setLeftItem(spcCrdInstance, 'edit', onObjectEdit)
             setLeftItem(spcCrdInstance, 'delete', onObjectDelete)
+
+            let spcCrdNamespacedInstance = spaces.get('crdNamespacedInstance')!
+            setLeftItem(spcCrdNamespacedInstance, 'details', onObjectDetails)
+            setLeftItem(spcCrdNamespacedInstance, 'edit', onObjectEdit)
+            setLeftItem(spcCrdNamespacedInstance, 'delete', onObjectDelete)
 
 }
 

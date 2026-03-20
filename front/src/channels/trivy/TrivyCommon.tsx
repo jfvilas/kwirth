@@ -28,12 +28,12 @@ const assetScore = (asset:IAsset, trivyInstanceConfig:ITrivyInstanceConfig, type
     return 0
 }
 
-const assetScoreColor = (asset:IAsset, trivyInstanceConfig:ITrivyInstanceConfig, type:TReportType) => {
-    let score = assetScore(asset, trivyInstanceConfig, type)
-    if (score>=50) return green[400]
-    if (score>=0) return yellow[700]
-    return red[500]
-}
+// const assetScoreColor = (asset:IAsset, trivyInstanceConfig:ITrivyInstanceConfig, type:TReportType) => {
+//     let score = assetScore(asset, trivyInstanceConfig, type)
+//     if (score>=50) return green[400]
+//     if (score>=0) return yellow[700]
+//     return red[500]
+// }
 
 const assetAvatarColor = (os:string) => {
     if (!os) return red[500]
@@ -44,4 +44,4 @@ const assetAvatarColor = (os:string) => {
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;        
 }
 
-export { assetScore, assetScoreColor, assetAvatarColor }
+export { assetScore, assetAvatarColor }

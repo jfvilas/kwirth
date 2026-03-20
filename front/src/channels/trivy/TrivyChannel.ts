@@ -1,11 +1,10 @@
 import { FC } from 'react'
 import { EChannelRefreshAction, IChannel, IChannelMessageAction, IChannelObject, IChannelRequirements, IContentProps, ISetupProps } from '../IChannel'
-import { EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageType, ISignalMessage, ETrivyCommand, EInstanceMessageFlow, ESignalMessageLevel, IInstanceMessage } from '@jfvilas/kwirth-common'
+import { EInstanceMessageAction, EInstanceMessageType, ISignalMessage, EInstanceMessageFlow, ESignalMessageLevel, IInstanceMessage } from '@jfvilas/kwirth-common'
 import { TrivyIcon, TrivySetup } from './TrivySetup'
 import { TrivyTabContent } from './TrivyTabContent'
-import { ITrivyData, ITrivyMessage, ITrivyMessageResponse, IAsset, TrivyData } from './TrivyData'
+import { ITrivyData, ITrivyMessageResponse, IAsset, TrivyData } from './TrivyData'
 import { TrivyConfig, TrivyInstanceConfig } from './TrivyConfig'
-import { MagnifyData } from '../magnify/MagnifyData'
 
 export class TrivyChannel implements IChannel {
     private setupVisible = false
@@ -40,9 +39,9 @@ export class TrivyChannel implements IChannel {
         let trivyData:ITrivyData = channelObject.data
         let trivyMessageResponse:ITrivyMessageResponse = JSON.parse(wsEvent.data)
 
-        const getAsset = (namespace:string, name:string, container:string) : IAsset => {
+        const getAsset = (namespace:string, name:string, container:string, create: boolean) : IAsset|undefined => {
             let asset = trivyData.assets.find(a => a.namespace===namespace && a.name===name && a.container===container)
-            if (!asset) {
+            if (!asset && create) {
                 asset = {
                     name,
                     namespace,
@@ -52,7 +51,6 @@ export class TrivyChannel implements IChannel {
                         statusMessage: ''
                     },
                     vulnerabilityreports: {
-                        score: 0,
                         report: undefined
                     },
                     configauditreports: {
@@ -72,63 +70,16 @@ export class TrivyChannel implements IChannel {
 
         switch (trivyMessageResponse.type) {
             case EInstanceMessageType.DATA:
-                if (trivyMessageResponse.flow === EInstanceMessageFlow.RESPONSE && trivyMessageResponse.action === EInstanceMessageAction.COMMAND) {
-                    if (trivyMessageResponse.data) {
-                        action = EChannelRefreshAction.REFRESH
-                        trivyData.score = trivyMessageResponse.data.score
-                    }
-                }
-                else if (trivyMessageResponse.flow === EInstanceMessageFlow.UNSOLICITED) {
+                if (trivyMessageResponse.flow === EInstanceMessageFlow.UNSOLICITED) {
                     switch (trivyMessageResponse.msgsubtype) {
-                        case 'score':
-                            trivyData.score = trivyMessageResponse.data.score
-                            break
                         case 'add':
-                            console.log(trivyMessageResponse.data.resource)
-                            let asset = getAsset(trivyMessageResponse.data.known.namespace, trivyMessageResponse.data.known.name, trivyMessageResponse.data.known.container)
-                            console.log(asset)
-                            switch(trivyMessageResponse.data.resource) {
-                                case 'vulnerabilityreports':
-                                    asset.vulnerabilityreports = {
-                                        score: trivyMessageResponse.data.known.score,
-                                        report: trivyMessageResponse.data.known.report
-                                    }
-                                    break
-                                case 'configauditreports':
-                                    asset.configauditreports = {
-                                        report: trivyMessageResponse.data.known.report
-                                    }
-                                    break
-                                case 'sbomreports':
-                                    asset.sbomreports = {
-                                        report: trivyMessageResponse.data.known.report
-                                    }
-                                    console.log(trivyMessageResponse.data.known.report)
-                                    break
-                                case 'exposedsecretreports':
-                                    asset.exposedsecretreports = {
-                                        report: trivyMessageResponse.data.known.report
-                                    }
-                                    break
-                            }
-                            break
                         case 'update':
+                            let asset = getAsset(trivyMessageResponse.data.known.namespace, trivyMessageResponse.data.known.name, trivyMessageResponse.data.known.container, true);
+                            (asset as any)[trivyMessageResponse.data.resource].report = trivyMessageResponse.data.known.report
+                            break
                         case 'delete':
-                            switch(trivyMessageResponse.data.resource) {
-                                case 'vulnerabilityreports':
-                                    // let assetKnown:IAsset = trivyMessageResponse.data.known
-                                    // if (assetKnown) {
-                                    //     trivyData.assets = trivyData.assets.filter(a => a.namespace !== assetKnown.namespace || a.name !== assetKnown.name || a.container !== assetKnown.container)
-                                    //     if (trivyMessageResponse.msgsubtype==='update' && trivyMessageResponse.data.known) trivyData.assets.push(assetKnown)
-                                    // }
-                                    break
-                                case 'configauditreports':
-                                    break
-                                case 'sbomreports':
-                                    break
-                                case 'exposedsecretreports':
-                                    break
-                            }
+                            let assetDelete = getAsset(trivyMessageResponse.data.known.namespace, trivyMessageResponse.data.known.name, trivyMessageResponse.data.known.container, false)
+                            if (assetDelete) trivyData.assets = trivyData.assets.filter(a => a !==assetDelete)
                             break
                         default:
                             console.log('Invalid msgsubtype: ', trivyMessageResponse.msgsubtype)
@@ -171,10 +122,7 @@ export class TrivyChannel implements IChannel {
                 console.log(`Invalid message type ${trivyMessageResponse.type}`)
                 break
         }
-
-        return {
-            action
-        }
+        return { action }
     }
 
     async initChannel(channelObject:IChannelObject): Promise<boolean> {
@@ -189,7 +137,6 @@ export class TrivyChannel implements IChannel {
         trivyData.paused = false
         trivyData.started = true
         trivyData.assets = []
-        trivyData.score = 0
         return true
     }
 
@@ -224,24 +171,5 @@ export class TrivyChannel implements IChannel {
     // *************************************************************************************
     // PRIVATE
     // *************************************************************************************
-
-    trivyRequestScore = (channelObject:IChannelObject) => {
-        let triviMessage: ITrivyMessage = {
-            msgtype: 'trivymessage',
-            id: '1',
-            accessKey: channelObject.accessString!,
-            instance: channelObject.instanceId,
-            namespace: '',
-            group: '',
-            pod: '',
-            container: '',
-            command: ETrivyCommand.SCORE,
-            action: EInstanceMessageAction.COMMAND,
-            flow: EInstanceMessageFlow.REQUEST,
-            type: EInstanceMessageType.DATA,
-            channel: EInstanceMessageChannel.TRIVY
-        }
-        channelObject.webSocket!.send(JSON.stringify(triviMessage))
-    }
 
 }    
