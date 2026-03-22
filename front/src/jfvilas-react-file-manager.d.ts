@@ -44,7 +44,7 @@ declare module '@jfvilas/react-file-manager' {
     export interface IAction {
         title: string,
         icon: React.JSX,
-        onClick: (files : any) => void
+        onClick: (files : IFileObject[]) => void
     }
 
     export interface IIcon {
@@ -56,37 +56,43 @@ declare module '@jfvilas/react-file-manager' {
     }
 
     export interface ISpace {
-        text?: string
-        source?: string
-        width?: number
+        text?: string     // Text to show on the header of the 'name' column (th name of the object)
+        source?: string   // name of the property of the JSON where the data would be found
+        width?: number    // width fo the column in the 'list' view
         sumSourceProperty?: string
         sumReducer?: number
         sumUnits?: string[]
-        leftItems?: ISpaceMenuItem[]
-        configurable?: boolean,
-        properties?: ISpaceProperty[]
+        leftItems?: ISpaceMenuItem[]    // array of item actions
+        configurable?: boolean,         // headers can be configurable (resize, add/remove...) or not
+        properties?: ISpaceProperty[]   // properties of the object (like size, update date...)
     }
 
     export interface ISpaceMenuItem {
-        name?: string,
-        icon?: any,
-        text: string,
-        permission: boolean,
-        multi?: boolean,
-        onClick?: (paths:string[], currentTraget:Element) => void
-        isVisible?: (name:string, path:string) => boolean
-        isEnabled?: (name:string, path:string) => boolean
+        name?: string,    // name of the action
+        icon?: any,       // icon to show on the left
+        text: string,     // text of the action to show
+        permission: boolean,    // required permission (for using 'filedata' space, that is, a file manager not an object manager)
+        multi?: boolean,        // true if this action can be executed on several files at the same time
+        onClick?: (paths:string[], currentTraget:Element) => void     // what to do when th euser clicks the action
+        isVisible?: (name:string, path:string) => boolean             // determine if the action is visible depending on name and path
+        isEnabled?: (name:string, path:string) => boolean             // determine if the action is enabled depending on name and path
+    }
+
+    export interface IFileManagerMenuItem {
+        name: string,   // name of the filemanager action (show on file manager right side)
+        onClick?: (name:string, target:HTMLElement) => void,    // what to do on click
+        onDraw?: (name:string) => void  // how to draw (or not to) it
     }
 
     export interface ISpaceProperty {
-        name: string,
-        text: string,
-        source: string|function,
-        format: 'string'|'function'|'age'|'number'|'storage',
-        sortable: boolean,
-        removable?: boolean,
-        width: number,
-        visible: boolean
+        name: string,   // name of the property
+        text: string,   // text to show on 'list' view
+        source: string|function,    // source property (can be a string or a funciton for showing dynamic data)
+        format: 'string'|'function'|'age'|'number'|'storage',   // how to format data prior to be shown
+        sortable: boolean,  // true if the column can be sorted
+        removable?: boolean,    // column can be removed from list view if space is 'configurable' and 'removable' is true
+        width: number,  // width of the column in the 'list' view
+        visible: boolean    // true if the column is visible on list view
     }
 
     export interface ICategoryValue {
@@ -118,7 +124,7 @@ declare module '@jfvilas/react-file-manager' {
         actions?: Map<string, IAction[]>
         space?: string
         spaces?: Map<string, ISpace>
-        rightItems?: any[]
+        rightItems?: IFileManagerMenuItem[]
         files?: IFileObject[]
         fileUploadConfig?: IFileUploadConfig
         fileDownloadConfig?: IFileDownloadConfig

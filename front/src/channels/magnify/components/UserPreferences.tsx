@@ -47,7 +47,7 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
         props.preferences.logLines = logLines
         props.preferences.tracing = tracing
         props.preferences.customActions = customActions
-        props.channelObject.writeChannelUserPreferences(props.channelObject.channel.channelId, props.preferences)
+        props.channelObject.writeChannelUserPreferences(props.channelObject.channelId, props.preferences)
         setDisplayChanged(false)
         setDataChanged(false)
         setDebugChanged(false)

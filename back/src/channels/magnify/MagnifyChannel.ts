@@ -392,7 +392,7 @@ class MagnifyChannel implements IChannel {
                 
                 case EMagnifyCommand.SUBSCRIBE: {
                     console.log(`Do SUBSCRIBE`)
-                    this.clusterInfo.events.addSubscriber(this, magnifyMessage.params!)
+                    this.clusterInfo.events.addSubscriber(this, magnifyMessage.params!, Boolean(magnifyMessage.params?.includes('CRD Instances')))
                     return
                 }
                 
@@ -635,7 +635,6 @@ class MagnifyChannel implements IChannel {
                     })
                     break
                 case 'Service':
-                    console.log('*************************************')
                     throttleExcute(param, async () => {
                         this.sendDataMessage(webSocket, instance, magnifyMessage.id, EMagnifyCommand.LIST, JSON.stringify(await this.clusterInfo.coreApi.listServiceForAllNamespaces()))
                     })
@@ -763,6 +762,9 @@ class MagnifyChannel implements IChannel {
                 case 'V1APIResource':
                         let data = await this.getApiResources()
                         this.sendDataMessage(webSocket, instance, magnifyMessage.id, EMagnifyCommand.LIST, JSON.stringify(data))
+                    break
+                case 'CRD Instances':
+                    // we ignore LIST for CRDi, only SYNC is needed
                     break
                 default:
                     console.log('Invalid class received:', param)

@@ -4,7 +4,7 @@ import { IContentProps } from '../IChannel'
 import { EMagnifyCommand, IMagnifyMessage, IMagnifyData } from './MagnifyData'
 import { Box, Button, Stack, Tooltip, Typography } from '@mui/material'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, EInstanceConfigView } from '@jfvilas/kwirth-common'
-import { ICategory, IError, IFileManagerHandle, IFileObject } from '@jfvilas/react-file-manager'
+import { ICategory, IError, IFileManagerHandle, IFileManagerMenuItem, IFileObject } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
 import { v4 as uuid } from 'uuid'
 import { ENotifyLevel } from '../../tools/Global'
@@ -176,7 +176,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
     }
 
-    const rightItems = [
+    const rightItems:IFileManagerMenuItem[] = [
         {
             name: 'cloud',
             //onClick: (name:string, target:HTMLElement) => clickRightItem(name, target),
@@ -828,7 +828,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         let magnifyMessage:IMagnifyMessage = {
             flow: EInstanceMessageFlow.REQUEST,
             action: EInstanceMessageAction.COMMAND,
-            channel: props.channelObject.channel.channelId,
+            channel: props.channelObject.channelId,
             type: EInstanceMessageType.DATA,
             accessKey: props.channelObject.accessString!,
             instance: props.channelObject.instanceId,
@@ -847,7 +847,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
 
     // FileManager handlers
     const onError = (error: IError, file: IFileObject) => {
-        props.channelObject.notify?.(props.channelObject.channel.channelId, ENotifyLevel.ERROR, error.message)
+        props.channelObject.notify?.(props.channelObject.channelId, ENotifyLevel.ERROR, error.message)
     }
 
     const onFolderChange = (folder:string) => {

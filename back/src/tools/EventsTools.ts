@@ -2,115 +2,193 @@ import { IChannel } from '../channels/IChannel'
 import { ClusterInfo } from '../model/ClusterInfo'
 import { Watch } from '@kubernetes/client-node'
 
-export class EventsTools {
-    private clusterInfo:ClusterInfo
-    private subscribers: Map<IChannel, string[]>
+export interface ISubscriber {
+    kinds: string[]
+    crdInstances: string[]
+    syncCrdInstances: boolean
+}
 
-    constructor (clusterInfo:ClusterInfo) {
+export class EventsTools {
+    private resourceWatchers: Map<string, Watch>
+    private clusterInfo: ClusterInfo
+    private subscribers: Map<IChannel, ISubscriber>
+
+    constructor(clusterInfo: ClusterInfo) {
         this.clusterInfo = clusterInfo
         this.subscribers = new Map()
+        this.resourceWatchers = new Map()
     }
 
-    addSubscriber(c:IChannel, kinds:string[]) {
-        this.subscribers.set(c,kinds)
+    addSubscriber = (c: IChannel, kinds: string[], syncInstances:boolean) => {
+        let subscriber: ISubscriber = {
+            kinds,
+            crdInstances: [],
+            syncCrdInstances: syncInstances
+        }
+        this.subscribers.set(c, subscriber)
     }
 
-    removeSubscriber(c:IChannel) {
+    removeSubscriber = (c: IChannel) => {
         if (this.subscribers.has(c)) this.subscribers.delete(c)
     }
 
-    async startResourceWatcher (resourcePath: string, eventHandler: (type: string, obj: any, subscribersList:Map<IChannel, string[]>) => void) {
+    startResourceWatcher = async (resourcePath: string, eventHandler: (type: string, obj: any, subscribersList: Map<IChannel, ISubscriber>) => void) => {
+        if (this.resourceWatchers.has(resourcePath)) return
+
+        const MAX_RETRIES = 6
+        const INITIAL_WAIT = 5000
+        let retryCount = 0
+        let currentWaitTime = INITIAL_WAIT
+
+        const watch = new Watch(this.clusterInfo.kubeConfig)
         const watchLoop = async () => {
-            const watch = new Watch(this.clusterInfo.kubeConfig)
             try {
                 await watch.watch(
                     resourcePath,
-                    {},  //{ timeoutSeconds: 300 }, // Optional: restarts every 5 minutes
+                    {}, 
                     (type, apiObj) => {
+                        retryCount = 0
+                        currentWaitTime = INITIAL_WAIT
                         if (apiObj && apiObj.metadata) eventHandler(type, apiObj, this.subscribers)
                     },
                     (err) => {
-                        console.log(`[${resourcePath}] Watcher ended or error (${err}). Restarting...`)
-                        console.log(err)
-                        setTimeout(watchLoop, 5000)
+                        const errorMsg = err?.message || err?.Error || "Unknown error"
+                        console.log(`[${resourcePath}] Watcher ended: ${errorMsg}`)
+
+                        if (retryCount < MAX_RETRIES) {
+                            retryCount++
+                            console.log(`[${resourcePath}] Retry ${retryCount}/${MAX_RETRIES}. Waiting ${currentWaitTime / 1000}s...`)                            
+                            setTimeout(watchLoop, currentWaitTime)
+                            currentWaitTime *= 2
+                        }
+                        else {
+                            console.error(`[${resourcePath}] MAX RETRIES REACHED (${MAX_RETRIES}). Stopping watcher.`)
+                            this.resourceWatchers.delete(resourcePath)
+                        }
                     }
-                )
+                );
             }
             catch (error: any) {
-                console.error(`[${resourcePath}] Error configuring watcher: ${error.message}`)
-                setTimeout(watchLoop, 5000)
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++
+                    console.error(`[${resourcePath}] Error: ${error.message}. Retry ${retryCount} in ${currentWaitTime / 1000}s`)
+                    setTimeout(watchLoop, currentWaitTime)
+                    currentWaitTime *= 2
+                }
+                else {
+                    this.resourceWatchers.delete(resourcePath)
+                    // @ts-ignore
+                    if (typeof watch.abort === 'function') watcher.abort()
+                }
             }
         }
+
         watchLoop()
+        this.resourceWatchers.set(resourcePath, watch)
     }
 
-    handleEvent (type: string, obj: any, subscribersList:Map<IChannel, string[]>) {
-        for (let subscriber of subscribersList.entries()) {
-            // we assume that a user who wants to watch CustomResourceDefinition's also wants to watch CRD resources (instances)
-            // but this behavior could change in the future
-            if (subscriber[1].includes(obj.kind) || subscriber[1].includes('CustomResourceDefinition')) subscriber[0].processObjectEvent(type, obj)
+    handleEvent = (type: string, obj: any, subscribersList: Map<IChannel, ISubscriber>) => {
+        if (obj.kind === 'CustomResourceDefinition') {
+            if (type === 'DELETED') {
+                this.stopCrdInstanceWatcher(obj, subscribersList)
+            }
+            else if (type === 'ADDED') {
+                this.startCrdInstanceWatcher(obj, subscribersList)
+            }
+        }
+
+        for (let [channel, subscriber] of subscribersList.entries()) {
+            if (subscriber.kinds.includes(obj.kind) || (subscriber.crdInstances && subscriber.crdInstances.includes(obj.kind))) {
+                channel.processObjectEvent(type, obj)
+            }
+            else {
+                console.log('********************notproroc', subscriber.crdInstances, obj.kind)
+            }
         }
     }
 
-    async startEvents () {
+    startCrdInstanceWatcher = (crd: any, subscribersList: Map<IChannel, ISubscriber>) => {
+        const kindName = crd.spec.names.kind
+        const resourcePath = `/apis/${crd.spec.group}/${crd.spec.versions[0].name}/${crd.spec.names.plural}`
+
+        if (this.resourceWatchers.has(resourcePath)) {
+            console.log(`Already watching CRD instances for: ${kindName}`)
+            return
+        }
+
+        if (crd.spec.versions && crd.spec.versions.length > 1) {
+            console.warn(`Only version '${crd.spec.versions[0].name}' of '${kindName}' will be watched.`);
+        }
+
+        // Registrar el nuevo tipo de instancia en los suscriptores
+        for (let subscriber of subscribersList.values()) {
+            if (!subscriber.crdInstances.includes(kindName)) subscriber.crdInstances.push(kindName)
+        }
+
+        this.startResourceWatcher(resourcePath, this.handleEvent)
+    }
+    
+    stopCrdInstanceWatcher = (crd: any, subscribersList: Map<IChannel, ISubscriber>) => {
+        const kindName = crd.spec.names.kind;
+        const resourcePath = `/apis/${crd.spec.group}/${crd.spec.versions[0].name}/${crd.spec.names.plural}`
+        const watcher = this.resourceWatchers.get(resourcePath)
+
+        for (let subscriber of subscribersList.values()) {
+            subscriber.crdInstances = subscriber.crdInstances.filter(k => k !== kindName)
+        }
+
+        if (watcher) {
+            console.log(`Stopping watcher for CRD: ${kindName} at ${resourcePath}`)
+            try {
+                // @ts-ignore
+                if (typeof watcher.abort === 'function') {
+                    // @ts-ignore
+                    watcher.abort();
+                }
+            } catch (e) {
+                console.error("Error aborting watcher:", e);
+            }
+            this.resourceWatchers.delete(resourcePath)
+        }
+    }
+
+    startEvents = async () => {
         console.log('Event reception started...')
-        this.startResourceWatcher('/api/v1/nodes', this.handleEvent)
-        this.startResourceWatcher('/api/v1/namespaces', this.handleEvent)
 
+        const coreResources = [
+            '/api/v1/nodes',
+            '/api/v1/namespaces',
+            '/api/v1/services',
+            '/api/v1/endpoints',
+            '/api/v1/configmaps',
+            '/api/v1/secrets',
+            '/api/v1/pods',
+            '/api/v1/persistentvolumes',
+            '/api/v1/persistentvolumeclaims',
+            '/api/v1/serviceaccounts',
+            '/api/v1/replicationcontrollers',
+            '/api/v1/resourcequotas',
+            '/api/v1/limitranges'
+        ]
 
-        this.startResourceWatcher('/api/v1/services', this.handleEvent)
-        this.startResourceWatcher('/api/v1/endpoints', this.handleEvent)
-        this.startResourceWatcher('/apis/networking.k8s.io/v1/ingresses', this.handleEvent)
-        this.startResourceWatcher('/apis/networking.k8s.io/v1/ingressclasses', this.handleEvent)
-        this.startResourceWatcher('/apis/networking.k8s.io/v1/networkpolicies', this.handleEvent)
+        const apiResources = [
+            '/apis/apps/v1/deployments',
+            '/apis/apps/v1/daemonsets',
+            '/apis/apps/v1/statefulsets',
+            '/apis/apps/v1/replicasets',
+            '/apis/networking.k8s.io/v1/ingresses',
+            '/apis/networking.k8s.io/v1/ingressclasses',
+            '/apis/networking.k8s.io/v1/networkpolicies',
+            '/apis/rbac.authorization.k8s.io/v1/roles',
+            '/apis/rbac.authorization.k8s.io/v1/rolebindings',
+            '/apis/rbac.authorization.k8s.io/v1/clusterroles',
+            '/apis/rbac.authorization.k8s.io/v1/clusterrolebindings',
+            '/apis/storage.k8s.io/v1/storageclasses',
+            '/apis/batch/v1/jobs',
+            '/apis/batch/v1/cronjobs',
+            '/apis/apiextensions.k8s.io/v1/customresourcedefinitions'
+        ];
 
-        
-        this.startResourceWatcher('/api/v1/configmaps', this.handleEvent)
-        this.startResourceWatcher('/api/v1/secrets', this.handleEvent)
-        this.startResourceWatcher('/api/v1/resourcequotas', this.handleEvent)
-        this.startResourceWatcher('/api/v1/limitranges', this.handleEvent)
-        this.startResourceWatcher('/apis/autoscaling/v2/horizontalpodautoscalers', this.handleEvent)
-        this.startResourceWatcher('/apis/policy/v1/poddisruptionbudgets', this.handleEvent)
-        this.startResourceWatcher('/apis/scheduling.k8s.io/v1/priorityclasses', this.handleEvent)
-        this.startResourceWatcher('/apis/node.k8s.io/v1/runtimeclasses', this.handleEvent)
-        this.startResourceWatcher('/apis/coordination.k8s.io/v1/leases', this.handleEvent)
-        this.startResourceWatcher('/apis/admissionregistration.k8s.io/v1/validatingwebhookconfigurations', this.handleEvent)
-        this.startResourceWatcher('/apis/admissionregistration.k8s.io/v1/mutatingwebhookconfigurations', this.handleEvent)
-
-
-        this.startResourceWatcher('/api/v1/pods', this.handleEvent)
-        this.startResourceWatcher('/apis/apps/v1/deployments', this.handleEvent)
-        this.startResourceWatcher('/apis/apps/v1/daemonsets', this.handleEvent)
-        this.startResourceWatcher('/apis/apps/v1/statefulsets', this.handleEvent)
-        this.startResourceWatcher('/apis/apps/v1/replicasets', this.handleEvent)
-        this.startResourceWatcher('/api/v1/replicationcontrollers', this.handleEvent)
-        this.startResourceWatcher('/apis/batch/v1/jobs', this.handleEvent)
-        this.startResourceWatcher('/apis/batch/v1/cronjobs', this.handleEvent)
-
-
-        this.startResourceWatcher('/api/v1/persistentvolumes', this.handleEvent)
-        this.startResourceWatcher('/api/v1/persistentvolumeclaims', this.handleEvent)
-        this.startResourceWatcher('/apis/storage.k8s.io/v1/storageclasses', this.handleEvent)
-        this.startResourceWatcher('/apis/storage.k8s.io/v1/volumeattachments', this.handleEvent)
-        this.startResourceWatcher('/apis/storage.k8s.io/v1/csinodes', this.handleEvent)
-        this.startResourceWatcher('/apis/storage.k8s.io/v1/csidrivers', this.handleEvent)
-        this.startResourceWatcher('/apis/storage.k8s.io/v1/csistoragecapacities', this.handleEvent)
-
-
-        this.startResourceWatcher('/api/v1/serviceaccounts', this.handleEvent)
-        this.startResourceWatcher('/apis/rbac.authorization.k8s.io/v1/roles', this.handleEvent)
-        this.startResourceWatcher('/apis/rbac.authorization.k8s.io/v1/rolebindings', this.handleEvent)
-        this.startResourceWatcher('/apis/rbac.authorization.k8s.io/v1/clusterroles', this.handleEvent)
-        this.startResourceWatcher('/apis/rbac.authorization.k8s.io/v1/clusterrolebindings', this.handleEvent)
-
-
-        this.startResourceWatcher('/apis/apiextensions.k8s.io/v1/customresourcedefinitions', this.handleEvent)
-        let crds = await this.clusterInfo.extensionApi.listCustomResourceDefinition()        
-        for (let crd of crds.items) {
-            let apiPath = `/apis/${crd.spec.group}/${crd.spec.versions[0].name}/${crd.spec.names.plural}`
-            console.log('Watching resources in api path:', apiPath)
-            if (crd.spec.versions && crd.spec.versions.length>1) console.warn(`Only first version of resource ${crd.spec.names.kind} will be watched. Available versions are:`, crd.spec.versions.map(v => v.name+' '))
-            this.startResourceWatcher(apiPath, this.handleEvent)
-        }
+        [...coreResources, ...apiResources].forEach(path => this.startResourceWatcher(path, this.handleEvent));
     }
 }

@@ -1,4 +1,4 @@
-import { AppsV1Api, BatchV1Api, CoreV1Api, NetworkingV1Api, V1Eviction, V1Job } from '@kubernetes/client-node'
+import { AppsV1Api, BatchV1Api, CoreV1Api, NetworkingV1Api, V1Eviction, V1Job, V1Pod } from '@kubernetes/client-node'
 import { ClusterInfo } from '../model/ClusterInfo'
 import { v4 as uuid } from 'uuid'
 const yaml = require('js-yaml')
@@ -421,7 +421,7 @@ async function podEvict (coreApi: CoreV1Api, namespace: string, name:string): Pr
 }
 
 async function podWork (coreApi: CoreV1Api, work: string): Promise<string|undefined> {
-    const podDefinition = {
+    const podDefinition:V1Pod = {
         metadata: {
             name: 'kwirth-ubuntu-pod',
         },
@@ -430,25 +430,27 @@ async function podWork (coreApi: CoreV1Api, work: string): Promise<string|undefi
                 {
                     name: 'kwirth-container',
                     image: 'ubuntu:latest',
-                    command: ['sleep', 'infinity']
+                    command: ['sleep', 'infinity'],
+                    imagePullPolicy: 'Always'
                 },
             ],
         },
     }
+
     switch (work) {
         case 'ubuntu':
             break
         case 'alpine':
-            podDefinition.metadata.name = 'kwirth-alpine-pod'
-            podDefinition.spec.containers[0].image = 'alpine:latest'
+            podDefinition!.metadata!.name = 'kwirth-alpine-pod'
+            podDefinition!.spec!.containers[0].image = 'alpine:latest'
             break
         case 'dnsutils':
-            podDefinition.metadata.name = 'kwirth-dnsutils-pod'
-            podDefinition.spec.containers[0].image = 'tutum/dnsutils'
+            podDefinition!.metadata!.name = 'kwirth-dnsutils-pod'
+            podDefinition!.spec!.containers[0].image = 'tutum/dnsutils'
             break
         case 'jubuntu':
-            podDefinition.metadata.name = 'kwirth-jubuntu-pod'
-            podDefinition.spec.containers[0].image = 'jfvilasoutlook/jubuntu'
+            podDefinition!.metadata!.name = 'kwirth-jubuntu-pod'
+            podDefinition!.spec!.containers[0].image = 'jfvilasoutlook/jubuntu'
             break
         default:
             return undefined
@@ -464,7 +466,7 @@ async function podWork (coreApi: CoreV1Api, work: string): Promise<string|undefi
         while (!isRunning) {
             try {
                 const res = await coreApi.readNamespacedPodStatus({
-                    name:podDefinition.metadata.name,
+                    name: podDefinition!.metadata!.name!,
                     namespace:'default'
                 });
                 const phase = res.status?.phase;                
@@ -474,11 +476,11 @@ async function podWork (coreApi: CoreV1Api, work: string): Promise<string|undefi
                 }
             }
             catch (e) {
-                console.log("Waiting for pod...");
+                console.log('Waiting for pod...')
             }
             await new Promise(resolve => setTimeout(resolve, 2000))
         }
-        return podDefinition.metadata.name
+        return podDefinition!.metadata!.name
     }
     catch (err: any) {
         console.error('Error evicting:', err.response?.body?.message || err.message);

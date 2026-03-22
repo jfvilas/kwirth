@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { IChannelObject } from '../../IChannel'
 import { ITrivyInstanceConfig } from '../TrivyConfig'
 import { EInstanceMessageAction, EInstanceMessageChannel, EInstanceMessageFlow, EInstanceMessageType } from '@jfvilas/kwirth-common'
-import { ETrivyCommand, IAsset, ITrivyMessage } from '../TrivyData'
+import { ETrivyCommand, IAsset, ITrivyMessage, TRIVY_API_AUDIT_PLURAL, TRIVY_API_EXPOSED_PLURAL, TRIVY_API_VULN_PLURAL } from '../TrivyData'
 
 interface ITrivyTabContentAssetProps {
     asset: IAsset
@@ -15,50 +15,39 @@ interface ITrivyTabContentAssetProps {
     mode: 'list'|'card'
     onShowVulns: (asset:IAsset) => void
     onShowAudit: (asset:IAsset) => void
-    onShowSbom: (asset:IAsset) => void
     onShowExposed: (asset:IAsset) => void
+    onShowSbom: (asset:IAsset) => void
     onRescan: (asset:IAsset) => void
 }
 
-export const getVulns = (asset:IAsset) => {
-    let reportVulns = asset.vulnerabilityreports.report
-    return (reportVulns?.summary?.criticalCount +  reportVulns?.summary?.highCount + reportVulns?.summary?.mediumCount + reportVulns?.summary?.lowCount) || 0
-}
-
-export const getAudit = (asset:IAsset) => {
-    let reportAudit = asset.configauditreports.report
-    return (reportAudit?.summary?.criticalCount +  reportAudit?.summary?.highCount + reportAudit?.summary?.mediumCount + reportAudit?.summary?.lowCount) || 0
-}
-
-export const getExposed = (asset:IAsset) => {
-    let reportExposed = asset.exposedsecretreports.report
-    return (reportExposed?.summary?.criticalCount +  reportExposed?.summary?.highCount + reportExposed?.summary?.mediumCount + reportExposed?.summary?.lowCount) || 0
+export const getTotalIssues = (trivyInstanceConfig: ITrivyInstanceConfig, plural:string, asset:IAsset) => {
+    let sum = (asset as any)[plural]?.report?.summary
+    let c = trivyInstanceConfig.ignoreCritical? 0 : sum?.criticalCount
+    let h = trivyInstanceConfig.ignoreHigh? 0 : sum?.highCount
+    let m = trivyInstanceConfig.ignoreMedium? 0 : sum?.mediumCount
+    let l = trivyInstanceConfig.ignoreLow? 0 : sum?.lowCount
+    return (c + h + m + l) || 0
 }
 
 const simpleBarChart = (asset: IAsset, trivyInstanceConfig: ITrivyInstanceConfig) => {
     const reportSbom = asset.sbomreports.report
-    const vulns = getVulns(asset)
-    const audit = getAudit(asset)
+    const vulns = getTotalIssues(trivyInstanceConfig, TRIVY_API_VULN_PLURAL, asset)
+    const audit = getTotalIssues(trivyInstanceConfig, TRIVY_API_AUDIT_PLURAL, asset)
+    const exposed = getTotalIssues(trivyInstanceConfig, TRIVY_API_EXPOSED_PLURAL, asset)
     const sbom = (reportSbom?.components?.components?.length) || 0
-    const exposed = getExposed(asset)
     
     const maxHeightPx = 100
     const maxDataValue = Math.max(vulns, audit, sbom, exposed, 1)
 
-    const calculateHeight = (value: number) => (value / maxDataValue) * maxHeightPx
-
-    const getColor = (v: number, max: number) => {
-        if (max < 0) return '#dddddd'
-        if (v >= max) return '#d32f2f'
-        if (v > max * 0.75) return '#fbc02d'
-        return '#388e3c'
+    const calculateHeight = (value: number) => {
+        return (value / maxDataValue) * maxHeightPx
     }
 
     const bars = [
-        { label: `Vulns`, value: vulns, height: calculateHeight(vulns), color: getColor(vulns, trivyInstanceConfig.maxCritical) },
-        { label: `Audit`, value: audit, height: calculateHeight(audit), color: getColor(audit, trivyInstanceConfig.maxHigh) },
-        { label: `SBOM`, value: sbom, height: calculateHeight(sbom), color: '#388e3c' },
+        { label: `Vulns`, value: vulns, height: calculateHeight(vulns), color: '#d32f2f' },
+        { label: `Audit`, value: audit, height: calculateHeight(audit), color: '#d32f2f' },
         { label: `Exposed`, value: exposed, height: calculateHeight(exposed), color: '#d32f2f' },
+        { label: `SBOM`, value: sbom, height: calculateHeight(sbom), color: '#388e3c' },
     ]
 
     return (
@@ -103,10 +92,10 @@ const TrivyTabContentAsset: React.FC<ITrivyTabContentAssetProps> = (props:ITrivy
     let assetMenu = (
         <Menu anchorEl={anchorMenu} open={Boolean(anchorMenu)} onClose={() => setAnchorMenu(undefined)}>
             <MenuList dense sx={{width:'200px'}}>
-                <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowVulns(props.asset)}} disabled={!props.asset.vulnerabilityreports.report}><VisibilityIcon/>&nbsp;&nbsp;Vulnerabilities</MenuItem>
-                <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowAudit(props.asset)}} disabled={!props.asset.configauditreports.report}><VisibilityIcon/>&nbsp;&nbsp;Audit</MenuItem>
+                <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowVulns(props.asset)}} disabled={!props.asset.vulnerabilityreports.report || getTotalIssues(trivyInstanceConfig, TRIVY_API_VULN_PLURAL, props.asset)===0}><VisibilityIcon/>&nbsp;&nbsp;Vulnerabilities</MenuItem>
+                <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowAudit(props.asset)}} disabled={!props.asset.configauditreports.report || getTotalIssues(trivyInstanceConfig, TRIVY_API_AUDIT_PLURAL, props.asset)===0}><VisibilityIcon/>&nbsp;&nbsp;Config audit</MenuItem>
+                <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowExposed(props.asset)}} disabled={!props.asset.exposedsecretreports.report || getTotalIssues(trivyInstanceConfig, TRIVY_API_EXPOSED_PLURAL, props.asset)===0}><VisibilityIcon/>&nbsp;&nbsp;Exposed secrets</MenuItem>
                 <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowSbom(props.asset)}} disabled={!props.asset.sbomreports.report}><VisibilityIcon/>&nbsp;&nbsp;SBOM</MenuItem>
-                <MenuItem onClick={() => { setAnchorMenu(undefined); props.onShowExposed(props.asset)}} disabled={!props.asset.exposedsecretreports.report}><VisibilityIcon/>&nbsp;&nbsp;Exposed secrets</MenuItem>
                 <MenuItem onClick={() => { setAnchorMenu(undefined); rescan(props.asset)}}><ReplayIcon/>&nbsp;&nbsp;Re-scan</MenuItem>
             </MenuList>
         </Menu>
@@ -148,15 +137,15 @@ const TrivyTabContentAsset: React.FC<ITrivyTabContentAssetProps> = (props:ITrivy
                     </Stack>
                 </Stack>
                 <Stack direction={'column'} sx={{width:'10%'}} alignItems={'center'}>
-                    <Typography fontSize={'18px'}>{getVulns(props.asset)}</Typography>
+                    <Typography fontSize={'18px'}>{getTotalIssues(trivyInstanceConfig, TRIVY_API_VULN_PLURAL, props.asset)}</Typography>
                     <Typography fontSize={'8px'}>Vulnerabilities</Typography>
                 </Stack>
                 <Stack direction={'column'} sx={{width:'10%'}} alignItems={'center'}>
-                    <Typography fontSize={'18px'}>{getAudit(props.asset)}</Typography>
+                    <Typography fontSize={'18px'}>{getTotalIssues(trivyInstanceConfig, TRIVY_API_AUDIT_PLURAL, props.asset)}</Typography>
                     <Typography fontSize={'8px'}>ConfigAudit</Typography>
                 </Stack>
                 <Stack direction={'column'} sx={{width:'10%'}} alignItems={'center'}>
-                    <Typography fontSize={'18px'}>{getExposed(props.asset)}</Typography>
+                    <Typography fontSize={'18px'}>{getTotalIssues(trivyInstanceConfig, TRIVY_API_EXPOSED_PLURAL, props.asset)}</Typography>
                     <Typography fontSize={'8px'}>ExposedSecrets</Typography>
                 </Stack>
                 <Typography sx={{flex:1}}></Typography>

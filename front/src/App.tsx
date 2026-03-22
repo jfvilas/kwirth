@@ -9,8 +9,8 @@ import { Cluster, IClusterInfo } from './model/Cluster'
 
 // components
 import { RenameTab } from './components/RenameTab'
-import { SaveWorkspace } from './components/board/SaveWorkspace'
-import { SelectWorkspace }  from './components/board/SelectWorkspace'
+import { SaveWorkspace } from './components/workspace/SaveWorkspace'
+import { SelectWorkspace }  from './components/workspace/SelectWorkspace'
 import { ManageApiSecurity } from './components/security/ManageApiSecurity'
 import { Login } from './components/Login'
 import { ManageClusters } from './components/ManageClusters'
@@ -182,7 +182,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const [anchorMenuTab, setAnchorMenuTab] = useState<null | HTMLElement>(null)
     const [menuDrawerOpen,setMenuDrawerOpen]=useState(false)
 
-    // boards
+    // workspaces
     const [currentWorkspaceName, setCurrentWorkspaceName] = useState('')
     const [currentWorkspaceDescription, setCurrentWorkspaceDescription] = useState('')
     const [workspaces, setWorkspaces] = useState<{name:string, description:string}[]>([])
@@ -205,6 +205,9 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     const [favTabs, setFavTabs] = useState<ITabSummary[]>([])
     const [lastWorkspaces, setLastWorkspaces] = useState<IWorkspaceSummary[]>([])
     const [favWorkspaces, setFavWorkspaces] = useState<IWorkspaceSummary[]>([])
+    const dataCpu = useRef([])
+    const dataMemory = useRef([])
+    const dataNetwork = useRef([])
 
     // ui notifications
     const [notifySnackbarOpen, setNotifySnackbarOpen] = useState(false)
@@ -267,13 +270,13 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         if (favTabs) setFavTabs(JSON.parse(favTabs))
 
         // load user Workspaces
-        let lastBoards = localStorage.getItem('lastWorkspaces')
-        if (lastBoards)
-            setLastWorkspaces(JSON.parse(lastBoards))
+        let lastWorkspaces = localStorage.getItem('lastWorkspaces')
+        if (lastWorkspaces)
+            setLastWorkspaces(JSON.parse(lastWorkspaces))
         else
             setLastWorkspaces([])
-        let favBoards = localStorage.getItem('favWorkspaces')
-        if (favBoards) setFavWorkspaces(JSON.parse(favBoards))
+        let favWorkspaces = localStorage.getItem('favWorkspaces')
+        if (favWorkspaces) setFavWorkspaces(JSON.parse(favWorkspaces))
     },[logged, backendUrl])
 
     useEffect( () => {
@@ -524,7 +527,8 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 isElectron: props.isElectron,
                 data: undefined,
                 instanceConfig: undefined,
-                channel: newChannel
+                xchannel: newChannel,  //+++ remove when not using is ensured
+                channelId: newChannel.channelId
             },
             channelStarted: false,
             channelPaused: false,
@@ -1003,18 +1007,22 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         selectedTab.current.ws.send(JSON.stringify(instanceConfig))
     }
 
+    const removeTab = (tab:ITabObject) => {
+        if (tab.ws) {
+            tab.ws.onopen = null
+            tab.ws.onerror = null
+            tab.ws.onmessage = null
+            tab.ws.onclose = null
+        }
+        clearInterval(tab.keepAliveRef)
+        if (tab.channelObject) stopTabChannel(tab)
+    }
+
     const onClickTabRemove = () => {
         setAnchorMenuTab(null)
         if (!selectedTab.current) return
 
-        if (selectedTab.current.ws) {
-            selectedTab.current.ws.onopen = null
-            selectedTab.current.ws.onerror = null
-            selectedTab.current.ws.onmessage = null
-            selectedTab.current.ws.onclose = null
-        }
-        clearInterval(selectedTab.current.keepAliveRef)
-        if (selectedTab.current.channelObject) stopTabChannel(selectedTab.current)
+        removeTab(selectedTab.current)
 
         let current = tabs.current.findIndex(t => t === selectedTab.current)
         let newTabs = tabs.current.filter(t => t !== selectedTab.current)
@@ -1109,7 +1117,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
     }
 
-    const saveWorkspace = (name:string, description:string) => {
+    const saveWorkspace = async (name:string, description:string) => {
         let newTabs:ITabObject[] = []
         for (let tab of tabs.current) {
             let newTab:ITabObject = {
@@ -1124,13 +1132,8 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 channelPending: false,
                 headerEl: undefined
             }
-            if (selectedTab.current && selectedTab.current.channel) {
-                delete newTab.channelObject.data  // we only need uiConfig and instanceConfig
-                newTabs.push(newTab)
-            }
-            else {
-                console.log('Channel not supported on saveWorkspace:',tab.channel.channelId)
-            }
+            delete newTab.channelObject.data  // we only need uiConfig and instanceConfig
+            newTabs.push(newTab)
         }
         let workspace:IWorkspace = {
             name,
@@ -1138,7 +1141,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             tabs: newTabs
         }
         let payload=JSON.stringify( workspace )
-        fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addPostAuthorization(accessString, payload))
+        await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addPostAuthorization(accessString, payload))
 
         if (currentWorkspaceName !== name) {
             setCurrentWorkspaceName(name)
@@ -1157,24 +1160,23 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
     const onSelectWorkspaceClosed = async (action:string, name?:string) => {
         setShowSelectWorkspace(false)
-        if (name) {
-            if (action === 'delete') {
-                setMsgBox(MsgBoxYesNo('Delete workspace',`Are you sure you want to delete workspace ${name} (you cannot undo this action)?`, setMsgBox, (button) => {
-                    if (button===MsgBoxButtons.Yes) {
-                        fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addDeleteAuthorization(accessString))
-                        if (name === currentWorkspaceName) {
-                            setCurrentWorkspaceName('untitled')
-                            setCurrentWorkspaceDescription('No description yet')                            
-                        }
-                        let newLastWorkspaces=[...lastWorkspaces.filter(b => b.name!==name)]
-                        setLastWorkspaces(newLastWorkspaces)
-                        localStorage.setItem('lastWorkspaces', JSON.stringify(newLastWorkspaces))
+        if (!name) return
+        if (action === 'delete') {
+            setMsgBox(MsgBoxYesNo('Delete workspace',`Are you sure you want to delete workspace ${name} (you cannot undo this action)?`, setMsgBox, (button) => {
+                if (button===MsgBoxButtons.Yes) {
+                    fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addDeleteAuthorization(accessString))
+                    if (name === currentWorkspaceName) {
+                        setCurrentWorkspaceName('untitled')
+                        setCurrentWorkspaceDescription('No description yet')                            
                     }
-                }))
-            }
-            else if (action === 'load') {
-                loadWorkspace(name)
-            }
+                    let newLastWorkspaces=[...lastWorkspaces.filter(b => b.name!==name)]
+                    setLastWorkspaces(newLastWorkspaces)
+                    localStorage.setItem('lastWorkspaces', JSON.stringify(newLastWorkspaces))
+                }
+            }))
+        }
+        else if (action === 'load') {
+            loadWorkspace(name)
         }
     }
 
@@ -1184,7 +1186,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
 
         let workspaceDef = await (await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addGetAuthorization(accessString))).json()
         let newWorkspace:IWorkspace = JSON.parse(workspaceDef)
-        if (newWorkspace && newWorkspace.tabs && newWorkspace.tabs.length>0) {
+        if (newWorkspace?.tabs && newWorkspace.tabs.length>0) {
             for (let t of newWorkspace.tabs) {
                 let clusterName = t.channelObject.clusterName
                 if (!clusters.find(c => c.name === clusterName)) {
@@ -1238,10 +1240,15 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
     }
 
     const clearTabs = () => {
-        for (let tab of tabs.current) {
-            if (tab.channelObject) stopTabChannel(tab)
+        // for (let tab of tabs.current) {
+        //     if (tab.channelObject) stopTabChannel(tab)
+        // }
+        // tabs.current = []
+        for(let t of tabs.current) {
+            removeTab(t)
         }
         tabs.current = []
+        setRefresh(Math.random())
     }
 
     const menuDrawerOptionSelected = async (option:MenuDrawerOption) => {
@@ -1677,7 +1684,9 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                     }
                     { !selectedTab.current && 
                         <Box sx={{ display: 'flex', flexDirection: 'column', height:'100%', minHeight:0 }}>
-                            <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onHomepageSelectTab={onHomepageSelectTab} onRestoreTabParameters={onHomepageRestoreParameters} onSelectWorkspace={onHomepageSelectWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces}/>
+                            <Homepage lastTabs={lastTabs} favTabs={favTabs} lastWorkspaces={lastWorkspaces} favWorkspaces={favWorkspaces} onHomepageSelectTab={onHomepageSelectTab} onRestoreTabParameters={onHomepageRestoreParameters} onSelectWorkspace={onHomepageSelectWorkspace} frontChannels={frontChannels} onUpdateTabs={onHomepageUpdateTabs} cluster={clusters.find(c => c.name === selectedClusterName)} clusters={clusters} onUpdateWorkspaces={onHomepageUpdateWorkspaces} dataCpu={dataCpu.current} dataMemory={dataMemory.current} dataNetwork={dataNetwork.current
+
+                            }/>
                         </Box>
                     }
 
@@ -1698,7 +1707,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 <Snackbar open={notifySnackbarOpen} autoHideDuration={3000} anchorOrigin={{vertical: 'bottom', horizontal:'center'}} onClose={onNotifySnackbarClose}>
                     <Alert severity={notifySnackbarLevel} variant="filled" onClose={onNotifySnackbarClose} sx={{ width: '100%' }}>{notifySnackbarMessage}</Alert>
                 </Snackbar>
-                { notificationMenuAnchorParent && <MenuNotification anchorParent={notificationMenuAnchorParent} notifications={notifications.current} onRefresh={() => { setRefresh(Math.random())}} onClose={() => setNotificationMenuAnchorParent(null)} channels={frontChannels} />}
+                { notificationMenuAnchorParent && <MenuNotification anchorParent={notificationMenuAnchorParent} notifications={notifications.current} onRefresh={() => setRefresh(Math.random())} onClose={() => setNotificationMenuAnchorParent(null)} channels={frontChannels} />}
                 { msgBox }
                 { showAbout && <About onClose={() => setShowAbout(false)}/>}
             </SessionContext.Provider>

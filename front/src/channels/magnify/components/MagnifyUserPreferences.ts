@@ -48,7 +48,8 @@ export const allKinds: IKind[] = [
     {name:'Role',priority:2},
     {name:'ClusterRoleBinding',priority:2},
     {name:'RoleBinding',priority:2},
-    {name:'CustomResourceDefinition',priority:4}
+    {name:'CustomResourceDefinition',priority:4},
+    {name:'CRD Instances',priority:4}    
 ].sort((a,b) => a.priority-b.priority)
 
 export class MagnifyDataConfig {

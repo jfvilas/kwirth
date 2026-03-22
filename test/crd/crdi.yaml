@@ -1,0 +1,8 @@
+apiVersion: myapp.example.com/v1
+kind: FeatureFlag
+metadata:
+  name: dark-mode-feature
+  namespace: default
+spec:
+  enabled: true
+  description: "Activa el modo oscuro en el frontend"

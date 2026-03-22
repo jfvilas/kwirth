@@ -6,7 +6,7 @@ import { IContentProps } from '../IChannel'
 import { ITrivyInstanceConfig } from './TrivyConfig'
 import { IAsset, ITrivyData, TRIVY_API_AUDIT_PLURAL, TRIVY_API_EXPOSED_PLURAL, TRIVY_API_SBOM_PLURAL, TRIVY_API_VULN_PLURAL } from './TrivyData'
 import { TrivyTabContentAssetDetails } from './components/TrivyTabContentAssetDetails'
-import { getAudit, getExposed, getVulns, TrivyTabContentAsset } from './components/TrivyTabContentAsset'
+import { getTotalIssues, TrivyTabContentAsset } from './components/TrivyTabContentAsset'
 import { MenuOrder } from './components/MenuOrder'
 
 const TrivyTabContent: React.FC<IContentProps> = (props: IContentProps) => {
@@ -31,16 +31,23 @@ const TrivyTabContent: React.FC<IContentProps> = (props: IContentProps) => {
     const [minExposed, setMinExposed] = useState(0)
 
     useEffect(() => {
-        if (trivyBoxRef.current) setTrivyBoxTop(trivyBoxRef.current.getBoundingClientRect().top)
-    }, [])
+        if (trivyBoxRef.current) {
+            const timer = setTimeout(() => {
+                // this is a hack for ensuring a vertical scroll bar appears as assets are being added
+                // forces recalc on assetList modifications
+                setTrivyBoxTop(trivyBoxRef.current?.getBoundingClientRect().top || 0)
+            }, 100)
+            return () => clearTimeout(timer)
+        }
+    }, [assetList, showMode])
 
     useEffect(() => {
         const newAssets = [...trivyData.assets];
         const sorted = newAssets.sort((a, b) => {
             let valA = 0; let valB = 0;
-            if (orderSource === 'vuln') { valA = getVulns(a); valB = getVulns(b) }
-            else if (orderSource === 'audit') { valA = getAudit(a); valB = getAudit(b) }
-            else if (orderSource === 'exposed') { valA = getExposed(a); valB = getExposed(b) }
+            if (orderSource === 'vuln') { valA = getTotalIssues(trivyInstanceConfig, TRIVY_API_VULN_PLURAL, a); valB = getTotalIssues(trivyInstanceConfig, TRIVY_API_VULN_PLURAL, b) }
+            else if (orderSource === 'audit') { valA = getTotalIssues(trivyInstanceConfig, TRIVY_API_AUDIT_PLURAL, a); valB = getTotalIssues(trivyInstanceConfig, TRIVY_API_AUDIT_PLURAL, b) }
+            else if (orderSource === 'exposed') { valA = getTotalIssues(trivyInstanceConfig, TRIVY_API_EXPOSED_PLURAL, a); valB = getTotalIssues(trivyInstanceConfig, TRIVY_API_EXPOSED_PLURAL, b) }
             return orderType === 'a' ? valA - valB : valB - valA
         });
         setAssetList(sorted);
@@ -49,11 +56,11 @@ const TrivyTabContent: React.FC<IContentProps> = (props: IContentProps) => {
     const maxLimits = useMemo(() => {
         const assets = trivyData.assets || []
         return {
-            vulns: assets.length > 0 ? Math.max(...assets.map(getVulns)) : 0,
-            audit: assets.length > 0 ? Math.max(...assets.map(getAudit)) : 0,
-            exposed: assets.length > 0 ? Math.max(...assets.map(getExposed)) : 0
+            vulns: assets.length > 0 ? Math.max(...assets.map(a => getTotalIssues(trivyInstanceConfig, TRIVY_API_VULN_PLURAL, a))) : 0,
+            audit: assets.length > 0 ? Math.max(...assets.map(a => getTotalIssues(trivyInstanceConfig, TRIVY_API_AUDIT_PLURAL, a))) : 0,
+            exposed: assets.length > 0 ? Math.max(...assets.map(a => getTotalIssues(trivyInstanceConfig, TRIVY_API_EXPOSED_PLURAL, a))) : 0
         }
-    }, [trivyData.assets])
+    }, [trivyData.assets, trivyInstanceConfig])
 
     const onReorder = (source: 'vuln' | 'audit' | 'exposed', type: 'a' | 'd') => {
         setAnchorMenu(undefined)
@@ -62,9 +69,9 @@ const TrivyTabContent: React.FC<IContentProps> = (props: IContentProps) => {
 
         const sorted = [...assetList].sort((a, b) => {
             let valA = 0; let valB = 0
-            if (source === 'vuln') { valA = getVulns(a); valB = getVulns(b) }
-            else if (source === 'audit') { valA = getAudit(a); valB = getAudit(b) }
-            else if (source === 'exposed') { valA = getExposed(a); valB = getExposed(b) }
+            if (source === 'vuln') { valA = getTotalIssues(trivyInstanceConfig, TRIVY_API_VULN_PLURAL, a); valB = getTotalIssues(trivyInstanceConfig, TRIVY_API_VULN_PLURAL, b) }
+            else if (source === 'audit') { valA = getTotalIssues(trivyInstanceConfig, TRIVY_API_AUDIT_PLURAL, a); valB = getTotalIssues(trivyInstanceConfig, TRIVY_API_AUDIT_PLURAL, b) }
+            else if (source === 'exposed') { valA = getTotalIssues(trivyInstanceConfig, TRIVY_API_EXPOSED_PLURAL, a); valB = getTotalIssues(trivyInstanceConfig, TRIVY_API_EXPOSED_PLURAL, b) }
             return type === 'a' ? valA - valB : valB - valA
         })
         setAssetList(sorted)
@@ -78,9 +85,9 @@ const TrivyTabContent: React.FC<IContentProps> = (props: IContentProps) => {
             asset.container.toLowerCase().includes(search);
 
         const matchesMetrics = 
-            getVulns(asset) >= minVulns &&
-            getAudit(asset) >= minAudit &&
-            getExposed(asset) >= minExposed;
+            getTotalIssues(trivyInstanceConfig, TRIVY_API_VULN_PLURAL, asset) >= minVulns &&
+            getTotalIssues(trivyInstanceConfig, TRIVY_API_AUDIT_PLURAL, asset) >= minAudit &&
+            getTotalIssues(trivyInstanceConfig, TRIVY_API_EXPOSED_PLURAL, asset) >= minExposed;
 
         return matchesText && matchesMetrics;
     })

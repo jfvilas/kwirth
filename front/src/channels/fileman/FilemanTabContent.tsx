@@ -139,7 +139,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             }
             catch (error) {
                 console.error(`Error downloading file: ${file.path}`, error)
-                props.channelObject.notify?.(props.channelObject.channel.channelId, ENotifyLevel.ERROR, `Error downloading file ${file.path}: ${error}`)
+                props.channelObject.notify?.(props.channelObject.channelId, ENotifyLevel.ERROR, `Error downloading file ${file.path}: ${error}`)
             }
         }
     }
@@ -153,7 +153,7 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }
 
     const onError = (error: IError, file: IFileObject) => {
-        props.channelObject.notify?.(props.channelObject.channel.channelId, ENotifyLevel.ERROR, error.message)
+        props.channelObject.notify?.(props.channelObject.channelId, ENotifyLevel.ERROR, error.message)
     }
 
     const onRename	= (file: IFileObject, newName: string) => {

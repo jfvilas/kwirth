@@ -29,6 +29,9 @@ interface IHomepageProps {
     onSelectWorkspace: (workspace:IWorkspaceSummary) => void
     onUpdateTabs: (last:ITabSummary[], fav:ITabSummary[]) => void
     onUpdateWorkspaces: (last:IWorkspaceSummary[], fav:IWorkspaceSummary[]) => void
+    dataCpu: {value:number}[]
+    dataMemory: {value:number}[]
+    dataNetwork: {value:number}[]
 }
 
 enum EListType {
@@ -42,9 +45,9 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
     const [txmbps, setTxmbps] = useState(0)
     const [rxmbps, setRxmbps] = useState(0)
     const [cardExpanded, setCardExpanded] = useState(false)
-    const [dataCpu, setDataCpu]  = useState<any[]>([])
-    const [dataMemory, setDataMemory]  = useState<any[]>([])
-    const [dataNetwork, setDataNetwork]  = useState<any[]>([])
+    const [dataCpu, setDataCpu]  = useState<any[]>(props.dataCpu||[])
+    const [dataMemory, setDataMemory]  = useState<any[]>(props.dataMemory||[])
+    const [dataNetwork, setDataNetwork]  = useState<any[]>(props.dataNetwork||[])
 
     let homeCluster = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.name : 'n/a'
     let clusterUrl = props.cluster? props.clusters.find(c => c.name===props.cluster!.name)!.url : 'n/a'
@@ -65,19 +68,22 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
         const i = setInterval((c: Cluster) => {
             fetch(`${c.url}/metrics/usage/cluster`, addGetAuthorization(c.accessString))
                 .then((result) => {
-                    if (!result.ok) throw new Error("Error en respuesta de red");
-                    return result.json();
+                    if (!result.ok) throw new Error("Error en respuesta de red")
+                    return result.json()
                 })
                 .then((data) => {
                     setCpu(data.cpu);
-                    setDataCpu(prev => [...prev, { value: data.cpu as number }]);
+                    setDataCpu(prev => [...prev, { value: data.cpu as number }])
+                    props.dataCpu.push({ value: data.cpu as number })
                     
                     setMemory(data.memory);
                     setDataMemory(prev => [...prev, { value: data.memory as number}])
+                    props.dataMemory.push({ value: data.memory as number})
                     
                     setTxmbps(data.txmbps)
                     setRxmbps(data.rxmbps)
                     setDataNetwork(prev => [...prev, { value: (data.txmbps + data.rxmbps) || 0}])
+                    props.dataNetwork.push({ value: (data.txmbps + data.rxmbps) || 0 })
                 })
                 .catch((err) => {
                     console.error('Critical error receiving cluster metrics. Interval will be cancelled:', err)
@@ -122,23 +128,11 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
         }
     }
 
-    const openTab = (tab:ITabSummary) => {
-        props.onHomepageSelectTab(tab)
-    }
-
-    const restoreTabParameters = (tab:ITabSummary) => {
-        props.onRestoreTabParameters(tab)
-    }
-
-    const openWorkspace = (workspace:IWorkspaceSummary) => {
-        props.onSelectWorkspace(workspace)
-    }
-
     const drawTabCard = (tabList:ITabSummary[], listType:EListType) => {
         return <>
             <Card>
                 <CardHeader title={`${listType=== EListType.LAST? 'Last':'Fav'} tabs`} sx={{borderBottom:1, borderColor:'divider'}}/>
-                    <CardContent sx={{overflowY:'auto', overflowX:'hidden', maxHeight:'150px' }}>
+                    <CardContent sx={{overflowY:'auto', overflowX:'hidden', minHeight:'50%', maxHeight:'50%' }}>
                     {
                         tabList.map(tab => {
                             let channelIcon = <Box sx={{minWidth:'24px'}}/>
@@ -174,18 +168,27 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
                                     {channelIcon}
                                 </Tooltip>
                                 <Typography>&nbsp;</Typography>
-                                {viewIcon}
+                                <Tooltip title={`View: ${tab.channelObject.view}`}>
+                                    {/* span required for showing tooltip on icon */}
+                                    <span style={{ display: 'inline-flex' }}>  
+                                        {viewIcon}
+                                    </span>
+                                </Tooltip>
                                 <Typography>&nbsp;</Typography>
-                                <Tooltip title={disabled? `Cannot access cluser (${tab.channelObject.clusterName})`: tab.name}>
+                                <Tooltip title={disabled? `Cannot access cluster '${tab.channelObject.clusterName}'`: `Workspace '${tab.name}' on cluster '${tab.channelObject.clusterName}'`}>
                                     <Typography>{name}</Typography>
                                 </Tooltip>
                                 <Typography flexGrow={1}/>
-                                <IconButton onClick={() => openTab(tab)} disabled={disabled}>
-                                    <OpenInBrowser/>
-                                </IconButton>
-                                <IconButton onClick={() => restoreTabParameters(tab)} disabled={disabled}>
-                                    <FactCheck/>
-                                </IconButton>
+                                <Tooltip title={`Open this configuration on a new tab`}>
+                                    <IconButton onClick={() => props.onHomepageSelectTab(tab)} disabled={disabled}>
+                                        <OpenInBrowser/>
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title={`Restore these tab parameters to resource selector`}>
+                                    <IconButton onClick={() => props.onRestoreTabParameters(tab)} disabled={disabled}>
+                                        <FactCheck/>
+                                    </IconButton>
+                                </Tooltip>
                                 
                                 { listType !== EListType.FAV && 
                                     <IconButton onClick={() => toFavTabs(tab)} disabled={disabled}>
@@ -213,7 +216,8 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
                             <Typography>{workspace.name}</Typography>
                             <Typography fontSize={'12px'}>{workspace.description}</Typography>                            
                             <Typography flexGrow={1}/>
-                            <IconButton onClick={() => openWorkspace(workspace)}>
+                            <IconButton onClick={() => props.onSelectWorkspace(workspace)
+}>
                                 <OpenInBrowser/>
                             </IconButton>
                             { listType !== EListType.FAV && 
@@ -431,9 +435,9 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
                 
             </Card>
 
-            <Stack direction={'column'} spacing={2} width={'100%'}>
+            <Stack direction={'column'} spacing={2} width={'100%'} height={'100%'}>
 
-                <Stack direction={'row'} spacing={2} sx={{width:'100%'}}>
+                <Stack direction={'row'} spacing={2} sx={{width:'100%', height:'100%'}}>
                     <Stack direction={'column'} width='100%' spacing={2} height='100%'>
                         {drawTabCard(props.lastTabs, EListType.LAST)}
                         {drawTabCard(props.favTabs, EListType.FAV)}

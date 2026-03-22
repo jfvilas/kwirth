@@ -79,10 +79,6 @@ class TrivyChannel implements IChannel {
         let action = req.query['action']
         console.log('Action: ', action)
 
-        let ns = 'trivy-system'
-        //let cmNameOperator = 'trivy-operator'
-        let cmNameOperatorConfig = 'trivy-operator-trivy-config'
-
         switch (action) {
             case 'install':
                 try {
@@ -165,20 +161,19 @@ class TrivyChannel implements IChannel {
                 break
             case 'status':
                 try {
-                    let cttoconfig = await this.clusterInfo.coreApi?.readNamespacedConfigMap({ name: cmNameOperatorConfig, namespace: ns })
-                    if (cttoconfig.data===undefined) {
-                        res.status(500).send('No Trivy config map exist, Trivy seems not to be installed.')
+                    let cmTrivyOperatorConfig = await this.clusterInfo.coreApi?.readNamespacedConfigMap({ name: 'trivy-operator-trivy-config', namespace: 'trivy-system' })
+                    if (cmTrivyOperatorConfig.data===undefined) {
+                        res.status(404).send(`No Trivy config map exist on namespace 'trivy-system', Trivy seems not to be installed.`)
                         return
                     }
                     else {
-                        let cmtoconfig = cttoconfig
-                        let command = cmtoconfig.data!['trivy.command']
-                        res.status(200).send(`Installed [mode: ${command}, version: 0.30.1]`)
+                        let trivyScanMode = cmTrivyOperatorConfig.data!['trivy.command']
+                        res.status(200).send(`Installed [${trivyScanMode}, 0.30.1]`)
                         return 
                     }
                 }
                 catch (err) {
-                    res.status(200).send('Not installed (could not access Trivy configMap)')
+                    res.status(200).send(`Not installed (Trivy configMap not found in 'trivy-system')`)
                     return
                 }
                 break
@@ -488,12 +483,18 @@ class TrivyChannel implements IChannel {
         informer.on('update', (obj:any) => this.processInformerEvent(webSocket, instance, plural, 'update', obj))
         informer.on('delete', (obj:any) => this.processInformerEvent(webSocket, instance, plural, 'delete', obj))
         informer.on('error', (err:any) => {
-            console.error('Error in informer')
-            console.log(err)
-            if (err.statusCode === 404)
-                console.log('CRD not found, informer will not reestart')
-            else
-                setTimeout(() => { informer.start(); console.log('Informer restarted')}, 5000)
+            try {
+                console.error('Error in informer')
+                console.log(err.Error)
+                if (err['HTTP-Code']==='404' || err.statusCode===404)
+                    console.log('CRD not found, informer will not restart')
+                else
+                    setTimeout(() => { informer.start(); console.log('Informer restarted')}, 5000)
+            }
+            catch (err) {
+                console.log('Error managing informer error:')
+                console.log(err)
+            }
         })
         return informer
     }

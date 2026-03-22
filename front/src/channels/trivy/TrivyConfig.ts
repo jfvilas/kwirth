@@ -5,17 +5,17 @@ class TrivyConfig implements ITrivyConfig{
 }
 
 interface ITrivyInstanceConfig {
-    maxCritical:number
-    maxHigh:number
-    maxMedium:number
-    maxLow:number
+    ignoreCritical: boolean
+    ignoreHigh: boolean
+    ignoreMedium: boolean
+    ignoreLow: boolean
 }
 
 class TrivyInstanceConfig implements ITrivyInstanceConfig{
-    maxCritical = 1
-    maxHigh = 2
-    maxMedium = 5
-    maxLow = -1
+    ignoreCritical = false
+    ignoreHigh = false
+    ignoreMedium = false
+    ignoreLow = true
 }
 
 export type { ITrivyConfig, ITrivyInstanceConfig }

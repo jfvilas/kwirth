@@ -1309,6 +1309,7 @@ class MagnifyChannel implements IChannel {
         this.upsertObject(magnifyData, file)
         
         // for each CRD, we request the exsistent objects in that CRD (these are the CRD instances)
+        // this is an initial sync. objects created afterward will be automatically synced
         if (obj.spec.versions && obj.spec.versions.length>0) {
             let magnifyMessage:IMagnifyMessage = {
                 msgtype: 'magnifymessage',
@@ -1379,7 +1380,7 @@ const requestClusterInfo = (channelObject: IChannelObject) => {
         action: EInstanceMessageAction.COMMAND,
         flow: EInstanceMessageFlow.REQUEST,
         type: EInstanceMessageType.DATA,
-        channel: channelObject.channel.channelId,
+        channel: channelObject.channelId,
         params: []
     }
     channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
@@ -1403,7 +1404,7 @@ const requestList = async (channelObject: IChannelObject) => {
             action: EInstanceMessageAction.COMMAND,
             flow: EInstanceMessageFlow.REQUEST,
             type: EInstanceMessageType.DATA,
-            channel: channelObject.channel.channelId,
+            channel: channelObject.channelId,
             params: [ ...params ]
         }
         channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))
@@ -1426,7 +1427,7 @@ const subscribe = (channelObject: IChannelObject) => {
         action: EInstanceMessageAction.COMMAND,
         flow: EInstanceMessageFlow.REQUEST,
         type: EInstanceMessageType.DATA,
-        channel: channelObject.channel.channelId,
+        channel: channelObject.channelId,
         params: magnifyData.userPreferences?.dataConfig?.sync.map(k => k.name)
     }
     channelObject.webSocket!.send(JSON.stringify( magnifyMessage ))

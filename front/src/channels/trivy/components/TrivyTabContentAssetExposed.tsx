@@ -20,7 +20,7 @@ const TrivyTabContentAssetExposed: React.FC<ITabContentTrivyAssetExposedProps> =
                 <Typography variant='body2'><b>Severity: </b>{secret.severity}</Typography>
                 <Typography variant='body2'><b>Cateogry: </b>{secret.category}</Typography>
                 <Typography variant='body2'><b>Target: </b>{secret.target}</Typography>
-                <Typography variant='body2'><b>Match: </b><pre>{secret.match}</pre></Typography>
+                <Typography variant='body2' component={'div'}><b>Match: </b><pre>{secret.match}</pre></Typography>
             </AccordionDetails>
         </Accordion>
     )

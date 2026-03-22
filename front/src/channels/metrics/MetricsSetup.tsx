@@ -141,7 +141,7 @@ const MetricsSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
                                             <ListItem key={index} disablePadding>
                                                 <ListItemButton onClick={() => metricAddOrRemove(value)} dense>
                                                     <Tooltip title={<><Typography fontSize={12}><b>{allMetricsList && allMetricsList.get(value)?.type}</b></Typography><Typography fontSize={12}>{allMetricsList && allMetricsList.get(value)?.help}</Typography></>} placement="bottom-start" enterDelay={750}>
-                                                        <ListItemText primary={value} sx={{color:metricsNames.includes(value)?'black':'gray'}} />
+                                                        <ListItemText primary={value} sx={{color:metricsNames.includes(value)?'text.primary':'text.secondary'}} />
                                                     </Tooltip>
                                                 </ListItemButton>
                                             </ListItem>

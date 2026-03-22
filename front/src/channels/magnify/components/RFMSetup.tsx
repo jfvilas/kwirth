@@ -81,7 +81,7 @@ const rfmSetup = (
             action: EInstanceMessageAction.COMMAND,
             flow: EInstanceMessageFlow.REQUEST,
             type: EInstanceMessageType.DATA,
-            channel: channelObject.channel.channelId,
+            channel: channelObject.channelId,
             params: [ 'cluster', '', '', '', '500']
         }
         if (channelObject.webSocket) channelObject.webSocket.send(JSON.stringify( magnifyMessage ))
