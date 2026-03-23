@@ -4,9 +4,6 @@ sort en columna tipo "age" esta al reves
 
 
 MAGNIFY FRONT
-  revisar ordenacion de more events
-  iconos
-    convertir a strings
 
 ELECTRON
 revisar el cambio o salida de cluster: parar las cosas antes de entrar en el otro
@@ -35,6 +32,7 @@ MAGNIFY FRONT
 ==============================================================================
 *********V2*********
 KWIRTH
+el "/usage" de hompage, pasarlo a un websocket
 en los last tabs deberiamos poder saber a que nos vamos a conectar antes de conectarnos (un tooltip o asin)
 añadir logging selectivo en el backend de kwirth: SEC, METRICS, CHANNEL...., para poder ver solo los mensajes que nos intenresan en el log de kwirth
 channel metrics: añadir metricas sinteticas: numero de pods en nodo, percentage de pods

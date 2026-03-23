@@ -133,12 +133,13 @@ class MagnifyChannel implements IChannel {
                                         }
                                         if (!exist) {
                                             magnifyData.clusterEvents.push(event)
+                                            magnifyData.clusterEvents = magnifyData.clusterEvents.sort( (a:any,b:any) => Date.parse(b.eventTime||b.lastTimestamp||b.firstTimestamp)-Date.parse(a.eventTime||a.lastTimestamp||a.firstTimestamp))
                                         }
                                     }
                                 }
                                 else {
                                     if (result.events) {
-                                        result.events = result.events.sort( (a:any,b:any) => Date.parse(b.eventTime||b.firstTimestamp||b.lastTimestamp)-Date.parse(a.eventTime||a.firstTimestamp||a.lastTimestamp))
+                                        result.events = result.events.sort( (a:any,b:any) => Date.parse(b.eventTime||b.lastTimestamp||b.firstTimestamp)-Date.parse(a.eventTime||a.lastTimestamp||a.firstTimestamp))
                                         for (let event of result.events) {
                                             let path = buildPath(event.involvedObject.kind, event.involvedObject.name, event.involvedObject.namespace)
                                             let obj = magnifyData.files.find(f => f.path === path)
@@ -372,7 +373,7 @@ class MagnifyChannel implements IChannel {
                 flow: EInstanceMessageFlow.REQUEST,
                 type: EInstanceMessageType.DATA,
                 channel: this.channelId,
-                params: [ 'cluster', '', '', '', '10']
+                params: [ 'cluster', '', '', '', '25']
             }
             if (c.webSocket) c.webSocket.send(JSON.stringify( magnifyMessage ))
         }, 10000, channelObject))

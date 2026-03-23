@@ -117,7 +117,7 @@ export class EventsTools {
         }
 
         if (crd.spec.versions && crd.spec.versions.length > 1) {
-            console.warn(`Only version '${crd.spec.versions[0].name}' of '${kindName}' will be watched.`);
+            console.warn(`Only version '${crd.spec.versions[0].name}' of '${kindName}' will be watched. All versions are: ${crd.spec.versions.map((v:any) => v.name).join(', ')}`);
         }
 
         // Registrar el nuevo tipo de instancia en los suscriptores

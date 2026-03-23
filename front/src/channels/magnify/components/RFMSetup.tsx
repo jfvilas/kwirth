@@ -122,7 +122,7 @@ const rfmSetup = (
                                     if (severity==='E') color='red'
                                     return <Stack key={index} direction={'row'}>
                                         <Typography variant='body2' sx={{width:'5%', color}}>{severity}</Typography>
-                                        <Typography variant='body2' sx={{width:'25%', color}}>{e.eventTime||e.firstTimestamp||e.lastTimestamp}</Typography>
+                                        <Typography variant='body2' sx={{width:'25%', color}}>{e.eventTime||e.lastTimestamp||e.firstTimestamp}</Typography>
                                         <Typography variant='body2' sx={{width:'70%', color}}>{e.message}</Typography>
                                     </Stack>
                                 })

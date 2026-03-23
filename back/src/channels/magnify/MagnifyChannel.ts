@@ -937,6 +937,7 @@ class MagnifyChannel implements IChannel {
                     break
             }
 
+            res.items = res.items.sort( (a:any,b:any) => Date.parse(b.eventTime||b.lastTimestamp||b.firstTimestamp)-Date.parse(a.eventTime||a.lastTimestamp||a.firstTimestamp))
             if (limit>0) {
                 return res.items.slice(0, limit)
             }
