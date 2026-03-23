@@ -297,22 +297,22 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
                 content = <><IconAks size={20}/>&nbsp;Azure Kubernetes</>
                 break
             case 'k3s':
-                content = <><IconK3s/>&nbsp;Rancher K3</>
+                content = <><IconK3s size={20}/>&nbsp;Rancher K3</>
                 break
             case 'k3d':
-                content = <><IconK3d/>&nbsp;K3D</>
+                content = <><IconK3d size={20}/>&nbsp;K3D</>
                 break
             case 'eks':
                 content = <><IconEks size={20}/>&nbsp;AWS Kubernetes</>
                 break
             case 'ocp':
-                content = <><IconOcp/>&nbsp;OpenShift</>
+                content = <><IconOcp size={20}/>&nbsp;OpenShift</>
                 break
             case 'gke':
-                content = <><IconGke/>&nbsp;Google Kubernetes</>
+                content = <><IconGke size={20}/>&nbsp;Google Kubernetes</>
                 break
             case 'rk2e':
-                content = <><IconRk2e/>&nbsp;Rancher Kubernetes</>
+                content = <><IconRk2e size={20}/>&nbsp;Rancher Kubernetes</>
                 break
             default:
                 content = <><IconK8s size={20}/>&nbsp;Kubernetes</>

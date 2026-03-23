@@ -239,7 +239,7 @@ const ResourceSelector: React.FC<IResourceSelectorProps> = (props:IResourceSelec
 
     const getIcon = (cluster:Cluster)  => {
         if (!cluster.kwirthData || !cluster.kwirthData.clusterType) return <IconK8sUnknown size={20}/>
-        if (cluster.kwirthData.clusterType[0] === 'd') return <IconDocker/>
+        if (cluster.kwirthData.clusterType[0] === 'd') return <IconDocker size={20}/>
         if (cluster.kwirthData.clusterType[0] === 'k') {
             if (cluster.kwirthData.inCluster) 
                 return <IconK8s size={20}/>
