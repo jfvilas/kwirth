@@ -2102,7 +2102,7 @@ spaces.set('Pod',
                 source: 'function',
                 format: 'string',
                 width: 5,
-                sortable: true,
+                sortable: false,
                 visible: true
             }
         ]
@@ -2204,7 +2204,7 @@ spaces.set('Deployment',
                 source: 'status',
                 format: 'function',
                 width: 10,
-                sortable: true,
+                sortable: false,
                 visible: true
             },
             {
@@ -2677,7 +2677,7 @@ spaces.set('Job',
                 source: 'conditions',
                 format: 'function',
                 width: 15,
-                sortable: true,
+                sortable: false,
                 visible: true
             },
             {

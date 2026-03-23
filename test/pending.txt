@@ -1,9 +1,10 @@
 ******************ERRORES
 RFM
-sort en columna tipo "age" esta al reves
 
 MAGNIFY FRONT
-  forward
+💖💖💖 portforward con smart proxy
+    running, just manage to detect rootpath in order to enable/disable forwarding
+    portforward con electron
   
 ELECTRON
 revisar el cambio o salida de cluster: parar las cosas antes de entrar en el otro
@@ -15,16 +16,6 @@ exit no cierra todos los ejecutables
 MAGNIFY BACK
 
 KWIRTH FRONT-BACK
-
-
-*******************MEJORAS
-
-MAGNIFY FRONT
-    events > revisar orden 23h59m, y revisar orden si no hay fechahora (en blanco) +++TEST
-💖💖💖 portforward con smart proxy
-    running, just manage to detect rootpath in order to enable/disable forwarding
-    portforward con electron
-
 
 
 ==============================================================================
