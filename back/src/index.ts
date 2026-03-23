@@ -52,7 +52,7 @@ import http from 'http'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import { Application } from 'express-serve-static-core'
-
+const fs = require('fs')
 
 // const originalFetch = require('node-fetch');
 // global.fetch = (...args) => {
@@ -61,8 +61,13 @@ import { Application } from 'express-serve-static-core'
 // }
 
 //const isElectron = true
-const isElectron = !!process.versions.electron;
-
+const runningEnv = {
+  isElectron: !!(process.versions && process.versions.electron),
+  isDocker: fs.existsSync('/.dockerenv'),
+  isK8s: !!process.env.KUBERNETES_SERVICE_HOST,
+  isTTY: !!process.stdout.isTTY,
+  isCI: !!process.env.CI
+}
 const app : Application = express()
 
 interface IRunningInstance {
@@ -84,7 +89,8 @@ if (rootPath && !rootPath.startsWith('/')) rootPath = '/'+ rootPath
 const envRootPath = rootPath || ''
 const envMasterKey = process.env.MASTERKEY || 'Kwirth4Ever'
 const envForward = (process.env.FORWARD || 'true').toLowerCase() === 'true'
-const PORT = +(process?.env?.PORT || '3883')
+const envPort = +(process?.env?.PORT || '3883')
+const envFront = process.env.FRONT !== undefined ? process.env.FRONT === 'true' : true
 const envMetricsInterval = process.env.METRICSINTERVAL? +process.env.METRICSINTERVAL : 15
 const envChannelLogEnabled = (process.env.CHANNEL_LOG || 'true').toLowerCase() === 'true'
 const envChannelMetricsEnabled = (process.env.CHANNEL_METRICS || 'true').toLowerCase() === 'true'
@@ -94,6 +100,8 @@ const envChannelTrivyEnabled = (process.env.CHANNEL_TRIVY || 'true').toLowerCase
 const envChannelEchoEnabled = (process.env.CHANNEL_ECHO || 'true').toLowerCase() === 'true'
 const envChannelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLowerCase() === 'true'
 const envChannelMagnifyEnabled = (process.env.CHANNEL_MAGNIFY || 'true').toLowerCase() === 'true'
+
+console.log(envFront)
 
 // +++TEST
 // interface TimerInfo {
@@ -157,7 +165,7 @@ const getExecutionEnvironment = async ():Promise<string> => {
     console.log('Detecting execution environment...')
 
     console.log('Trying Electron...')    
-    if (isElectron) return 'electron'
+    if (runningEnv.isElectron) return 'electron'
 
     // we keep this order of detection, since kubernetes also has a docker engine
     console.log('Trying Kubernetes...')
@@ -218,7 +226,7 @@ const getKubernetesKwirthData = async ():Promise<KwirthData|undefined> => {
             if (!usersSecret) usersSecret = allSecrets.find(s => s.metadata?.name === 'kwirth.users')
             if (usersSecret) {
                 // this namespace will be used to access secrets and configmaps
-                return { clusterName: 'inCluster', namespace:usersSecret.metadata?.namespace!, deployment:'', inCluster:false, isElectron:isElectron, version:VERSION, lastVersion: VERSION, clusterType: EClusterType.KUBERNETES, metricsInterval:15, channels: [] }
+                return { clusterName: 'inCluster', namespace:usersSecret.metadata?.namespace!, deployment:'', inCluster:false, isElectron:runningEnv.isElectron, version:VERSION, lastVersion: VERSION, clusterType: EClusterType.KUBERNETES, metricsInterval:15, channels: [] }
             }
             else {
                 // kwirth is running outside, but wants to use kubernetes secrets for storing creds, and they don't exsit
@@ -267,7 +275,7 @@ const createRunningInstance = async (context:string|undefined, kwirthData:Kwirth
         clusterInfo.logApi = new Log(clusterInfo.kubeConfig)
         clusterInfo.apisApi = kubeConfig.makeApiClient(ApisApi)
 
-        if (isElectron) {
+        if (runningEnv.isElectron) {
             // do nothing, since we will use kubeconfig credentials
         }
         else {
@@ -1075,7 +1083,7 @@ const setUpRoutesOld = async (ri:IRunningInstance) : Promise<ApiKeyApi|undefined
     try {
         const riRouter = express.Router()
 
-        let result = await ApiKeyApi.create(ri.configMaps, envMasterKey, isElectron)
+        let result = await ApiKeyApi.create(ri.configMaps, envMasterKey, runningEnv.isElectron)
         if (!result) {
             console.log('Could not get apikeyapi')
             return
@@ -1112,7 +1120,7 @@ const setUpRoutes = async (ri:IRunningInstance) : Promise<boolean> => {
     try {
         const riRouter = express.Router()
 
-        let result = await ApiKeyApi.create(ri.configMaps, envMasterKey, isElectron)
+        let result = await ApiKeyApi.create(ri.configMaps, envMasterKey, runningEnv.isElectron)
         if (!result) {
             console.log('Could not get apikeyapi')
             return false
@@ -1219,7 +1227,6 @@ const startRunningInstance = async (ri:IRunningInstance, expressApp:Application)
         if (lastVersion) ri.kwirthData.lastVersion = lastVersion
     
         // show root contents for electron debuggunng purposes
-        const fs = require('fs')
         fs.readdir('.', (err:any, archivos:any) => {
             if (err) {
                 console.error('Error reading folder data:', err)
@@ -1325,8 +1332,8 @@ const prepareRunningInstance = async (localKwirthData:KwirthData, runningInstanc
         let metricsRequired = Array.from(runningInstance.channels.values()).reduce( (prev, current) => { return prev || current.getChannelData().metrics}, false)
         console.log('Metrics required: ', metricsRequired)
         if (!envChannelMetricsEnabled) console.log('❌ Metrics have not been enabled on Kwirth, so it will not be available.')
-        if (!isElectron && !runningInstance.clusterInfo.token) console.log('❌ An SA Token could not be obtained, so metrics will not be available.')
-        metricsRequired = metricsRequired && envChannelMetricsEnabled && (isElectron || Boolean(runningInstance.clusterInfo.token))
+        if (!runningEnv.isElectron && !runningInstance.clusterInfo.token) console.log('❌ An SA Token could not be obtained, so metrics will not be available.')
+        metricsRequired = metricsRequired && envChannelMetricsEnabled && (runningEnv.isElectron || Boolean(runningInstance.clusterInfo.token))
 
         await setKubernetesClusterKwirthRequirements(localKwirthData, runningInstance.clusterInfo, metricsRequired, eventsRequired)
         runningInstance.clusterInfo.type = localKwirthData.clusterType
@@ -1405,7 +1412,7 @@ const runDocker = async (localDockerApi:Docker, localClusterInfo:ClusterInfo, lo
         let lastVersion = await getLastKwirthVersion(localKwirthData)
         if (lastVersion) localKwirthData.lastVersion = lastVersion
         
-        let result = await  ApiKeyApi.create(localConfigMaps, envMasterKey, isElectron)
+        let result = await  ApiKeyApi.create(localConfigMaps, envMasterKey, runningEnv.isElectron)
         if (!result) {
             console.log('Could not get apikeyapi')
             return
@@ -1736,15 +1743,15 @@ const createHttpServers = (localKwirthData:KwirthData, expressApp:Application, i
                         console.log(`Connection from IP ${ip} to channel ${channel.getChannelData().id} has been interrupted.`)
                     }
                 }
-                if (isElectron) {
+                if (runningEnv.isElectron) {
                     // +++ if session is electron, we remove everything and stop everything
                 }
             }
         })
 
         console.log('Listening...')
-        httpServer.listen(PORT, () => {
-            console.log(`Server is listening on port ${PORT}`)
+        httpServer.listen(envPort, () => {
+            console.log(`Server is listening on port ${envPort}`)
             if (localKwirthData.inCluster) {
                 console.log(`Kwirth is running INSIDE cluster`)
             }
@@ -1765,6 +1772,7 @@ const createHttpServers = (localKwirthData:KwirthData, expressApp:Application, i
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 console.log(`Kwirth version is ${VERSION}`)
 console.log(`Kwirth started at ${new Date().toISOString()}`)
+console.log('Kwirth running environment:', runningEnv)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 showLogo()
@@ -1792,7 +1800,7 @@ getExecutionEnvironment().then( async (exenv:string) => {
             kwirthData = {
                 namespace: '',
                 deployment: '',
-                isElectron: isElectron,
+                isElectron: runningEnv.isElectron,
                 inCluster: false,
                 version: VERSION,
                 lastVersion: VERSION,
@@ -1821,11 +1829,17 @@ getExecutionEnvironment().then( async (exenv:string) => {
     app.use(fileUpload())
 
     // serve front
-    console.log(`SPA is available at: ${envRootPath}/front`)
-    app.get(`${envRootPath}`, (req, res) => res.redirect(`${envRootPath}/front`))
+    if (envFront) {
+        console.log(`Front serving is enbaled`)
+        console.log(`SPA is available at: ${envRootPath}/front`)
+        app.get(`${envRootPath}`, (req, res) => res.redirect(`${envRootPath}/front`))
+    }
+    else {
+        console.log('Front serving not enabled, SPA will not be available')
+    }
     app.use(`${envRootPath}`, (req, res, next) => {
         if (req.path.startsWith(`${envRootPath}/front`) || req.path === '/') return next()
-        if (isElectron && req.path.startsWith('/electron/')) return next()
+        if (runningEnv.isElectron && req.path.startsWith('/electron/')) return next()
 
         const activeRI = runningInstances.find(r => r.active)
         if (activeRI && activeRI.router)
@@ -1833,7 +1847,7 @@ getExecutionEnvironment().then( async (exenv:string) => {
         else
             return res.status(503).send('No active instance available')
     })
-    app.use(`${envRootPath}/front/`, express.static('./front'))
+    if (envFront) app.use(`${envRootPath}/front/`, express.static('./front'))
 
     if (kwirthData.inCluster) {
         console.log('Configuring healthz endpoint for Kubernetes')
