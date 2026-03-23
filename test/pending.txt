@@ -30,6 +30,7 @@ MAGNIFY FRONT
 ==============================================================================
 *********V2*********
 KWIRTH
+add shortcuts on RFM (right item. for instacne: "pod" -> changefolder('/workload/pod',)), user-configurable
 el "/usage" de hompage, pasarlo a un websocket
 en los last tabs deberiamos poder saber a que nos vamos a conectar antes de conectarnos (un tooltip o asin)
 añadir logging selectivo en el backend de kwirth: SEC, METRICS, CHANNEL...., para poder ver solo los mensajes que nos intenresan en el log de kwirth
