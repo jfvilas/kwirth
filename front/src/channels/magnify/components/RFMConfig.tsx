@@ -3790,18 +3790,19 @@ spaces.set('crdNamespacedInstance',
 // General  (these empty classes are needed for showing icons on the navigation pane, they are referenced in the "icons" map)
 spaces.set('classOverview', {
         leftItems: [
-            {
-                name: 'kwirthworks',
-                icon: <HomeRepairService fontSize='small'/>,
-                text: 'Kwirth works',
-                permission: true,
-            },
-            {
-                name: 'kubeworks',
-                icon: <HomeRepairService fontSize='small'/>,
-                text: 'Kube works',
-                permission: true,
-            },
+            // +++ pending impl in phase 2
+            // {
+            //     name: 'kwirthworks',
+            //     icon: <HomeRepairService fontSize='small'/>,
+            //     text: 'Kwirth works',
+            //     permission: true,
+            // },
+            // {
+            //     name: 'kubeworks',
+            //     icon: <HomeRepairService fontSize='small'/>,
+            //     text: 'Kube works',
+            //     permission: true,
+            // },
             {
                 name: 'exit',
                 text: 'Exit',

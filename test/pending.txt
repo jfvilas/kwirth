@@ -2,21 +2,19 @@
 RFM
 sort en columna tipo "age" esta al reves
 
-
 MAGNIFY FRONT
-
+  forward
+  
 ELECTRON
 revisar el cambio o salida de cluster: parar las cosas antes de entrar en el otro
   en el backend, parar las cosas si se pierde la comnicacion con el front??
-cuadno seleccionas un cluster no accesibel entra a magnify, y no deberia
+cuando seleccionas un cluster no accesible entra a magnify, y no deberia
 exit no cierra todos los ejecutables
 
 
 MAGNIFY BACK
 
 KWIRTH FRONT-BACK
-el resource selector no deja elegir pods sin controller
-cando se instala trivy, no refresca los reports a medida que llegan (creo que no se ha lanzado el "subscribe" a los eventos desde el cliente, dado que los CRD so nnuevos)
 
 
 *******************MEJORAS
@@ -41,6 +39,7 @@ fileman: mantener la conexion con el pod abierta para que la navegacion por el f
 en App.tsx/Homepage:  no añadir a last ni fav un tab que se carag desde una accion de homepage
 
 MAGNIFY FRONT
+  kwirthworks, kubeworks
   palette al arrancar magnify
   window arrange (left-right, small on bottom, 4 windows, etc...)
   content external, poder hacer restart del content (por si se deconecta o lo que sea)
