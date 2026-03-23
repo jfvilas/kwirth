@@ -2,7 +2,7 @@ import { Button, Stack, Typography } from "@mui/material"
 import { ENotifyLevel } from "../../../tools/Global"
 import { IFileObject } from "@jfvilas/react-file-manager"
 import { useMemo } from "react"
-import { IconClusterRole, IconConfigMap, IconDaemonSet, IconDeployment, IconIngress, IconJob, IconNode, IconReplicaSet, IconRole, IconSecret, IconService, IconStatefulSet, IconVolume } from "../../../tools/Constants-React"
+import { IconConfigMap, IconCr, IconDaemonSet, IconDeployment, IconIngress, IconJob, IconNode, IconReplicaSet, IconRole, IconSecret, IconService, IconStatefulSet, IconVolume } from "../../../tools/Constants-React"
 const _ = require('lodash')
 
 interface IIssue {
@@ -300,18 +300,18 @@ const validateSummary = (files:IFileObject[], onNavigate: (dest:string) => void)
     return (
         <Stack direction={'row'} flex={1} justifyContent={"space-between"}>
             {showBadge(validateNode(files), <IconNode size={50}/>, onNavigate, '/cluster/Node')}
-            {showBadge(validateConfigMap(files), <IconConfigMap height={50}/>, onNavigate, '/config/ConfigMap')}
-            {showBadge(validateSecret(files), <IconSecret height={50}/>, onNavigate, '/config/Secret')}
+            {showBadge(validateConfigMap(files), <IconConfigMap size={50}/>, onNavigate, '/config/ConfigMap')}
+            {showBadge(validateSecret(files), <IconSecret size={50}/>, onNavigate, '/config/Secret')}
             {showBadge(validateDeployment(files), <IconDeployment size={50}/>, onNavigate, '/workload/Deployment')}
             {showBadge(validateReplicaSet(files), <IconReplicaSet size={50}/>, onNavigate, '/workload/ReplicaSet')}
             {showBadge(validateStatefulSet(files), <IconStatefulSet size={50}/>, onNavigate, '/workload/StatefulSet')}
             {showBadge(validateDaemonSet(files), <IconDaemonSet size={50}/>, onNavigate, '/workload/DaemonSet')}
             {showBadge(validateJob(files), <IconJob size={50}/>, onNavigate, '/workload/Job')}
-            {showBadge(validateIngress(files), <IconIngress height={50}/>, onNavigate, '/network/Ingress')}
-            {showBadge(validateService(files), <IconService height={50}/>, onNavigate, '/network/Service')}
+            {showBadge(validateIngress(files), <IconIngress size={50}/>, onNavigate, '/network/Ingress')}
+            {showBadge(validateService(files), <IconService size={50}/>, onNavigate, '/network/Service')}
             {showBadge(validateVolumeAttachment(files), <IconVolume size={50}/>, onNavigate, '/storage/VolumeAttachment')}
-            {showBadge(validateRole(files), <IconRole height={50}/>, onNavigate, '/access/Role')}
-            {showBadge(validateClusterRole(files), <IconClusterRole height={50}/>, onNavigate, '/access/ClusterRole')}
+            {showBadge(validateRole(files), <IconRole size={50}/>, onNavigate, '/access/Role')}
+            {showBadge(validateClusterRole(files), <IconCr size={50}/>, onNavigate, '/access/ClusterRole')}
         </Stack>
     )
 }

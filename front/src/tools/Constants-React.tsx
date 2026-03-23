@@ -3,41 +3,15 @@ import SvgIconRk2e from'../icons/general/rk2e.svg'
 import SvgIconK3d from'../icons/general/k3d.svg'
 import SvgIconK3s from'../icons/general/k3s.svg'
 import SvgIconOcp from'../icons/general/ocp.svg'
-
-// official icons
-import SvgIconConfigMap from '../kubernetes-icons-official/svg/resources/labeled/cm.svg'
-import SvgIconSecret from '../kubernetes-icons-official/svg/resources/labeled/secret.svg'
-import SvgIconService from '../kubernetes-icons-official/svg/resources/labeled/svc.svg'
-import SvgIconEndpoints from '../kubernetes-icons-official/svg/resources/labeled/ep.svg'
-import SvgIconIngress from '../kubernetes-icons-official/svg/resources/labeled/ing.svg'
-import SvgIconPersistentVolume from '../kubernetes-icons-official/svg/resources/labeled/pv.svg'
-import SvgIconPersistentVolumeClaim from '../kubernetes-icons-official/svg/resources/labeled/pvc.svg'
-import SvgIconServiceAccount from '../kubernetes-icons-official/svg/resources/labeled/role.svg'
-import SvgIconClusterRole from '../kubernetes-icons-official/svg/resources/labeled/sa.svg'
-import SvgIconClusterRoleBinding from '../kubernetes-icons-official/svg/resources/labeled/crb.svg'
-import SvgIconRole from '../kubernetes-icons-official/svg/resources/labeled/role.svg'
-import SvgIconRoleBinding from '../kubernetes-icons-official/svg/resources/labeled/rb.svg'
 import SvgIconDocker from'../icons/svg/docker-mark-blue.svg'
-
-export const IconConfigMap = (props: {height?:number}) => <img src={SvgIconConfigMap} alt='cm' height={`${props.height||16}||16px`}/>
-export const IconSecret = (props: {height?:number}) => <img src={SvgIconSecret} alt='secret' height={`${props.height||16}||16px`}/>
-export const IconService = (props: {height?:number}) => <img src={SvgIconService} alt='service' height={`${props.height||16}||16px`}/>
-export const IconEndpoints = (props: {height?:number}) => <img src={SvgIconEndpoints} alt='ep' height={`${props.height||16}||16px`}/>
-export const IconIngress = (props: {height?:number}) => <img src={SvgIconIngress} alt='ingress' height={`${props.height||16}||16px`}/>
-export const IconPersistentVolume = (props: {height?:number}) => <img src={SvgIconPersistentVolume} alt='secret' height={`${props.height||16}||16px`}/>
-export const IconPersistentVolumeClaim = (props: {height?:number}) => <img src={SvgIconPersistentVolumeClaim} alt='secret' height={`${props.height||16}||16px`}/>
-export const IconServiceAccount = (props: {height?:number}) => <img src={SvgIconServiceAccount} alt='cr' height={`${props.height||16}||16px`}/>
-export const IconRole = (props: {height?:number}) => <img src={SvgIconRole} alt='role' height={`${props.height||16}||16px`}/>
-export const IconRoleBinding = (props: {height?:number}) => <img src={SvgIconRoleBinding} alt='rb' height={`${props.height||16}||16px`}/>
-export const IconClusterRole = (props: {height?:number}) => <img src={SvgIconClusterRole} alt='cr' height={`${props.height||16}||16px`}/>
-export const IconClusterRoleBinding = (props: {height?:number}) => <img src={SvgIconClusterRoleBinding} alt='crb' height={`${props.height||16}||16px`}/>
-export const IconDocker = (props: {height?:number}) => <img src={SvgIconDocker} alt='docker' height={`${props.height||16}px`}/>
 
 export const IconGke = (props: {height?:number}) => { return <img src={SvgIconGke} alt='ns' height={`${props.height||16}px`}/> }
 export const IconRk2e = (props: {height?:number}) => { return <img src={SvgIconRk2e} alt='ns' height={`${props.height||16}px`}/> }
 export const IconK3d = (props: {height?:number}) => { return <img src={SvgIconK3d} alt='ns' height={`${props.height||16}px`}/> }
 export const IconK3s = (props: {height?:number}) => { return <img src={SvgIconK3s} alt='ns' height={`${props.height||16}px`}/> }
 export const IconOcp = (props: {height?:number}) => { return <img src={SvgIconOcp} alt='ns' height={`${props.height||16}px`}/> }
+export const IconDocker = (props: {height?:number}) => <img src={SvgIconDocker} alt='docker' height={`${props.height||16}px`}/>
+
 export const IconAks = (props:IconProps) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"  width={props.size}    height={props.size}>
     <defs>
@@ -1196,7 +1170,7 @@ export const IconAPIResource = (props:IconProps) => (
         style={{ lineHeight: "6.61458349px" }}
         wordSpacing="0"
       >
-<tspan
+        <tspan
          style={{fontStyle:'normal',fontVariant:'normal',fontWeight:'normal',fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#ffffff',fillOpacity:1,strokeWidth:'0.26458332px'}}
          textAnchor="middle"
          y="16.811775"
@@ -1216,6 +1190,781 @@ export const IconAPIResource = (props:IconProps) => (
         opacity="1"
       ></path>
     </g>
+  </svg>
+)
+
+export const IconConfigMap = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="10.048"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="10.048" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400, fontStretch:'normal',fontSize:'2.82222223px', fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">cm</tspan>
+    </text>
+    <g transform="translate(-.875 -1.174)">
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeLinejoin="round"
+        strokeMiterlimit="10"
+        strokeWidth="0.794"
+        d="M8.237 6.291h5.825m-8.339 0h1.458"
+      ></path>
+      <a>
+        <path
+          fill="none"
+          stroke="#fff"
+          strokeLinejoin="round"
+          strokeMiterlimit="10"
+          strokeWidth="0.794"
+          d="M10.354 8.408h3.708"
+        ></path>
+      </a>
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeLinejoin="round"
+        strokeMiterlimit="10"
+        strokeWidth="0.794"
+        d="M7.84 8.408h1.458m1.056 2.117h3.708m-6.222 0h1.458m-1.061 2.116h5.825m-8.339 0h1.458"
+      ></path>
+    </g>
+  </svg>
+)
+
+export const IconSecret = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="9.977"
+      y="16.882"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="9.977" y="16.882" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal', fontSize:'2.82222223px', fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">secret</tspan>
+    </text>
+    <g transform="translate(-.936 -1.174)">
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeLinejoin="round"
+        strokeMiterlimit="10"
+        strokeWidth="0.794"
+        d="M10.414 8.091h3.709M8.298 5.975h5.825M5.784 5.975h1.458"
+      ></path>
+      <path
+        fill="#fff"
+        fillRule="evenodd"
+        stroke="#326ce5"
+        strokeLinecap="square"
+        strokeMiterlimit="10"
+        strokeWidth="0.265"
+        d="M7.718 8.432h0c0-1.167 1.011-2.112 2.259-2.112s2.258.945 2.258 2.112h-1.056 0c0-.583-.538-1.056-1.202-1.056s-1.202.473-1.202 1.056z"
+      ></path>
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeLinejoin="round"
+        strokeMiterlimit="10"
+        strokeWidth="0.794"
+        d="M10.414 10.208h3.709m-5.825 2.117h5.825m-8.339 0h1.458"
+      ></path>
+      <path
+        fill="#fff"
+        fillRule="evenodd"
+        stroke="#326ce5"
+        strokeLinecap="square"
+        strokeMiterlimit="10"
+        strokeWidth="0.265"
+        d="M7.162 8.37h5.617v3.657H7.162z"
+      ></path>
+      <circle cx="9.971" cy="10.198" r="0.555" fill="#326ce5"></circle>
+    </g>
+  </svg>
+)
+
+export const IconService = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="9.98"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="9.98" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">svc</tspan>
+    </text>
+    <path
+      fill="#fff"
+      fillRule="evenodd"
+      d="M3.595 10.086h2.908v2.042H3.595zm3.969 0h2.908v2.042H7.564zm3.968 0h2.909v2.042h-2.909zM6.714 4.034h4.608v2.042H6.714z"
+    ></path>
+    <path
+      fill="none"
+      stroke="#fff"
+      strokeLinejoin="round"
+      strokeMiterlimit="10"
+      strokeWidth="0.529"
+      d="M9.018 6.076v2.005H5.05v2.003M9.018 6.076v2.005h3.967v2.003"
+    ></path>
+    <path
+      fill="none"
+      stroke="#fff"
+      strokeLinejoin="round"
+      strokeMiterlimit="10"
+      strokeWidth="0.529"
+      d="M9.01 6.077v2.006h.016v2.003"
+    ></path>
+  </svg>
+)
+
+export const IconEndpoints = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="10.019"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="10.019" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">ep</tspan>
+    </text>
+    <g fill="#fff" transform="translate(-.9 -1.174)">
+      <path
+        fillRule="evenodd"
+        d="M4.495 11.296h2.908v2.042H4.495zm3.969 0h2.908v2.042H8.464zm3.968 0h2.909v2.042h-2.909zM7.614 5.244h4.608v2.041H7.614z"
+      ></path>
+      <g transform="rotate(45.017 -226.81 242.718)">
+        <rect
+          width="0.652"
+          height="2.909"
+          x="-226.886"
+          y="-89.589"
+          ry="0"
+        ></rect>
+        <path d="m-226.555-85.827-.514-.883-.515-.882 1.022-.005 1.022-.004-.507.887z"></path>
+      </g>
+      <g transform="scale(-1 1)rotate(45.017 -236.506 219.31)">
+        <rect
+          width="0.652"
+          height="2.909"
+          x="-226.886"
+          y="-89.589"
+          ry="0"
+        ></rect>
+        <path d="m-226.555-85.827-.514-.883-.515-.882 1.022-.005 1.022-.004-.507.887z"></path>
+      </g>
+      <rect
+        width="0.652"
+        height="2.249"
+        x="-10.223"
+        y="7.883"
+        ry="0"
+        transform="matrix(-1 -.0048 -.00803 .99997 0 0)"
+      ></rect>
+      <path d="m9.8 11.032.52-.88.52-.879-1.02-.01-1.023-.011.502.89z"></path>
+    </g>
+  </svg>
+)
+
+export const IconIngress = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="10.009"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="10.009" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">ing</tspan>
+    </text>
+    <path
+      fill="#fff"
+      d="M11.765 12.542h-2.27L4.572 6.386H3.15V4.371h2.314l4.923 6.156h1.378V8.934l3.12 2.6-3.12 2.602zM9.289 7.787l1.098-1.375h1.378v1.593l3.12-2.6-3.12-2.602v1.594h-2.27L8.037 6.221zM5.691 9.152l-1.118 1.4H3.15v2.015h2.314l1.479-1.849z"
+      pointerEvents="none"
+    ></path>
+  </svg>
+)
+
+export const IconPv = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="9.934"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="9.934" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">pv</tspan>
+    </text>
+    <path
+      fill="#fff"
+      fillRule="evenodd"
+      d="M4.389 6.736c0 .622 2.073 1.125 4.63 1.125s4.628-.503 4.628-1.124v3.042c0 .621-2.072 1.125-4.629 1.125S4.389 10.4 4.389 9.779z"
+    ></path>
+    <path
+      fill="#fff"
+      fillRule="evenodd"
+      d="M4.389 6.736c0-.62 2.073-1.124 4.63-1.124s4.628.503 4.628 1.125c0 .62-2.072 1.124-4.629 1.124s-4.629-.503-4.629-1.124"
+    ></path>
+    <path
+      fill="none"
+      stroke="#326ce5"
+      strokeLinejoin="round"
+      strokeMiterlimit="10"
+      strokeWidth="0.265"
+      d="M13.648 6.736c0 .622-2.073 1.125-4.63 1.125s-4.629-.503-4.629-1.124 2.073-1.125 4.63-1.125 4.628.503 4.628 1.125v3.042c0 .621-2.072 1.125-4.629 1.125S4.389 10.4 4.389 9.779V6.737"
+    ></path>
+  </svg>
+)
+
+export const IconPvc = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="9.93"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="9.93" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">pvc</tspan>
+    </text>
+    <path
+      fill="none"
+      stroke="#fff"
+      strokeDasharray="2.11666669,.52916668"
+      strokeLinejoin="round"
+      strokeMiterlimit="10"
+      strokeWidth="0.529"
+      d="M13.647 6.903c0 .62-2.073 1.124-4.63 1.124s-4.629-.503-4.629-1.124 2.073-1.125 4.63-1.125 4.628.504 4.628 1.125v3.042c0 .621-2.072 1.125-4.629 1.125s-4.629-.504-4.629-1.125V6.903"
+    ></path>
+  </svg>
+)
+
+export const IconSa = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="10.025"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="10.025" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">sa</tspan>
+    </text>
+    <path
+      fill="#fff"
+      d="M9.018 3.212 4.977 5.008v2.695c0 2.492 1.724 4.823 4.041 5.389 2.317-.566 4.04-2.897 4.04-5.389V5.008zm0 1.903a1.295 1.295 0 1 1-.001 2.589 1.295 1.295 0 0 1 .001-2.589m2.423 5.348q0 .049-.027.09-.043.068-.09.131a4.5 4.5 0 0 1-2.306 1.654 4.5 4.5 0 0 1-2.307-1.654q-.047-.064-.09-.13a.17.17 0 0 1-.028-.091v-.718c0-.99 1.617-1.49 2.425-1.49s2.423.5 2.423 1.49z"
+      pointerEvents="none"
+    ></path>
+  </svg>
+)
+
+export const IconCr = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="10.014"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="10.014" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">c.role</tspan>
+    </text>
+    <g fill="#fff" pointerEvents="none" transform="translate(-.993 -1.174)">
+      <ellipse cx="9.928" cy="9.949" rx="0.506" ry="0.502"></ellipse>
+      <path d="M10.01 5.876 6.904 7.25V9.3c0 1.902 1.325 3.679 3.108 4.11 1.78-.431 3.107-2.208 3.107-4.11V7.25zm1.646 5.518H8.364V8.631h.473v-.302c0-.65.532-1.179 1.19-1.179.656 0 1.188.528 1.188 1.18v.3h.441z"></path>
+      <path d="M9.988 7.589a.71.71 0 0 0-.713.708v.296h1.427v-.301a.713.713 0 0 0-.714-.703"></path>
+    </g>
+  </svg>
+)
+
+export const IconCrb = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="10.011"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="10.011" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">crb</tspan>
+    </text>
+    <path
+      fill="#fff"
+      d="M5.889 8.434c0-.66.537-1.197 1.197-1.197h1.545v-.734H7.087a1.932 1.932 0 0 0 0 3.862h1.545v-.734H7.087c-.66 0-1.197-.536-1.197-1.197m1.584.386h3.09v-.772h-3.09zm3.475-2.317H9.404v.734h1.545a1.198 1.198 0 0 1 0 2.394H9.404v.734h1.545a1.932 1.932 0 0 0 0-3.862"
+    ></path>
+  </svg>
+)
+
+export const IconRole = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="9.978"
+      y="16.812"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="9.978" y="16.812" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">role</tspan>
+    </text>
+    <g transform="translate(-.865 -1.739)">
+      <ellipse
+        cx="9.928"
+        cy="9.949"
+        fill="#fff"
+        pointerEvents="none"
+        rx="0.506"
+        ry="0.502"
+      ></ellipse>
+      <path
+        fill="#fff"
+        d="M9.99 5.876 6.88 7.25V9.3c0 1.902 1.325 3.679 3.108 4.11 1.78-.431 3.107-2.208 3.107-4.11V7.25zm1.644 5.518H8.343V8.631h.472v-.302c0-.65.532-1.179 1.19-1.179s1.189.528 1.189 1.18v.3h.44z"
+        pointerEvents="none"
+      ></path>
+      <path
+        fill="#fff"
+        d="M9.988 7.589a.71.71 0 0 0-.713.708v.296h1.427v-.301a.713.713 0 0 0-.714-.703"
+        pointerEvents="none"
+      ></path>
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeDasharray=".80000001,.4"
+        strokeDashoffset="4"
+        strokeLinejoin="round"
+        strokeMiterlimit="10"
+        strokeWidth="0.4"
+        d="M4.918 5.456h9.93v8.657h-9.93z"
+      ></path>
+    </g>
+  </svg>
+)
+
+export const IconRb = (props:IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.size}
+    height={props.size}
+    viewBox="0 0 18.035 17.5"
+  >
+    <path
+      fill="#326ce5"
+      d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
+    ></path>
+    <path
+      fill="#fff"
+      d="M-6.852 3.818a1.181 1.172 0 0 0-.452.115l-6.18 2.951a1.181 1.172 0 0 0-.638.795l-1.524 6.63a1.181 1.172 0 0 0 .16.9 1.181 1.172 0 0 0 .067.093l4.276 5.317a1.181 1.172 0 0 0 .924.44h6.858a1.181 1.172 0 0 0 .923-.44L1.837 15.3a1.181 1.172 0 0 0 .228-.99L.54 7.677a1.181 1.172 0 0 0-.64-.795l-6.178-2.95a1.181 1.172 0 0 0-.573-.115m.003.455a1.12 1.11 0 0 1 .542.108l5.853 2.795a1.12 1.11 0 0 1 .606.753l1.446 6.281a1.12 1.11 0 0 1-.216.94l-4.05 5.037a1.12 1.11 0 0 1-.875.417l-6.496.001a1.12 1.11 0 0 1-.875-.417l-4.05-5.037a1.12 1.11 0 0 1-.064-.088 1.12 1.11 0 0 1-.152-.851l1.444-6.281a1.12 1.11 0 0 1 .605-.753l5.853-2.797a1.12 1.11 0 0 1 .429-.108"
+      color="#000"
+      fontFamily="Sans"
+      fontWeight="400"
+      overflow="visible"
+      style={{
+        lineHeight: "normal",
+        textIndent: "0",
+        textAlign: "start",
+        textDecorationLine: "none",
+        textTransform: "none",
+        marker: "none",
+      }}
+      transform="translate(15.91 -3.873)scale(1.01489)"
+    ></path>
+    <text
+      xmlSpace="preserve"
+      x="9.974"
+      y="16.918"
+      fill="#fff"
+      strokeWidth="0.265"
+      fontFamily="Sans"
+      fontSize="10.583"
+      fontWeight="400"
+      letterSpacing="0"
+      style={{ lineHeight: "6.61458349px" }}
+      transform="translate(-.993 -1.174)"
+      wordSpacing="0"
+    >
+      <tspan x="9.974" y="16.918" style={{fontStyle:'normal',fontVariant:'normal',fontWeight:400,fontStretch:'normal',fontSize:'2.82222223px',fontFamily:'Arial',textAlign:'center',fill:'#fff',fillOpacity:1,strokeWidth:'.26458332px'}} textAnchor="middle">rb</tspan>
+    </text>
+    <path
+      fill="none"
+      stroke="#fff"
+      strokeDasharray=".80000001,.4"
+      strokeDashoffset="4"
+      strokeLinejoin="round"
+      strokeMiterlimit="10"
+      strokeWidth="0.4"
+      d="M4.052 3.753h9.93v8.657h-9.93z"
+    ></path>
+    <path
+      fill="#fff"
+      d="M5.889 8.081c0-.66.537-1.197 1.197-1.197h1.546V6.15H7.086a1.932 1.932 0 0 0 0 3.862h1.546v-.733H7.086c-.66 0-1.197-.537-1.197-1.198m1.584.387h3.09v-.773H7.472zm3.475-2.318H9.404v.734h1.544a1.198 1.198 0 0 1 0 2.395H9.404v.733h1.544a1.932 1.932 0 0 0 0-3.862M7.503 3.752v-.194h.776v.388h-.776zm1.2 0v-.194h.775v.388h-.776zm1.199 0v-.194h.776v.388h-.776zm1.2 0v-.194h.775v.388h-.776zm1.199 0v-.194h.776v.388H12.3z"
+    ></path>
   </svg>
 )
 
@@ -1314,7 +2063,6 @@ export const IconNode = (props:IconProps) => (
   </svg>
 )
 
-
 export const getIconFromKind = (kind:string, size:number) => {
     switch (kind) {
         case 'Namespace': return <IconNamespace size={size}/>
@@ -1326,18 +2074,18 @@ export const getIconFromKind = (kind:string, size:number) => {
         case 'DaemonSet': return <IconDaemonSet size={size}/>
         case 'StatefulSet': return <IconStatefulSet size={size}/>
         case 'ReplicationController': return <IconReplicationController size={size}/>
-        case 'ConfigMap': return <IconConfigMap height={size}/>
-        case 'Secret': return <IconSecret height={size}/>
-        case 'Service': return <IconService height={size}/>
-        case 'Endpoints': return <IconEndpoints height={size}/>
-        case 'Ingress': return <IconIngress height={size}/>
-        case 'PersistentVolume': return <IconPersistentVolume height={size}/>
-        case 'PersistentVolumeClaim': return <IconPersistentVolumeClaim height={size}/>
-        case 'ServiceAccount': return <IconServiceAccount height={size}/>
-        case 'Role': return <IconRole height={size}/>
-        case 'RoleBinding': return <IconRoleBinding height={size}/>
-        case 'ClusterRole': return <IconClusterRole height={size}/>
-        case 'ClusterRoleBinding': return <IconClusterRoleBinding height={size}/>
+        case 'ConfigMap': return <IconConfigMap size={size}/>
+        case 'Secret': return <IconSecret size={size}/>
+        case 'Service': return <IconService size={size}/>
+        case 'Endpoints': return <IconEndpoints size={size}/>
+        case 'Ingress': return <IconIngress size={size}/>
+        case 'PersistentVolume': return <IconPv size={size}/>
+        case 'PersistentVolumeClaim': return <IconPvc size={size}/>
+        case 'ServiceAccount': return <IconSa size={size}/>
+        case 'Role': return <IconRole size={size}/>
+        case 'RoleBinding': return <IconRb size={size}/>
+        case 'ClusterRole': return <IconCr size={size}/>
+        case 'ClusterRoleBinding': return <IconCrb size={size}/>
         case 'V1APIResource': return <IconAPIResource size={size}/>
         
         default: return <IconK8sBlank size={size}/>

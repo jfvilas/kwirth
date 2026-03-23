@@ -5,8 +5,6 @@ sort en columna tipo "age" esta al reves
 
 MAGNIFY FRONT
   revisar ordenacion de more events
-  reconnect  NO VA!!!!
-    hay que revisar el reconnect del node y el reconnect del front
   iconos
     convertir a strings
 
@@ -14,6 +12,8 @@ ELECTRON
 revisar el cambio o salida de cluster: parar las cosas antes de entrar en el otro
   en el backend, parar las cosas si se pierde la comnicacion con el front??
 cuadno seleccionas un cluster no accesibel entra a magnify, y no deberia
+exit no cierra todos los ejecutables
+
 
 MAGNIFY BACK
 
