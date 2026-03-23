@@ -9,6 +9,8 @@ del front\*.* /s /q
 md  front
 del ..\electron\bundle\*.* /s /q
 md  ..\electron\bundle
+del ..\package\bundle\*.* /s /q
+md  ..\package\bundle
 
 REM build front (ts) and copy to targets
 cd ..\front
@@ -23,3 +25,4 @@ REM build back
 call npm run build
 
 xcopy .\bundle\*.* ..\electron\bundle /s /y
+xcopy .\bundle\*.* ..\package\bundle /s /y
