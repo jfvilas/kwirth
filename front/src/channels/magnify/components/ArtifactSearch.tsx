@@ -100,9 +100,9 @@ const ArtifactSearch: React.FC<IArtifactSearchProps> = (props:IArtifactSearchPro
         <ResizableDialog id={props.id} isMaximized={isMaximized} onFocus={onFocus} onWindowChange={props.onWindowChange} x={props.x} y={props.y} width={props.width} height={props.height}>
             <DialogTitle sx={{ cursor: isMaximized ? 'default' : 'move',  py: 1 }} id='draggable-dialog-title'>
                 <Stack direction={'row'} alignItems={'center'}>                    
-                    <Typography sx={{flexGrow:1}}></Typography>
-                    <Typography><Search />&nbsp;{artifactSearchData.scope===':cluster:'?'All cluster':'Namespace: '+artifactSearchData.scope}</Typography>
-                    <Typography sx={{flexGrow:1}}></Typography>
+                    <Typography sx={{flexGrow:1}} variant='body2'></Typography>
+                    <Typography variant='body2'><Search />&nbsp;{artifactSearchData.scope===':cluster:'?'All cluster':'Namespace: '+artifactSearchData.scope}</Typography>
+                    <Typography sx={{flexGrow:1}} variant='body2'></Typography>
 
                     <IconButton size="small" onClick={() => props.onMinimize(props.id)}>
                         <Minimize fontSize="small" />
@@ -128,7 +128,7 @@ const ArtifactSearch: React.FC<IArtifactSearchProps> = (props:IArtifactSearchPro
                     <Typography flexGrow={1}></Typography>
                     {searchText.trim()!=='' && (searchText.length>=3) && <Typography>Results: {artifactSearchData.selectedFiles.reduce( (acc,file) => acc + getResults(file.data?.origin, searchText, includeStatus, matchCase, merge).length, 0)}</Typography>}
                 </Stack>
-                <Stack direction={'column'}>
+                <Stack direction={'column'} mt={1}>
                     {
                         searchText.trim()!=='' && (searchText.length>=3) && artifactSearchData.selectedFiles.map((file) => {
                             let res = getResults(file.data?.origin, searchText, includeStatus, matchCase, merge)
@@ -136,16 +136,15 @@ const ArtifactSearch: React.FC<IArtifactSearchProps> = (props:IArtifactSearchPro
                                 let val = getDeepValue(file.data.origin, r)
                                 let link
                                 if (file.data.origin.metadata)
-                                    link = <a href={`#`} onClick={() => artifactSearchData.onLink(file.data.origin.kind, file.data.origin.metadata.name, file.data.origin.metadata.namespace)}>{file.data.origin.metadata.name}</a>
+                                    link = <Typography variant='body2'><a href={`#`} onClick={() => artifactSearchData.onLink(file.data.origin.kind, file.data.origin.metadata.name, file.data.origin.metadata.namespace)}>{file.data.origin.metadata.name}</a></Typography>
                                 else
-                                    link = <a href={`#`} onClick={() => artifactSearchData.onLink(file.data.origin.kind, file.data.origin.name, '')}>{file.data.origin.name}</a>
-                                return <Stack key={index} direction={'row'} sx={{mb:2}} alignItems={'center'}>
+                                    link = <Typography variant='body2'><a href={`#`} onClick={() => artifactSearchData.onLink(file.data.origin.kind, file.data.origin.name, '')}>{file.data.origin.name}</a></Typography>
+                                return <Stack key={index} direction={'row'} sx={{mb:2, ml:1}} alignItems={'center'}>
                                     {getIconFromKind(file.data?.origin?.kind, 32)}
                                     <Stack direction={'column'} sx={{ml:2}}>
-                                        {/* <a href={`#`} onClick={() => props.onLink(file.data.origin.kind,file.data.origin.metadata.name,file.data.origin.metadata.namespace)}>{file.data.origin.metadata.name}</a> */}
                                         {link}
-                                        <span style={{marginLeft:'4px'}}>{r}</span>
-                                        <span style={{marginLeft:'4px'}}>{String(val).substring(0,80)}{String(val).length>80?'...':''}</span>
+                                        <Typography variant='body2' >{r}</Typography>
+                                        <Typography variant='body2'>{String(val).substring(0,80)}{String(val).length>80?'...':''}</Typography>
                                     </Stack>
                                 </Stack>
                             })

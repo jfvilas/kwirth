@@ -728,7 +728,7 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             if (f.data.origin.status.conditions.some((c:any) => c.type+c.status ==='AvailableTrue') && f.data.origin.status.conditions.some((c:any) => c.type+c.status ==='ProgressingTrue')) status='Running'
             else if (f.data.origin.status.conditions.some((c:any) => c.type+c.status ==='AvailableFalse') && f.data.origin.status.conditions.some((c:any) => c.type+c.status ==='ProgressingTrue')) status='Scaling'
         }
-        return <Typography color={status==='Running'?'green':(status==='Scaling'?'orange':'red')} fontSize={12}>{status}</Typography>
+        return <Typography color={status==='Running'?'green':(status==='Scaling'?'orange':'red')} variant='body2'>{status}</Typography>
     }
 
 
@@ -1012,12 +1012,12 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                 launchCronJobResume([path])
                 break
         }
+        setTick(t => t+1)
     }
 
     const onComponentNotify = (channel:string|undefined, level: ENotifyLevel, msg: string)  => {
         msg = 'Channel message: '+ msg
         console.log(props.channelObject)
-        //(props.channelObject.config as IMagnifyConfig).notify(channel, level, msg)
     }
 
     const getContentExternalIcon = (w:IContentWindow) => {

@@ -104,7 +104,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
 
     const renderValue = (rootObj:any, srcobj:any, src:string, format:string, style:string[], level:number, content?:IDetailsItem[], invoke?:(ro:any, o:any, onLink:(kind:string, name:string, namespace:string) => void) => string[], itemx?:IDetailsItem) : JSX.Element => {
         let originalSrc = src
-        if (src.startsWith('$')) return <Typography fontWeight={style.includes('bold')?'700':''}>{src.substring(1)}</Typography>
+        if (src.startsWith('$')) return <Typography fontWeight={style.includes('bold')?'700':''} variant='body2'>{src.substring(1)}</Typography>
         let addLink = false
         if (src.startsWith('#')) {
             src=src.substring(1)
@@ -160,16 +160,16 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 if (style && valueStyle.length===1) {
                     let parts = valueStyle[0].split(':')
                     if (valBoolean)
-                        return <Typography sx={{color:parts[2]}}>{parts[1]}</Typography>
+                        return <Typography sx={{color:parts[2]}} variant='body2'>{parts[1]}</Typography>
                     else
-                        return <Typography sx={{color:parts[2]}}>{parts[1]}</Typography>
+                        return <Typography sx={{color:parts[2]}} variant='body2'>{parts[1]}</Typography>
 
                 }
                 else {
                     if (valBoolean)
-                        return <Typography sx={{color:'green'}}>OK</Typography>
+                        return <Typography sx={{color:'green'}} variant='body2'>OK</Typography>
                     else
-                        return <Typography sx={{color:'red'}}>ko</Typography>
+                        return <Typography sx={{color:'red'}} variant='body2'>ko</Typography>
                 }
 
             case 'string':
@@ -181,7 +181,6 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 if ((src==='@string[]') && invoke)
                     valString = invoke(rootObj, obj, props.onLink)[0]
                 else {
-                    //valString = _.get(obj,src)
                     valString = getValue(obj,src)
                 }
 
@@ -237,7 +236,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         }
                     }
                     if (valueStyle.length>0) {
-                        return <Typography component='div' color={valueStyle[0].split(':')[1]} fontWeight={fontWeightStyle}>{header}{jsxValue}</Typography>
+                        return <Typography component='div' color={valueStyle[0].split(':')[1]} fontWeight={fontWeightStyle} variant='body2'>{header}{jsxValue}</Typography>
                     }
                     else if (style) {
                         let propertyStyle = style.filter(s => s.startsWith('property:'))
@@ -245,11 +244,11 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                             for (let ps of propertyStyle) {
                                 let propertyParts = ps.split(':')
                                 let propertyValue = _.get(obj,propertyParts[1])
-                                if (propertyValue === propertyParts[2]) return <Typography component='div' color={propertyParts[3]} fontWeight={fontWeightStyle}>{header}{jsxValue}</Typography>
+                                if (propertyValue === propertyParts[2]) return <Typography component='div' color={propertyParts[3]} fontWeight={fontWeightStyle} variant='body2'>{header}{jsxValue}</Typography>
                             }
                         }
                     }
-                    return <Typography component='div' fontWeight={fontWeightStyle}>{header}{jsxValue}</Typography>
+                    return <Typography component='div' fontWeight={fontWeightStyle} variant='body2'>{header}{jsxValue}</Typography>
                 }
 
             case 'edit':
@@ -289,14 +288,14 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 if (style.includes('column')) {
                     let linkIndicator = originalSrc.startsWith('#')? '#' : ''
                     return <Stack direction={'column'}>
-                        { resultStringlist.map((item:any, index:number) => <Typography component='div' key={index}>{renderValue(rootObj, resultStringlist, linkIndicator + '['+index+']', 'string', style, level+1, undefined, undefined)}</Typography>) }
+                        { resultStringlist.map((item:any, index:number) => <Typography component='div' key={index} variant='body2'>{renderValue(rootObj, resultStringlist, linkIndicator + '['+index+']', 'string', style, level+1, undefined, undefined)}</Typography>) }
                     </Stack>
                 }
                 else {
                     let val = resultStringlist.join(',\u00a0')
                     let st2 = style.filter(s => s.startsWith(val+':'))
                     if (st2.length>0)
-                        return <Typography color={st2[0].split(':')[1]}>{header}{val}</Typography>
+                        return <Typography color={st2[0].split(':')[1]} variant='body2'>{header}{val}</Typography>
                     else
                         return <>{header}{val}</>
                 }
@@ -444,7 +443,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                         // selected object properties
                         return <>{content.map( (c:IDetailsItem, index:number) => {
                             return <Stack key={index} direction={c.style && c.style.includes('column')?'column':'row'}>
-                                <Typography fontWeight={style && style.includes('keybold')?'700':''}>{c.text}:&nbsp;</Typography>
+                                <Typography fontWeight={style && style.includes('keybold')?'700':''} variant='body2'>{c.text}:&nbsp;</Typography>
                                 {renderValues(rootObj, obj,c, level+1)}
                             </Stack>
                         })}</>
@@ -456,7 +455,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                 return <Stack key={index} direction={'column'} sx={{mt:1}}>
                                         <Stack direction={'row'}>
                                             <Tooltip title={key} placement='top'>
-                                                <Typography fontWeight={style.includes('keybold')?'700':''} >{key}</Typography>
+                                                <Typography fontWeight={style.includes('keybold')?'700':''} variant='body2'>{key}</Typography>
                                             </Tooltip>
                                             {style.includes('lockicon') && <Https fontSize={'small'} sx={{color:'red'}}/>}
                                         </Stack>
@@ -467,7 +466,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                             }
                             else {
                                 return <Stack key={index} direction={'row'}>
-                                    <Typography fontWeight={style.includes('keybold')?'700':''}>{key}:&nbsp;</Typography>
+                                    <Typography fontWeight={style.includes('keybold')?'700':''} variant='body2'>{key}:&nbsp;</Typography>
                                     {
                                         renderValue(rootObj, obj, src+'.[\''+key+'\']', 'string', style, level+1, [], undefined)
                                     }                               
@@ -517,7 +516,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
             return <Stack direction={'row'} width={'100%'} alignItems={'center'}>
                 <LinearProgress variant="determinate" value={progreso > 100 ? 100 : progreso} sx={{width:'90%'}} />
                     &nbsp;
-                <Typography>{value? value: 0}/{max? max:0}</Typography>
+                <Typography variant='body2'>{value? value: 0}/{max? max:0}</Typography>
             </Stack>
         }
         else {
@@ -563,7 +562,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                 <Stack direction={'row'} alignItems={'baseline'}>
                     {item.text==='' && <>
                         {/* No label*/}
-                        <Typography component='div' width={'100%'}>
+                        <Typography component='div' width={'100%'} variant='body2'>
                             {renderValues(rootObj, obj, item, level)}
                         </Typography>
                     </>}
@@ -573,7 +572,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                             numProps>1 && item.style && item.style.includes('collapse')?
                                     // render a label with collapse button
                                     <Stack direction={'row'} width={`${width-2}%`} alignItems={'center'}>
-                                        <Typography>{item.text}</Typography>
+                                        <Typography variant='body2'>{item.text}</Typography>
                                         <svg className={'svg-'+expander} width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"
                                             onClick={ () => {
                                                 let divElement = document.getElementsByClassName(expander)[0] as HTMLElement
@@ -593,7 +592,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
                                     </Stack>
                                 :
                                     // render a simple label
-                                    <Typography width={`${width}%`}>{item.text}</Typography>
+                                    <Typography width={`${width}%`} variant='body2'>{item.text}</Typography>
                         }
                         {
                             // render content
@@ -615,7 +614,7 @@ const DetailsObject: React.FC<IMagnifyObjectDetailsProps> = (props:IMagnifyObjec
     const renderSection = (rootObj:any, section:IDetailsSection) => {
         if (!rootObj) return
         return <>
-            <Typography fontSize={18} sx={{mt:2, mb:1}}><b>{section.text}</b></Typography>
+            <Typography sx={{mt:2, mb:1}} variant={'body1'}><b>{section.text}</b></Typography>
             {section.items.map( (item, index) => 
                 <React.Fragment  key={index}>
                     {renderItem(rootObj, rootObj, item, labelWidth, 0)}

@@ -14,7 +14,9 @@
 }
 
 .custom-fm-fileman .files-container {
-  background-color: #f0f0f0;
+  /* background-color: #f0f0f0; */
+  background-color: var(--mui-palette-background-default) !important;
+  box-sizing: initial !important;
 }
 
 .custom-fm-fileman .category-view, .custom-fm-fileman .toggle-view, .fm-context-menu {
@@ -22,7 +24,10 @@
 	color: var(--mui-palette-text-primary) !important;
 }
 
-.custom-fm-fileman .files.grid, .custom-fm-fileman .files.list, .custom-fm-fileman .statusbar, .custom-fm-fileman .files-header, .custom-fm-fileman .column-header, .custom-fm-fileman .bread-crumb-container {
+.custom-fm-fileman .files.list {
+  border-bottom: 1px solid #dddddd !important;
+ }
+.custom-fm-fileman .files.grid, .custom-fm-fileman  .column-header-divider,  .custom-fm-fileman .files.list, .custom-fm-fileman .statusbar, .custom-fm-fileman .files-header, .custom-fm-fileman .column-header, .custom-fm-fileman .bread-crumb-container {
   background-color: var(--mui-palette-background-default) !important;
   box-sizing: initial !important;
 }

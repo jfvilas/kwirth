@@ -99,16 +99,16 @@ const ContentDetails: React.FC<IContentWindow> = (props:IContentWindow) => {
 					<Typography variant="subtitle1" noWrap sx={{ fontWeight: 'bold', flexShrink: 0}}>
 						{`${contentDetailsData.source.data.origin.kind}:`}
 					</Typography>
-					<Typography variant="body2" noWrap>
+					<Typography variant='body2' noWrap>
 						{props.title}
 					</Typography>
 					<Tooltip title='Copy'>
-						<IconButton size="small" onClick={() => copy(props.title)}>
+						<IconButton size='small' onClick={() => copy(props.title)}>
 							<ContentCopy fontSize='inherit' />
 						</IconButton>
 					</Tooltip>
 					
-					<Stack direction="row" spacing={0.5} className="no-drag">
+					<Stack direction='row' spacing={0.5} className="no-drag">
 						{items.map((a, index) => (
 							a.name === 'divider' ? 
 								<Typography sx={{flexGrow: 1}}/>

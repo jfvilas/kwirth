@@ -39,8 +39,8 @@ const buildForward = (rootObj:any, portName:string, portProtocol:string, portNum
     let url = '/kwirth/port-forward/pod/' + rootObj.metadata.namespace + '/' + rootObj.metadata.name + '/' + portNumber
     return <Stack direction={'row'} alignItems={'center'}>
         <Stack direction={'row'} alignItems={'center'} >
-            {portName && <Typography>{portName}:</Typography>}
-            <Typography>{portNumber.toString().toLowerCase().replace('https','443').replace('http','80')}/{portProtocol}&nbsp;&nbsp;</Typography>
+            {portName && <Typography variant='body2'>{portName}:</Typography>}
+            <Typography variant='body2'>{portNumber.toString().toLowerCase().replace('https','443').replace('http','80')}/{portProtocol}&nbsp;&nbsp;</Typography>
         </Stack>
         <Box sx={{ flexGrow: 1 }} />
         <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
@@ -95,10 +95,10 @@ const rfmSetup = (
             <Card sx={{m:2, display: 'flex', flexDirection: 'column', height: 'calc(100% - 55px)'}}>
                 <CardContent sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', p: 2}}>
                     <Stack direction={'row'} justifyContent={'space-between'} width={'100%'} px={1}>
-                        <Typography variant="body2"><b>Cluster:</b> {channelObject.clusterInfo?.name}</Typography>
-                        <Typography variant="body2"><b>Version:</b> {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
-                        <Typography variant="body2"><b>Platform:</b> {magnifyData.clusterInfo.platform}</Typography>
-                        <Typography variant="body2"><b>Nodes:</b> {magnifyData.files.filter(f => f.class==='Node').length}</Typography>
+                        <Typography variant='body2'><b>Cluster:</b> {channelObject.clusterInfo?.name}</Typography>
+                        <Typography variant='body2'><b>Version:</b> {magnifyData.clusterInfo.major}.{magnifyData.clusterInfo.minor}&nbsp;&nbsp;({magnifyData.clusterInfo.gitVersion})</Typography>
+                        <Typography variant='body2'><b>Platform:</b> {magnifyData.clusterInfo.platform}</Typography>
+                        <Typography variant='body2'><b>Nodes:</b> {magnifyData.files.filter(f => f.class==='Node').length}</Typography>
                     </Stack>
 
                     <Divider sx={{mt:1, mb:1}}/>
@@ -151,11 +151,11 @@ const rfmSetup = (
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
-                    <Typography>Total CPU: {magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.cpu,0)}</Typography>
-                    <Typography>Total Memory: {convertBytesToSize (magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + convertSizeToBytes(v.data.origin.status.capacity.memory),0))}</Typography>
+                    <Typography variant='body2'>Total CPU: {magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.cpu,0)}</Typography>
+                    <Typography variant='body2'>Total Memory: {convertBytesToSize (magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + convertSizeToBytes(v.data.origin.status.capacity.memory),0))}</Typography>
                     <Typography mt={1}/>
-                    <Typography>Actual pods: {magnifyData.files.filter(f => f.class==='Pod').length}</Typography>
-                    <Typography>Max pods: {magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.pods,0)}</Typography>
+                    <Typography variant='body2'>Actual pods: {magnifyData.files.filter(f => f.class==='Pod').length}</Typography>
+                    <Typography variant='body2'>Max pods: {magnifyData.files.filter(f => f.class==='Node').reduce ((ac,v) => ac + +v.data.origin.status.capacity.pods,0)}</Typography>
                 </CardContent>
             </Card>
             <Card sx={{m:1, flexShrink: 0}}>
@@ -172,16 +172,16 @@ const rfmSetup = (
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
-                    <Typography>Pods: {magnifyData.files.filter(f => f.class==='Pod').length}</Typography>
+                    <Typography variant='body2'>Pods: {magnifyData.files.filter(f => f.class==='Pod').length}</Typography>
                     <Typography mt={1}/>
-                    <Typography>Deployments: {magnifyData.files.filter(f => f.class==='Deployment').length}</Typography>
-                    <Typography>Daemon sets: {magnifyData.files.filter(f => f.class==='DaemonSet').length}</Typography>
-                    <Typography>Replica sets: {magnifyData.files.filter(f => f.class==='ReplicaSet').length}</Typography>
-                    <Typography>Replication Controllers: {magnifyData.files.filter(f => f.class==='ReplicationController').length}</Typography>
-                    <Typography>Stateful sets: {magnifyData.files.filter(f => f.class==='StatefulSet').length}</Typography>
+                    <Typography variant='body2'>Deployments: {magnifyData.files.filter(f => f.class==='Deployment').length}</Typography>
+                    <Typography variant='body2'>Daemon sets: {magnifyData.files.filter(f => f.class==='DaemonSet').length}</Typography>
+                    <Typography variant='body2'>Replica sets: {magnifyData.files.filter(f => f.class==='ReplicaSet').length}</Typography>
+                    <Typography variant='body2'>Replication Controllers: {magnifyData.files.filter(f => f.class==='ReplicationController').length}</Typography>
+                    <Typography variant='body2'>Stateful sets: {magnifyData.files.filter(f => f.class==='StatefulSet').length}</Typography>
                     <Typography mt={1}/>
-                    <Typography>Jobs: {magnifyData.files.filter(f => f.class==='Job').length}</Typography>
-                    <Typography>Cron jobs: {magnifyData.files.filter(f => f.class==='CronJob').length}</Typography>
+                    <Typography variant='body2'>Jobs: {magnifyData.files.filter(f => f.class==='Job').length}</Typography>
+                    <Typography variant='body2'>Cron jobs: {magnifyData.files.filter(f => f.class==='CronJob').length}</Typography>
                 </CardContent>
             </Card>
             <Card sx={{m:1, flexShrink: 0}}>
@@ -198,9 +198,9 @@ const rfmSetup = (
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
-                    <Typography>Services: {magnifyData.files.filter(f => f.class==='Service').length}</Typography>
-                    <Typography>Ingresses: {magnifyData.files.filter(f => f.class==='Ingress').length}</Typography>
-                    <Typography>Ingress classes: {magnifyData.files.filter(f => f.class==='IngressClass').length}</Typography>
+                    <Typography variant='body2'>Services: {magnifyData.files.filter(f => f.class==='Service').length}</Typography>
+                    <Typography variant='body2'>Ingresses: {magnifyData.files.filter(f => f.class==='Ingress').length}</Typography>
+                    <Typography variant='body2'>Ingress classes: {magnifyData.files.filter(f => f.class==='IngressClass').length}</Typography>
                 </CardContent>
             </Card>
             <Card sx={{m:1, flexShrink: 0}}>
@@ -217,8 +217,8 @@ const rfmSetup = (
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
-                    <Typography>ConfigMap: {magnifyData.files.filter(f => f.class==='ConfigMap').length}</Typography>
-                    <Typography>Secret: {magnifyData.files.filter(f => f.class==='Secret').length}</Typography>
+                    <Typography variant='body2'>ConfigMap: {magnifyData.files.filter(f => f.class==='ConfigMap').length}</Typography>
+                    <Typography variant='body2'>Secret: {magnifyData.files.filter(f => f.class==='Secret').length}</Typography>
                 </CardContent>
             </Card>
             <Card sx={{m:1, flexShrink: 0}}>
@@ -235,9 +235,9 @@ const rfmSetup = (
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
-                    <Typography>Total SA's: {magnifyData.files.filter(f => f.class==='ServiceAccount').length}</Typography>
-                    <Typography>Total Roles: {magnifyData.files.filter(f => f.class==='Role').length}</Typography>
-                    <Typography>Total Cluster Roles: {magnifyData.files.filter(f => f.class==='ClusterRole').length}</Typography>
+                    <Typography variant='body2'>Total SA's: {magnifyData.files.filter(f => f.class==='ServiceAccount').length}</Typography>
+                    <Typography variant='body2'>Total Roles: {magnifyData.files.filter(f => f.class==='Role').length}</Typography>
+                    <Typography variant='body2'>Total Cluster Roles: {magnifyData.files.filter(f => f.class==='ClusterRole').length}</Typography>
                 </CardContent>
             </Card>
             <Card sx={{m:1, flexShrink: 0}}>
@@ -254,9 +254,9 @@ const rfmSetup = (
             <Card sx={{m:1, flexShrink: 0}}>
                 <CardHeader title='Status'/>
                 <CardContent>
-                    <Typography>Total PV's: {magnifyData.files.filter(f => f.class==='PersistentVolume').length}</Typography>
-                    <Typography>Total PVC's: {magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').length}</Typography>
-                    <Typography>Total storage: {convertBytesToSize(magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').reduce((ac, v) => ac+v.data.size, 0))}</Typography>
+                    <Typography variant='body2'>Total PV's: {magnifyData.files.filter(f => f.class==='PersistentVolume').length}</Typography>
+                    <Typography variant='body2'>Total PVC's: {magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').length}</Typography>
+                    <Typography variant='body2'>Total storage: {convertBytesToSize(magnifyData.files.filter(f => f.class==='PersistentVolumeClaim').reduce((ac, v) => ac+v.data.size, 0))}</Typography>
                 </CardContent>
             </Card>
             <Card sx={{m:1, flexShrink: 0}}>
@@ -526,11 +526,11 @@ const rfmSetup = (
 
                     return (
                         <Stack flexDirection={'row'}>
-                            <Typography width={'13%'}>{text}</Typography>
+                            <Typography width={'13%'} variant='body2'>{text}</Typography>
                             <Stack flexDirection={'column'}>
                                 {
                                     elements.map( (el, index) => {
-                                        return <a key={index} href={`#`} onClick={() => onLink(kind, el.metadata.name, el.metadata.namespace)}>{el.metadata.name}</a>
+                                        return <Typography variant='body2'><a key={index} href={`#`} onClick={() => onLink(kind, el.metadata.name, el.metadata.namespace)}>{el.metadata.name}</a></Typography>
                                     })
                                 }
                             </Stack>

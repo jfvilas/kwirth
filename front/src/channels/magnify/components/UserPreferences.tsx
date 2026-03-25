@@ -4,6 +4,7 @@ import { ExpandMore } from '@mui/icons-material'
 import { allKinds, IKind, MagnifyUserPreferences } from './MagnifyUserPreferences'
 import { IFileObject } from '@jfvilas/react-file-manager'
 import { IChannelObject } from '../../IChannel'
+import { About } from '../../../components/About'
 
 interface IUserPreferencesProps {
     channelObject: IChannelObject
@@ -36,6 +37,8 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
     const [debugChanged, setDebugChanged] = useState(false)
     const [externalChanged, setExternalChanged] = useState(false)
     const filterRef = useRef<HTMLInputElement>(null)
+
+    const [showAbout, setShowAbout] = useState(false)
 
     const save = () => {
         if (!props.channelObject.writeChannelUserPreferences) return
@@ -89,16 +92,20 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
     return <Box width={'100%'} height={'100%'} display={'flex'} flexDirection={'column'} p={2} sx={{bgcolor: 'background.default', borderBottomRightRadius:'8px', overflowY: 'auto'}}> 
         <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography component="span"><b>Display</b></Typography>
+                <Typography component='span'><b>Display</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
                 <Stack direction={'column'} >
                     <Stack direction={'row'} alignItems={'center'}>
-                        <Typography sx={{flexGrow:1}}>Palette mode</Typography>
+                        <Typography sx={{flexGrow:1}} variant='body2'>Palette mode</Typography>
                         <Select value={palette} onChange={onChangePalette} variant='standard' sx={{width:'100px'}}>
                             <MenuItem value='light'>Light</MenuItem>
                             <MenuItem value='dark'>Dark</MenuItem>
                         </Select>
+                    </Stack>
+                    <Stack direction={'row'} alignItems={'center'}>
+                        <Typography sx={{flexGrow:1}} variant='body2'>About Kwirth</Typography>
+                        <Button onClick={() => setShowAbout(true)}>About</Button>
                     </Stack>
                 </Stack>
             </AccordionDetails>
@@ -109,7 +116,7 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
 
         <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography component="span"><b>Custom actions</b></Typography>
+                <Typography component='span'><b>Custom actions</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
                 {
@@ -148,7 +155,7 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
 
         <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography component="span"><b>External content</b></Typography>
+                <Typography component='span'><b>External content</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
                 <TextField value={logLines} onChange={(event) => {setLogLines(+event.target.value); setExternalChanged(true)}} variant='standard' label='Max messages' SelectProps={{native: true}} type='number' fullWidth />
@@ -160,7 +167,7 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
 
         <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography component="span"><b>Data management</b></Typography>
+                <Typography component='span'><b>Data management</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
                 <Stack direction={'row'}>
@@ -195,7 +202,7 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
 
         <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography component="span"><b>Debug</b></Typography>
+                <Typography component='span'><b>Debug</b></Typography>
             </AccordionSummary>
             <AccordionDetails>
                 <Stack direction={'column'} >
@@ -224,6 +231,7 @@ const UserPreferences: React.FC<IUserPreferencesProps> = (props:IUserPreferences
             </AccordionActions>
         </Accordion>
 
+        { showAbout && <About onClose={() => setShowAbout(false)}/>}
     </Box>
     }
 

@@ -99,6 +99,8 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
                         setMsgBox(MsgBoxOk('Terminal','You have no terminal consoles open.', setMsgBox))
                     else {
                         setShowSelector(true)
+                        event.stopPropagation()
+                        event.preventDefault()
                     }
                     break
                 default:
@@ -147,7 +149,9 @@ const OpsTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             if (opsConfig.accessKey !== ESwitchKey.DISABLED && event.key.startsWith('F') && event.key.length>1) {
                 if (opsConfig.accessKey === ESwitchKey.NONE && !event.altKey && !event.ctrlKey && !event.shiftKey) return false
                 if (opsConfig.accessKey === ESwitchKey.ALT && event.altKey && !event.ctrlKey && !event.shiftKey) return false
-                if (opsConfig.accessKey === ESwitchKey.CTRL && !event.altKey && event.ctrlKey && !event.shiftKey) return false
+                if (opsConfig.accessKey === ESwitchKey.CTRL && !event.altKey && event.ctrlKey && !event.shiftKey) {
+                    return false
+                }
                 if (opsConfig.accessKey === ESwitchKey.SHIFT && !event.altKey && !event.ctrlKey && event.shiftKey) return false
             }
             return true

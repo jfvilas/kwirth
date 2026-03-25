@@ -239,7 +239,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
                 config: undefined,
                 data: undefined,
                 instanceConfig: undefined,
-                xchannel: newChannel,
+                //xchannel: newChannel,
                 channelId: newChannel.channelId
             } satisfies IChannelObject,
             externalChannelStarted: false,

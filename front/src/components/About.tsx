@@ -1,20 +1,49 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography} from '@mui/material'
 import { VERSION } from '../version'
+import { useAsync } from 'react-use'
+import { useEscape } from '../tools/useEscape'
 
 interface IAboutProps {
     onClose: () => void
 }
 
 const About: React.FC<IAboutProps> = (props:IAboutProps) => {
+    const preRef = useRef<HTMLPreElement | null>(null)
+    useEscape(props.onClose)
+
+    useAsync (async () => {
+        let f=0
+        let intId = setInterval( () => {
+            f++
+            if (preRef.current) {
+                if (f===brand.length) {
+                    clearInterval(intId)
+                    return
+                }
+                for (let c=0; c<brand[0].length;c++) {
+                    preRef.current.innerText+= brand[f][c]
+                }
+                preRef.current.innerText+='\r'
+            }
+
+        }, 1, f)
+    }, [preRef])
+
     return (<>
-        <Dialog open={true} disableRestoreFocus={true} fullWidth maxWidth={'xs'}>
+        <Dialog open={true} disableRestoreFocus={true} fullWidth maxWidth={'md'}>
             <DialogTitle>About Kwirth...</DialogTitle>
             <DialogContent>
-                <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column'}} mt={2}>
-                    <Typography><b>Version: </b>{VERSION}</Typography>
-                    <Typography><b>Homepage: </b><a href='https://jfvilas.github.io/kwirth' target='_blank' rel='noreferrer'>https://jfvilas.github.io/kwirth</a></Typography>
-                    <Typography><b>Project: </b><a href='https://github.com/jfvilas/kwirth' target='blank' rel='noreferer'>https://github.com/jfvilas/kwirth</a></Typography>
+                <Stack direction={'row'} alignItems={'center'} justifyContent={'space-between'}>
+                    <Stack spacing={2} sx={{ display: 'flex', flexDirection: 'column'}} mt={2}>
+                        <Typography><b>Version: </b>{VERSION}</Typography>
+                        <Typography><b>Homepage: </b><a href='https://jfvilas.github.io/kwirth' target='_blank' rel='noreferrer'>https://jfvilas.github.io/kwirth</a></Typography>
+                        <Typography><b>Project: </b><a href='https://github.com/jfvilas/kwirth' target='blank' rel='noreferer'>https://github.com/jfvilas/kwirth</a></Typography>
+                    </Stack>
+                    <Stack height='400px' width='500px' ml={2}>
+                        <pre ref={preRef} style={{fontSize:6}}>
+                        </pre>
+                    </Stack>
                 </Stack>
             </DialogContent>
             <DialogActions>
@@ -27,4 +56,52 @@ const About: React.FC<IAboutProps> = (props:IAboutProps) => {
     </>)
 }
 
+let brand = [
+'                                                                                                                        ',
+'                                                                                                                        ',
+'                                                 .%#@@@++==@@@@@@@@@-                                                   ',
+'                                              .@*-+%               @@@@                                                 ',
+'                                             #%-.+#                    @@@@                                             ',
+'                                            -%:.=@                   @@@@..*                                            ',
+'                                          :@*::.@  @              @@ @@*@*: =.                                          ',
+'                                           .:...@ .@@              %          @@                                        ',
+'                                         @@@@@@@%*@         :.:+@@#%@@++       @@                                       ',
+'                                        @@       :..@@%%@@@#*++=:....:-=+#%@@=  *-                                      ',
+'                                                  -+:::::...::::::::::::::..:+%#@@-                                     ',
+'                                           .@.=@%+::.::::::::::::::::::::::::.:.-%@*                                    ',
+'                                          :@-%+:..:::::::::::::::::::::::::::::.@ :@                                    ',
+'                                          .@-...::::::::::::::::::::::::::::::: @ %@                                    ',
+'                                            ==.:::::::::::::::::::::::::::::::: @                                       ',
+'                                            .+...::::::::::::::::::::::::::::::.@                                       ',
+'                                            .++=.::::::::::::::::::::::::::::::.%                                       ',
+'                                           =@  ::.:::::::...:::...::::::::......%                                       ',
+'                                          .@.:@@@@@#####%@@*:..=%@@@%##%%@@@@@@%@                                       ',
+'                                        @@                 .@@@%                  =@%@                                  ',
+'                                       .+#.                                     @%+.@@:                                 ',
+'                                       #+:@     @        @  -@  @# @@@@   @@@@@@-:: :@@                                 ',
+'                                        @.-*@@ #@%@@@+=%@@ -%=*##++-  .=#+:.......   @                                  ',
+'                                        @-...@  .........  :=::::::::....:::::::.%@: @                                  ',
+'                                         @.*- .@@+-:-*#%#%@*:::::::::---:-::::::. @=-=                                  ',
+'                                         *::#-  .:=-=::.*= %:::::::::-==-::::::::.:.@                                   ',
+'                                          @:-+:........:=  %:.....:::....::::::::.:*.                                   ',
+'                                          %#*@@=::::::.=@  @@-.=. .:::::::::::::-*@*                                    ',
+'                                            %. =:::::::-*     =@@#.::::::::::::=@                 @@@@@@*               ',
+'  @@@@@@@@@.   @@@@@@@                         --::::...+-@@@@:   .:::::::::::-@                     @@@.               ',
+'     @@@         @@:                           %=:::+*@:: @@@@+ ..::::::::::::@                      @@@.               ',
+'     @@@       @@@                             :-   * @=%#    .++-:.     ..:...        @@@           @@@.               ',
+'     @@@      @@                            .@      .            ..                    @@@           @@@.               ',
+'     @@@    @@@          @@@@@@@@.     @@@ @@@@@@@@@@@@@@@@@@@@=#+:+@@@@@@ +@@@@@   @@@@@@@@@@@*     @@@  =@@@@@@@@     ',
+'     @@@  +@@               @@@       +@@@@.      @:  #    @@@  :..   @@@@@@@  @@      @@@           @@@%@@.    @@@@    ',
+'     @@@.@@                 @@@@      @@@@@  @ . @@        @@@  +:::: @@@@             @@@           @@@@        @@@    ',
+'     @@@=@@@@                @@@     @@ .@@.    @@%       @@@@  .:::: @@@@ =.          @@@           @@@         @@@    ',
+'     @@@  =@@@@              @@@@%@@@@   @@@    @@ -@+    @@@@  ..... @@@@ =  .        @@@           @@@         @@@    ',
+'     @@@    @@@@.             @@@   @%    @@@  @@    %@-   @@@**@@@%@ @@@@ =  @@@@@@@  @@@           @@@         @@@    ',
+'     @@@     .@@@@            @@@@ @@     @@@  @. .@. :@   @@@      % @@@@ +       .   @@@           @@@         @@@    ',
+'     @@@       @@@@@           @@@@@       @@@@@    @. :* =@@@      @ @@@@             @@@           @@@         @@@    ',
+'     @@@         @@@@          @@@@        *@@@      @     @@@      = @@@@             @@@@          @@@         @@@    ',
+'  @@@@@@@@@     @@@@@@@@@       @@@         @@@      @@@@@@@@@@@@   @@@@@@@@@           @@@@@@@=  @@@@@@@@@   @@@@@@@@@ ',
+'                                                                                                                        ',
+'                                              https://jfvilas.github.io/kwirth                                          ',
+'                                                                                                                        ',
+'                                                                                                                        ']
 export { About }

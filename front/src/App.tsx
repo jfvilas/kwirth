@@ -236,7 +236,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         const previousFocus = document.activeElement as HTMLElement
 
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'F11' && event.ctrlKey && !event.altKey && !event.shiftKey) {
+            if (event.key === 'F11' && event.ctrlKey && event.altKey && !event.shiftKey) {
                 event.stopPropagation()
                 event.preventDefault()
                 setFullscreenTab( (prev) => {
@@ -535,7 +535,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                 isElectron: props.isElectron,
                 data: undefined,
                 instanceConfig: undefined,
-                xchannel: newChannel,  //+++ remove when not using is ensured
+                //xchannel: newChannel,  //+++ remove when not using is ensured
                 channelId: newChannel.channelId
             },
             channelStarted: false,

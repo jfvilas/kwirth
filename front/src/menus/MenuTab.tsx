@@ -48,7 +48,7 @@ const MenuTab: React.FC<IMenuTabProps> = (props:IMenuTabProps) => {
                 <MenuItem key='tabme' onClick={() => props.optionSelected(MenuTabOption.TabMoveLast)} disabled={props.selectedTabIndex===props.tabs.length-1}><KeyboardDoubleArrowRight/>&nbsp;Move to end</MenuItem>
                 <MenuItem key='tabrm' onClick={() => props.optionSelected(MenuTabOption.TabRemove)}><RemoveCircleRounded/>&nbsp;Remove</MenuItem>
                 <MenuItem key='restoreparms' onClick={() => props.optionSelected(MenuTabOption.TabRestoreParameters)}><FactCheck/>&nbsp;Restore tab parameters</MenuItem>
-                <MenuItem key='fullscreen' onClick={() => props.optionSelected(MenuTabOption.FullScreen)}><Fullscreen/>&nbsp;Full screen (Ctrl+F11)</MenuItem>
+                <MenuItem key='fullscreen' onClick={() => props.optionSelected(MenuTabOption.FullScreen)}><Fullscreen/>&nbsp;Full screen (Ctrl+Alt+F11)</MenuItem>
             </Collapse>
             
             <MenuItem key='channelstart' onClick={() => props.optionSelected(MenuTabOption.ChannelStart)} disabled={props.selectedTab?.channelStarted}><PlayCircle/>&nbsp;Start</MenuItem>

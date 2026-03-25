@@ -51,7 +51,7 @@ interface IChannelObject {
     clusterUrl?: string
     clusterInfo?: IClusterInfo
     channelSettings?: IChannelSettings
-    xchannel: IChannel
+    //xchannel: IChannel
     channelId: string
     updateChannelSettings?: (channelSettings:IChannelSettings) => void
     createTab?: (resource:IResourceSelected, start:boolean, settings:any) => void

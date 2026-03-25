@@ -15,7 +15,7 @@ interface IIssue {
 const formatIssues = (issues:IIssue[], onLink:(kind:string, name:string, namespace:string) => void) => {
     return <Stack direction={'column'}>{
         issues.map ( (i, index) => {
-            return <span key={index}>{i.text}:&nbsp;<a href={`#`} onClick={() => onLink(i.kind, i.name, i.namespace)}>{i.name}</a></span>
+            return <Typography key={index} variant='body2'>{i.text}:&nbsp;<a href={`#`} onClick={() => onLink(i.kind, i.name, i.namespace)}>{i.name}</a></Typography>
         })}
     </Stack>
 }
