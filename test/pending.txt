@@ -1,22 +1,25 @@
 ******************ERRORES
 RFM
+estilos de las headers que no son Name (salen mal y no hacen el dark)
 
 MAGNIFY FRONT
-💖💖💖 portforward con smart proxy
-    running, just manage to detect rootpath in order to enable/disable forwarding
-    portforward con electron
-  
+  💖💖💖 portforward con smart proxy
+  running, just manage to detect rootpath in order to enable/disable forwarding
+  portforward con electron
+  revisar ui de contentdetails (typograpgy body2)
+
+MAGNIFY BACK
+
 ELECTRON
 revisar el cambio o salida de cluster: parar las cosas antes de entrar en el otro
   en el backend, parar las cosas si se pierde la comnicacion con el front??
 cuando seleccionas un cluster no accesible entra a magnify, y no deberia
 exit no cierra todos los ejecutables
 
-
-MAGNIFY BACK
-
 KWIRTH FRONT-BACK
-
+gestionar el store de cmap y secrets de kwirth en los 3 envs: docker, electron y external
+añadir un "waiting" justo cuadno arranca un canal (los canales remotos tardan bastante en cargar y parece qu eno funciona)
+ops: fxx y tab, maaaaal
 
 ==============================================================================
 *********V2*********

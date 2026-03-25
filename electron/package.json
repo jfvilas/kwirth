@@ -1,8 +1,14 @@
 {
 	"name": "kwirth-magnify",
-	"author": "Julio Fernandez",
+	"author": {
+		"name": "Julio Fernandez",
+		"email": "jfvilas@outlook.com",
+		"url": "https://github.com/jfvilas"
+	},
 	"main": "main.js",
 	"version": "1.0.0",
+	"description": "Kwirth magnify is a desktop software for managing your Kubernetes clusters. It is based on Kwirth OSS, that can be deployed to your Desktop, as an external server or directly inside your Kubernetes cluster as a Pod",
+	"homepage": "https://jfvilas.github.io/kwirth",
 	"scripts": {
 		"start": "electron .",
 		"dist": "electron-builder",
@@ -37,8 +43,10 @@
 			]
 		},
 		"linux": {
-			"target": ["AppImage", "deb"], 
-			"category": "Utility"
+			"icon": "transparent-image.png",
+			"target": ["AppImage"], 
+			"category": "Utility",
+			"executableArgs": ["--no-sandbox"]
 		},
 		"mac": {
 			"target": ["dmg", "zip"],

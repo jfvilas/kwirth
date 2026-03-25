@@ -52,6 +52,7 @@ import http from 'http'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import { Application } from 'express-serve-static-core'
+import { PinocchioChannel } from './channels/pinocchio/PinocchioChannel'
 const fs = require('fs')
 
 // const originalFetch = require('node-fetch');
@@ -87,6 +88,7 @@ var runningInstances:IRunningInstance[] = []
 let rootPath = process.env.ROOTPATH
 if (rootPath && !rootPath.startsWith('/')) rootPath = '/'+ rootPath
 const envRootPath = rootPath || ''
+const envContext = process.env.CONTEXT || undefined
 const envMasterKey = process.env.MASTERKEY || 'Kwirth4Ever'
 const envForward = (process.env.FORWARD || 'true').toLowerCase() === 'true'
 const envPort = +(process?.env?.PORT || '3883')
@@ -100,6 +102,7 @@ const envChannelTrivyEnabled = (process.env.CHANNEL_TRIVY || 'true').toLowerCase
 const envChannelEchoEnabled = (process.env.CHANNEL_ECHO || 'true').toLowerCase() === 'true'
 const envChannelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLowerCase() === 'true'
 const envChannelMagnifyEnabled = (process.env.CHANNEL_MAGNIFY || 'true').toLowerCase() === 'true'
+const envChannelPinocchioEnabled = (process.env.CHANNEL_PINOCCHIO || 'true').toLowerCase() === 'true'
 
 console.log(envFront)
 
@@ -161,7 +164,7 @@ console.log(envFront)
 
 
 
-const getExecutionEnvironment = async ():Promise<string> => {
+const getExecutionEnvironment = async (context:string|undefined):Promise<string> => {
     console.log('Detecting execution environment...')
 
     console.log('Trying Electron...')    
@@ -170,9 +173,10 @@ const getExecutionEnvironment = async ():Promise<string> => {
     // we keep this order of detection, since kubernetes also has a docker engine
     console.log('Trying Kubernetes...')
     try {
-        let kc = new KubeConfig()
-        kc.loadFromDefault()
-        let coreApi = kc.makeApiClient(CoreV1Api)
+        let kubeConfig = new KubeConfig()
+        kubeConfig.loadFromDefault()
+        if (context) kubeConfig.setCurrentContext(context)
+        let coreApi = kubeConfig.makeApiClient(CoreV1Api)
         await coreApi.listPodForAllNamespaces()
         return 'kubernetes'
     }
@@ -205,13 +209,14 @@ const getExecutionEnvironment = async ():Promise<string> => {
     return 'undetected'
 }
 
-const getKubernetesKwirthData = async ():Promise<KwirthData|undefined> => {
+const getKubernetesKwirthData = async (context:string|undefined):Promise<KwirthData|undefined> => {
     try {
         let podName=process.env.HOSTNAME
-        let kc = new KubeConfig()
-        kc.loadFromDefault()
-        let coreApi = kc.makeApiClient(CoreV1Api)
-        let appsApi = kc.makeApiClient(AppsV1Api)
+        let kubeConfig = new KubeConfig()
+        kubeConfig.loadFromDefault()
+        if (context) kubeConfig.setCurrentContext(context)
+        let coreApi = kubeConfig.makeApiClient(CoreV1Api)
+        let appsApi = kubeConfig.makeApiClient(AppsV1Api)
 
         const pods = await coreApi.listPodForAllNamespaces()
         const pod = pods.items.find(p => p.metadata?.name === podName)  
@@ -708,6 +713,8 @@ const processStartInstanceConfig = async (ri:IRunningInstance, webSocket: WebSoc
                     break
                 case EInstanceConfigView.POD:
                     for (let podName of instanceConfig.pod.split(',')) {
+                        console.log('requestedValidatedPods, podName')
+                        console.log(podName)
                         let validPod = requestedValidatedPods.find(p => p.metadata?.name === podName)
                         if (validPod) {
                             let metadataLabels = validPod.metadata?.labels
@@ -1320,6 +1327,7 @@ const prepareRunningInstance = async (localKwirthData:KwirthData, runningInstanc
         if (envChannelEchoEnabled) runningInstance.channels.set('echo', new EchoChannel(runningInstance.clusterInfo))
         if (envChannelFilemanEnabled) runningInstance.channels.set('fileman', new FilemanChannel(runningInstance.clusterInfo))
         if (envChannelMagnifyEnabled) runningInstance.channels.set('magnify', new MagnifyChannel(runningInstance.clusterInfo, localKwirthData))
+        if (envChannelPinocchioEnabled) runningInstance.channels.set('pinocchio', new PinocchioChannel(runningInstance.clusterInfo))
 
         // this '.channels' object is sent to clients when they want to know something about support channels on the backend they're connected to
         localKwirthData.channels =  Array.from(runningInstance.channels.keys()).map(k => {
@@ -1373,13 +1381,13 @@ const prepareRunningInstance = async (localKwirthData:KwirthData, runningInstanc
     }
 }
 
-const launchKubernetes = async (localKwirthData:KwirthData, expressApp:Application) : Promise<void> => {
+const launchKubernetes = async (context:string|undefined, localKwirthData:KwirthData, expressApp:Application) : Promise<void> => {
     try {
         console.log('Start Kubernetes Kwirth')
         if (localKwirthData) {
             console.log('Initial kwirthData', localKwirthData)
             try {
-                let runningInstance = await createRunningInstance(undefined, localKwirthData)
+                let runningInstance = await createRunningInstance(context, localKwirthData)
                 if (runningInstance) {
                     await prepareRunningInstance(localKwirthData, runningInstance)
                     runningInstances.push(runningInstance)
@@ -1477,11 +1485,11 @@ const launchElectron = async (localKwirthData:KwirthData, expressApp:Application
             try {
                 expressApp.get('/electron/kubeconfig', (req:Request,res:Response) => {
                     try {
-                        let kc = new KubeConfig()
-                        kc.loadFromDefault()
-                        let myContexts = JSON.parse(JSON.stringify(kc.contexts))
+                        let kubeConfig = new KubeConfig()
+                        kubeConfig.loadFromDefault()
+                        let myContexts = JSON.parse(JSON.stringify(kubeConfig.contexts))
                         myContexts.forEach( (context:any) => {
-                            const cluster = kc.clusters.find(c => c.name === context.cluster)
+                            const cluster = kubeConfig.clusters.find(c => c.name === context.cluster)
                             if (cluster) context.server = cluster.server
                         })
                         res.status(200).json(myContexts)
@@ -1778,7 +1786,9 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 showLogo()
 startNodeTasks()
 
-getExecutionEnvironment().then( async (exenv:string) => {
+getExecutionEnvironment(envContext).then( async (exenv:string) => {
+    console.log('Kubernetes context:', envContext || 'default kubeconffig cluster')
+
     let kwirthData:KwirthData
     switch (exenv) {
         case 'electron':
@@ -1811,7 +1821,7 @@ getExecutionEnvironment().then( async (exenv:string) => {
             }
             break
         case 'kubernetes':
-            let kd = await getKubernetesKwirthData()
+            let kd = await getKubernetesKwirthData(envContext)
             if (kd)
                 kwirthData = kd
             else {
@@ -1874,7 +1884,7 @@ getExecutionEnvironment().then( async (exenv:string) => {
             await launchDocker(kwirthData)
             break
         case 'kubernetes':
-            await launchKubernetes(kwirthData, app)
+            await launchKubernetes(envContext, kwirthData, app)
             break
         default:
             console.log('Unsupported execution environment. Exiting...')

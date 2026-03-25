@@ -162,7 +162,8 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
                             let name = tab.name
                             if (name.length>50) name = name.substring(0,25) + '...' + name.substring(name.length-25)
 
-                            let disabled = !props.clusters.find(c => c.name === tab.channelObject.clusterName)
+                            let disabled = (!props.clusters.find(c => c.name === tab.channelObject.clusterName)) && tab.channelObject.clusterName!=='$cluster'
+
                             return <Stack key={listType+tab.name+tab.channel} direction={'row'} alignItems={'center'} flex={1}>
                                 <Tooltip title={tab.channel}>
                                     {channelIcon}

@@ -253,7 +253,7 @@ class PinocchioChannel implements IChannel {
         if (instance.paused) return
         let msg:IPinocchioMessageResponse = {
             msgtype: 'pinocchiomessageresponse',
-            channel: 'pinochio',
+            channel: 'pinocchio',
             action: EInstanceMessageAction.NONE,
             flow: EInstanceMessageFlow.UNSOLICITED,
             type: EInstanceMessageType.DATA,

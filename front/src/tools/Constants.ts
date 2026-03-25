@@ -31,7 +31,7 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     description: 'Consolidated logs from all existing objects in all namespaces',
     channel: 'log',
     channelObject: {
-      clusterName: '$cluster',
+      clusterName: 'inCluster',
       view: EInstanceConfigView.NAMESPACE,
       namespace: '*all',
       group: '',
@@ -44,7 +44,7 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     description: 'File manager for all sets',
     channel: 'fileman',
     channelObject: {
-      clusterName: '$cluster',
+      clusterName: 'inCluster',
       view: EInstanceConfigView.GROUP,
       namespace: '*all',
       group: '*all',
@@ -57,7 +57,7 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     description: 'Basic metrics for all pods in cluster',
     channel: 'metrics',
     channelObject: {
-      clusterName: '$cluster',
+      clusterName: 'inCluster',
       view: EInstanceConfigView.POD,
       namespace: '*all',
       group: '*all',
@@ -70,7 +70,7 @@ const DEFAULTLASTTABS:ITabSummary[] = [
     description: 'Perform operations on all contianers',
     channel: 'ops',
     channelObject: {
-      clusterName: '$cluster',
+      clusterName: 'inCluster',
       view: EInstanceConfigView.CONTAINER,
       namespace: '*all',
       group: '*all',

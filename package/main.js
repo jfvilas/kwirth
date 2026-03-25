@@ -4,6 +4,8 @@ const cli = cac('kwirth-external')
 function startApp(options) {
     console.log('🚀 Starting Kwirth External with these options:')
 
+    process.env.CONTEXT = options.context  // +++ pending implement in back
+    // (this option is not like electron (multpiple contexts), this option connects a Kwirth installation to a Kubernetes cluster, just one)
     process.env.ROOTPATH = options.rootpath
     process.env.MASTERKEY = options.masterkey
     process.env.FORWARD = options.forward
@@ -23,6 +25,7 @@ function startApp(options) {
 
 // CLI config
 cli
+  .option('-c, --context <string>', 'Context to load (defaults to current context', { default: '' })
   .option('-p, --port <number>', 'Server port', { default: 3883 })
   .option('-r, --rootpath <string>', 'Root path where Kwirth will be served', { default: '' })
   .option('-k, --masterkey <string>', 'Master key for enciphering tokens', { default: 'Kwirth4Ever' })

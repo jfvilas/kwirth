@@ -692,7 +692,7 @@ const ContentExternal: React.FC<IContentExternalProps> = (props:IContentExternal
     </>)
 }
 
-const ANSI_MAP: Record<string, string> = {
+export const ANSI_MAP: Record<string, string> = {
     'ArrowUp':    '\x1b[A',
     'ArrowDown':  '\x1b[B',
     'ArrowRight': '\x1b[C',
@@ -723,10 +723,9 @@ const ANSI_MAP: Record<string, string> = {
     'F10': '\x1b[21~',
     'F11': '\x1b[23~',
     'F12': '\x1b[24~',
-};
+}
 
-
-const getComplexCode = (e: KeyboardEvent): string | null => {
+export const getComplexCode = (e: KeyboardEvent): string | null => {
     const { key, ctrlKey, altKey, shiftKey } = e
 
     let modifier = 1
@@ -758,7 +757,7 @@ const getComplexCode = (e: KeyboardEvent): string | null => {
     return null
 }
 
-function getControlChar(key: string): string | null {
+export function getControlChar(key: string): string | null {
     const charCode = key.toLowerCase().charCodeAt(0)
     if (charCode >= 97 && charCode <= 122) return String.fromCharCode(charCode - 96)
     

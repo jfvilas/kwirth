@@ -48,6 +48,7 @@ import { MenuNotification, INotification } from './components/MenuNotification'
 import { ContextSelector } from './components/ContextSelector'
 import { v4 as uuid } from 'uuid'
 import { About } from './components/About'
+import { PinocchioChannel } from './channels/pinocchio/PinocchioChannel'
 
 interface IAppProps {
     backendUrl:string
@@ -228,14 +229,16 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         frontChannels.set('ops', OpsChannel)
         frontChannels.set('fileman', FilemanChannel)
         frontChannels.set('magnify', MagnifyChannel)
+        frontChannels.set('pinocchio', PinocchioChannel)
     },[])
 
     useEffect(() => {
         const previousFocus = document.activeElement as HTMLElement
 
         const handleKeyDown = (event: KeyboardEvent) => {
-            event.stopPropagation()
             if (event.key === 'F11' && event.ctrlKey && !event.altKey && !event.shiftKey) {
+                event.stopPropagation()
+                event.preventDefault()
                 setFullscreenTab( (prev) => {
                     if (prev!==undefined) 
                         return undefined
@@ -309,38 +312,43 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             else
                 tab.channelObject.clusterName = 'inCluster'
         }
+        let allClusterPodsArray = (await (await fetch(`${backendUrl}/config/pod`, addGetAuthorization(accessString))).json())
+
         if (tab.channelObject.namespace==='*all' || tab.channelObject.group==='*all'|| tab.channelObject.pod==='*all'|| tab.channelObject.container==='*all') {
-            namespacesArray = (await (await fetch(`${backendUrl}/config/namespace`, addGetAuthorization(accessString))).json())
+            namespacesArray = [...new Set<string>(allClusterPodsArray.map((p: any) => p.namespace))]
             tab.channelObject.namespace = namespacesArray.join(',')
         }
+    
         let controllersArray = []
         if (tab.channelObject.group==='*all') {
             for (let namespace of namespacesArray) {
-                let data = await((await fetch(`${backendUrl}/config/${namespace}/groups`, addGetAuthorization(accessString))).json())
+                let data = allClusterPodsArray.filter((p:any) => p.namespace===namespace).map((p:any) => {return { name:p.controllerName, type:p.controllerType}})
                 data = data.map ( (g:any) => ({ ...g, namespace }))
                 controllersArray.push(...data)
             }
-            if (tab.channelObject.group==='*all') tab.channelObject.group = controllersArray.map(g => g.type+'+'+g.name).join(',')
+            tab.channelObject.group = controllersArray.slice(0, 5).map(g => g.type+'+'+g.name).join(',')
         }
-
+    
         let podsArray:any[] = []
         if (tab.channelObject.pod==='*all' || tab.channelObject.container==='*all') {
-            for (let group of controllersArray.filter(g => g.type!=='deployment')) {
-                let data = await (await fetch(`${backendUrl}/config/${group.namespace}/${group.name}/pods?type=${group.type}`, addGetAuthorization(accessString))).json()
-                data = data.map ((name:string) => ({ name, namespace:group.namespace}))
+            for (let controller of controllersArray.filter(g => g.type!=='Deployment')) {
+                let data = allClusterPodsArray.filter((p:any) => p.namespace===controller.namespace && p.controllerName===controller.name && p.controllerType===controller.type).map((c:any) => c.name)
+                data = data.map ((name:string) => ({ name, namespace:controller.namespace}))
                 podsArray.push (...data)
             }
-            if (tab.channelObject.pod==='*all') tab.channelObject.pod = podsArray.map(pod => pod.name).join(',')
+            if (tab.channelObject.pod==='*all') {
+                tab.channelObject.pod = podsArray.slice(0, 5).map(pod => pod.name).join(',')
+            }
         }
     
         let containersArray:string[] = []
         if (tab.channelObject.container==='*all') {
             for (let pod of podsArray) {
-                let data = await ((await fetch(`${backendUrl}/config/${pod.namespace}/${pod.name}/containers`, addGetAuthorization(accessString))).json())
+                let data = allClusterPodsArray.filter((p:any) => p.namespace===pod.namespace && p.name===pod.name).map((p:any) => p.containers)
                 data = data.map( (c:string) => pod.name+'+'+c)
                 containersArray.push (...(data as string[]))
             }
-            tab.channelObject.container = containersArray.join(',')
+            tab.channelObject.container = containersArray.slice(0, 5).join(',')
         }
     }
 
@@ -773,6 +781,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
         }
         else {
             console.log('Received invalid channel in message: ', instanceMessage)
+            console.log(frontChannels)
             notify(undefined, ENotifyLevel.ERROR, `'Received invalid channel in message: ${instanceMessage.channel}`)
         }
     }

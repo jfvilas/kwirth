@@ -203,7 +203,6 @@ export class AuthorizationManagement {
     }
     
     public static getValidValues = (values:string[], regexes:string[]): string[] => {
-        //if (this.isElectron) return values
         let result:string[] = []
         try {
             for (let value of values) {
@@ -250,57 +249,48 @@ export class AuthorizationManagement {
         return result
     }
     
-    public static getControllerNames = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, gtype:string): Promise<string[]> => {
-        let result:string[] = []
-    
-        let groupNames:string[] = []
-        switch (gtype) {
-            case 'Deployment':
-                groupNames = (await appsApi.listNamespacedDeployment({namespace})).items.map (n => n?.metadata?.name!)
-                break
-            case 'ReplicaSet':
-                groupNames = (await appsApi.listNamespacedReplicaSet({namespace})).items.filter(rs => rs.status?.replicas!>0).map (n => n?.metadata?.name!)
-                break
-            case 'ReplicationController':
-                groupNames = (await coreApi.listNamespacedReplicationController({namespace})).items.map (n => n?.metadata?.name!)
-                break
-            case 'DaemonSet':
-                groupNames = (await appsApi.listNamespacedDaemonSet({namespace})).items.map (ds => ds?.metadata?.name!)
-                break
-            case 'StatefulSet':
-                groupNames = (await appsApi.listNamespacedStatefulSet({namespace})).items.filter(ss => ss.status?.replicas!>0).map (n => n?.metadata?.name!)
-                break
-            case 'Job':
-                groupNames = (await batchApi.listNamespacedJob({namespace})).items.map(j => j.metadata?.name!)       
-                break
-            default:
-                //+++ Not Applicable
-                break
-        }
-        result.push(...groupNames)        
-        return [ ...new Set(result)]
-    }
-    
     public static getAllowedControllers = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, accessKey:AccessKey): Promise<{[name:string]:any}[]> => {
-        let resources = parseResources(accessKey!.resources)
         let result:{[name:string]:any}[] = []
-    
-        for (let gtype of ['Deployment','ReplicaSet','ReplicationController','DaemonSet','StatefulSet','Job']) {
-            let glist = await AuthorizationManagement.getControllerNames(coreApi, appsApi, batchApi, namespace, gtype)
+        try {
+            let resources = parseResources(accessKey!.resources)
+        
+            const [deployments, replicaSets, replicationControllers, daemonSets, statefulSets, jobs] = await Promise.all([
+                appsApi.listDeploymentForAllNamespaces(),
+                appsApi.listReplicaSetForAllNamespaces(),
+                coreApi.listReplicationControllerForAllNamespaces(),
+                appsApi.listDaemonSetForAllNamespaces(),
+                appsApi.listStatefulSetForAllNamespaces(),
+                batchApi.listJobForAllNamespaces()
+            ])
+            const allControllers = [
+                ...deployments.items.map(i => ({ ...i, kind: 'Deployment' })),
+                ...replicaSets.items.map(i => ({ ...i, kind: 'ReplicaSet' })),
+                ...replicationControllers.items.map(i => ({ ...i, kind: 'ReplicationController' })),
+                ...daemonSets.items.map(i => ({ ...i, kind: 'DaemonSet' })),
+                ...statefulSets.items.map(i => ({ ...i, kind: 'StatefulSet' })),
+                ...jobs.items.map(i => ({ ...i, kind: 'Job' }))
+            ]
+            for (let controllerType of ['Deployment','ReplicaSet','ReplicationController','DaemonSet','StatefulSet','Job']) {
+                let controllerList:string[] = allControllers.filter((c:any) => c.metadata.namespace === namespace && c.kind===controllerType).map((c:any) => c.metadata.name) || []
 
-            // we prune glist according to resources and namespaces
-            for (let resource of resources) {
-                if (resource.groups !== '' && AuthorizationManagement.getValidValues([namespace], resource.namespaces.split(',')).length>0) {
-                    let resControllers = resource.groups.split(',').filter(g => g.startsWith(gtype+'+'))
-                    if (resControllers.length!==0) {
-                        let regexes = resControllers.map(g => g.split('+')[1])
-                        glist = [ ...new Set(AuthorizationManagement.getValidValues(glist, regexes)) ]
+                // we prune glist according to resources and namespaces
+                for (let resource of resources) {
+                    if (resource.groups !== '' && AuthorizationManagement.getValidValues([namespace], resource.namespaces.split(',')).length>0) {
+                        let resControllers = resource.groups.split(',').filter(g => g.startsWith(controllerType+'+'))
+                        if (resControllers.length!==0) {
+                            let regexes = resControllers.map(g => g.split('+')[1])
+                            controllerList = [ ...new Set(AuthorizationManagement.getValidValues(controllerList, regexes)) ]
+                        }
                     }
                 }
+                result.push (...controllerList.map (controllerName => { return { name:controllerName, type:controllerType } }))
             }
-            result.push (...glist.map (gname => { return { name:gname, type:gtype } }))
         }
-        return [...new Set(result)]
+        catch (err) {
+            console.log('Error obtaining allowed controllers')
+            console.log(err)
+        }
+        return Array.from(new Map(result.map(item => [`${item.name}-${item.type}`, item])).values())
     }
 
     public static getValidControllers = async (coreApi: CoreV1Api, appsApi: AppsV1Api, batchApi:BatchV1Api, accessKey:AccessKey, namespaces:string[], requestedControllers:string[]): Promise<string[]> => {
@@ -333,93 +323,54 @@ export class AuthorizationManagement {
         }
     }
 
-    public static getPodsFromController = async (coreApi: CoreV1Api, appsApi: AppsV1Api, namespace:string, ctype:string, cname:string, accessKey:AccessKey): Promise<string[]> => {
-        let pods:V1Pod[] = []
-        let result:string[]=[]
-    
-        let resources = parseResources(accessKey!.resources)
-        let response= await coreApi.listNamespacedPod({namespace})
-        if (ctype === 'deployment') {
-            for (let pod of response.items) {
-                let controllerName = await this.getPodControllerName(appsApi, pod, true)
-                if (controllerName === cname || pod.metadata?.name?.startsWith(cname)) pods.push(pod)
-            }
-        }
-        else if (ctype === 'job') {
-            for (let pod of response.items) {
-                let controllerName = await this.getPodControllerName(appsApi, pod, true)
-                if (controllerName === cname || pod.metadata?.name?.startsWith(cname)) pods.push(pod)
-            }
-        }
-        else {
-            // we find for pod whose controller is gname
-            let filteredPods = response.items.filter (pod => {
-                let podController  = pod?.metadata?.ownerReferences?.find(cont => cont.controller)
-                if (podController && podController.name===cname) return pod
-            })
-            // we then filter for running pods
-            filteredPods = filteredPods.filter(p => p.status?.phase?.toLowerCase()==='running')
-        }
-    
-        for (let pod of pods) {
-            for (let resid of resources) {
-                // for each resourceid, we first check if namespace is right
-                if (AuthorizationManagement.getValidValues([pod.metadata!.namespace!], resid.namespaces.split(',')).length>0) {
-                    result.push(pod.metadata?.name!)
-                }
-            }
-        }
-        return [...new Set(result)]
-    }
-    
-    public static getPodLabelSelectorsFromController = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, groupTypeName:string): Promise<{pods:V1Pod[],labelSelector:string}> => {
+    public static getPodLabelSelectorsFromController = async (coreApi:CoreV1Api, appsApi:AppsV1Api, batchApi: BatchV1Api, namespace:string, controllerTypeName:string): Promise<{pods:V1Pod[],labelSelector:string}> => {
         let response:any
-        let groupName, groupType
+        let controllerName, controllerType
         let emptyResult = { pods:[] as V1Pod[],labelSelector:'' };
-        [groupType, groupName] = groupTypeName.toLowerCase().split('+')
+        [controllerType, controllerName] = controllerTypeName.toLowerCase().split('+')
     
         try {
-            switch (groupType) {
+            switch (controllerType.toLocaleLowerCase()) {
                 case 'deployment': {
                         let x = await appsApi.listNamespacedDeployment({namespace})
                         let names = x.items.map (d => d.metadata?.name)
-                        if (!names.includes(groupName)) return emptyResult
-                        response = await appsApi.readNamespacedDeployment({ name: groupName, namespace: namespace })
+                        if (!names.includes(controllerName)) return emptyResult
+                        response = await appsApi.readNamespacedDeployment({ name: controllerName, namespace: namespace })
                     }
                     break
                 case'replicaset': {
                         let x = await appsApi.listNamespacedReplicaSet({namespace})
                         let names = x.items.map (rs => rs.metadata?.name)
-                        if (!names.includes(groupName)) return emptyResult
-                        response = await appsApi.readNamespacedReplicaSet({ name: groupName, namespace: namespace })
+                        if (!names.includes(controllerName)) return emptyResult
+                        response = await appsApi.readNamespacedReplicaSet({ name: controllerName, namespace: namespace })
                     }
                     break
                 case'replicationcontroller': {
                         let x = (await coreApi.listNamespacedReplicationController({namespace}))
                         let names = x.items.map(rs => rs.metadata?.name)
-                        if (!names.includes(groupName)) return emptyResult
-                        response = await coreApi.readNamespacedReplicationController({ name: groupName, namespace: namespace })
+                        if (!names.includes(controllerName)) return emptyResult
+                        response = await coreApi.readNamespacedReplicationController({ name: controllerName, namespace: namespace })
                     }
                     break
                 case'daemonset': {
                         let x = await appsApi.listNamespacedDaemonSet({namespace})
                         let names = x.items.map (ds => ds.metadata?.name)
-                        if (!names.includes(groupName)) return emptyResult
-                        response = await appsApi.readNamespacedDaemonSet({ name: groupName, namespace: namespace })
+                        if (!names.includes(controllerName)) return emptyResult
+                        response = await appsApi.readNamespacedDaemonSet({ name: controllerName, namespace: namespace })
                     }
                     break
                 case'statefulset': {
                         let x = await appsApi.listNamespacedStatefulSet({namespace})
                         let names = x.items.map (ss => ss.metadata?.name)
-                        if (!names.includes(groupName)) return emptyResult
-                        response = await appsApi.readNamespacedStatefulSet({ name: groupName, namespace: namespace })
+                        if (!names.includes(controllerName)) return emptyResult
+                        response = await appsApi.readNamespacedStatefulSet({ name: controllerName, namespace: namespace })
                     }
                     break
                 case'job': {
                         let x = await batchApi.listNamespacedJob({namespace})
                         let names = x.items.map (j => j.metadata?.name)
-                        if (!names.includes(groupName)) return emptyResult
-                        response = await batchApi.readNamespacedJob({ name: groupName, namespace: namespace })
+                        if (!names.includes(controllerName)) return emptyResult
+                        response = await batchApi.readNamespacedJob({ name: controllerName, namespace: namespace })
                     }
                     break
             }    
@@ -458,12 +409,12 @@ export class AuthorizationManagement {
         }
     }
 
-    public static getAllowedPods = async (coreApi: CoreV1Api, appsApi:AppsV1Api, namespace:string, controller:string, accessKey:AccessKey): Promise<string[]> => {
+    public static getAllowedClusterPods = async (coreApi: CoreV1Api, appsApi:AppsV1Api, accessKey:AccessKey): Promise<any[]> => {
         let pods:V1Pod[] = []
-        let result:string[]=[]
+        let result:{namespace:string, name:string, controllerName:string, controllerType:string, containers:string[]}[]=[]
     
         let resources = parseResources(accessKey!.resources)
-        let response = await coreApi.listNamespacedPod({namespace})
+        let response = await coreApi.listPodForAllNamespaces()
         pods = response.items
     
         for (let pod of pods) {
@@ -473,108 +424,228 @@ export class AuthorizationManagement {
                 if (AuthorizationManagement.getValidValues([pod.metadata.namespace], resource.namespaces.split(',')).length>0) {
                     let validPodNames = AuthorizationManagement.getValidValues([pod.metadata.name], resource.pods.split(','))
                     if (validPodNames.includes(pod.metadata.name)) {
-                        if (controller==='') {
-                            result.push(pod.metadata.name)
-                        }
-                        else {
-                            if (pod.metadata.ownerReferences) {
-                                let controllerName = await this.getPodControllerName(appsApi, pod, true)
-                                if (controllerName === controller || pod.metadata.name.startsWith(controller)) result.push(pod.metadata.name)
-                            }
-                            else {
-                                if (validPodNames.includes(pod.metadata.name)) result.push(pod.metadata.name)
-                            }
-                        }
+                        result.push({
+                            namespace: pod.metadata.namespace,
+                            name: pod.metadata.name,
+                            controllerName: pod.metadata.ownerReferences?.[0].name || '',
+                            controllerType: pod.metadata.ownerReferences?.[0].kind || '',
+                            containers: pod.spec?.containers.map(c => c.name) || []
+                        })
                     }
                 }
             }
         }
-        return [...new Set(result)]
+        return Array.from(new Map(result.map(item => [`${item.namespace}/${item.name}`, item])).values())
     }
     
-    public static getValidPods = async (coreApi: CoreV1Api, appsApi:AppsV1Api, namespaces:string[], accessKey:AccessKey, requestedPods:string[]): Promise<string[]> => {
-        let result:string[]=[]
-        let allowedPods = []
+    // public static getAllowedPods = async (coreApi: CoreV1Api, appsApi:AppsV1Api, namespace:string, controller:string, accessKey:AccessKey): Promise<string[]> => {
+    //     let pods:V1Pod[] = []
+    //     let result:string[]=[]
+    
+    //     let resources = parseResources(accessKey!.resources)
+    //     let response = await coreApi.listNamespacedPod({namespace})
+    //     pods = response.items
+    
+    //     for (let pod of pods) {
+    //         for (let resource of resources) {
+    //             if (!pod.metadata?.name || !pod.metadata.namespace) continue
 
-        for (let ns of namespaces) {
-            allowedPods.push (...await this.getAllowedPods(coreApi, appsApi, ns, '', accessKey))
-        }
-        console.log('allowedPods', allowedPods)
-        console.log('requestedPods', requestedPods)
+    //             if (AuthorizationManagement.getValidValues([pod.metadata.namespace], resource.namespaces.split(',')).length>0) {
+    //                 let validPodNames = AuthorizationManagement.getValidValues([pod.metadata.name], resource.pods.split(','))
+    //                 if (validPodNames.includes(pod.metadata.name)) {
+    //                     if (controller==='') {
+    //                         result.push(pod.metadata.name)
+    //                     }
+    //                     else {
+    //                         if (pod.metadata.ownerReferences) {
+    //                             let controllerName = await this.getPodControllerName(appsApi, pod, true)
+    //                             if (controllerName === controller || pod.metadata.name.startsWith(controller)) result.push(pod.metadata.name)
+    //                         }
+    //                         else {
+    //                             if (validPodNames.includes(pod.metadata.name)) result.push(pod.metadata.name)
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     return [...new Set(result)]
+    // }
+    
+    // public static getValidPods = async (coreApi: CoreV1Api, appsApi:AppsV1Api, namespaces:string[], accessKey:AccessKey, requestedPods:string[]): Promise<string[]> => {
+    //     let result:string[]=[]
+    //     let allowedPods = []
 
-        if (requestedPods.length === 0 || (requestedPods.length === 1 && requestedPods[0]==='')) {
-            result.push(...allowedPods)
+    //     for (let ns of namespaces) {
+    //         allowedPods.push (...await this.getAllowedPods(coreApi, appsApi, ns, '', accessKey))
+    //     }
+
+    //     if (requestedPods.length === 0 || (requestedPods.length === 1 && requestedPods[0]==='')) {
+    //         result.push(...allowedPods)
+    //     }
+    //     else {
+    //         let x = this.getValidValues(allowedPods, requestedPods.map(pod => '^'+pod+'$'))
+    //         result.push(...x)
+    //     }
+    //     return [...new Set(result)]
+    // }
+
+    public static getAllowedPods = async (coreApi: CoreV1Api, appsApi: AppsV1Api, namespace: string, controller: string, accessKey: AccessKey): Promise<string[]> => {
+        const resources = parseResources(accessKey!.resources)
+        const response = await coreApi.listNamespacedPod({ namespace })
+        const pods = response.items;
+
+        const podChecks = pods.map(async (pod) => {
+            const podName = pod.metadata?.name
+            const podNs = pod.metadata?.namespace
+            if (!podName || !podNs) return null
+
+            for (let resource of resources) {
+                const nsMatch = AuthorizationManagement.getValidValues([podNs], resource.namespaces.split(',')).length > 0
+                if (!nsMatch) continue
+
+                const validPodNames = AuthorizationManagement.getValidValues([podName], resource.pods.split(','))
+                if (validPodNames.includes(podName)) {
+                    
+                    if (controller === '') return podName
+
+                    if (pod.metadata?.ownerReferences) {
+                        const controllerName = await this.getPodControllerName(appsApi, pod, true)
+                        if (controllerName === controller || podName.startsWith(controller)) return podName
+                    }
+                    else if (podName === controller) { 
+                        return podName
+                    }
+                }
+            }
+            return null
+        })
+
+        const results = await Promise.all(podChecks)
+        return [...new Set(results.filter((p): p is string => p !== null))]
+    }
+
+    public static getValidPods = async (coreApi: CoreV1Api, appsApi: AppsV1Api, namespaces: string[], accessKey: AccessKey, requestedPods: string[]): Promise<string[]> => {
+        const promises = namespaces.map(ns => this.getAllowedPods(coreApi, appsApi, ns, '', accessKey))
+        const resultsArray = await Promise.all(promises)
+        
+        let allowedPods = resultsArray.flat()
+
+        let result: string[] = []
+        if (requestedPods.length === 0 || (requestedPods.length === 1 && requestedPods[0] === '')) {
+            result = allowedPods
         }
         else {
-            let x = this.getValidValues(allowedPods, requestedPods.map(pod => '^'+pod+'$'))
-            result.push(...x)
+            result = this.getValidValues(allowedPods, requestedPods.map(pod => '^' + pod + '$'));
         }
-        return [...new Set(result)]
-    }
-    
-    public static getContainers = async (coreApi:CoreV1Api, namespace:string, pod:string, accessKey:AccessKey): Promise<string[]> => {
-        let resources = parseResources(accessKey.resources)
-        let searchPod = (await coreApi.readNamespacedPod({ name: pod, namespace: namespace }))
-        if (!searchPod) return []
-    
-        let containers = searchPod.spec?.containers.map(c => c.name)
-        if (!containers) return []
-    
-        let result:string[] = []
-        for (let resource of resources) {
-            if (AuthorizationManagement.getValidValues(searchPod.metadata!.namespace!.split(','), resource.namespaces.split(',')).length>0) {
-                let conts = AuthorizationManagement.getValidValues(containers, resource.containers.split(','))
-                result.push(...conts)
-            }
-        }
+
         return [...new Set(result)]
     }
 
-    public static getAllowedContainers = async (coreApi:CoreV1Api, accessKey:AccessKey, namespace:string, pod:string): Promise<string[]> => {
-        let result:string[] = []    
-        let resources = parseResources(accessKey!.resources)
+    // public static getAllowedContainers = async (coreApi:CoreV1Api, accessKey:AccessKey, namespace:string, pod:string): Promise<string[]> => {
+    //     let result:string[] = []    
+    //     let resources = parseResources(accessKey!.resources)
 
-        try {
-            let x = (await coreApi.readNamespacedPod({ name: pod, namespace: namespace }))
-            if (!x.spec) return result
+    //     try {
+    //         let x = (await coreApi.readNamespacedPod({ name: pod, namespace: namespace }))
+    //         if (!x.spec) return result
     
-            for (let cont of x.spec.containers) {
-                for (let resid of resources) {
-                    // we check if the resource is applicable to the container we are evaluating (namespace and pod of the resource must match)
-                    if (AuthorizationManagement.getValidValues([x.metadata!.namespace!], resid.namespaces.split(',')).length>0) {
-                        if (AuthorizationManagement.getValidValues([x.metadata!.name!], resid.pods.split(',')).length>0) {
-                            let xx = AuthorizationManagement.getValidValues([cont.name], resid.containers.split(','))
-                            result.push(...xx)
-                        }
+    //         for (let cont of x.spec.containers) {
+    //             for (let resid of resources) {
+    //                 // we check if the resource is applicable to the container we are evaluating (namespace and pod of the resource must match)
+    //                 if (AuthorizationManagement.getValidValues([x.metadata!.namespace!], resid.namespaces.split(',')).length>0) {
+    //                     if (AuthorizationManagement.getValidValues([x.metadata!.name!], resid.pods.split(',')).length>0) {
+    //                         let xx = AuthorizationManagement.getValidValues([cont.name], resid.containers.split(','))
+    //                         result.push(...xx)
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         return [...new Set(result)]
+    //     }
+    //     catch (err) {
+    //         //Error can be 404 (since caller may be asking of a pod that is not present in a concrete namespace) or other erros
+    //         return []
+    //     }
+    // }
+
+    // public static getValidContainers = async (coreApi:CoreV1Api, accessKey:AccessKey, namespaces:string[], pods:string[], requestedContainers:string[]): Promise<string[]> => {
+    //     let result:string[] = []
+    //     let allowedContainers = []
+
+    //     for (let namespace of namespaces) {
+    //         let pods = (await coreApi.listNamespacedPod({namespace})).items
+    //         for (let pod of pods) {
+    //             let x = await this.getAllowedContainers(coreApi, accessKey, namespace, pod.metadata?.name!)
+    //             allowedContainers.push(...x.map(c => pod.metadata?.name+ '+' + c))
+    //         }
+    //     }
+
+    //     if (requestedContainers.length === 0 || (requestedContainers.length === 1 && requestedContainers[0]==='')) {
+    //         result.push(...allowedContainers)
+    //     }
+    //     else {
+    //         let x = this.getValidValues(allowedContainers, requestedContainers.map(g => '^'+g.replaceAll('+','\\+')+'$'))
+    //         result.push(...x)
+    //     }
+    //     return [...new Set(result)]
+    // }
+
+// 1. Nueva función de lógica pura (sin llamadas a API) para filtrar contenedores de un objeto Pod ya cargado
+
+    public static filterAllowedContainersFromPod(pod: V1Pod, accessKey: AccessKey): string[] {
+        const result: string[] = []
+        const resources = parseResources(accessKey!.resources)
+        const ns = pod.metadata?.namespace
+        const podName = pod.metadata?.name
+
+        if (!pod.spec?.containers || !ns || !podName) return []
+
+        for (const cont of pod.spec.containers) {
+            for (const resid of resources) {
+                if (AuthorizationManagement.getValidValues([ns], resid.namespaces.split(',')).length > 0) {
+                    if (AuthorizationManagement.getValidValues([podName], resid.pods.split(',')).length > 0) {
+                        const matched = AuthorizationManagement.getValidValues([cont.name], resid.containers.split(','));
+                        result.push(...matched);
                     }
                 }
             }
-            return [...new Set(result)]
+        }
+        return [...new Set(result)]
+    }
+
+    public static getAllowedContainers = async (coreApi: CoreV1Api, accessKey: AccessKey, namespace: string, podName: string): Promise<string[]> => {
+        try {
+            const pod = await coreApi.readNamespacedPod({ name: podName, namespace })
+            return this.filterAllowedContainersFromPod(pod, accessKey)
         }
         catch (err) {
-            //Error can be 404 (since caller may be asking of a pod that is not present in a concrete namespace) or other erros
             return []
         }
     }
 
-    public static getValidContainers = async (coreApi:CoreV1Api, accessKey:AccessKey, namespaces:string[], pods:string[], requestedContainers:string[]): Promise<string[]> => {
-        let result:string[] = []
-        let allowedContainers = []
+    public static getValidContainers = async (coreApi: CoreV1Api, accessKey: AccessKey, namespaces: string[], pods: string[], requestedContainers: string[]): Promise<string[]> => {
+        const nsPromises = namespaces.map(ns => coreApi.listNamespacedPod({ namespace: ns }))
+        const responses = await Promise.all(nsPromises)
+        
+        const allowedContainers: string[] = []
 
-        for (let namespace of namespaces) {
-            let pods = (await coreApi.listNamespacedPod({namespace})).items
-            for (let pod of pods) {
-                let x = await this.getAllowedContainers(coreApi, accessKey, namespace, pod.metadata?.name!)
-                allowedContainers.push(...x.map(c => pod.metadata?.name+ '+' + c))
+        for (const response of responses) {
+            for (const pod of response.items) {
+                const podName = pod.metadata?.name
+                if (!podName) continue
+                const containerNames = this.filterAllowedContainersFromPod(pod, accessKey)
+                allowedContainers.push(...containerNames.map(c => `${podName}+${c}`))
             }
         }
 
-        if (requestedContainers.length === 0 || (requestedContainers.length === 1 && requestedContainers[0]==='')) {
-            result.push(...allowedContainers)
+        let result: string[] = []
+        if (requestedContainers.length === 0 || (requestedContainers.length === 1 && requestedContainers[0] === '')) {
+            result = allowedContainers
         }
         else {
-            let x = this.getValidValues(allowedContainers, requestedContainers.map(g => '^'+g.replaceAll('+','\\+')+'$'))
-            result.push(...x)
+            const regexes = requestedContainers.map(g => '^' + g.replaceAll('+', '\\+') + '$')
+            result = this.getValidValues(allowedContainers, regexes)
         }
         return [...new Set(result)]
     }

@@ -97,6 +97,41 @@ export class ConfigApi {
                 }
             })
 
+        // get all namespaces
+        this.route.route('/pod')
+            .all( async (req:Request,res:Response, next) => {
+                if (! (await AuthorizationManagement.validKey(req,res, this.apiKeyApi))) return
+                next()
+            })
+            .get( async (req:Request, res:Response) => {
+                try {
+                    if (this.kwirthData.clusterType === EClusterType.DOCKER) {
+                        res.status(200).json(['$docker'])
+                    }
+                    else {
+                        try {
+                            let accessKey = await AuthorizationManagement.getKey(req,res, this.apiKeyApi)
+                            if (accessKey) {
+                                let list = await AuthorizationManagement.getAllowedClusterPods(this.clusterInfo.coreApi, this.clusterInfo.appsApi, accessKey)
+                                res.status(200).json(list)
+                            }
+                            else {
+                                res.status(403).json([])
+                                return
+                            }
+                        }
+                        catch (err) {
+                            res.status(500).json([])
+                            console.log(err)
+                        }
+                    }
+                }
+                catch (err) {
+                    console.log('Error obtaining namespaces', err)
+                    res.status(500).json([])
+                }
+            })
+
         // get all deployments in a namespace
         this.route.route(['/:namespace/groups', '/:namespace/controllers'])
             .all( async (req:Request, res:Response, next) => {
