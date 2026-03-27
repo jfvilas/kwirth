@@ -33,7 +33,7 @@ const PinocchioTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         <Card sx={{flex:1, width:'98%', alignSelf:'center', margin:'8px'}}>
             <CardHeader title={
                 <Stack direction={'row'} alignItems={'center'}>
-                    <Typography marginRight={'32px'}><b>Lines:</b> {pinocchioData.lines.length} / {pinocchioConfig.maxLines}</Typography>
+                    <Typography marginRight={'32px'}><b>Lines:</b> {pinocchioData.lines.length}</Typography>
                     <Typography marginRight={'32px'}><b>Interval:</b> {pinocchioInstanceConfig.interval}</Typography>
                     <Typography marginRight={'32px'}><Info fontSize='small' sx={{marginBottom:'2px'}} /><b>&nbsp;Status:</b> {pinocchioData.paused?'paused':pinocchioData.started?'started':'stopped'}</Typography>
                 </Stack>}>

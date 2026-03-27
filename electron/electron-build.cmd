@@ -1,6 +1,3 @@
-@REM md .\build
-@REM del .\build\*.* /s /q
+call npm run dist
 
-@REM xcopy ..\back\bundle\*.* .\build /s /y
-
-npm run dist
+wsl -d alpine sh -c "cd /mnt/c/Users/julio.fernandezvila/source/repos/jfvilas/kwirth/electron && npm run dist:linux"

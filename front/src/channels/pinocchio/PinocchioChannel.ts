@@ -41,7 +41,6 @@ export class PinocchioChannel implements IChannel {
         switch (msg.type) {
             case EInstanceMessageType.DATA:
                 pinocchioData.lines.push(msg.text)
-                while (pinocchioData.lines.length > pinocchioConfig.maxLines) pinocchioData.lines.shift()
                 return {
                     action: EChannelRefreshAction.REFRESH
                 }
@@ -51,7 +50,6 @@ export class PinocchioChannel implements IChannel {
                     channelObject.instanceId = instanceMessage.instance
                 }
                 pinocchioData.lines.push('*** '+msg.text+' ***')
-                while (pinocchioData.lines.length> pinocchioConfig.maxLines) pinocchioData.lines.shift()
                 return {
                     action: EChannelRefreshAction.REFRESH
                 }

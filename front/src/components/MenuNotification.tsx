@@ -5,7 +5,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff'
 import { ENotifyLevel } from '../tools/Global'
 import { DeleteSweep } from '@mui/icons-material'
-import { IconK8s } from '../tools/Constants-React'
+import { getIconFromKind } from '../tools/Constants-React'
 import { TChannelConstructor } from '../channels/IChannel'
 
 export interface INotification {
@@ -78,7 +78,7 @@ const MenuNotification: React.FC<MenuNotificationProps> = ({ anchorParent, onClo
 										msg.channelId?
 											(new (channels.get(msg.channelId!)!)()).getChannelIcon()
 										:
-											<IconK8s size={20}/>
+											getIconFromKind('IconK8s', 20)
 									}
 								</span>  
 								<ListItemText 

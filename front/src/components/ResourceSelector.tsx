@@ -6,7 +6,7 @@ import { MsgBoxOkError } from '../tools/MsgBox'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
 import { BackChannelData, EClusterType, EInstanceConfigView, EInstanceMessageChannel } from '@jfvilas/kwirth-common'
 import { ITabObject } from '../model/ITabObject'
-import { IconDaemonSet, IconDeployment, IconDocker, IconJob, IconK8s, IconK8sBlank, IconK8sElectron, IconK8sUnknown, IconReplicaSet, IconReplicationController, IconStatefulSet } from '../tools/Constants-React'
+import { getIconFromKind } from '../tools/Constants-React'
 
 interface IResourceSelected {
     channelId: string
@@ -237,17 +237,17 @@ const ResourceSelector: React.FC<IResourceSelectorProps> = (props:IResourceSelec
         return true
     }
 
-    const getIcon = (cluster:Cluster)  => {
-        if (!cluster.kwirthData || !cluster.kwirthData.clusterType) return <IconK8sUnknown size={20}/>
-        if (cluster.kwirthData.clusterType[0] === 'd') return <IconDocker size={20}/>
+    const getIcon = (cluster:Cluster, size:number)  => {
+        if (!cluster.kwirthData || !cluster.kwirthData.clusterType) return getIconFromKind('IconK8sUnknown', size)
+        if (cluster.kwirthData.clusterType[0] === 'd') return getIconFromKind('IconDocker', size)
         if (cluster.kwirthData.clusterType[0] === 'k') {
             if (cluster.kwirthData.inCluster) 
-                return <IconK8s size={20}/>
+                return getIconFromKind('IconK8s', size)
             else {
                 if (cluster.name === 'inElectron')
-                    return <IconK8sElectron size={20} />
+                    return getIconFromKind('IconK8sElectron', size)
                 else
-                    return <IconK8sBlank size={20}/>
+                    return getIconFromKind('', size)
             }
         }
     }
@@ -317,7 +317,9 @@ const ResourceSelector: React.FC<IResourceSelectorProps> = (props:IResourceSelec
                 <Select value={cluster?.name} onChange={onChangeCluster}>
                 { props.clusters?.map( (cluster) => {
                     return <MenuItem key={cluster.name} value={cluster.name} disabled={!cluster.enabled}>
-                        {getIcon(cluster)} &nbsp; {cluster.name}
+                        <Stack direction={'row'} alignItems={'baseline'}>
+                            {getIcon(cluster, 24)} &nbsp; {cluster.name}
+                        </Stack>
                     </MenuItem>
                 })}
                 </Select>
@@ -351,9 +353,14 @@ const ResourceSelector: React.FC<IResourceSelectorProps> = (props:IResourceSelec
                 <InputLabel>Controller</InputLabel>
                 <Select onChange={onChangeController} value={controllers} multiple renderValue={(selected) => selected.map(v => v.split('+')[1]).join(', ')}>
                 { allControllers && allControllers.map( (value) => 
-                    <MenuItem key={value} value={value} sx={{alignContent:'center'}}>
-                        <Checkbox checked={controllers.includes (value)} />
-                        {value.startsWith('ReplicaSet')? <IconReplicaSet size={18}/>: value.startsWith('DaemonSet')?<IconDaemonSet size={20}/>: value.startsWith('Deployment')?<IconDeployment size={20}/>:value.startsWith('StatefulSet')?<IconStatefulSet size={20}/>:value.startsWith('ReplicationController')?<IconReplicationController size={20}/>:value.startsWith('ReplicationController')?<IconJob size={20}/>:<IconK8sBlank size={20}/>}&nbsp;{value.split('+')[1]}
+                    <MenuItem key={value} value={value} sx={{alignContent:'baseline'}}>
+                        <Stack direction={'row'} alignItems={'center'}>
+                            <Checkbox checked={controllers.includes (value)} />
+                            <Stack direction={'row'} alignItems={'baseline'}>
+                                {value.startsWith('ReplicaSet')? getIconFromKind('ReplicaSet', 24): value.startsWith('DaemonSet')? getIconFromKind('DaemonSet', 24): value.startsWith('Deployment')? getIconFromKind('Deployment', 24):value.startsWith('StatefulSet')? getIconFromKind('StatefulSet', 24):value.startsWith('ReplicationController')?getIconFromKind('ReplicationController', 24):value.startsWith('ReplicationController')?getIconFromKind('Job', 24):getIconFromKind('', 24)}
+                                <Typography>&nbsp;{value.split('+')[1]}</Typography>
+                            </Stack>
+                        </Stack>
                     </MenuItem>
                 )}
                 </Select>

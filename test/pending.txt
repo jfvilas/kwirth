@@ -1,5 +1,10 @@
 ******************ERRORES
 RFM
+search input colores
+categories inexsitentes
+tamaños de ficheros en filedata
+sort de columnas en filedata
+
 
 MAGNIFY FRONT
   💖💖💖 portforward con smart proxy

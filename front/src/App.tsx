@@ -1663,7 +1663,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
                                 >
                                     {   tabs.current.map((tab:ITabObject, index) => {
                                             return <Tab component='span' ref={(el) => tab.headerEl === el} key={index} label={formatTabName(tab)} value={index} 
-                                                style={{ borderLeft: `6px solid ${getTabColor(tab)}` }}
+                                                style={{ borderLeft: `6px solid ${getTabColor(tab)}`, borderTop: '1px solid #d1d1d1', borderRight: '1px solid #d1d1d1', boxSizing: 'border-box'}}
                                                 icon={
                                                 tab === selectedTab.current ? 
                                                     <IconButton onClick={(event) => setAnchorMenuTab(event.currentTarget)}>

@@ -18,7 +18,7 @@ const ClusterMetrics: React.FC<IClusterMetricsProps> = (props:IClusterMetricsPro
                 <XAxis dataKey='timestamp' fontSize={8}/>
                 <YAxis fontSize={8}/>
                 <Legend/>
-                <Line name={'% CPU'} type='monotone' dataKey={'cpu'}/>
+                <Line name={'% CPU'} type='monotone' dataKey={'cpu'} dot={false}/>
             </LineChart>
         </ResponsiveContainer>
 
@@ -28,7 +28,7 @@ const ClusterMetrics: React.FC<IClusterMetricsProps> = (props:IClusterMetricsPro
                 <XAxis dataKey='timestamp' fontSize={8}/>
                 <YAxis fontSize={8}/>
                 <Legend/>
-                <Line name={'% Memory'} type='monotone' dataKey={'memory'}/>
+                <Line name={'% Memory'} type='monotone' dataKey={'memory'} dot={false}/>
             </LineChart>
         </ResponsiveContainer>
         <ResponsiveContainer>
@@ -37,8 +37,8 @@ const ClusterMetrics: React.FC<IClusterMetricsProps> = (props:IClusterMetricsPro
                 <XAxis dataKey='timestamp' fontSize={8}/>
                 <YAxis fontSize={8}/>
                 <Legend/>
-                <Line name={'Tx Mbps'} type='monotone' dataKey={'txmbps'} stroke='#6e5bb8'/>
-                <Line name={'Rx Mbps'} type='monotone' dataKey={'rxmbps'} stroke='#4a9076'/>
+                <Line name={'Tx Mbps'} type='monotone' dataKey={'txmbps'} stroke='#6e5bb8' dot={false}/>
+                <Line name={'Rx Mbps'} type='monotone' dataKey={'rxmbps'} stroke='#4a9076' dot={false}/>
             </LineChart>
         </ResponsiveContainer>
         

@@ -109,13 +109,13 @@ const ContentDetails: React.FC<IContentWindow> = (props:IContentWindow) => {
 					</Tooltip>
 					
 					<Stack direction='row' spacing={0.5} className="no-drag">
-						{items.map((a, index) => (
-							a.name === 'divider' ? 
+						{items.map((action, index) => (
+							action.name === 'divider' ? 
 								<Typography sx={{flexGrow: 1}}/>
 								:
-								<Tooltip key={index} title={a.text}>
-									<IconButton size="small" color='primary' onClick={(event) => actionClick(a.name!, event.currentTarget)}>
-										{a.icon}
+								<Tooltip key={index} title={action.text}>
+									<IconButton size="small" color='primary' onClick={(event) => actionClick(action.name!, event.currentTarget)}>
+										{action.icon}
 									</IconButton>
 								</Tooltip>
 						))}

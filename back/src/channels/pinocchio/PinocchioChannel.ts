@@ -18,6 +18,7 @@ export interface IPinocchioMessageResponse extends IInstanceMessage {
 
 export interface IPinocchioConfig {
     interval: number
+    name: string
 }
 
 export interface IAsset {
@@ -25,6 +26,7 @@ export interface IAsset {
     podName: string
     containerName: string
     interval?: NodeJS.Timeout
+    name: string
 }
 
 export interface IInstance {
@@ -129,8 +131,10 @@ class PinocchioChannel implements IChannel {
             podNamespace,
             podName,
             containerName,
-            interval: undefined
+            interval: undefined,
+            name: ''
         }
+        asset.name = instance.configData.name
         asset.interval = setInterval(
             (ws:WebSocket, i:IInstance, a:IAsset) => this.sendData(ws,i,a),
             instance.configData.interval*1000,
@@ -258,7 +262,7 @@ class PinocchioChannel implements IChannel {
             flow: EInstanceMessageFlow.UNSOLICITED,
             type: EInstanceMessageType.DATA,
             instance: instance.instanceId,
-            text: `${new Date()} ${asset.podNamespace}/${asset.podName}/${asset.containerName}`
+            text: `${new Date()}: pinocchio channel is waiting for ${asset.name} to join Kwirth project`
         }
         ws.send(JSON.stringify(msg))
     }

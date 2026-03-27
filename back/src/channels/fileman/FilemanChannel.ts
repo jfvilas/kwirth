@@ -130,6 +130,7 @@ class FilemanChannel implements IChannel {
     processObjectEvent(type:string, obj:any) : void {
     }
 
+    // +++ review expired keys (user is receiving no message)
     async endpointRequest(endpoint:string, req:Request, res:Response, accessKey:AccessKey) : Promise<void> {
         console.log('Received endpointRequest:', endpoint, req.method, req.url)
 

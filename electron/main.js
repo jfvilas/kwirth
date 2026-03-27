@@ -136,3 +136,11 @@ async function createMainWindow() {
 
 console.log('Kwirth Desktop version:', VERSION)
 app.whenReady().then(createMainWindow)
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('will-quit', () => {
+  process.exit(0)
+})

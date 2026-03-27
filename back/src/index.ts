@@ -104,8 +104,6 @@ const envChannelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLower
 const envChannelMagnifyEnabled = (process.env.CHANNEL_MAGNIFY || 'true').toLowerCase() === 'true'
 const envChannelPinocchioEnabled = (process.env.CHANNEL_PINOCCHIO || 'true').toLowerCase() === 'true'
 
-console.log(envFront)
-
 // +++TEST
 // interface TimerInfo {
 //   type: 'Interval' | 'Timeout';
@@ -1162,9 +1160,10 @@ const setUpRoutes = async (ri:IRunningInstance) : Promise<boolean> => {
 
 const processHttpChannelRequest = async (channel: IChannel, endpointName:string, aka:ApiKeyApi, req:Request, res:Response) : Promise<void> => {
     try {
-        console.log('*********************************************')
-        console.log('AccessKey should not be validated on electron')
-        console.log('*********************************************')
+        // +++ ¿?
+        // console.log('*********************************************')
+        // console.log('AccessKey should not be validated on electron')
+        // console.log('*********************************************')
         let accessKey = await AuthorizationManagement.getKey(req, res, aka)
         if (accessKey) {
             channel.endpointRequest(endpointName, req, res, accessKey)

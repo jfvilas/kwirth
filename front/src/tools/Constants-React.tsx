@@ -1,7 +1,7 @@
-type IconProps = { size: number }
+import { Box } from "@mui/material"
 
-export const IconAks = (props:IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"  width={props.size}    height={props.size}>
+const IconAks = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"  width={'100%'}    height={'100%'}>
     <defs>
       <linearGradient
         id="a"
@@ -148,11 +148,11 @@ export const IconAks = (props:IconProps) => (
   </svg>
 )
 
-export const IconEks = (props:IconProps) => (
+const IconEks = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 80 80"
   >
     <defs>
@@ -171,12 +171,12 @@ export const IconEks = (props:IconProps) => (
   </svg>  
 )
 
-export const IconNamespace = (props:IconProps) => (
+const IconNamespace = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     id="svg13826"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     version="1.1"
     viewBox="0 0 18.035 17.5"
   >
@@ -272,8 +272,8 @@ export const IconNamespace = (props:IconProps) => (
   </svg>
 )
 
-export const IconReplicaSet = (props:IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5" width={props.size} height={props.size}>
+const IconReplicaSet = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5" width={'100%'} height={'100%'}>
     <g
       id="g70"
       fillOpacity="1"
@@ -335,12 +335,12 @@ export const IconReplicaSet = (props:IconProps) => (
   </svg>
 )
 
-export const IconContainer = (props:IconProps) => (
+const IconContainer = () => (
 <svg
     xmlns="http://www.w3.org/2000/svg"
     data-name="Layer 1"
     viewBox="0 0 756.26 596.9"
-    width={props.size} height={props.size}
+    width={'100%'} height={'100%'}
   >
     <path
       fill="#1d63ed"
@@ -349,11 +349,11 @@ export const IconContainer = (props:IconProps) => (
   </svg>
 )
 
-export const IconController = (props:IconProps) => (
+const IconController = () => (
 <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -439,11 +439,11 @@ export const IconController = (props:IconProps) => (
   </svg>
 )
 
-export const IconPod = (props:IconProps) => (
+const IconPod = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -491,11 +491,11 @@ export const IconPod = (props:IconProps) => (
   </svg>
 )
 
-export const IconVolume = (props:IconProps) => (
+const IconVolumeAttachment = () => (
  <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -577,10 +577,10 @@ export const IconVolume = (props:IconProps) => (
   </svg>
 )
 
-export const IconK8sElectron = (props:IconProps) => (
+const IconK8sElectron = () => (
   <svg xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <g
@@ -637,8 +637,8 @@ export const IconK8sElectron = (props:IconProps) => (
   </svg>
 )
 
-export const IconK8s = (props:IconProps) => (
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5" width={props.size} height={props.size}>
+const IconK8s = () => (
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5" width={'100%'} height={'100%'}>
     <g
       id="g70"
       fillOpacity="1"
@@ -704,8 +704,8 @@ export const IconK8s = (props:IconProps) => (
   </svg>
 )
 
-export const IconK8sBlank = (props:IconProps) => (
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={props.size}    height={props.size}>
+const IconK8sBlank = () => (
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={'100%'}    height={'100%'}>
     <path
       fill="#326ce5"
       d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
@@ -730,8 +730,8 @@ export const IconK8sBlank = (props:IconProps) => (
   </svg>
 )
 
-export const IconK8sUnknown = (props:IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={props.size}    height={props.size}>
+const IconK8sUnknown = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={'100%'}    height={'100%'}>
     <g
       id="g70"
       fillOpacity="1"
@@ -794,8 +794,8 @@ export const IconK8sUnknown = (props:IconProps) => (
   </svg>
 )
 
-export const IconDeployment = (props:IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={props.size}    height={props.size}>
+const IconDeployment = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={'100%'}    height={'100%'}>
     <g
       id="g70"
       fillOpacity="1"
@@ -857,8 +857,8 @@ export const IconDeployment = (props:IconProps) => (
   </svg>
 )
 
-export const IconJob = (props:IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={props.size}    height={props.size}>
+const IconJob = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={'100%'}    height={'100%'}>
     <path
       fill="#326ce5"
       d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
@@ -894,8 +894,8 @@ export const IconJob = (props:IconProps) => (
   </svg>
 )
 
-export const IconStatefulSet = (props:IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={props.size}    height={props.size}>
+const IconStatefulSet = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={'100%'}    height={'100%'}>
     <path
       fill="#326ce5"
       d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
@@ -931,8 +931,8 @@ export const IconStatefulSet = (props:IconProps) => (
   </svg>  
 )
 
-export const IconDaemonSet = (props:IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={props.size}    height={props.size}>
+const IconDaemonSet = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={'100%'}    height={'100%'}>
     <path
       fill="#326ce5"
       d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
@@ -968,8 +968,8 @@ export const IconDaemonSet = (props:IconProps) => (
   </svg>  
 )
 
-export const IconReplicationController = (props:IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={props.size}    height={props.size}>
+const IconReplicationController = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18.035 17.5"  width={'100%'}    height={'100%'}>
     <path
       fill="#326ce5"
       d="M8.958.463a1.137 1.127 0 0 0-.434.11l-5.94 2.838a1.137 1.127 0 0 0-.615.764L.504 10.551a1.137 1.127 0 0 0 .154.862 1.137 1.127 0 0 0 .065.09l4.11 5.113a1.137 1.127 0 0 0 .89.423l6.592-.001a1.137 1.127 0 0 0 .888-.423l4.11-5.113a1.137 1.127 0 0 0 .219-.953l-1.468-6.374a1.137 1.127 0 0 0-.614-.764L9.51.572a1.137 1.127 0 0 0-.551-.11"
@@ -1005,11 +1005,11 @@ export const IconReplicationController = (props:IconProps) => (
   </svg>  
 )
 
-export const IconCronJob = (props:IconProps) => (
+const IconCronJob = () => (
 <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1056,12 +1056,12 @@ export const IconCronJob = (props:IconProps) => (
   </svg>
 )
 
-export const IconAPIResource = (props:IconProps) => (
+const IconAPIResource = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     id="svg11531"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     version="1.1"
     viewBox="0 0 18.035 17.5"
   >
@@ -1154,11 +1154,11 @@ export const IconAPIResource = (props:IconProps) => (
   </svg>
 )
 
-export const IconConfigMap = (props:IconProps) => (
+const IconConfigMap = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1229,11 +1229,11 @@ export const IconConfigMap = (props:IconProps) => (
   </svg>
 )
 
-export const IconSecret = (props:IconProps) => (
+const IconSecret = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1313,11 +1313,11 @@ export const IconSecret = (props:IconProps) => (
   </svg>
 )
 
-export const IconService = (props:IconProps) => (
+const IconService = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1381,11 +1381,11 @@ export const IconService = (props:IconProps) => (
   </svg>
 )
 
-export const IconEndpoints = (props:IconProps) => (
+const IconEndpoints = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1463,11 +1463,11 @@ export const IconEndpoints = (props:IconProps) => (
   </svg>
 )
 
-export const IconIngress = (props:IconProps) => (
+const IconIngress = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1515,11 +1515,11 @@ export const IconIngress = (props:IconProps) => (
   </svg>
 )
 
-export const IconPv = (props:IconProps) => (
+const IconPv = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1580,11 +1580,11 @@ export const IconPv = (props:IconProps) => (
   </svg>
 )
 
-export const IconPvc = (props:IconProps) => (
+const IconPvc = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1636,11 +1636,11 @@ export const IconPvc = (props:IconProps) => (
   </svg>
 )
 
-export const IconSa = (props:IconProps) => (
+const IconSa = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1688,11 +1688,11 @@ export const IconSa = (props:IconProps) => (
   </svg>
 )
 
-export const IconCr = (props:IconProps) => (
+const IconCr = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1740,11 +1740,11 @@ export const IconCr = (props:IconProps) => (
   </svg>
 )
 
-export const IconCrb = (props:IconProps) => (
+const IconCrb = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1791,11 +1791,11 @@ export const IconCrb = (props:IconProps) => (
   </svg>
 )
 
-export const IconRole = (props:IconProps) => (
+const IconRole = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1868,11 +1868,11 @@ export const IconRole = (props:IconProps) => (
   </svg>
 )
 
-export const IconRb = (props:IconProps) => (
+const IconRb = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     viewBox="0 0 18.035 17.5"
   >
     <path
@@ -1929,15 +1929,15 @@ export const IconRb = (props:IconProps) => (
   </svg>
 )
 
-export const IconGke = (props:IconProps) => (
+const IconGke = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     xmlSpace="preserve"
     id="katman_1"
     x="0"
     y="0"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     version="1"
     viewBox="0 0 800 600"
   >
@@ -1958,7 +1958,7 @@ export const IconGke = (props:IconProps) => (
   </svg>
 )
 
-export const IconRk2e = (props:IconProps) => (
+const IconRk2e = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="128"
@@ -1970,7 +1970,7 @@ export const IconRk2e = (props:IconProps) => (
   </svg>
 )
 
-export const IconK3d = (props:IconProps) => (
+const IconK3d = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     xmlSpace="preserve"
@@ -2019,7 +2019,7 @@ export const IconK3d = (props:IconProps) => (
   </svg>
 )
 
-export const IconK3s = (props:IconProps) => (
+const IconK3s = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
     <path
       fill="#ffc519"
@@ -2028,7 +2028,7 @@ export const IconK3s = (props:IconProps) => (
   </svg>
 )
 
-export const IconOcp = (props:IconProps) => (
+const IconOcp = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="719"
@@ -2062,7 +2062,7 @@ export const IconOcp = (props:IconProps) => (
   </svg>
 )
 
-export const IconDocker = (props:IconProps) => (
+const IconDocker = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     id="Layer_1"
@@ -2077,12 +2077,12 @@ export const IconDocker = (props:IconProps) => (
   </svg>
 )
 
-export const IconNode = (props:IconProps) => (
+const IconNode = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     id="svg13826"
-    width={props.size}
-    height={props.size}
+    width={'100%'}
+    height={'100%'}
     version="1.1"
     viewBox="0 0 18.035 17.5"
   >
@@ -2173,30 +2173,47 @@ export const IconNode = (props:IconProps) => (
 )
 
 export const getIconFromKind = (kind:string, size:number) => {
+    let icon = <IconK8sBlank/>
     switch (kind) {
-        case 'Namespace': return <IconNamespace size={size}/>
-        case 'Job': return <IconJob size={size}/>
-        case 'CronJob': return <IconCronJob size={size}/>
-        case 'Pod': return <IconPod size={size}/>
-        case 'Deployment': return <IconDeployment size={size}/>
-        case 'ReplicaSet': return <IconReplicaSet size={size}/>
-        case 'DaemonSet': return <IconDaemonSet size={size}/>
-        case 'StatefulSet': return <IconStatefulSet size={size}/>
-        case 'ReplicationController': return <IconReplicationController size={size}/>
-        case 'ConfigMap': return <IconConfigMap size={size}/>
-        case 'Secret': return <IconSecret size={size}/>
-        case 'Service': return <IconService size={size}/>
-        case 'Endpoints': return <IconEndpoints size={size}/>
-        case 'Ingress': return <IconIngress size={size}/>
-        case 'PersistentVolume': return <IconPv size={size}/>
-        case 'PersistentVolumeClaim': return <IconPvc size={size}/>
-        case 'ServiceAccount': return <IconSa size={size}/>
-        case 'Role': return <IconRole size={size}/>
-        case 'RoleBinding': return <IconRb size={size}/>
-        case 'ClusterRole': return <IconCr size={size}/>
-        case 'ClusterRoleBinding': return <IconCrb size={size}/>
-        case 'V1APIResource': return <IconAPIResource size={size}/>
-        
-        default: return <IconK8sBlank size={size}/>
+        case 'Namespace': icon = <IconNamespace/>; break
+        case 'Node': icon = <IconNode/>; break
+        case 'Job': icon = <IconJob/>; break
+        case 'CronJob': icon = <IconCronJob/>; break;
+        case 'Container': icon = <IconContainer/>; break
+        case 'Pod': icon = <IconPod/>; break
+        case 'Deployment': icon = <IconDeployment/>; break
+        case 'ReplicaSet': icon = <IconReplicaSet/>; break
+        case 'DaemonSet': icon = <IconDaemonSet/>; break
+        case 'StatefulSet': icon = <IconStatefulSet/>; break
+        case 'ReplicationController': icon = <IconReplicationController/>; break
+        case 'ConfigMap': icon = <IconConfigMap/>; break
+        case 'Secret': icon = <IconSecret/>; break;
+        case 'Service': icon = <IconService/>; break
+        case 'Endpoints': icon = <IconEndpoints/>; break
+        case 'Ingress': icon = <IconIngress/>; break
+        case 'PersistentVolume': icon = <IconPv/>; break
+        case 'PersistentVolumeClaim': icon = <IconPvc/>; break
+        case 'VolumeAttachment': icon = <IconVolumeAttachment/>; break
+        case 'ServiceAccount': icon = <IconSa/>; break
+        case 'Role': icon = <IconRole/>; break
+        case 'RoleBinding': icon = <IconRb/>; break
+        case 'ClusterRole': icon = <IconCr/>; break
+        case 'ClusterRoleBinding': icon = <IconCrb/>; break
+        case 'V1APIResource': icon = <IconAPIResource/>; break
+        case 'IconK8sUnknown': icon = <IconK8sUnknown/>; break
+        case 'IconDocker': icon = <IconDocker/>; break
+        case 'IconK8sElectron': icon = <IconK8sElectron/>; break
+        case 'IconK8s': icon = <IconK8s/>; break
+        case 'IconK3s': icon = <IconK3s/>; break
+        case 'IconK3d': icon = <IconK3d/>; break
+        case 'IconEks': icon = <IconEks/>; break
+        case 'IconAks': icon = <IconAks/>; break
+        case 'IconGke': icon = <IconGke/>; break
+        case 'IconOcp': icon = <IconOcp/>; break
+        case 'IconRk2e': icon = <IconRk2e/>; break
+        case 'IconController': icon = <IconController/>; break
     }
+    return <Box sx={{minWidth:size, minHeight:size, width:size, height:size}}>
+      {icon}
+    </Box>
 }

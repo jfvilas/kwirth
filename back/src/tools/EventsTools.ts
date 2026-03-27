@@ -102,6 +102,7 @@ export class EventsTools {
                 channel.processObjectEvent(type, obj)
             }
             else {
+                //+++ me conecte a un clustyer que tenias Externalserets, luego me conecte a otro qu eno los tenia y empezó a dar esto
                 console.log('********************notproroc', subscriber.crdInstances, obj.kind)
             }
         }

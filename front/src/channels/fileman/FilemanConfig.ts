@@ -1,9 +1,7 @@
 interface IFilemanConfig {
-    //notify: (channel:string|undefined, level:ENotifyLevel, msg:string) => void
 }
 
 class FilemanConfig implements IFilemanConfig {
-    //notify: (channel:string|undefined, level:ENotifyLevel, msg:string) => void = (channel:string|undefined, level:ENotifyLevel, msg:string) => {}
 }
 
 interface IFilemanInstanceConfig {

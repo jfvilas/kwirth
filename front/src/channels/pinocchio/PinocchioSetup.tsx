@@ -11,11 +11,11 @@ const PinocchioSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
     let pinocchioConfig:IPinocchioConfig = props.setupConfig?.channelConfig || new PinocchioConfig()
 
     const [interval, setInterval] = useState(pinocchioInstanceConfig.interval)
-    const [maxLines, setMaxLines] = useState(pinocchioConfig.maxLines)
+    const [name, setName] = useState(pinocchioInstanceConfig.name)
     const defaultRef = useRef<HTMLInputElement|null>(null)
 
     const ok = () => {
-        pinocchioConfig.maxLines = maxLines
+        pinocchioInstanceConfig.name = name
         pinocchioInstanceConfig.interval = interval
         props.onChannelSetupClosed(props.channel,
         {
@@ -39,7 +39,7 @@ const PinocchioSetup: React.FC<ISetupProps> = (props:ISetupProps) => {
             <DialogTitle>Configure Pinocchio channel</DialogTitle>
             <DialogContent >
                 <Stack direction={'column'} spacing={2}>
-                    <TextField value={maxLines} onChange={(e) => setMaxLines(+e.target.value)} variant='standard' label='Max lines' fullWidth/>
+                    <TextField value={name} onChange={(e) => setName(e.target.value)} variant='standard' label='Name' fullWidth/>
                     <TextField value={interval} onChange={(e) => setInterval(+e.target.value)} variant='standard' label='Interval' fullWidth/>
                 </Stack>
             </DialogContent>

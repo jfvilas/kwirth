@@ -53,8 +53,8 @@ export class ApiKeyApi {
                 catch (err) {
                     console.log('')
                     console.log(err)
+                    res.status(500).json([])
                 }
-                res.status(500).json([])
             })
             .post( async (req:Request, res:Response) => {
                 try {

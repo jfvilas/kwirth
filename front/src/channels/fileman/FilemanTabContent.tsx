@@ -5,13 +5,13 @@ import { Box, Typography } from '@mui/material'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@jfvilas/kwirth-common'
 import { IError, IFileManagerHandle, IFileObject } from '@jfvilas/react-file-manager'
 import { FileManager } from '@jfvilas/react-file-manager'
-import { IconContainer, IconNamespace, IconPod } from '../../tools/Constants-React'
 import { v4 as uuid } from 'uuid'
 import { addGetAuthorization } from '../../tools/AuthorizationManagement'
 import { MsgBoxOk } from '../../tools/MsgBox'
 import { ENotifyLevel } from '../../tools/Global'
 import '@jfvilas/react-file-manager/dist/style.css'
 import './custom-fm-fileman.css'
+import { getIconFromKind } from '../../tools/Constants-React'
 
 interface IContentProps {
     webSocket?: WebSocket
@@ -40,9 +40,9 @@ const FilemanTabContent: React.FC<IContentProps> = (props:IContentProps) => {
     }, [fileManagerRef.current])
 
     let icons = new Map()
-    icons.set('namespace', { open:<IconNamespace size={18}/>, closed:<IconNamespace size={18}/>, grid:<IconNamespace size={50}/>, list:<IconNamespace size={18}/>, default:<IconNamespace size={18}/> })
-    icons.set('pod', { open:<IconPod size={18}/>, closed:<IconPod size={18}/>, grid:<IconPod size={50}/>, list:<IconPod size={18}/>, default:<IconPod size={18}/> })
-    icons.set('container', { open:<IconContainer size={18}/>, closed:<IconContainer size={18}/>, grid:<IconContainer size={44}/>, list:<IconContainer size={16}/>, default:<IconContainer size={16}/> })
+    icons.set('namespace', { open:getIconFromKind('Namespace', 18), closed:getIconFromKind('Namespace', 18), grid:getIconFromKind('Namespace', 50), list:getIconFromKind('Namespace', 18), default:getIconFromKind('Namespace', 18) })
+    icons.set('pod', { open:getIconFromKind('Pod', 18), closed:getIconFromKind('Pod', 18), grid:getIconFromKind('Pod', 50), list:getIconFromKind('Pod', 18), default:getIconFromKind('Pod', 18) })
+    icons.set('container', { open:getIconFromKind('Container', 18), closed:getIconFromKind('Container', 18), grid:getIconFromKind('Container', 44), list:getIconFromKind('Container', 16), default:getIconFromKind('Container', 16)})
 
     let actions = new Map()
     actions.set('namespace', [

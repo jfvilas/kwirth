@@ -7,7 +7,7 @@ import { TChannelConstructor } from '../channels/IChannel'
 import { Cluster } from '../model/Cluster'
 import { GaugeComponent } from 'react-gauge-component'
 import { addGetAuthorization } from '../tools/AuthorizationManagement'
-import { IconAks, IconContainer, IconController, IconEks, IconGke, IconK3d, IconK3s, IconK8s, IconK8sBlank, IconNamespace, IconOcp, IconPod, IconRk2e } from '../tools/Constants-React'
+import { getIconFromKind } from '../tools/Constants-React'
 import { Area, AreaChart } from 'recharts'
 import { EInstanceConfigView } from '@jfvilas/kwirth-common'
 
@@ -143,19 +143,19 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
                             let viewIcon = <></>
                             switch (tab.channelObject.view) {
                                 case EInstanceConfigView.NAMESPACE:
-                                    viewIcon = <IconNamespace size={20}/>
+                                    viewIcon = getIconFromKind('Namespace', 20)
                                     break
                                 case EInstanceConfigView.GROUP:
-                                    viewIcon = <IconController size={20}/>
+                                    viewIcon = getIconFromKind('Controller', 20)
                                     break
                                 case EInstanceConfigView.POD:
-                                    viewIcon = <IconPod size={20}/>
+                                    viewIcon = getIconFromKind('Pod', 20)
                                     break
                                 case EInstanceConfigView.CONTAINER:
-                                    viewIcon = <IconContainer size={20}/>
+                                    viewIcon = getIconFromKind('Container', 20)
                                     break
                                 default:
-                                    viewIcon = <IconK8sBlank size={20}/>
+                                    viewIcon = getIconFromKind('', 20)
                                     break
                             }
 
@@ -295,28 +295,28 @@ const Homepage: React.FC<IHomepageProps> = (props:IHomepageProps) => {
         let content = <></>
         switch (flavour) {
             case 'aks':
-                content = <><IconAks size={20}/>&nbsp;Azure Kubernetes</>
+                content = <>{getIconFromKind('IconAks', 20)}&nbsp;Azure Kubernetes</>
                 break
             case 'k3s':
-                content = <><IconK3s size={20}/>&nbsp;Rancher K3</>
+                content = <>{getIconFromKind('IconK3s', 20)}&nbsp;Rancher K3</>
                 break
             case 'k3d':
-                content = <><IconK3d size={20}/>&nbsp;K3D</>
+                content = <>{getIconFromKind('IconK3d', 20)}&nbsp;K3D</>
                 break
             case 'eks':
-                content = <><IconEks size={20}/>&nbsp;AWS Kubernetes</>
+                content = <>{getIconFromKind('IconEks', 20)}&nbsp;AWS Kubernetes</>
                 break
             case 'ocp':
-                content = <><IconOcp size={20}/>&nbsp;OpenShift</>
+                content = <>{getIconFromKind('IconOcp', 20)}&nbsp;OpenShift</>
                 break
             case 'gke':
-                content = <><IconGke size={20}/>&nbsp;Google Kubernetes</>
+                content = <>{getIconFromKind('IconGke', 20)}&nbsp;Google Kubernetes</>
                 break
             case 'rk2e':
-                content = <><IconRk2e size={20}/>&nbsp;Rancher Kubernetes</>
+                content = <>{getIconFromKind('IconRk2e', 20)}&nbsp;Rancher Kubernetes</>
                 break
             default:
-                content = <><IconK8s size={20}/>&nbsp;Kubernetes</>
+                content = <>{getIconFromKind('IconK8s', 20)}&nbsp;Kubernetes</>
                 break
         }
         return <Stack flexDirection={'row'} fontSize={12} alignItems={'center'}>{content}</Stack>
