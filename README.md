@@ -5,7 +5,9 @@
 </p>
 
 # Kwirth project
-Kwirth is the final implementation of the idea of having a simple way to be able to recieve live-streaming observability data from your kubernetes clusters (or even another container orchestrtion systems like Docker or Docker Compose). Maybe you feel comfortable with your DataDog or your Grafana and the Loki and the Promtrail, or any other observability tool for monitoring your kubernetes. But maybe these (and other tools) are too complex for you, it's a common scenario the need for viewing real-time log, metrics, alerts or whatever observability artifact without the need for storing them.
+Kwirth is the final implementation of the idea of having a simple way to be able to **recieve live-streaming observability data** from your kubernetes clusters (or even another container orchestrtion systems like Docker or Docker Compose) and have **the chance to interact** with your clusters. Maybe you feel comfortable with your DataDog or your Grafana and the Loki and the Promtrail, or any other observability tool for monitoring your kubernetes. Yo may even be happy with the high memory footprint of your Lens, or the poor UI interface of your K9s or your Headlamp.
+
+But maybe these (and other tools) are too complex or ugly or uncomfortable or expensive for you. When working with Kubernetes the need for viewing real-time log, metrics, alerts or whatever observability artifact without the need for storing them it's a common scenario.
 
 If this is the case, **Kwirth is what you need**.
 
@@ -14,19 +16,30 @@ Yo can go to Kwirth site if you prefer a user-friendly (non-developer) web inter
 ## What you can do with Kwirth
 Basically, Kwirth receives live streams of **observability data** that comes from one or more Kubernetes clusters in real-time, and with the data received you can perform several activities depending on your role and your needs.
 
-  - Kwirth can be used for detecting exceptional situations (alerts) based on log messages (Alert Channel).
-  - It can also be used by development teams for viewing real-time logs of the containers deployed to your Kubernetes cluster (Log Channel)
-  - You can analyze your kubernetes objects performance and resource usage (CPU%, Memory%, bandwith usage, latencies, filesystem access...) using Kwirth provided metrics (Metrics Channel).
-  - You can analyze your containers secrity posture by using the Trivy Operator inside Kwirth (by adding the Trivy Channel).
-  - You can perform day-to-day operations like: restarting objectos, shell to objects, send commands, get object information... by using the Kwirth Ops Channel.
+  - Kwirth can be used for detecting exceptional situations (alerts) based on log messages (**Alert Channel**).
+  - It can also be used by development teams for viewing real-time logs of the containers deployed to your Kubernetes cluster (Log Channel), aggregating and serving **together** logs that come from different origins.
+  - You can analyze your kubernetes objects performance and resource usage (CPU%, Memory%, bandwith usage, latencies, filesystem access...) using Kwirth provided metrics (**Metrics Channel**).
+  - You can analyze your containers security posture by using the Trivy Operator inside Kwirth (by adding the **Trivy Channel**).
+  - You can connect to your pod and view the filesystems in a file system explorer way, not just kubectl cp or /bin/ls, navigate thorugh your live filesystems in yor browser by enabling the **Fileman channel**.
+  - You can perform day-to-day operations like: restarting objects, **shell to objects**, send commands, get object information... by using the Kwirth Ops Channel.
+  - If you want to use all this stuff together, you can enable the **Kwirth Magnify channel**, which is **a complete replacement of a Kubernetes management tool** like Lens or K9s.
 
 And, specially...:
 
   - You can aggregate all this kind of information form different sources. I mean, for example, you can have on unique live-stream log that consolidates logging information from different sources, i.e., difeferent containers, different pods, different namespaces or even different clusters.
+  - You can aggregate o rmerg metric data from differents pods.
 
 ## Installation
-Yes, **one only command**, just a simple 'kubectl' is enough for deploying Kwirth to your cluster.
+Since Kwirth 0.5.21 you can install Kwirth in several ways:
+  - Inside Kubernetes
+  - Ourside Kubernetes in a standalone installation.
+  - As a Docker container outside of Kubernetes.
+  - As a **Desktop application** for Windows and Linux.
 
+Next sections will explain how to perform each one of this setup methods.
+
+
+### Kubernetes (manifests and Helm chart)
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/jfvilas/kwirth/master/test/kwirth.yaml
 ```
@@ -47,6 +60,16 @@ When you first deploy Kwirth there will exist an admin account. The credentials 
   - Password: `password`
 
 Enjoy!!
+
+
+### Docker
++++
+
+### External (standalone)
++++
+
+### Desktop (for personal use)
++++
 
 ## How Kwirth works
 Kwirth is not Loki nor Grafana, Kwirth is not Elastic, Kwirth is not DataDog, Kwirth is not Azure Log Analytics... Kwirth can perform as much as all of the tasks you can do with these observability tools, but with a fraction of the cost (in terms of money, but also in terms of time and kubernetes resource usage).
@@ -69,5 +92,12 @@ Each individual Kwirth feature is implemented via a [**channel**](https://jfvila
   - Alert Channel, for receiving reall-tiem alerts on specific log messages (or regexes matched on log messages).
   - Ops Channel, for performing container operations like restart or shell.
   - Trivy Channel, for reviewing the cybersecurity risks associated to your Kubernetes objects (based on Trivy Operator).
+  - Fileman Channel, visually work with your container filesystems.
+  - Magnify Channel, a complete Kubernetes MAnagement tool.
 
-Each individual channel can be activated/deactivated on Kwirth Core.
+Each individual channel can be activated/deactivated when starting Kwirth.
+
+## The Kwirth family
++++
+this is an architectural view of the different deployments you can perform with Kwirth.
++++image

@@ -1,11 +1,10 @@
 const { cac } = require('cac')
+const { VERSION } = require('./version.js')
 const cli = cac('kwirth-external')
 
 function startApp(options) {
-    console.log('🚀 Starting Kwirth External with these options:')
-
-    process.env.CONTEXT = options.context
-    // (this option is not like electron (multpiple contexts), this option connects a Kwirth installation to a Kubernetes cluster, just one)
+    if (options.command) process.env.COMMAND = options.command
+    process.env.CONTEXT = options.context // (this option is not like electron (multiple contexts), this option connects a Kwirth External to a Kubernetes cluster, just one)
     process.env.ROOTPATH = options.rootpath
     process.env.MASTERKEY = options.masterkey
     process.env.FORWARD = options.forward
@@ -25,32 +24,50 @@ function startApp(options) {
 
 // CLI config
 cli
-  .option('-c, --context <string>', 'Context to load (defaults to current context', { default: '' })
+  .option('-c, --context <string>', 'Context to load', { default: '' })
+  .option('-k, --apiKey', 'Context to load', { default: false })
   .option('-p, --port <number>', 'Server port', { default: 3883 })
-  .option('-r, --rootpath <string>', 'Root path where Kwirth will be served', { default: '' })
-  .option('-k, --masterkey <string>', 'Master key for enciphering tokens', { default: 'Kwirth4Ever' })
-  .option('-t, --front', 'Enable front SPA serving', { default: false })
-  .option('-f, --forward', 'FORWARD feature enabled or disabled', { default: false })
-  .option('-i, --metricsinterval <number>', '', { default: 15 })
-  .option('-cl, --channellog', 'Channel LOG enabled/disabled', { default: true })
-  .option('-cm, --channelmetrics', 'Channel METRICS enabled/disabled', { default: true })
-  .option('-ca, --channelalert', 'Channel ALERT enabled/disabled', { default: true })
-  .option('-ce, --channelecho', 'Channel ECHO enabled/disabled', { default: true })
-  .option('-co, --channelops', 'Channel OPS enabled/disabled', { default: true })
-  .option('-ct, --channeltrivy', 'Channel TRIVY enabled/disabled', { default: true })
-  .option('-cy, --channelmagnify', 'Channel MAGNIFY enabled/disabled', { default: true })
-  .option('-cp, --channelpinocchio', 'Channel PINOCCHIO enabled/disabled', { default: true })
+  .option('-r, --rootpath <string>', 'Root path', { default: '' })
+  .option('-k, --masterkey <string>', 'Master key', { default: 'Kwirth4Ever' })
+  .option('-t, --front', 'Enable front SPA serving  <--- DEFAULT IS FALSE', { default: false })
+  .option('-f, --forward', 'FORWARD feature', { default: false })
+  .option('-i, --metricsinterval <number>', 'Seconds between metrics', { default: 15 })
+  .option('-cl, --channellog', 'Channel LOG', { default: true })
+  .option('-cm, --channelmetrics', 'Channel METRICS', { default: true })
+  .option('-ca, --channelalert', 'Channel ALERT', { default: true })
+  .option('-ce, --channelecho', 'Channel ECHO', { default: true })
+  .option('-co, --channelops', 'Channel OPS', { default: true })
+  .option('-ct, --channeltrivy', 'Channel TRIVY', { default: true })
+  .option('-cy, --channelmagnify', 'Channel MAGNIFY', { default: true })
+  .option('-cp, --channelpinocchio', 'Channel PINOCCHIO', { default: true })
 
-cli.command('', 'Main command')
+cli.version(VERSION)
+cli.help()
+
+cli.command('start', 'Start server')
     .action((options) => {
         startApp(options)
     })
 
-cli.help()
+cli.command('', 'Do nothing')
+    .action((options) => {
+        //cli.help()
+    })
+
+cli.command('apikey', 'Create an API Key')
+    .action((options) => {
+        startApp({...options, command: 'APIKEY'})
+    })
+
 try {
-    cli.parse()
+    const parsed = cli.parse(process.argv, { run: false });
+    if (parsed.options.version) process.exit(0)
+    cli.runMatchedCommand();
+
 }
 catch (err) {
-    console.error('Error in arguments:', err.message)
+    console.error(`\n❌ Error: ${err.message}`)
+    console.log('\nAvailable options:')
+    cli.outputHelp()
     process.exit(1)
 }

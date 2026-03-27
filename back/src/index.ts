@@ -15,7 +15,7 @@ import { LoginApi } from './api/LoginApi'
 // HTTP server & websockets
 import { WebSocketServer } from 'ws'
 import { ManageKwirthApi } from './api/ManageKwirthApi'
-import { accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, IInstanceConfig, ISignalMessage, IInstanceConfigResponse, IInstanceMessage, KwirthData, IRouteMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageLevel, ESignalMessageEvent, EInstanceConfigView, EClusterType, ApiKey, AccessKey } from '@jfvilas/kwirth-common'
+import { accessKeyDeserialize, accessKeySerialize, parseResources, ResourceIdentifier, IInstanceConfig, ISignalMessage, IInstanceConfigResponse, IInstanceMessage, KwirthData, IRouteMessage, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, ESignalMessageLevel, ESignalMessageEvent, EInstanceConfigView, EClusterType, ApiKey, AccessKey, accessKeyBuild } from '@jfvilas/kwirth-common'
 import { ManageClusterApi } from './api/ManageClusterApi'
 import { AuthorizationManagement } from './tools/AuthorizationManagement'
 
@@ -53,6 +53,7 @@ import bodyParser from 'body-parser'
 import cors from 'cors'
 import { Application } from 'express-serve-static-core'
 import { PinocchioChannel } from './channels/pinocchio/PinocchioChannel'
+import * as crypto from 'crypto'
 const fs = require('fs')
 
 // const originalFetch = require('node-fetch');
@@ -88,6 +89,7 @@ var runningInstances:IRunningInstance[] = []
 let rootPath = process.env.ROOTPATH
 if (rootPath && !rootPath.startsWith('/')) rootPath = '/'+ rootPath
 const envRootPath = rootPath || ''
+const envCommand = process.env.COMMAND
 const envContext = process.env.CONTEXT || undefined
 const envMasterKey = process.env.MASTERKEY || 'Kwirth4Ever'
 const envForward = (process.env.FORWARD || 'true').toLowerCase() === 'true'
@@ -103,6 +105,20 @@ const envChannelEchoEnabled = (process.env.CHANNEL_ECHO || 'true').toLowerCase()
 const envChannelFilemanEnabled = (process.env.CHANNEL_FILEMAN || 'true').toLowerCase() === 'true'
 const envChannelMagnifyEnabled = (process.env.CHANNEL_MAGNIFY || 'true').toLowerCase() === 'true'
 const envChannelPinocchioEnabled = (process.env.CHANNEL_PINOCCHIO || 'true').toLowerCase() === 'true'
+
+if (envCommand!==undefined) {
+    switch(envCommand) {
+        case 'APIKEY': // Bearer Api Key
+            let expire= Date.now() + 86400000
+            let input = envMasterKey + '|cluster::::|' + expire
+            let hash = crypto.createHash('md5').update(input).digest('hex')
+            let apiKey:ApiKey={ accessKey:accessKeyBuild(hash, 'permanent', 'cluster::::'), description:'ApiKey created with Kwirth External', expire, days:1}
+            console.log(apiKey)
+            process.exit(0)
+        default:
+            process.exit(1)
+    }
+}
 
 // +++TEST
 // interface TimerInfo {
