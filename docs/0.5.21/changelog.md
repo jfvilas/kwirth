@@ -1,6 +1,14 @@
 # Change log
 Although not too exhaustive, this page contains some detail on what we have been done on each version.
 
+## 0.5.21
+The change log in version is really big. What follows is just an excerpt:
+  - Multple deployment options. Now you can deliver Kwirth in several ways, not just a Kubernetes pod: Magnify (a Desktop application), Docker (a standalone dockerized version of Kwirth), and External (a setup designed for just deploying Kwirth directly to your Windows/Moac/Linux box).
+  - Added MaAgnify channel, a full replacement for tools like Lens, or K9s.
+  - Finished Trivy channel, now Trivy channel shows more information about your workload, including a SBOM or configuration auditing, in addition to Exposed Secrets and Vulnerabilities.
+  - Improved performance and secirity fdfdor Fileman channel.
+  - Dark mode is finally working smoothly (CSS is so annoying...)
+
 ## 0.4.127
   - Added Fileman channel
   - Added configurable endpoint for channel use

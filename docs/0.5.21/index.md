@@ -32,26 +32,45 @@ As of Kwirth 0.5.1 Kwirth can be installed/deployed in several different ways:
   - Desktop Application
 
 ##### Docker
-+++
+To run Kwirth as a Docker container, you can use the following command, ensuring you mount your kubeconfig file so Kwirth can interact with your cluster:
+
+```bash
+docker run -d -p 3883:3883 \
+  -v ~/.kube/config:/root/.kube/config \
+  --name kwirth jfvilasoutlook/kwirth:latest
+```
 
 ##### External
-Kwirth external es a standalone version taht can be installed in your Linux/Windows/Mac as an indepdendent process (the same as you would do with an NGINX or a database, just a daemon).
-+++
+If you want to run Kwirth as a standalone service on a host, you can download the binary and run it directly. It will look for your local Kubernetes configuration automatically:
+
+Install with 'npm' (you need a NodeJS installation at recommended V24, although Kwirth can work with V22 and V20)
+```bash
+npm i -g @jfvilas/kwirth-external
+```
+
+Get some help with `kwirth-external --help`, and launch it just typing:
+```bash
+kwirth-external start --front
+```
+!> The `--front` is optional, adding it to your command ensures Kwirth server servers front and API.
 
 ##### Desktop
 There currently exist two flavours of Kwirth Desktop:
 
-  - Windows version
-  - Linux version (FUSE-compatible)
+  - **Windows version**
+  - **Linux version** (FUSE-compatible)
 
-Kwirth Desktop is an Electron application whose login page is spscifically designed for local work (the same you would do with Lens, K9s or Headlamp), so Kwirth Desktop do not connect to a spscific Kuebernetes cluster, it would show the user all the contexts the user have on his 'kubeconfig' file (cluster status and availability will be refreshed automatically), as we show in following image:
+Kwirth Desktop is an Electron application whose login page is specifically designed for local work (the same you would do with Lens, K9s, or Headlamp). Therefore, Kwirth Desktop does not connect to a specific Kubernetes cluster by default; instead, it shows the user all the contexts available in their local `kubeconfig` file. Cluster status and availability will be refreshed automatically, as shown in the following image:
 
-![cluster selection](+++)
+![local cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-local.png)
 
-For installing a Linux "AppImage" or the Windows MSI please [follow this link](https://github.com/jfvilas/kwirth/releases) to GitHub releses page of the project. Kwirth Dekstop just needs to be installed as a regular application, no special permissions or actions are needed.
+If you want to connect to a cluster using any other type of Kwirth installation (like Docker, External or Kubernetes), you can add as many clusters as you want in the 'Remote cluster' selection.
 
-Please [follow this link](+++) to understand how Kwirth Desktop is architected and built and [how to work with it](+++).
+![local cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-remote.png)
 
+!> Please refer to **architectural discussions** on the best way to consume Kwirth data-streams.
+
+For installing a Linux "AppImage" or the Windows MSI, please [follow this link](https://github.com/jfvilas/kwirth/releases) to the GitHub releases page of the project. Kwirth Desktop just needs to be installed as a regular application; no special permissions or actions are needed.
 
 ## Access Kwirth (Kubernetes)
 If everything is ok, in no more than 8 to 10 seconds Kwirth should be **up and running**. So next step is to access the front application of your fresh new Kubernetes observability system. Several options exist here...

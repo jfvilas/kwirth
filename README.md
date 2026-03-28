@@ -1,7 +1,7 @@
 <p align="center">
-    <img height=auto src="[https://jfvilas.github.io/kwirth/_media/kwirth-logo-20.png](https://jfvilas.github.io/kwirth/_media/kwirth-logo-20.png)" /><br/>
-    <a href='[https://jfvilas.github.io/kwirth](https://jfvilas.github.io/kwirth)'><img src='[https://img.shields.io/badge/contributions-welcome-orange.svg'/](https://img.shields.io/badge/contributions-welcome-orange.svg'/)></a>
-    <a href='[https://jfvilas.github.io/kwirth](https://jfvilas.github.io/kwirth)'><img src='[https://img.shields.io/badge/project-homepage-8EA8D8.svg'/](https://img.shields.io/badge/project-homepage-8EA8D8.svg'/)></a>
+    <img height=auto src="https://jfvilas.github.io/kwirth/_media/kwirth-logo-20.png" /><br/>
+    <a href='https://jfvilas.github.io/kwirth'><img src='https://img.shields.io/badge/contributions-welcome-orange.svg'/></a>
+    <a href='https://jfvilas.github.io/kwirth'><img src='https://img.shields.io/badge/project-homepage-8EA8D8.svg'/></a>
 </p>
 
 # Kwirth project
@@ -72,7 +72,6 @@ docker run -d -p 3883:3883 \
 ```
 
 ### External (standalone)
-+++
 If you want to run Kwirth as a standalone service on a host, you can download the binary and run it directly. It will look for your local Kubernetes configuration automatically:
 
 Install with 'npm' (you need a NodeJS installation at recommended V24, although Kwirth can work with V22 and V20)
@@ -88,9 +87,9 @@ kwirth-external start --front
 
 
 ### Desktop (for personal use)
-+++
 For a more integrated experience, download the native application for Windows or Linux. This allows you to manage your clusters with a dedicated UI without the need to deploy anything into the cluster itself during initial exploration.
-+++
+
+Binaries for Windows (including a Setup if you prefer) and Linux can be downloaded from the (Releases page at our GitHub project)[https://github.com/jfvilas/kwirth/releases]
 
 ## How Kwirth works
 Kwirth is not Loki nor Grafana, Kwirth is not Elastic, Kwirth is not DataDog, Kwirth is not Azure Log Analytics... Kwirth can perform as much as all of the tasks you can do with these observability tools, but with a fraction of the cost (in terms of money, but also in terms of time and kubernetes resource usage).
@@ -101,12 +100,12 @@ It is important to understand that Kwirth *does not store* any logging, metrics 
 
 The architecture of Kwirth is the one depicted below.
 
-![kwirth architecture](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.4.20/_media/kwirth-kwirth-arch.png)
+![kwirth architecture](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/kwirth-kwirth-arch.png)
 
 There is only one pod with one only container needed to run Kwirth. Of course, you can create replicas and services and ingresses if you need to scale out, but, generally speaking, Kwirth has no computing needs, since the only function of the pod is extracting kubernetes data and re-sending it to Kwirth clients, wherever it be Kwirth frontend application or any other client like [Backstage Kubelog](https://www.npmjs.com/package/@jfvilas/plugin-kubelog) or [KwirthLog plugin for Backstage](https://www.npmjs.com/package/@jfvilas/plugin-kwirth-log).
 
 ## Kwirth features
-Each individual Kwirth feature is implemented via a [**channel**](https://jfvilas.github.io/kwirth/#/0.4.20/channels?id=channels). a channel serves, in fact, a specific type of information. These are currently existing channels:
+Each individual Kwirth feature is implemented via a [**channel**](https://jfvilas.github.io/kwirth/#/0.5.21/channels?id=channels). a channel serves, in fact, a specific type of information. These are currently existing channels:
 
   - Log Channel, for receiving real-time logs or obtain **start diagnostics reviewing start-time logs**.
   - Metrics Channel, for viewing real-time metrics on your selected objects (CPU%, memory%, I/O, etc.). Please note that Kwirth doesn't need Prometheus for getting data, Kwirth implements its own metric-gathering system by accessing directly the cAdvisor running on your nodes' Kubelets.
@@ -120,6 +119,16 @@ Each individual channel can be activated/deactivated when starting Kwirth.
 
 ## The Kwirth family
 What follows is an architectural view of the different ways you can deliver Kwirth capabilities according to your different needs and architecture.
-+++
-![Kwirth family architecture](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.4.20/_media/kwirth-family.png)
-+++
+
+### The ideas:
+  - **There exist mainly 2 fronts:**
+    - **Web browser**: Access the Kwirth UI from any browser once the backend is deployed.
+    - **Magnify**: A native Desktop installation for Windows or Linux specifically designed to use the Magnify channel as a standalone management tool.
+  - **There exist several backend options:**
+    - **A Node.js application**: A standalone installation (with or without the built-in frontend).
+    - **A Docker deployment**: Containerized setup (with or without the frontend) created for serving Kwirth data-streams from **outside your Kubernetes cluster**.
+    - **A Kubernetes deployment**: Using manifests or Helm charts to serve data-streams directly from **INSIDE** your Kubernetes cluster.
+
+There exist no functional differences between these options; however, performance is significantly better when accessing the Kube API server from within the cluster (Kwirth Kubernetes Deployment) compared to accessing it from **OUTSIDE** (Magnify, Docker, or External) due to network latency and authentication overhead. Feel free to try them out and ask us for recommendations!
+
+![Kwirth family architecture](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/kwirth-family.png)
