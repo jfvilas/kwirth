@@ -66,7 +66,7 @@ That could be installed like this:
 helm repo install kwirth kwirth/kwirth -n kwirth --create-namespace -f values.yaml
 ```
 
-### Kubernetes: Deploy Kwirth using MANIFESTS
+### Kubernetes: deploy Kwirth using MANIFESTS
 If you want an express setup of Kwirth, do not loose your time, just type-in this kubectl in your console:
 
 ```yaml
@@ -79,7 +79,62 @@ If you need to change default Kwirth configuration you may need to edit the YAML
 +++
 
 ### External: launch Kwirth locally (without docker)
-+++
+First install Kwirth:
+```sh
+$ npm i -g @jfvilas/kwirth-external
+```
+
+Once installed (globally with '-g' optin) just launch it to check if everything is OK:
+```sh
+$ kwirth-external --version
+```
+
+#### Command Line options
+If you enter 'kwirth-external --help' you should see an explanatio with all the options of Kwirth External:
+
+```sh
+$ kwirth-external --help 
+Usage:
+  $ kwirth-external
+
+Commands:
+  start   Start server
+  apikey  Create an API Key
+
+For more info, run any command with the `--help` flag:
+  $ kwirth-external start --help
+  $ kwirth-external --help
+  $ kwirth-external apikey --help
+
+Options:
+  -c, --context <string>          Context to load (default: )
+  -k, --apiKey                    Context to load (default: false)
+  -p, --port <number>             Server port (default: 3883)
+  -r, --rootpath <string>         Root path (default: )
+  -k, --masterkey <string>        Master key (default: Kwirth4Ever)
+  -t, --front                     Enable front SPA serving (default: false)
+  -f, --forward                   FORWARD feature (default: false)
+  -i, --metricsinterval <number>  Seconds between metrics (default: 15)
+  -cl, --channellog               Channel LOG (default: true)
+  -cm, --channelmetrics           Channel METRICS (default: true)
+  -ca, --channelalert             Channel ALERT (default: true)
+  -ce, --channelecho              Channel ECHO (default: true)
+  -co, --channelops               Channel OPS (default: true)
+  -ct, --channeltrivy             Channel TRIVY (default: true)
+  -cy, --channelmagnify           Channel MAGNIFY (default: true)
+  -cp, --channelpinocchio         Channel PINOCCHIO (default: true)
+  -v, --version                   Display version number
+  -h, --help                      Display this message
+```
+
+### Actions
+
+#### Start (start)
+Just start the server.
+
+#### API Key (apikey)
+Create a 1-day API Key and exit (acts like a normal command: creates teh API key, show it, end exit)
+
 
 ### Desktop: end-user experience
 +++
@@ -176,11 +231,37 @@ So, finally, you should be able to access Kwirth at: http://your.dns.name/quirz.
 http://localhost/quirz
 ```
 
-### Docker
-+++
+### Docker & External
+Accessing Docker and External installations is very similar to accessing a Kubernetes deployed Kwirth, with the slight differnece of not to access via a ingress controller. Instead, you just access Kwirth at the port and path you have configured whne you started the Kwirth server:
 
-### External
-+++
+#### Docker
+If your start comman dwas somethin similar to:
 
-### Desktop
-+++
+```bash
+docker run -d -p 8080:3883 \
+  -v ~/.kube/config:/root/.kube/config \
+  --name kwirth jfvilasoutlook/kwirth:latest \
+  --port 3883 \
+  --rootpath /fantastic/tony
+```
+
+You just will access Kwirth at `http://localhost:8080/fantastic/tony`
+
+#### External
+Very similart to Docker, if you just started a Kwirth External with a command like this:
+```sh
+kwirth-external start --front --port 8080 --rootpath /kwith/lovers
+```
+
+You should be able to access your Kwirt External at `http://localhost:8080/kwirth/lovers`
+
+#### Desktop
+Kwirth Desktop is the easiest to access beacause it has been designed with a specific interface for Desktop users (no matter they come from Windows, Linux or Mac).
+
+When you launch Kwirth Magnify, just after showing the splash screen, you will see a 'context selector' dialog where you can decide which cluster to connect to. All context will be shown, and you can filter for viewing just active ones (the ones you can connect now). Active context will refresh automatically as clusters are becoming available or unavailable (by connecting VPN's, or just chaging kube API server state). The 'LOCAL' refers to all the contexts available in your local `kubeconfig` file, and REMOTE refers to clusters that can be reached through a Kwirth server (no matter it be External, Docker or Kubernetes).
+
+![local cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-local.png ':class=imageclass60')
+
+If you want to connect to a cluster using any other type of Kwirth installation (like Docker, External or Kubernetes), you can add as many clusters as you want in the 'Remote cluster' selection.
+
+![remote cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-remote.png ':class=imageclass40')

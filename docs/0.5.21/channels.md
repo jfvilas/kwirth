@@ -361,7 +361,6 @@ Finally, for having a detailed view of a file or folder, you can switch the file
 
 
 ## Magnify
-+++
 Magnify is **the most incredible thing** that happent inside and outside Kwirth in the last two years. It is not just a Kwirth channel, it is a really complete *Kubernetes Management Tool*.  What we mean?
 
 We typically build Kwirth channels for providing a specific data stream for a specific type of information: logs, alerts, metrics, files, events... Magnify has been developed as a new Kwirth channel, in fact, it has a lot to do with data streaming as well as other Kwirth channels, but, what kind of data do Magnify streams to users?
@@ -410,8 +409,6 @@ These are key features of Magnify channel:
 ### Use
 Starting Magnify is **really simple**. Once you have configured your resource selector with **any existent resource (no matter which)** and added the new channel to the tabs, just go to tab "Settings" icon and start the channel. *No configuration is needed*.
 
-+++clusterselection
-
 When the channel starts the **cluster overview** shows up, and in just some milliseconds the content will start arriving. You will see some cluster information, some global metrics, a magnificient cluster validation ribbon (showign you errors or warnings detected on your cluster artifactos), and the las cluster events:
 
 ![magnifyoverview](./_media/ch-images/magnify-cluster-overview.png  ':class=imageclass60')
@@ -424,7 +421,7 @@ Every time you select an item or a set of items you'll see the the action toolba
 
 ![magnifyoverview](./_media/ch-images/magnify-workload.png  ':class=imageclass60')
 
-Magnify is a **windowed tool**, so everytime you perform an action a Window may show up, and you can manage it (inside yor borwser or your KiwrthMagnify desktioop tool) as a regular window: minimiz, full screen, move, resize, pin... 
+Magnify is a **windowed tool**, so everytime you perform an action a Window may show up, and you can manage it (inside yor browser or your KiwrthMagnify desktop tool) as a regular window: minimize, full-screen, move, resize, pin... 
 
 ![magnifyoverview](./_media/ch-images/magnify-windowed.png)
 
@@ -437,4 +434,3 @@ Kwirth Desktop is an Electron application whose login page is specifically desig
 If you want to connect to a cluster using any other type of Kwirth installation (like Docker, External or Kubernetes), you can add as many clusters as you want in the 'Remote cluster' selection.
 
 ![local cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-remote.png)
-

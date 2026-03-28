@@ -60,7 +60,7 @@ The configuration for log streaming is as follows:
 
 You can set your selected configuration as a default for future Log Channel startings.
 
-![logsetup](./_media/ch-images/log-setup-ls.png  ':class=imageclass40')
+![logsetup](./_media/ch-images/log-setup-ls.png ':class=imageclass40')
 
 
 #### Running

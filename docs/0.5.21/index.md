@@ -24,7 +24,7 @@ helm install kwirth kwirth/kwirth -n kwirth --create-namespace
 ```
 
 #### Other ways to deploy Kwirth
-As of Kwirth 0.5.1 Kwirth can be installed/deployed in several different ways:
+As of Kwirth 0.5.21 Kwirth can be installed/deployed in several different ways:
 
   - Kubernetes (explained above)
   - Docker
@@ -62,11 +62,11 @@ There currently exist two flavours of Kwirth Desktop:
 
 Kwirth Desktop is an Electron application whose login page is specifically designed for local work (the same you would do with Lens, K9s, or Headlamp). Therefore, Kwirth Desktop does not connect to a specific Kubernetes cluster by default; instead, it shows the user all the contexts available in their local `kubeconfig` file. Cluster status and availability will be refreshed automatically, as shown in the following image:
 
-![local cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-local.png)
+![local context selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-local.png)
 
 If you want to connect to a cluster using any other type of Kwirth installation (like Docker, External or Kubernetes), you can add as many clusters as you want in the 'Remote cluster' selection.
 
-![local cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-remote.png)
+![local context selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-remote.png)
 
 !> Please refer to **architectural discussions** on the best way to consume Kwirth data-streams.
 
@@ -126,14 +126,14 @@ If everything is ok, in no more than 8 to 10 seconds Kwirth should be **up and r
     ```
     NOTE: You can **change the path** where to publish Kwirth, it is explained in [installation section](installation?id=installation).
 
-## Access Kwirth (External)
+## Access Kwirth (Docker and external)
 Kwirth External is a standalone deployment of Kwirth taht you can start locally inside your Linux/Windows/Mac.
 
 Once installed, you can access kwirth directly and easily from a browser at: http://localhost:3883
 
-Depending on the options you used when starting Kwirth External you may need to change the port or access a specifica path, for example: http://localhost:3885/kwirth.
+Depending on the options you used when starting Kwirth External you may need to change the port or access a specific path, for example: http://localhost:3885/kwirth.
 
-Please review start options [here](+++).
+Please review configuration and start options [here](./installation?id=Docker%20&%20External).
 
 ## Access Kwirth (Docker)
 +++
