@@ -362,7 +362,7 @@ Finally, for having a detailed view of a file or folder, you can switch the file
 
 ## Magnify
 +++
-Magnify is the most incredible thing that happent inside and outside Kwirth in the last two years. It is not just a Kwirth channel, it is a really complete *Kubernetes Management Tool*.  What we mean?
+Magnify is **the most incredible thing** that happent inside and outside Kwirth in the last two years. It is not just a Kwirth channel, it is a really complete *Kubernetes Management Tool*.  What we mean?
 
 We typically build Kwirth channels for providing a specific data stream for a specific type of information: logs, alerts, metrics, files, events... Magnify has been developed as a new Kwirth channel, in fact, it has a lot to do with data streaming as well as other Kwirth channels, but, what kind of data do Magnify streams to users?
 
@@ -410,27 +410,31 @@ These are key features of Magnify channel:
 ### Use
 Starting Magnify is **really simple**. Once you have configured your resource selector with **any existent resource (no matter which)** and added the new channel to the tabs, just go to tab "Settings" icon and start the channel. *No configuration is needed*.
 
-+++When the channel starts the navigation pane shows up, and in just some milliseconds the content will start arriving.
++++clusterselection
 
-!> Filesystems information can be slow to arrive if your resource selector includes too many objects.
+When the channel starts the **cluster overview** shows up, and in just some milliseconds the content will start arriving. You will see some cluster information, some global metrics, a magnificient cluster validation ribbon (showign you errors or warnings detected on your cluster artifactos), and the las cluster events:
 
-A typical view of Fileman channel is as follows:
+![magnifyoverview](./_media/ch-images/magnify-cluster-overview.png  ':class=imageclass60')
 
-![filemanstart](./_media/ch-images/fileman-initial.png ':class=imageclass80')
+You can navigate on the left side of the channel to the aspect of the cluster you want to manage: nodes, workload, network, storage, CRD's, security...
 
-The navigation pane includes:
- - A folder tree navigation tool on the left.
- - A file ist area on the right, that can be configured to be shown as a grid or as a list (select your view on top-right icon the navigation pane).
+![magnifyoverview](./_media/ch-images/magnify-navigation-pane.png  ':class=imageclass60')
 
-As you navigate, some actions may appear on the navigation pane header, like 'Rename', 'Delete', 'Copy'...
+Every time you select an item or a set of items you'll see the the action toolbar on top for performing actions:
 
-![filemanactions](./_media/ch-images/fileman-actions.png ':class=imageclass80')
+![magnifyoverview](./_media/ch-images/magnify-workload.png  ':class=imageclass60')
 
-These actions are also available when right-clicking an object on the file list. When you righ-click an item a context-menu appears with actions according to the object selected.
+Magnify is a **windowed tool**, so everytime you perform an action a Window may show up, and you can manage it (inside yor borwser or your KiwrthMagnify desktioop tool) as a regular window: minimiz, full screen, move, resize, pin... 
 
-![filemancontextmenu](./_media/ch-images/fileman-contextmenu.png ':class=imageclassCenter :class=imageclass20')
+![magnifyoverview](./_media/ch-images/magnify-windowed.png)
 
-Finally, for having a detailed view of a file or folder, you can switch the file list from 'Grid' to 'List' and back. The 'list' will show file information (length, date...).
 
-![filemangridlist](./_media/ch-images/fileman-gridlist.png  ':class=imageclass60')
+#### Sepecifics for Kwirth Magnify (Desktop versions)
+Kwirth Desktop is an Electron application whose login page is specifically designed for local work (the same you would do with Lens, K9s, or Headlamp). Therefore, Kwirth Desktop does not connect to a specific Kubernetes cluster by default; instead, it shows the user all the contexts available in their local `kubeconfig` file. Cluster status and availability will be refreshed automatically, as shown in the following image:
+
+![local cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-local.png)
+
+If you want to connect to a cluster using any other type of Kwirth installation (like Docker, External or Kubernetes), you can add as many clusters as you want in the 'Remote cluster' selection.
+
+![local cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-remote.png)
 
