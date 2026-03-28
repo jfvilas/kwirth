@@ -89,7 +89,7 @@ kwirth-external start --front
 ### Desktop (for personal use)
 For a more integrated experience, download the native application for Windows or Linux. This allows you to manage your clusters with a dedicated UI without the need to deploy anything into the cluster itself during initial exploration.
 
-Binaries for Windows (including a Setup if you prefer) and Linux can be downloaded from the (Releases page at our GitHub project)[https://github.com/jfvilas/kwirth/releases]
+Binaries for Windows (including a Setup if you prefer) and Linux can be downloaded from the [Releases page at our GitHub project](https://github.com/jfvilas/kwirth/releases).
 
 ## How Kwirth works
 Kwirth is not Loki nor Grafana, Kwirth is not Elastic, Kwirth is not DataDog, Kwirth is not Azure Log Analytics... Kwirth can perform as much as all of the tasks you can do with these observability tools, but with a fraction of the cost (in terms of money, but also in terms of time and kubernetes resource usage).

@@ -26,7 +26,7 @@ What you can see in the main Kwirth is:
     - **Group**. If your view is 'group' or lower, you can select here what group inside the namespaces you selected you want to work with. In the selector you will see *replica sets*, *stateful sets* and *daemons sets*.
     - **Pod**. If the view is 'pod' or lower, you must select what pod/pods you want to use as source object (from a list made of all the namespaces and groups you selected).
     - **Container**. If the view is 'container', you must decide here what container/containers you want to use as source for the data stream. Avaliable containers are thos that live in the pods you selected.
-    - **Channel**. Prior to add a resource to the board, you need to specify what kind of information you want to work with. So you must select 'log', 'metrics', 'alert' or whatever channel your Kwirth core server have installed. Read information on (channels here)[chanels].
+    - **Channel**. Prior to add a resource to the board, you need to specify what kind of information you want to work with. So you must select 'log', 'metrics', 'alert' or whatever channel your Kwirth core server have installed. Read information on [channels here](chanels).
   3. The main menu gives you access to several configuration and operation options of your Kwirth installation.
 
     ![main menu](./_media/main-menu.png)
@@ -36,8 +36,8 @@ What you can see in the main Kwirth is:
     - Next you have options for exporting your boards to a file or import them from a file.
     - Next option  is 'User settings'. In user setting panel you can configure default behaviours for your channels, like maximum number of messages in a log, adding timestamp to log lines, setting the interval for refreshing metrics...
     - Next option is 'Cluster settings', where you can set some cluster-wide settings of Kwirth, like, for example, the interval Kwirth use to extract metrics from node's cAdvisor.
-    - 'Manage cluster security' gives you the chance to (manage other clusters)[clustermanagement] you want to **access from this Kwirth**.
-    - 'API security' allows viewing and (managing API keys)[apimanagement] you can create to share with other parties.
+    - 'Manage cluster security' gives you the chance to [manage other clusters](clustermanagemnet) you want to **access from this Kwirth**.
+    - 'API security' allows viewing and [managing API keys](apimanagement) you can create to share with other parties.
     - 'User security' is for managing users that will have access to this instance of Kwirth.
     - Update Kwirth' (an *admin option* only permforms a Kwirth restart), so if you deployed Kwirth with 'latest' tag in the OCI image, Kwirth will restart with the **newest version**.`
     - **Exit Kwirth**, just logging you off.

@@ -56,4 +56,4 @@ That is, an API Key contains an **expiration date and an Access Key**. And an ac
 
 
 ## Multi cluster support
-When you use an instance of Kwirth as a gate to a multi-cluster log management system, you need to add clusters, as shown in (cluster managment)[clustermanagemnet]. For a cluster to be added to another Kwirth instance, you must previously create an API like we've just explained.
+When you use an instance of Kwirth as a gate to a multi-cluster log management system, you need to add clusters, as shown in [cluster managment](clustermanagemnet). For a cluster to be added to another Kwirth instance, you must previously create an API like we've just explained.

@@ -81,7 +81,7 @@ When we talk about Access Keys we need to explain its content deeply. This is wh
     - **Resource id** is a spec of the resources that the access key owner can be work with (according to previous explained scope) by using this access key.
 
 ## Multi cluster support
-When you use an instance of Kwirth as an entry door to a multi-cluster system, you need to add clusters, as shown in (cluster managment)[clustermanagement]. For a cluster to be added to another Kwirth instance, you must previously create an API like we've just explained.
+When you use an instance of Kwirth as an entry door to a multi-cluster system, you need to add clusters, as shown in [cluster managment](clustermanagemnet). For a cluster to be added to another Kwirth instance, you must previously create an API like we've just explained.
 
 ## Access key types
 For a client to use Kwirth (the API, the channels, the instances...) he must previously obtain an access key, as we have explained. The client must present an Access Key on every subsequent Kwirth API invocation, for example, when starting an instance, connecting to a data stream, etc.
