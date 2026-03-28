@@ -10,7 +10,7 @@
 - Create information channels according to your needs (logging, alerting, metrics, security, operations...)
 <p></p>
 
-- **Kwirth means flexible observability in real-time.**
+- **Kwirth means flexible Kubernetes Management in real-time.**
 
 [GitHub](https://github.com/jfvilas/kwirth/)
 [Get Started](/0.5.21/index)
