@@ -34,7 +34,7 @@ Installation can be tailored by changing some Kwirth installation options:
 | channelOps         | Enables/Disables Ops channel | string | true/false  | true  |
 | channelTrivy       | Enables/Disables Trivy channel | string | true/false  | true  |
 | rootpath           | It's the path where Kwirth will be served | string | any URL Path | /kwirth  |
-| masterkey          | It's the key used to cypher/decypher the access keys sent to clients | string | any string | Kwirth4Ever  |
+| masterkey          | It's the key used to sign the access keys sent to clients | string | any string | Kwirth4Ever  |
 | image              | A full image reference | string | A valid reference | jfvilasoutlook/kwirth:latest |
 | resources          | Pod resources in Kubernetes-like format | object | {}  | { limits: { cpu:1, memory:2Gi }, requests: {cpu:0, memory:256Mi } }|
 | ingress.enabled    | Set to true if you want to deploy an Ingress | boolean | true/false  | false |
@@ -76,7 +76,13 @@ kubectl apply -f https://raw.githubusercontent.com/jfvilas/kwirth/master/test/kw
 If you need to change default Kwirth configuration you may need to edit the YAML files in order to customize the deployment.
 
 ### Docker: launch Kwirth in your local docker environment
-+++
+To run Kwirth as a Docker container, you can use the following command, ensuring you mount your kubeconfig file so Kwirth can interact with your cluster:
+
+```bash
+docker run -d -p 3883:3883 \
+  -v ~/.kube/config:/root/.kube/config \
+  --name kwirth jfvilasoutlook/kwirth:latest
+```
 
 ### External: launch Kwirth locally (without docker)
 First install Kwirth:
@@ -127,7 +133,7 @@ Options:
   -h, --help                      Display this message
 ```
 
-### Actions
+#### Actions
 
 #### Start (start)
 Just start the server.
@@ -137,7 +143,11 @@ Create a 1-day API Key and exit (acts like a normal command: creates teh API key
 
 
 ### Desktop: end-user experience
-+++
+Get the Desktop experiencie of Kwirth is simple, quick and straightforward. Just got to the [Releases page at our GitHub project](https://github.com/jfvilas/kwirth/releases) and download & install the edition that best suit your needs. There are three flavours:
+
+  - Windows application, with two options: direct download and installable setup.
+  - Linux, and AppImage compatible with FUSE.
+  - Mac.
 
 ## Access Kwirth
 
@@ -260,7 +270,7 @@ Kwirth Desktop is the easiest to access beacause it has been designed with a spe
 
 When you launch Kwirth Magnify, just after showing the splash screen, you will see a 'context selector' dialog where you can decide which cluster to connect to. All context will be shown, and you can filter for viewing just active ones (the ones you can connect now). Active context will refresh automatically as clusters are becoming available or unavailable (by connecting VPN's, or just chaging kube API server state). The 'LOCAL' refers to all the contexts available in your local `kubeconfig` file, and REMOTE refers to clusters that can be reached through a Kwirth server (no matter it be External, Docker or Kubernetes).
 
-![local cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-local.png ':class=imageclass60')
+![local cluster selection](https://raw.githubusercontent.com/jfvilas/kwirth/master/docs/0.5.21/_media/context-selection-local.png ':class=imageclass40')
 
 If you want to connect to a cluster using any other type of Kwirth installation (like Docker, External or Kubernetes), you can add as many clusters as you want in the 'Remote cluster' selection.
 

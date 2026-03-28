@@ -134,6 +134,3 @@ Once installed, you can access kwirth directly and easily from a browser at: htt
 Depending on the options you used when starting Kwirth External you may need to change the port or access a specific path, for example: http://localhost:3885/kwirth.
 
 Please review configuration and start options [here](./installation?id=Docker%20&%20External).
-
-## Access Kwirth (Docker)
-+++

@@ -80,7 +80,7 @@ Set the port to listen from, for example 3090, and Kwirth will be serverd from '
 Set the root path where Kwirth will listen, for example '/observer/kwirth', and Kwirth will be serverd from 'http://your.host.name/observer/kwirth'
 
 ### Marter Key (-k, --masterkey)
-Set the master key for enciphering Bearer tokens.
+Set the master key for securely signing Bearer tokens.
 
 ### Front (-t, --front)
 Enable/Disable the front. If you just need the server with the API don't use this option and the servier will start just an API server.

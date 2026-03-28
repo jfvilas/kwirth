@@ -33,7 +33,7 @@ Installation can be tailored by changing some Kwirth installation options:
 | channelOps    | Enables/Disables Alert channel | string | true/false  | true  |
 | channelTrivy  | Enables/Disables Alert channel | string | true/false  | true  |
 | rootpath      | It's the path where Kwirth will be served | string | any URL Path | /kwirth  |
-| masterkey     | It's the key used to cypher/decypher the access keys sent to clients | string | any string | Kwirth4Ever  |
+| masterkey     | It's the key used to sign the access keys sent to clients | string | any string | Kwirth4Ever  |
 | image         | A full image reference | string | A valid reference | jfvilasoutlook/kwirth:latest |
 | resources     | Pod resources in Kubernetes-like format | object | {}  | { limits: { cpu:1, memory:2Gi }, requests: {cpu:0, memory:256Mi } }|
 | ingress.enabled  | Set to true if you want to deploy an Ingress | boolean | true/false  | false |

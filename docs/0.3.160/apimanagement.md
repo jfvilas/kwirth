@@ -67,6 +67,6 @@ Tokens can be any of these 3 types:
   - **Volatile**. Volatile tokens behave exactly like permanent ones in relation to permissions capabilities, but they are not perssisted, that is, they live only inside the memory of the Kwirth instance that created it, so they are not useful if you have more than one replica of a Kwirth core or you are worried about Kwirth, node or cluster restarts.
   - **Bearer**. Bearer tokens are not persisted inside Kwirth nor your kubernetes cluster, they are created and digitally signed and sent to the client on first login. Everytime a client invokes an API he must present the token, and Kwirth core will check its integrity prior to accept client requests. I mean, this is a typical bearer token like the ones used in OAuth, for example. Bearer tokns must be presented ina an HTTP 'Authorization' header with a format like this one:
     - Authorization: Bearer f417c2a1277d3f24|permanent|view:production:::
-    - The id in front of the key is in fact a hash id (syncly cyphered) used to protet access key from being hacked for client scalation. Clients can read keys, and must sent them back to servers, but they cannot modify them.
+    - The id in front of the key is in fact a hash id (sync'ly signed) used to protet access key from being hacked for client scalation. Clients can read keys, and must sent them back to servers, but they cannot modify them.
 
 Anyway, the format and content of a token is exactly the same in all three types of tokens.
