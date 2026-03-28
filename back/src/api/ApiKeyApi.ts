@@ -1,10 +1,8 @@
 import express, { Request, Response} from 'express'
-import { accessKeyBuild, ApiKey } from '@jfvilas/kwirth-common'
+import { AccessKey, accessKeySerialize, accessKeyBuild, ApiKey } from '@jfvilas/kwirth-common'
 import { AuthorizationManagement } from '../tools/AuthorizationManagement'
-import { AccessKey, accessKeySerialize } from '@jfvilas/kwirth-common'
-import * as crypto from 'crypto'
 import { IConfigMaps } from '../tools/IConfigMap'
-
+import * as crypto from 'crypto'
 
 export class ApiKeyApi {
     public route = express.Router()
@@ -12,7 +10,6 @@ export class ApiKeyApi {
     private configMaps: IConfigMaps
     public masterKey: string
     public isElectron: boolean
-
 
     private constructor(configMaps: IConfigMaps, masterKey: string, isElectron:boolean) {
         this.configMaps = configMaps

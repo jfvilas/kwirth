@@ -1149,6 +1149,7 @@ const App: React.FC<IAppProps> = (props:IAppProps) => {
             description,
             tabs: newTabs
         }
+        // +++ pending low priority change .../boards/... for .../workspaces/...
         let payload=JSON.stringify( workspace )
         await fetch (`${backendUrl}/store/${user?.id}/boards/${name}`, addPostAuthorization(accessString, payload))
 

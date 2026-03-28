@@ -80,6 +80,36 @@ When we talk about Access Keys we need to explain its content deeply. This is wh
     - **Scope** points to the kind of actions the access key owner can perform: view logs, restart pods, manage apis, receive metrics...
     - **Resource id** is a spec of the resources that the access key owner can be work with (according to previous explained scope) by using this access key.
 
+And, finally... What the hell is an API Key? An API Key is and Access Key with added time (expiry) information. All this stuff is clear if you just take a look at how the data structures are defined:
+
+```typescript
+export interface ApiKey {
+    accessKey: AccessKey
+    description: string
+    expire: number
+    days: number
+}
+```
+
+```typescript
+class AccessKey {
+    public id:string=''
+    public type:string='volatile'
+    public resources:string=''
+}
+```
+
+```typescript
+interface ResourceIdentifier {
+    scopes:string,
+    namespaces:string,
+    groups:string,
+    pods:string,
+    containers:string
+}
+```
+
+
 ## Multi cluster support
 When you use an instance of Kwirth as an entry door to a multi-cluster system, you need to add clusters, as shown in [cluster managment](clustermanagement). For a cluster to be added to another Kwirth instance, you must previously create an API like we've just explained.
 

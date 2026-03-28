@@ -17,7 +17,7 @@ What you can see in the main Kwirth is:
 
   2. The resource selector. This is one of the most important things in Kwirth.
   
-    ![resource selector](./_media//resource-selector.png)
+    ![resource selector](./_media/resource-selector.png)
 
     The resource selector is the tool you use to select what kubernetes objects you want to work with. It has **7 selectors** and the 'add' button (to add the objects to the workspace):
     - **Cluster**. You can see here the list of Kubernetes clusters you have access to. You use this selector to decide what log to add to your workspace.

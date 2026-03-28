@@ -53,7 +53,7 @@ A typical 'start instance' would conatin this information:
   - specific data for configuring the channel according to the type of service the client is starting, that is, log streaming requires specific configuration that is different from the one used in metrics streaming.
 
 ## Channels
-These are some samples of channels (the're explained in the Channels section).
+These are some samples of channels (they're explained in the Channels section).
 
 ### Log Cannel
 Log streaming means receiving log data streams at client that are originated at a set of resurces (or an individual one).

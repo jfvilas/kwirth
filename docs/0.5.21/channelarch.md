@@ -48,7 +48,7 @@ What follows is a zoomed view of Kwirth core.
 ![kwirthcore](./_media/kwirth-kwirth-components.png)
 
 ## Existing channels
-Starting with Kwirth 0.3.160 these are the channels you will find integrated inside Kwirth core:
+Channel subsystem started in Kwirth 0.3.160, and these are the channels you will find integrated inside Kwirth core in current version:
 
   - **Log**. You can open log streams for receiving container/pod/group/namespace aggregated log streams in real time.
   - **Metrics**. You can receive metrics information related to container/pod/group/namespace aggregated objects.
@@ -56,7 +56,7 @@ Starting with Kwirth 0.3.160 these are the channels you will find integrated ins
   - **Echo**. This is a reference channel for channel implementers, it is not useful for real kubernetes operations.
   - **Trivy**. This is a very interesting channel for kwnow your vulnerabilities exposure based on Trivy. Trivy is fully integrated into Kwirth through this channel.
   - **Ops**. This is a channel you cna use for performing common operations on your cluster, like launching a shell to a pod or restarting a pod. But Ops channels includes some intersting features like restarting a namespace, or keeping shell terminals connected for a lifetime.
-  - **Fileman**. *Fileman is an unprecedented* channel that allows users to *work with container filesystems exactly the same way they would work with its PC filesystem*. Forget about "kubectl exec mypod -- /bin/sh -c ls", "kubectl cp", JUST navigate on your browser with this powerful visual file exlorer!!
+  - **Fileman**. *Fileman is an unprecedented* channel that allows users to *work with container filesystems exactly the same way they would work with its PC filesystem*. Forget about `kubectl exec mypod -- /bin/sh -c ls`, "kubectl cp", JUST navigate on your browser with this powerful visual file exlorer!!
   - **Magnify**. This is a *factotum* channel. Magnify consolidates all existing channels in Kwirth into *one only web experience* for managing all Kubernetes aspects and objects, exactly the same way you would do with K9s, Headlamp or Lens.
 
 It is important to note that **Kwirth always includes a basic front React applicaton**, but you can integrate Kwirth with your own clients by using Kwirth API.
@@ -113,6 +113,5 @@ interface IChannel {
     updateConnection (webSocket:WebSocket, instanceId:string) : boolean
 }
 ```
-
 
 Please be aware of the difference that exists between an instance and the real communications transport (a web socket). When a client starts an intance, a web socket must be created and connected previously. And remember, **a web socket can carry multiple instances of the same channel**.

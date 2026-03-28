@@ -7,7 +7,7 @@ Although not too exhaustive, this page contains some detail on what we have been
   - Added homepage including:
     - Cluster details
     - CLustur usage data
-    - Last & Fav tabs and boards
+    - Last & Fav tabs and workspaces
   - Added notifier for sending messages to user from front channels.
   - Added react-file-manager as customizable filemanager for kwirth.
   - Added parse listener for parsing 'ls' commands in fileman channel.
