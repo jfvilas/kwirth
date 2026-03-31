@@ -35,17 +35,17 @@ const setLeftItem = (
     }
 }
 
-const buildForward = (rootObj:any, portName:string, portProtocol:string, portNumber:string) => {
-    let url = '/kwirth/port-forward/pod/' + rootObj.metadata.namespace + '/' + rootObj.metadata.name + '/' + portNumber
-    return <Stack direction={'row'} alignItems={'center'}>
-        <Stack direction={'row'} alignItems={'center'} >
-            {portName && <Typography variant='body2'>{portName}:</Typography>}
-            <Typography variant='body2'>{portNumber.toString().toLowerCase().replace('https','443').replace('http','80')}/{portProtocol}&nbsp;&nbsp;</Typography>
-        </Stack>
-        <Box sx={{ flexGrow: 1 }} />
-        <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
-    </Stack>
-}
+// +++const buildForward = (rootObj:any, portName:string, portProtocol:string, portNumber:string) => {
+//     let url = '/kwirth/port-forward/pod/' + rootObj.metadata.namespace + '/' + rootObj.metadata.name + '/' + portNumber
+//     return <Stack direction={'row'} alignItems={'center'}>
+//         <Stack direction={'row'} alignItems={'center'} >
+//             {portName && <Typography variant='body2'>{portName}:</Typography>}
+//             <Typography variant='body2'>{portNumber.toString().toLowerCase().replace('https','443').replace('http','80')}/{portProtocol}&nbsp;&nbsp;</Typography>
+//         </Stack>
+//         <Box sx={{ flexGrow: 1 }} />
+//         <Button onClick={() => window.open(url, '_blank')}>Forward</Button>
+//     </Stack>
+// }
 
 const rfmSetup = (
         theme: Theme,
@@ -369,16 +369,16 @@ const rfmSetup = (
             setLeftItem(spcPod,'delete', onObjectDelete)
             setPropertyFunction(spcPod, 'container', showListPodContainers)
             setPropertyFunction(spcPod, 'status', showListPodStatus)
-            let objPod = objectSections.get('Pod')
-            if (objPod) {
-                let item = objPod.find(o => o.name==='containers')!.items.find(item => item.name === 'container')
-                item = item!.items!.find (i => i.name==='ports')!.items!.find (i => i.name==='forward')
-                if (item) {
-                    item.invoke = (rootObj, port) => { 
-                        return buildForward(rootObj, port.name, port.protocol, port.containerPort)
-                    }
-                }
-            }
+            // +++ let objPod = objectSections.get('Pod')
+            // if (objPod) {
+            //     let item = objPod.find(o => o.name==='containers')!.items.find(item => item.name === 'container')
+            //     item = item!.items!.find (i => i.name==='ports')!.items!.find (i => i.name==='forward')
+            //     if (item) {
+            //         item.invoke = (rootObj, port) => { 
+            //             return buildForward(rootObj, port.name, port.protocol, port.containerPort)
+            //         }
+            //     }
+            // }
 
         // Controller ***************************************************************************
             const showJobConditions = (p:any) => {
@@ -578,15 +578,15 @@ const rfmSetup = (
             setLeftItem(spcService,'details', onObjectDetails)
             setLeftItem(spcService,'edit', onObjectEdit)
             setLeftItem(spcService,'delete', onObjectDelete)
-            let objService = objectSections.get('Service')
-            if (objService) {
-                let item = objService.find(o => o.name==='connection')!.items.find(item => item.name === 'ports')!.items!.find(item => item.name === 'forward')
-                if (item) {
-                    item.invoke = (rootObj, port) => {
-                        return buildForward(rootObj, port.name, port.protocol, port.targetPort)
-                    }
-                }
-            }
+            // +++ let objService = objectSections.get('Service')
+            // if (objService) {
+            //     let item = objService.find(o => o.name==='connection')!.items.find(item => item.name === 'ports')!.items!.find(item => item.name === 'forward')
+            //     if (item) {
+            //         item.invoke = (rootObj, port) => {
+            //             return buildForward(rootObj, port.name, port.protocol, port.targetPort)
+            //         }
+            //     }
+            // }
 
         // Endpoints *************************************************
             let spcClassEndpoints = spaces.get('classEndpoints')!
@@ -912,5 +912,5 @@ const rfmSetup = (
 
 }
 
-export { rfmSetup, buildForward, setLeftItem, setPropertyFunction }
+export { rfmSetup, setLeftItem, setPropertyFunction }
 

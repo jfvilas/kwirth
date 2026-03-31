@@ -645,12 +645,12 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
         }
 
         let spcPod = spaces.get('Pod')!
-        setLeftItem(spcPod,'forward', (p:string[], currentTarget:Element) => {
-            let f = magnifyData.files.filter(x => p.includes(x.path))
-            setMenuContainersFile(f[0])
-            setMenuContainersIncludeAllContainers(false)
-            setMenuContainersAnchorParent(currentTarget)
-        })
+        // +++ setLeftItem(spcPod,'forward', (p:string[], currentTarget:Element) => {
+        //     let f = magnifyData.files.filter(x => p.includes(x.path))
+        //     setMenuContainersFile(f[0])
+        //     setMenuContainersIncludeAllContainers(false)
+        //     setMenuContainersAnchorParent(currentTarget)
+        // })
 
         setLeftItem(spcPod,'log', (p:string[], currentTarget:Element) => podGroupAction('log', p, currentTarget))
         setLeftItem(spcPod,'metrics', (p:string[], currentTarget:Element) => podGroupAction('metrics', p, currentTarget))
@@ -985,9 +985,9 @@ const MagnifyTabContent: React.FC<IContentProps> = (props:IContentProps) => {
             case 'evict':
                 launchPodEvict([path])
                 break
-            case 'forward':
-                //+++launchPodForward([path], container)
-                break
+            // case 'forward':
+            //     //+++launchPodForward([path], container)
+            //     break
             case 'cordon':
                 launchNodeCordon([path])
                 break
