@@ -3,7 +3,7 @@ import { KwirthData, versionGreaterThan } from "@jfvilas/kwirth-common"
 export const getLastKwirthVersion = async (kwirthData:KwirthData) : Promise<string|undefined> => {
     kwirthData.lastVersion=kwirthData.version
     try {
-        var hubResp = await fetch ('https://hub.docker.com/v2/repositories/jfvilasoutlook/kwirth/tags?page_size=25&page=1&ordering=last_updated&name=')
+        var hubResp = await fetch ('https://hub.docker.com/v2/repositories/kwirthmagnify/kwirth/tags?page_size=25&page=1&ordering=last_updated&name=')
         var json = await hubResp.json()
         if (json) {
             var results=json.results as any[]

@@ -74,7 +74,7 @@ spec:
       serviceAccount: kwirth-sa
       containers:
         - name: kwirth
-          image: jfvilasoutlook/kwirth:latest
+          image: kwirthmagnify/kwirth:latest
           env:
             - name: ROOTPATH
               value: '/quirz'

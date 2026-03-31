@@ -7,7 +7,7 @@ kwirth:
     channelOps: "true"
     channelTrivy: "false"
     rootpath: /kwirth
-  image: jfvilasoutlook/kwirth:develop
+  image: kwirthmagnify/kwirth:develop
   ingress:
     enabled: true
     controller: nginx

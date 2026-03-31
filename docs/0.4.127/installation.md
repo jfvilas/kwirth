@@ -35,7 +35,7 @@ Installation can be tailored by changing some Kwirth installation options:
 | channelTrivy       | Enables/Disables Trivy channel | string | true/false  | true  |
 | rootpath           | It's the path where Kwirth will be served | string | any URL Path | /kwirth  |
 | masterkey          | It's the key used to sign the access keys sent to clients | string | any string | Kwirth4Ever  |
-| image              | A full image reference | string | A valid reference | jfvilasoutlook/kwirth:latest |
+| image              | A full image reference | string | A valid reference | kwirthmagnify/kwirth:latest |
 | resources          | Pod resources in Kubernetes-like format | object | {}  | { limits: { cpu:1, memory:2Gi }, requests: {cpu:0, memory:256Mi } }|
 | ingress.enabled    | Set to true if you want to deploy an Ingress | boolean | true/false  | false |
 | ingress.controller | Specify what Ingress ctroller you are using | string | nginx / agic  | nginx |
@@ -58,7 +58,7 @@ kwirth:
     channelOps: "true"
     channelTrivy: "false"
     rootpath: /kwirth
-  image: jfvilasoutlook/kwirth:0.4.34
+  image: kwirthmagnify/kwirth:0.4.34
 ```
 
 That could be installed like this:
@@ -139,7 +139,7 @@ spec:
       serviceAccount: kwirth-sa
       containers:
         - name: kwirth
-          image: jfvilasoutlook/kwirth:latest
+          image: kwirthmagnify/kwirth:latest
           env:
             - name: ROOTPATH
               value: '/quirz'

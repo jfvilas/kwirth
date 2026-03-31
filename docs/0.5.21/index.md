@@ -37,7 +37,7 @@ To run Kwirth as a Docker container, you can use the following command, ensuring
 ```bash
 docker run -d -p 3883:3883 \
   -v ~/.kube/config:/root/.kube/config \
-  --name kwirth jfvilasoutlook/kwirth:latest
+  --name kwirth kwirthmagnify/kwirth:latest
 ```
 
 ##### External

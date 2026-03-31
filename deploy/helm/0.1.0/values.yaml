@@ -10,7 +10,7 @@ kwirth:
       masterkey: Kwirth4Ever
       rootpath: /kwirth
     image:
-      repository: jfvilasoutlook/kwirth
+      repository: kwirthmagnify/kwirth
       tag: latest
     resources:
       limits:

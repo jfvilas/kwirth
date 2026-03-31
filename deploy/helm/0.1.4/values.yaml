@@ -9,7 +9,7 @@ kwirth:
     channelTrivy: "false"
     masterkey: Kwirth4Ever
     rootpath: /kwirth
-  image: jfvilasoutlook/kwirth:latest
+  image: kwirthmagnify/kwirth:latest
   resources:
     limits:
       cpu: "1"

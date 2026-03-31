@@ -62,7 +62,7 @@ spec:
       terminationGracePeriodSeconds: 5
       containers:
         - name: kwirth
-          image: jfvilasoutlook/kwirth:latest
+          image: kwirthmagnify/kwirth:latest
           #imagePullPolicy: Never
           env:
             - name: ROOTPATH
