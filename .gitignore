@@ -1,27 +1,12 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+node_modules/
+dist/
+build/
+*.js.map
 
-# dependencies
-#/*/node_modules
-/**/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# production
-/**/dist
-/back/bundle
-/**/build
-/back/front
-
-# misc
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Test artifacts, at any depth (a pattern with a slash in the middle is anchored to this folder otherwise)
+**/tests/.out/
+**/e2e/node_modules/
+**/e2e/test-results/
+**/e2e/playwright-report/
+**/e2e/.creds.json
+**/e2e/*.png
