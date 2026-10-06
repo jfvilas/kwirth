@@ -1,2 +1,12 @@
 [
+  {
+    "extensionType": "plugin",
+    "id": "chapete",
+    "version": "0.1.0",
+    "name": "Chapete",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-chapete/-/kwirth-plugin-chapete-0.1.0.tgz",
+    "description": "Chat with an LLM from Kwirth, using the LLMs configured in the core",
+    "icon": "Forum",
+    "website": "https://kwirthmagnify.dev"
+  }
 ]
