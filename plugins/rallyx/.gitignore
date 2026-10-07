@@ -1,0 +1,6 @@
+node_modules/
+dist/
+tests/.out/
+docs/*.tgz
+e2e/test-results/
+e2e/.creds.json
