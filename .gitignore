@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# the docs packages staged for `npm publish` by each build-docs-tgz.mjs
+**/docs/npm/
 build/
 *.js.map
 

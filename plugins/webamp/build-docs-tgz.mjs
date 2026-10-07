@@ -1,5 +1,5 @@
 // Generates docs/webamp.tgz from docs/guide/ for the Kwirth docs marketplace (extensionType: docs).
-import { cpSync, mkdirSync, existsSync, readFileSync, writeFileSync, rmSync } from 'fs'
+import { cpSync, mkdirSync, existsSync, readFileSync, writeFileSync, rmSync, readdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { tmpdir } from 'os'
@@ -60,7 +60,17 @@ try {
         ''
     ].join('\n'))
 
-    await tarCreate({ gzip: true, file: outTgz, cwd: tmpDir }, ['.'])
+    await tarCreate({ gzip: true, file: outTgz, cwd: tmpDir }, readdirSync(tmpDir).map(f => `./${f}`))
+
+    /*
+        npmjs refuses this .tgz as it is (415 "invalid path": it carries directory entries, which a tarball
+        made by `npm pack` never does). So the same content is left in docs/npm/ and published from there —
+        `npm publish` run inside it packs it the npm way. The core installs both shapes: it strips the
+        `package/` prefix when package.json is not at the root.
+    */
+    const npmDir = join(__dirname, 'docs', 'npm')
+    rmSync(npmDir, { recursive: true, force: true })
+    cpSync(tmpDir, npmDir, { recursive: true })
     console.log(`webamp docs tgz: ${outTgz} (v${pkg.version})`)
 }
 finally {
