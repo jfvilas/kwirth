@@ -8,5 +8,87 @@
     "description": "Chat with an LLM from Kwirth, using the LLMs configured in the core",
     "icon": "Forum",
     "website": "https://kwirthmagnify.dev"
+  },
+  {
+    "extensionType": "plugin",
+    "id": "webamp",
+    "version": "0.1.1",
+    "name": "Webamp",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-webamp/-/kwirth-plugin-webamp-0.1.1.tgz",
+    "description": "Webamp music player channel plugin for Kwirth - a Winamp 2 clone running in a Kwirth tab, with drag-and-drop audio and skin support",
+    "icon": "<svg viewBox='0 0 24 24' fill='currentColor'><path d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3z'/></svg>",
+    "website": "https://kwirthmagnify.dev"
+  },
+  {
+    "extensionType": "plugin",
+    "id": "rallyx",
+    "version": "0.1.1",
+    "name": "Rally-X",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-rallyx/-/kwirth-plugin-rallyx-0.1.1.tgz",
+    "description": "Rally-X arcade game channel plugin for Kwirth - a classic 1980s rally maze game playable in a Kwirth tab, with per-tab persistent game state and high-score table",
+    "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><circle cx='12' cy='12' r='3'/><path d='M12 9V3M9 12H3M15 12h6'/></svg>",
+    "website": "https://kwirthmagnify.dev"
+  },
+  {
+    "extensionType": "plugin",
+    "id": "pacman",
+    "version": "0.1.1",
+    "name": "Pac-Man",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-pacman/-/kwirth-plugin-pacman-0.1.1.tgz",
+    "description": "Pac-Man channel plugin for Kwirth - the classic arcade game playable in a Kwirth tab, with per-tab persistent game state",
+    "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20.32 8.56A9 9 0 1 0 20.32 15.44L12 12Z' fill='currentColor' stroke='none'/></svg>",
+    "website": "https://kwirthmagnify.dev"
+  },
+  {
+    "extensionType": "plugin",
+    "id": "asteroids",
+    "version": "0.1.10",
+    "name": "Asteroids",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-asteroids/-/kwirth-plugin-asteroids-0.1.10.tgz",
+    "description": "Asteroids channel plugin for Kwirth - a vector asteroid shooter playable in a Kwirth tab, with per-tab persistent game state",
+    "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2c2.5 2.6 4 6.2 4 10.2L12 16l-4-3.8C8 8.2 9.5 4.6 12 2z'></path><circle cx='12' cy='9' r='1.6'></circle><path d='M8 12.2 5 15.5l2.6.8'></path><path d='M16 12.2l3 3.3-2.6.8'></path><path d='M10.4 17.6 12 21.5l1.6-3.9'></path></svg>",
+    "website": "https://kwirthmagnify.dev"
+  },
+  {
+    "extensionType": "docs",
+    "targetType": "plugin",
+    "id": "webamp",
+    "version": "0.1.1",
+    "name": "Webamp — Guide",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-docs-webamp/-/kwirth-docs-webamp-0.1.1.tgz",
+    "description": "User and administrator guide for the Webamp plugin",
+    "icon": "Description",
+    "website": "https://kwirthmagnify.dev"
+  },
+  {
+    "extensionType": "docs",
+    "targetType": "plugin",
+    "id": "pacman",
+    "version": "0.1.1",
+    "name": "Pac-Man — Guide",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-docs-pacman/-/kwirth-docs-pacman-0.1.1.tgz",
+    "description": "User and administrator guide for the Pac-Man plugin",
+    "icon": "Description",
+    "website": "https://kwirthmagnify.dev"
+  },
+  {
+    "extensionType": "docs",
+    "targetType": "plugin",
+    "id": "asteroids",
+    "version": "0.1.10",
+    "name": "Asteroids — Guide",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-docs-asteroids/-/kwirth-docs-asteroids-0.1.10.tgz",
+    "description": "User and administrator guide for the Asteroids plugin",
+    "icon": "Description",
+    "website": "https://kwirthmagnify.dev"
+  },
+  {
+    "extensionType": "login",
+    "id": "asteroids",
+    "version": "0.1.2",
+    "name": "Asteroids",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-login-asteroids/-/kwirth-login-asteroids-0.1.2.tgz",
+    "description": "Custom login page for the Asteroids channel",
+    "website": "https://kwirthmagnify.dev"
   }
 ]

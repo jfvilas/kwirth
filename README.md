@@ -10,9 +10,13 @@ observability and operations platform: plugins (channels) and any other kind of 
 
 ## Extensions
 
-| Extension | Type | Package | What it does |
-|---|---|---|---|
-| [Chapete](plugins/chapete) | plugin | `@jfvilas/kwirth-plugin-chapete` | A plain chat with an LLM, using the LLMs configured in Kwirth |
+| Extension | Type | Packages | What it does | Plan |
+|---|---|---|---|---|
+| [Chapete](plugins/chapete) | plugin | `@jfvilas/kwirth-plugin-chapete` | A plain chat with an LLM, using the LLMs configured in Kwirth | [closed](plugins/chapete/docs/plan/PLAN.md) |
+| [Webamp](plugins/webamp) | plugin + guide | `@jfvilas/kwirth-plugin-webamp`, `@jfvilas/kwirth-docs-webamp` | A Winamp 2 music player in a Kwirth tab, with drag-and-drop audio and skins | [closed](plugins/webamp/docs/plan/PLAN.md) |
+| [Rally-X](plugins/rallyx) | plugin | `@jfvilas/kwirth-plugin-rallyx` | The 1980s rally maze arcade game, with a cluster-wide high-score table | [closed](plugins/rallyx/docs/plan/PLAN.md) |
+| [Pac-Man](plugins/pacman) | plugin + guide | `@jfvilas/kwirth-plugin-pacman`, `@jfvilas/kwirth-docs-pacman` | The classic arcade game, with a cluster-wide high-score table (GPL v3) | [closed](plugins/pacman/docs/plan/PLAN.md) |
+| [Asteroids](plugins/asteroids) | plugin + guide + login | `@jfvilas/kwirth-plugin-asteroids`, `@jfvilas/kwirth-docs-asteroids`, `@jfvilas/kwirth-login-asteroids` | A vector asteroid shooter, with a cluster-wide high-score table and its own login page | [closed](plugins/asteroids/docs/plan/PLAN.md) |
 
 ## Installing them in Kwirth
 
