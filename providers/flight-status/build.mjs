@@ -1,0 +1,115 @@
+import esbuild from 'esbuild'
+import { execFileSync } from 'child_process'
+import fs from 'fs'
+import path from 'path'
+
+// Front bundle: react, MUI and kwirth-common are the host's instances, never bundled.
+const kwirthGlobalsPlugin = {
+    name: 'kwirth-globals',
+    setup(build) {
+        const globals = {
+            'react': 'window.__kwirth__.React',
+            '@mui/material': 'window.__kwirth__.MUI.material',
+            '@mui/icons-material': 'window.__kwirth__.MUI.icons',
+            '@kwirthmagnify/kwirth-common': 'window.__kwirth__.kwirthCommon',
+        }
+        for (const pkg of Object.keys(globals)) {
+            build.onResolve({ filter: new RegExp(`^${pkg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }, () => ({
+                path: pkg, namespace: 'kwirth-globals',
+            }))
+        }
+        build.onLoad({ filter: /.*/, namespace: 'kwirth-globals' }, (args) => ({
+            contents: `module.exports = ${globals[args.path]}`, loader: 'js',
+        }))
+    },
+}
+
+/*
+    express is mapped to the host's shared instance (back-global). The core loads the extension back from
+    a temp folder with no node_modules, so a real require('express') would not resolve and the back would
+    not start — and the desktop binary has no express to resolve either.
+    ⛔ express must NOT go in 'external': in esbuild 'external' wins over plugins and leaves the require unmapped.
+    ⛔ It must NOT be bundled either: the configRouter has to be a Router of the SAME express the core mounts it on.
+*/
+const kwirthBackGlobalsPlugin = {
+    name: 'kwirth-back-globals',
+    setup(build) {
+        build.onResolve({ filter: /^express$/ }, () => ({ path: 'express', namespace: 'kwirth-back-globals' }))
+        build.onLoad({ filter: /.*/, namespace: 'kwirth-back-globals' }, () => ({
+            contents: 'module.exports = global.__kwirth_back__.express;',
+            loader: 'js',
+        }))
+    },
+}
+
+// esbuild STRIPS types without ever checking them, so a build with no typecheck step happily
+// publishes broken TypeScript. tsc runs first and aborts the build; the watcher skips it on
+// purpose, so that saving stays instant while you work.
+const TSC = 'node_modules/typescript/lib/tsc.js'
+if (fs.existsSync(TSC)) {
+    try {
+        execFileSync(process.execPath, [TSC, '--noEmit'], { stdio: 'inherit' })
+        console.log('Typecheck passed')
+    }
+    catch {
+        console.error('Typecheck failed — build aborted')
+        process.exit(1)
+    }
+}
+else {
+    console.log('Skipping typecheck: typescript is not installed (run npm install)')
+}
+
+fs.mkdirSync('dist', { recursive: true })
+
+await esbuild.build({
+    entryPoints: ['src/back/index.ts'],
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    target: 'node20',
+    outfile: 'dist/back.js',
+    plugins: [kwirthBackGlobalsPlugin],
+    loader: { '.ts': 'ts' },
+    minify: false,
+})
+console.log('Built dist/back.js')
+
+await esbuild.build({
+    entryPoints: ['src/front/index.tsx'],
+    bundle: true,
+    format: 'iife',
+    outfile: 'dist/front.js',
+    plugins: [kwirthGlobalsPlugin],
+    loader: { '.tsx': 'tsx', '.ts': 'ts' },
+    jsx: 'transform',
+    jsxFactory: 'React.createElement',
+    jsxFragment: 'React.Fragment',
+    target: 'es2020',
+    minify: false,
+})
+console.log('Built dist/front.js')
+
+const meta = JSON.parse(fs.readFileSync('package.json', 'utf-8'))
+const distMeta = {
+    type: 'commonjs',
+    extensionType: 'provider',
+    id: meta.id,
+    name: meta.name,
+    displayName: meta.displayName,
+    version: meta.version,
+    description: meta.description,
+    ...(meta.website ? { website: meta.website } : {}),
+    ...(meta.repository ? { repository: meta.repository } : {}),
+    requiresRestart: meta.requiresRestart ?? false,
+    requiresExtension: meta.requiresExtension ?? [],
+}
+fs.writeFileSync(path.join('dist', 'package.json'), JSON.stringify(distMeta, null, 2))
+console.log('Wrote dist/package.json')
+
+// The tarball is published from dist, so the README has to be there to show up in the registry.
+fs.copyFileSync('README.md', path.join('dist', 'README.md'))
+console.log('Copied README.md')
+
+console.log("Done. Run 'npm publish --access=public' on your 'dist' folder to publish to npmjs.")
+console.log(`Then add it to the jfvilas marketplace manifest (manifest.json at the repository root): ${meta.name}@${meta.version}`)

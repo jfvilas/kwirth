@@ -1,0 +1,12 @@
+{
+  "name": "flight-status-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Isolated Playwright e2e for the Kwirth Flight Status provider. Not part of the provider build/deps.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}
