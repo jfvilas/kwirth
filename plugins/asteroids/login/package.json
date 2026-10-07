@@ -1,0 +1,25 @@
+{
+    "name": "@jfvilas/kwirth-login-asteroids",
+    "id": "asteroids",
+    "displayName": "Asteroids",
+    "version": "0.1.2",
+    "files": [
+        "login.json",
+        "background.png"
+    ],
+    "description": "Custom login page for the Asteroids channel",
+    "extensionType": "login",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jfvilas/kwirth.git",
+        "directory": "plugins/asteroids/login"
+    },
+    "scripts": {
+        "build": "node build.mjs",
+        "watch": "node watch.mjs",
+        "background": "node make-background.mjs"
+    },
+    "requiresRestart": false,
+    "requiresExtension": []
+}

@@ -1,0 +1,16 @@
+{
+    "startChannel": "asteroids",
+    "top": "22%",
+    "left": "41%",
+    "width": "15%",
+    "height": "",
+    "textColor": "#ffffff",
+    "userLabel": "User",
+    "passwordLabel": "Password",
+    "newPasswordLabel": "New password",
+    "repeatPasswordLabel": "Repeat new password",
+    "changePasswordMessage": "Your login has been successful, you can now change your password.",
+    "changePasswordButton": "Change password",
+    "okButton": "Insert coin",
+    "idpButton": "Log in with..."
+}

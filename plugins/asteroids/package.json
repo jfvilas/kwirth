@@ -1,0 +1,40 @@
+{
+  "id": "asteroids",
+  "displayName": "Asteroids",
+  "publisher": "@jfvilas",
+  "version": "0.1.10",
+  "description": "Asteroids channel plugin for Kwirth - a vector asteroid shooter playable in a Kwirth tab, with per-tab persistent game state",
+  "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2c2.5 2.6 4 6.2 4 10.2L12 16l-4-3.8C8 8.2 9.5 4.6 12 2z'></path><circle cx='12' cy='9' r='1.6'></circle><path d='M8 12.2 5 15.5l2.6.8'></path><path d='M16 12.2l3 3.3-2.6.8'></path><path d='M10.4 17.6 12 21.5l1.6-3.9'></path></svg>",
+  "license": "MIT",
+  "website": "https://kwirthmagnify.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jfvilas/kwirth.git",
+    "directory": "plugins/asteroids"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "postbuild": "node build-docs-tgz.mjs",
+    "watch": "node watch.mjs",
+    "docs": "node build-docs-tgz.mjs",
+    "test": "node tests/run.mjs"
+  },
+  "dependencies": {
+    "@kwirthmagnify/kwirth-common": "^0.5.65",
+    "@kwirthmagnify/kwirth-common-back": "^0.6.0",
+    "@kwirthmagnify/kwirth-common-front": "^0.5.65"
+  },
+  "devDependencies": {
+    "@mui/material": "7.1.2",
+    "@types/node": "^20.12.13",
+    "@types/react": "^18.3.0",
+    "esbuild": "^0.27.2",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "tar": "^7.5.22",
+    "typescript": "^5.4.0"
+  },
+  "requiresRestart": false,
+  "requiresExtension": []
+}
