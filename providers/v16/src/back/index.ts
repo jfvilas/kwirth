@@ -80,6 +80,7 @@ export class V16Provider implements IProvider {
     */
     private log: IExtensionLogger = {
         info: (message: unknown) => console.log(`[${PROVIDER_ID}] ${message}`),
+        trace: (message: unknown) => console.log(`[${PROVIDER_ID}] ${message}`),
         warning: (message: unknown) => console.warn(`[${PROVIDER_ID}] ${message}`),
         error: (message: unknown) => console.error(`[${PROVIDER_ID}] ${message}`)
     }

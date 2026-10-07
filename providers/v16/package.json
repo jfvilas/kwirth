@@ -2,7 +2,7 @@
     "id": "v16",
     "name": "@jfvilas/kwirth-provider-v16",
     "publisher": "@jfvilas",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "displayName": "V16 Provider",
     "repository": {
         "type": "git",
@@ -18,7 +18,7 @@
         "test": "node tests/run.mjs"
     },
     "dependencies": {
-        "@kwirthmagnify/kwirth-common-back": "^0.5.54",
+        "@kwirthmagnify/kwirth-common-back": "^0.6.1",
         "fast-xml-parser": "^5.2.5"
     },
     "devDependencies": {

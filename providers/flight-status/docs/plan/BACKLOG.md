@@ -1,11 +1,17 @@
 # Backlog — provider Flight Status
 
-**Estado: vivo.** `0.1.2` publicado como **OSS** (2026-10-07, `@jfvilas`, github.com/jfvilas/kwirth); lo que queda
+**Estado: vivo.** `0.1.3` publicado como **OSS** (2026-10-07, `@jfvilas`, github.com/jfvilas/kwirth); lo que queda
 abierto está abajo. Hasta la `0.1.1` fue de pago (`@iriaoperae`, Nexus).
 
 Pendientes vivos. Lo cerrado se queda, con su versión, porque explica por qué está como está.
 
 ## Cerrado
+
+### 0.1.3 — `common-back` 0.6.1 (2026-10-07)
+
+`common-back` 0.6.1 hace obligatorio `trace` en `IExtensionLogger`: el logger provisional (el que se usa hasta
+que el core pone el suyo) lo gana. Es el barrido que otra sesión aplicó a todos los providers, que cayó en la
+copia vieja del repo privado justo cuando este provider se mudaba, y se portó aquí.
 
 ### 0.1.2 — paso a OSS (2026-10-07)
 

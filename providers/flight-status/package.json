@@ -2,7 +2,7 @@
     "id": "flight-status",
     "name": "@jfvilas/kwirth-provider-flight-status",
     "publisher": "@jfvilas",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "displayName": "Flight Status Provider",
     "repository": {
         "type": "git",
@@ -18,7 +18,7 @@
         "test": "node tests/run.mjs"
     },
     "dependencies": {
-        "@kwirthmagnify/kwirth-common-back": "^0.5.54"
+        "@kwirthmagnify/kwirth-common-back": "^0.6.1"
     },
     "devDependencies": {
         "@mui/icons-material": "^7.1.2",

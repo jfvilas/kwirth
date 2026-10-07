@@ -94,11 +94,31 @@
   {
     "extensionType": "provider",
     "id": "v16",
+    "version": "0.1.2",
+    "name": "V16 Provider",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-provider-v16/-/kwirth-provider-v16-0.1.2.tgz",
+    "description": "V16 beacon provider for Kwirth — polls the DGT DATEX2 traffic feed and dispatches only what changed (new, updated and cleared situations), with V16 emergency beacons flagged",
+    "icon": "Warning",
+    "website": "https://kwirthmagnify.dev"
+  },
+  {
+    "extensionType": "provider",
+    "id": "v16",
     "version": "0.1.1",
     "name": "V16 Provider",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-provider-v16/-/kwirth-provider-v16-0.1.1.tgz",
     "description": "V16 beacon provider for Kwirth — polls the DGT DATEX2 traffic feed and dispatches only what changed (new, updated and cleared situations), with V16 emergency beacons flagged",
     "icon": "Warning",
+    "website": "https://kwirthmagnify.dev"
+  },
+  {
+    "extensionType": "provider",
+    "id": "flight-status",
+    "version": "0.1.3",
+    "name": "Flight Status Provider",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-provider-flight-status/-/kwirth-provider-flight-status-0.1.3.tgz",
+    "description": "Flight status provider for Kwirth — live ADS-B positions from OpenSky, enriched on demand with AviationStack and FlightAware AeroAPI under in-memory quota control",
+    "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z\"/></svg>",
     "website": "https://kwirthmagnify.dev"
   },
   {
