@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<d2:payload xsi:type="sit:SituationPublication" lang="es" modelBaseVersion="3" profileName="DGT (Spain) Profile RTTI SituationPublication" profileVersion="3.7_1.0" xsi:schemaLocation="http://levelC/schema/3/d2Payload https://nap.dgt.es/datex2/v3/dgt/SituationPublication/xsd/3.7_1.0/LevelC_3_D2Payload.xsd" xmlns:com="http://levelC/schema/3/common" xmlns:loc="http://levelC/schema/3/locationReferencing" xmlns:cse="http://levelC/schema/3/commonSpanishExtension" xmlns:sse="http://levelC/schema/3/situationSpanishExtension" xmlns:d2="http://levelC/schema/3/d2Payload" xmlns:sit="http://levelC/schema/3/situation" xmlns:ns3="http://levelC/schema/3/locationExtension" xmlns:lse="http://levelC/schema/3/locationReferencingSpanishExtension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <com:feedDescription>
+        <com:values>
+            <com:value>Publicación de incidencias de trafico activas en las carreteras Españolas.</com:value>
+        </com:values>
+    </com:feedDescription>
+    <com:publicationTime>2026-09-26T08:55:04.476+02:00</com:publicationTime>
+    <com:publicationCreator>
+        <com:country>es</com:country>
+        <com:nationalIdentifier>DGT</com:nationalIdentifier>
+    </com:publicationCreator>
+        <sit:situation id="2816645">
+        <sit:headerInformation>
+            <com:informationStatus>real</com:informationStatus>
+        </sit:headerInformation>
+        <sit:situationRecord xsi:type="sit:RoadOrCarriagewayOrLaneManagement" id="18811074" version="2">
+            <sit:situationRecordCreationTime>2025-12-12T08:11:34.000+01:00</sit:situationRecordCreationTime>
+            <sit:situationRecordVersionTime>2025-12-12T08:11:34.000+01:00</sit:situationRecordVersionTime>
+            <sit:probabilityOfOccurrence>certain</sit:probabilityOfOccurrence>
+            <sit:source>
+                <com:sourceIdentification>DGT</com:sourceIdentification>
+            </sit:source>
+            <sit:validity>
+                <com:validityStatus>active</com:validityStatus>
+                <com:validityTimeSpecification>
+                    <com:overallStartTime>2025-12-12T08:05:19.000+01:00</com:overallStartTime>
+                </com:validityTimeSpecification>
+            </sit:validity>
+            <sit:cause>
+                <sit:causeType>roadMaintenance</sit:causeType>
+                <sit:detailedCauseType>
+                    <sit:roadMaintenanceType>roadworks</sit:roadMaintenanceType>
+                </sit:detailedCauseType>
+            </sit:cause>
+            <sit:locationReference xsi:type="loc:SingleRoadLinearLocation">
+                <loc:supplementaryPositionalDescription>
+                    <loc:carriageway>
+                        <loc:carriageway>unspecifiedCarriageway</loc:carriageway>
+                        <loc:lane>
+                            <loc:laneUsage>allLanesCompleteCarriageway</loc:laneUsage>
+                        </loc:lane>
+                    </loc:carriageway>
+                    <loc:roadInformation>
+                        <loc:roadName>N-400</loc:roadName>
+                    </loc:roadInformation>
+                </loc:supplementaryPositionalDescription>
+                <loc:tpegLinearLocation>
+                    <loc:tpegDirection>unknown</loc:tpegDirection>
+                    <loc:tpegLinearLocationType>segment</loc:tpegLinearLocationType>
+                    <loc:to xsi:type="loc:TpegNonJunctionPoint">
+                        <loc:pointCoordinates>
+                            <loc:latitude>39.994446</loc:latitude>
+                            <loc:longitude>-3.6054852</loc:longitude>
+                        </loc:pointCoordinates>
+                        <loc:_tpegNonJunctionPointExtension>
+                            <loc:extendedTpegNonJunctionPoint>
+                                <lse:autonomousCommunity>Castilla - La Mancha</lse:autonomousCommunity>
+                                <lse:kilometerPoint>37.3</lse:kilometerPoint>
+                                <lse:municipality>Ontígola</lse:municipality>
+                                <lse:province>Toledo</lse:province>
+                            </loc:extendedTpegNonJunctionPoint>
+                        </loc:_tpegNonJunctionPointExtension>
+                    </loc:to>
+                    <loc:from xsi:type="loc:TpegNonJunctionPoint">
+                        <loc:pointCoordinates>
+                            <loc:latitude>39.993732</loc:latitude>
+                            <loc:longitude>-3.6074991</loc:longitude>
+                        </loc:pointCoordinates>
+                        <loc:_tpegNonJunctionPointExtension>
+                            <loc:extendedTpegNonJunctionPoint>
+                                <lse:autonomousCommunity>Castilla - La Mancha</lse:autonomousCommunity>
+                                <lse:kilometerPoint>37.1</lse:kilometerPoint>
+                                <lse:municipality>Ontígola</lse:municipality>
+                                <lse:province>Toledo</lse:province>
+                            </loc:extendedTpegNonJunctionPoint>
+                        </loc:_tpegNonJunctionPointExtension>
+                    </loc:from>
+                    <loc:_tpegLinearLocationExtension>
+                        <loc:extendedTpegLinearLocation>
+                            <lse:tpegDirectionRoad>both</lse:tpegDirectionRoad>
+                        </loc:extendedTpegLinearLocation>
+                    </loc:_tpegLinearLocationExtension>
+                </loc:tpegLinearLocation>
+            </sit:locationReference>
+            <sit:complianceOption>mandatory</sit:complianceOption>
+            <sit:forVehiclesWithCharacteristicsOf>
+                <com:vehicleType>anyVehicle</com:vehicleType>
+            </sit:forVehiclesWithCharacteristicsOf>
+            <sit:roadOrCarriagewayOrLaneManagementType>narrowLanes</sit:roadOrCarriagewayOrLaneManagementType>
+        </sit:situationRecord>
+    </sit:situation>
+    <sit:situation id="24048680">
+        <sit:headerInformation>
+            <com:informationStatus>real</com:informationStatus>
+        </sit:headerInformation>
+        <sit:situationRecord xsi:type="sit:GenericSituationRecord" id="28359593" version="1">
+            <sit:situationRecordCreationReference>V16_8FqVfoM8bnqm-1790402082286_1</sit:situationRecordCreationReference>
+            <sit:situationRecordCreationTime>2026-09-26T07:56:22.000+02:00</sit:situationRecordCreationTime>
+            <sit:situationRecordVersionTime>2026-09-26T07:56:22.000+02:00</sit:situationRecordVersionTime>
+            <sit:probabilityOfOccurrence>certain</sit:probabilityOfOccurrence>
+            <sit:source>
+                <com:sourceIdentification>DGT3.0</com:sourceIdentification>
+            </sit:source>
+            <sit:validity>
+                <com:validityStatus>active</com:validityStatus>
+                <com:validityTimeSpecification>
+                    <com:overallStartTime>2026-09-26T07:56:22.000+02:00</com:overallStartTime>
+                </com:validityTimeSpecification>
+            </sit:validity>
+            <sit:cause>
+                <sit:causeType>vehicleObstruction</sit:causeType>
+                <sit:detailedCauseType>
+                    <sit:vehicleObstructionType>vehicleStuck</sit:vehicleObstructionType>
+                </sit:detailedCauseType>
+            </sit:cause>
+            <sit:locationReference xsi:type="loc:PointLocation">
+                <loc:supplementaryPositionalDescription>
+                    <loc:roadInformation>
+                        <loc:roadName>A-4</loc:roadName>
+                    </loc:roadInformation>
+                </loc:supplementaryPositionalDescription>
+                <loc:tpegPointLocation xsi:type="loc:TpegSimplePoint">
+                    <loc:tpegDirection>northEastBound</loc:tpegDirection>
+                    <loc:tpegSimplePointLocationType>nonLinkedPoint</loc:tpegSimplePointLocationType>
+                    <loc:point xsi:type="loc:TpegNonJunctionPoint">
+                        <loc:pointCoordinates>
+                            <loc:latitude>37.85428</loc:latitude>
+                            <loc:longitude>-4.779133</loc:longitude>
+                        </loc:pointCoordinates>
+                        <loc:_tpegNonJunctionPointExtension>
+                            <loc:extendedTpegNonJunctionPoint>
+                                <lse:autonomousCommunity>Andalucía</lse:autonomousCommunity>
+                                <lse:kilometerPoint>404.821</lse:kilometerPoint>
+                                <lse:municipality>Córdoba</lse:municipality>
+                                <lse:province>Córdoba</lse:province>
+                            </loc:extendedTpegNonJunctionPoint>
+                        </loc:_tpegNonJunctionPointExtension>
+                    </loc:point>
+                    <loc:_tpegSimplePointExtension>
+                        <loc:extendedTpegSimplePoint>
+                            <lse:tpegDirectionRoad>negative</lse:tpegDirectionRoad>
+                        </loc:extendedTpegSimplePoint>
+                    </loc:_tpegSimplePointExtension>
+                </loc:tpegPointLocation>
+            </sit:locationReference>
+            <sit:genericSituationRecordName>incident</sit:genericSituationRecordName>
+        </sit:situationRecord>
+    </sit:situation>
+</d2:payload>
