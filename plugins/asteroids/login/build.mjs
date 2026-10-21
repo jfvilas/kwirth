@@ -64,7 +64,7 @@ if (existsSync(bgSrc)) {
     would produce for @scope/login-<id>. It used to be 'kwirth-login-<id>.tgz': the house was assumed —
     this login is @jfvilas, not kwirth — and there was no version at all. */
 const scope = (pkg.publisher ?? pkg.name.split('/')[0]).replace(/^@/, '')
-const tgzName = `${scope}-login-${id}-${pkg.version}.tgz`
+const tgzName = `${scope}-kwirth-login-${id}-${pkg.version}.tgz`
 const tgzPath = join(distDir, tgzName)
 const tmpName = `${id}.${process.pid}.tmp.tgz`
 const tmpPath = join(distDir, tmpName)
