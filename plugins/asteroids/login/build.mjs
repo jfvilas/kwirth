@@ -1,10 +1,10 @@
 /**
  * Build of the login extension: packages package.json + login.json + background.png into
- * dist/kwirth-login-<id>.tgz.
+ * dist/<scope>-login-<id>-<version>.tgz.
  *
  * It combines two precautions: a size cap on the background and atomic packaging.
  */
-import { mkdirSync, existsSync, copyFileSync, statSync, rmSync, renameSync } from 'fs'
+import { mkdirSync, existsSync, copyFileSync, statSync, rmSync, renameSync, readdirSync } from 'fs'
 import { readFile } from 'fs/promises'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -60,8 +60,11 @@ if (existsSync(bgSrc)) {
     The rename is retried because the back may have the .tgz open (a dev login re-extracts the PNG
     from the archive on every background request) and returns EPERM/EBUSY.
 */
-// Named after the package, like every other extension type: 'kwirth-<type>-<id>'.
-const tgzName = `kwirth-login-${id}.tgz`
+/*  Named like every other extension type: '<scope>-<type>-<id>-<version>', which is what `npm pack`
+    would produce for @scope/login-<id>. It used to be 'kwirth-login-<id>.tgz': the house was assumed —
+    this login is @jfvilas, not kwirth — and there was no version at all. */
+const scope = (pkg.publisher ?? pkg.name.split('/')[0]).replace(/^@/, '')
+const tgzName = `${scope}-login-${id}-${pkg.version}.tgz`
 const tgzPath = join(distDir, tgzName)
 const tmpName = `${id}.${process.pid}.tmp.tgz`
 const tmpPath = join(distDir, tmpName)
@@ -78,6 +81,16 @@ for (let attempt = 0; attempt < 10 && !renamed; attempt++) {
         if (attempt === 9) { rmSync(tmpPath, { force: true }); throw err }
         sleepSync(200)
     }
+}
+
+/*  Previous tarballs out, once the new one is safely in place: with the version in the name each build
+    would leave a new one beside the old, and whoever grabs "the tgz in dist" could walk off with a
+    previous version unnoticed.
+
+    🔴 It deliberately skips '<id>.<pid>.tmp.tgz': that belongs to ANOTHER build running at the same
+    time (the watch), and deleting it would break the very atomic packaging explained above. */
+for (const f of readdirSync(distDir)) {
+    if (f.endsWith('.tgz') && !f.endsWith('.tmp.tgz') && f !== tgzName) rmSync(join(distDir, f), { force: true })
 }
 
 console.log(`Built dist/${tgzName}`)
