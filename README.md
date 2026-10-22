@@ -17,6 +17,8 @@ observability and operations platform: plugins (channels) and any other kind of 
 | [Rally-X](plugins/rallyx) | plugin | `@jfvilas/kwirth-plugin-rallyx` | The 1980s rally maze arcade game, with a cluster-wide high-score table | [closed](plugins/rallyx/docs/plan/PLAN.md) |
 | [Pac-Man](plugins/pacman) | plugin + guide | `@jfvilas/kwirth-plugin-pacman`, `@jfvilas/kwirth-docs-pacman` | The classic arcade game, with a cluster-wide high-score table (GPL v3) | [closed](plugins/pacman/docs/plan/PLAN.md) |
 | [Asteroids](plugins/asteroids) | plugin + guide + login | `@jfvilas/kwirth-plugin-asteroids`, `@jfvilas/kwirth-docs-asteroids`, `@jfvilas/kwirth-login-asteroids` | A vector asteroid shooter, with a cluster-wide high-score table and its own login page | [closed](plugins/asteroids/docs/plan/PLAN.md) |
+| [V16 Map](plugins/v16map) | plugin | `@jfvilas/kwirth-plugin-v16map` | DGT traffic incidents on a map, with V16 beacons highlighted, fed by the V16 provider | [open](plugins/v16map/docs/plan/PLAN.md) |
+| [Flight Map](plugins/flightmap) | plugin | `@jfvilas/kwirth-plugin-flightmap` | Live aircraft over an area on a map, with route and delays for the flights you follow, fed by the Flight Status provider | [open](plugins/flightmap/docs/plan/PLAN.md) |
 | [V16](providers/v16) | provider | `@jfvilas/kwirth-provider-v16` | Spanish DGT traffic incidents (DATEX2), dispatched by differences, with V16 emergency beacons flagged | [live](providers/v16/docs/plan/BACKLOG.md) |
 | [Flight Status](providers/flight-status) | provider | `@jfvilas/kwirth-provider-flight-status` | Live ADS-B aircraft positions from OpenSky, enriched with AviationStack and FlightAware AeroAPI under quota | [live](providers/flight-status/docs/plan/BACKLOG.md) |
 

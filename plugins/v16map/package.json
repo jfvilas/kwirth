@@ -1,0 +1,41 @@
+{
+    "id": "v16map",
+    "name": "V16 Map",
+    "displayName": "V16 Map",
+    "extensionType": "plugin",
+    "publisher": "@jfvilas",
+    "version": "0.1.2",
+    "description": "Spanish DGT traffic incidents on a map, with V16 emergency beacons highlighted, fed by the v16 provider",
+    "icon": "<svg viewBox='0 0 24 24' fill='currentColor'><path d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/></svg>",
+    "website": "https://kwirthmagnify.dev",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jfvilas/kwirth.git",
+        "directory": "plugins/v16map"
+    },
+    "requiresRestart": false,
+    "requiresExtension": [],
+    "type": "module",
+    "scripts": {
+        "build": "node build.mjs",
+        "watch": "node watch.mjs",
+        "test": "node tests/run.mjs"
+    },
+    "dependencies": {
+        "@kwirthmagnify/kwirth-common": "^0.5.65",
+        "@kwirthmagnify/kwirth-common-back": "^0.6.0",
+        "@kwirthmagnify/kwirth-common-front": "^0.5.65"
+    },
+    "devDependencies": {
+        "@mui/icons-material": "7.1.2",
+        "@mui/material": "7.1.2",
+        "@types/express": "^4.17.21",
+        "@types/node": "^20.12.13",
+        "@types/react": "^18.3.0",
+        "esbuild": "^0.27.2",
+        "fast-xml-parser": "^5.2.5",
+        "react": "^18.3.0",
+        "react-dom": "^18.3.0",
+        "typescript": "^5.4.0"
+    }
+}
