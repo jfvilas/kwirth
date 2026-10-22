@@ -4,7 +4,7 @@
     "displayName": "Pac-Man",
     "extensionType": "plugin",
     "publisher": "@jfvilas",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "Pac-Man channel plugin for Kwirth - the classic arcade game playable in a Kwirth tab, with per-tab persistent game state",
     "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20.32 8.56A9 9 0 1 0 20.32 15.44L12 12Z' fill='currentColor' stroke='none'/></svg>",
     "license": "GPL-3.0-only",
@@ -25,9 +25,9 @@
         "test": "node tests/run.mjs"
     },
     "dependencies": {
-        "@kwirthmagnify/kwirth-common": "^0.5.65",
-        "@kwirthmagnify/kwirth-common-back": "^0.6.0",
-        "@kwirthmagnify/kwirth-common-front": "^0.5.65"
+        "@kwirthmagnify/kwirth-common": "^0.5.76",
+        "@kwirthmagnify/kwirth-common-back": "^0.6.10",
+        "@kwirthmagnify/kwirth-common-front": "^0.5.67"
     },
     "devDependencies": {
         "@mui/icons-material": "7.1.2",

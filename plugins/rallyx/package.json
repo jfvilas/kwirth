@@ -2,7 +2,7 @@
   "id": "rallyx",
   "displayName": "Rally-X",
   "publisher": "@jfvilas",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Rally-X arcade game channel plugin for Kwirth - a classic 1980s rally maze game playable in a Kwirth tab, with per-tab persistent game state and high-score table",
   "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><circle cx='12' cy='12' r='3'/><path d='M12 9V3M9 12H3M15 12h6'/></svg>",
   "website": "https://kwirthmagnify.dev",
@@ -18,9 +18,9 @@
     "test": "node tests/run.mjs"
   },
   "dependencies": {
-    "@kwirthmagnify/kwirth-common": "^0.5.65",
-    "@kwirthmagnify/kwirth-common-back": "^0.6.0",
-    "@kwirthmagnify/kwirth-common-front": "^0.5.65"
+    "@kwirthmagnify/kwirth-common": "^0.5.76",
+    "@kwirthmagnify/kwirth-common-back": "^0.6.10",
+    "@kwirthmagnify/kwirth-common-front": "^0.5.67"
   },
   "devDependencies": {
     "@mui/icons-material": "7.1.2",
