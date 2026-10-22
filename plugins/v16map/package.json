@@ -4,7 +4,7 @@
     "displayName": "V16 Map",
     "extensionType": "plugin",
     "publisher": "@jfvilas",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Spanish DGT traffic incidents on a map, with V16 emergency beacons highlighted, fed by the v16 provider",
     "icon": "<svg viewBox='0 0 24 24' fill='currentColor'><path d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/></svg>",
     "website": "https://kwirthmagnify.dev",
@@ -22,9 +22,9 @@
         "test": "node tests/run.mjs"
     },
     "dependencies": {
-        "@kwirthmagnify/kwirth-common": "^0.5.65",
-        "@kwirthmagnify/kwirth-common-back": "^0.6.0",
-        "@kwirthmagnify/kwirth-common-front": "^0.5.65"
+        "@kwirthmagnify/kwirth-common": "^0.5.76",
+        "@kwirthmagnify/kwirth-common-back": "^0.6.10",
+        "@kwirthmagnify/kwirth-common-front": "^0.5.67"
     },
     "devDependencies": {
         "@mui/icons-material": "7.1.2",

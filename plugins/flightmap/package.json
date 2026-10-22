@@ -4,7 +4,7 @@
     "displayName": "Flight Map",
     "extensionType": "plugin",
     "publisher": "@jfvilas",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Live aircraft over an area on a map, with details for the flights you follow, fed by the flight-status provider",
     "icon": "<svg viewBox='0 0 24 24' fill='currentColor'><path d='M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z'/></svg>",
     "website": "https://kwirthmagnify.dev",
@@ -22,9 +22,9 @@
         "test": "node tests/run.mjs"
     },
     "dependencies": {
-        "@kwirthmagnify/kwirth-common": "^0.5.65",
-        "@kwirthmagnify/kwirth-common-back": "^0.6.0",
-        "@kwirthmagnify/kwirth-common-front": "^0.5.65"
+        "@kwirthmagnify/kwirth-common": "^0.5.76",
+        "@kwirthmagnify/kwirth-common-back": "^0.6.10",
+        "@kwirthmagnify/kwirth-common-front": "^0.5.67"
     },
     "devDependencies": {
         "@mui/icons-material": "7.1.2",
