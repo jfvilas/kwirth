@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField, Typography } from '@mui/material'
 import { ISetupProps } from '@kwirthmagnify/kwirth-common-front'
-import { Forum } from '@kwirthmagnify/kwirth-common-front/icons'
 import { ILlm } from '@kwirthmagnify/kwirth-common-ai'
 import { LlmSelector } from '@kwirthmagnify/kwirth-common-ai/front'
 import { ChapeteConfig, ChapeteInstanceConfig } from './ChapeteConfig'
 import { IChapeteInstanceConfig } from '../common/ChapeteTypes'
+import { ChapeteThought } from './icons'
 
-export const ChapeteIcon = <Forum />
+export const ChapeteIcon = <ChapeteThought />
 
 /**
  * The LLM and the temperature are chosen here and stay fixed for the session (PRD, RF1 and RF9): changing

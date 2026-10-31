@@ -27,22 +27,41 @@ export async function login(page: Page, user = USER, pass = PASS): Promise<void>
     if (await userField.isVisible().catch(() => false)) {
         await userField.fill(user)
         await page.getByLabel('Password').fill(pass)
-        await page.getByRole('button', { name: 'OK' }).click()
+        // logging in navigates, and the dev server can take longer than actionTimeout to serve it
+        await page.getByRole('button', { name: 'OK' }).click({ timeout: 60000 })
     }
     await expect(combo).toBeVisible({ timeout: 60000 })
 }
 
+/**
+ * Opens a combo and picks an option, retrying the whole thing until it sticks. Right after login (and
+ * more so after the core restarts) the combos open before their options have loaded, and the cluster
+ * list repaints its status dots continuously, so a single click is not reliable.
+ */
+const pickCombo = async (page: Page, combo: () => Locator, option: Locator, check: () => Promise<void>): Promise<void> => {
+    await expect(async () => {
+        await page.keyboard.press('Escape')
+        await combo().click({ timeout: 5000 })
+        await option.click({ force: true, timeout: 5000 })
+        await check()
+    }).toPass({ timeout: 60000 })
+}
+
 /** Cluster → View=cluster → leaves the channel combo open and returns the chapete option. */
 export async function openChannelPicker(page: Page): Promise<Locator> {
-    await page.getByRole('combobox').first().click()
-    await page.getByRole('option', { name: CLUSTER }).click()
-    await page.waitForTimeout(800)
-    await page.getByRole('combobox').nth(1).click()
-    await page.getByRole('option', { name: 'cluster', exact: true }).click()
-    await page.waitForTimeout(800)
     const combos = page.getByRole('combobox')
-    await combos.nth(await combos.count() - 1).click()
-    return page.getByRole('option', { name: CHANNEL, exact: true })
+    await pickCombo(page, () => combos.first(), page.getByRole('option', { name: CLUSTER }),
+        async () => expect(combos.first()).toContainText(CLUSTER, { timeout: 2000 }))
+    await pickCombo(page, () => combos.nth(1), page.getByRole('option', { name: 'cluster', exact: true }),
+        async () => expect(combos.nth(1)).toHaveText('cluster', { timeout: 2000 }))
+
+    const channel = page.getByRole('option', { name: CHANNEL, exact: true })
+    await expect(async () => {
+        await page.keyboard.press('Escape')
+        await combos.nth(await combos.count() - 1).click({ timeout: 5000 })
+        await expect(channel).toBeVisible({ timeout: 5000 })
+    }).toPass({ timeout: 60000 })
+    return channel
 }
 
 /** Opens the active tab's menu (the gear icon of the tab, not the one inside the chat). */

@@ -70,6 +70,15 @@ const ask = async (text: string): Promise<void> => {
     await expect(page.getByText('Thinking...')).toBeHidden({ timeout: 30000 })
 }
 
+// The start of the cloud of the plugin's own icon, a comic thought balloon (src/front/icons.tsx)
+const THOUGHT_BALLOON_PATH = 'M6 14A3 3 0 0 1 5.2 8.2'
+
+test('the tab carries the plugin icon: a thought balloon, cloud and two bubbles', async () => {
+    const icon = page.locator(`svg:has(path[d^="${THOUGHT_BALLOON_PATH}"])`).first()
+    await expect(icon).toBeVisible()
+    await expect(icon.locator('circle')).toHaveCount(2)
+})
+
 test('without LLMs, the setup says where to configure them and does not let start', async () => {
     await page.route('**/core/aiconfig/llms', route => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
     try {
