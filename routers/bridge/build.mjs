@@ -59,4 +59,6 @@ if (fs.existsSync(TSC)) execFileSync(process.execPath, [TSC, '--noEmit'], { stdi
 
 await esbuild.build(backOptions)
 writeDistMeta()
+// the package carries its README (npmjs shows it, and whoever installs the tgz has it)
+fs.copyFileSync('README.md', path.join('dist', 'README.md'))
 console.log("Done. 'npm pack' in dist/ gives the package to install in the Routers manager.")
