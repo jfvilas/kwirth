@@ -1,13 +1,20 @@
 # Bridge — PLAN
 
-> Cuelga de [PRD.md](PRD.md). Estado (2026‑11‑15): streams validados; **B1–B4 hechos, B5 unitarios en verde (10)**;
-> **QA k3d ↔ AKS (core 0.6.119) pasos 1–8 OK**: enlace k3d→AKS, AKS ve k3d por el enlace que abrió k3d, y k3d ve
-> AKS por el bridge. Pendientes: el paso 9 (borrar la key `bridge$peer` corta el enlace; el usuario mantiene las
-> keys por ahora), la limpieza, y B6 (publicar).
->
-> **Abierto (seguridad):** el core destino ve la petición llegar por **loopback**. Si su filtro de IP del login
-> admite loopback, una sesión que viene por el bridge lo pasa. Decidir antes de publicar: que el bridge marque
-> esas peticiones y el core las trate como externas, o documentarlo.
+> Cuelga de [PRD.md](PRD.md). Estado: **CERRADO** (2026‑11‑15), publicado `@jfvilas/kwirth-router-bridge@0.1.0`.
+> B1–B6 hechos; unitarios 10/10; **QA k3d ↔ AKS (core 0.6.119) pasos 1–10 OK**: enlace k3d→AKS, AKS ve k3d por el
+> enlace que abrió k3d, k3d ve AKS por el bridge, borrar la key `bridge$peer` corta el enlace.
+
+## Backlog
+
+- **Filtro de IP del login y loopback** (detectado al cerrar). El filtro solo actúa en `POST /login`; las rutas
+  se usan con access keys, que no pasan por él. Pero un `/login` hecho a mano a través del bridge llega al core
+  destino por loopback y pasa donde loopback está permitido (Magnify desktop siempre; o loopback en la lista o en
+  los proxies de confianza). Documentado en el README. Dos arreglos posibles:
+  - **A (bridge):** el destino no entrega `/login` (403) y no reenvía `X-Forwarded-For`/`X-Real-IP`/`Forwarded`.
+  - **B (core, genérico):** el core da a cada router una marca para lo que entrega por loopback, y trata ese
+    tráfico como externo. Va en el backlog del core (`plans/router-extension`).
+- **Respuestas HTTP en streaming** (v1 las manda enteras).
+- **Varios hermanos** (hoy uno): si alguna vez se quiere, sin hub (eso es Ianus).
 > Contrato del core: `IRouter` (`@kwirthmagnify/kwirth-common-back` ≥ 0.6.16), core con el tipo `router`
 > (`kwirthmagnify/kwirth`, `plans/router-extension`).
 
