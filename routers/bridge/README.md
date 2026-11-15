@@ -45,6 +45,11 @@ is written.
 - It comes back on its own: retries every *Reconnect every* seconds, and checks the link every 30 s.
 - Deleting the `bridge$peer` key in B cuts the link at once (the core does it), and A says so in its log.
 - **Security:** whoever holds a `bridge$peer` key of B can *be* B's sibling. Protect it like any other key.
+- **Login IP filter:** what the bridge delivers reaches the sibling's core **over loopback**. Sessions through a
+  route use access keys, which the login IP filter never checks — but a hand-made `/login` through the bridge
+  would be seen as coming from loopback. It passes the filter only where loopback is allowed: a **Magnify
+  desktop** (always), or a Kwirth whose admin put loopback in the allow list or in the trusted proxies. Do not
+  do the latter on a Kwirth that has bridge installed.
 - Both directions share one socket: a very noisy live channel can slow the rest down.
 
 ## Log
