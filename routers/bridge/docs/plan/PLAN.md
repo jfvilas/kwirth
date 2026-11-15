@@ -1,6 +1,11 @@
 # Bridge — PLAN
 
-> Cuelga de [PRD.md](PRD.md). Estado: **streams para validar** (2026‑11‑15).
+> Cuelga de [PRD.md](PRD.md). Estado (2026‑11‑15): streams validados; **B1–B4 hechos, B5 unitarios en verde (10)**;
+> pendientes el QA con dos Kwirths y B6 (publicar).
+>
+> **Abierto (seguridad):** el core destino ve la petición llegar por **loopback**. Si su filtro de IP del login
+> admite loopback, una sesión que viene por el bridge lo pasa. Decidir antes de publicar: que el bridge marque
+> esas peticiones y el core las trate como externas, o documentarlo.
 > Contrato del core: `IRouter` (`@kwirthmagnify/kwirth-common-back` ≥ 0.6.16), core con el tipo `router`
 > (`kwirthmagnify/kwirth`, `plans/router-extension`).
 
