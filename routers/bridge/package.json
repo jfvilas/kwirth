@@ -1,0 +1,30 @@
+{
+    "id": "bridge",
+    "name": "@jfvilas/kwirth-router-bridge",
+    "displayName": "Bridge",
+    "extensionType": "router",
+    "publisher": "@jfvilas",
+    "version": "0.1.0",
+    "description": "Two Kwirths that reach each other through one outbound link, each seeing the other in its cluster list",
+    "website": "https://github.com/jfvilas/kwirth/tree/master/routers/bridge",
+    "requiresRestart": false,
+    "requiresExtension": [],
+    "scripts": {
+        "build": "node build.mjs",
+        "watch": "node watch.mjs",
+        "test": "node tests/run.mjs"
+    },
+    "dependencies": {
+        "@kwirthmagnify/kwirth-common": "^0.5.88",
+        "@kwirthmagnify/kwirth-common-back": "^0.6.16",
+        "ws": "^8.23.0"
+    },
+    "devDependencies": {
+        "@types/express": "^4.17.21",
+        "@types/node": "^20.12.13",
+        "@types/ws": "^8.18.2",
+        "esbuild": "^0.27.2",
+        "express": "^4.22.3",
+        "typescript": "^5.4.0"
+    }
+}
