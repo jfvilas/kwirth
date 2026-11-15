@@ -1,7 +1,9 @@
 # Bridge — PLAN
 
 > Cuelga de [PRD.md](PRD.md). Estado (2026‑11‑15): streams validados; **B1–B4 hechos, B5 unitarios en verde (10)**;
-> pendientes el QA con dos Kwirths y B6 (publicar).
+> **QA k3d ↔ AKS (core 0.6.119) pasos 1–8 OK**: enlace k3d→AKS, AKS ve k3d por el enlace que abrió k3d, y k3d ve
+> AKS por el bridge. Pendientes: el paso 9 (borrar la key `bridge$peer` corta el enlace; el usuario mantiene las
+> keys por ahora), la limpieza, y B6 (publicar).
 >
 > **Abierto (seguridad):** el core destino ve la petición llegar por **loopback**. Si su filtro de IP del login
 > admite loopback, una sesión que viene por el bridge lo pasa. Decidir antes de publicar: que el bridge marque
