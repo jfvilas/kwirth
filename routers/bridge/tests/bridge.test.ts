@@ -1,0 +1,226 @@
+// Two bridges in one process, each behind a fake core: its /router/bridge dispatcher (what the real core does
+// after authenticating) and its loopback, which echoes what reaches it. The link between them is a real
+// WebSocket. What is checked is what the PRD promises: one link, traffic both ways, the destination's
+// credential carried untouched, one sibling only, and coming back on its own.
+
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import http from 'http'
+import express from 'express'
+import WebSocket, { WebSocketServer } from 'ws'
+import { AddressInfo } from 'net'
+import { ERouteCallerVia, IRouteCaller, IRouterContext } from '@kwirthmagnify/kwirth-common-back'
+import BridgeRouter, { bridgeConfigOf, keyHasScope, linkUrlOf, splitClusterPath } from '../src/index'
+import { EFrameType, parseFrame } from '../src/Protocol'
+
+const PEER_KEY = 'peer-key|permanent|bridge$peer::::'
+
+interface IFakeCore {
+    url: string
+    bridge: BridgeRouter
+    seen: { method: string, path: string, authorization?: string, body: string }[]
+    logs: string[]
+    close: () => Promise<void>
+}
+
+/*
+    A fake core: '/router/bridge/...' goes to the bridge with the caller the real core would have built (a
+    ticket for a session; an access key for the link, its scope from the key), and anything else is its
+    LOOPBACK, which echoes the request (HTTP) or the messages (WS).
+*/
+const fakeCore = async (uid: string, name: string): Promise<IFakeCore> => {
+    const seen: IFakeCore['seen'] = []
+    const logs: string[] = []
+    const app = express()
+    let bridge!: BridgeRouter
+    app.use('/router/bridge', (req, res) => bridge.routerRequest(req, res, { via: ERouteCallerVia.TICKET }))
+    app.use((req, res) => {
+        const chunks: Buffer[] = []
+        req.on('data', (c: Buffer) => chunks.push(c))
+        req.on('end', () => {
+            seen.push({ method: req.method, path: req.url, authorization: req.headers.authorization, body: Buffer.concat(chunks).toString() })
+            res.json({ from: name, method: req.method, path: req.url })
+        })
+    })
+    const server = http.createServer(app)
+    const wss = new WebSocketServer({ server })
+    wss.on('connection', (ws, req) => {
+        const url = req.url ?? '/'
+        if (url.startsWith('/router/bridge/')) {
+            const authorization = req.headers.authorization ?? ''
+            const caller: IRouteCaller = authorization
+                ? { via: ERouteCallerVia.ACCESS_KEY, accessKey: { id: 'k', type: 'permanent', resources: authorization.replace('Bearer ', '').split('|')[2] ?? '' } as never }
+                : { via: ERouteCallerVia.TICKET }
+            req.url = url.slice('/router/bridge'.length)
+            bridge.routerWebsocket(ws as unknown as globalThis.WebSocket, req, caller)
+            return
+        }
+        // loopback WebSocket: says where it is, then echoes
+        ws.send(`${name}${url}`)
+        ws.on('message', (data, isBinary) => ws.send(isBinary ? data : `${name}: ${data.toString()}`, { binary: isBinary }))
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+    const context: IRouterContext = {
+        clusterUid: uid, clusterName: name, kwirthVersion: '0.6.117', loopbackUrl: url,
+        logger: { info: (m) => logs.push(`I ${m}`), trace: () => {}, warning: (m) => logs.push(`W ${m}`), error: (m) => logs.push(`E ${m}`) }
+    }
+    bridge = new BridgeRouter(context)
+    return {
+        url, bridge, seen, logs,
+        close: async () => {
+            await bridge.stopRouter()
+            for (const client of wss.clients) client.terminate()
+            await new Promise<void>(resolve => { wss.close(() => resolve()) })
+            server.closeAllConnections()
+            await new Promise<void>(resolve => server.close(() => resolve()))
+        }
+    }
+}
+
+const until = async (check: () => boolean, ms = 5000): Promise<void> => {
+    const end = Date.now() + ms
+    while (!check()) {
+        if (Date.now() > end) throw new Error('timed out waiting')
+        await new Promise(r => setTimeout(r, 20))
+    }
+}
+
+const linked = (core: IFakeCore) => (core.bridge.getStatus().detail ?? '').startsWith('linked')
+
+// A linked pair: A dials B
+const pair = async (aUid = 'aaa', bUid = 'bbb') => {
+    const a = await fakeCore(aUid, 'kwirth-a')
+    const b = await fakeCore(bUid, 'kwirth-b')
+    await b.bridge.startRouter({})
+    await a.bridge.startRouter({ peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 1 })
+    await until(() => linked(a) && linked(b))
+    return { a, b, close: async () => { await a.close(); await b.close() } }
+}
+
+test('🔴 A dials B: both are linked, each knows the other', async () => {
+    const { a, b, close } = await pair()
+    assert.match(a.bridge.getStatus().detail!, /linked to 'kwirth-b' \(bbb\), outgoing/)
+    assert.match(b.bridge.getStatus().detail!, /linked to 'kwirth-a' \(aaa\), incoming/)
+    assert.ok(a.logs.some(l => l.includes("linked to 'kwirth-b' (bbb, Kwirth 0.6.117, bridge test)")))
+    await close()
+})
+
+test('🔴 HTTP both ways over the one link: delivered to the OTHER core over loopback, its credential untouched', async () => {
+    const { a, b, close } = await pair()
+    // a session on A uses B's cluster (its entry carries B's key, which only B validates)
+    let r = await fetch(`${a.url}/router/bridge/bbb/config/info?x=1`, { headers: { Authorization: 'Bearer key-of-B' } })
+    assert.equal(r.status, 200)
+    assert.deepEqual(await r.json(), { from: 'kwirth-b', method: 'GET', path: '/config/info?x=1' })
+    assert.equal(b.seen.at(-1)?.authorization, 'Bearer key-of-B')
+    // and a session on B uses A's cluster through the SAME link (A is behind NAT: B never dialled it)
+    r = await fetch(`${b.url}/router/bridge/aaa/core/x`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"hi":1}' })
+    assert.deepEqual(await r.json(), { from: 'kwirth-a', method: 'POST', path: '/core/x' })
+    assert.equal(a.seen.at(-1)?.body, '{"hi":1}')
+    await close()
+})
+
+test('a cluster that is not the sibling is 502; without a link, 503', async () => {
+    const { a, close } = await pair()
+    assert.equal((await fetch(`${a.url}/router/bridge/zzz/config/info`)).status, 502)
+    await close()
+    const lonely = await fakeCore('ccc', 'lonely')
+    await lonely.bridge.startRouter({})
+    assert.equal((await fetch(`${lonely.url}/router/bridge/bbb/x`)).status, 503)
+    await lonely.close()
+})
+
+test('🔴 a WebSocket through the bridge: opened on the other core, messages both ways, closed together', async () => {
+    const { a, close } = await pair()
+    const ws = new WebSocket(`${a.url.replace('http', 'ws')}/router/bridge/bbb/channel?k=1`)
+    const got: string[] = []
+    ws.on('message', (d) => got.push(d.toString()))
+    await new Promise<void>(resolve => ws.on('open', () => resolve()))
+    ws.send('ping')
+    await until(() => got.length === 2)
+    assert.deepEqual(got, ['kwirth-b/channel?k=1', 'kwirth-b: ping'])
+    // binary goes as binary
+    const binary = new Promise<Buffer>(resolve => ws.once('message', (d, isBinary) => { assert.equal(isBinary, true); resolve(d as Buffer) }))
+    ws.send(Buffer.from([1, 2, 3]))
+    assert.deepEqual([...await binary], [1, 2, 3])
+    ws.close()
+    await close()
+})
+
+test('🔴 a link with a key WITHOUT bridge$peer is refused', async () => {
+    const a = await fakeCore('aaa', 'kwirth-a')
+    const b = await fakeCore('bbb', 'kwirth-b')
+    await b.bridge.startRouter({})
+    await a.bridge.startRouter({ peerUrl: b.url, peerAccessKey: 'k|permanent|admin::::', reconnectSeconds: 60 })
+    await until(() => b.logs.some(l => l.includes('does not carry bridge$peer')))
+    assert.equal(linked(a), false)
+    await until(() => a.bridge.getStatus().lastError !== undefined)
+    await a.close(); await b.close()
+})
+
+test('🔴 one sibling only: a third Kwirth is refused while the link lives', async () => {
+    const { b, close } = await pair()
+    const c = await fakeCore('ccc', 'kwirth-c')
+    await c.bridge.startRouter({ peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 60 })
+    await until(() => b.logs.some(l => l.includes("a link from 'kwirth-c' (ccc) was refused")))
+    assert.match(b.bridge.getStatus().detail!, /linked to 'kwirth-a'/)
+    await c.close(); await close()
+})
+
+test('🔴 both configured to each other: ONE link stays, the one opened by the lower uid', async () => {
+    const a = await fakeCore('aaa', 'kwirth-a')
+    const b = await fakeCore('bbb', 'kwirth-b')
+    await b.bridge.startRouter({ peerUrl: a.url, peerAccessKey: PEER_KEY, reconnectSeconds: 1 })
+    await a.bridge.startRouter({ peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 1 })
+    await until(() => linked(a) && linked(b))
+    await new Promise(r => setTimeout(r, 1500))     // past a reconnect period: nothing flaps
+    assert.match(a.bridge.getStatus().detail!, /outgoing/, 'aaa < bbb: the link A opened stays')
+    assert.match(b.bridge.getStatus().detail!, /incoming/)
+    await a.close(); await b.close()
+})
+
+test('🔴 the link drops: A says so and links again on its own', async () => {
+    const a = await fakeCore('aaa', 'kwirth-a')
+    let b = await fakeCore('bbb', 'kwirth-b')
+    await b.bridge.startRouter({})
+    await a.bridge.startRouter({ peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 1 })
+    await until(() => linked(a))
+    // B goes away and comes back on the same address
+    const port = new URL(b.url).port
+    await b.close()
+    await until(() => !linked(a))
+    assert.ok(a.logs.some(l => l.startsWith('W link to') && l.includes('down')))
+    const app = http.createServer()
+    const wss = new WebSocketServer({ server: app })
+    const reborn = new BridgeRouter({ clusterUid: 'bbb', clusterName: 'kwirth-b', kwirthVersion: '0.6.117', loopbackUrl: b.url, logger: { info: () => {}, trace: () => {}, warning: () => {}, error: () => {} } })
+    await reborn.startRouter({})
+    wss.on('connection', (ws, req) => {
+        req.url = (req.url ?? '').slice('/router/bridge'.length)
+        reborn.routerWebsocket(ws as unknown as globalThis.WebSocket, req, { via: ERouteCallerVia.ACCESS_KEY, accessKey: { id: 'k', type: 'permanent', resources: 'bridge$peer::::' } as never })
+    })
+    await new Promise<void>(resolve => app.listen(Number(port), '127.0.0.1', resolve))
+    await until(() => linked(a), 8000)
+    await reborn.stopRouter()
+    for (const client of wss.clients) client.terminate()
+    app.closeAllConnections(); app.close()
+    await a.close()
+})
+
+test('the protocol trusts nothing: junk, unknown types and paths climbing out are not frames', () => {
+    for (const raw of ['', 'x', '[]', '{"t":"nope"}', '{"t":"req","id":1,"method":"GET","path":"/../x","headers":{}}', '{"t":"req","id":1,"method":"GET","path":"x","headers":{}}', '{"t":"hello","v":1,"uid":"","name":"a"}', '{"t":"res","id":1,"status":99,"headers":{}}'])
+        assert.equal(parseFrame(raw), undefined, raw)
+    assert.deepEqual(parseFrame('{"t":"req","id":2,"method":"post","path":"/a","headers":{"X-A":"1","n":2}}'), { t: EFrameType.REQUEST, id: 2, method: 'POST', path: '/a', headers: { 'x-a': '1' } })
+})
+
+test('helpers: config defaults, the link url, scopes and cluster paths', () => {
+    assert.deepEqual(bridgeConfigOf({}), { peerUrl: '', peerAccessKey: '', reconnectSeconds: 10 })
+    assert.equal(bridgeConfigOf({ reconnectSeconds: 0 }).reconnectSeconds, 10)
+    assert.equal(bridgeConfigOf({ reconnectSeconds: '5' }).reconnectSeconds, 5)
+    assert.equal(linkUrlOf('https://b.example/kwirth/'), 'wss://b.example/kwirth/router/bridge/link')
+    assert.equal(linkUrlOf('http://b:3883'), 'ws://b:3883/router/bridge/link')
+    assert.equal(keyHasScope('admin,bridge$peer:::: ;x::::', 'bridge$peer'), true)
+    assert.equal(keyHasScope('admin::::', 'bridge$peer'), false)
+    assert.deepEqual(splitClusterPath('/u1/config/info?x=1'), ['u1', '/config/info?x=1'])
+    assert.deepEqual(splitClusterPath('/u1'), ['u1', '/'])
+    assert.deepEqual(splitClusterPath('/u1?x'), ['u1', '/?x'])
+})
