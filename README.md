@@ -21,6 +21,7 @@ observability and operations platform: plugins (channels) and any other kind of 
 | [Flight Map](plugins/flightmap) | plugin | `@jfvilas/kwirth-plugin-flightmap` | Live aircraft over an area on a map, with route and delays for the flights you follow, fed by the Flight Status provider | [open](plugins/flightmap/docs/plan/PLAN.md) |
 | [V16](providers/v16) | provider | `@jfvilas/kwirth-provider-v16` | Spanish DGT traffic incidents (DATEX2), dispatched by differences, with V16 emergency beacons flagged | [live](providers/v16/docs/plan/BACKLOG.md) |
 | [Flight Status](providers/flight-status) | provider | `@jfvilas/kwirth-provider-flight-status` | Live ADS-B aircraft positions from OpenSky, enriched with AviationStack and FlightAware AeroAPI under quota | [live](providers/flight-status/docs/plan/BACKLOG.md) |
+| [Bridge](routers/bridge) | router | `@jfvilas/kwirth-router-bridge` | Two Kwirths that reach each other through one outbound link, each seeing the other in its cluster list — the reference router | [in progress](routers/bridge/docs/plan/PRD.md) |
 
 ## Installing them in Kwirth
 
@@ -37,6 +38,7 @@ https://raw.githubusercontent.com/jfvilas/kwirth/master/manifest.json
 manifest.json          the marketplace: one entry per published version, of every extension type
 plugins/<id>/          plugin (channel) extensions
 providers/<id>/        provider extensions
+routers/<id>/          router extensions
 ...                    one folder per extension type, as in the Kwirth repository
 ```
 
