@@ -57,6 +57,10 @@ forma es exponerlo (ingress, load balancer) o montar una VPN.
 1. **Casa ↔ oficina**: el Kwirth de casa (sin entrada) se conecta al de la oficina; desde la oficina se ve el de
    casa.
 2. **Laboratorio**: un k3d en un portátil enlazado con un cluster en la nube.
+3. **Magnify desktop ↔ Kwirth**: el desktop (siempre detrás de NAT, sin entrada posible) abre el enlace hacia un
+   Kwirth de un cluster. El desktop ve ese cluster, y **ese Kwirth ve los clusters locales del desktop** (k3d,
+   minikube, contextos del kubeconfig) sin abrir nada en el portátil. Requisito: `bridge` funciona igual en el
+   back del desktop (Electron/Tauri) que en un pod — sin dependencias de Kubernetes para guardar su config.
 
 ## 5. Requisitos funcionales
 
