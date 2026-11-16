@@ -4,7 +4,7 @@
     "displayName": "Chapete",
     "extensionType": "plugin",
     "publisher": "@jfvilas",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Chat with an LLM from Kwirth, using the LLMs configured in the core",
     "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 14A3 3 0 0 1 5.2 8.2A3.6 3.6 0 0 1 11.6 5.6A3.5 3.5 0 0 1 18.2 7.6A3.05 3.05 0 0 1 17.6 13.6A12 12 0 0 1 6 14Z'/><circle cx='18.6' cy='17.4' r='1.6' fill='currentColor' stroke='none'/><circle cx='21.3' cy='20.7' r='1.05' fill='currentColor' stroke='none'/></svg>",
     "website": "https://kwirthmagnify.dev",
@@ -24,8 +24,8 @@
     "dependencies": {
         "@kwirthmagnify/kwirth-common": "^0.5.76",
         "@kwirthmagnify/kwirth-common-ai": "^0.5.74",
-        "@kwirthmagnify/kwirth-common-back": "^0.6.10",
-        "@kwirthmagnify/kwirth-common-front": "^0.5.67"
+        "@kwirthmagnify/kwirth-common-back": "^0.6.18",
+        "@kwirthmagnify/kwirth-common-front": "^0.5.75"
     },
     "devDependencies": {
         "@mui/icons-material": "7.1.2",

@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Box, Button, Chip, CircularProgress, IconButton, Paper, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@kwirthmagnify/kwirth-common'
-import { IContentProps, MarkdownViewer } from '@kwirthmagnify/kwirth-common-front'
+import { ChannelNotStarted, IContentProps, MarkdownViewer } from '@kwirthmagnify/kwirth-common-front'
 import { Add, ContentCopy, Send, Settings, Warning } from '@kwirthmagnify/kwirth-common-front/icons'
 import { EChapeteCommand, EChapeteRole, IChapeteAskRequest, IChapeteCommandMessage, IChapeteInstanceConfig } from '../common/ChapeteTypes'
 import { conversationOf, IChapeteData, IChapeteEntry, isThinking } from './ChapeteData'
 import { ChapeteSystemDialog } from './ChapeteSystemDialog'
+import { ChapeteThought } from './icons'
 
 export const ChapeteTabContent: React.FC<IContentProps> = (props: IContentProps) => {
     const data = props.channelObject.data as IChapeteData
@@ -28,6 +29,15 @@ export const ChapeteTabContent: React.FC<IContentProps> = (props: IContentProps)
         observer.observe(document.body)
         return () => observer.disconnect()
     }, [containerRef.current])
+
+    // Where the not-started screen begins, measured on every render: the observer above only fires when the body
+    // resizes, so the screen took a height measured for another layout and was not centred.
+    const [notStartedTop, setNotStartedTop] = useState(0)
+    useEffect(() => {
+        if (data.started || !containerRef.current) return
+        const top = containerRef.current.getBoundingClientRect().top
+        if (top !== notStartedTop) setNotStartedTop(top)
+    })
 
     // the last bubble is always in sight: the question just sent, the 'Thinking...' or the answer
     useEffect(() => {
@@ -124,11 +134,13 @@ export const ChapeteTabContent: React.FC<IContentProps> = (props: IContentProps)
         )
     }
 
+    // Not started: the shared not-started screen (icon and name, what starting gives, and a Start button that
+    // opens the setup first, like the tab menu's Start). The container only centres it in the tab's height.
     if (!data.started) {
         return (
-            <Stack ref={containerRef} alignItems='center' justifyContent='center' spacing={1} sx={{ width: '100%', height: `${containerHeight}px`, px: 4, textAlign: 'center' }}>
-                <Typography variant='h6' color='text.secondary'>Chapete not started</Typography>
-                <Typography variant='body2' color='text.secondary' sx={{ maxWidth: 480 }}>Start the channel (tab settings ⚙ → Start), pick an LLM and start chatting.</Typography>
+            <Stack ref={containerRef} alignItems='center' justifyContent='center' sx={{ flex: 1, width: '100%', minHeight: `calc(100vh - ${notStartedTop}px - 8px)`, px: 4 }}>
+                <ChannelNotStarted icon={<ChapeteThought color='primary' />} name='Chapete'
+                    hint='Chapete not started. Start the channel to pick an LLM and start chatting.' channelObject={props.channelObject} />
             </Stack>
         )
     }

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Box, Chip, List, ListItemButton, ListItemText, Stack, Typography } from '@mui/material'
-import { IContentProps } from '@kwirthmagnify/kwirth-common-front'
+import { ChannelNotStarted, IContentProps } from '@kwirthmagnify/kwirth-common-front'
+import { Place } from '@kwirthmagnify/kwirth-common-front/icons'
 import { IV16MapInstanceConfig, IV16Point } from '../common/V16MapTypes'
 import { humanize, IV16MapData, placeOf } from './V16MapData'
 import { IMapBounds, IMapMarker, TileMap } from './TileMap'
@@ -42,6 +43,15 @@ export const V16MapTabContent: React.FC<IContentProps> = (props: IContentProps) 
         return () => observer.disconnect()
     }, [containerRef.current])
 
+    // Where the not-started screen begins, measured on every render: the observer above only fires when the body
+    // resizes, so the screen took a height measured for another layout and was not centred.
+    const [notStartedTop, setNotStartedTop] = useState(0)
+    useEffect(() => {
+        if (data.started || !containerRef.current) return
+        const top = containerRef.current.getBoundingClientRect().top
+        if (top !== notStartedTop) setNotStartedTop(top)
+    })
+
     const select = (id: string | undefined, center = false) => {
         data.selectedId = id
         const p = id ? data.points[id] : undefined
@@ -49,11 +59,13 @@ export const V16MapTabContent: React.FC<IContentProps> = (props: IContentProps) 
         forceRender(n => n + 1)
     }
 
+    // Not started: the shared not-started screen (icon and name, what starting gives, and a Start button that
+    // opens the setup first, like the tab menu's Start). The container only centres it in the tab's height.
     if (!data.started) {
         return (
-            <Stack ref={containerRef} alignItems='center' justifyContent='center' spacing={1} sx={{ width: '100%', height: `${containerHeight}px`, px: 4, textAlign: 'center' }}>
-                <Typography variant='h6' color='text.secondary'>V16 Map not started</Typography>
-                <Typography variant='body2' color='text.secondary' sx={{ maxWidth: 480 }}>Start the channel (tab settings ⚙ → Start) to see the DGT traffic incidents.</Typography>
+            <Stack ref={containerRef} alignItems='center' justifyContent='center' sx={{ flex: 1, width: '100%', minHeight: `calc(100vh - ${notStartedTop}px - 8px)`, px: 4 }}>
+                <ChannelNotStarted icon={<Place color='primary' />} name='V16 Map'
+                    hint='V16 Map not started. Start the channel to see the DGT traffic incidents.' channelObject={props.channelObject} />
             </Stack>
         )
     }

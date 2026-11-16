@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Box, Chip, List, ListItemButton, ListItemText, Stack, Typography } from '@mui/material'
-import { IContentProps } from '@kwirthmagnify/kwirth-common-front'
+import { ChannelNotStarted, IContentProps } from '@kwirthmagnify/kwirth-common-front'
 import { IAircraft, IFlightMapInstanceConfig } from '../common/FlightMapTypes'
 import { feet, IFlightMapData, isWatched, knots } from './FlightMapData'
 import { IMapMarker, TileMap } from './TileMap'
+import { FlightMapIcon } from './FlightMapSetup'
 
 const WATCHED_COLOR = '#d32f2f'
 
@@ -49,6 +50,15 @@ export const FlightMapTabContent: React.FC<IContentProps> = (props: IContentProp
         return () => observer.disconnect()
     }, [containerRef.current])
 
+    // Where the not-started screen begins, measured on every render: the observer above only fires when the body
+    // resizes, so the screen took a height measured for another layout and was not centred.
+    const [notStartedTop, setNotStartedTop] = useState(0)
+    useEffect(() => {
+        if (data.started || !containerRef.current) return
+        const top = containerRef.current.getBoundingClientRect().top
+        if (top !== notStartedTop) setNotStartedTop(top)
+    })
+
     const select = (id: string | undefined, center = false) => {
         data.selectedId = id
         const a = data.aircraft.find(x => x.icao24 === id)
@@ -56,11 +66,13 @@ export const FlightMapTabContent: React.FC<IContentProps> = (props: IContentProp
         forceRender(n => n + 1)
     }
 
+    // Not started: the shared not-started screen (icon and name, what starting gives, and a Start button that
+    // opens the setup first, like the tab menu's Start). The container only centres it in the tab's height.
     if (!data.started) {
         return (
-            <Stack ref={containerRef} alignItems='center' justifyContent='center' spacing={1} sx={{ width: '100%', height: `${containerHeight}px`, px: 4, textAlign: 'center' }}>
-                <Typography variant='h6' color='text.secondary'>Flight Map not started</Typography>
-                <Typography variant='body2' color='text.secondary' sx={{ maxWidth: 480 }}>Start the channel (tab settings ⚙ → Start), choose an area and the flights you want to follow.</Typography>
+            <Stack ref={containerRef} alignItems='center' justifyContent='center' sx={{ flex: 1, width: '100%', minHeight: `calc(100vh - ${notStartedTop}px - 8px)`, px: 4 }}>
+                <ChannelNotStarted icon={<Box sx={{ display: 'flex', color: 'primary.main' }}>{FlightMapIcon}</Box>} name='Flight Map'
+                    hint='Flight Map not started. Start the channel to choose an area and the flights you want to follow.' channelObject={props.channelObject} />
             </Stack>
         )
     }
