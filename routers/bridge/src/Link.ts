@@ -47,6 +47,28 @@ export class Link {
         return !this.closed && this.socket.readyState === OPEN
     }
 
+    /*
+        Whether the other end still answers: a WebSocket ping, which any 'ws' peer answers by itself (no protocol
+        change, any bridge version). A socket that cannot ping is taken at its word: alive while it says it is open.
+    */
+    probe(timeoutMs: number): Promise<boolean> {
+        const socket = this.socket as unknown as { ping?: () => void, once?: (event: 'pong', listener: () => void) => void }
+        if (!this.alive) return Promise.resolve(false)
+        if (typeof socket.ping !== 'function' || typeof socket.once !== 'function') return Promise.resolve(true)
+        return new Promise(resolve => {
+            let settled = false
+            const settle = (answer: boolean): void => {
+                if (settled) return
+                settled = true
+                clearTimeout(timer)
+                resolve(answer)
+            }
+            const timer = setTimeout(() => settle(false), timeoutMs)
+            socket.once!('pong', () => settle(true))
+            try { socket.ping!() } catch { settle(false) }
+        })
+    }
+
     // Says who we are. Called when the socket is open (at once for an incoming one)
     hello(): void {
         this.send({ ...this.own, t: EFrameType.HELLO, v: BRIDGE_PROTOCOL_VERSION })
