@@ -12,6 +12,16 @@
 
 ## Backlog
 
+- **Dos instancias del mismo Kwirth se quitan el enlace** (2026‑11‑16, visto con 0.1.1). Dos Kwirth con la misma
+  configuración y el mismo cluster uid (el back de dev y el pod del mismo k3d, que comparten store; o un Kwirth con
+  **varias réplicas**) marcan los dos al hermano. Con 0.1.0 el receptor se quedaba con el primero y rechazaba al
+  otro cada `reconnectSeconds`; con 0.1.1 («el nuevo del mismo lado sustituye al viejo») **se quitan el enlace el
+  uno al otro** cada pocos segundos. Arreglo propuesto (0.1.2): ante un enlace nuevo del mismo lado, hacer **ping
+  al actual** y esperar unos segundos — si contesta, es otra instancia: se queda el actual y el nuevo se rechaza
+  con su motivo; si no, estaba muerto (un reinicio): el nuevo lo sustituye. Aun así no decide QUÉ instancia se
+  queda el enlace; para eso haría falta que una de ellas no arranque el router. No se hace por ahora (decisión del
+  usuario, 2026‑11‑16: el caso que lo destapó es solo de su entorno de dev).
+
 - **El receptor no vigila sus enlaces entrantes** (2026‑11‑16): solo hace ping quien marca (`beat()`). Un enlace
   entrante muerto sin cierre lo sigue dando por vivo hasta que el hermano vuelve (ya se sustituye, 0.1.1) o un
   timeout del ingress lo cierra; mientras, su cluster no responde. Hacer ping también a los entrantes.
