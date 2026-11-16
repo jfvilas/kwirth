@@ -179,6 +179,38 @@ test('🔴 both configured to each other: ONE link stays, the one opened by the 
     await a.close(); await b.close()
 })
 
+/*
+    🔴 A comes back while B still holds A's OLD link (A restarted without closing it: B saw no close). Both links
+    were opened by A, so the lower-uid rule cannot choose: B kept the old, dead one and refused the new one with
+    4409 every few seconds, forever. The new one replaces it.
+*/
+test('🔴 the same sibling coming back replaces its old link, instead of being refused as a duplicate', async () => {
+    const b = await fakeCore('bbb', 'kwirth-b')
+    const oldA = await fakeCore('aaa', 'kwirth-a')
+    const newA = await fakeCore('aaa', 'kwirth-a')
+    // closed whatever happens: a failure left the cores listening and the run never ended
+    try {
+        await b.bridge.startRouter({})
+        // the "old" A: linked, and it will not dial again in this test (its link is left to B to deal with)
+        await oldA.bridge.startRouter({ peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 60 })
+        await until(() => linked(oldA) && linked(b))
+        // the "new" A: same cluster uid, a new socket — while B still holds the old one
+        await newA.bridge.startRouter({ peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 60 })
+        await until(() => linked(newA), 5000)
+        await until(() => !linked(oldA), 5000)
+        assert.ok(!newA.logs.some(l => l.includes('duplicate link')), 'the new one was not refused')
+        assert.ok(b.logs.some(l => l.includes('linked again: its old link is replaced')))
+        assert.match(b.bridge.getStatus().detail!, /linked to 'kwirth-a'/)
+        // and what travels now goes over the new link
+        const answer = await fetch(`${newA.url}/router/bridge/bbb/config/info`)
+        assert.equal(answer.status, 200)
+        assert.deepEqual(await answer.json(), { from: 'kwirth-b', method: 'GET', path: '/config/info' })
+    }
+    finally {
+        await oldA.close(); await newA.close(); await b.close()
+    }
+})
+
 test('🔴 the link drops: A says so and links again on its own', async () => {
     const a = await fakeCore('aaa', 'kwirth-a')
     let b = await fakeCore('bbb', 'kwirth-b')
