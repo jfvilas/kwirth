@@ -2,6 +2,16 @@
   {
     "extensionType": "router",
     "id": "bridge",
+    "version": "0.1.2",
+    "name": "Bridge",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-router-bridge/-/kwirth-router-bridge-0.1.2.tgz",
+    "description": "Two Kwirths that reach each other through one outbound link, each seeing the other in its cluster list",
+    "icon": "CallSplit",
+    "website": "https://github.com/jfvilas/kwirth/tree/master/routers/bridge"
+  },
+  {
+    "extensionType": "router",
+    "id": "bridge",
     "version": "0.1.1",
     "name": "Bridge",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-router-bridge/-/kwirth-router-bridge-0.1.1.tgz",
