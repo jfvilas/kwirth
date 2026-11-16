@@ -264,18 +264,27 @@ export default class BridgeRouter implements IRouter {
                 link.bye(`this bridge is already linked to another Kwirth ('${current.peer?.name}')`, 4409)
                 return
             }
-            // both dialled: the link opened by the LOWER uid stays, the other one goes
-            const keepNew = this.openerOf(link) < this.openerOf(current)
+            /*
+                Both dialled: the link opened by the LOWER uid stays, the other one goes. But when the two were opened
+                by the SAME side, that side is coming back: its old link died without a close (the other Kwirth
+                restarted, the network cut) and only this end still thinks it alive. Keeping the old one refused the
+                sibling every few seconds, forever (seen 2026-11-16, k3d's dev back restarting against AKS): the new
+                one replaces it.
+            */
+            const sameOpener = this.openerOf(link) === this.openerOf(current)
+            const keepNew = sameOpener || this.openerOf(link) < this.openerOf(current)
+            const why = sameOpener ? 'replaced by a new link from the same Kwirth' : 'duplicate link: the one opened by the lower cluster uid stays'
             const drop = keepNew ? current : link
             if (!keepNew) {
-                drop.bye('duplicate link: the one opened by the lower cluster uid stays', 4409)
+                drop.bye(why, 4409)
                 return
             }
             // the current one goes, quietly: it is not a link down, it is replaced
             this.link = undefined
-            this.tunnel?.closeAll('replaced by the link opened by the lower cluster uid')
+            this.tunnel?.closeAll(sameOpener ? 'replaced by a new link from the same Kwirth' : 'replaced by the link opened by the lower cluster uid')
             this.tunnel = undefined
-            drop.bye('duplicate link: the one opened by the lower cluster uid stays', 4409)
+            drop.bye(why, 4409)
+            if (sameOpener) this.context.logger.info(`'${hello.name}' (${hello.uid}) linked again: its old link is replaced`)
         }
         if (this.dialing?.link === link) this.dialing = undefined
         this.link = link
