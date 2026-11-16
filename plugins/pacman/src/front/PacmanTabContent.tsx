@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { AppBar, Box, Button, Chip, Divider, Paper, Stack, Toolbar, Typography } from '@mui/material'
-import { IContentProps, HelpButton as _HelpButton, pluginDocsUrl as _pluginDocsUrl } from '@kwirthmagnify/kwirth-common-front'
+import { ChannelNotStarted, IContentProps, HelpButton as _HelpButton, pluginDocsUrl as _pluginDocsUrl } from '@kwirthmagnify/kwirth-common-front'
 import { ENotifyLevel } from '@kwirthmagnify/kwirth-common'
 import { IPacmanData } from './PacmanData'
 import { IPacmanConfig } from './PacmanConfig'
@@ -13,19 +13,6 @@ import { PacmanIcon } from './PacmanSetup'
 */
 const HelpButton: typeof _HelpButton = typeof _HelpButton === 'function' ? _HelpButton : () => null
 const pluginDocsUrl: typeof _pluginDocsUrl = typeof _pluginDocsUrl === 'function' ? _pluginDocsUrl : () => ''
-
-interface IEmptyStateProps {
-    title: string
-    detail: string
-}
-
-const EmptyState: React.FC<IEmptyStateProps> = ({ title, detail }) => (
-    <Stack alignItems='center' justifyContent='center' spacing={1}
-        sx={{ flex: 1, height: '100%', px: 4, textAlign: 'center' }}>
-        <Typography variant='h6' color='text.secondary'>{title}</Typography>
-        <Typography variant='body2' color='text.secondary'>{detail}</Typography>
-    </Stack>
-)
 
 interface IHudState {
     score: number
@@ -191,9 +178,13 @@ export const PacmanTabContent: React.FC<IContentProps> = (props: IContentProps) 
             </Stack>
             }
 
+            {/* With the channel stopped there is no game to paint: the shared not-started screen says so, with a
+                Start button, centred in the play area (this box has the tab's height and is a flex column). */}
             {!hud.started &&
-                <EmptyState title='Pac-Man not started'
-                    detail='Start the channel (tab settings ⚙ → Start) to play.' />
+                <Stack sx={{ flex: 1, alignItems: 'center', justifyContent: 'center', px: 4 }}>
+                    <ChannelNotStarted icon={<Box sx={{ display: 'flex', color: 'primary.main' }}>{PacmanIcon}</Box>} name='Pac-Man'
+                        hint='Pac-Man not started. Start the channel to play.' channelObject={props.channelObject} />
+                </Stack>
             }
 
             {hud.started &&

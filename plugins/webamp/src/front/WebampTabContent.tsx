@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { AppBar, Box, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Button, List, ListItemButton, ListItemText, Stack, Toolbar, Typography } from '@mui/material'
-import { IContentProps, HelpButton as _HelpButton, pluginDocsUrl as _pluginDocsUrl } from '@kwirthmagnify/kwirth-common-front'
+import { ChannelNotStarted, IContentProps, HelpButton as _HelpButton, pluginDocsUrl as _pluginDocsUrl } from '@kwirthmagnify/kwirth-common-front'
 import { IWebampData } from './WebampData'
 import { WebampIcon } from './WebampSetup'
 import { IWebampStream } from '../common/WebampTypes'
@@ -11,23 +11,6 @@ import { IWebampStream } from '../common/WebampTypes'
 */
 const HelpButton: typeof _HelpButton = typeof _HelpButton === 'function' ? _HelpButton : () => null
 const pluginDocsUrl: typeof _pluginDocsUrl = typeof _pluginDocsUrl === 'function' ? _pluginDocsUrl : () => ''
-
-interface IEmptyStateProps {
-    title: string
-    detail: string
-}
-
-/*
-    With the channel stopped there is no player to show: the iframe would be
-    empty. Same pattern as galaga/asteroids.
-*/
-const EmptyState: React.FC<IEmptyStateProps> = ({ title, detail }) => (
-    <Stack alignItems='center' justifyContent='center' spacing={1}
-        sx={{ flex: 1, height: '100%', px: 4, textAlign: 'center' }}>
-        <Typography variant='h6' color='text.secondary'>{title}</Typography>
-        <Typography variant='body2' color='text.secondary'>{detail}</Typography>
-    </Stack>
-)
 
 interface IHudState {
     started: boolean
@@ -169,9 +152,13 @@ export const WebampTabContent: React.FC<IContentProps> = (props: IContentProps) 
             </Stack>
             }
 
+            {/* With the channel stopped there is no player to show (the iframe would be empty): the shared
+                not-started screen says so, with a Start button, centred in this full-height flex column. */}
             {!hud.started &&
-                <EmptyState title='Webamp not started'
-                    detail='Start the channel (tab settings ⚙ → Start) to open the player. Then drag and drop your audio files.' />
+                <Stack sx={{ flex: 1, alignItems: 'center', justifyContent: 'center', px: 4 }}>
+                    <ChannelNotStarted icon={<Box sx={{ display: 'flex', color: 'primary.main' }}>{WebampIcon}</Box>} name='Webamp'
+                        hint='Webamp not started. Start the channel to open the player, then drag and drop your audio files.' channelObject={props.channelObject} />
+                </Stack>
             }
 
             {hud.started &&

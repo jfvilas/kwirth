@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { AppBar, Box, Button, Chip, Divider, Paper, Stack, Toolbar, Typography } from '@mui/material'
-import { IContentProps, HelpButton as _HelpButton, pluginDocsUrl as _pluginDocsUrl } from '@kwirthmagnify/kwirth-common-front'
+import { ChannelNotStarted, IContentProps, HelpButton as _HelpButton, pluginDocsUrl as _pluginDocsUrl } from '@kwirthmagnify/kwirth-common-front'
 import { ENotifyLevel } from '@kwirthmagnify/kwirth-common'
 import { GameStatus } from './core'
 import { IAsteroidsData } from './AsteroidsData'
@@ -18,28 +18,10 @@ import { AsteroidsIcon } from './AsteroidsSetup'
 const HelpButton: typeof _HelpButton = typeof _HelpButton === 'function' ? _HelpButton : () => null
 const pluginDocsUrl: typeof _pluginDocsUrl = typeof _pluginDocsUrl === 'function' ? _pluginDocsUrl : () => ''
 
-interface IEmptyStateProps {
-    title: string
-    detail: string
-}
-
-/*
-    With the channel stopped there is no game to paint: the canvas would show a black rectangle with a
-    banner inside, and the user would have no way of knowing that what is missing is pressing Start. Same
-    pattern as sugarless.
-*/
-const EmptyState: React.FC<IEmptyStateProps> = ({ title, detail }) => (
-    <Stack alignItems='center' justifyContent='center' spacing={1}
-        sx={{ flex: 1, height: '100%', px: 4, textAlign: 'center' }}>
-        <Typography variant='h6' color='text.secondary'>{title}</Typography>
-        <Typography variant='body2' color='text.secondary'>{detail}</Typography>
-    </Stack>
-)
-
 /*
     Mirror of the scoreboard for React. The truth lives in asteroidsData; this only forces the topbar
     to repaint, which cannot run at 60fps. 'started' and 'paused' are included here because WHAT
-    gets rendered (game or EmptyState) depends on them, and the raw data does not trigger a render on its own.
+    gets rendered (game or not-started screen) depends on them, and the raw data does not trigger a render on its own.
 */
 interface IHudState {
     score: number
@@ -75,7 +57,7 @@ export const AsteroidsTabContent: React.FC<IContentProps> = (props: IContentProp
     const lastTimeRef = useRef<number>(0)
 
     // It is initialised from the data, not to zero: when coming back to a tab with the game running, an
-    // empty state would paint the EmptyState during the first quarter of a second.
+    // empty state would paint the not-started screen during the first quarter of a second.
     const [hud, setHud] = useState<IHudState>({
         score: asteroidsData.score,
         lives: asteroidsData.lives,
@@ -170,7 +152,7 @@ export const AsteroidsTabContent: React.FC<IContentProps> = (props: IContentProp
         const dpr = window.devicePixelRatio || 1
 
         // With the channel stopped this is never reached: the canvas is not even rendered, it is replaced by the
-        // EmptyState, which is what explains that Start has to be pressed.
+        // not-started screen, which is what explains that Start has to be pressed.
         let banner: string | undefined
         let subBanner: string | undefined
         if (game.state.status === GameStatus.Init) {
@@ -390,9 +372,13 @@ export const AsteroidsTabContent: React.FC<IContentProps> = (props: IContentProp
             </Stack>
             }
 
+            {/* With the channel stopped there is no game to paint: the shared not-started screen says so, with a
+                Start button, centred in the play area (this box has the tab's height and is a flex column). */}
             {!hud.started &&
-                <EmptyState title='Asteroids not started'
-                    detail='Start the channel (tab settings ⚙ → Start) to play.' />
+                <Stack sx={{ flex: 1, alignItems: 'center', justifyContent: 'center', px: 4 }}>
+                    <ChannelNotStarted icon={<Box sx={{ display: 'flex', color: 'primary.main' }}>{AsteroidsIcon}</Box>} name='Asteroids'
+                        hint='Asteroids not started. Start the channel to play.' channelObject={props.channelObject} />
+                </Stack>
             }
 
             {hud.started &&
