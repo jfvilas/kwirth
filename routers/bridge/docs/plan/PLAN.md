@@ -3,8 +3,18 @@
 > Cuelga de [PRD.md](PRD.md). Estado: **CERRADO** (2026‑11‑15), publicado `@jfvilas/kwirth-router-bridge@0.1.0`.
 > B1–B6 hechos; unitarios 10/10; **QA k3d ↔ AKS (core 0.6.119) pasos 1–10 OK**: enlace k3d→AKS, AKS ve k3d por el
 > enlace que abrió k3d, k3d ve AKS por el bridge, borrar la key `bridge$peer` corta el enlace.
+>
+> **0.1.1** (2026‑11‑16): un hermano que **vuelve** (su back se reinició y el enlace viejo murió sin cierre) ya no
+> se rechaza como duplicado. Los dos enlaces los había abierto el mismo lado, así que la regla del uid más bajo
+> no podía elegir y el receptor se quedaba con el viejo, muerto, rechazando el nuevo con `4409` cada pocos
+> segundos (visto con el back de dev de k3d reiniciándose contra AKS). Ahora el nuevo sustituye al viejo; la regla
+> del uid sigue para cuando se marcan los dos. Unitarios 11/11 (el nuevo, comprobado que falla sin el arreglo).
 
 ## Backlog
+
+- **El receptor no vigila sus enlaces entrantes** (2026‑11‑16): solo hace ping quien marca (`beat()`). Un enlace
+  entrante muerto sin cierre lo sigue dando por vivo hasta que el hermano vuelve (ya se sustituye, 0.1.1) o un
+  timeout del ingress lo cierra; mientras, su cluster no responde. Hacer ping también a los entrantes.
 
 - **Filtro de IP del login y loopback** (detectado al cerrar). El filtro solo actúa en `POST /login`; las rutas
   se usan con access keys, que no pasan por él. Pero un `/login` hecho a mano a través del bridge llega al core
