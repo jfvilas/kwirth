@@ -12,6 +12,10 @@
 
 ## Backlog
 
+- ✅ **Hecho en 0.1.2** (2026‑11‑16), lo de abajo: ante un enlace nuevo del mismo lado se hace ping al actual
+  (`PROBE_MS`, 5 s): si contesta se queda y el nuevo se rechaza; si no, el nuevo lo sustituye. Y el campo **«Dial
+  only from host»** elige qué instancia marca (las demás esperan y lo dicen; cada tarjeta enseña su host).
+  Unitarios 13/13.
 - **Dos instancias del mismo Kwirth se quitan el enlace** (2026‑11‑16, visto con 0.1.1). Dos Kwirth con la misma
   configuración y el mismo cluster uid (el back de dev y el pod del mismo k3d, que comparten store; o un Kwirth con
   **varias réplicas**) marcan los dos al hermano. Con 0.1.0 el receptor se quedaba con el primero y rechazaba al
