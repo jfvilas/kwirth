@@ -3,6 +3,7 @@ import { IConfigFieldDef, IExtensionScope, IRouterData } from '@kwirthmagnify/kw
 import { ERouteCallerVia, IRouteCaller, IRouter, IRouterContext, IRouterStatus, TRouterConfig } from '@kwirthmagnify/kwirth-common-back'
 import { Request, Response } from 'express'
 import { IncomingMessage } from 'http'
+import { hostname } from 'os'
 import { EFrameType, IHelloFrame, TFrame, carriedHeaders } from './Protocol'
 import { ELinkDirection, ILinkSocket, Link } from './Link'
 import { Tunnel } from './Tunnel'
@@ -25,18 +26,26 @@ const ROUTER_ID = 'bridge'
 const SCOPE_PEER = `${ROUTER_ID}$peer`
 const LINK_PATH = '/link'
 const HEARTBEAT_MS = 30_000
+export const PROBE_MS = 5_000           // how long a link has to answer a ping before a new one from its side replaces it
 const DEFAULT_RECONNECT_SECONDS = 10
 
 const SCHEMA: IConfigFieldDef[] = [
     { name: 'peerUrl', label: 'Sibling URL (empty: only accept links)', type: 'text' },
     { name: 'peerAccessKey', label: 'Access key created in the sibling (bridge$peer)', type: 'password' },
-    { name: 'reconnectSeconds', label: 'Reconnect every (seconds)', type: 'number', default: DEFAULT_RECONNECT_SECONDS }
+    { name: 'reconnectSeconds', label: 'Reconnect every (seconds)', type: 'number', default: DEFAULT_RECONNECT_SECONDS },
+    /*
+        The config is shared by every instance of this Kwirth (replicas, or a dev back sharing the store of the pod in
+        its cluster), and they would all dial the sibling. The host name is what tells them apart without configuring
+        each one: only the instance running there dials. Every instance's card shows its host, to copy it from.
+    */
+    { name: 'dialFromHost', label: 'Dial only from host (empty: every instance dials)', type: 'text' }
 ]
 
 interface IBridgeConfig {
     peerUrl: string
     peerAccessKey: string
     reconnectSeconds: number
+    dialFromHost: string            // '' = every instance dials; a host name = only the instance running on it
 }
 
 // What is read from the saved config, made whole: whatever is missing or wrong takes its default
@@ -45,7 +54,8 @@ export const bridgeConfigOf = (config: TRouterConfig): IBridgeConfig => {
     return {
         peerUrl: typeof config.peerUrl === 'string' ? config.peerUrl.trim() : '',
         peerAccessKey: typeof config.peerAccessKey === 'string' ? config.peerAccessKey.trim() : '',
-        reconnectSeconds: Number.isInteger(seconds) && seconds >= 1 && seconds <= 3600 ? seconds : DEFAULT_RECONNECT_SECONDS
+        reconnectSeconds: Number.isInteger(seconds) && seconds >= 1 && seconds <= 3600 ? seconds : DEFAULT_RECONNECT_SECONDS,
+        dialFromHost: typeof config.dialFromHost === 'string' ? config.dialFromHost.trim() : ''
     }
 }
 
@@ -85,7 +95,13 @@ export default class BridgeRouter implements IRouter {
     private lastError?: string
     private stopped = false
 
-    constructor(private context: IRouterContext) {}
+    // 'hostName': the machine this instance runs on (a test passes its own)
+    constructor(private context: IRouterContext, private hostName: string = hostname()) {}
+
+    // Whether this instance is the one that dials: every one when no host is set, else only the one running there
+    private dialsHere(): boolean {
+        return !this.config.dialFromHost || this.config.dialFromHost === this.hostName
+    }
 
     getRouterData = (): IRouterData => ({ id: ROUTER_ID, pathTemplate: '/{routeTicket}/{clusterUid}', needsTicket: true })
 
@@ -100,16 +116,20 @@ export default class BridgeRouter implements IRouter {
         this.stopped = false
         this.heartbeat = setInterval(() => this.beat(), HEARTBEAT_MS)
         if (typeof this.heartbeat.unref === 'function') this.heartbeat.unref()
-        this.context.logger.info(this.config.peerUrl ? `started: linking to ${this.config.peerUrl}` : 'started: waiting for the sibling to link')
+        this.context.logger.info(!this.config.peerUrl ? `started on host '${this.hostName}': waiting for the sibling to link`
+            : this.dialsHere() ? `started on host '${this.hostName}': linking to ${this.config.peerUrl}`
+            : `started on host '${this.hostName}': not dialling, only '${this.config.dialFromHost}' dials`)
         this.dial()
     }
 
     applyConfig = async (config: TRouterConfig): Promise<void> => {
         const next = bridgeConfigOf(config)
-        const peerChanged = next.peerUrl !== this.config.peerUrl || next.peerAccessKey !== this.config.peerAccessKey
+        const peerChanged = next.peerUrl !== this.config.peerUrl || next.peerAccessKey !== this.config.peerAccessKey || next.dialFromHost !== this.config.dialFromHost
         this.config = next
         if (!peerChanged) return
-        this.context.logger.info(next.peerUrl ? `config applied: linking to ${next.peerUrl}` : 'config applied: only accepting links')
+        this.context.logger.info(!next.peerUrl ? 'config applied: only accepting links'
+            : this.dialsHere() ? `config applied: linking to ${next.peerUrl} from host '${this.hostName}'`
+            : `config applied: not dialling from this host ('${this.hostName}'), only '${next.dialFromHost}' dials`)
         // what we dialled with the old settings goes; a link the sibling opened stays
         this.cancelDial()
         if (this.link?.direction === ELinkDirection.OUTGOING) this.link.bye('the sibling settings changed')
@@ -127,9 +147,12 @@ export default class BridgeRouter implements IRouter {
 
     getStatus = (): IRouterStatus => {
         const peer = this.link?.peer
-        if (peer) return { started: true, detail: `linked to '${peer.name}' (${peer.uid}), ${this.link!.direction}` }
-        if (this.config.peerUrl) return { started: true, detail: `linking to ${this.config.peerUrl}`, ...(this.lastError ? { lastError: this.lastError } : {}) }
-        return { started: true, detail: 'waiting for the sibling to link' }
+        // the host is in every detail: it is what 'Dial only from host' takes, and each instance shows its own
+        const host = `host '${this.hostName}'`
+        if (peer) return { started: true, detail: `linked to '${peer.name}' (${peer.uid}), ${this.link!.direction} · ${host}` }
+        if (this.config.peerUrl && !this.dialsHere()) return { started: true, detail: `not dialling from this ${host}: only '${this.config.dialFromHost}' dials` }
+        if (this.config.peerUrl) return { started: true, detail: `linking to ${this.config.peerUrl} · ${host}`, ...(this.lastError ? { lastError: this.lastError } : {}) }
+        return { started: true, detail: `waiting for the sibling to link · ${host}` }
     }
 
     // ── traffic for the sibling's cluster (only callers the core vouched for as a session) ─────────────
@@ -205,7 +228,7 @@ export default class BridgeRouter implements IRouter {
 
     private dial(): void {
         if (this.stopped || this.dialing || this.link?.alive) return
-        if (!this.config.peerUrl || !this.config.peerAccessKey) return
+        if (!this.config.peerUrl || !this.config.peerAccessKey || !this.dialsHere()) return
         const url = linkUrlOf(this.config.peerUrl)
         let socket: WebSocket
         try {
@@ -265,27 +288,55 @@ export default class BridgeRouter implements IRouter {
                 return
             }
             /*
-                Both dialled: the link opened by the LOWER uid stays, the other one goes. But when the two were opened
-                by the SAME side, that side is coming back: its old link died without a close (the other Kwirth
-                restarted, the network cut) and only this end still thinks it alive. Keeping the old one refused the
-                sibling every few seconds, forever (seen 2026-11-16, k3d's dev back restarting against AKS): the new
-                one replaces it.
+                Both opened by the SAME side: either that side is coming back (its old link died without a close —
+                a restart, a network cut — and only this end still thinks it alive), or it is ANOTHER INSTANCE of the
+                same Kwirth (same config and cluster uid: replicas, or a dev back sharing the store of the pod in its
+                cluster). Only asking the current link tells them apart: if it answers, it stays and the new one is
+                refused — whichever came first keeps it, and they no longer take it from each other (0.1.1 did, every
+                few seconds); if it does not, it was dead and the new one replaces it.
             */
-            const sameOpener = this.openerOf(link) === this.openerOf(current)
-            const keepNew = sameOpener || this.openerOf(link) < this.openerOf(current)
-            const why = sameOpener ? 'replaced by a new link from the same Kwirth' : 'duplicate link: the one opened by the lower cluster uid stays'
-            const drop = keepNew ? current : link
-            if (!keepNew) {
-                drop.bye(why, 4409)
+            if (this.openerOf(link) === this.openerOf(current)) {
+                void this.replaceIfDead(current, link, hello)
+                return
+            }
+            // both sides dialled: the link opened by the LOWER uid stays, the other one goes
+            if (this.openerOf(link) > this.openerOf(current)) {
+                link.bye('duplicate link: the one opened by the lower cluster uid stays', 4409)
                 return
             }
             // the current one goes, quietly: it is not a link down, it is replaced
             this.link = undefined
-            this.tunnel?.closeAll(sameOpener ? 'replaced by a new link from the same Kwirth' : 'replaced by the link opened by the lower cluster uid')
+            this.tunnel?.closeAll('replaced by the link opened by the lower cluster uid')
             this.tunnel = undefined
-            drop.bye(why, 4409)
-            if (sameOpener) this.context.logger.info(`'${hello.name}' (${hello.uid}) linked again: its old link is replaced`)
+            current.bye('duplicate link: the one opened by the lower cluster uid stays', 4409)
         }
+        this.adopt(link, hello)
+    }
+
+    // A new link from the side that opened the current one: it replaces the current one only if that one is dead
+    private async replaceIfDead(current: Link, link: Link, hello: IHelloFrame): Promise<void> {
+        const answers = await current.probe(PROBE_MS)
+        if (!link.alive) return
+        if (answers && this.link === current && current.alive) {
+            this.context.logger.info(`a link from '${hello.name}' (${hello.uid}) was refused: another instance of that Kwirth already holds the link, and it answers`)
+            link.bye('another instance of the same Kwirth already holds the link', 4409)
+            return
+        }
+        if (this.link === current) {
+            this.link = undefined
+            this.tunnel?.closeAll('replaced by a new link from the same Kwirth')
+            this.tunnel = undefined
+            current.bye('replaced by a new link from the same Kwirth: this one did not answer', 4409)
+            this.context.logger.info(`'${hello.name}' (${hello.uid}) linked again: its old link did not answer, it is replaced`)
+        }
+        if (this.link?.alive && this.link !== link) {
+            link.bye('another instance of the same Kwirth already holds the link', 4409)
+            return
+        }
+        this.adopt(link, hello)
+    }
+
+    private adopt(link: Link, hello: IHelloFrame): void {
         if (this.dialing?.link === link) this.dialing = undefined
         this.link = link
         this.tunnel = new Tunnel(link, this.context.loopbackUrl, (m) => this.context.logger.warning(m))
