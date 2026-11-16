@@ -10,7 +10,7 @@ import express from 'express'
 import WebSocket, { WebSocketServer } from 'ws'
 import { AddressInfo } from 'net'
 import { ERouteCallerVia, IRouteCaller, IRouterContext } from '@kwirthmagnify/kwirth-common-back'
-import BridgeRouter, { bridgeConfigOf, keyHasScope, linkUrlOf, splitClusterPath } from '../src/index'
+import BridgeRouter, { PROBE_MS, bridgeConfigOf, keyHasScope, linkUrlOf, splitClusterPath } from '../src/index'
 import { EFrameType, parseFrame } from '../src/Protocol'
 
 const PEER_KEY = 'peer-key|permanent|bridge$peer::::'
@@ -28,7 +28,7 @@ interface IFakeCore {
     ticket for a session; an access key for the link, its scope from the key), and anything else is its
     LOOPBACK, which echoes the request (HTTP) or the messages (WS).
 */
-const fakeCore = async (uid: string, name: string): Promise<IFakeCore> => {
+const fakeCore = async (uid: string, name: string, host = 'test-host'): Promise<IFakeCore> => {
     const seen: IFakeCore['seen'] = []
     const logs: string[] = []
     const app = express()
@@ -65,7 +65,7 @@ const fakeCore = async (uid: string, name: string): Promise<IFakeCore> => {
         clusterUid: uid, clusterName: name, kwirthVersion: '0.6.117', loopbackUrl: url,
         logger: { info: (m) => logs.push(`I ${m}`), trace: () => {}, warning: (m) => logs.push(`W ${m}`), error: (m) => logs.push(`E ${m}`) }
     }
-    bridge = new BridgeRouter(context)
+    bridge = new BridgeRouter(context, host)
     return {
         url, bridge, seen, logs,
         close: async () => {
@@ -180,26 +180,26 @@ test('🔴 both configured to each other: ONE link stays, the one opened by the 
 })
 
 /*
-    🔴 A comes back while B still holds A's OLD link (A restarted without closing it: B saw no close). Both links
-    were opened by A, so the lower-uid rule cannot choose: B kept the old, dead one and refused the new one with
-    4409 every few seconds, forever. The new one replaces it.
+    🔴 A comes back while B still holds A's OLD link, which died without a close (A restarted; B saw nothing). Both
+    links were opened by A, so the lower-uid rule cannot choose. B asks the old one: it does not answer, so the new
+    one replaces it. The "old A" here is a bare socket that said hello and answers no ping (autoPong off): dead.
 */
-test('🔴 the same sibling coming back replaces its old link, instead of being refused as a duplicate', async () => {
+test('🔴 the same sibling coming back replaces its old link when that one does not answer', async () => {
     const b = await fakeCore('bbb', 'kwirth-b')
-    const oldA = await fakeCore('aaa', 'kwirth-a')
     const newA = await fakeCore('aaa', 'kwirth-a')
+    let dead: WebSocket | undefined
     // closed whatever happens: a failure left the cores listening and the run never ended
     try {
         await b.bridge.startRouter({})
-        // the "old" A: linked, and it will not dial again in this test (its link is left to B to deal with)
-        await oldA.bridge.startRouter({ peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 60 })
-        await until(() => linked(oldA) && linked(b))
-        // the "new" A: same cluster uid, a new socket — while B still holds the old one
+        dead = new WebSocket(linkUrlOf(b.url), { headers: { Authorization: `Bearer ${PEER_KEY}` }, autoPong: false })
+        await new Promise<void>(resolve => dead!.on('open', () => resolve()))
+        dead.send(JSON.stringify({ t: EFrameType.HELLO, v: 1, uid: 'aaa', name: 'kwirth-a' }))
+        await until(() => linked(b))
+        // the "new" A: same cluster uid, a new socket — while B still holds the dead one
         await newA.bridge.startRouter({ peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 60 })
-        await until(() => linked(newA), 5000)
-        await until(() => !linked(oldA), 5000)
-        assert.ok(!newA.logs.some(l => l.includes('duplicate link')), 'the new one was not refused')
-        assert.ok(b.logs.some(l => l.includes('linked again: its old link is replaced')))
+        // A takes the link as soon as B says hello; B decides after the ping to the old one goes unanswered
+        await until(() => b.logs.some(l => l.includes('its old link did not answer, it is replaced')), PROBE_MS + 3000)
+        assert.ok(linked(newA))
         assert.match(b.bridge.getStatus().detail!, /linked to 'kwirth-a'/)
         // and what travels now goes over the new link
         const answer = await fetch(`${newA.url}/router/bridge/bbb/config/info`)
@@ -207,7 +207,71 @@ test('🔴 the same sibling coming back replaces its old link, instead of being 
         assert.deepEqual(await answer.json(), { from: 'kwirth-b', method: 'GET', path: '/config/info' })
     }
     finally {
-        await oldA.close(); await newA.close(); await b.close()
+        dead?.terminate(); await newA.close(); await b.close()
+    }
+})
+
+/*
+    🔴 Two LIVE instances of the same Kwirth (same config and cluster uid: replicas, or a dev back sharing its store
+    with the pod of its cluster) both dial B. With 0.1.1 each one took the link from the other every few seconds.
+    Now the current one answers the ping and stays; the other is refused, says why, and keeps trying without
+    taking anything — the link is stable, whichever came first.
+*/
+test('🔴 two live instances of the same Kwirth: the first keeps the link, the second is refused and does not take it', async () => {
+    const b = await fakeCore('bbb', 'kwirth-b')
+    const first = await fakeCore('aaa', 'kwirth-a')
+    const second = await fakeCore('aaa', 'kwirth-a')
+    try {
+        await b.bridge.startRouter({})
+        await first.bridge.startRouter({ peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 1 })
+        await until(() => linked(first) && linked(b))
+        await second.bridge.startRouter({ peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 1 })
+        await until(() => b.logs.some(l => l.includes('another instance of that Kwirth already holds the link')), 5000)
+        // a few of the second one's retries later, the first still holds it: nobody took it from anybody
+        await new Promise(r => setTimeout(r, 3500))
+        assert.ok(linked(first), 'the first instance keeps the link')
+        assert.ok(!first.logs.some(l => l.includes('down')), 'its link never went down')
+        assert.ok(!b.logs.some(l => l.includes('it is replaced')), 'B never replaced it')
+        assert.ok(second.logs.some(l => l.includes('the sibling left the link: another instance of the same Kwirth already holds the link')))
+        const answer = await fetch(`${first.url}/router/bridge/bbb/config/info`)
+        assert.equal(answer.status, 200)
+    }
+    finally {
+        await first.close(); await second.close(); await b.close()
+    }
+})
+
+/*
+    🔴 'Dial only from host': two instances of the same Kwirth share its config (a dev back and the pod of its
+    cluster, or replicas). With the host set, only the instance running there dials — whatever restarts, whenever —
+    and the other one waits, saying why. Its card shows the host it runs on, to copy into the field.
+*/
+test('🔴 dial only from host: only the instance on that host dials; the other waits and says why', async () => {
+    const b = await fakeCore('bbb', 'kwirth-b')
+    const pod = await fakeCore('aaa', 'kwirth-a', 'kwirth-pod-7c9d')
+    const dev = await fakeCore('aaa', 'kwirth-a', 'my-laptop')
+    try {
+        await b.bridge.startRouter({})
+        const config = { peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 1, dialFromHost: 'my-laptop' }
+        // the pod starts first, as it would after a dev restart: it does not dial
+        await pod.bridge.startRouter(config)
+        assert.match(pod.bridge.getStatus().detail!, /not dialling from this host 'kwirth-pod-7c9d': only 'my-laptop' dials/)
+        await dev.bridge.startRouter(config)
+        await until(() => linked(dev) && linked(b))
+        assert.match(dev.bridge.getStatus().detail!, /outgoing · host 'my-laptop'/)
+        // a few reconnect periods later the pod still has not dialled: nothing to refuse, nothing taken
+        await new Promise(r => setTimeout(r, 2500))
+        assert.ok(linked(dev))
+        assert.ok(!b.logs.some(l => l.includes('was refused') || l.includes('replaced')))
+        assert.ok(pod.logs.some(l => l.includes("started on host 'kwirth-pod-7c9d': not dialling, only 'my-laptop' dials")))
+
+        // the field emptied: every instance dials again (and the pod is refused while the dev holds the link)
+        await pod.bridge.applyConfig({ ...config, dialFromHost: '' })
+        await until(() => b.logs.some(l => l.includes('another instance of that Kwirth already holds the link')), 5000)
+        assert.ok(linked(dev), 'the dev keeps it')
+    }
+    finally {
+        await pod.close(); await dev.close(); await b.close()
     }
 })
 
@@ -245,7 +309,8 @@ test('the protocol trusts nothing: junk, unknown types and paths climbing out ar
 })
 
 test('helpers: config defaults, the link url, scopes and cluster paths', () => {
-    assert.deepEqual(bridgeConfigOf({}), { peerUrl: '', peerAccessKey: '', reconnectSeconds: 10 })
+    assert.deepEqual(bridgeConfigOf({}), { peerUrl: '', peerAccessKey: '', reconnectSeconds: 10, dialFromHost: '' })
+    assert.equal(bridgeConfigOf({ dialFromHost: '  my-laptop ' }).dialFromHost, 'my-laptop')
     assert.equal(bridgeConfigOf({ reconnectSeconds: 0 }).reconnectSeconds, 10)
     assert.equal(bridgeConfigOf({ reconnectSeconds: '5' }).reconnectSeconds, 5)
     assert.equal(linkUrlOf('https://b.example/kwirth/'), 'wss://b.example/kwirth/router/bridge/link')
