@@ -73,6 +73,7 @@ forma es exponerlo (ingress, load balancer) o montar una VPN.
 | `peerUrl` | texto | vacío | URL del otro Kwirth. Vacío = solo acepta enlaces |
 | `peerAccessKey` | password | vacío | Key creada **en el otro** con `bridge$peer`; enmascarada con ojo |
 | `reconnectSeconds` | número | 10 | Reintento tras un fallo (1–3600) |
+| `heartbeatSeconds` | número | 30 | Latido (5–300), en los dos extremos. Por debajo del timeout de inactividad de cualquier proxy en medio (AppGW, ALB, ingress); añadido en 0.1.4 |
 
 **B3 · Enlace.** Con `peerUrl`, abre el enlace y lo mantiene: reconecta cada `reconnectSeconds`, latido cada 30 s.
 Al conectar, los dos dicen quiénes son (uid y nombre de cluster, versiones de Kwirth y de `bridge`).
