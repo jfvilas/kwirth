@@ -24,31 +24,45 @@ declare const __BRIDGE_VERSION__: string
 const ROUTER_ID = 'bridge'
 const SCOPE_PEER = `${ROUTER_ID}$peer`
 const LINK_PATH = '/link'
-const HEARTBEAT_MS = 30_000
 export const PROBE_MS = 5_000           // how long a link has to answer a ping before a new one from its side replaces it
 const DEFAULT_RECONNECT_SECONDS = 10
+/*
+    THE link is pinged every heartbeatSeconds, whichever side opened it; no pong by the next beat = dead. It is
+    configurable because what sits in between decides: load balancers and gateways (Azure Application Gateway,
+    AWS ALB, ingress controllers…) cut a WebSocket that stays idle longer than THEIR timeout, and each has its own.
+    The heartbeat must be below the shortest one on the way.
+*/
+export const DEFAULT_HEARTBEAT_SECONDS = 30
+export const MIN_HEARTBEAT_SECONDS = 5
+export const MAX_HEARTBEAT_SECONDS = 300
 
 const SCHEMA: IConfigFieldDef[] = [
     { name: 'peerUrl', label: 'Sibling URL (empty: only accept links)', type: 'text' },
     { name: 'peerAccessKey', label: 'Access key created in the sibling (bridge$peer)', type: 'password' },
-    { name: 'reconnectSeconds', label: 'Reconnect every (seconds)', type: 'number', default: DEFAULT_RECONNECT_SECONDS }
+    { name: 'reconnectSeconds', label: 'Reconnect every (seconds)', type: 'number', default: DEFAULT_RECONNECT_SECONDS },
+    { name: 'heartbeatSeconds', label: `Heartbeat every (seconds, ${MIN_HEARTBEAT_SECONDS}-${MAX_HEARTBEAT_SECONDS}; below the idle timeout of any proxy on the way)`, type: 'number', default: DEFAULT_HEARTBEAT_SECONDS }
 ]
 
 interface IBridgeConfig {
     peerUrl: string
     peerAccessKey: string
     reconnectSeconds: number
+    heartbeatSeconds: number
+}
+
+// A whole number of seconds within [min, max], or the default
+const secondsOf = (value: unknown, min: number, max: number, fallback: number): number => {
+    const seconds = Number(value)
+    return Number.isInteger(seconds) && seconds >= min && seconds <= max ? seconds : fallback
 }
 
 // What is read from the saved config, made whole: whatever is missing or wrong takes its default
-export const bridgeConfigOf = (config: TRouterConfig): IBridgeConfig => {
-    const seconds = Number(config.reconnectSeconds)
-    return {
-        peerUrl: typeof config.peerUrl === 'string' ? config.peerUrl.trim() : '',
-        peerAccessKey: typeof config.peerAccessKey === 'string' ? config.peerAccessKey.trim() : '',
-        reconnectSeconds: Number.isInteger(seconds) && seconds >= 1 && seconds <= 3600 ? seconds : DEFAULT_RECONNECT_SECONDS
-    }
-}
+export const bridgeConfigOf = (config: TRouterConfig): IBridgeConfig => ({
+    peerUrl: typeof config.peerUrl === 'string' ? config.peerUrl.trim() : '',
+    peerAccessKey: typeof config.peerAccessKey === 'string' ? config.peerAccessKey.trim() : '',
+    reconnectSeconds: secondsOf(config.reconnectSeconds, 1, 3600, DEFAULT_RECONNECT_SECONDS),
+    heartbeatSeconds: secondsOf(config.heartbeatSeconds, MIN_HEARTBEAT_SECONDS, MAX_HEARTBEAT_SECONDS, DEFAULT_HEARTBEAT_SECONDS)
+})
 
 // The sibling's link endpoint: 'https://b.example/kwirth' → 'wss://b.example/kwirth/router/bridge/link'
 export const linkUrlOf = (peerUrl: string): string =>
@@ -99,8 +113,7 @@ export default class BridgeRouter implements IRouter {
     startRouter = async (config: TRouterConfig): Promise<void> => {
         this.config = bridgeConfigOf(config)
         this.stopped = false
-        this.heartbeat = setInterval(() => this.beat(), HEARTBEAT_MS)
-        if (typeof this.heartbeat.unref === 'function') this.heartbeat.unref()
+        this.startHeartbeat()
         this.context.logger.info(this.config.peerUrl ? `started: linking to ${this.config.peerUrl}` : 'started: waiting for the sibling to link')
         this.dial()
     }
@@ -108,7 +121,13 @@ export default class BridgeRouter implements IRouter {
     applyConfig = async (config: TRouterConfig): Promise<void> => {
         const next = bridgeConfigOf(config)
         const peerChanged = next.peerUrl !== this.config.peerUrl || next.peerAccessKey !== this.config.peerAccessKey
+        const heartbeatChanged = next.heartbeatSeconds !== this.config.heartbeatSeconds
         this.config = next
+        // a new heartbeat applies at once, to the link there is: it is not a reason to drop it
+        if (heartbeatChanged && !this.stopped) {
+            this.startHeartbeat()
+            this.context.logger.info(`config applied: heartbeat every ${next.heartbeatSeconds} s`)
+        }
         if (!peerChanged) return
         this.context.logger.info(next.peerUrl ? `config applied: linking to ${next.peerUrl}` : 'config applied: only accepting links')
         // what we dialled with the old settings goes; a link the sibling opened stays
@@ -220,7 +239,6 @@ export default class BridgeRouter implements IRouter {
         const link = new Link(socket as unknown as ILinkSocket, ELinkDirection.OUTGOING, this.own(), this.handlers)
         this.dialing = { socket, link }
         socket.on('open', () => link.hello())
-        socket.on('pong', () => { this.awaitingPong = false })
         socket.on('unexpected-response', (_req, response) => {
             this.lastError = `the sibling answered HTTP ${response.statusCode} on ${url} (is bridge installed there, and is the key valid?)`
             try { socket.terminate() } catch { /* already gone */ }
@@ -317,6 +335,10 @@ export default class BridgeRouter implements IRouter {
     private adopt(link: Link, hello: IHelloFrame): void {
         if (this.dialing?.link === link) this.dialing = undefined
         this.link = link
+        // the heartbeat pings THE link whichever side opened it: its pongs clear the wait, and a new link starts clean
+        this.awaitingPong = false
+        const socket = link.socket as unknown as { on?: (event: 'pong', listener: () => void) => void }
+        if (typeof socket.on === 'function') socket.on('pong', () => { if (this.link === link) this.awaitingPong = false })
         this.tunnel = new Tunnel(link, this.context.loopbackUrl, (m) => this.context.logger.warning(m))
         this.lastError = undefined
         this.context.logger.info(`linked to '${hello.name}' (${hello.uid}, Kwirth ${hello.kwirthVersion ?? '?'}, bridge ${hello.bridgeVersion ?? '?'}), ${link.direction}`)
@@ -349,13 +371,28 @@ export default class BridgeRouter implements IRouter {
         }
     }
 
-    // The link we dialled is pinged: no pong by the next beat and it is given up for dead (and dialled again)
+    /*
+        THE link is pinged, whichever side opened it: no pong by the next beat and it is given up for dead. One we
+        dialled is dialled again; one the sibling opened is closed, and the sibling dials again when it can.
+        Only the dialler used to ping, so an incoming link that died without a close (the sibling's machine or
+        network went away) stayed 'linked' here, and its cluster answered nothing, until the sibling came back
+        or an ingress timeout closed it.
+    */
+    // (Re)starts the heartbeat with the configured period; the wait for a pong starts over with it
+    private startHeartbeat(): void {
+        if (this.heartbeat) clearInterval(this.heartbeat)
+        this.awaitingPong = false
+        this.heartbeat = setInterval(() => this.beat(), this.config.heartbeatSeconds * 1000)
+        if (typeof this.heartbeat.unref === 'function') this.heartbeat.unref()
+    }
+
     private beat(): void {
         const link = this.link
-        if (!link?.alive || link.direction !== ELinkDirection.OUTGOING) return
+        if (!link?.alive) return
         const socket = link.socket as unknown as WebSocket
+        if (typeof socket.ping !== 'function') return
         if (this.awaitingPong) {
-            this.context.logger.warning('no answer from the sibling in 30 s: the link is given up')
+            this.context.logger.warning(`no answer from the sibling in ${this.config.heartbeatSeconds} s: the ${link.direction} link is given up`)
             this.awaitingPong = false
             try { socket.terminate() } catch { /* already gone */ }
             return
