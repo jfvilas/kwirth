@@ -3,7 +3,6 @@ import { IConfigFieldDef, IExtensionScope, IRouterData } from '@kwirthmagnify/kw
 import { ERouteCallerVia, IRouteCaller, IRouter, IRouterContext, IRouterStatus, TRouterConfig } from '@kwirthmagnify/kwirth-common-back'
 import { Request, Response } from 'express'
 import { IncomingMessage } from 'http'
-import { hostname } from 'os'
 import { EFrameType, IHelloFrame, TFrame, carriedHeaders } from './Protocol'
 import { ELinkDirection, ILinkSocket, Link } from './Link'
 import { Tunnel } from './Tunnel'
@@ -32,20 +31,13 @@ const DEFAULT_RECONNECT_SECONDS = 10
 const SCHEMA: IConfigFieldDef[] = [
     { name: 'peerUrl', label: 'Sibling URL (empty: only accept links)', type: 'text' },
     { name: 'peerAccessKey', label: 'Access key created in the sibling (bridge$peer)', type: 'password' },
-    { name: 'reconnectSeconds', label: 'Reconnect every (seconds)', type: 'number', default: DEFAULT_RECONNECT_SECONDS },
-    /*
-        The config is shared by every instance of this Kwirth (replicas, or a dev back sharing the store of the pod in
-        its cluster), and they would all dial the sibling. The host name is what tells them apart without configuring
-        each one: only the instance running there dials. Every instance's card shows its host, to copy it from.
-    */
-    { name: 'dialFromHost', label: 'Dial only from host (empty: every instance dials)', type: 'text' }
+    { name: 'reconnectSeconds', label: 'Reconnect every (seconds)', type: 'number', default: DEFAULT_RECONNECT_SECONDS }
 ]
 
 interface IBridgeConfig {
     peerUrl: string
     peerAccessKey: string
     reconnectSeconds: number
-    dialFromHost: string            // '' = every instance dials; a host name = only the instance running on it
 }
 
 // What is read from the saved config, made whole: whatever is missing or wrong takes its default
@@ -54,8 +46,7 @@ export const bridgeConfigOf = (config: TRouterConfig): IBridgeConfig => {
     return {
         peerUrl: typeof config.peerUrl === 'string' ? config.peerUrl.trim() : '',
         peerAccessKey: typeof config.peerAccessKey === 'string' ? config.peerAccessKey.trim() : '',
-        reconnectSeconds: Number.isInteger(seconds) && seconds >= 1 && seconds <= 3600 ? seconds : DEFAULT_RECONNECT_SECONDS,
-        dialFromHost: typeof config.dialFromHost === 'string' ? config.dialFromHost.trim() : ''
+        reconnectSeconds: Number.isInteger(seconds) && seconds >= 1 && seconds <= 3600 ? seconds : DEFAULT_RECONNECT_SECONDS
     }
 }
 
@@ -95,13 +86,7 @@ export default class BridgeRouter implements IRouter {
     private lastError?: string
     private stopped = false
 
-    // 'hostName': the machine this instance runs on (a test passes its own)
-    constructor(private context: IRouterContext, private hostName: string = hostname()) {}
-
-    // Whether this instance is the one that dials: every one when no host is set, else only the one running there
-    private dialsHere(): boolean {
-        return !this.config.dialFromHost || this.config.dialFromHost === this.hostName
-    }
+    constructor(private context: IRouterContext) {}
 
     getRouterData = (): IRouterData => ({ id: ROUTER_ID, pathTemplate: '/{routeTicket}/{clusterUid}', needsTicket: true })
 
@@ -116,20 +101,16 @@ export default class BridgeRouter implements IRouter {
         this.stopped = false
         this.heartbeat = setInterval(() => this.beat(), HEARTBEAT_MS)
         if (typeof this.heartbeat.unref === 'function') this.heartbeat.unref()
-        this.context.logger.info(!this.config.peerUrl ? `started on host '${this.hostName}': waiting for the sibling to link`
-            : this.dialsHere() ? `started on host '${this.hostName}': linking to ${this.config.peerUrl}`
-            : `started on host '${this.hostName}': not dialling, only '${this.config.dialFromHost}' dials`)
+        this.context.logger.info(this.config.peerUrl ? `started: linking to ${this.config.peerUrl}` : 'started: waiting for the sibling to link')
         this.dial()
     }
 
     applyConfig = async (config: TRouterConfig): Promise<void> => {
         const next = bridgeConfigOf(config)
-        const peerChanged = next.peerUrl !== this.config.peerUrl || next.peerAccessKey !== this.config.peerAccessKey || next.dialFromHost !== this.config.dialFromHost
+        const peerChanged = next.peerUrl !== this.config.peerUrl || next.peerAccessKey !== this.config.peerAccessKey
         this.config = next
         if (!peerChanged) return
-        this.context.logger.info(!next.peerUrl ? 'config applied: only accepting links'
-            : this.dialsHere() ? `config applied: linking to ${next.peerUrl} from host '${this.hostName}'`
-            : `config applied: not dialling from this host ('${this.hostName}'), only '${next.dialFromHost}' dials`)
+        this.context.logger.info(next.peerUrl ? `config applied: linking to ${next.peerUrl}` : 'config applied: only accepting links')
         // what we dialled with the old settings goes; a link the sibling opened stays
         this.cancelDial()
         if (this.link?.direction === ELinkDirection.OUTGOING) this.link.bye('the sibling settings changed')
@@ -147,12 +128,9 @@ export default class BridgeRouter implements IRouter {
 
     getStatus = (): IRouterStatus => {
         const peer = this.link?.peer
-        // the host is in every detail: it is what 'Dial only from host' takes, and each instance shows its own
-        const host = `host '${this.hostName}'`
-        if (peer) return { started: true, detail: `linked to '${peer.name}' (${peer.uid}), ${this.link!.direction} · ${host}` }
-        if (this.config.peerUrl && !this.dialsHere()) return { started: true, detail: `not dialling from this ${host}: only '${this.config.dialFromHost}' dials` }
-        if (this.config.peerUrl) return { started: true, detail: `linking to ${this.config.peerUrl} · ${host}`, ...(this.lastError ? { lastError: this.lastError } : {}) }
-        return { started: true, detail: `waiting for the sibling to link · ${host}` }
+        if (peer) return { started: true, detail: `linked to '${peer.name}' (${peer.uid}), ${this.link!.direction}` }
+        if (this.config.peerUrl) return { started: true, detail: `linking to ${this.config.peerUrl}`, ...(this.lastError ? { lastError: this.lastError } : {}) }
+        return { started: true, detail: 'waiting for the sibling to link' }
     }
 
     // ── traffic for the sibling's cluster (only callers the core vouched for as a session) ─────────────
@@ -228,7 +206,7 @@ export default class BridgeRouter implements IRouter {
 
     private dial(): void {
         if (this.stopped || this.dialing || this.link?.alive) return
-        if (!this.config.peerUrl || !this.config.peerAccessKey || !this.dialsHere()) return
+        if (!this.config.peerUrl || !this.config.peerAccessKey) return
         const url = linkUrlOf(this.config.peerUrl)
         let socket: WebSocket
         try {
