@@ -16,6 +16,10 @@
   (`PROBE_MS`, 5 s): si contesta se queda y el nuevo se rechaza; si no, el nuevo lo sustituye. Y el campo **«Dial
   only from host»** elige qué instancia marca (las demás esperan y lo dicen; cada tarjeta enseña su host).
   Unitarios 13/13.
+- **0.1.3** (2026‑11‑17): fuera **«Dial only from host»** (decisión del usuario). Era para su dev, donde el back de
+  dev y el pod comparten store; eso se resuelve cargando bridge en el dev desde su `dist` (`kwirth-dev.json`,
+  `routers`), sin instalarlo del marketplace, para que el pod no lo ejecute. Se queda el **ping al enlace actual**,
+  que vale en producción con varias réplicas. Unitarios 12/12.
 - **Dos instancias del mismo Kwirth se quitan el enlace** (2026‑11‑16, visto con 0.1.1). Dos Kwirth con la misma
   configuración y el mismo cluster uid (el back de dev y el pod del mismo k3d, que comparten store; o un Kwirth con
   **varias réplicas**) marcan los dos al hermano. Con 0.1.0 el receptor se quedaba con el primero y rechazaba al
