@@ -30,7 +30,8 @@
   queda el enlace; para eso haría falta que una de ellas no arranque el router. No se hace por ahora (decisión del
   usuario, 2026‑11‑16: el caso que lo destapó es solo de su entorno de dev).
 
-- ✅ **Hecho 2026‑11‑17 (0.1.4, sin publicar)**: el latido hace ping a **el** enlace sea quien sea quien lo
+- ✅ **Hecho 2026‑11‑17, publicado `router/bridge@0.1.4`, QA del usuario OK** (dev ↔ AKS: el campo de latido se
+  aplica en caliente; con el back de dev congelado, AKS da por muerto el entrante y el dev se reenlaza solo): el latido hace ping a **el** enlace sea quien sea quien lo
   abrió; el pong se escucha al adoptarlo (antes solo al marcar). Un entrante que no contesta en dos latidos se
   cierra y el hermano vuelve a marcar. Unitarios 14/14 (dos nuevos, con `mock.timers` sobre el `setInterval`;
   el del entrante muerto falla sin el arreglo). Y el latido es **configurable**, campo *Heartbeat every
