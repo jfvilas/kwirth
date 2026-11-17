@@ -30,7 +30,14 @@
   queda el enlace; para eso haría falta que una de ellas no arranque el router. No se hace por ahora (decisión del
   usuario, 2026‑11‑16: el caso que lo destapó es solo de su entorno de dev).
 
-- **El receptor no vigila sus enlaces entrantes** (2026‑11‑16): solo hace ping quien marca (`beat()`). Un enlace
+- ✅ **Hecho 2026‑11‑17 (0.1.4, sin publicar)**: el latido hace ping a **el** enlace sea quien sea quien lo
+  abrió; el pong se escucha al adoptarlo (antes solo al marcar). Un entrante que no contesta en dos latidos se
+  cierra y el hermano vuelve a marcar. Unitarios 14/14 (dos nuevos, con `mock.timers` sobre el `setInterval`;
+  el del entrante muerto falla sin el arreglo). Y el latido es **configurable**, campo *Heartbeat every
+  (seconds)* (`heartbeatSeconds`, 30 por defecto, 5–300), a petición del usuario: AppGW, ALB y los ingress
+  cortan un WebSocket inactivo cada uno con su timeout. Cambiarlo se aplica al momento sin tirar el enlace.
+  Unitarios 15/15.
+  **El receptor no vigila sus enlaces entrantes** (2026‑11‑16): solo hace ping quien marca (`beat()`). Un enlace
   entrante muerto sin cierre lo sigue dando por vivo hasta que el hermano vuelve (ya se sustituye, 0.1.1) o un
   timeout del ingress lo cierra; mientras, su cluster no responde. Hacer ping también a los entrantes.
 
