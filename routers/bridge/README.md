@@ -29,9 +29,8 @@ is written.
    | *Sibling URL* | B's URL, e.g. `https://b.example.com/kwirth` |
    | *Access key created in the sibling* | the key from step 2 (masked, with the eye) |
    | *Reconnect every (seconds)* | 10 by default |
-   | *Dial only from host* | empty by default: see below |
 
-   Save: A links to B at once. The card says *Started*; its tooltip, who it is linked to and the host it runs on.
+   Save: A links to B at once. The card says *Started*; its tooltip, who it is linked to.
 4. In each Kwirth, add the other one to the cluster list (*Manage cluster list*): its **real URL**, an access
    key **of that cluster** (as for any cluster), *Route* = **bridge**, and *Cluster UID* = the other one's
    cluster uid.
@@ -46,8 +45,6 @@ is written.
 - **Several instances of the same Kwirth** (replicas, or a development back end sharing the store of the Kwirth
   deployed in its cluster) share bridge's configuration, so they all dial. The sibling keeps the link of the first
   one while it answers and refuses the others; one whose old link died without a close (a restart) gets it back.
-  To choose which instance dials, set ***Dial only from host*** to the host name of that one: the others wait and
-  their card says so. Every card shows the host its instance runs on, to copy it from.
 - It comes back on its own: retries every *Reconnect every* seconds, and checks the link every 30 s.
 - Deleting the `bridge$peer` key in B cuts the link at once (the core does it), and A says so in its log.
 - **Security:** whoever holds a `bridge$peer` key of B can *be* B's sibling. Protect it like any other key.
