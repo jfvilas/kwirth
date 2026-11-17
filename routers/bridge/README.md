@@ -29,6 +29,7 @@ is written.
    | *Sibling URL* | B's URL, e.g. `https://b.example.com/kwirth` |
    | *Access key created in the sibling* | the key from step 2 (masked, with the eye) |
    | *Reconnect every (seconds)* | 10 by default |
+   | *Heartbeat every (seconds)* | 30 by default (5–300). Keep it **below the idle timeout of every proxy on the way** (Azure Application Gateway, AWS ALB, your ingress…): they cut a WebSocket that stays idle longer than theirs |
 
    Save: A links to B at once. The card says *Started*; its tooltip, who it is linked to.
 4. In each Kwirth, add the other one to the cluster list (*Manage cluster list*): its **real URL**, an access
@@ -45,7 +46,14 @@ is written.
 - **Several instances of the same Kwirth** (replicas, or a development back end sharing the store of the Kwirth
   deployed in its cluster) share bridge's configuration, so they all dial. The sibling keeps the link of the first
   one while it answers and refuses the others; one whose old link died without a close (a restart) gets it back.
-- It comes back on its own: retries every *Reconnect every* seconds, and checks the link every 30 s.
+- It comes back on its own: retries every *Reconnect every* seconds. **Both ends** ping the link every *Heartbeat
+  every* seconds (30 by default): a link that does not answer by the next beat is given up — the side that dialled
+  dials again, the side that received it waits for the sibling to come back. A link that dies without a close (a
+  machine or a network gone) is noticed within two beats, on both sides. Changing it applies at once, without
+  dropping the link.
+- There are **two heartbeats, one per end**, each with its own setting: they do not need to match. A proxy sees
+  traffic as often as the **shorter** one pings, so one end below its idle timeout is enough to keep the link up;
+  each end notices a dead link at its own pace. The same value on both is the simple choice.
 - Deleting the `bridge$peer` key in B cuts the link at once (the core does it), and A says so in its log.
 - **Security:** whoever holds a `bridge$peer` key of B can *be* B's sibling. Protect it like any other key.
 - **Login IP filter:** what the bridge delivers reaches the sibling's core **over loopback**. Sessions through a
