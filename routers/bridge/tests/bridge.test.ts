@@ -28,7 +28,7 @@ interface IFakeCore {
     ticket for a session; an access key for the link, its scope from the key), and anything else is its
     LOOPBACK, which echoes the request (HTTP) or the messages (WS).
 */
-const fakeCore = async (uid: string, name: string, host = 'test-host'): Promise<IFakeCore> => {
+const fakeCore = async (uid: string, name: string): Promise<IFakeCore> => {
     const seen: IFakeCore['seen'] = []
     const logs: string[] = []
     const app = express()
@@ -65,7 +65,7 @@ const fakeCore = async (uid: string, name: string, host = 'test-host'): Promise<
         clusterUid: uid, clusterName: name, kwirthVersion: '0.6.117', loopbackUrl: url,
         logger: { info: (m) => logs.push(`I ${m}`), trace: () => {}, warning: (m) => logs.push(`W ${m}`), error: (m) => logs.push(`E ${m}`) }
     }
-    bridge = new BridgeRouter(context, host)
+    bridge = new BridgeRouter(context)
     return {
         url, bridge, seen, logs,
         close: async () => {
@@ -241,40 +241,6 @@ test('🔴 two live instances of the same Kwirth: the first keeps the link, the 
     }
 })
 
-/*
-    🔴 'Dial only from host': two instances of the same Kwirth share its config (a dev back and the pod of its
-    cluster, or replicas). With the host set, only the instance running there dials — whatever restarts, whenever —
-    and the other one waits, saying why. Its card shows the host it runs on, to copy into the field.
-*/
-test('🔴 dial only from host: only the instance on that host dials; the other waits and says why', async () => {
-    const b = await fakeCore('bbb', 'kwirth-b')
-    const pod = await fakeCore('aaa', 'kwirth-a', 'kwirth-pod-7c9d')
-    const dev = await fakeCore('aaa', 'kwirth-a', 'my-laptop')
-    try {
-        await b.bridge.startRouter({})
-        const config = { peerUrl: b.url, peerAccessKey: PEER_KEY, reconnectSeconds: 1, dialFromHost: 'my-laptop' }
-        // the pod starts first, as it would after a dev restart: it does not dial
-        await pod.bridge.startRouter(config)
-        assert.match(pod.bridge.getStatus().detail!, /not dialling from this host 'kwirth-pod-7c9d': only 'my-laptop' dials/)
-        await dev.bridge.startRouter(config)
-        await until(() => linked(dev) && linked(b))
-        assert.match(dev.bridge.getStatus().detail!, /outgoing · host 'my-laptop'/)
-        // a few reconnect periods later the pod still has not dialled: nothing to refuse, nothing taken
-        await new Promise(r => setTimeout(r, 2500))
-        assert.ok(linked(dev))
-        assert.ok(!b.logs.some(l => l.includes('was refused') || l.includes('replaced')))
-        assert.ok(pod.logs.some(l => l.includes("started on host 'kwirth-pod-7c9d': not dialling, only 'my-laptop' dials")))
-
-        // the field emptied: every instance dials again (and the pod is refused while the dev holds the link)
-        await pod.bridge.applyConfig({ ...config, dialFromHost: '' })
-        await until(() => b.logs.some(l => l.includes('another instance of that Kwirth already holds the link')), 5000)
-        assert.ok(linked(dev), 'the dev keeps it')
-    }
-    finally {
-        await pod.close(); await dev.close(); await b.close()
-    }
-})
-
 test('🔴 the link drops: A says so and links again on its own', async () => {
     const a = await fakeCore('aaa', 'kwirth-a')
     let b = await fakeCore('bbb', 'kwirth-b')
@@ -309,8 +275,7 @@ test('the protocol trusts nothing: junk, unknown types and paths climbing out ar
 })
 
 test('helpers: config defaults, the link url, scopes and cluster paths', () => {
-    assert.deepEqual(bridgeConfigOf({}), { peerUrl: '', peerAccessKey: '', reconnectSeconds: 10, dialFromHost: '' })
-    assert.equal(bridgeConfigOf({ dialFromHost: '  my-laptop ' }).dialFromHost, 'my-laptop')
+    assert.deepEqual(bridgeConfigOf({}), { peerUrl: '', peerAccessKey: '', reconnectSeconds: 10 })
     assert.equal(bridgeConfigOf({ reconnectSeconds: 0 }).reconnectSeconds, 10)
     assert.equal(bridgeConfigOf({ reconnectSeconds: '5' }).reconnectSeconds, 5)
     assert.equal(linkUrlOf('https://b.example/kwirth/'), 'wss://b.example/kwirth/router/bridge/link')
