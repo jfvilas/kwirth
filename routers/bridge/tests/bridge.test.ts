@@ -3,14 +3,14 @@
 // WebSocket. What is checked is what the PRD promises: one link, traffic both ways, the destination's
 // credential carried untouched, one sibling only, and coming back on its own.
 
-import test from 'node:test'
+import test, { mock } from 'node:test'
 import assert from 'node:assert/strict'
 import http from 'http'
 import express from 'express'
 import WebSocket, { WebSocketServer } from 'ws'
 import { AddressInfo } from 'net'
 import { ERouteCallerVia, IRouteCaller, IRouterContext } from '@kwirthmagnify/kwirth-common-back'
-import BridgeRouter, { PROBE_MS, bridgeConfigOf, keyHasScope, linkUrlOf, splitClusterPath } from '../src/index'
+import BridgeRouter, { DEFAULT_HEARTBEAT_SECONDS, PROBE_MS, bridgeConfigOf, keyHasScope, linkUrlOf, splitClusterPath } from '../src/index'
 import { EFrameType, parseFrame } from '../src/Protocol'
 
 const PEER_KEY = 'peer-key|permanent|bridge$peer::::'
@@ -241,6 +241,85 @@ test('🔴 two live instances of the same Kwirth: the first keeps the link, the 
     }
 })
 
+// A bare socket linked to 'core' as sibling 'aaa' that answers no ping (autoPong off): a link dead without a close
+const deadSiblingOf = async (core: IFakeCore): Promise<WebSocket> => {
+    const dead = new WebSocket(linkUrlOf(core.url), { headers: { Authorization: `Bearer ${PEER_KEY}` }, autoPong: false })
+    await new Promise<void>(resolve => dead.on('open', () => resolve()))
+    dead.send(JSON.stringify({ t: EFrameType.HELLO, v: 1, uid: 'aaa', name: 'kwirth-a' }))
+    await until(() => linked(core))
+    return dead
+}
+
+/*
+    🔴 The RECEIVING side watches its link too. Only the dialler used to ping, so an incoming link that died without
+    a close (the sibling's machine or network went away) stayed 'linked' on B, and its cluster answered nothing,
+    until the sibling came back. The "A" here is a bare socket that said hello and answers no ping (autoPong off).
+    The heartbeat's setInterval is mocked so two beats take no time; the sockets stay real. B runs with a heartbeat
+    of 5 s from its config: the period that counts is the configured one.
+*/
+test('🔴 the receiving side gives up an incoming link that stops answering pings', async () => {
+    mock.timers.enable({ apis: ['setInterval'] })
+    const b = await fakeCore('bbb', 'kwirth-b')
+    let dead: WebSocket | undefined
+    try {
+        await b.bridge.startRouter({ heartbeatSeconds: 5 })
+        dead = await deadSiblingOf(b)
+        // a beat of the DEFAULT period would be two of the configured one: one tick of 5 s only sends the ping
+        mock.timers.tick(5_000)
+        assert.ok(linked(b), 'one beat sends the ping; the link is not given up yet')
+        // second beat: no pong came, the link is given up
+        mock.timers.tick(5_000)
+        await until(() => !linked(b))
+        assert.ok(b.logs.some(l => l.includes('no answer from the sibling in 5 s: the incoming link is given up')))
+    }
+    finally {
+        mock.timers.reset()
+        dead?.terminate(); await b.close()
+    }
+})
+
+// The heartbeat changes with the config, at once and without dropping the link there is (e.g. an ALB cuts at 60 s)
+test('a new heartbeat applies at once to the live link, without dropping it', async () => {
+    mock.timers.enable({ apis: ['setInterval'] })
+    const b = await fakeCore('bbb', 'kwirth-b')
+    let dead: WebSocket | undefined
+    try {
+        await b.bridge.startRouter({})
+        dead = await deadSiblingOf(b)
+        await b.bridge.applyConfig({ heartbeatSeconds: 10 })
+        assert.ok(b.logs.some(l => l.includes('config applied: heartbeat every 10 s')))
+        assert.ok(linked(b), 'changing the heartbeat does not drop the link')
+        mock.timers.tick(10_000)
+        mock.timers.tick(10_000)
+        await until(() => !linked(b))
+        assert.ok(b.logs.some(l => l.includes('no answer from the sibling in 10 s')))
+    }
+    finally {
+        mock.timers.reset()
+        dead?.terminate(); await b.close()
+    }
+})
+
+// And an incoming link that DOES answer stays, beat after beat: the receiving side gives up only dead ones
+test('an incoming link that answers its pings stays linked across beats', async () => {
+    mock.timers.enable({ apis: ['setInterval'] })
+    const { a, b, close } = await pair()
+    try {
+        for (let beat = 0; beat < 4; beat++) {
+            mock.timers.tick(DEFAULT_HEARTBEAT_SECONDS * 1000)
+            // the pong travels over a real socket: give it time to come back before the next beat
+            await new Promise(r => setTimeout(r, 150))
+        }
+        assert.ok(linked(a) && linked(b))
+        assert.ok(!b.logs.some(l => l.includes('is given up')))
+        assert.ok(!a.logs.some(l => l.includes('is given up')))
+    }
+    finally {
+        mock.timers.reset()
+        await close()
+    }
+})
+
 test('🔴 the link drops: A says so and links again on its own', async () => {
     const a = await fakeCore('aaa', 'kwirth-a')
     let b = await fakeCore('bbb', 'kwirth-b')
@@ -275,9 +354,12 @@ test('the protocol trusts nothing: junk, unknown types and paths climbing out ar
 })
 
 test('helpers: config defaults, the link url, scopes and cluster paths', () => {
-    assert.deepEqual(bridgeConfigOf({}), { peerUrl: '', peerAccessKey: '', reconnectSeconds: 10 })
+    assert.deepEqual(bridgeConfigOf({}), { peerUrl: '', peerAccessKey: '', reconnectSeconds: 10, heartbeatSeconds: 30 })
     assert.equal(bridgeConfigOf({ reconnectSeconds: 0 }).reconnectSeconds, 10)
     assert.equal(bridgeConfigOf({ reconnectSeconds: '5' }).reconnectSeconds, 5)
+    // the heartbeat: 5..300 whole seconds, anything else is the default
+    for (const [given, expected] of [[5, 5], [300, 300], ['45', 45], [4, 30], [301, 30], [12.5, 30], ['x', 30], [undefined, 30]] as const)
+        assert.equal(bridgeConfigOf({ heartbeatSeconds: given }).heartbeatSeconds, expected, String(given))
     assert.equal(linkUrlOf('https://b.example/kwirth/'), 'wss://b.example/kwirth/router/bridge/link')
     assert.equal(linkUrlOf('http://b:3883'), 'ws://b:3883/router/bridge/link')
     assert.equal(keyHasScope('admin,bridge$peer:::: ;x::::', 'bridge$peer'), true)
