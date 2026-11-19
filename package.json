@@ -4,9 +4,15 @@
     "displayName": "Depth Charge",
     "extensionType": "plugin",
     "publisher": "@jfvilas",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "description": "Depth Charge: a retro destroyer-vs-submarines arcade game channel for Kwirth",
     "icon": "<svg viewBox='0 0 24 24' shape-rendering='crispEdges'><path fill='#4585CA' d='M4 12h16v1H4zM2 13h20v4H2zM4 17h16v1H4zM9 8h6v4H9zM11 4h2v4h-2zM13 4h3v2h-3z'></path></svg>",
+    "website": "https://kwirthmagnify.dev",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jfvilas/kwirth.git",
+        "directory": "plugins/depthcharge"
+    },
     "requiresRestart": false,
     "requiresExtension": [],
     "type": "module",
@@ -15,9 +21,9 @@
         "watch": "node watch.mjs"
     },
     "dependencies": {
-        "@kwirthmagnify/kwirth-common": "^0.5.62",
-        "@kwirthmagnify/kwirth-common-back": "^0.6.0",
-        "@kwirthmagnify/kwirth-common-front": "^0.5.52"
+        "@kwirthmagnify/kwirth-common": "^0.5.94",
+        "@kwirthmagnify/kwirth-common-back": "^0.6.19",
+        "@kwirthmagnify/kwirth-common-front": "^0.5.79"
     },
     "devDependencies": {
         "@mui/icons-material": "7.1.2",
