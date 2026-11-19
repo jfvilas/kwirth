@@ -3,6 +3,11 @@
     "extensionType": "router",
     "id": "bridge",
     "version": "0.1.4",
+    "tags": [
+      "operations",
+      "networking",
+      "platform"
+    ],
     "name": "Bridge",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-router-bridge/-/kwirth-router-bridge-0.1.4.tgz",
     "description": "Two Kwirths that reach each other through one outbound link, each seeing the other in its cluster list",
@@ -13,6 +18,11 @@
     "extensionType": "router",
     "id": "bridge",
     "version": "0.1.3",
+    "tags": [
+      "operations",
+      "networking",
+      "platform"
+    ],
     "name": "Bridge",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-router-bridge/-/kwirth-router-bridge-0.1.3.tgz",
     "description": "Two Kwirths that reach each other through one outbound link, each seeing the other in its cluster list",
@@ -23,6 +33,11 @@
     "extensionType": "router",
     "id": "bridge",
     "version": "0.1.2",
+    "tags": [
+      "operations",
+      "networking",
+      "platform"
+    ],
     "name": "Bridge",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-router-bridge/-/kwirth-router-bridge-0.1.2.tgz",
     "description": "Two Kwirths that reach each other through one outbound link, each seeing the other in its cluster list",
@@ -33,6 +48,11 @@
     "extensionType": "router",
     "id": "bridge",
     "version": "0.1.1",
+    "tags": [
+      "operations",
+      "networking",
+      "platform"
+    ],
     "name": "Bridge",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-router-bridge/-/kwirth-router-bridge-0.1.1.tgz",
     "description": "Two Kwirths that reach each other through one outbound link, each seeing the other in its cluster list",
@@ -43,6 +63,11 @@
     "extensionType": "router",
     "id": "bridge",
     "version": "0.1.0",
+    "tags": [
+      "operations",
+      "networking",
+      "platform"
+    ],
     "name": "Bridge",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-router-bridge/-/kwirth-router-bridge-0.1.0.tgz",
     "description": "Two Kwirths that reach each other through one outbound link, each seeing the other in its cluster list",
@@ -53,6 +78,10 @@
     "extensionType": "plugin",
     "id": "depthcharge",
     "version": "0.1.0",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Depth Charge",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-depthcharge/-/kwirth-plugin-depthcharge-0.1.0.tgz",
     "description": "Depth Charge: a retro destroyer-vs-submarines arcade game channel for Kwirth",
@@ -63,6 +92,10 @@
     "extensionType": "plugin",
     "id": "chapete",
     "version": "0.1.3",
+    "tags": [
+      "ai",
+      "assistant"
+    ],
     "name": "Chapete",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-chapete/-/kwirth-plugin-chapete-0.1.3.tgz",
     "description": "Chat with an LLM from Kwirth, using the LLMs configured in the core",
@@ -73,6 +106,10 @@
     "extensionType": "plugin",
     "id": "chapete",
     "version": "0.1.2",
+    "tags": [
+      "ai",
+      "assistant"
+    ],
     "name": "Chapete",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-chapete/-/kwirth-plugin-chapete-0.1.2.tgz",
     "description": "Chat with an LLM from Kwirth, using the LLMs configured in the core",
@@ -83,6 +120,10 @@
     "extensionType": "plugin",
     "id": "chapete",
     "version": "0.1.1",
+    "tags": [
+      "ai",
+      "assistant"
+    ],
     "name": "Chapete",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-chapete/-/kwirth-plugin-chapete-0.1.1.tgz",
     "description": "Chat with an LLM from Kwirth, using the LLMs configured in the core",
@@ -93,6 +134,10 @@
     "extensionType": "plugin",
     "id": "chapete",
     "version": "0.1.0",
+    "tags": [
+      "ai",
+      "assistant"
+    ],
     "name": "Chapete",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-chapete/-/kwirth-plugin-chapete-0.1.0.tgz",
     "description": "Chat with an LLM from Kwirth, using the LLMs configured in the core",
@@ -103,6 +148,10 @@
     "extensionType": "plugin",
     "id": "webamp",
     "version": "0.1.3",
+    "tags": [
+      "media",
+      "music"
+    ],
     "name": "Webamp",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-webamp/-/kwirth-plugin-webamp-0.1.3.tgz",
     "description": "Webamp music player channel plugin for Kwirth - a Winamp 2 clone running in a Kwirth tab, with drag-and-drop audio and skin support",
@@ -113,6 +162,10 @@
     "extensionType": "plugin",
     "id": "webamp",
     "version": "0.1.2",
+    "tags": [
+      "media",
+      "music"
+    ],
     "name": "Webamp",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-webamp/-/kwirth-plugin-webamp-0.1.2.tgz",
     "description": "Webamp music player channel plugin for Kwirth - a Winamp 2 clone running in a Kwirth tab, with drag-and-drop audio and skin support",
@@ -123,6 +176,10 @@
     "extensionType": "plugin",
     "id": "webamp",
     "version": "0.1.1",
+    "tags": [
+      "media",
+      "music"
+    ],
     "name": "Webamp",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-webamp/-/kwirth-plugin-webamp-0.1.1.tgz",
     "description": "Webamp music player channel plugin for Kwirth - a Winamp 2 clone running in a Kwirth tab, with drag-and-drop audio and skin support",
@@ -133,6 +190,10 @@
     "extensionType": "plugin",
     "id": "rallyx",
     "version": "0.1.3",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Rally-X",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-rallyx/-/kwirth-plugin-rallyx-0.1.3.tgz",
     "description": "Rally-X arcade game channel plugin for Kwirth - a classic 1980s rally maze game playable in a Kwirth tab, with per-tab persistent game state and high-score table",
@@ -143,6 +204,10 @@
     "extensionType": "plugin",
     "id": "rallyx",
     "version": "0.1.2",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Rally-X",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-rallyx/-/kwirth-plugin-rallyx-0.1.2.tgz",
     "description": "Rally-X arcade game channel plugin for Kwirth - a classic 1980s rally maze game playable in a Kwirth tab, with per-tab persistent game state and high-score table",
@@ -153,6 +218,10 @@
     "extensionType": "plugin",
     "id": "rallyx",
     "version": "0.1.1",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Rally-X",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-rallyx/-/kwirth-plugin-rallyx-0.1.1.tgz",
     "description": "Rally-X arcade game channel plugin for Kwirth - a classic 1980s rally maze game playable in a Kwirth tab, with per-tab persistent game state and high-score table",
@@ -163,6 +232,10 @@
     "extensionType": "plugin",
     "id": "pacman",
     "version": "0.1.3",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Pac-Man",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-pacman/-/kwirth-plugin-pacman-0.1.3.tgz",
     "description": "Pac-Man channel plugin for Kwirth - the classic arcade game playable in a Kwirth tab, with per-tab persistent game state",
@@ -173,6 +246,10 @@
     "extensionType": "plugin",
     "id": "pacman",
     "version": "0.1.2",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Pac-Man",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-pacman/-/kwirth-plugin-pacman-0.1.2.tgz",
     "description": "Pac-Man channel plugin for Kwirth - the classic arcade game playable in a Kwirth tab, with per-tab persistent game state",
@@ -183,6 +260,10 @@
     "extensionType": "plugin",
     "id": "pacman",
     "version": "0.1.1",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Pac-Man",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-pacman/-/kwirth-plugin-pacman-0.1.1.tgz",
     "description": "Pac-Man channel plugin for Kwirth - the classic arcade game playable in a Kwirth tab, with per-tab persistent game state",
@@ -193,6 +274,10 @@
     "extensionType": "plugin",
     "id": "asteroids",
     "version": "0.1.12",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Asteroids",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-asteroids/-/kwirth-plugin-asteroids-0.1.12.tgz",
     "description": "Asteroids channel plugin for Kwirth - a vector asteroid shooter playable in a Kwirth tab, with per-tab persistent game state",
@@ -203,6 +288,10 @@
     "extensionType": "plugin",
     "id": "asteroids",
     "version": "0.1.11",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Asteroids",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-asteroids/-/kwirth-plugin-asteroids-0.1.11.tgz",
     "description": "Asteroids channel plugin for Kwirth - a vector asteroid shooter playable in a Kwirth tab, with per-tab persistent game state",
@@ -213,6 +302,10 @@
     "extensionType": "plugin",
     "id": "asteroids",
     "version": "0.1.10",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Asteroids",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-asteroids/-/kwirth-plugin-asteroids-0.1.10.tgz",
     "description": "Asteroids channel plugin for Kwirth - a vector asteroid shooter playable in a Kwirth tab, with per-tab persistent game state",
@@ -223,6 +316,10 @@
     "extensionType": "plugin",
     "id": "v16map",
     "version": "0.1.4",
+    "tags": [
+      "live-data",
+      "traffic"
+    ],
     "name": "V16 Map",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-v16map/-/kwirth-plugin-v16map-0.1.4.tgz",
     "description": "Spanish DGT traffic incidents on a map, with V16 emergency beacons highlighted, fed by the v16 provider",
@@ -233,6 +330,10 @@
     "extensionType": "plugin",
     "id": "v16map",
     "version": "0.1.3",
+    "tags": [
+      "live-data",
+      "traffic"
+    ],
     "name": "V16 Map",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-v16map/-/kwirth-plugin-v16map-0.1.3.tgz",
     "description": "Spanish DGT traffic incidents on a map, with V16 emergency beacons highlighted, fed by the v16 provider",
@@ -243,6 +344,10 @@
     "extensionType": "plugin",
     "id": "v16map",
     "version": "0.1.2",
+    "tags": [
+      "live-data",
+      "traffic"
+    ],
     "name": "V16 Map",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-v16map/-/kwirth-plugin-v16map-0.1.2.tgz",
     "description": "Spanish DGT traffic incidents on a map, with V16 emergency beacons highlighted, fed by the v16 provider",
@@ -253,6 +358,10 @@
     "extensionType": "plugin",
     "id": "flightmap",
     "version": "0.1.4",
+    "tags": [
+      "live-data",
+      "aviation"
+    ],
     "name": "Flight Map",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-flightmap/-/kwirth-plugin-flightmap-0.1.4.tgz",
     "description": "Live aircraft over an area on a map, with details for the flights you follow, fed by the flight-status provider",
@@ -263,6 +372,10 @@
     "extensionType": "plugin",
     "id": "flightmap",
     "version": "0.1.3",
+    "tags": [
+      "live-data",
+      "aviation"
+    ],
     "name": "Flight Map",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-flightmap/-/kwirth-plugin-flightmap-0.1.3.tgz",
     "description": "Live aircraft over an area on a map, with details for the flights you follow, fed by the flight-status provider",
@@ -273,6 +386,10 @@
     "extensionType": "plugin",
     "id": "flightmap",
     "version": "0.1.2",
+    "tags": [
+      "live-data",
+      "aviation"
+    ],
     "name": "Flight Map",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-flightmap/-/kwirth-plugin-flightmap-0.1.2.tgz",
     "description": "Live aircraft over an area on a map, with details for the flights you follow, fed by the flight-status provider",
@@ -284,6 +401,10 @@
     "targetType": "plugin",
     "id": "webamp",
     "version": "0.1.2",
+    "tags": [
+      "media",
+      "music"
+    ],
     "name": "Webamp — Guide",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-docs-webamp/-/kwirth-docs-webamp-0.1.2.tgz",
     "description": "User and administrator guide for the Webamp plugin",
@@ -295,6 +416,10 @@
     "targetType": "plugin",
     "id": "webamp",
     "version": "0.1.1",
+    "tags": [
+      "media",
+      "music"
+    ],
     "name": "Webamp — Guide",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-docs-webamp/-/kwirth-docs-webamp-0.1.1.tgz",
     "description": "User and administrator guide for the Webamp plugin",
@@ -306,6 +431,10 @@
     "targetType": "plugin",
     "id": "pacman",
     "version": "0.1.2",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Pac-Man — Guide",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-docs-pacman/-/kwirth-docs-pacman-0.1.2.tgz",
     "description": "User and administrator guide for the Pac-Man plugin",
@@ -317,6 +446,10 @@
     "targetType": "plugin",
     "id": "pacman",
     "version": "0.1.1",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Pac-Man — Guide",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-docs-pacman/-/kwirth-docs-pacman-0.1.1.tgz",
     "description": "User and administrator guide for the Pac-Man plugin",
@@ -328,6 +461,10 @@
     "targetType": "plugin",
     "id": "asteroids",
     "version": "0.1.11",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Asteroids — Guide",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-docs-asteroids/-/kwirth-docs-asteroids-0.1.11.tgz",
     "description": "User and administrator guide for the Asteroids plugin",
@@ -339,6 +476,10 @@
     "targetType": "plugin",
     "id": "asteroids",
     "version": "0.1.10",
+    "tags": [
+      "game",
+      "arcade"
+    ],
     "name": "Asteroids — Guide",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-docs-asteroids/-/kwirth-docs-asteroids-0.1.10.tgz",
     "description": "User and administrator guide for the Asteroids plugin",
@@ -349,6 +490,10 @@
     "extensionType": "login",
     "id": "asteroids",
     "version": "0.1.2",
+    "tags": [
+      "security",
+      "login"
+    ],
     "name": "Asteroids",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-login-asteroids/-/kwirth-login-asteroids-0.1.2.tgz",
     "description": "Custom login page for the Asteroids channel",
@@ -358,6 +503,10 @@
     "extensionType": "provider",
     "id": "v16",
     "version": "0.1.3",
+    "tags": [
+      "live-data",
+      "traffic"
+    ],
     "name": "V16 Provider",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-provider-v16/-/kwirth-provider-v16-0.1.3.tgz",
     "description": "V16 beacon provider for Kwirth — polls the DGT DATEX2 traffic feed and dispatches only what changed (new, updated and cleared situations), with V16 emergency beacons flagged",
@@ -368,6 +517,10 @@
     "extensionType": "provider",
     "id": "v16",
     "version": "0.1.2",
+    "tags": [
+      "live-data",
+      "traffic"
+    ],
     "name": "V16 Provider",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-provider-v16/-/kwirth-provider-v16-0.1.2.tgz",
     "description": "V16 beacon provider for Kwirth — polls the DGT DATEX2 traffic feed and dispatches only what changed (new, updated and cleared situations), with V16 emergency beacons flagged",
@@ -378,6 +531,10 @@
     "extensionType": "provider",
     "id": "v16",
     "version": "0.1.1",
+    "tags": [
+      "live-data",
+      "traffic"
+    ],
     "name": "V16 Provider",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-provider-v16/-/kwirth-provider-v16-0.1.1.tgz",
     "description": "V16 beacon provider for Kwirth — polls the DGT DATEX2 traffic feed and dispatches only what changed (new, updated and cleared situations), with V16 emergency beacons flagged",
@@ -388,6 +545,10 @@
     "extensionType": "provider",
     "id": "flight-status",
     "version": "0.1.4",
+    "tags": [
+      "live-data",
+      "aviation"
+    ],
     "name": "Flight Status Provider",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-provider-flight-status/-/kwirth-provider-flight-status-0.1.4.tgz",
     "description": "Flight status provider for Kwirth — live ADS-B positions from OpenSky, enriched on demand with AviationStack and FlightAware AeroAPI under in-memory quota control",
@@ -398,6 +559,10 @@
     "extensionType": "provider",
     "id": "flight-status",
     "version": "0.1.3",
+    "tags": [
+      "live-data",
+      "aviation"
+    ],
     "name": "Flight Status Provider",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-provider-flight-status/-/kwirth-provider-flight-status-0.1.3.tgz",
     "description": "Flight status provider for Kwirth — live ADS-B positions from OpenSky, enriched on demand with AviationStack and FlightAware AeroAPI under in-memory quota control",
@@ -408,6 +573,10 @@
     "extensionType": "provider",
     "id": "flight-status",
     "version": "0.1.2",
+    "tags": [
+      "live-data",
+      "aviation"
+    ],
     "name": "Flight Status Provider",
     "url": "https://registry.npmjs.org/@jfvilas/kwirth-provider-flight-status/-/kwirth-provider-flight-status-0.1.2.tgz",
     "description": "Flight status provider for Kwirth — live ADS-B positions from OpenSky, enriched on demand with AviationStack and FlightAware AeroAPI under in-memory quota control",

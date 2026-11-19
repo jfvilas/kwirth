@@ -5,6 +5,7 @@
     "extensionType": "router",
     "publisher": "@jfvilas",
     "version": "0.1.4",
+    "tags": ["operations", "networking", "platform"],
     "description": "Two Kwirths that reach each other through one outbound link, each seeing the other in its cluster list",
     "website": "https://github.com/jfvilas/kwirth/tree/master/routers/bridge",
     "requiresRestart": false,

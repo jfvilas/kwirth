@@ -3,6 +3,7 @@
     "name": "@jfvilas/kwirth-provider-flight-status",
     "publisher": "@jfvilas",
     "version": "0.1.4",
+    "tags": ["live-data", "aviation"],
     "displayName": "Flight Status Provider",
     "repository": {
         "type": "git",
