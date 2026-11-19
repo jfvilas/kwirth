@@ -109,21 +109,27 @@ await esbuild.build({
 console.log('Built dist/back.js')
 
 const meta = JSON.parse(fs.readFileSync('package.json', 'utf-8'))
+// the npm scope is the publisher's: this repository publishes under @jfvilas, not under @kwirthmagnify
+const npmName = `${meta.publisher}/kwirth-plugin-${meta.id}`
 const distMeta = {
     id: meta.id,
-    name: `${meta.publisher}/kwirth-plugin-${meta.id}`,
+    name: npmName,
     displayName: meta.displayName,
     extensionType: 'plugin',
     version: meta.version,
     description: meta.description,
     icon: meta.icon,
     ...(meta.website ? { website: meta.website } : {}),
+    ...(meta.repository ? { repository: meta.repository } : {}),
     requiresRestart: meta.requiresRestart ?? false,
     requiresExtension: meta.requiresExtension ?? [],
 }
 fs.writeFileSync(path.join('dist', 'package.json'), JSON.stringify(distMeta, null, 2))
 console.log('Wrote dist/package.json')
 
-const npmName = `${meta.publisher}/kwirth-plugin-${meta.id}`
+// npm publishes from dist/, so the README has to be there to reach the tarball and npmjs.org
+fs.copyFileSync('README.md', path.join('dist', 'README.md'))
+console.log('Copied dist/README.md')
+
 console.log("Done. Run 'npm publish --access=public' on your 'dist' folder in order to publish your package to npmjs.")
 console.log(`Package will be accessible (and installable on Kwirth) via this URL: https://registry.npmjs.org/${npmName}/-/kwirth-plugin-${meta.id}-${meta.version}.tgz`)
