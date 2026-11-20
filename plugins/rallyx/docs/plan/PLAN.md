@@ -3,7 +3,7 @@
 **Estado:** ✅ CERRADO (0.1.1, 2026-10-07). Queda el backlog de abajo.
 **Versión:** 0.1.1
 **Tipo:** plugin OSS (scope `@jfvilas`, repo github.com/jfvilas/kwirth). Hasta la 0.1.0 fue privado
-(`@iriaoperae`, Nexus de Plexus).
+(`@iriaoperae`, registro privado).
 
 ## Objetivo
 
