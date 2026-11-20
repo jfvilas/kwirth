@@ -46,6 +46,7 @@ const writeDistMeta = () => {
         ...(meta.website ? { website: meta.website } : {}),
         requiresRestart: false,
         requiresExtension: meta.requiresExtension ?? [],
+        tags: meta.tags ?? [],
     }, null, 2))
 }
 
