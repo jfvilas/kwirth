@@ -99,20 +99,20 @@ export const ChapeteTabContent: React.FC<IContentProps> = (props: IContentProps)
     const bubble = (entry: IChapeteEntry, index: number) => {
         const user = entry.role === EChapeteRole.USER
         return (
-            <Stack key={index} direction='row' justifyContent={user ? 'flex-end' : 'flex-start'} sx={{ mb: 1.5 }}>
+            <Stack key={index} direction='row' sx={{ justifyContent: user ? 'flex-end' : 'flex-start', mb: 1.5 }}>
                 <Paper variant='outlined' data-testid={user ? 'chapete-user' : 'chapete-assistant'}
                     sx={{ maxWidth: '80%', px: 1.5, py: 1, bgcolor: user ? 'action.hover' : 'background.paper', borderColor: entry.error ? 'error.main' : undefined }}>
                     {user &&
                         <Typography variant='body2' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{entry.content}</Typography>
                     }
                     {!user && entry.pendingId !== undefined &&
-                        <Stack direction='row' spacing={1} alignItems='center'>
+                        <Stack direction='row' spacing={1} sx={{ alignItems: 'center' }}>
                             <CircularProgress size={14} />
                             <Typography variant='body2' color='text.secondary' sx={{ fontStyle: 'italic' }}>Thinking...</Typography>
                         </Stack>
                     }
                     {!user && entry.pendingId === undefined && entry.error &&
-                        <Stack direction='row' spacing={1} alignItems='flex-start'>
+                        <Stack direction='row' spacing={1} sx={{ alignItems: 'flex-start' }}>
                             <Warning fontSize='small' color='error' />
                             <Typography variant='body2' color='error' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                 {entry.usageLimit ? `Usage limit reached. ${entry.content}` : entry.content}
@@ -122,7 +122,7 @@ export const ChapeteTabContent: React.FC<IContentProps> = (props: IContentProps)
                     {!user && entry.pendingId === undefined && !entry.error &&
                         <Box>
                             <MarkdownViewer content={entry.content} />
-                            <Stack direction='row' justifyContent='flex-end'>
+                            <Stack direction='row' sx={{ justifyContent: 'flex-end' }}>
                                 <Tooltip title='Copy answer'>
                                     <IconButton size='small' aria-label='Copy answer' onClick={() => copy(entry.content)}><ContentCopy fontSize='small' /></IconButton>
                                 </Tooltip>
@@ -136,9 +136,11 @@ export const ChapeteTabContent: React.FC<IContentProps> = (props: IContentProps)
 
     // Not started: the shared not-started screen (icon and name, what starting gives, and a Start button that
     // opens the setup first, like the tab menu's Start). The container only centres it in the tab's height.
+    // 🔴 The alignment goes in sx: as Stack PROPS (alignItems=…, justifyContent=…) this MUI ignores them, and the
+    // screen stuck to the top of the tab.
     if (!data.started) {
         return (
-            <Stack ref={containerRef} alignItems='center' justifyContent='center' sx={{ flex: 1, width: '100%', minHeight: `calc(100vh - ${notStartedTop}px - 8px)`, px: 4 }}>
+            <Stack ref={containerRef} sx={{ alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%', minHeight: `calc(100vh - ${notStartedTop}px - 8px)`, px: 4 }}>
                 <ChannelNotStarted icon={<ChapeteThought color='primary' />} name='Chapete'
                     hint='Chapete not started. Start the channel to pick an LLM and start chatting.' channelObject={props.channelObject} />
             </Stack>
@@ -147,7 +149,7 @@ export const ChapeteTabContent: React.FC<IContentProps> = (props: IContentProps)
 
     return (
         <Box ref={containerRef} sx={{ display: 'flex', flexDirection: 'column', width: '100%', height: `${containerHeight}px`, p: 1, boxSizing: 'border-box' }}>
-            <Stack direction='row' alignItems='center' spacing={1} sx={{ px: 1, pb: 1 }}>
+            <Stack direction='row' spacing={1} sx={{ alignItems: 'center', px: 1, pb: 1 }}>
                 <Chip label={`LLM: ${instanceConfig?.llmId || '(none)'}`} size='small' variant='outlined' />
                 <Chip label={`Temperature: ${instanceConfig?.temperature ?? '-'}`} size='small' variant='outlined' />
                 <Box sx={{ flex: 1 }} />
@@ -163,7 +165,7 @@ export const ChapeteTabContent: React.FC<IContentProps> = (props: IContentProps)
 
             <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 1 }}>
                 {data.entries.length === 0 &&
-                    <Stack alignItems='center' justifyContent='center' sx={{ height: '100%' }}>
+                    <Stack sx={{ alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                         <Typography variant='body2' color='text.secondary'>Ask anything. Enter sends, Shift+Enter adds a new line.</Typography>
                     </Stack>
                 }
@@ -172,7 +174,7 @@ export const ChapeteTabContent: React.FC<IContentProps> = (props: IContentProps)
                 <div ref={bottomRef} />
             </Box>
 
-            <Stack direction='row' spacing={1} alignItems='flex-end' sx={{ pt: 1 }}>
+            <Stack direction='row' spacing={1} sx={{ alignItems: 'flex-end', pt: 1 }}>
                 <TextField value={data.draft} onChange={(e) => { data.draft = e.target.value; refresh() }} onKeyDown={onKeyDown}
                     placeholder='Message Chapete...' multiline maxRows={8} fullWidth size='small' disabled={thinking}
                     slotProps={{ htmlInput: { 'aria-label': 'Message' } }} />
