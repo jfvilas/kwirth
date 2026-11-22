@@ -1,7 +1,8 @@
 # SDSF — un SDSF de z/OS sobre Kubernetes, en una 3270 de 32x80 · PRD
 
-> **ESTADO — DEFINICIÓN CERRADA** (2026-11-22). Decisiones D1–D11 cerradas con el usuario. Abiertos A1–A4
-> cerrados.
+> **ESTADO — DEFINICIÓN CERRADA; producto VIVO** (2026-11-22). Publicado: `plugin/sdsf@0.1.0`. Decisiones
+> D1–D11 y abiertos A1–A4 cerrados con el usuario. El PRD es el registro de **por qué** se hizo así; cómo
+> funciona hoy lo dicen el código y el README. Si algo de aquí contradice el producto, gana el producto.
 >
 > Documento de definición de producto. **Previo al diseño técnico**: describe qué tiene que pasar y por
 > qué, no cómo se implementa. El desglose en fases/streams vivirá en `PLAN.md`, junto a este documento.

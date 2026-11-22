@@ -124,6 +124,12 @@ const distMeta = {
 fs.writeFileSync(path.join('dist', 'package.json'), JSON.stringify(distMeta, null, 2))
 console.log('Wrote dist/package.json')
 
+// npm publishes from dist/: the README has to be there to reach npmjs.org, and the 3270 font travels inside
+// front.js, so its BSD-3 notice must travel with it.
+fs.copyFileSync('README.md', path.join('dist', 'README.md'))
+fs.copyFileSync(path.join('src', 'front', 'fonts', 'LICENSE-3270font.txt'), path.join('dist', 'LICENSE-3270font.txt'))
+console.log('Copied dist/README.md and dist/LICENSE-3270font.txt')
+
 const npmName = `${meta.publisher}/kwirth-plugin-${meta.id}`
 console.log("Done. Run 'npm publish --access=public' on your 'dist' folder in order to publish your package to npmjs.")
 console.log(`Package will be accessible (and installable on Kwirth) via this URL: https://registry.npmjs.org/${npmName}/-/kwirth-plugin-${meta.id}-${meta.version}.tgz`)

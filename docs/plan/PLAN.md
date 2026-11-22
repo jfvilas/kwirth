@@ -1,7 +1,8 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-22). Validado por el usuario. **S0–S3 hechos y validados por QA. S4
-> hecho**, pendiente de QA; el siguiente es el S5 (e2e, documentación y publicación). Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
+> **ESTADO — MVP CERRADO** (2026-11-22). Publicado: `plugin/sdsf@0.1.0` en npm público (`@jfvilas`) y
+> en el marketplace de github.com/jfvilas/kwirth. Los streams S0–S5 están hechos y validados por QA. Lo
+> que queda es el **backlog** (§4: V2 y fases 2 y 3), sin trabajo en curso. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
 > **Dónde vive:** `~/github/kwirth/plugins/sdsf`. Es un repo anidado (rama `main`, identidad `jfvilas`)
@@ -154,7 +155,15 @@ API. Hay 48 tests y la cobertura (c8) es del 98,65 % en líneas.
 - `C`/`CA` abren el pop-up `CONFIRM ACTION` (R4); varias líneas marcadas se ejecutan con un solo
   Enter; sin permiso, `NOT AUTHORIZED`.
 
-**S5 — e2e, documentación y publicación**
+**S5 — e2e, documentación y publicación** · ✅ HECHO (2026-11-22).
+- **e2e:** 14 casos en `e2e/tests/01-sdsf.spec.ts`, en una sola página por corrida. Es no destructivo: crea el
+  namespace `sdsf-e2e` con `demo` (dos pods, init y sidecar) y lo borra. Saca las 6 capturas del README en
+  `docs/screenshots/`, filtradas a esos pods.
+- **README y tarball:** el README las enlaza con URL raw de GitHub, para que también se vean en npmjs.
+  `build.mjs` copia a `dist/` el README y la licencia BSD-3 de la font.
+- **Métricas:** histórico y PNG en `docs/qa/`.
+- **Lección:** dos corridas a la vez se pisan el namespace (el `afterAll` de una borra el de la otra).
+  Antes de lanzar, comprobar que no hay otro Playwright vivo.
 - e2e de Playwright con los criterios de aceptación 1–8 del PRD. Es no destructivo: crea su propio
   Deployment de prueba y lo borra al acabar.
 - README del plugin, entrada en el `manifest.json` raíz (con `tags`), fila en el README raíz de jfvilas,
