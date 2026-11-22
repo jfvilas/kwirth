@@ -383,3 +383,52 @@ test('unknown instances, foreign messages and unknown commands are refused', asy
     assert.equal(channel.updateConnection(other, 'i1'), true)
     assert.equal(channel.updateConnection(other, 'zzz'), false)
 })
+
+// ─── Events (S6) ──────────────────────────────────────────────────────────────
+
+import { mapEvent, sortEvents, MAX_EVENTS } from '../src/back/EventMapper'
+
+test('mapEvent takes the time from whichever field the API filled, and tidies the message', () => {
+    const base = { metadata: { namespace: 'shop', creationTimestamp: new Date('2026-11-22T10:00:00Z') }, involvedObject: { kind: 'Pod', name: 'api-1', uid: 'u1', namespace: 'shop' } }
+    assert.equal(mapEvent({ ...base, lastTimestamp: new Date('2026-11-22T11:00:00Z') } as CoreV1Event).time, '2026-11-22T11:00:00.000Z')
+    assert.equal(mapEvent({ ...base, eventTime: new Date('2026-11-22T12:00:00Z') } as unknown as CoreV1Event).time, '2026-11-22T12:00:00.000Z')
+    assert.equal(mapEvent({ ...base, firstTimestamp: new Date('2026-11-22T09:00:00Z') } as CoreV1Event).time, '2026-11-22T09:00:00.000Z')
+    assert.equal(mapEvent(base as CoreV1Event).time, '2026-11-22T10:00:00.000Z')
+    assert.equal(mapEvent({ involvedObject: {}, metadata: {} } as CoreV1Event).time, '')
+    const e = mapEvent({ ...base, type: 'Warning', reason: 'BackOff', message: 'Back-off\n  restarting', count: 7, source: { component: 'kubelet' } } as CoreV1Event)
+    assert.deepEqual(e, { time: '2026-11-22T10:00:00.000Z', type: 'Warning', reason: 'BackOff', message: 'Back-off restarting', namespace: 'shop', kind: 'Pod', name: 'api-1', uid: 'u1', count: 7, source: 'kubelet' })
+    assert.equal(mapEvent({ ...base, series: { count: 4 }, reportingComponent: 'ctrl' } as unknown as CoreV1Event).count, 4)
+    assert.equal(mapEvent({ ...base, reportingComponent: 'ctrl' } as unknown as CoreV1Event).source, 'ctrl')
+})
+
+test('sortEvents: oldest first, only the newest MAX_EVENTS', () => {
+    const many = Array.from({ length: MAX_EVENTS + 5 }, (_, i) => ({ ...mapEvent({ involvedObject: {}, metadata: {} } as CoreV1Event), time: new Date(Date.UTC(2026, 0, 1, 0, 0, MAX_EVENTS + 5 - i)).toISOString(), name: String(i) }))
+    const sorted = sortEvents(many)
+    assert.equal(sorted.length, MAX_EVENTS)
+    assert.equal(sorted[sorted.length - 1].name, '0', 'the newest last')
+    assert.ok(sorted[0].time < sorted[1].time)
+})
+
+test('EVENTS returns only what the key reaches: the pods it covers, the namespaces it covers', async () => {
+    const fake = fakeCluster()
+    const items = [
+        { metadata: {}, involvedObject: { kind: 'Pod', name: 'api-1', namespace: 'shop' }, reason: 'A', lastTimestamp: new Date('2026-11-22T11:00:02Z') },
+        { metadata: {}, involvedObject: { kind: 'Pod', name: 'other', namespace: 'shop' }, reason: 'B', lastTimestamp: new Date('2026-11-22T11:00:01Z') },
+        { metadata: {}, involvedObject: { kind: 'Deployment', name: 'api', namespace: 'shop' }, reason: 'C', lastTimestamp: new Date('2026-11-22T11:00:00Z') },
+        { metadata: {}, involvedObject: { kind: 'Pod', name: 'x', namespace: 'vault' }, reason: 'D', lastTimestamp: new Date('2026-11-22T11:00:03Z') },
+        { metadata: {}, involvedObject: { kind: 'Node', name: 'n1' }, reason: 'E', lastTimestamp: new Date('2026-11-22T11:00:04Z') }
+    ]
+    ;(fake.clusterInfo.coreApi as unknown as { listEventForAllNamespaces: () => Promise<unknown> }).listEventForAllNamespaces = async () => ({ items })
+    const channel = new SdsfChannel(fake.clusterInfo, {} as never)
+    const ws = new FakeSocket() as unknown as WebSocket
+    await channel.addObject(ws, instanceConfig(key('sdsf$read:^shop$:::')), '*all', '*all', '*all')
+    await channel.processCommand(ws, message(ESdsfCommand.EVENTS, { podNamespace: undefined, podName: undefined, containerName: undefined }))
+    const r = (ws as unknown as FakeSocket).sent.at(-1) as { ok: boolean; events: { reason: string }[] }
+    assert.equal(r.ok, true)
+    assert.deepEqual(r.events.map(e => e.reason), ['C', 'B', 'A'], 'shop only, oldest first; the node has no namespace')
+    const narrow = new SdsfChannel(fake.clusterInfo, {} as never)
+    const ws2 = new FakeSocket() as unknown as WebSocket
+    await narrow.addObject(ws2, instanceConfig(key('sdsf$read:^shop$::^api-1$:')), '*all', '*all', '*all')
+    await narrow.processCommand(ws2, message(ESdsfCommand.EVENTS))
+    assert.deepEqual(((ws2 as unknown as FakeSocket).sent.at(-1) as { events: { reason: string }[] }).events.map(e => e.reason), ['A'], 'a key on one pod sees that pod only')
+})

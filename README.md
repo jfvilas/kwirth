@@ -44,6 +44,7 @@ option menu. `DA` lists the pods.
 | Command | Does |
 |---|---|
 | `DA` | Active pods |
+| `LOG` | The cluster's events as the SYSLOG, newest at the bottom; Enter reads again and follows the log when you are at the bottom |
 | `PREFIX api*` · `OWNER sa*` | Filter by pod name or service account; `*` any string, `%` one character; `*` alone resets |
 | `DEST kube-system` · `DEST (ALL)` | One namespace, or all |
 | `SORT col [A\|D]` | Sort by any column (`SORT sio d`); `SORT` alone goes back to the natural order |
@@ -77,7 +78,7 @@ Laid out as PCOMM and x3270 do on a PC keyboard:
 | Clear | Esc |
 | PF1–PF12 / PF13–PF24 | F1–F12 / Shift+F1–F12 |
 | PF7 / PF8 | also PgUp / PgDn |
-| PA1 / PA2 / PA3 | Alt+1 / Alt+2 / Alt+3 |
+| PA1 / PA2 / PA3 | Alt+1 / Alt+2 / Alt+3 (on Chrome for Linux Alt+1..3 switch browser tabs and never reach the page: stop an `&nn` with `&` + Enter instead) |
 | Erase EOF | End |
 | Insert mode | Insert |
 
@@ -120,6 +121,10 @@ A container log, with `S`:
 The pod's containers, with `?`:
 
 ![Job data set display](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/containers.png)
+
+The cluster's events as the SYSLOG, with `LOG` (warnings in yellow, failures in red):
+
+![SYSLOG](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/syslog.png)
 
 Cancelling a pod, with `C`:
 

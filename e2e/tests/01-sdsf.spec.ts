@@ -161,6 +161,19 @@ test('D browses the pod described, with its events', async () => {
     await aid(page, 'F3')
 })
 
+test('LOG shows the fixture\'s events as the SYSLOG, newest at the bottom; PF3 back to DA', async () => {
+    // DEST is still sdsf-e2e: only the fixture's events
+    await command(page, 'log')
+    expect(await row(page, 2)).toMatch(/^ SDSF SYSLOG .* SDSF-E2E  LINE \d+/)
+    const text = await screenText(page)
+    expect(text).toMatch(/^ N \S+ +\d{5} \d\d:\d\d:\d\d\.\d\d STC\d{5} \d{8}  \w+ pod\/sdsf-e2e\/demo-/m)
+    expect(text).toMatch(/BOTTOM OF DATA/)
+    expect(text).not.toMatch(/pod\/(?!sdsf-e2e)/)
+    await shot('syslog')
+    await aid(page, 'F3')
+    expect(await row(page, 2)).toMatch(/^ SDSF DA /)
+})
+
 test('C asks first: 2 leaves the pod alone', async () => {
     const before = fixturePods()
     const [first] = await demoRows()

@@ -6,7 +6,7 @@ import { E3270Aid, E3270Color, E3270Highlight, E3270Key, E3270Lock } from '../sr
 import { displayCell } from '../src/common/terminal/Display3270'
 import { COMMAND_COL, ROW_COMMAND, ROW_PF_KEYS, ROW_RULE, ROW_TITLE } from '../src/common/panels/SdsfLayout'
 import { DATA_ROWS, ROW_FILTER, ROW_FIRST_DATA, ROW_HEADERS } from '../src/common/panels/DaPanel'
-import { ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfQos, ISdsfMessageResponse, ISdsfPod, ISdsfRequest } from '../src/common/SdsfTypes'
+import { ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfQos, ISdsfEvent, ISdsfMessageResponse, ISdsfPod, ISdsfRequest } from '../src/common/SdsfTypes'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@kwirthmagnify/kwirth-common'
 
 const NOW = Date.parse('2026-11-22T12:00:00Z')
@@ -30,6 +30,8 @@ class FakeSource implements ISdsfDataSource {
     clusterCpu: number | undefined = 12.4
     next?: Partial<ISdsfMessageResponse> | Error
     logs: Record<string, string[]> = {}                // 'pod/container' -> lines
+    events: ISdsfEvent[] = []
+    failEvents?: Partial<ISdsfMessageResponse> | Error   // only for the EVENTS read (LOG asks LIST and EVENTS together)
     refuseCancel = new Set<string>()                   // pod names whose cancel the back refuses
     request = (request: ISdsfRequest): Promise<ISdsfMessageResponse> => {
         this.requests.push(request)
@@ -41,6 +43,12 @@ class FakeSource implements ISdsfDataSource {
                 return Promise.resolve(response({ command: request.command, lines: this.logs[`${request.podName}/${request.containerName}`] ?? [], ...next }))
             case ESdsfCommand.DESCRIBE:
                 return Promise.resolve(response({ command: request.command, lines: [`Name:             ${request.podName}`, `Namespace:        ${request.podNamespace}`], ...next }))
+            case ESdsfCommand.EVENTS: {
+                const fail = this.failEvents
+                this.failEvents = undefined
+                if (fail instanceof Error) return Promise.reject(fail)
+                return Promise.resolve(response({ command: request.command, events: this.events, ...next, ...fail }))
+            }
             case ESdsfCommand.CANCEL:
                 if (this.refuseCancel.has(request.podName!)) return Promise.resolve(response({ command: request.command, ok: false, error: ESdsfError.NOT_AUTHORIZED, detail: 'needs sdsf$cancel' }))
                 this.pods = this.pods.filter(p => p.name !== request.podName)
@@ -698,7 +706,7 @@ test('PF3 on the DA drops whatever line commands were still waiting', async () =
 
 test('phase-2 panels from DA, and an unknown command, keep the command to fix it', async () => {
     const { s } = await openDa([podOf('a')])
-    await command(s, 'log')
+    await command(s, 'st')
     assert.match(row(s, ROW_TITLE), /NOT AVAILABLE$/)
     await command(s, 'xyz')
     assert.match(row(s, ROW_TITLE), /INVALID COMMAND$/)
@@ -740,5 +748,102 @@ test('&nn refreshes on its own while nobody types; & stops it, PA1 too; leaving 
     assert.match(row(s, ROW_TITLE), /INVALID INTERVAL$/)
     await command(s, '&x')
     assert.match(row(s, ROW_TITLE), /INVALID COMMAND$/)
+    s.dispose()
+})
+
+// ─── LOG (S6) ─────────────────────────────────────────────────────────────────
+
+const eventOf = (i: number, over: Partial<ISdsfEvent> = {}): ISdsfEvent => ({
+    time: new Date(Date.parse('2026-11-22T11:00:00Z') + i * 1000).toISOString(),
+    type: 'Normal', reason: 'Pulled', message: `event ${i}`, namespace: 'shop', kind: 'Pod', name: 'api-1', uid: 'u-api',
+    count: 1, source: 'kubelet', ...over
+})
+
+test('LOG from the menu shows the events as the SYSLOG, at the bottom, coloured by severity; PF3 back to the menu', async () => {
+    const { s, source } = await open([podOf('api-1', { uid: 'u-api', jobId: 'STC00042' })])
+    source.events = [
+        ...Array.from({ length: 40 }, (_, i) => eventOf(i)),
+        eventOf(40, { type: 'Warning', reason: 'BackOff', message: 'Back-off restarting failed container' }),
+        eventOf(41, { type: 'Warning', reason: 'ScalingReplicaSet', kind: 'Deployment', name: 'api', uid: 'u-dep', message: 'odd but not a failure' })
+    ]
+    await command(s, 'log')
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.match(row(s, ROW_TITLE), /^ SDSF SYSLOG K3D-DEV- \(ALL\)  LINE 18 +COLUMNS 01- 79$/, 'opened at the bottom: 42 lines + 2 marks, 26 rows')
+    assert.match(row(s, 29), /BOTTOM OF DATA/)
+    assert.equal(row(s, 27).trimEnd(), ' W K3D-DEV- 26326 11:00:40.00 STC00042 00000001  BackOff pod/shop/api-1: Back-off restarting failed container'.slice(0, 80).trimEnd())
+    // 79 columns: the reason always fits, the rest of the line is PF11 away
+    assert.match(row(s, 28), /^ W K3D-DEV- 26326 11:00:41\.00 {10}00000001  ScalingReplicaSet deployment\/sh$/)
+    const screen = s.terminal.screen
+    assert.equal(displayCell(screen, screen.address(27, 1)).color, E3270Color.RED)
+    assert.equal(displayCell(screen, screen.address(28, 1)).color, E3270Color.YELLOW)
+    assert.equal(displayCell(screen, screen.address(26, 1)).color, E3270Color.GREEN)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.MENU)
+})
+
+test('LOG: Enter follows the log when at the bottom, and stays put when scrolled up', async () => {
+    const { s, source } = await open([podOf('api-1', { uid: 'u-api' })])
+    source.events = Array.from({ length: 40 }, (_, i) => eventOf(i))
+    await command(s, 'log')
+    assert.match(row(s, ROW_TITLE), /LINE 16 /)
+    source.events = Array.from({ length: 50 }, (_, i) => eventOf(i))
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /LINE 26 /, 'at the bottom: it follows')
+    await command(s, 'top')
+    source.events = Array.from({ length: 60 }, (_, i) => eventOf(i))
+    await command(s, '')
+    assert.match(row(s, ROW_TITLE), /LINE 0 /, 'scrolled up: it stays')
+    await command(s, 'f event 55')
+    assert.match(row(s, ROW_TITLE), /LINE 56 .*FOUND/)
+})
+
+test('LOG: DEST and PREFIX filter the events; from DA it goes back to DA', async () => {
+    const { s, source } = await openDa([podOf('api-1')])
+    source.events = [eventOf(0), eventOf(1, { namespace: 'kube-system', name: 'coredns-1', message: 'dns' }), eventOf(2, { name: 'web-1', message: 'web' })]
+    await command(s, 'log')
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.match(row(s, ROW_TITLE), /LINE 0 /)
+    await command(s, 'dest kube-system')
+    assert.match(row(s, ROW_TITLE), /SYSLOG K3D-DEV- KUBE-SYS/)
+    assert.match(row(s, 5), /Pulled pod\/kube-system\/coredns-$/)
+    assert.match(row(s, 6), /BOTTOM OF DATA/)
+    await command(s, 'dest (all)')
+    await command(s, 'prefix web*')
+    assert.match(row(s, 5), /Pulled pod\/shop\/web-1: web/)
+    assert.match(row(s, 6), /BOTTOM OF DATA/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.DA)
+})
+
+test('LOG: &nn keeps it running; PA1 stops it; a refused read says why', async (t) => {
+    t.mock.timers.enable({ apis: ['setInterval'] })
+    const { s, source } = await open([podOf('api-1', { uid: 'u-api' })])
+    source.events = [eventOf(0)]
+    await command(s, 'log')
+    await command(s, '&3')
+    const asked = source.requests.filter(r => r.command === ESdsfCommand.EVENTS).length
+    t.mock.timers.tick(3000)
+    await settle()
+    assert.equal(source.requests.filter(r => r.command === ESdsfCommand.EVENTS).length, asked + 1)
+    await command(s, '&2000')
+    assert.match(row(s, ROW_TITLE), /INVALID INTERVAL$/)
+    await aid(s, E3270Aid.PA1)
+    assert.match(row(s, ROW_TITLE), /AUTO UPDATE STOPPED$/)
+    // leaving the LOG with &nn on stops it: it does not go on refreshing the panel it returns to
+    await command(s, '&3')
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.MENU)
+    const away = source.requests.length
+    t.mock.timers.tick(9000)
+    await settle()
+    assert.equal(source.requests.length, away)
+    await command(s, 'log')
+    await command(s, '&')
+    source.failEvents = { ok: false, error: ESdsfError.FAILED, detail: 'events are not readable' }
+    await command(s, '')
+    assert.match(row(s, ROW_TITLE), /REQUEST FAILED$/)
+    source.failEvents = new Error('lost')
+    await command(s, '')
+    assert.match(row(s, ROW_TITLE), /NO RESPONSE FROM KWIRTH$/)
     s.dispose()
 })

@@ -1,8 +1,8 @@
 # SDSF — plan y backlog
 
-> **ESTADO — MVP CERRADO** (2026-11-22). Publicado: `plugin/sdsf@0.1.0` en npm público (`@jfvilas`) y
-> en el marketplace de github.com/jfvilas/kwirth. Los streams S0–S5 están hechos y validados por QA. Lo
-> que queda es el **backlog** (§4: V2 y fases 2 y 3), sin trabajo en curso. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
+> **ESTADO — EN CURSO** (2026-11-22). Publicado: `plugin/sdsf@0.2.0` (npm `@jfvilas` y marketplace de
+> github.com/jfvilas/kwirth). Hechos el MVP (S0–S5) y el S6 (`LOG`). **Lo siguiente es el S7**
+> (`ST`/`O`/`H`) y después el S8 (`INIT`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
 > **Dónde vive:** `~/github/kwirth/plugins/sdsf`. Es un repo anidado (rama `main`, identidad `jfvilas`)
@@ -171,6 +171,39 @@ API. Hay 48 tests y la cobertura (c8) es del 98,65 % en líneas.
 - El README que se ve en GitHub lleva una **sección de capturas** de SDSF ya completo: el menú, el DA, el
   browse de un log, la confirmación de cancelar y la pantalla completa con la OIA. Se hacen sobre el k3d
   de pruebas, sin hosts internos ni datos reales.
+
+## 3b. Fase 2 (después del MVP)
+
+Decidido con el usuario el 2026-11-22:
+- **LOG:** los events salen de la API directamente (`listEventForAllNamespaces` del `coreApi` del core) en
+  cada Enter, no del provider `events`.
+- **INIT:** el drain (`P`) va sin scopes nuevos: exige `admin`. `sdsf$read` y `sdsf$cancel` se quedan.
+- 🔴 **El cliente de Kubernetes NUNCA va en el bundle:** solo `import type`, y todo pasa por lo que da el
+  core.
+
+Se publica cada stream con su versión.
+
+**S6 — `LOG`** · ✅ HECHO y validado por QA (2026-11-22). Publicado como `plugin/sdsf@0.2.0`.
+- **Fallo encontrado en el QA:** salir del LOG con PF3 no paraba el `&nn`, que seguía refrescando el panel
+  al que volvías. Ahora salir del LOG lo para, igual que salir del DA.
+- **PA1 = Alt+1** no llega a la página en Chrome para Linux, que lo usa para cambiar de pestaña. Para
+  parar el `&nn`, `&` + Enter. Está apuntado en el README.
+- **Formato:** cada event es una línea de SYSLOG: N/W, sistema, yyddd, hh:mm:ss.th UTC, JobID del pod,
+  cuenta y luego reason, objeto y mensaje. El reason va delante del objeto porque es lo que cabe en 79
+  columnas: la primera versión lo dejaba fuera de pantalla.
+- **Colores:** verde Normal, amarillo Warning y rojo los Warning de fallo (BackOff, Failed, Unhealthy,
+  Evicted, OOM…).
+- **Navegación:**
+  - Se abre al final.
+  - Enter sigue el log si estabas abajo y, si habías subido, te deja donde estabas.
+  - PREFIX y DEST filtran por nombre del objeto y por namespace.
+  - `&nn` lo refresca solo y PA1 lo para.
+  - PF3 vuelve al panel de origen (menú o DA).
+- **Back:** el comando `EVENTS` filtra por la key: el pod si el event es de un pod, el namespace en los
+  demás. Los objetos sin namespace, como los nodes, solo los ve una key sin restricción de namespace.
+- **Tipos nuevos** (⚠️ a validar): `ISdsfEvent` y `ESdsfCommand.EVENTS`.
+
+**S7 — `ST`, `O` y `H` (Jobs y CronJobs)** y **S8 — `INIT` (nodes, con drain para `admin`)**: pendientes.
 
 ## 4. Backlog (fuera del MVP)
 

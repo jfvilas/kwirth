@@ -38,6 +38,7 @@ export const printable = (line: string): string => {
 export interface IBrowseState {
     heading: string            // 'OUTPUT DISPLAY API-7D9F STC43981  DSID   101' or 'DESCRIBE API-7D9F STC43981'
     lines: string[]            // already printable
+    colors?: E3270Color[]      // one per line when the lines are not all alike (the SYSLOG); green otherwise
     top: number                // index in [TOP mark, ...lines, BOTTOM mark]
     left: number               // first column shown, 0-based
     command: string
@@ -64,7 +65,8 @@ export const paintBrowse = (p: Painter, state: IBrowseState): { command: number;
         const mark = index === 0 || index === rows.length - 1
         // The marks do not scroll sideways: they say where the data ends, whatever the column.
         const text = mark ? rows[index] : rows[index].slice(state.left, state.left + BROWSE_WIDTH)
-        p.text(ROW_FIRST_BROWSE + i, 1, text.slice(0, BROWSE_WIDTH), { color: mark ? E3270Color.WHITE : E3270Color.GREEN })
+        const color = mark ? E3270Color.WHITE : state.colors?.[index - 1] ?? E3270Color.GREEN
+        p.text(ROW_FIRST_BROWSE + i, 1, text.slice(0, BROWSE_WIDTH), { color })
     }
     paintPfKeys(p)
     return fields
