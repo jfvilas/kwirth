@@ -1,0 +1,70 @@
+import { Screen3270 } from '../terminal/Screen3270'
+import { E3270Color, E3270Highlight, E3270Intensity, I3270FieldAttribute } from '../terminal/Terminal3270Types'
+
+/*
+    How a panel is laid out on the 3270 buffer, ISPF style: every piece of text is a field, and its attribute
+    byte sits on the column BEFORE it. That is why panels start at column 1 and leave a blank between pieces —
+    the real SDSF screens are built the same way (the cursor after 'COMMAND INPUT ===> ' is at column 21).
+*/
+
+export interface ITextStyle {
+    color?: E3270Color
+    intensity?: E3270Intensity
+    highlight?: E3270Highlight
+}
+
+export class Painter {
+    readonly screen: Screen3270
+
+    constructor(screen: Screen3270) {
+        this.screen = screen
+    }
+
+    // Protected text. Its attribute goes on column col-1, so col must be at least 1.
+    text = (row: number, col: number, text: string, style: ITextStyle = {}): void => {
+        const screen = this.screen
+        screen.startField(screen.address(row, col) - 1, {
+            protected: true,
+            color: style.color ?? E3270Color.DEFAULT,
+            intensity: style.intensity ?? E3270Intensity.NORMAL,
+            highlight: style.highlight ?? E3270Highlight.DEFAULT
+        })
+        screen.write(screen.address(row, col), text)
+    }
+
+    // Character attributes over text already painted: a different colour or highlight for part of a field.
+    attribute = (row: number, col: number, length: number, color: E3270Color, highlight: E3270Highlight = E3270Highlight.DEFAULT): void => {
+        const screen = this.screen
+        for (let i = 0; i < length; i++) {
+            const cell = screen.cells[screen.address(row, col + i)]
+            if (cell.attribute) continue
+            cell.color = color
+            cell.highlight = highlight
+        }
+    }
+
+    /*
+        An input field of `length` positions starting at col, pre-filled with value. It is closed with a
+        protected attribute right after it, so typing past its end skips instead of running over what follows.
+        Returns the field's attribute address, which is how its value is read back.
+    */
+    input = (row: number, col: number, length: number, value: string = '', style: ITextStyle & { numeric?: boolean } = {}): number => {
+        const screen = this.screen
+        const attribute = screen.address(row, col) - 1
+        const field: Partial<I3270FieldAttribute> = {
+            protected: false,
+            numeric: style.numeric ?? false,
+            color: style.color ?? E3270Color.DEFAULT,
+            intensity: style.intensity ?? E3270Intensity.HIGH,
+            highlight: style.highlight ?? E3270Highlight.DEFAULT
+        }
+        screen.startField(attribute, field)
+        screen.write(screen.address(row, col), value.slice(0, length))
+        screen.startField(screen.address(row, col) + length, { protected: true })
+        return screen.wrap(attribute)
+    }
+
+    cursor = (row: number, col: number): void => {
+        this.screen.cursor = this.screen.address(row, col)
+    }
+}
