@@ -1,0 +1,5 @@
+node_modules/
+dist/
+tests/.out/
+docs/plan/reference/
+e2e/test-results/
