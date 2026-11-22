@@ -33,6 +33,9 @@ const QOS_CLASS: Record<ESdsfQos, string> = {
     [ESdsfQos.UNKNOWN]: ' '
 }
 
+// The job class letter: G, B or E (BestEffort, so it does not collide with Burstable).
+export const qosLetterOf = (qos: ESdsfQos): string => QOS_CLASS[qos]
+
 /*
     Pos, the address space's position, in SDSF's own codes: IN (in storage, working), LO (logically swapped:
     running but not ready), NS (not yet started: pending), END and ABN (ended well or abended), TRM (being

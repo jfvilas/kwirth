@@ -29,12 +29,25 @@ class FakeSource implements ISdsfDataSource {
     metrics = ESdsfMetricsState.AVAILABLE
     clusterCpu: number | undefined = 12.4
     next?: Partial<ISdsfMessageResponse> | Error
+    logs: Record<string, string[]> = {}                // 'pod/container' -> lines
+    refuseCancel = new Set<string>()                   // pod names whose cancel the back refuses
     request = (request: ISdsfRequest): Promise<ISdsfMessageResponse> => {
         this.requests.push(request)
         const next = this.next
         this.next = undefined
         if (next instanceof Error) return Promise.reject(next)
-        return Promise.resolve(response({ pods: this.pods, metrics: this.metrics, clusterCpu: this.clusterCpu, ...next }))
+        switch (request.command) {
+            case ESdsfCommand.LOG:
+                return Promise.resolve(response({ command: request.command, lines: this.logs[`${request.podName}/${request.containerName}`] ?? [], ...next }))
+            case ESdsfCommand.DESCRIBE:
+                return Promise.resolve(response({ command: request.command, lines: [`Name:             ${request.podName}`, `Namespace:        ${request.podNamespace}`], ...next }))
+            case ESdsfCommand.CANCEL:
+                if (this.refuseCancel.has(request.podName!)) return Promise.resolve(response({ command: request.command, ok: false, error: ESdsfError.NOT_AUTHORIZED, detail: 'needs sdsf$cancel' }))
+                this.pods = this.pods.filter(p => p.name !== request.podName)
+                return Promise.resolve(response({ command: request.command, ...next }))
+            default:
+                return Promise.resolve(response({ pods: this.pods, metrics: this.metrics, clusterCpu: this.clusterCpu, ...next }))
+        }
     }
 }
 
@@ -408,12 +421,279 @@ test('a refused LIST and an unanswered one become messages, and the keyboard unl
     assert.deepEqual(jobnames(s), ['A'], 'the last good list stays on screen')
 })
 
-test('line commands are refused visibly until S4', async () => {
-    const { s } = await openDa([podOf('a')])
-    s.terminal.screen.cursor = s.terminal.screen.address(ROW_FIRST_DATA, 1)
-    type(s, 's')
+// ─── Line commands (S4) ───────────────────────────────────────────────────────
+
+// Types a line command in the NP of a DA row (0-based among the visible rows).
+const np = (s: SdsfSession, index: number, text: string, rowBase = ROW_FIRST_DATA) => {
+    const screen = s.terminal.screen
+    screen.cursor = screen.address(rowBase + index, 1)
+    s.key({ key: E3270Key.ERASE_EOF })
+    type(s, text)
+}
+
+const twoContainers = (name: string) => podOf(name, {
+    jobId: 'STC00042',
+    containers: [
+        { name: 'migrate', init: true, image: 'migrate:1', ready: true, restarts: 0, state: 'terminated', reason: 'Completed' },
+        { name: 'api', init: false, image: 'registry/api:2.1', ready: true, restarts: 2, state: 'running', reason: '' },
+        { name: 'proxy', init: false, image: 'envoy:1', ready: false, restarts: 0, state: 'waiting', reason: 'CrashLoopBackOff' }
+    ]
+})
+
+test('S opens the browse of the main container log, between the TOP and BOTTOM marks; PF3 comes back', async () => {
+    const { s, source } = await openDa([twoContainers('api-1')])
+    source.logs['api-1/api'] = ['first line', '\u001b[32mgreen\u001b[0m\ttabbed', 'bell\u0007']
+    np(s, 0, 's')
     await enter(s)
-    assert.match(row(s, ROW_TITLE), /NOT AVAILABLE$/)
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.LOG, podNamespace: 'shop', podName: 'api-1', containerName: 'api' })
+    assert.match(row(s, ROW_TITLE), /^ SDSF OUTPUT DISPLAY API-1    STC00042  DSID   101  LINE 0 +COLUMNS 01- 79$/)
+    assert.match(row(s, 4), /^ \*+ TOP OF DATA \*+/)
+    assert.equal(row(s, 5).trimEnd(), ' first line')
+    assert.equal(row(s, 6).trimEnd(), ' green   tabbed', 'ANSI codes gone, tab to the next stop')
+    assert.equal(row(s, 7).trimEnd(), ' bell.', 'control characters as dots')
+    assert.match(row(s, 8), /BOTTOM OF DATA/)
+    const screen = s.terminal.screen
+    assert.equal(displayCell(screen, screen.address(5, 1)).color, E3270Color.GREEN)
+    assert.equal(displayCell(screen, screen.address(4, 1)).color, E3270Color.WHITE)
+    const asked = source.requests.length
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.DA)
+    assert.equal(source.requests.length, asked + 1, 'back on the DA with a fresh list')
+})
+
+test('browse: PF8/PF7, M+PF8, PF11/PF10, TOP/BOTTOM, FIND and RFIND with the cursor on the text', async () => {
+    const lines = Array.from({ length: 100 }, (_, i) => `line ${String(i + 1).padStart(3, '0')} ${'x'.repeat(i === 50 ? 120 : 10)}${i === 70 ? ' needle here' : ''}`)
+    const { s, source } = await openDa([twoContainers('api-1')])
+    source.logs['api-1/api'] = lines
+    np(s, 0, 's')
+    await enter(s)
+    await aid(s, E3270Aid.PF8)
+    assert.match(row(s, ROW_TITLE), /LINE 26 /)
+    assert.equal(row(s, 4).slice(1, 9), 'line 026')
+    await aid(s, E3270Aid.PF7)
+    assert.match(row(s, ROW_TITLE), /LINE 0 /)
+    await command(s, 'm', E3270Aid.PF8)
+    assert.match(row(s, ROW_TITLE), /LINE 76 /)
+    assert.match(row(s, 29), /BOTTOM OF DATA/)
+    await command(s, 'top')
+    assert.match(row(s, ROW_TITLE), /LINE 0 /)
+    await aid(s, E3270Aid.PF11)
+    // the widest line has 129 columns: a page right stops where it ends
+    assert.match(row(s, ROW_TITLE), /COLUMNS 51- 129$/)
+    assert.match(row(s, 4), /TOP OF DATA/, 'the marks do not scroll sideways')
+    await aid(s, E3270Aid.PF11)
+    assert.match(row(s, ROW_TITLE), /COLUMNS 51- 129$/, 'never past the widest line')
+    await aid(s, E3270Aid.PF10)
+    assert.match(row(s, ROW_TITLE), /COLUMNS 01- 79$/)
+    await command(s, 'f needle')
+    assert.match(row(s, ROW_TITLE), /LINE 71 .*CHARS 'needle' FOUND/)
+    const screen = s.terminal.screen
+    assert.equal(screen.rowOf(screen.cursor), 4)
+    assert.equal(row(s, 4).slice(screen.colOf(screen.cursor), screen.colOf(screen.cursor) + 6), 'needle')
+    await aid(s, E3270Aid.PF5)
+    assert.match(row(s, ROW_TITLE), /BOTTOM OF DATA REACHED$/, 'the only one: RFIND wraps to it')
+    await command(s, 'f nothing-like-it')
+    assert.match(row(s, ROW_TITLE), /NOT FOUND$/)
+    await command(s, 'bottom')
+    assert.match(row(s, ROW_TITLE), /LINE 76 /)
+    await command(s, 'up 6')
+    assert.match(row(s, ROW_TITLE), /LINE 70 /)
+    await command(s, 'right 5')
+    assert.match(row(s, ROW_TITLE), /COLUMNS 06- 84$/)
+    await command(s, 'left max')
+    assert.match(row(s, ROW_TITLE), /COLUMNS 01- 79$/)
+    await command(s, 'down never')
+    assert.match(row(s, ROW_TITLE), /INVALID SCROLL AMOUNT$/)
+    await command(s, 'sort sio')
+    assert.match(row(s, ROW_TITLE), /INVALID COMMAND$/)
+    await command(s, 'end')
+    assert.equal(s.panel, ESdsfPanel.DA)
+})
+
+test('a log that cannot be read stays on the DA with the reason', async () => {
+    const { s, source } = await openDa([twoContainers('api-1')])
+    source.next = { ok: false, error: ESdsfError.FAILED, detail: 'container "api" is waiting to start' }
+    np(s, 0, 's')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.DA)
+    assert.match(row(s, ROW_TITLE), /REQUEST FAILED$/)
+    await aid(s, E3270Aid.PF1)
+    assert.match(row(s, ROW_FILTER), /waiting to start/)
+    const empty = podOf('empty', { containers: [] })
+    source.pods = [empty]
+    await enter(s)
+    np(s, 0, 's')
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /NO OUTPUT$/)
+})
+
+test('? shows the containers as the job data sets; S on one browses its log and PF3 goes back to them', async () => {
+    const { s, source } = await openDa([twoContainers('api-1')])
+    source.logs['api-1/proxy'] = ['proxy says hi']
+    np(s, 0, '?')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.CONTAINERS)
+    assert.match(row(s, ROW_TITLE), /^ SDSF JOB DATA SET DISPLAY - JOB API-1     \(STC00042\) +LINE 1-3 \(3\)$/)
+    assert.equal(row(s, 4).trimEnd(), ' NP  DDNAME   StepName ProcStep DSID Owner    C State      Rst Image')
+    assert.equal(row(s, 5).trimEnd(), '     MIGRATE  INIT     MIGRATE     2 DEFAULT  B Completed    0 migrate:1')
+    assert.equal(row(s, 6).trimEnd(), '     API      API                101 DEFAULT  B running      2 registry/api:2.1')
+    assert.match(row(s, 7), /PROXY +API +102 DEFAULT +B CrashLoopB +0 envoy:1/)
+    const screen = s.terminal.screen
+    assert.equal(displayCell(screen, screen.address(7, 48)).color, E3270Color.RED)
+    assert.equal(displayCell(screen, screen.address(6, 61)).color, E3270Color.YELLOW, 'restarts')
+    np(s, 2, 's', 5)
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.match(row(s, ROW_TITLE), /DSID   102/)
+    assert.equal(row(s, 5).trimEnd(), ' proxy says hi')
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.CONTAINERS)
+    np(s, 0, 'd', 5)
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /INVALID LINE COMMAND$/)
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.CONTAINERS, 'Enter alone refreshes the containers')
+    await command(s, 'zz')
+    assert.match(row(s, ROW_TITLE), /INVALID COMMAND$/)
+    source.pods = []
+    // the invalid command stays on the line, as in ISPF: clear it to refresh
+    await command(s, '')
+    assert.match(row(s, ROW_TITLE), /POD NO LONGER EXISTS$/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.DA)
+})
+
+test('D browses the pod described', async () => {
+    const { s, source } = await openDa([twoContainers('api-1')])
+    np(s, 0, 'd')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.DESCRIBE, podNamespace: 'shop', podName: 'api-1' })
+    assert.match(row(s, ROW_TITLE), /^ SDSF DESCRIBE API-1    STC00042  LINE 0/)
+    assert.equal(row(s, 5).trimEnd(), ' Name:             api-1')
+})
+
+test('an unknown line command stops them all', async () => {
+    const { s, source } = await openDa([podOf('a'), podOf('b')])
+    np(s, 0, 's')
+    np(s, 1, 'x')
+    const asked = source.requests.length
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /INVALID LINE COMMAND$/)
+    assert.equal(s.panel, ESdsfPanel.DA)
+    assert.deepEqual(source.requests.slice(asked), [{ command: ESdsfCommand.LIST }])
+})
+
+test('C asks for confirmation in a window; 1 cancels and says COMMAND ISSUED; the pod is gone from the list', async () => {
+    const { s, source } = await openDa([podOf('api-1', { jobId: 'STC00007' }), podOf('web-1')])
+    np(s, 0, 'c')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.DA)
+    const text = Array.from({ length: 32 }, (_, r) => row(s, r)).join('\n')
+    assert.match(text, /Confirm Action/)
+    assert.match(text, /Pending action: +\| *\n *\| +Cancel \(delete\), with the pod's grace period: +\|/)
+    assert.match(text, /C   STC00007  shop\/api-1/)
+    assert.match(text, /1\. Process the action/)
+    assert.equal(source.requests.filter(r => r.command === ESdsfCommand.CANCEL).length, 0, 'nothing deleted before confirming')
+    const screen = s.terminal.screen
+    // the DA under the window cannot be typed on: the only input is the selection
+    assert.equal(screen.fieldAddresses().filter(a => !screen.cells[a].attribute!.protected).length, 1)
+    type(s, '1')
+    await enter(s)
+    assert.deepEqual(source.requests.filter(r => r.command === ESdsfCommand.CANCEL), [{ command: ESdsfCommand.CANCEL, podNamespace: 'shop', podName: 'api-1', force: false }])
+    assert.match(row(s, ROW_TITLE), /COMMAND ISSUED$/)
+    assert.deepEqual(jobnames(s), ['WEB-1'])
+    assert.doesNotMatch(Array.from({ length: 32 }, (_, r) => row(s, r)).join('\n'), /Confirm Action/)
+})
+
+test('CA confirms a cancel with no grace period; several cancels go in one window', async () => {
+    const { s, source } = await openDa([podOf('a'), podOf('b'), podOf('c')])
+    np(s, 0, 'ca')
+    np(s, 2, 'c')
+    await enter(s)
+    const text = Array.from({ length: 32 }, (_, r) => row(s, r)).join('\n')
+    assert.match(text, /Cancel \(delete\); CA with no grace period:/)
+    assert.match(text, /CA  STC00001  shop\/a/)
+    assert.match(text, /C   STC00001  shop\/c/)
+    type(s, '1')
+    await enter(s)
+    assert.deepEqual(source.requests.filter(r => r.command === ESdsfCommand.CANCEL).map(r => [r.podName, r.force]), [['a', true], ['c', false]])
+    assert.deepEqual(jobnames(s), ['B'])
+})
+
+test('confirm window: 2 or PF3 leave the pods alone; anything else asks again', async () => {
+    const { s, source } = await openDa([podOf('a')])
+    np(s, 0, 'c')
+    await enter(s)
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /ENTER 1 OR 2$/)
+    type(s, '2')
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /ACTION CANCELLED$/)
+    np(s, 0, 'c')
+    await enter(s)
+    await aid(s, E3270Aid.PF3)
+    assert.match(row(s, ROW_TITLE), /ACTION CANCELLED$/)
+    assert.equal(s.panel, ESdsfPanel.DA)
+    assert.equal(source.requests.filter(r => r.command === ESdsfCommand.CANCEL).length, 0)
+    assert.deepEqual(jobnames(s), ['A'])
+})
+
+test('a refused cancel says NOT AUTHORIZED, with every failure in the long message', async () => {
+    const { s, source } = await openDa([podOf('a'), podOf('b')])
+    source.refuseCancel.add('a')
+    np(s, 0, 'c')
+    np(s, 1, 'c')
+    await enter(s)
+    type(s, '1')
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /NOT AUTHORIZED$/)
+    assert.deepEqual(jobnames(s), ['A'], 'b went, a stayed')
+    await aid(s, E3270Aid.PF1)
+    assert.match(row(s, ROW_FILTER), /shop\/a: needs sdsf\$cancel/)
+})
+
+test('cancel with no answer from Kwirth', async () => {
+    const { s, source } = await openDa([podOf('a')])
+    np(s, 0, 'c')
+    await enter(s)
+    type(s, '1')
+    source.next = new Error('lost')
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /REQUEST FAILED$/)
+})
+
+test('cancels first, then S, ? and D one after the other, each when PF3 comes back from the previous', async () => {
+    const { s, source } = await openDa([twoContainers('a'), twoContainers('b'), podOf('c')])
+    source.logs['a/api'] = ['log of a']
+    np(s, 0, 's')
+    np(s, 1, '?')
+    np(s, 2, 'c')
+    await enter(s)
+    assert.match(Array.from({ length: 32 }, (_, r) => row(s, r)).join('\n'), /Confirm Action/)
+    type(s, '1')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.equal(row(s, 5).trimEnd(), ' log of a')
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.CONTAINERS)
+    assert.match(row(s, ROW_TITLE), /JOB B /)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.DA)
+    assert.deepEqual(jobnames(s), ['A', 'B'])
+})
+
+test('PF3 on the DA drops whatever line commands were still waiting', async () => {
+    const { s } = await openDa([podOf('a'), podOf('b')])
+    np(s, 0, 'd')
+    np(s, 1, 'd')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.BROWSE, 'the second D')
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.DA)
 })
 
 test('phase-2 panels from DA, and an unknown command, keep the command to fix it', async () => {

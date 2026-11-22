@@ -1,7 +1,7 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-22). Validado por el usuario. **S0, S1 y S2 hechos y validados por QA.
-> S3 hecho**, pendiente de QA; el siguiente es el S4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
+> **ESTADO — EN CURSO** (2026-11-22). Validado por el usuario. **S0–S3 hechos y validados por QA. S4
+> hecho**, pendiente de QA; el siguiente es el S5 (e2e, documentación y publicación). Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
 > **Dónde vive:** `~/github/kwirth/plugins/sdsf`. Es un repo anidado (rama `main`, identidad `jfvilas`)
@@ -126,7 +126,28 @@ API. Hay 48 tests y la cobertura (c8) es del 98,65 % en líneas.
   `RETRIEVE` y los equivalentes escritos de las PF (R2).
 - Mensajes cortos y largos (RF8); métricas y aviso amarillo (D6).
 
-**S4 — Comandos de línea**
+**S4 — Comandos de línea** · ✅ HECHO (2026-11-22), pendiente de QA. Detalles al hacerlo:
+- **Cola de comandos de línea**, como en SDSF:
+  - Varios comandos de línea en un mismo Enter se encolan.
+  - Las cancelaciones (`C` y `CA`) van primero y todas juntas, en una sola ventana de `Confirm Action`.
+  - Después `S`, `?` y `D`, uno detrás de otro: el siguiente se ejecuta al volver con PF3 del anterior.
+  - Un comando de línea desconocido para todos.
+  - PF3 en el DA descarta los que queden pendientes.
+- **`S` (browse del log):**
+  - Muestra el log del contenedor principal (el StepName).
+  - Las secuencias ANSI se quitan, los tabuladores se expanden a múltiplos de 8 y los caracteres de control se muestran como punto.
+  - Las marcas TOP/BOTTOM OF DATA no se desplazan en horizontal.
+  - `FIND` sube la línea encontrada arriba y deja el cursor sobre el texto.
+- **`?` (panel de contenedores):** es el JOB DATA SET DISPLAY de la captura, una fila por contenedor.
+  - DSID 2.. para los init y 101.. para los regulares, como en JES.
+  - `S` en un contenedor abre su log, y PF3 vuelve al panel de contenedores.
+  - Enter solo refresca, y avisa si el pod ya no existe.
+- **`D` (describe):** el describe del back, en un browse.
+- **Ventana de confirmación:** mientras está abierta, el DA de debajo queda protegido y la única entrada es la de la selección.
+  - 1 procesa, 2 o PF3 cancelan y cualquier otra cosa da `ENTER 1 OR 2`.
+  - Si todo va bien sale `COMMAND ISSUED`. Si algo falla, el primer error va en el mensaje corto y todos los fallos en el largo (PF1).
+- **Tipos nuevos** (⚠️ a validar): `ELineCommand`, `IPendingCancel`, `IBrowseState`, `IContainersState` e `IContainerFields`, y los internos de la sesión `IQueuedLine` e `IBrowse`.
+- **Tests:** 85 en verde, con una cobertura (c8) del 98,05 % en líneas.
 - `?` lleva al panel de contenedores.
 - `S` abre el browse del log, con FIND, PF7/PF8, M+PF8 y PF3, y vuelve al DA en la misma posición.
 - `D` abre el browse del describe.
