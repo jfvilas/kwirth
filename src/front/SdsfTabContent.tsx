@@ -1,17 +1,19 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { ChannelNotStarted, IContentProps } from '@kwirthmagnify/kwirth-common-front'
 import { Box, Stack } from '@mui/material'
 import { ISdsfData } from './SdsfData'
 import { SdsfIcon } from './SdsfSetup'
 import { TerminalView } from './terminal/TerminalView'
-import { I3270KeyAction } from '../common/terminal/Terminal3270Types'
 
 export const SdsfTabContent: React.FC<IContentProps> = ({ channelObject }) => {
     const data = channelObject?.data as ISdsfData | undefined
-    // The session lives in channelObject.data; this only makes React repaint after each key.
-    const [, setRevision] = useState(0)
+    const session = data?.started ? data.session : undefined
+    // The session lives in channelObject.data and says when its screen changed — after a key, and also when an
+    // answer from the back arrives later. This only turns that into a React repaint.
+    const [revision, setRevision] = useState(0)
+    useEffect(() => session?.subscribe(() => setRevision(r => r + 1)), [session])
 
-    if (!data?.started || !data.session) {
+    if (!session) {
         return (
             <Stack sx={{ height: '60vh', alignItems: 'center', justifyContent: 'center', px: 4 }}>
                 <ChannelNotStarted icon={<Box sx={{ display: 'flex', color: 'primary.main' }}>{SdsfIcon}</Box>} name='SDSF'
@@ -20,16 +22,6 @@ export const SdsfTabContent: React.FC<IContentProps> = ({ channelObject }) => {
         )
     }
 
-    const session = data.session
-    const onKey = (action: I3270KeyAction): void => {
-        if (session.key(action)) {
-            data.revision++
-            setRevision(data.revision)
-        }
-    }
-
     // Set by the core: the tab in full screen. The terminal then takes the whole window.
-    const fullscreen = channelObject.isFullscreen === true
-
-    return <TerminalView terminal={session.terminal} revision={data.revision} onKey={onKey} fullscreen={fullscreen} />
+    return <TerminalView terminal={session.terminal} revision={revision} onKey={session.key} fullscreen={channelObject.isFullscreen === true} />
 }

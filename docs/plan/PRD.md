@@ -243,7 +243,9 @@ y volver, se conservan el panel, el scroll, el PREFIX y el campo de comando.
 - **D8** — Columnas del `DA`, en este orden y calcadas de la captura de un DA real:
   `NP JOBNAME StepName ProcStep JobID Owner C Pos DP Real Paging SIO`. La columna `SIO` lleva los
   reinicios, y `Paging` sale como `0.00`, porque Kubernetes no pagina. A la derecha, con PF11, van
-  `CPU%`, `PodName` (el nombre completo), `Node` y `Age`.
+  `CPU%`, `PodName` (el nombre completo), `Node` y `Age`. *(Al construirlo, el 2026-11-22, se añadieron
+  `Status` y `Namespace`. Quedan dos páginas: `CPU% Status Node Age` y `Namespace PodName`. Sin Status no
+  se ve por qué falla un pod, y sin Namespace no se distinguen los pods con `DEST=(ALL)`.)*
 - **D9** — **Emulación pura de una 3278-3**: no hay teclado PF en pantalla. Se usa solo el teclado
   físico.
 - **D10** — En V1 el canal trabaja sobre **el cluster seleccionado en la cluster list** de Kwirth. El

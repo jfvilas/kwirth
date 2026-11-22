@@ -203,12 +203,15 @@ export class SdsfChannel implements IChannel {
             ok: false
         }
         const fail = (error: ESdsfError, detail: string): ISdsfMessageResponse => ({ ...response, ok: false, error, detail })
+        const podNamespace = message.podNamespace ?? ''
+        const podName = message.podName ?? ''
+        const containerName = message.containerName ?? ''
 
         // Everything but LIST names one pod, and the key has to reach it.
         if (message.command !== ESdsfCommand.LIST) {
-            if (!message.namespace || !message.pod) return fail(ESdsfError.BAD_REQUEST, 'No pod given')
-            if (!keyMatchesResource(instance.accessKey, { namespace: message.namespace, pod: message.pod, container: message.container || undefined })) {
-                return fail(ESdsfError.NOT_AUTHORIZED, `Your key does not reach ${message.namespace}/${message.pod}`)
+            if (!podNamespace || !podName) return fail(ESdsfError.BAD_REQUEST, 'No pod given')
+            if (!keyMatchesResource(instance.accessKey, { namespace: podNamespace, pod: podName, container: containerName || undefined })) {
+                return fail(ESdsfError.NOT_AUTHORIZED, `Your key does not reach ${podNamespace}/${podName}`)
             }
         }
 
@@ -218,37 +221,37 @@ export class SdsfChannel implements IChannel {
                     return { ...response, ...(await this.list(instance)), ok: true }
 
                 case ESdsfCommand.LOG: {
-                    if (!message.container) return fail(ESdsfError.BAD_REQUEST, 'No container given')
+                    if (!containerName) return fail(ESdsfError.BAD_REQUEST, 'No container given')
                     const tailLines = Math.min(Math.max(1, Math.floor(message.tailLines ?? DEFAULT_TAIL_LINES)), MAX_TAIL_LINES)
-                    const log = await this.clusterInfo.coreApi.readNamespacedPodLog({ name: message.pod, namespace: message.namespace, container: message.container, tailLines })
+                    const log = await this.clusterInfo.coreApi.readNamespacedPodLog({ name: podName, namespace: podNamespace, container: containerName, tailLines })
                     const lines = String(log ?? '').split('\n')
                     if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
                     return { ...response, ok: true, lines }
                 }
 
                 case ESdsfCommand.DESCRIBE: {
-                    const pod = await this.clusterInfo.coreApi.readNamespacedPod({ name: message.pod, namespace: message.namespace })
+                    const pod = await this.clusterInfo.coreApi.readNamespacedPod({ name: podName, namespace: podNamespace })
                     let events: Awaited<ReturnType<CoreV1Api['listNamespacedEvent']>>['items'] = []
                     try {
-                        events = (await this.clusterInfo.coreApi.listNamespacedEvent({ namespace: message.namespace, fieldSelector: `involvedObject.name=${message.pod}` })).items
+                        events = (await this.clusterInfo.coreApi.listNamespacedEvent({ namespace: podNamespace, fieldSelector: `involvedObject.name=${podName}` })).items
                     }
                     catch (err) {
                         // A describe without events is still a describe: the key may not reach events.
-                        this.backChannelObject.logWarning?.(`Cannot read events of ${message.namespace}/${message.pod}: ${errorText(err)}`)
+                        this.backChannelObject.logWarning?.(`Cannot read events of ${podNamespace}/${podName}: ${errorText(err)}`)
                     }
                     return { ...response, ok: true, lines: describePod(pod, events) }
                 }
 
                 case ESdsfCommand.CANCEL: {
                     if (!this.allows(instance.accessKey, ESdsfScope.CANCEL)) {
-                        this.backChannelObject.logWarning?.(`Denied cancel of ${message.namespace}/${message.pod}: '${ESdsfScope.CANCEL}' required`)
+                        this.backChannelObject.logWarning?.(`Denied cancel of ${podNamespace}/${podName}: '${ESdsfScope.CANCEL}' required`)
                         return fail(ESdsfError.NOT_AUTHORIZED, `Cancelling a pod requires the '${ESdsfScope.CANCEL}' scope`)
                     }
                     await this.clusterInfo.coreApi.deleteNamespacedPod({
-                        name: message.pod, namespace: message.namespace,
+                        name: podName, namespace: podNamespace,
                         ...(message.force ? { gracePeriodSeconds: 0 } : {})
                     })
-                    this.backChannelObject.logInfo?.(`Cancelled ${message.namespace}/${message.pod}${message.force ? ' (force)' : ''}`)
+                    this.backChannelObject.logInfo?.(`Cancelled ${podNamespace}/${podName}${message.force ? ' (force)' : ''}`)
                     return { ...response, ok: true }
                 }
 

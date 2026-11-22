@@ -1,7 +1,7 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-22). Validado por el usuario. **S0, S1 y S2 hechos**, pendientes de QA;
-> siguiente, el S3. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
+> **ESTADO — EN CURSO** (2026-11-22). Validado por el usuario. **S0, S1 y S2 hechos y validados por QA.
+> S3 hecho**, pendiente de QA; el siguiente es el S4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
 > **Dónde vive:** `~/github/kwirth/plugins/sdsf`. Es un repo anidado (rama `main`, identidad `jfvilas`)
@@ -104,7 +104,22 @@ API. Hay 48 tests y la cobertura (c8) es del 98,65 % en líneas.
 - Escalera de scopes y `getScopeCatalog`; suscripción a `metrics` con guarda y `cleanup`.
 - Tests del mapeo y de la autorización.
 
-**S3 — Menú y DA**
+**S3 — Menú y DA** · ✅ HECHO (2026-11-22), pendiente de QA. Detalles al hacerlo:
+- **Pantallas y comandos:**
+  - END o PF3 en el menú lleva al `READY` de TSO; `SDSF` o `SDSF DA` vuelven. Un comando desconocido da `IKJ56500I COMMAND x NOT FOUND`.
+  - Un comando que no se ha tocado sigue contando, como en ISPF.
+  - PF12 recorre los comandos anteriores, del más reciente al más antiguo.
+  - CLEAR repinta sin pedir datos.
+  - PA1 para el `&nn`.
+- **Columnas:**
+  - JOBNAME, StepName, ProcStep y Owner van en mayúsculas y a 8 caracteres, como en z/OS. El nombre entero está en PodName.
+  - A la derecha de SIO van dos páginas: `CPU% Status Node Age` y `Namespace PodName` (44). Status y Namespace son nuevas frente a D8: sin ellas no se ve el motivo del fallo ni el namespace con `DEST=(ALL)`.
+- **Pos:** IN, LO (corriendo pero no ready), NS (pending), END, ABN, TRM (terminando) y ??.
+- **DP:** FF y FE para las prioridades system-*, F8 para las positivas, F0 para 0 y C0 para las negativas.
+- **Line commands:** en el S3 responden `NOT AVAILABLE`; llegan en el S4.
+- **Protocolo:** el mensaje lleva `accessKey`, porque el core rechaza un COMMAND sin ella. El objetivo va en `podNamespace`/`podName`/`containerName`, no en `namespace`/`pod`/`container`: con esos nombres el core calcula en cada comando los namespaces y pods válidos, que son llamadas a la API para nada.
+- **Tipos nuevos** (⚠️ a validar): `ISdsfRequest`, `ISdsfDataSource`, `ESdsfPanel`, `EPrimaryCommand`, `IPrimaryCommand`, `IDaColumn`, `IDaPaintState`, `IDaFields`, `IReadyState`, `EMessageLevel`, `ITextStyle`, `IMenuOption` e `IMenuState`.
+- **Tests:** 73 en verde, con una cobertura (c8) del 98,67 % en líneas.
 - Menú principal (RF2c).
 - Panel DA (RF2b, D8) con scroll vertical (PF7/PF8 e importe de SCROLL) y horizontal (PF10/PF11).
 - Comandos primarios (RF6): `PREFIX`, `DEST`, `OWNER`, `SORT`, `FIND`/`RFIND`, `TOP`/`BOTTOM`, `&nn`,

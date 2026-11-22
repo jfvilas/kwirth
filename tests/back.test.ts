@@ -233,7 +233,8 @@ const instanceConfig = (k: AccessKey, instance = 'i1'): IInstanceConfig => ({
 
 const message = (command: ESdsfCommand, extra: Partial<ISdsfMessage> = {}): ISdsfMessage => ({
     action: EInstanceMessageAction.COMMAND, flow: EInstanceMessageFlow.REQUEST, type: EInstanceMessageType.DATA, channel: 'sdsf', instance: 'i1',
-    msgtype: 'sdsfmessage', id: 'r1', command, namespace: 'shop', pod: 'api-7d9f8b6c4-x2kq9', container: 'api', ...extra
+    msgtype: 'sdsfmessage', id: 'r1', accessKey: 'whatever the browser says', command,
+    podNamespace: 'shop', podName: 'api-7d9f8b6c4-x2kq9', containerName: 'api', ...extra
 })
 
 const open = async (resources: string, opts: { metrics?: boolean; fail?: { code?: number; body?: string; message?: string } } = {}) => {
@@ -319,7 +320,7 @@ test('LOG reads the tail once, bounded, without the trailing empty line', async 
     assert.equal((calls.at(-1)!.params as { tailLines: number }).tailLines, MAX_TAIL_LINES)
     await run(message(ESdsfCommand.LOG, { tailLines: -5 }))
     assert.equal((calls.at(-1)!.params as { tailLines: number }).tailLines, 1)
-    const noContainer = await run(message(ESdsfCommand.LOG, { container: '' }))
+    const noContainer = await run(message(ESdsfCommand.LOG, { containerName: undefined }))
     assert.equal(noContainer.error, ESdsfError.BAD_REQUEST)
 })
 
@@ -334,12 +335,12 @@ test('DESCRIBE returns text lines with the pod events', async () => {
 test('a pod outside the key is NOT_AUTHORIZED for every per-pod command, and nothing reaches the API', async () => {
     const { run, calls } = await open('sdsf$cancel:^shop$:::')
     for (const command of [ESdsfCommand.LOG, ESdsfCommand.DESCRIBE, ESdsfCommand.CANCEL]) {
-        const r = await run(message(command, { namespace: 'vault', pod: 'secret-pod' }))
+        const r = await run(message(command, { podNamespace: 'vault', podName: 'secret-pod' }))
         assert.equal(r.ok, false)
         assert.equal(r.error, ESdsfError.NOT_AUTHORIZED)
     }
     assert.equal(calls.length, 0)
-    const missing = await run(message(ESdsfCommand.DESCRIBE, { pod: '' }))
+    const missing = await run(message(ESdsfCommand.DESCRIBE, { podName: undefined }))
     assert.equal(missing.error, ESdsfError.BAD_REQUEST)
 })
 
@@ -374,7 +375,7 @@ test('unknown instances, foreign messages and unknown commands are refused', asy
     const { channel, ws, run } = await open(ALL_READ)
     assert.equal(await channel.processCommand(ws as unknown as WebSocket, { ...message(ESdsfCommand.LIST), instance: 'nope' }), false)
     assert.equal(await channel.processCommand(ws as unknown as WebSocket, { ...message(ESdsfCommand.LIST), msgtype: 'other' } as unknown as ISdsfMessage), false)
-    const r = await run(message('bogus' as ESdsfCommand, { namespace: 'shop' }))
+    const r = await run(message('bogus' as ESdsfCommand))
     assert.equal(r.error, ESdsfError.BAD_REQUEST)
     assert.equal(channel.containsInstance('i1'), true)
     assert.equal(channel.refreshConnection(ws as unknown as WebSocket), true)

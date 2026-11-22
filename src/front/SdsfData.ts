@@ -1,4 +1,5 @@
 import { SdsfSession } from '../common/SdsfSession'
+import { SdsfBackSource } from './SdsfBackSource'
 
 /*
     The tab's state. It lives in channelObject.data, not in React: the TabContent is mounted and unmounted
@@ -8,11 +9,11 @@ import { SdsfSession } from '../common/SdsfSession'
 export interface ISdsfData {
     started: boolean
     session?: SdsfSession
-    revision: number           // bumped on every change, so the TabContent knows to repaint
+    source?: SdsfBackSource
 }
 
 export class SdsfData implements ISdsfData {
     started = false
     session?: SdsfSession
-    revision = 0
+    source?: SdsfBackSource
 }

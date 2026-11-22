@@ -87,15 +87,24 @@ export interface ISdsfPod {
     memory?: number            // working set, bytes
 }
 
-export interface ISdsfMessage extends IInstanceMessage {
-    msgtype: 'sdsfmessage'
-    id: string
+/*
+    What the session asks for. The target is named podNamespace/podName/containerName and NOT namespace/pod/
+    container on purpose: with those names the core reads them as an instance config and lists the valid
+    namespaces and pods on every command — API calls for nothing, since the channel authorises by itself.
+*/
+export interface ISdsfRequest {
     command: ESdsfCommand
-    namespace: string
-    pod: string
-    container: string
+    podNamespace?: string
+    podName?: string
+    containerName?: string
     tailLines?: number         // LOG
     force?: boolean            // CANCEL
+}
+
+export interface ISdsfMessage extends IInstanceMessage, ISdsfRequest {
+    msgtype: 'sdsfmessage'
+    id: string
+    accessKey: string          // the core refuses a COMMAND without one; the channel authorises with the START key
 }
 
 export interface ISdsfMessageResponse extends IInstanceMessage {

@@ -5,7 +5,8 @@ import { SdsfSetup, SdsfIcon } from './SdsfSetup'
 import { SdsfTabContent } from './SdsfTabContent'
 import { SdsfConfig, SdsfInstanceConfig } from './SdsfConfig'
 import { ISdsfData, SdsfData } from './SdsfData'
-import { ESdsfScope, SDSF_SCOPES } from '../common/SdsfTypes'
+import { ESdsfScope, ISdsfMessageResponse, SDSF_SCOPES } from '../common/SdsfTypes'
+import { SdsfBackSource } from './SdsfBackSource'
 import { SdsfSession } from '../common/SdsfSession'
 
 export class SdsfChannel implements IChannel {
@@ -52,7 +53,11 @@ export class SdsfChannel implements IChannel {
                 channelObject.instanceId = signal.instance
                 return { action: EChannelRefreshAction.REFRESH }
             }
+            return { action: EChannelRefreshAction.NONE }
         }
+        // An answer to the session: it repaints by itself through its listeners, nothing to refresh here.
+        const response = msg as ISdsfMessageResponse
+        if (response.msgtype === 'sdsfmessageresponse') (channelObject.data as ISdsfData).source?.resolve(response)
         return { action: EChannelRefreshAction.NONE }
     }
 
@@ -66,22 +71,33 @@ export class SdsfChannel implements IChannel {
     startChannel = (channelObject: IChannelObject): boolean => {
         const data = channelObject.data as ISdsfData
         // Restarting keeps nothing from the previous session: a new logon, a new menu.
-        data.session = new SdsfSession(channelObject.clusterName || 'KWIRTH')
+        this.endSession(data, 'The channel was restarted.')
+        data.source = new SdsfBackSource(channelObject)
+        data.session = new SdsfSession(channelObject.clusterName || 'KWIRTH', data.source)
         data.started = true
-        data.revision++
         return true
     }
 
     stopChannel = (channelObject: IChannelObject): boolean => {
         const data = channelObject.data as ISdsfData
-        data.session = undefined
+        this.endSession(data, 'The channel was stopped.')
         data.started = false
-        data.revision++
         return true
+    }
+
+    private endSession = (data: ISdsfData, reason: string): void => {
+        data.source?.rejectAll(reason)
+        data.session?.dispose()
+        data.session = undefined
+        data.source = undefined
     }
 
     pauseChannel = (_channelObject: IChannelObject): boolean => true
     continueChannel = (_channelObject: IChannelObject): boolean => true
-    socketDisconnected = (_channelObject: IChannelObject): boolean => false
+    // Nobody will answer what was asked over a socket that is gone: the session gets its error now, not in 30 s.
+    socketDisconnected = (channelObject: IChannelObject): boolean => {
+        (channelObject.data as ISdsfData).source?.rejectAll('The connection to Kwirth was lost.')
+        return false
+    }
     socketReconnect = (_channelObject: IChannelObject): boolean => false
 }
