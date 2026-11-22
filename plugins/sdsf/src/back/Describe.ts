@@ -1,0 +1,123 @@
+import type { V1Pod, V1Container, V1ContainerStatus, CoreV1Event } from '@kubernetes/client-node'
+
+/*
+    A pod as text, close to what `kubectl describe pod` prints: it is what the D line command browses.
+
+    Nothing in Kwirth produced this (ops and magnify hand the raw object to the front), and a 3270 browse
+    shows lines, not objects, so it is written here. Pure, like the mapper: the tests feed it pods and
+    events written by hand.
+*/
+
+const LABEL_WIDTH = 18
+
+const field = (label: string, value: string | number | undefined, indent = 0): string =>
+    // At least one blank after the colon, however long the label and deep the indent.
+    ' '.repeat(indent) + (label + ':').padEnd(Math.max(LABEL_WIDTH - indent, label.length + 2)) + (value === undefined || value === '' ? '<none>' : String(value))
+
+const isoOf = (date: Date | string | undefined): string => date ? new Date(date).toISOString() : ''
+
+// key=value pairs, the first on the label's line and the rest aligned under it.
+const mapLines = (label: string, map: Record<string, string> | undefined, indent = 0): string[] => {
+    const entries = Object.entries(map ?? {})
+    if (entries.length === 0) return [field(label, undefined, indent)]
+    return entries.map(([k, v], i) => i === 0 ? field(label, `${k}=${v}`, indent) : ' '.repeat(LABEL_WIDTH) + `${k}=${v}`)
+}
+
+const stateLines = (status: V1ContainerStatus | undefined): string[] => {
+    const state = status?.state
+    if (state?.running) return [field('State', 'Running', 4), field('Started', isoOf(state.running.startedAt), 6)]
+    if (state?.waiting) return [field('State', 'Waiting', 4), field('Reason', state.waiting.reason, 6)]
+    if (state?.terminated) return [
+        field('State', 'Terminated', 4),
+        field('Reason', state.terminated.reason, 6),
+        field('Exit Code', state.terminated.exitCode, 6),
+        field('Finished', isoOf(state.terminated.finishedAt), 6)
+    ]
+    return [field('State', undefined, 4)]
+}
+
+const containerLines = (c: V1Container, status: V1ContainerStatus | undefined): string[] => {
+    const resources = (kind: 'limits' | 'requests'): string => {
+        const r = c.resources?.[kind]
+        return r ? Object.entries(r).map(([k, v]) => `${k}=${v}`).join(', ') : ''
+    }
+    return [
+        `  ${c.name}:`,
+        field('Image', c.image, 4),
+        field('Ports', (c.ports ?? []).map(p => `${p.containerPort}/${p.protocol ?? 'TCP'}`).join(', '), 4),
+        ...stateLines(status),
+        field('Ready', status ? (status.ready ? 'True' : 'False') : undefined, 4),
+        field('Restart Count', status?.restartCount ?? 0, 4),
+        field('Limits', resources('limits'), 4),
+        field('Requests', resources('requests'), 4)
+    ]
+}
+
+// "5m", "3h", "2d" — the age column of the events.
+export const ageOf = (date: Date | string | undefined, now: number): string => {
+    if (!date) return '<unknown>'
+    const seconds = Math.max(0, Math.round((now - new Date(date).getTime()) / 1000))
+    if (seconds < 120) return `${seconds}s`
+    if (seconds < 7200) return `${Math.round(seconds / 60)}m`
+    if (seconds < 172800) return `${Math.round(seconds / 3600)}h`
+    return `${Math.round(seconds / 86400)}d`
+}
+
+const eventLines = (events: CoreV1Event[], now: number): string[] => {
+    if (events.length === 0) return ['Events:           <none>']
+    const sorted = [...events].sort((a, b) =>
+        new Date(a.lastTimestamp ?? a.eventTime ?? 0).getTime() - new Date(b.lastTimestamp ?? b.eventTime ?? 0).getTime())
+    return [
+        'Events:',
+        '  Type     Reason              Age     From                Message',
+        '  ----     ------              ----    ----                -------',
+        ...sorted.map(e => '  ' +
+            (e.type ?? '').padEnd(9) +
+            (e.reason ?? '').padEnd(20) +
+            ageOf(e.lastTimestamp ?? e.eventTime, now).padEnd(8) +
+            (e.source?.component ?? e.reportingComponent ?? '').padEnd(20) +
+            (e.message ?? '').replace(/\s+/g, ' ').trim())
+    ]
+}
+
+export const describePod = (pod: V1Pod, events: CoreV1Event[], now: number = Date.now()): string[] => {
+    const statuses = pod.status?.containerStatuses ?? []
+    const initStatuses = pod.status?.initContainerStatuses ?? []
+    const controller = pod.metadata?.ownerReferences?.find(o => o.controller) ?? pod.metadata?.ownerReferences?.[0]
+    const lines: string[] = [
+        field('Name', pod.metadata?.name),
+        field('Namespace', pod.metadata?.namespace),
+        field('Priority', pod.spec?.priority ?? 0),
+        field('Priority Class', pod.spec?.priorityClassName),
+        field('Service Account', pod.spec?.serviceAccountName),
+        field('Node', pod.spec?.nodeName ? pod.spec.nodeName + (pod.status?.hostIP ? `/${pod.status.hostIP}` : '') : undefined),
+        field('Start Time', isoOf(pod.status?.startTime)),
+        ...mapLines('Labels', pod.metadata?.labels),
+        ...mapLines('Annotations', pod.metadata?.annotations),
+        field('Status', pod.metadata?.deletionTimestamp ? 'Terminating' : pod.status?.phase),
+        ...(pod.status?.reason ? [field('Reason', pod.status.reason)] : []),
+        ...(pod.status?.message ? [field('Message', pod.status.message)] : []),
+        field('IP', pod.status?.podIP),
+        field('Controlled By', controller ? `${controller.kind}/${controller.name}` : undefined)
+    ]
+    const initContainers = pod.spec?.initContainers ?? []
+    if (initContainers.length > 0) {
+        lines.push('Init Containers:')
+        for (const c of initContainers) lines.push(...containerLines(c, initStatuses.find(s => s.name === c.name)))
+    }
+    lines.push('Containers:')
+    for (const c of pod.spec?.containers ?? []) lines.push(...containerLines(c, statuses.find(s => s.name === c.name)))
+    const conditions = pod.status?.conditions ?? []
+    lines.push('Conditions:')
+    lines.push('  Type                        Status')
+    for (const c of conditions) lines.push('  ' + c.type.padEnd(28) + c.status)
+    lines.push(field('QoS Class', pod.status?.qosClass))
+    lines.push(...mapLines('Node-Selectors', pod.spec?.nodeSelector))
+    const tolerations = (pod.spec?.tolerations ?? []).map(t =>
+        `${t.key ?? ''}${t.operator === 'Exists' ? '' : '=' + (t.value ?? '')}${t.effect ? ':' + t.effect : ''}${t.tolerationSeconds !== undefined ? ` for ${t.tolerationSeconds}s` : ''}`)
+    lines.push(...(tolerations.length === 0
+        ? [field('Tolerations', undefined)]
+        : tolerations.map((t, i) => i === 0 ? field('Tolerations', t) : ' '.repeat(LABEL_WIDTH) + t)))
+    lines.push(...eventLines(events, now))
+    return lines
+}
