@@ -105,3 +105,38 @@ test('columns: findColumn ignores case; the pages of PF11 cover every column onc
     assert.equal(starts[starts.length - 1], 0)
     assert.equal(offsetLeftOf(0, 80), 0)
 })
+
+// ─── SYSLOG format (S6) ───────────────────────────────────────────────────────
+
+import { eventColor, isFailure, syslogLine, timeOf, yydddOf } from '../src/common/panels/SyslogFormat'
+import { E3270Color } from '../src/common/terminal/Terminal3270Types'
+import { ISdsfEvent } from '../src/common/SdsfTypes'
+
+const ev = (over: Partial<ISdsfEvent> = {}): ISdsfEvent => ({
+    time: '2026-11-22T11:32:32.447Z', type: 'Normal', reason: 'Scheduled', message: 'assigned', namespace: 'shop',
+    kind: 'Pod', name: 'api-1', uid: 'u', count: 3, source: 'scheduler', ...over
+})
+
+test('SYSLOG dates and times: yyddd and hh:mm:ss.th, UTC', () => {
+    assert.equal(yydddOf('2026-01-01T00:00:00Z'), '26001')
+    assert.equal(yydddOf('2026-11-22T23:59:59Z'), '26326')
+    assert.equal(yydddOf('2024-12-31T12:00:00Z'), '24366', 'leap year')
+    assert.equal(yydddOf('nonsense'), '     ')
+    assert.equal(timeOf('2026-11-22T11:32:32.447Z'), '11:32:32.44')
+    assert.equal(timeOf(''), '           ')
+})
+
+test('SYSLOG line: type, system, date, time, JobID, count and the event', () => {
+    assert.equal(syslogLine(ev(), 'k3d-dev-cluster', 'STC00042'), 'N K3D-DEV- 26326 11:32:32.44 STC00042 00000003  Scheduled pod/shop/api-1: assigned')
+    assert.equal(syslogLine(ev({ type: 'Warning', kind: 'Node', namespace: '', name: 'n1', count: 12 }), 'c', ''),
+        'W C        26326 11:32:32.44          00000012  Scheduled node/n1: assigned')
+})
+
+test('SYSLOG colours: green Normal, yellow Warning, red a failing Warning', () => {
+    assert.equal(eventColor(ev()), E3270Color.GREEN)
+    assert.equal(eventColor(ev({ type: 'Warning', reason: 'ScalingReplicaSet' })), E3270Color.YELLOW)
+    for (const reason of ['BackOff', 'Failed', 'FailedMount', 'Unhealthy', 'Evicted', 'OOMKilling', 'Killing']) {
+        assert.equal(isFailure(ev({ type: 'Warning', reason })), true, reason)
+    }
+    assert.equal(isFailure(ev({ type: 'Normal', reason: 'Killing' })), false, 'a Normal is never a failure')
+})

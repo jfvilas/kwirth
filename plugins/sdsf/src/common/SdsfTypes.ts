@@ -25,7 +25,8 @@ export enum ESdsfCommand {
     LIST = 'list',             // every pod the key can see, with its metrics when the provider has them
     LOG = 'log',               // a container's log, read once (it is a browse, not a tail)
     DESCRIBE = 'describe',     // a pod described as text lines, events included
-    CANCEL = 'cancel'          // delete a pod (force = grace period 0, the CA line command)
+    CANCEL = 'cancel',         // delete a pod (force = grace period 0, the CA line command)
+    EVENTS = 'events'          // the cluster's events, oldest first: what the LOG panel shows as the SYSLOG
 }
 
 // Why a command failed. The front decides on THIS, never on the text that travels with it.
@@ -87,6 +88,20 @@ export interface ISdsfPod {
     memory?: number            // working set, bytes
 }
 
+// One cluster event, as the LOG panel prints it. Already filtered by the key and mapped by the back.
+export interface ISdsfEvent {
+    time: string               // ISO: the last time it happened
+    type: string               // Normal or Warning
+    reason: string
+    message: string
+    namespace: string
+    kind: string               // of the object it is about: Pod, Deployment, Node…
+    name: string
+    uid: string                // of that object: for a pod, what finds its JobID
+    count: number
+    source: string             // the component that reported it
+}
+
 /*
     What the session asks for. The target is named podNamespace/podName/containerName and NOT namespace/pod/
     container on purpose: with those names the core reads them as an instance config and lists the valid
@@ -118,4 +133,5 @@ export interface ISdsfMessageResponse extends IInstanceMessage {
     metrics?: ESdsfMetricsState
     clusterCpu?: number        // LIST: CPU used by every pod, % of the cluster
     lines?: string[]           // LOG and DESCRIBE
+    events?: ISdsfEvent[]      // EVENTS
 }

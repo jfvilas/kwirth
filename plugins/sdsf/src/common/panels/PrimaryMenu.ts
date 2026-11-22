@@ -16,7 +16,7 @@ export interface IMenuOption {
 export const MENU_LEFT: IMenuOption[] = [
     { code: 'DA', description: 'Active pods', available: true },
     { code: 'ST', description: 'Status of jobs', available: false },
-    { code: 'LOG', description: 'System log (events)', available: false }
+    { code: 'LOG', description: 'System log (events)', available: true }
 ]
 
 export const MENU_RIGHT: IMenuOption[] = [

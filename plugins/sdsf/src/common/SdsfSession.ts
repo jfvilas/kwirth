@@ -12,8 +12,10 @@ import { ELineCommand, isCancel, parseLineCommand } from './panels/LineCommand'
 import { IPendingCancel, paintConfirm } from './panels/ConfirmPopup'
 import { dsidOf, IContainerFields, paintContainers } from './panels/ContainersPanel'
 import { BROWSE_ROWS, BROWSE_WIDTH, browseRows, paintBrowse, printable, ROW_FIRST_BROWSE } from './panels/BrowsePanel'
+import { eventColor, syslogLine } from './panels/SyslogFormat'
 import { ISdsfDataSource } from './SdsfDataSource'
-import { ESdsfCommand, ESdsfError, ESdsfMetricsState, ISdsfContainer, ISdsfMessageResponse, ISdsfPod, ISdsfRequest } from './SdsfTypes'
+import { ESdsfCommand, ESdsfError, ESdsfMetricsState, ISdsfContainer, ISdsfEvent, ISdsfMessageResponse, ISdsfPod, ISdsfRequest } from './SdsfTypes'
+import { E3270Color } from './terminal/Terminal3270Types'
 
 export enum ESdsfPanel {
     MENU = 'menu',
@@ -46,10 +48,12 @@ interface IQueuedLine {
 interface IBrowse {
     heading: string
     lines: string[]
+    colors?: E3270Color[]
     top: number
     left: number
     back: ESdsfPanel
     found?: { index: number; col: number }
+    syslog?: boolean           // the LOG panel: Enter (and &nn) reads the events again
 }
 
 /*
@@ -296,8 +300,10 @@ export class SdsfSession {
                 this.top = 0
                 this.refresh([])
                 return
-            case EPrimaryCommand.ST:
             case EPrimaryCommand.LOG:
+                this.openSyslog(ESdsfPanel.MENU)
+                return
+            case EPrimaryCommand.ST:
             case EPrimaryCommand.INIT:
                 this.notAvailable(command)
                 break
@@ -384,8 +390,11 @@ export class SdsfSession {
                 case EPrimaryCommand.DA:
                 case EPrimaryCommand.AMOUNT:
                     break
-                case EPrimaryCommand.ST:
                 case EPrimaryCommand.LOG:
+                    this.queue = []
+                    this.openSyslog(ESdsfPanel.DA)
+                    return
+                case EPrimaryCommand.ST:
                 case EPrimaryCommand.INIT:
                     this.notAvailable(command)
                     break
@@ -650,6 +659,8 @@ export class SdsfSession {
         const browse = this.browse
         if (!browse || input.aid === E3270Aid.PF3 || input.aid === E3270Aid.PF4 || command.verb === EPrimaryCommand.END || command.verb === EPrimaryCommand.RETURN) {
             const back = browse?.back ?? ESdsfPanel.DA
+            // the automatic update belongs to the LOG: leaving it stops it, as leaving the DA does
+            if (browse?.syslog) this.stopAuto()
             this.browse = undefined
             this.panel = back
             if (back === ESdsfPanel.DA) this.runQueue()
@@ -657,6 +668,7 @@ export class SdsfSession {
             return
         }
         browse.found = undefined
+        if (browse.syslog && this.syslogCommand(input, command)) return
         switch (input.aid) {
             case E3270Aid.PF12:
                 this.retrieveCommand()
@@ -715,6 +727,77 @@ export class SdsfSession {
                 break
         }
         this.finish()
+    }
+
+    // ── LOG (the SYSLOG) ────────────────────────────────────────────────────────────────────────────
+
+    /*
+        What only the LOG does on top of a browse: Enter alone reads the events again, PREFIX and DEST filter
+        them (by object name and namespace, as they filter the DA), and &nn keeps it running. Returns true
+        when it took the command; false lets the browse handle it (scrolling, FIND…).
+    */
+    private syslogCommand = (input: I3270Input, command: IPrimaryCommand): boolean => {
+        if (input.aid === E3270Aid.PA1) {
+            if (this.auto) this.say('AUTO UPDATE STOPPED', EMessageLevel.INFO)
+            this.stopAuto()
+            this.finish()
+            return true
+        }
+        if (input.aid !== E3270Aid.ENTER) return false
+        if (command.verb === EPrimaryCommand.PREFIX || command.verb === EPrimaryCommand.DEST) {
+            this.filterCommand(command)
+            this.openSyslog(this.browse?.back ?? ESdsfPanel.MENU)
+            return true
+        }
+        if (command.verb === EPrimaryCommand.AUTO) {
+            const seconds = Number(command.args[0] ?? 0)
+            if (seconds === 0) this.stopAuto()
+            else if (seconds > MAX_AUTO_SECONDS) this.invalid(command, 'INVALID INTERVAL')
+            else this.startAuto(seconds)
+            this.finish()
+            return true
+        }
+        if (command.verb === EPrimaryCommand.NONE) {
+            this.openSyslog(this.browse?.back ?? ESdsfPanel.MENU)
+            return true
+        }
+        return false
+    }
+
+    /*
+        Reads the events (and the pods, for the JobIDs) and shows them as the SYSLOG. It opens at the bottom,
+        where the newest lines are, and on a refresh it stays at the bottom if it was there — following the
+        log — or where the operator left it if they had scrolled up.
+    */
+    private openSyslog = (back: ESdsfPanel): void => {
+        const previous = this.browse?.syslog ? this.browse : undefined
+        const wasAtBottom = !previous || previous.top >= Math.max(0, browseRows(previous.lines).length - BROWSE_ROWS)
+        Promise.all([this.source.request({ command: ESdsfCommand.LIST }), this.source.request({ command: ESdsfCommand.EVENTS })])
+            .then(([list, events]) => {
+                if (list.ok) this.pods = list.pods ?? this.pods
+                if (!events.ok) {
+                    this.sayError(events)
+                    return
+                }
+                const shown = (events.events ?? []).filter(e =>
+                    sdsfPatternMatches(this.prefix, e.name) && (!this.dest || e.namespace.toLowerCase() === this.dest))
+                const jobIdOf = (e: ISdsfEvent) => e.kind === 'Pod' ? this.pods.find(p => p.uid === e.uid)?.jobId ?? '' : ''
+                const lines = shown.map(e => printable(syslogLine(e, this.system, jobIdOf(e))))
+                const total = browseRows(lines).length
+                const bottom = Math.max(0, total - BROWSE_ROWS)
+                this.browse = {
+                    heading: `SYSLOG ${this.system.toUpperCase().slice(0, 8).padEnd(8)} ${this.dest ? this.dest.toUpperCase().slice(0, 8) : '(ALL)'}`,
+                    lines,
+                    colors: shown.map(eventColor),
+                    top: wasAtBottom ? bottom : Math.min(previous!.top, bottom),
+                    left: previous?.left ?? 0,
+                    back,
+                    syslog: true
+                }
+                this.panel = ESdsfPanel.BROWSE
+            })
+            .catch(this.sayNoResponse)
+            .finally(this.finish)
     }
 
     // ── Data ────────────────────────────────────────────────────────────────────────────────────────
@@ -911,13 +994,16 @@ export class SdsfSession {
         this.auto = 0
     }
 
-    // A refresh the operator did not ask for: only on the DA, never over a locked keyboard, a window or input.
+    // A refresh the operator did not ask for: on the DA or the LOG, never over a locked keyboard, a window or input.
     tick = (): void => {
-        if (this.disposed || this.panel !== ESdsfPanel.DA || this.confirm) return
+        if (this.disposed || this.confirm) return
+        const onLog = this.panel === ESdsfPanel.BROWSE && this.browse?.syslog === true
+        if (this.panel !== ESdsfPanel.DA && !onLog) return
         if (this.terminal.lock !== E3270Lock.NONE || this.terminal.screen.modifiedFields().length > 0) return
         this.terminal.lock = E3270Lock.SYSTEM
         this.notify()
-        this.refresh([])
+        if (onLog) this.openSyslog(this.browse!.back)
+        else this.refresh([])
     }
 
     // ── Paint ───────────────────────────────────────────────────────────────────────────────────────
@@ -967,7 +1053,7 @@ export class SdsfSession {
                 const browse = this.browse
                 if (!browse) return
                 this.fields = paintBrowse(painter, {
-                    heading: browse.heading, lines: browse.lines, top: browse.top, left: browse.left,
+                    heading: browse.heading, lines: browse.lines, colors: browse.colors, top: browse.top, left: browse.left,
                     command: this.command, scroll: this.scroll, message: this.message, messageLevel: this.messageLevel
                 })
                 screen.cursor = browse.found && browse.found.index === browse.top

@@ -15,12 +15,13 @@ import {
 } from '../common/SdsfTypes'
 import { mapPod } from './PodMapper'
 import { describePod } from './Describe'
+import { mapEvent, sortEvents } from './EventMapper'
 import { usageOf } from './PodMetrics'
 import { IMetricsCluster } from './MetricsProviderTypes'
 
 // The slice of the core's ClusterInfo this channel reads. Structural, since a plugin cannot import it.
 export interface ISdsfClusterInfo {
-    coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'readNamespacedPod' | 'readNamespacedPodLog' | 'deleteNamespacedPod' | 'listNamespacedEvent'>
+    coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'readNamespacedPod' | 'readNamespacedPodLog' | 'deleteNamespacedPod' | 'listNamespacedEvent' | 'listEventForAllNamespaces'>
     getProvider(providerId: string, consumer: unknown): IProviderHandle | undefined
 }
 
@@ -207,8 +208,8 @@ export class SdsfChannel implements IChannel {
         const podName = message.podName ?? ''
         const containerName = message.containerName ?? ''
 
-        // Everything but LIST names one pod, and the key has to reach it.
-        if (message.command !== ESdsfCommand.LIST) {
+        // Everything but the two lists names one pod, and the key has to reach it.
+        if (message.command !== ESdsfCommand.LIST && message.command !== ESdsfCommand.EVENTS) {
             if (!podNamespace || !podName) return fail(ESdsfError.BAD_REQUEST, 'No pod given')
             if (!keyMatchesResource(instance.accessKey, { namespace: podNamespace, pod: podName, container: containerName || undefined })) {
                 return fail(ESdsfError.NOT_AUTHORIZED, `Your key does not reach ${podNamespace}/${podName}`)
@@ -240,6 +241,18 @@ export class SdsfChannel implements IChannel {
                         this.backChannelObject.logWarning?.(`Cannot read events of ${podNamespace}/${podName}: ${errorText(err)}`)
                     }
                     return { ...response, ok: true, lines: describePod(pod, events) }
+                }
+
+                case ESdsfCommand.EVENTS: {
+                    /*
+                        Only what the key reaches: an event about a pod needs the pod, any other the namespace.
+                        A cluster-scoped object (a node) has no namespace, so a key limited to namespaces does
+                        not see its events — the same rule the core applies everywhere.
+                    */
+                    const list = await this.clusterInfo.coreApi.listEventForAllNamespaces()
+                    const events = list.items.map(mapEvent).filter(e =>
+                        keyMatchesResource(instance.accessKey, { namespace: e.namespace, pod: e.kind === 'Pod' ? e.name : undefined }))
+                    return { ...response, ok: true, events: sortEvents(events) }
                 }
 
                 case ESdsfCommand.CANCEL: {
