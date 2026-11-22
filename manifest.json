@@ -1,5 +1,20 @@
 [
   {
+    "extensionType": "plugin",
+    "id": "sdsf",
+    "version": "0.1.0",
+    "tags": [
+      "operations",
+      "kubernetes",
+      "emulator"
+    ],
+    "name": "SDSF",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-sdsf/-/kwirth-plugin-sdsf-0.1.0.tgz",
+    "description": "SDSF channel plugin for Kwirth - a z/OS SDSF panel on an IBM 3278-3 (32x80) terminal, where pods play the part of address spaces",
+    "icon": "Terminal",
+    "website": "https://github.com/jfvilas/kwirth/tree/master/plugins/sdsf"
+  },
+  {
     "extensionType": "router",
     "id": "bridge",
     "version": "0.1.4",
