@@ -8,13 +8,14 @@ import { E3270Color } from '../terminal/Terminal3270Types'
     SIO come the ones only Kubernetes has: CPU%, the namespace, the full pod name (JOBNAME has 8 characters,
     and pod names are long), the status, the node and the age.
 */
-export interface IDaColumn {
+// One column of a table panel, for rows of type T (pods on the DA, Jobs on ST/O/H).
+export interface IDaColumn<T = ISdsfPod> {
     header: string
     width: number
     right: boolean                     // numbers are right-aligned, as on the real panel
-    text: (pod: ISdsfPod, now: number) => string
-    color: (pod: ISdsfPod) => E3270Color
-    sortKey: (pod: ISdsfPod, now: number) => string | number
+    text: (row: T, now: number) => string
+    color: (row: T) => E3270Color
+    sortKey: (row: T, now: number) => string | number
 }
 
 const IDENTITY = E3270Color.BLUE
@@ -118,12 +119,13 @@ export const DA_COLUMNS: IDaColumn[] = [
     { header: 'PodName', width: 44, right: false, text: p => p.name.slice(0, 44), color: () => IDENTITY, sortKey: p => p.name }
 ]
 
-export const findColumn = (name: string): IDaColumn | undefined => {
+// A column by its header, ignoring case: what SORT takes.
+export const findColumn = <T>(name: string, columns: IDaColumn<T>[]): IDaColumn<T> | undefined => {
     const wanted = name.toUpperCase()
-    return [JOBNAME_COLUMN, ...DA_COLUMNS].find(c => c.header.toUpperCase() === wanted)
+    return columns.find(c => c.header.toUpperCase() === wanted)
 }
 
-export const cell = (column: IDaColumn, pod: ISdsfPod, now: number): string => {
-    const text = column.text(pod, now).slice(0, column.width)
+export const cell = <T>(column: IDaColumn<T>, row: T, now: number): string => {
+    const text = column.text(row, now).slice(0, column.width)
     return column.right ? text.padStart(column.width) : text.padEnd(column.width)
 }

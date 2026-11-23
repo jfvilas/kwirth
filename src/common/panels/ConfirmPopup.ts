@@ -1,16 +1,23 @@
 import { Painter } from './Painter'
 import { ELineCommand } from './LineCommand'
-import { ISdsfPod } from '../SdsfTypes'
+import { ESdsfObjectKind } from '../SdsfTypes'
 import { E3270Color } from '../terminal/Terminal3270Types'
 
 /*
-    SDSF's CONFIRM ACTION window, over the DA: what is about to be done and to which pods, and a one-character
-    field to answer 1 (process) or 2 (cancel the action). It is always shown before a C or CA (R4): cancelling
-    a pod deletes it for real.
+    SDSF's CONFIRM ACTION window, over the table: what is about to be done and to which objects, and a
+    one-character field to answer 1 (process) or 2 (cancel the action). It is always shown before a C or CA
+    (R4): cancelling deletes for real — a pod, or a Job or CronJob with its pods.
 */
+export interface ICancelTarget {
+    kind: ESdsfObjectKind
+    namespace: string
+    name: string
+    jobId: string
+}
+
 export interface IPendingCancel {
     command: ELineCommand.CANCEL | ELineCommand.CANCEL_FORCE
-    pod: ISdsfPod
+    target: ICancelTarget
 }
 
 export const POPUP_ROW = 8
@@ -19,17 +26,19 @@ export const POPUP_WIDTH = 62
 const SELECTION_COL_OFFSET = 3
 const MAX_LISTED = 5
 
+// What is shown before the namespace/name: a pod is just its name, as on the DA; the rest say what they are.
+const objectOf = (t: ICancelTarget): string => (t.kind === ESdsfObjectKind.POD ? '' : t.kind.toLowerCase() + ' ') + `${t.namespace}/${t.name}`
+
 // Paints the window; returns the attribute address of the selection field.
 export const paintConfirm = (p: Painter, pending: IPendingCancel[]): number => {
     p.protectAll()
-    const listed = pending.slice(0, MAX_LISTED).map(c =>
-        `   ${c.command.padEnd(2)}  ${c.pod.jobId}  ${(c.pod.namespace + '/' + c.pod.name).slice(0, 44)}`)
+    const listed = pending.slice(0, MAX_LISTED).map(c => `   ${c.command.padEnd(2)}  ${c.target.jobId}  ${objectOf(c.target).slice(0, 44)}`)
     if (pending.length > MAX_LISTED) listed.push(`   ... and ${pending.length - MAX_LISTED} more`)
     const what = pending.every(c => c.command === ELineCommand.CANCEL_FORCE)
         ? 'Cancel (delete) immediately, with no grace period:'
         : pending.some(c => c.command === ELineCommand.CANCEL_FORCE)
             ? 'Cancel (delete); CA with no grace period:'
-            : 'Cancel (delete), with the pod\'s grace period:'
+            : 'Cancel (delete), with the grace period:'
     const lines = [
         '',
         ' Pending action:',

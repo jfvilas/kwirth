@@ -29,6 +29,7 @@ pod to browse its log and `C` to cancel it, page with PF7/PF8 and come back with
 | SYSOUT (`S`) | Container log, in a browse |
 | Job data sets (`?`) | The pod's containers |
 | Cancel (`C` / `CA`) | Delete the pod (CA: grace period 0), always confirmed |
+| Batch jobs (`ST`, `O`, `H`) | Jobs and CronJobs; queue EXECUTION (running), PRINT (ended), INPUT (CronJob waiting for its time), HOLD (CronJob suspended) |
 
 The screen behaves like a real 3270: **block mode** (nothing moves until you press an AID key),
 protected and unprotected fields, the 3270 base colours, insert mode, and the OIA status line under
@@ -44,6 +45,8 @@ option menu. `DA` lists the pods.
 | Command | Does |
 |---|---|
 | `DA` | Active pods |
+| `ST` | Jobs and CronJobs as batch jobs, with their JES queue (EXECUTION, PRINT, INPUT, HOLD) and status |
+| `O` · `H` | Only the ended Jobs (output queue) · only the suspended CronJobs (held output) |
 | `LOG` | The cluster's events as the SYSLOG, newest at the bottom; Enter reads again and follows the log when you are at the bottom |
 | `PREFIX api*` · `OWNER sa*` | Filter by pod name or service account; `*` any string, `%` one character; `*` alone resets |
 | `DEST kube-system` · `DEST (ALL)` | One namespace, or all |
@@ -58,10 +61,10 @@ option menu. `DA` lists the pods.
 
 | Command | Does |
 |---|---|
-| `S` | Browse the log of the main container |
+| `S` | Browse the log of the main container (on a Job, of its newest pod; on a CronJob, of its last run) |
 | `?` | List the containers; `S` on one browses its log |
-| `D` | Browse the pod described, with its events |
-| `C` · `CA` | Cancel (delete) the pod, after a confirmation window; CA with no grace period |
+| `D` | Browse the pod, Job or CronJob described, with its events |
+| `C` · `CA` | Cancel (delete) the pod, Job or CronJob (with its pods), after a confirmation window; CA with no grace period |
 
 Several line commands in one Enter run as SDSF runs them: the cancels together through one
 confirmation, then the rest one after the other, each when PF3 comes back from the previous one.
@@ -102,8 +105,8 @@ says the metrics are not available.
 
 | Scope | Allows |
 |---|---|
-| `sdsf$read` | Open SDSF, list pods, browse logs, describe pods |
-| `sdsf$cancel` | Also cancel (delete) pods |
+| `sdsf$read` | Open SDSF, list pods, Jobs and CronJobs, browse logs, describe them |
+| `sdsf$cancel` | Also cancel (delete) pods, Jobs and CronJobs |
 
 `cluster` and `admin` reach everything. Pods are always limited to the namespaces and pods the access
 key covers.
@@ -125,6 +128,10 @@ The pod's containers, with `?`:
 The cluster's events as the SYSLOG, with `LOG` (warnings in yellow, failures in red):
 
 ![SYSLOG](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/syslog.png)
+
+Jobs and CronJobs, with `ST`:
+
+![Status display](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/st.png)
 
 Cancelling a pod, with `C`:
 

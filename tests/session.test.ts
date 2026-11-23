@@ -6,7 +6,7 @@ import { E3270Aid, E3270Color, E3270Highlight, E3270Key, E3270Lock } from '../sr
 import { displayCell } from '../src/common/terminal/Display3270'
 import { COMMAND_COL, ROW_COMMAND, ROW_PF_KEYS, ROW_RULE, ROW_TITLE } from '../src/common/panels/SdsfLayout'
 import { DATA_ROWS, ROW_FILTER, ROW_FIRST_DATA, ROW_HEADERS } from '../src/common/panels/DaPanel'
-import { ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfQos, ISdsfEvent, ISdsfMessageResponse, ISdsfPod, ISdsfRequest } from '../src/common/SdsfTypes'
+import { ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfObjectKind, ESdsfQos, ISdsfEvent, ISdsfJob, ISdsfMessageResponse, ISdsfPod, ISdsfRequest } from '../src/common/SdsfTypes'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@kwirthmagnify/kwirth-common'
 
 const NOW = Date.parse('2026-11-22T12:00:00Z')
@@ -31,6 +31,7 @@ class FakeSource implements ISdsfDataSource {
     next?: Partial<ISdsfMessageResponse> | Error
     logs: Record<string, string[]> = {}                // 'pod/container' -> lines
     events: ISdsfEvent[] = []
+    jobs: ISdsfJob[] = []
     failEvents?: Partial<ISdsfMessageResponse> | Error   // only for the EVENTS read (LOG asks LIST and EVENTS together)
     refuseCancel = new Set<string>()                   // pod names whose cancel the back refuses
     request = (request: ISdsfRequest): Promise<ISdsfMessageResponse> => {
@@ -40,18 +41,21 @@ class FakeSource implements ISdsfDataSource {
         if (next instanceof Error) return Promise.reject(next)
         switch (request.command) {
             case ESdsfCommand.LOG:
-                return Promise.resolve(response({ command: request.command, lines: this.logs[`${request.podName}/${request.containerName}`] ?? [], ...next }))
+                return Promise.resolve(response({ command: request.command, lines: this.logs[`${request.targetName}/${request.containerName}`] ?? [], ...next }))
             case ESdsfCommand.DESCRIBE:
-                return Promise.resolve(response({ command: request.command, lines: [`Name:             ${request.podName}`, `Namespace:        ${request.podNamespace}`], ...next }))
+                return Promise.resolve(response({ command: request.command, lines: [`Name:             ${request.targetName}`, `Namespace:        ${request.targetNamespace}`], ...next }))
             case ESdsfCommand.EVENTS: {
                 const fail = this.failEvents
                 this.failEvents = undefined
                 if (fail instanceof Error) return Promise.reject(fail)
                 return Promise.resolve(response({ command: request.command, events: this.events, ...next, ...fail }))
             }
+            case ESdsfCommand.JOBS:
+                return Promise.resolve(response({ command: request.command, jobs: this.jobs, ...next }))
             case ESdsfCommand.CANCEL:
-                if (this.refuseCancel.has(request.podName!)) return Promise.resolve(response({ command: request.command, ok: false, error: ESdsfError.NOT_AUTHORIZED, detail: 'needs sdsf$cancel' }))
-                this.pods = this.pods.filter(p => p.name !== request.podName)
+                if (this.refuseCancel.has(request.targetName!)) return Promise.resolve(response({ command: request.command, ok: false, error: ESdsfError.NOT_AUTHORIZED, detail: 'needs sdsf$cancel' }))
+                if (request.objectKind === ESdsfObjectKind.POD) this.pods = this.pods.filter(p => p.name !== request.targetName)
+                else this.jobs = this.jobs.filter(j => j.name !== request.targetName)
                 return Promise.resolve(response({ command: request.command, ...next }))
             default:
                 return Promise.resolve(response({ pods: this.pods, metrics: this.metrics, clusterCpu: this.clusterCpu, ...next }))
@@ -118,7 +122,7 @@ test('menu colours as in the captures', async () => {
 
 test('menu: phase-2 options say NOT AVAILABLE, an unknown one INVALID COMMAND and stays to be fixed', async () => {
     const { s, source } = await open()
-    await command(s, 'st')
+    await command(s, 'init')
     assert.match(row(s, ROW_TITLE), /NOT AVAILABLE$/)
     assert.equal(displayCell(s.terminal.screen, s.terminal.screen.address(ROW_TITLE, 79)).color, E3270Color.YELLOW)
     await command(s, 'zz')
@@ -454,7 +458,7 @@ test('S opens the browse of the main container log, between the TOP and BOTTOM m
     np(s, 0, 's')
     await enter(s)
     assert.equal(s.panel, ESdsfPanel.BROWSE)
-    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.LOG, podNamespace: 'shop', podName: 'api-1', containerName: 'api' })
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.LOG, objectKind: ESdsfObjectKind.POD, targetNamespace: 'shop', targetName: 'api-1', containerName: 'api' })
     assert.match(row(s, ROW_TITLE), /^ SDSF OUTPUT DISPLAY API-1    STC00042  DSID   101  LINE 0 +COLUMNS 01- 79$/)
     assert.match(row(s, 4), /^ \*+ TOP OF DATA \*+/)
     assert.equal(row(s, 5).trimEnd(), ' first line')
@@ -577,7 +581,7 @@ test('D browses the pod described', async () => {
     np(s, 0, 'd')
     await enter(s)
     assert.equal(s.panel, ESdsfPanel.BROWSE)
-    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.DESCRIBE, podNamespace: 'shop', podName: 'api-1' })
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.DESCRIBE, objectKind: ESdsfObjectKind.POD, targetNamespace: 'shop', targetName: 'api-1' })
     assert.match(row(s, ROW_TITLE), /^ SDSF DESCRIBE API-1    STC00042  LINE 0/)
     assert.equal(row(s, 5).trimEnd(), ' Name:             api-1')
 })
@@ -600,7 +604,7 @@ test('C asks for confirmation in a window; 1 cancels and says COMMAND ISSUED; th
     assert.equal(s.panel, ESdsfPanel.DA)
     const text = Array.from({ length: 32 }, (_, r) => row(s, r)).join('\n')
     assert.match(text, /Confirm Action/)
-    assert.match(text, /Pending action: +\| *\n *\| +Cancel \(delete\), with the pod's grace period: +\|/)
+    assert.match(text, /Pending action: +\| *\n *\| +Cancel \(delete\), with the grace period: +\|/)
     assert.match(text, /C   STC00007  shop\/api-1/)
     assert.match(text, /1\. Process the action/)
     assert.equal(source.requests.filter(r => r.command === ESdsfCommand.CANCEL).length, 0, 'nothing deleted before confirming')
@@ -609,7 +613,7 @@ test('C asks for confirmation in a window; 1 cancels and says COMMAND ISSUED; th
     assert.equal(screen.fieldAddresses().filter(a => !screen.cells[a].attribute!.protected).length, 1)
     type(s, '1')
     await enter(s)
-    assert.deepEqual(source.requests.filter(r => r.command === ESdsfCommand.CANCEL), [{ command: ESdsfCommand.CANCEL, podNamespace: 'shop', podName: 'api-1', force: false }])
+    assert.deepEqual(source.requests.filter(r => r.command === ESdsfCommand.CANCEL), [{ command: ESdsfCommand.CANCEL, objectKind: ESdsfObjectKind.POD, targetNamespace: 'shop', targetName: 'api-1', force: false }])
     assert.match(row(s, ROW_TITLE), /COMMAND ISSUED$/)
     assert.deepEqual(jobnames(s), ['WEB-1'])
     assert.doesNotMatch(Array.from({ length: 32 }, (_, r) => row(s, r)).join('\n'), /Confirm Action/)
@@ -626,7 +630,7 @@ test('CA confirms a cancel with no grace period; several cancels go in one windo
     assert.match(text, /C   STC00001  shop\/c/)
     type(s, '1')
     await enter(s)
-    assert.deepEqual(source.requests.filter(r => r.command === ESdsfCommand.CANCEL).map(r => [r.podName, r.force]), [['a', true], ['c', false]])
+    assert.deepEqual(source.requests.filter(r => r.command === ESdsfCommand.CANCEL).map(r => [r.targetName, r.force]), [['a', true], ['c', false]])
     assert.deepEqual(jobnames(s), ['B'])
 })
 
@@ -706,7 +710,7 @@ test('PF3 on the DA drops whatever line commands were still waiting', async () =
 
 test('phase-2 panels from DA, and an unknown command, keep the command to fix it', async () => {
     const { s } = await openDa([podOf('a')])
-    await command(s, 'st')
+    await command(s, 'init')
     assert.match(row(s, ROW_TITLE), /NOT AVAILABLE$/)
     await command(s, 'xyz')
     assert.match(row(s, ROW_TITLE), /INVALID COMMAND$/)
@@ -845,5 +849,151 @@ test('LOG: &nn keeps it running; PA1 stops it; a refused read says why', async (
     source.failEvents = new Error('lost')
     await command(s, '')
     assert.match(row(s, ROW_TITLE), /NO RESPONSE FROM KWIRTH$/)
+    s.dispose()
+})
+
+// ─── ST, O and H (S7) ─────────────────────────────────────────────────────────
+
+const jobOf = (name: string, over: Partial<ISdsfJob> = {}): ISdsfJob => ({
+    kind: ESdsfObjectKind.JOB, name, namespace: 'batch', uid: name, jobId: 'JOB00001', owner: 'runner', cronJob: '', schedule: '',
+    state: ESdsfJobState.COMPLETE, parallelism: 1, completions: 1, active: 0, succeeded: 1, failed: 0,
+    start: '2026-11-22T11:00:00.000Z', end: '2026-11-22T11:01:30.000Z', ...over
+})
+
+const batch = () => [
+    jobOf('backup-1', { jobId: 'JOB00011', cronJob: 'backup', start: '2026-11-22T10:00:00.000Z' }),
+    jobOf('backup-2', { jobId: 'JOB00012', cronJob: 'backup', state: ESdsfJobState.RUNNING, succeeded: 0, active: 1, end: '', start: '2026-11-22T11:30:00.000Z' }),
+    jobOf('migrate', { jobId: 'JOB00013', state: ESdsfJobState.FAILED, failed: 3, succeeded: 0, end: '' }),
+    jobOf('backup', { kind: ESdsfObjectKind.CRONJOB, jobId: 'JOB00014', schedule: '0 2 * * *', state: ESdsfJobState.SCHEDULED, start: '2026-11-22T02:00:00.000Z', end: '' }),
+    jobOf('report', { kind: ESdsfObjectKind.CRONJOB, jobId: 'JOB00015', schedule: '*/5 * * * *', state: ESdsfJobState.SUSPENDED, start: '', end: '' })
+]
+
+const podOfJob = (job: string, name: string, created: string) => podOf(name, {
+    namespace: 'batch', controllerKind: 'Job', controllerName: job, jobId: 'JOB00099', created,
+    containers: [{ name: 'work', init: false, image: 'x', ready: false, restarts: 0, state: 'terminated', reason: 'Completed' }]
+})
+
+const openSt = async (verb = 'st') => {
+    const o = await open([podOfJob('backup-2', 'backup-2-abc', '2026-11-22T11:30:00.000Z'), podOfJob('backup-1', 'backup-1-old', '2026-11-22T10:00:00.000Z')])
+    o.source.jobs = batch()
+    await command(o.s, verb)
+    return o
+}
+
+test('ST lists Jobs and CronJobs as batch jobs: Queue and Status in JES terms', async () => {
+    const { s, source } = await openSt()
+    assert.equal(s.panel, ESdsfPanel.ST)
+    assert.deepEqual(source.requests.map(r => r.command), [ESdsfCommand.LIST, ESdsfCommand.JOBS], 'the pods too: S and ? on a Job go to its pod')
+    assert.match(row(s, ROW_TITLE), /^ SDSF STATUS DISPLAY ALL CLASSES +LINE 1-5 \(5\)$/)
+    assert.equal(row(s, ROW_HEADERS).trimEnd(), ' NP  JOBNAME  JobID    Owner    Prty Queue     C Status             Age')
+    assert.deepEqual(jobnames(s), ['BACKUP-1', 'BACKUP-2', 'MIGRATE', 'BACKUP', 'REPORT'], 'Jobs before CronJobs, then by name')
+    assert.match(dataRows(s)[0], /BACKUP-1 JOB00011 RUNNER +1 PRINT +J COMPLETE 1\/1/)
+    assert.match(dataRows(s)[1], /BACKUP-2 JOB00012 RUNNER +1 EXECUTION J ACTIVE 0\/1/)
+    assert.match(dataRows(s)[2], /MIGRATE +JOB00013 RUNNER +1 PRINT +J FAILED 3/)
+    assert.match(dataRows(s)[3], /BACKUP +JOB00014 RUNNER +1 INPUT +C SCHEDULED/)
+    assert.match(dataRows(s)[4], /REPORT +JOB00015 RUNNER +1 HOLD +C SUSPENDED/)
+    const screen = s.terminal.screen
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 2, 50)).color, E3270Color.RED, 'a failed Job in red')
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 4, 50)).color, E3270Color.PINK, 'held in pink')
+    await aid(s, E3270Aid.PF11)
+    assert.match(row(s, ROW_HEADERS), /^ NP  JOBNAME  Schedule +CronJob +Dur Namespace/)
+    assert.match(dataRows(s)[0], /BACKUP-1 +backup +61m batch/, 'from 10:00 to 11:01:30')
+    assert.match(dataRows(s)[3], /BACKUP +0 2 \* \* \*/)
+    await aid(s, E3270Aid.PF11)
+    assert.match(row(s, ROW_HEADERS), /^ NP  JOBNAME  JobName/)
+})
+
+test('O shows the Jobs that ended; H the CronJobs suspended; DA and ST switch from any table', async () => {
+    const { s } = await openSt('o')
+    assert.equal(s.panel, ESdsfPanel.OUTPUT)
+    assert.match(row(s, ROW_TITLE), /^ SDSF OUTPUT ALL CLASSES ALL FORMS/)
+    assert.deepEqual(jobnames(s), ['BACKUP-1', 'MIGRATE'])
+    await command(s, 'h')
+    assert.equal(s.panel, ESdsfPanel.HELD)
+    assert.match(row(s, ROW_TITLE), /^ SDSF HELD OUTPUT DISPLAY ALL CLASSES/)
+    assert.deepEqual(jobnames(s), ['REPORT'])
+    await command(s, 'st')
+    assert.equal(jobnames(s).length, 5)
+    await command(s, 'da')
+    assert.equal(s.panel, ESdsfPanel.DA)
+    assert.deepEqual(jobnames(s), ['BACKUP-1', 'BACKUP-2'], 'the pods, on the DA')
+})
+
+test('ST: filters, SORT on its own columns, FIND; going to DA forgets the ST sort', async () => {
+    const { s } = await openSt()
+    await command(s, 'prefix backup*')
+    assert.deepEqual(jobnames(s), ['BACKUP-1', 'BACKUP-2', 'BACKUP'])
+    await command(s, 'prefix *')
+    await command(s, 'sort queue d')
+    assert.match(row(s, ROW_FILTER), /SORT=QUEUE\/D/)
+    assert.deepEqual(jobnames(s), ['BACKUP-1', 'MIGRATE', 'BACKUP', 'REPORT', 'BACKUP-2'])
+    await command(s, 'sort sio')
+    assert.match(row(s, ROW_TITLE), /INVALID COLUMN NAME$/, 'SIO is a DA column, not an ST one')
+    await command(s, 'f 0 2 *')
+    assert.equal(jobnames(s)[0], 'BACKUP')
+    await command(s, 'da')
+    assert.match(row(s, ROW_FILTER), /SORT=\*/)
+})
+
+test('S on a Job browses its newest pod; on a CronJob, that of its newest run; none means NO OUTPUT', async () => {
+    const { s, source } = await openSt()
+    source.logs['backup-2-abc/work'] = ['backing up']
+    np(s, 3, 's')                                    // the CronJob backup: its newest run is backup-2
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.equal(row(s, 5).trimEnd(), ' backing up')
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.ST, 'back to ST, not DA')
+    np(s, 2, 's')                                    // migrate has no pod left
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /NO OUTPUT$/)
+    assert.equal(s.panel, ESdsfPanel.ST)
+})
+
+test('? on a Job shows its pod\'s containers and PF3 returns to ST; D describes the Job', async () => {
+    const { s, source } = await openSt()
+    np(s, 0, '?')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.CONTAINERS)
+    assert.match(row(s, ROW_TITLE), /JOB BACKUP-1/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.ST)
+    np(s, 4, 'd')
+    await enter(s)
+    assert.deepEqual(source.requests.filter(r => r.command === ESdsfCommand.DESCRIBE).at(-1),
+        { command: ESdsfCommand.DESCRIBE, objectKind: ESdsfObjectKind.CRONJOB, targetNamespace: 'batch', targetName: 'report' })
+    assert.match(row(s, ROW_TITLE), /SDSF DESCRIBE REPORT   JOB00015/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.ST)
+    np(s, 2, '?')
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /NO OUTPUT$/)
+})
+
+test('C on a Job and a CronJob: one window saying what they are; 1 deletes them, back on ST', async () => {
+    const { s, source } = await openSt()
+    np(s, 2, 'c')
+    np(s, 4, 'c')
+    await enter(s)
+    const text = Array.from({ length: 32 }, (_, r) => row(s, r)).join('\n')
+    assert.match(text, /C   JOB00013  job batch\/migrate/)
+    assert.match(text, /C   JOB00015  cronjob batch\/report/)
+    type(s, '1')
+    await enter(s)
+    assert.deepEqual(source.requests.filter(r => r.command === ESdsfCommand.CANCEL).map(r => [r.objectKind, r.targetName]),
+        [[ESdsfObjectKind.JOB, 'migrate'], [ESdsfObjectKind.CRONJOB, 'report']])
+    assert.equal(s.panel, ESdsfPanel.ST)
+    assert.match(row(s, ROW_TITLE), /COMMAND ISSUED$/)
+    assert.deepEqual(jobnames(s), ['BACKUP-1', 'BACKUP-2', 'BACKUP'])
+})
+
+test('&nn works on ST too', async (t) => {
+    t.mock.timers.enable({ apis: ['setInterval'] })
+    const { s, source } = await openSt()
+    await command(s, '&4')
+    const asked = source.requests.filter(r => r.command === ESdsfCommand.JOBS).length
+    t.mock.timers.tick(4000)
+    await settle()
+    assert.equal(source.requests.filter(r => r.command === ESdsfCommand.JOBS).length, asked + 1)
     s.dispose()
 })

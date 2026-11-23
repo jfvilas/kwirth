@@ -5,6 +5,8 @@ export enum EPrimaryCommand {
     NONE = 'none',             // nothing typed
     DA = 'da',
     ST = 'st',
+    OUTPUT = 'output',         // O: the output queue, Jobs that ended
+    HELD = 'held',             // H: the held output, CronJobs suspended
     LOG = 'log',
     INIT = 'init',
     END = 'end',
@@ -37,6 +39,8 @@ export interface IPrimaryCommand {
 const VERBS: Record<string, EPrimaryCommand> = {
     DA: EPrimaryCommand.DA,
     ST: EPrimaryCommand.ST,
+    O: EPrimaryCommand.OUTPUT,
+    H: EPrimaryCommand.HELD,
     LOG: EPrimaryCommand.LOG,
     INIT: EPrimaryCommand.INIT,
     END: EPrimaryCommand.END,

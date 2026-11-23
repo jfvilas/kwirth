@@ -1,8 +1,8 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-22). Publicado: `plugin/sdsf@0.2.0` (npm `@jfvilas` y marketplace de
-> github.com/jfvilas/kwirth). Hechos el MVP (S0–S5) y el S6 (`LOG`). **Lo siguiente es el S7**
-> (`ST`/`O`/`H`) y después el S8 (`INIT`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
+> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.3.0` (npm `@jfvilas` y marketplace de
+> github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`) y el S7 (`ST`/`O`/`H`). **Lo siguiente
+> es el S7b** (parámetros del `DA`) y después el S8 (`INIT`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
 > **Dónde vive:** `~/github/kwirth/plugins/sdsf`. Es un repo anidado (rama `main`, identidad `jfvilas`)
@@ -203,7 +203,39 @@ Se publica cada stream con su versión.
   demás. Los objetos sin namespace, como los nodes, solo los ve una key sin restricción de namespace.
 - **Tipos nuevos** (⚠️ a validar): `ISdsfEvent` y `ESdsfCommand.EVENTS`.
 
-**S7 — `ST`, `O` y `H` (Jobs y CronJobs)** y **S8 — `INIT` (nodes, con drain para `admin`)**: pendientes.
+**S7 — `ST`, `O` y `H` (Jobs y CronJobs)** · ✅ VALIDADO (2026-11-23), publicado como 0.3.0.
+- **Paneles:**
+  - `ST` lista todos los Jobs y CronJobs; `O` solo los Jobs terminados; `H` solo los CronJobs suspendidos.
+  - Columnas: JOBNAME, JobID, Owner, Prty (parallelism), Queue (EXECUTION, PRINT, INPUT o HOLD), C
+    (J o C), Status y Age. Con PF11: Schedule, CronJob, Dur y Namespace; después, JobName.
+  - Primero los Jobs y luego los CronJobs.
+- **Comandos de línea:**
+  - `S` y `?` sobre un Job van a su pod más nuevo; sobre un CronJob, al pod de su ejecución más reciente.
+    Si no hay pod, `NO OUTPUT`.
+  - `D` hace el describe del Job o del CronJob.
+  - `C`/`CA` los borran con propagación Background (se llevan sus pods), siempre con confirmación.
+  - PF3 desde el browse o desde `?` vuelve a la tabla de origen.
+- **Comandos primarios:** `DA`, `ST`, `O` y `H` cambian de tabla desde cualquier panel. Al pasar del DA a
+  una tabla de Jobs (o al revés) se reinician el orden y las columnas.
+- **Refactor:**
+  - El panel de tabla pasa a ser genérico (`paintTable<T>`, `IDaColumn<T>`) y DA y ST lo comparten.
+  - El protocolo nombra el objetivo `targetNamespace`/`targetName` más `objectKind`, sin dejar el nombre
+    viejo conviviendo.
+  - El back usa el `batchApi` del core (solo `import type`).
+- **Tipos nuevos** (⚠️ a validar): `ESdsfObjectKind`, `ESdsfJobState`, `ISdsfJob`, `ESdsfCommand.JOBS`,
+  `ICancelTarget` y, en la sesión, `ILineTarget`, `ITablePaintState<T>` e `ITableFields<T>`.
+
+**S7b — Parámetros del `DA`** (como en z/OS: tipo, posición, `O…`, `NO…`, `ALL`/`ALLT`/`ALLP`): pendiente.
+- **Tipos:** `JOB` = pods de un Job; `STC` = pods con controlador (salvo DaemonSet); `TSU` = pods sueltos;
+  `INIT` = pods de DaemonSet (el agente de cada nodo, lo más parecido a un initiator).
+- **Posiciones:** `IN` = Running y Ready; `OUT` = Pending sin nodo; `READY` = Pending con nodo (creando
+  contenedores); `TRANS` = Running sin Ready o Terminating. Los terminados (`END`/`ABN`) solo con `ALL`.
+- **Reglas de IBM:** incluir por tipo/posición; `O…` limita (uno solo); `NO…` excluye; `ALL`/`ALLT`/`ALLP`
+  no se combinan; máximo cuatro parámetros; si chocan gana el último.
+- **`DA` sin parámetros** = el `DADFLT` típico `(IN,OUT,TRANS,STC,TSU,JOB)`: sin DaemonSets ni terminados.
+- Fuente: IBM, *Display Active Users panel (DA)* (z/OS 2.4) y `DADFLT` en *SDSF Operation and Customization*.
+
+**S8 — `INIT` (nodes, con drain para `admin`)**: pendiente.
 
 ## 4. Backlog (fuera del MVP)
 

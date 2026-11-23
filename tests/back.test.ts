@@ -212,6 +212,19 @@ const fakeCluster = (opts: { metrics?: boolean; fail?: { code?: number; body?: s
             deleteNamespacedPod: (p: unknown) => call('delete', p, pod()),
             listNamespacedEvent: (p: unknown) => call('events', p, { items: [] })
         },
+        batchApi: {
+            listJobForAllNamespaces: () => call('listJobs', undefined, { items: [
+                { metadata: { name: 'nightly', namespace: 'shop', uid: 'j1' }, spec: { template: {} }, status: { succeeded: 1, conditions: [{ type: 'Complete', status: 'True' }] } },
+                { metadata: { name: 'secret-job', namespace: 'vault', uid: 'j2' }, spec: { template: {} }, status: {} }
+            ] }),
+            listCronJobForAllNamespaces: () => call('listCronJobs', undefined, { items: [
+                { metadata: { name: 'report', namespace: 'shop', uid: 'c1' }, spec: { schedule: '0 * * * *', suspend: true, jobTemplate: { spec: { template: {} } } }, status: {} }
+            ] }),
+            readNamespacedJob: (p: unknown) => call('readJob', p, { metadata: { name: 'nightly', namespace: 'shop' }, spec: { template: {} }, status: {} }),
+            readNamespacedCronJob: (p: unknown) => call('readCronJob', p, { metadata: { name: 'report', namespace: 'shop' }, spec: { schedule: '0 * * * *', jobTemplate: { spec: { template: {} } } }, status: {} }),
+            deleteNamespacedJob: (p: unknown) => call('deleteJob', p, {}),
+            deleteNamespacedCronJob: (p: unknown) => call('deleteCronJob', p, {})
+        },
         getProvider: (id: string) => opts.metrics && id === 'metrics'
             ? { id, subscribe: (s: unknown) => { subscribed.push(s); return Promise.resolve() }, unsubscribe: (s: unknown) => { subscribed.splice(subscribed.indexOf(s), 1) } }
             : undefined
@@ -234,7 +247,7 @@ const instanceConfig = (k: AccessKey, instance = 'i1'): IInstanceConfig => ({
 const message = (command: ESdsfCommand, extra: Partial<ISdsfMessage> = {}): ISdsfMessage => ({
     action: EInstanceMessageAction.COMMAND, flow: EInstanceMessageFlow.REQUEST, type: EInstanceMessageType.DATA, channel: 'sdsf', instance: 'i1',
     msgtype: 'sdsfmessage', id: 'r1', accessKey: 'whatever the browser says', command,
-    podNamespace: 'shop', podName: 'api-7d9f8b6c4-x2kq9', containerName: 'api', ...extra
+    targetNamespace: 'shop', targetName: 'api-7d9f8b6c4-x2kq9', containerName: 'api', ...extra
 })
 
 const open = async (resources: string, opts: { metrics?: boolean; fail?: { code?: number; body?: string; message?: string } } = {}) => {
@@ -335,12 +348,12 @@ test('DESCRIBE returns text lines with the pod events', async () => {
 test('a pod outside the key is NOT_AUTHORIZED for every per-pod command, and nothing reaches the API', async () => {
     const { run, calls } = await open('sdsf$cancel:^shop$:::')
     for (const command of [ESdsfCommand.LOG, ESdsfCommand.DESCRIBE, ESdsfCommand.CANCEL]) {
-        const r = await run(message(command, { podNamespace: 'vault', podName: 'secret-pod' }))
+        const r = await run(message(command, { targetNamespace: 'vault', targetName: 'secret-pod' }))
         assert.equal(r.ok, false)
         assert.equal(r.error, ESdsfError.NOT_AUTHORIZED)
     }
     assert.equal(calls.length, 0)
-    const missing = await run(message(ESdsfCommand.DESCRIBE, { podName: undefined }))
+    const missing = await run(message(ESdsfCommand.DESCRIBE, { targetName: undefined }))
     assert.equal(missing.error, ESdsfError.BAD_REQUEST)
 })
 
@@ -422,7 +435,7 @@ test('EVENTS returns only what the key reaches: the pods it covers, the namespac
     const channel = new SdsfChannel(fake.clusterInfo, {} as never)
     const ws = new FakeSocket() as unknown as WebSocket
     await channel.addObject(ws, instanceConfig(key('sdsf$read:^shop$:::')), '*all', '*all', '*all')
-    await channel.processCommand(ws, message(ESdsfCommand.EVENTS, { podNamespace: undefined, podName: undefined, containerName: undefined }))
+    await channel.processCommand(ws, message(ESdsfCommand.EVENTS, { targetNamespace: undefined, targetName: undefined, containerName: undefined }))
     const r = (ws as unknown as FakeSocket).sent.at(-1) as { ok: boolean; events: { reason: string }[] }
     assert.equal(r.ok, true)
     assert.deepEqual(r.events.map(e => e.reason), ['C', 'B', 'A'], 'shop only, oldest first; the node has no namespace')
@@ -431,4 +444,108 @@ test('EVENTS returns only what the key reaches: the pods it covers, the namespac
     await narrow.addObject(ws2, instanceConfig(key('sdsf$read:^shop$::^api-1$:')), '*all', '*all', '*all')
     await narrow.processCommand(ws2, message(ESdsfCommand.EVENTS))
     assert.deepEqual(((ws2 as unknown as FakeSocket).sent.at(-1) as { events: { reason: string }[] }).events.map(e => e.reason), ['A'], 'a key on one pod sees that pod only')
+})
+
+// ─── Jobs and CronJobs (S7) ───────────────────────────────────────────────────
+
+import type { V1Job, V1CronJob } from '@kubernetes/client-node'
+import { jobStateOf, mapCronJob, mapJob } from '../src/back/JobMapper'
+import { describeCronJob, describeJob } from '../src/back/Describe'
+import { ESdsfJobState, ESdsfObjectKind } from '../src/common/SdsfTypes'
+
+test('jobStateOf reads the conditions: Failed, Complete (or SuccessCriteriaMet), running until then', () => {
+    const job = (conditions: { type: string; status: string }[]): V1Job => ({ status: { conditions } } as V1Job)
+    assert.equal(jobStateOf(job([])), ESdsfJobState.RUNNING)
+    assert.equal(jobStateOf({} as V1Job), ESdsfJobState.RUNNING)
+    assert.equal(jobStateOf(job([{ type: 'Complete', status: 'True' }])), ESdsfJobState.COMPLETE)
+    assert.equal(jobStateOf(job([{ type: 'SuccessCriteriaMet', status: 'True' }])), ESdsfJobState.COMPLETE)
+    assert.equal(jobStateOf(job([{ type: 'Complete', status: 'False' }])), ESdsfJobState.RUNNING)
+    assert.equal(jobStateOf(job([{ type: 'Failed', status: 'True' }, { type: 'Complete', status: 'True' }])), ESdsfJobState.FAILED)
+})
+
+test('mapJob and mapCronJob take every ST column out of the object', () => {
+    const j = mapJob({
+        metadata: { name: 'backup-28920', namespace: 'ops', uid: 'aaaa-0001', ownerReferences: [{ kind: 'CronJob', name: 'backup', apiVersion: 'batch/v1', uid: 'x' }] },
+        spec: { parallelism: 2, completions: 4, template: { spec: { serviceAccountName: 'runner', containers: [] } } },
+        status: { active: 1, succeeded: 2, failed: 1, startTime: new Date('2026-11-22T10:00:00Z') }
+    } as V1Job)
+    assert.deepEqual(j, {
+        kind: ESdsfObjectKind.JOB, name: 'backup-28920', namespace: 'ops', uid: 'aaaa-0001', jobId: jobIdOf('aaaa-0001', 'Job'), owner: 'runner',
+        cronJob: 'backup', schedule: '', state: ESdsfJobState.RUNNING, parallelism: 2, completions: 4, active: 1, succeeded: 2, failed: 1,
+        start: '2026-11-22T10:00:00.000Z', end: ''
+    })
+    assert.equal(j.jobId.slice(0, 3), 'JOB')
+    const bare = mapJob({} as V1Job)
+    assert.equal(bare.owner, 'default')
+    assert.equal(bare.parallelism, 1)
+    assert.equal(bare.completions, 0)
+    const c = mapCronJob({
+        metadata: { name: 'backup', namespace: 'ops', uid: 'cccc' },
+        spec: { schedule: '0 2 * * *', jobTemplate: { spec: { parallelism: 3, template: { spec: { serviceAccountName: 'runner', containers: [] } } } } },
+        status: { active: [{ name: 'backup-1' }], lastScheduleTime: new Date('2026-11-22T02:00:00Z'), lastSuccessfulTime: new Date('2026-11-22T02:05:00Z') }
+    } as V1CronJob)
+    assert.equal(c.kind, ESdsfObjectKind.CRONJOB)
+    assert.equal(c.state, ESdsfJobState.SCHEDULED)
+    assert.equal(c.schedule, '0 2 * * *')
+    assert.equal(c.active, 1)
+    assert.equal(c.parallelism, 3)
+    assert.equal(c.start, '2026-11-22T02:00:00.000Z')
+    assert.equal(mapCronJob({ spec: { suspend: true } } as V1CronJob).state, ESdsfJobState.SUSPENDED)
+    assert.equal(mapCronJob({} as V1CronJob).owner, 'default')
+})
+
+test('describeJob and describeCronJob read like kubectl describe', () => {
+    const job = describeJob({
+        metadata: { name: 'nightly', namespace: 'shop', ownerReferences: [{ kind: 'CronJob', name: 'n', apiVersion: 'v', uid: 'u', controller: true }] },
+        spec: { backoffLimit: 6, completions: 1, template: { spec: { serviceAccountName: 'runner', restartPolicy: 'Never', containers: [{ name: 'work', image: 'busybox', command: ['sh', '-c'], args: ['echo hi'] }] } } },
+        status: { succeeded: 1, conditions: [{ type: 'Complete', status: 'True', reason: 'CompletionsReached' }] }
+    } as V1Job, []).join('\n')
+    assert.match(job, /^Name: +nightly$/m)
+    assert.match(job, /^Controlled By: +CronJob\/n$/m)
+    assert.match(job, /^Pods Statuses: +0 Active \/ 1 Succeeded \/ 0 Failed$/m)
+    assert.match(job, /^ {2}Complete +True +CompletionsReached$/m)
+    assert.match(job, /^ {4}Command: +sh -c$/m)
+    assert.match(job, /^ {2}Restart Policy: +Never$/m)
+    assert.match(job, /^Events: +<none>$/m)
+    const cron = describeCronJob({
+        metadata: { name: 'report', namespace: 'shop' },
+        spec: { schedule: '*/5 * * * *', suspend: true, concurrencyPolicy: 'Forbid', jobTemplate: { spec: { template: { spec: { containers: [] } } } } },
+        status: { active: [{ name: 'report-1' }, { name: 'report-2' }] }
+    } as V1CronJob, []).join('\n')
+    assert.match(cron, /^Schedule: +\*\/5 \* \* \* \*$/m)
+    assert.match(cron, /^Suspend: +True$/m)
+    assert.match(cron, /^Active Jobs: +report-1, report-2$/m)
+    assert.match(describeCronJob({} as V1CronJob, []).join('\n'), /^Suspend: +False$/m)
+})
+
+test('JOBS returns the Jobs and CronJobs of the namespaces the key reaches', async () => {
+    const { run } = await open('sdsf$read:^shop$:::')
+    const r = await run(message(ESdsfCommand.JOBS, { targetNamespace: undefined, targetName: undefined, containerName: undefined }))
+    assert.equal(r.ok, true)
+    const jobs = r.jobs as { name: string; kind: string; state: string }[]
+    assert.deepEqual(jobs.map(j => [j.kind, j.name, j.state]), [['Job', 'nightly', 'complete'], ['CronJob', 'report', 'suspended']], 'vault is out of reach')
+})
+
+test('DESCRIBE and CANCEL on a Job and a CronJob go to the batch API; CANCEL takes the pods with it', async () => {
+    const { run, calls } = await open('sdsf$cancel:^shop$:::')
+    const job = { objectKind: ESdsfObjectKind.JOB, targetName: 'nightly', containerName: undefined }
+    const cron = { objectKind: ESdsfObjectKind.CRONJOB, targetName: 'report', containerName: undefined }
+    assert.match(((await run(message(ESdsfCommand.DESCRIBE, job))).lines as string[])[0], /^Name: +nightly$/)
+    assert.equal(calls.filter(c => c.method === 'readJob').length, 1)
+    assert.match(((await run(message(ESdsfCommand.DESCRIBE, cron))).lines as string[])[0], /^Name: +report$/)
+    await run(message(ESdsfCommand.CANCEL, job))
+    assert.deepEqual(calls.at(-1), { method: 'deleteJob', params: { name: 'nightly', namespace: 'shop', propagationPolicy: 'Background' } })
+    await run(message(ESdsfCommand.CANCEL, { ...cron, force: true }))
+    assert.deepEqual(calls.at(-1), { method: 'deleteCronJob', params: { name: 'report', namespace: 'shop', gracePeriodSeconds: 0, propagationPolicy: 'Background' } })
+    assert.equal((await run(message(ESdsfCommand.LOG, { ...job, containerName: 'work' }))).error, ESdsfError.BAD_REQUEST, 'only a pod has a log')
+})
+
+test('a key limited to pods does not reach a Job; a key on another namespace neither', async () => {
+    const podKey = await open('sdsf$cancel:^shop$::^api-1$:')
+    const r = await podKey.run(message(ESdsfCommand.CANCEL, { objectKind: ESdsfObjectKind.JOB, targetName: 'nightly', containerName: undefined }))
+    assert.equal(r.error, ESdsfError.NOT_AUTHORIZED)
+    const other = await open('sdsf$cancel:^vault$:::')
+    const o = await other.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.CRONJOB, targetName: 'report', containerName: undefined }))
+    assert.equal(o.error, ESdsfError.NOT_AUTHORIZED)
+    assert.equal(podKey.calls.length + other.calls.length, 0)
 })

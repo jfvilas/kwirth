@@ -44,6 +44,39 @@ spec:
           command: ['sh', '-c', 'while true; do echo "sidecar alive"; sleep 5; done']
           resources:
             requests: { cpu: 5m, memory: 8Mi }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: batch-job
+  namespace: ${NAMESPACE}
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: work
+          image: busybox:1.36
+          command: ['sh', '-c', 'echo "sdsf-e2e job done"']
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: batch-cron
+  namespace: ${NAMESPACE}
+spec:
+  schedule: '0 3 * * *'
+  suspend: true
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: work
+              image: busybox:1.36
+              command: ['sh', '-c', 'echo never']
 `
 
 const kubectl = (args: string[], input?: string): string =>
@@ -53,6 +86,7 @@ export const createFixture = (): void => {
     kubectl(['delete', 'namespace', NAMESPACE, '--ignore-not-found', '--wait=true', '--timeout=60s'])
     kubectl(['apply', '-f', '-'], FIXTURE)
     kubectl(['-n', NAMESPACE, 'rollout', 'status', 'deployment/demo', '--timeout=90s'])
+    kubectl(['-n', NAMESPACE, 'wait', '--for=condition=complete', 'job/batch-job', '--timeout=90s'])
 }
 
 export const deleteFixture = (): void => {

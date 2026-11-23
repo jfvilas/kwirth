@@ -1,4 +1,4 @@
-import type { V1Pod, V1Container, V1ContainerStatus, CoreV1Event } from '@kubernetes/client-node'
+import type { V1Pod, V1Container, V1ContainerStatus, CoreV1Event, V1Job, V1CronJob, V1PodTemplateSpec } from '@kubernetes/client-node'
 
 /*
     A pod as text, close to what `kubectl describe pod` prints: it is what the D line command browses.
@@ -121,3 +121,59 @@ export const describePod = (pod: V1Pod, events: CoreV1Event[], now: number = Dat
     lines.push(...eventLines(events, now))
     return lines
 }
+
+// The pod template a Job or a CronJob runs: its containers, as `kubectl describe` shows them.
+const templateLines = (template: V1PodTemplateSpec | undefined): string[] => {
+    const lines = ['Pod Template:']
+    lines.push(...mapLines('  Labels', template?.metadata?.labels, 2))
+    lines.push(field('Service Account', template?.spec?.serviceAccountName, 2))
+    lines.push('  Containers:')
+    for (const c of template?.spec?.containers ?? []) {
+        lines.push(`   ${c.name}:`)
+        lines.push(field('Image', c.image, 4))
+        lines.push(field('Command', (c.command ?? []).join(' '), 4))
+        lines.push(field('Args', (c.args ?? []).join(' '), 4))
+    }
+    lines.push(field('Restart Policy', template?.spec?.restartPolicy, 2))
+    return lines
+}
+
+export const describeJob = (job: V1Job, events: CoreV1Event[], now: number = Date.now()): string[] => {
+    const controller = job.metadata?.ownerReferences?.find(o => o.controller) ?? job.metadata?.ownerReferences?.[0]
+    const conditions = job.status?.conditions ?? []
+    return [
+        field('Name', job.metadata?.name),
+        field('Namespace', job.metadata?.namespace),
+        ...mapLines('Labels', job.metadata?.labels),
+        ...mapLines('Annotations', job.metadata?.annotations),
+        field('Controlled By', controller ? `${controller.kind}/${controller.name}` : undefined),
+        field('Parallelism', job.spec?.parallelism ?? 1),
+        field('Completions', job.spec?.completions),
+        field('Backoff Limit', job.spec?.backoffLimit),
+        field('Start Time', isoOf(job.status?.startTime)),
+        field('Completed At', isoOf(job.status?.completionTime)),
+        field('Pods Statuses', `${job.status?.active ?? 0} Active / ${job.status?.succeeded ?? 0} Succeeded / ${job.status?.failed ?? 0} Failed`),
+        'Conditions:',
+        '  Type                        Status  Reason',
+        ...conditions.map(c => '  ' + c.type.padEnd(28) + c.status.padEnd(8) + (c.reason ?? '')),
+        ...templateLines(job.spec?.template),
+        ...eventLines(events, now)
+    ]
+}
+
+export const describeCronJob = (cron: V1CronJob, events: CoreV1Event[], now: number = Date.now()): string[] => [
+    field('Name', cron.metadata?.name),
+    field('Namespace', cron.metadata?.namespace),
+    ...mapLines('Labels', cron.metadata?.labels),
+    ...mapLines('Annotations', cron.metadata?.annotations),
+    field('Schedule', cron.spec?.schedule),
+    field('Time Zone', cron.spec?.timeZone),
+    field('Concurrency Policy', cron.spec?.concurrencyPolicy),
+    field('Suspend', cron.spec?.suspend ? 'True' : 'False'),
+    field('Successful Job History Limit', cron.spec?.successfulJobsHistoryLimit),
+    field('Failed Job History Limit', cron.spec?.failedJobsHistoryLimit),
+    field('Last Schedule Time', isoOf(cron.status?.lastScheduleTime)),
+    field('Active Jobs', (cron.status?.active ?? []).map(a => a.name).join(', ')),
+    ...templateLines(cron.spec?.jobTemplate?.spec?.template),
+    ...eventLines(events, now)
+]
