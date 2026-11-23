@@ -4,7 +4,7 @@ A **dynamic core extension** (DCE) for [Kwirth](https://kwirthmagnify.dev) that 
 IBM **block-mode terminal**: the engine, with no DOM, and the screen that paints it in the browser.
 
 It is the terminal of the [SDSF](https://github.com/jfvilas/kwirth/tree/master/plugins/sdsf) plugin (a 3270),
-and of WRKACTJOB (a 5250). There is one engine for both, so neither plugin carries its own copy.
+and of WRKACTJOB (a 5250). There is one glass for both, so neither plugin carries its own copy.
 
 ## What it brings
 
@@ -18,8 +18,28 @@ and of WRKACTJOB (a 5250). There is one engine for both, so neither plugin carri
 | `KeyMapper` | The PC keyboard as PCOMM lays it out: right Ctrl = Enter, left Ctrl = Reset, Intro = Newline, F1–F24, Alt+1/2/3 = PA1–PA3 |
 | `paletteOf`, `EDisplay` | Colour (3279) or green phosphor (3278) |
 
-The engine lives in `src/common` and its enums carry the real data-stream codes (AIDs, colours,
-highlights), so a tn3270 server can be built on the same model one day.
+And the **5250** (since 0.2.0), the same way:
+
+| Piece | What it does |
+|---|---|
+| `Screen5250` | The display buffer, 24x80 or 27x132: screen attribute bytes (0x20–0x3F) on their own positions, and the format table of input fields, each with its Field Format Word (bypass, shift, monocase, right adjust, field exit required) |
+| `Terminal5250` | The operator's side: typing checked against the field's shift, monocase, insert mode, Field Exit / Field+ / Field- (right adjust and sign), Erase EOF, Erase Input, operator errors with their code (`X II 0005`) until Reset, and the host's error message on the error line, which Reset gives back |
+| `Painter5250` | Lays out panels as IBM i display files do: constants after their attribute byte, input fields underlined |
+| `displayRow5250`, `attributeLook`, `oiaOf5250` | The attribute byte decoded with the colour table of the 5292 / 3477 (green, white, red, turquoise and yellow with column separators, pink, blue); on a monochrome 5251, the colour screen in two intensities |
+| `TerminalView5250` | The React component, on the same glass as the 3270 |
+| `KeyMapper5250` | PCOMM's 5250 layout: right Ctrl = Enter, left Ctrl = Reset, Intro = Field Exit, numpad + / - = Field+ / Field-, PgDn / PgUp = Roll Up / Roll Down, Alt+End = Erase Input |
+
+Both terminals are painted by `Glass`, which takes rows of runs (`IGlassRun`) and the OIA.
+
+The engines live in `src/common` and their enums carry the real data-stream codes (AIDs, colours,
+highlights, 5250 attribute bytes and shift codes), so a tn3270 or tn5250 server can be built on the same
+model one day.
+
+## Compatibility
+
+The instance is **shared at runtime**: every consumer installed in a Kwirth gets the version of this DCE that
+is installed there, not the one it was built against. So a new version only **adds** — no export is removed or
+renamed, and no signature changes. `tests/compat.test.ts` keeps the frozen list of the 0.1.0 exports.
 
 ## Consuming it
 
@@ -53,6 +73,7 @@ highlights), so a tn3270 server can be built on the same model one day.
 npm install
 npm run build      # typecheck + dist/front.js (what Kwirth loads) + dist/index.mjs and dist/types (for consumers)
 npm test           # COVERAGE=1 npm test for coverage
+npm run try        # builds try/out/index.html: the BUILT front.js painting a sample 5250 screen (?mono=1, ?wide=1)
 ```
 
 There is no watch: Kwirth loads a DCE once, when it starts, so every change is a build and a restart of the

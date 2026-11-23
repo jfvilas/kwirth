@@ -10,6 +10,18 @@ import { TerminalView } from './TerminalView'
 import { KeyMapper } from './KeyMapper'
 import { FONT_FAMILY, FONT_STACK, loadFont3270 } from './Font3270'
 import { oiaColorOf, paletteOf, SCREEN_BACKGROUND } from './Palette'
+import { glassRow3270 } from '../common/Display3270'
+import { Screen5250, DEFAULT_FIELD_FORMAT } from '../common/Screen5250'
+import { Terminal5250 } from '../common/Terminal5250'
+import { Painter5250 } from '../common/Painter5250'
+import { attributeLook, displayCell5250, displayRow5250, oiaOf5250 } from '../common/Display5250'
+import {
+    E5250Adjust, E5250Aid, E5250Attribute, E5250AttributeBit, E5250Error, E5250Key, E5250Lock, E5250Shift, F_AIDS,
+    GEOMETRY_5250_24X80, GEOMETRY_5250_27X132
+} from '../common/Terminal5250Types'
+import { TerminalView5250 } from './TerminalView5250'
+import { KeyMapper5250 } from './KeyMapper5250'
+import { Glass } from './Glass'
 
 /*
     The contract of DCE `blockterm`: the entry of the npm package AND the shape of the instance the core keeps.
@@ -21,6 +33,10 @@ import { oiaColorOf, paletteOf, SCREEN_BACKGROUND } from './Palette'
 
     In a consumer's unit tests there is no mapping: the same imports resolve to this module, bundled in
     dist/index.mjs, and run the real engine.
+
+    🔴 The instance is SHARED AT RUNTIME: every consumer installed gets the version of the DCE installed, not the
+    one it was built against. So a new version only ADDS — no export is removed or renamed and no signature
+    changes — or a consumer already published breaks in the browser while it still builds.
 */
 
 export { Screen3270, DEFAULT_ATTRIBUTE } from '../common/Screen3270'
@@ -43,6 +59,30 @@ export type { IKeyEventLike } from './KeyMapper'
 export { FONT_FAMILY, FONT_STACK, loadFont3270 } from './Font3270'
 export type { IFontMetrics } from './Font3270'
 export { oiaColorOf, paletteOf, SCREEN_BACKGROUND } from './Palette'
+
+// The glass both terminals are painted on (0.2.0)
+export { glassRow3270 } from '../common/Display3270'
+export type { IGlassOia, IGlassRun } from '../common/GlassTypes'
+export { Glass } from './Glass'
+export type { IGlassKeys, IGlassProps } from './Glass'
+
+// 5250 (0.2.0)
+export { Screen5250, DEFAULT_FIELD_FORMAT } from '../common/Screen5250'
+export { Terminal5250 } from '../common/Terminal5250'
+export { Painter5250 } from '../common/Painter5250'
+export type { I5250FieldStyle } from '../common/Painter5250'
+export { attributeLook, displayCell5250, displayRow5250, oiaOf5250 } from '../common/Display5250'
+export type { I5250Look } from '../common/Display5250'
+export {
+    E5250Adjust, E5250Aid, E5250Attribute, E5250AttributeBit, E5250Error, E5250Key, E5250Lock, E5250Shift, F_AIDS,
+    GEOMETRY_5250_24X80, GEOMETRY_5250_27X132
+} from '../common/Terminal5250Types'
+export type {
+    I5250Cell, I5250Field, I5250FieldFormat, I5250Input, I5250KeyAction, I5250ModifiedField
+} from '../common/Terminal5250Types'
+export { TerminalView5250 } from './TerminalView5250'
+export type { ITerminalView5250Props } from './TerminalView5250'
+export { KeyMapper5250 } from './KeyMapper5250'
 
 export interface IBlockterm {
     /** The DCE's id, as the core installed it. */
@@ -76,6 +116,35 @@ export interface IBlockterm {
     readonly oiaColorOf: typeof oiaColorOf
     readonly paletteOf: typeof paletteOf
     readonly SCREEN_BACKGROUND: typeof SCREEN_BACKGROUND
+
+    // The glass (0.2.0)
+    readonly glassRow3270: typeof glassRow3270
+    readonly Glass: typeof Glass
+
+    // 5250 engine (0.2.0, no DOM)
+    readonly Screen5250: typeof Screen5250
+    readonly DEFAULT_FIELD_FORMAT: typeof DEFAULT_FIELD_FORMAT
+    readonly Terminal5250: typeof Terminal5250
+    readonly Painter5250: typeof Painter5250
+    readonly attributeLook: typeof attributeLook
+    readonly displayCell5250: typeof displayCell5250
+    readonly displayRow5250: typeof displayRow5250
+    readonly oiaOf5250: typeof oiaOf5250
+    readonly E5250Adjust: typeof E5250Adjust
+    readonly E5250Aid: typeof E5250Aid
+    readonly E5250Attribute: typeof E5250Attribute
+    readonly E5250AttributeBit: typeof E5250AttributeBit
+    readonly E5250Error: typeof E5250Error
+    readonly E5250Key: typeof E5250Key
+    readonly E5250Lock: typeof E5250Lock
+    readonly E5250Shift: typeof E5250Shift
+    readonly F_AIDS: typeof F_AIDS
+    readonly GEOMETRY_5250_24X80: typeof GEOMETRY_5250_24X80
+    readonly GEOMETRY_5250_27X132: typeof GEOMETRY_5250_27X132
+
+    // 5250 glass (0.2.0)
+    readonly TerminalView5250: typeof TerminalView5250
+    readonly KeyMapper5250: typeof KeyMapper5250
 }
 
 export const createBlockterm = (id: string): IBlockterm => ({
@@ -104,5 +173,28 @@ export const createBlockterm = (id: string): IBlockterm => ({
     loadFont3270,
     oiaColorOf,
     paletteOf,
-    SCREEN_BACKGROUND
+    SCREEN_BACKGROUND,
+    glassRow3270,
+    Glass,
+    Screen5250,
+    DEFAULT_FIELD_FORMAT,
+    Terminal5250,
+    Painter5250,
+    attributeLook,
+    displayCell5250,
+    displayRow5250,
+    oiaOf5250,
+    E5250Adjust,
+    E5250Aid,
+    E5250Attribute,
+    E5250AttributeBit,
+    E5250Error,
+    E5250Key,
+    E5250Lock,
+    E5250Shift,
+    F_AIDS,
+    GEOMETRY_5250_24X80,
+    GEOMETRY_5250_27X132,
+    TerminalView5250,
+    KeyMapper5250
 })

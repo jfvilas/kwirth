@@ -2,8 +2,11 @@
     "id": "blockterm",
     "name": "@jfvilas/kwirth-dce-blockterm",
     "publisher": "@jfvilas",
-    "version": "0.1.0",
-    "tags": ["library","emulator"],
+    "version": "0.2.0",
+    "tags": [
+        "library",
+        "emulator"
+    ],
     "displayName": "Block Terminal",
     "description": "Block-mode terminal for Kwirth extensions: the IBM 3270 and 5250 engines, without DOM, and the screen, font and keyboard that paint them in the front end",
     "website": "https://github.com/jfvilas/kwirth/tree/master/dces/blockterm",
@@ -11,7 +14,8 @@
     "type": "module",
     "scripts": {
         "build": "node build.mjs",
-        "test": "node tests/run.mjs"
+        "test": "node tests/run.mjs",
+        "try": "node try.mjs"
     },
     "dependencies": {
         "@kwirthmagnify/kwirth-common": "^0.5.96"
@@ -19,9 +23,11 @@
     "devDependencies": {
         "@types/node": "^20.12.13",
         "@types/react": "^18.3.0",
+        "@types/react-dom": "^18.3.7",
         "c8": "^12.0.0",
         "esbuild": "^0.27.2",
         "react": "^18.3.0",
+        "react-dom": "^18.3.1",
         "typescript": "^5.4.0"
     },
     "requiresRestart": true,
