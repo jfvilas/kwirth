@@ -1,6 +1,6 @@
 import { SdsfSession } from '../common/SdsfSession'
 import { SdsfBackSource } from './SdsfBackSource'
-import { ESdsfDisplay } from '../common/SdsfTypes'
+import { EDisplay } from '@jfvilas/kwirth-dce-blockterm'
 
 /*
     The tab's state. It lives in channelObject.data, not in React: the TabContent is mounted and unmounted
@@ -9,14 +9,14 @@ import { ESdsfDisplay } from '../common/SdsfTypes'
 */
 export interface ISdsfData {
     started: boolean
-    display: ESdsfDisplay      // how the session's screen is painted; set from the setup when it starts
+    display: EDisplay          // how the session's screen is painted; set from the setup when it starts
     session?: SdsfSession
     source?: SdsfBackSource
 }
 
 export class SdsfData implements ISdsfData {
     started = false
-    display = ESdsfDisplay.COLOR
+    display = EDisplay.COLOR
     session?: SdsfSession
     source?: SdsfBackSource
 }

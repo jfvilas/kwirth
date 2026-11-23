@@ -1,5 +1,4 @@
-import { Painter } from './Painter'
-import { E3270Color } from '../terminal/Terminal3270Types'
+import { E3270Color, Painter } from '@jfvilas/kwirth-dce-blockterm'
 
 /*
     What is left after END on the primary menu: TSO's READY, as when SDSF ends. Typing SDSF (or SDSF DA) goes

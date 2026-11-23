@@ -1,7 +1,6 @@
-import { Terminal3270 } from './terminal/Terminal3270'
-import { E3270Aid, E3270Color, E3270Lock, I3270Geometry, I3270Input, I3270KeyAction, MODEL3_GEOMETRY } from './terminal/Terminal3270Types'
-import { Screen3270 } from './terminal/Screen3270'
-import { Painter } from './panels/Painter'
+import {
+    E3270Aid, E3270Color, E3270Lock, I3270Geometry, I3270Input, I3270KeyAction, MODEL3_GEOMETRY, Painter, Screen3270, Terminal3270
+} from '@jfvilas/kwirth-dce-blockterm'
 import { EMessageLevel } from './panels/SdsfLayout'
 import { paintPrimaryMenu } from './panels/PrimaryMenu'
 import { columnsFrom, dataRows, filterLine, ITableFields, offsetLeftOf, paintDa, paintTable, ROW_FIRST_DATA, ROW_HEADERS } from './panels/DaPanel'

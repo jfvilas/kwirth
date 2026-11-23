@@ -119,7 +119,7 @@ test('columns: findColumn ignores case; the pages of PF11 cover every column onc
 // ─── SYSLOG format (S6) ───────────────────────────────────────────────────────
 
 import { eventColor, isFailure, syslogLine, timeOf, yydddOf } from '../src/common/panels/SyslogFormat'
-import { E3270Color } from '../src/common/terminal/Terminal3270Types'
+import { E3270Color } from '@jfvilas/kwirth-dce-blockterm'
 import { ISdsfEvent } from '../src/common/SdsfTypes'
 
 const ev = (over: Partial<ISdsfEvent> = {}): ISdsfEvent => ({

@@ -1,8 +1,7 @@
-import { Painter } from './Painter'
+import { E3270Color, E3270Intensity, I3270Geometry, Painter } from '@jfvilas/kwirth-dce-blockterm'
 import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShortMessage, ROW_TITLE, rowPfKeys } from './SdsfLayout'
 import { ISdsfContainer, ISdsfPod } from '../SdsfTypes'
 import { qosLetterOf } from './DaColumns'
-import { E3270Color, E3270Intensity, I3270Geometry } from '../terminal/Terminal3270Types'
 
 /*
     The ? panel, SDSF's JOB DATA SET DISPLAY (reference capture panels10): one row per data set of the job,

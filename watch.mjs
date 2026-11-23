@@ -58,6 +58,24 @@ const kwirthBackGlobalsPlugin = {
     },
 }
 
+// The same DCE mapping as build.mjs: the terminal is the instance of DCE `blockterm`, never a bundled copy.
+const DCE_PACKAGES = {
+    '@jfvilas/kwirth-dce-blockterm': 'blockterm',
+}
+
+const dceGlobal = (registry) => ({
+    name: 'kwirth-dce-globals',
+    setup(build) {
+        for (const [pkg] of Object.entries(DCE_PACKAGES)) {
+            build.onResolve({ filter: new RegExp(`^${pkg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }, () => ({ path: pkg, namespace: 'kwirth-dce' }))
+        }
+        build.onLoad({ filter: /.*/, namespace: 'kwirth-dce' }, (args) => ({
+            contents: `const _e = ${registry}['${DCE_PACKAGES[args.path]}']; module.exports = _e && _e.instance ? _e.instance : {};`,
+            loader: 'js',
+        }))
+    },
+})
+
 fs.mkdirSync('dist', { recursive: true })
 
 const meta = JSON.parse(fs.readFileSync('package.json', 'utf-8'))
@@ -73,8 +91,8 @@ const frontCtx = await esbuild.context({
     bundle: true,
     format: 'iife',
     outfile: 'dist/front.js',
-    plugins: [kwirthGlobalsPlugin],
-    loader: { '.tsx': 'tsx', '.ts': 'ts', '.woff': 'dataurl' },
+    plugins: [kwirthGlobalsPlugin, dceGlobal('window.__kwirth_dce__')],
+    loader: { '.tsx': 'tsx', '.ts': 'ts' },
     jsx: 'transform',
     jsxFactory: 'React.createElement',
     jsxFragment: 'React.Fragment',

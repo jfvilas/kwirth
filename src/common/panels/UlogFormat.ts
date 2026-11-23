@@ -1,4 +1,4 @@
-import { E3270Color } from '../terminal/Terminal3270Types'
+import { E3270Color } from '@jfvilas/kwirth-dce-blockterm'
 import { timeOf } from './SyslogFormat'
 
 /*

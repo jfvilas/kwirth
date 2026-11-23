@@ -8,8 +8,10 @@ pod to browse its log and `C` to cancel it, page with PF7/PF8 and come back with
 
 - Kwirth: https://kwirthmagnify.dev — source at https://github.com/kwirthmagnify/kwirth
 - Plugin source: https://github.com/jfvilas/kwirth (folder `plugins/sdsf`)
-- License: MIT. The 3270 font is [rbanffy/3270font](https://github.com/rbanffy/3270font) (BSD-3-Clause,
-  `LICENSE-3270font.txt`), embedded in the bundle.
+- License: MIT.
+- The 3270 terminal itself (engine, screen, keyboard and the [rbanffy/3270font](https://github.com/rbanffy/3270font)
+  font) comes from the **Block Terminal** DCE, `@jfvilas/kwirth-dce-blockterm`
+  ([`dces/blockterm`](https://github.com/jfvilas/kwirth/tree/master/dces/blockterm)), which SDSF requires.
 
 ## What it is
 
@@ -148,6 +150,10 @@ your Kwirth does not list it yet, add it as a marketplace with this manifest URL
 ```
 https://raw.githubusercontent.com/jfvilas/kwirth/master/manifest.json
 ```
+
+SDSF **requires** the `blockterm` DCE (Block Terminal, 0.1.0 or later), from the same marketplace: install
+it first from the DCE manager and restart the Kwirth back end, as every DCE needs. Kwirth will not install
+SDSF without it.
 
 Then install `sdsf` from the plugin manager. No restart is needed. It **uses** Kwirth's `metrics`
 provider for the `Real` and `CPU%` columns when it is installed; without it SDSF works the same and

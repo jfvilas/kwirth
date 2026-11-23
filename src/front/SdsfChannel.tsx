@@ -5,7 +5,8 @@ import { SdsfSetup, SdsfIcon } from './SdsfSetup'
 import { SdsfTabContent } from './SdsfTabContent'
 import { SdsfConfig, SdsfInstanceConfig } from './SdsfConfig'
 import { ISdsfData, SdsfData } from './SdsfData'
-import { ESdsfDisplay, ESdsfModel, ESdsfScope, ISdsfInstanceConfig, ISdsfMessageResponse, SDSF_MODEL_GEOMETRY, SDSF_SCOPES } from '../common/SdsfTypes'
+import { EDisplay } from '@jfvilas/kwirth-dce-blockterm'
+import { ESdsfModel, ESdsfScope, ISdsfInstanceConfig, ISdsfMessageResponse, SDSF_MODEL_GEOMETRY, SDSF_SCOPES } from '../common/SdsfTypes'
 import { SdsfBackSource } from './SdsfBackSource'
 import { SdsfSession } from '../common/SdsfSession'
 
@@ -75,7 +76,7 @@ export class SdsfChannel implements IChannel {
         // A workspace saved before the setup existed has no model: it gets the 3278-3 in colour it always had.
         const config = channelObject.instanceConfig as Partial<ISdsfInstanceConfig> | undefined
         const model = Object.values(ESdsfModel).find(m => m === config?.model) ?? ESdsfModel.MODEL3
-        data.display = Object.values(ESdsfDisplay).find(d => d === config?.display) ?? ESdsfDisplay.COLOR
+        data.display = Object.values(EDisplay).find(d => d === config?.display) ?? EDisplay.COLOR
         data.source = new SdsfBackSource(channelObject)
         data.session = new SdsfSession(channelObject.clusterName || 'KWIRTH', data.source, SDSF_MODEL_GEOMETRY[model])
         data.started = true
