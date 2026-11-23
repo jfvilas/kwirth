@@ -4,7 +4,8 @@
 > su repo; `0.1.0` publicada en npm). **Hecho el S1** (SDSF 0.11.0 sobre la DCE, publicado). **Hecho el S2**
 > (`blockterm` 0.2.0, commit `654928c`; QA y tipos validados; ⚠️ **sin publicar**: el clasificador de permisos
 > bloqueó el `npm publish`; publicada después, con el OK explícito del usuario). **Hecho el S3** (scaffold y back,
-> commit `6ee2b21`). **Hecho el S4** (commit `b407576`). **S5: código hecho**, pendiente del QA del usuario. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
+> commit `6ee2b21`). **Hecho el S4** (commit `b407576`). **Hecho el S5** (commit `8e562e8`). **S6:** e2e y README
+> hechos; la publicación espera el OK del usuario. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
 > producto (D1–D11).
 >
 > **Dónde vive:**
@@ -147,6 +148,12 @@
 - e2e propio (namespace `wrkactjob-e2e` que crea y borra; sin coincidir con el e2e de SDSF, que borra el suyo).
 - README de GitHub con capturas (como SDSF); docs.
 - **Publicación** (gate): `blockterm` 0.2.0, luego `wrkactjob` 0.1.0, manifest de jfvilas, tags y subtree.
+- 🔶 **e2e y README hechos (2026-11-23)**, commits `2fa42e7` y `31ffa79`:
+  - e2e: 15 tests en 40 s con los criterios del PRD (salvo el 6, «sin permiso», que cubren los unit tests: el usuario del dev es admin). Fixture propio en `wrkactjob-e2e`; solo lista ese subsistema.
+  - «Active jobs» y «CPU %» son estadísticas del **sistema**, como en IBM i: no cambian con `SBS()`.
+  - Capturas del README (`docs/screenshots/`, 10) sacadas por el e2e: solo el fixture, el cluster y el nodo de k3d.
+  - El `build.mjs` del scaffold no copiaba el README a `dist`: ahora lo copia (el tarball lleva 4 ficheros).
+  - `blockterm` 0.2.0 ya está en npm; falta su entrada en el manifest de jfvilas.
 
 ## 4. Backlog (después del MVP)
 
