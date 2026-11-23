@@ -1,8 +1,8 @@
 import { Painter } from './Painter'
-import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShortMessage, ROW_TITLE } from './SdsfLayout'
+import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShortMessage, ROW_TITLE, rowPfKeys } from './SdsfLayout'
 import { cell, DA_COLUMNS, IDaColumn, JOBNAME_COLUMN } from './DaColumns'
 import { ISdsfPod } from '../SdsfTypes'
-import { E3270Color, E3270Intensity } from '../terminal/Terminal3270Types'
+import { E3270Color, E3270Intensity, I3270Geometry } from '../terminal/Terminal3270Types'
 
 /*
     The SDSF tabular panels (DA, and ST/O/H for Jobs), laid out like the reference capture of a 32x80 DA:
@@ -11,7 +11,7 @@ import { E3270Color, E3270Intensity } from '../terminal/Terminal3270Types'
       row 3     COMMAND INPUT ===>                                          SCROLL ===> PAGE
       row 4     PREFIX=*  DEST=(ALL)  OWNER=*  SORT=*                         (turquoise)
       row 5     NP   JOBNAME  StepName ProcStep JobID    Owner    C Pos DP  Real Paging     SIO
-      6..29     one object per row, NP is where line commands are typed
+      6..29     one object per row, NP is where line commands are typed (as many as the model has rows for)
       30..31    PF keys
 
     NP and the fixed column (JOBNAME) stay put; the other columns scroll sideways from `offset`.
@@ -19,7 +19,8 @@ import { E3270Color, E3270Intensity } from '../terminal/Terminal3270Types'
 export const ROW_FILTER = 4
 export const ROW_HEADERS = 5
 export const ROW_FIRST_DATA = 6
-export const DATA_ROWS = 24
+// 24 on a 32x80, 16 on a 24x80, 19 on a 27x132.
+export const dataRows = (g: I3270Geometry): number => rowPfKeys(g) - ROW_FIRST_DATA
 
 const NP_COL = 1
 const NP_LENGTH = 3
@@ -78,7 +79,7 @@ export const offsetLeftOf = <T>(offset: number, cols: number, columns: IDaColumn
 export const paintTable = <T>(p: Painter, state: ITablePaintState<T>): ITableFields<T> => {
     const screen = p.screen
     const total = state.rows.length
-    const last = Math.min(state.top + DATA_ROWS, total)
+    const last = Math.min(state.top + dataRows(screen), total)
     paintActionBar(p)
 
     const lines = `LINE ${total ? state.top + 1 : 0}-${last} (${total})`
@@ -102,7 +103,7 @@ export const paintTable = <T>(p: Painter, state: ITablePaintState<T>): ITableFie
     for (const c of columns) header(c.attribute + 1, c.column)
 
     const np: ITableFields<T>['np'] = []
-    for (let i = 0; i < DATA_ROWS && state.top + i < total; i++) {
+    for (let i = 0; i < dataRows(screen) && state.top + i < total; i++) {
         const item = state.rows[state.top + i]
         const row = ROW_FIRST_DATA + i
         np.push({ attribute: p.input(row, NP_COL, NP_LENGTH, '', { intensity: E3270Intensity.HIGH }), row: item })

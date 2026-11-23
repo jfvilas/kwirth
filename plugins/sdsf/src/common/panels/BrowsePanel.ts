@@ -1,21 +1,26 @@
 import { Painter } from './Painter'
-import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShortMessage, ROW_TITLE } from './SdsfLayout'
-import { E3270Color } from '../terminal/Terminal3270Types'
+import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShortMessage, ROW_TITLE, rowPfKeys } from './SdsfLayout'
+import { E3270Color, I3270Geometry } from '../terminal/Terminal3270Types'
 
 /*
-    The output browse (SDSF's ODS): a container log or a describe, read once, shown 79 columns at a time
+    The output browse (SDSF's ODS): a container log or a describe, read once, shown 79 columns at a time (131
+    on a 27x132)
     between the TOP OF DATA and BOTTOM OF DATA marks, as in the reference capture of SDSF.LOG.
 
       row 2     SDSF OUTPUT DISPLAY API-7D9F STC43981  DSID   101  LINE 0       COLUMNS 01- 79
       row 3     COMMAND INPUT ===>                                          SCROLL ===> PAGE
-      4..29     the lines (green), the marks (white)
+      4..29     the lines (green), the marks (white), down to the PF keys
 */
 export const ROW_FIRST_BROWSE = 4
-export const BROWSE_ROWS = 26
-export const BROWSE_WIDTH = 79
+export const browseHeight = (g: I3270Geometry): number => rowPfKeys(g) - ROW_FIRST_BROWSE
+export const browseWidth = (g: I3270Geometry): number => g.cols - 1
 
-export const TOP_OF_DATA = '********************************* TOP OF DATA **********************************'
-export const BOTTOM_OF_DATA = '******************************** BOTTOM OF DATA ********************************'
+// '***** TOP OF DATA *****' across the screen, the words in the middle.
+export const dataMark = (words: string, cols: number): string => {
+    const text = ` ${words} `
+    const left = Math.floor((cols - text.length) / 2)
+    return '*'.repeat(left) + text + '*'.repeat(cols - left - text.length)
+}
 
 // ANSI escape sequences (colours, cursor moves) that container logs often carry.
 // eslint-disable-next-line no-control-regex
@@ -48,25 +53,26 @@ export interface IBrowseState {
 }
 
 // The browse as shown: the two marks around the lines.
-export const browseRows = (lines: string[]): string[] => [TOP_OF_DATA, ...lines, BOTTOM_OF_DATA]
+export const browseRows = (lines: string[], cols: number): string[] => [dataMark('TOP OF DATA', cols), ...lines, dataMark('BOTTOM OF DATA', cols)]
 
 export const paintBrowse = (p: Painter, state: IBrowseState): { command: number; scroll: number } => {
     const screen = p.screen
     paintActionBar(p)
-    const columns = `COLUMNS ${String(state.left + 1).padStart(2, '0')}- ${String(state.left + BROWSE_WIDTH).padStart(2, '0')}`
+    const width = browseWidth(screen)
+    const columns = `COLUMNS ${String(state.left + 1).padStart(2, '0')}- ${String(state.left + width).padStart(2, '0')}`
     p.text(ROW_TITLE, 1, `SDSF ${state.heading}  LINE ${state.top}`.slice(0, screen.cols - columns.length - 3), { color: E3270Color.WHITE })
     p.text(ROW_TITLE, screen.cols - columns.length, columns, { color: E3270Color.WHITE })
     paintShortMessage(p, state.message, state.messageLevel)
     const fields = paintCommandLine(p, state.command, state.scroll)
 
-    const rows = browseRows(state.lines)
-    for (let i = 0; i < BROWSE_ROWS && state.top + i < rows.length; i++) {
+    const rows = browseRows(state.lines, screen.cols)
+    for (let i = 0; i < browseHeight(screen) && state.top + i < rows.length; i++) {
         const index = state.top + i
         const mark = index === 0 || index === rows.length - 1
         // The marks do not scroll sideways: they say where the data ends, whatever the column.
-        const text = mark ? rows[index] : rows[index].slice(state.left, state.left + BROWSE_WIDTH)
+        const text = mark ? rows[index] : rows[index].slice(state.left, state.left + width)
         const color = mark ? E3270Color.WHITE : state.colors?.[index - 1] ?? E3270Color.GREEN
-        p.text(ROW_FIRST_BROWSE + i, 1, text.slice(0, BROWSE_WIDTH), { color })
+        p.text(ROW_FIRST_BROWSE + i, 1, text.slice(0, width), { color })
     }
     paintPfKeys(p)
     return fields

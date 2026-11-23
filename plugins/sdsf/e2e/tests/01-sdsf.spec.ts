@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test'
 import {
-    aid, clickCell, command, createFixture, deleteFixture, enter, fixturePods, lineCommand, NAMESPACE, oiaText, openSdsf,
-    row, screenText, terminal, waitUnlocked
+    aid, clickCell, command, createFixture, deleteFixture, enter, fixturePods, geometry, lineCommand, NAMESPACE, oiaText, openSdsf,
+    row, screenText, startChannel, stopChannel, terminal, waitUnlocked
 } from './helpers'
 
 /*
@@ -47,10 +47,18 @@ test.afterAll(async () => {
     deleteFixture()
 })
 
-test('stopped, it says so and offers to start it', async () => {
+test('stopped, it says so; Start asks for the terminal, a 3278-3 in colour unless told otherwise', async () => {
     const notStarted = page.getByTestId('channel-not-started')
     await expect(notStarted).toContainText('SDSF not started')
     await notStarted.getByRole('button', { name: 'Start' }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible({ timeout: 10000 })
+    await expect(dialog.getByRole('radio', { name: '3278-3 (32x80)' })).toBeChecked()
+    await expect(dialog.getByRole('radio', { name: 'Colour (3279)' })).toBeChecked()
+    for (const other of ['3278-2 (24x80)', '3278-5 (27x132)', 'Green phosphor (3278)']) await expect(dialog.getByRole('radio', { name: other })).not.toBeChecked()
+    await expect(dialog.getByRole('checkbox', { name: 'Set as default' })).not.toBeChecked()
+    await dialog.getByRole('button', { name: 'OK', exact: true }).click()
+    await expect(dialog).toBeHidden()
     await expect(terminal(page)).toBeVisible({ timeout: 20000 })
 })
 
@@ -277,4 +285,51 @@ test('PF3 back to the menu, END to TSO READY, SDSF back in', async () => {
     await page.keyboard.type('sdsf')
     await enter(page)
     expect(await row(page, 2)).toMatch(/SDSF PRIMARY OPTION MENU/)
+})
+
+// ── The other terminals: a new session each, chosen in the setup ─────────────────────────────────────
+
+// The grid inside the tab, whole: nothing cut on either side.
+const assertGridFits = async (): Promise<void> => {
+    const tab = await terminal(page).boundingBox()
+    const grid = await terminal(page).locator('[data-grid]').boundingBox()
+    expect(tab && grid).toBeTruthy()
+    expect(grid!.x).toBeGreaterThanOrEqual(tab!.x)
+    expect(grid!.x + grid!.width).toBeLessThanOrEqual(tab!.x + tab!.width + 0.5)
+}
+
+// The colour a cell is painted in, as the browser computed it.
+const colourAt = async (r: number, text: string): Promise<string> =>
+    terminal(page).locator('[data-grid] > div').nth(r).locator('span', { hasText: text }).first().evaluate(e => getComputedStyle(e).color)
+
+test('3278-2 in green phosphor: 24 rows of 80, two greens, the DA with its rows', async () => {
+    await stopChannel(page)
+    await startChannel(page, '3278-2 (24x80)', 'Green phosphor (3278)')
+    expect(await geometry(page)).toEqual({ rows: 24, cols: 80 })
+    await assertGridFits()
+    expect(await row(page, 2)).toMatch(/SDSF PRIMARY OPTION MENU/)
+    expect(await row(page, 22)).toMatch(/F1=HELP/)
+    expect(await colourAt(2, 'SDSF PRIMARY OPTION MENU')).toBe('rgb(125, 255, 138)')
+    expect(await colourAt(5, 'Active pods')).toBe('rgb(47, 191, 63)')
+    await command(page, 'prefix demo*')
+    await command(page, `dest ${NAMESPACE}`)
+    await command(page, 'da')
+    expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
+    await shot('model2-green')
+})
+
+test('3278-5 in colour: 27 rows of 132, the DA shows CPU% and Status on its first page', async () => {
+    await stopChannel(page)
+    await startChannel(page, '3278-5 (27x132)', 'Colour (3279)')
+    expect(await geometry(page)).toEqual({ rows: 27, cols: 132 })
+    await assertGridFits()
+    expect(await row(page, 3)).toMatch(/SCROLL ===> PAGE$/)
+    await command(page, 'prefix demo*')
+    await command(page, `dest ${NAMESPACE}`)
+    await command(page, 'da')
+    expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
+    expect(await row(page, 5)).toMatch(/SIO +CPU% Status/)
+    await clickCell(page, 3, 128)
+    expect(await oiaText(page)).toMatch(/04\/129$/)
+    await shot('model5')
 })

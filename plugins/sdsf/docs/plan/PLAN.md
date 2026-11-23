@@ -1,8 +1,8 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.4.0` (npm `@jfvilas` y marketplace de
-> github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`), el S7 (`ST`/`O`/`H`) y el S7b
-> (parámetros del `DA`). **Lo siguiente es el S9** (modelo de terminal y color en el setup) y el S8 (`INIT`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
+> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.5.0` (npm `@jfvilas` y marketplace de
+> github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`), el S7 (`ST`/`O`/`H`), el S7b
+> (parámetros del `DA`) y el S9 (modelo de terminal y color en el setup). **Lo siguiente es el S8** (`INIT`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
 > **Dónde vive:** `~/github/kwirth/plugins/sdsf`. Es un repo anidado (rama `main`, identidad `jfvilas`)
@@ -241,6 +241,23 @@ Se publica cada stream con su versión.
 - **`DA` sin parámetros** = `DADFLT (IN,OUT,TRANS,READY,STC,TSU,JOB)`: sin DaemonSets ni terminados. El
   típico de IBM no lleva `READY`, pero entonces un pod arrancando en su nodo desaparecería del DA.
 - Fuente: IBM, *Display Active Users panel (DA)* (z/OS 2.4) y `DADFLT` en *SDSF Operation and Customization*.
+
+**S9 — La terminal en el setup (D12)** · ✅ VALIDADO (2026-11-23), publicado como 0.5.0.
+- **Setup** (`requirements.setup: true`): Model (3278-2, 3278-3, 3278-5) y Display (Colour, Green
+  phosphor), con `Set as default`, OK y CANCEL, tamaño fijo y ayuda a la sección *The terminal* del README
+  (SDSF no tiene guía docsify). Un workspace guardado sin modelo arranca en 3278-3 en colour.
+- **Geometría:** `SdsfSession` recibe la `I3270Geometry` del modelo. El layout deja de usar constantes de
+  32x80: `rowPfKeys`, `scrollCol`, `commandLength`, `dataRows` (16/24/19), `browseHeight`, `browseWidth`
+  (79/131), `containerRows`, las marcas TOP/BOTTOM a lo ancho, READY a lo ancho y la ventana de confirmación
+  centrada (más arriba en 24 filas).
+- **Mono:** `displayCell`/`displayRow` con `mono`: dos niveles (GREEN normal, WHITE brillante); la paleta
+  verde pinta esos dos en fósforo, y la OIA también.
+- **Arreglo del front** (lo destapó el 27x132): el tamaño de la font se calculaba con el ancho medido de la
+  font, que se queda corto; en 132 columnas la rejilla se salía de la pestaña. Ahora se mide en una fila
+  pintada.
+- **Tipos nuevos** (⚠️ a validar): `ESdsfModel`, `ESdsfDisplay`, `SDSF_MODEL_GEOMETRY`, `I3270Geometry`
+  (sustituye a `MODEL3_ROWS`/`MODEL3_COLS`) y los campos `model` y `display` de `ISdsfInstanceConfig`;
+  `display` en `ISdsfData`.
 
 **S8 — `INIT` (nodes, con drain para `admin`)**: pendiente.
 

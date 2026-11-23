@@ -1,13 +1,19 @@
 /*
-    The IBM 3270 model this plugin emulates: a 3278 model 3 (32x80) with extended attributes.
+    The IBM 3270 this plugin emulates: a 3278 or 3279 with extended attributes, of any of the sizes in
+    I3270Geometry (model 2 24x80, model 3 32x80, model 5 27x132).
 
     It lives in common/, with no DOM, for two reasons: the tests drive it without a browser, and the same
     model is what a tn3270 server would encode one day (backlog V2). That is also why the enum VALUES are the
     real data-stream codes: an encoder writes them as they are.
 */
 
-export const MODEL3_ROWS = 32
-export const MODEL3_COLS = 80
+// The size of the screen: rows and columns of the buffer, as the model sets them.
+export interface I3270Geometry {
+    rows: number
+    cols: number
+}
+
+export const MODEL3_GEOMETRY: I3270Geometry = { rows: 32, cols: 80 }
 
 // Extended colour attribute values (SFE/SA type 0x42).
 export enum E3270Color {

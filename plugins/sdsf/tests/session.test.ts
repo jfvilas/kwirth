@@ -4,8 +4,9 @@ import { ESdsfPanel, SdsfSession } from '../src/common/SdsfSession'
 import { ISdsfDataSource } from '../src/common/SdsfDataSource'
 import { E3270Aid, E3270Color, E3270Highlight, E3270Key, E3270Lock } from '../src/common/terminal/Terminal3270Types'
 import { displayCell } from '../src/common/terminal/Display3270'
-import { COMMAND_COL, ROW_COMMAND, ROW_PF_KEYS, ROW_RULE, ROW_TITLE } from '../src/common/panels/SdsfLayout'
-import { DATA_ROWS, ROW_FILTER, ROW_FIRST_DATA, ROW_HEADERS } from '../src/common/panels/DaPanel'
+import { COMMAND_COL, ROW_COMMAND, ROW_RULE, ROW_TITLE, rowPfKeys } from '../src/common/panels/SdsfLayout'
+import { dataRows as dataRowsOf, ROW_FILTER, ROW_FIRST_DATA, ROW_HEADERS } from '../src/common/panels/DaPanel'
+import { I3270Geometry, MODEL3_GEOMETRY } from '../src/common/terminal/Terminal3270Types'
 import { ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfObjectKind, ESdsfQos, ISdsfEvent, ISdsfJob, ISdsfMessageResponse, ISdsfPod, ISdsfRequest } from '../src/common/SdsfTypes'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@kwirthmagnify/kwirth-common'
 
@@ -76,14 +77,14 @@ const command = async (s: SdsfSession, text: string, a: E3270Aid = E3270Aid.ENTE
     await aid(s, a)
 }
 const row = (s: SdsfSession, r: number) => s.terminal.screen.rowText(r)
-const dataRows = (s: SdsfSession) => Array.from({ length: DATA_ROWS }, (_, i) => row(s, ROW_FIRST_DATA + i)).filter(r => r.trim())
+const dataRows = (s: SdsfSession) => Array.from({ length: dataRowsOf(s.terminal.screen) }, (_, i) => row(s, ROW_FIRST_DATA + i)).filter(r => r.trim())
 const jobnames = (s: SdsfSession) => dataRows(s).map(r => r.slice(5, 13).trim())
 
-const open = async (pods: ISdsfPod[] = [], metrics = ESdsfMetricsState.AVAILABLE) => {
+const open = async (pods: ISdsfPod[] = [], metrics = ESdsfMetricsState.AVAILABLE, geometry: I3270Geometry = MODEL3_GEOMETRY) => {
     const source = new FakeSource()
     source.pods = pods
     source.metrics = metrics
-    const s = new SdsfSession('k3d-dev-cluster', source, () => NOW)
+    const s = new SdsfSession('k3d-dev-cluster', source, geometry, () => NOW)
     return { s, source }
 }
 
@@ -104,8 +105,8 @@ test('the session opens on the primary option menu, cursor on the command line',
     assert.match(screen.rowText(ROW_TITLE), /^ K3D-DEV- -+  SDSF PRIMARY OPTION MENU  -+$/)
     assert.match(screen.rowText(ROW_COMMAND), /^ COMMAND INPUT ===>\s+SCROLL ===> PAGE$/)
     assert.match(screen.rowText(5), /^ DA    Active pods\s+INIT  Initiators \(nodes\)/)
-    assert.match(screen.rowText(ROW_PF_KEYS), /F1=HELP .* F6=BOOK/)
-    assert.match(screen.rowText(ROW_PF_KEYS + 1), /F7=UP .* F12=RETRIEVE/)
+    assert.match(screen.rowText(rowPfKeys(screen)), /F1=HELP .* F6=BOOK/)
+    assert.match(screen.rowText(rowPfKeys(screen) + 1), /F7=UP .* F12=RETRIEVE/)
     assert.equal(screen.cursor, screen.address(ROW_COMMAND, COMMAND_COL), 'cursor at column 21, as in the captures')
 })
 
@@ -1064,4 +1065,92 @@ test('DA parameters: they stay while moving inside the DA and are forgotten by S
     type(o.s, 'sdsf da')
     await enter(o.s)
     assert.deepEqual(jobnames(o.s).sort(), ['API-1', 'BATCH-1', 'DEBUG', 'QUEUED', 'STARTING'])
+})
+
+// ─── Terminal models ──────────────────────────────────────────────────────────
+
+const MODEL2 = { rows: 24, cols: 80 }
+const MODEL5 = { rows: 27, cols: 132 }
+const screenText = (s: SdsfSession) => Array.from({ length: s.terminal.screen.rows }, (_, r) => row(s, r)).join('\n')
+const podsN = (n: number) => Array.from({ length: n }, (_, i) => podOf(`pod-${String(i).padStart(2, '0')}`))
+
+// What every panel keeps on any model: SCROLL on the right edge, the PF keys on the last two rows.
+const assertFrame = (s: SdsfSession) => {
+    const screen = s.terminal.screen
+    assert.match(row(s, ROW_COMMAND), /SCROLL ===> PAGE$/)
+    assert.equal(row(s, ROW_COMMAND).length, screen.cols)
+    assert.match(row(s, screen.rows - 2), /F1=HELP .* F6=BOOK/)
+    assert.match(row(s, screen.rows - 1), /F7=UP .* F12=RETRIEVE/)
+    assert.equal(row(s, ROW_RULE), ' ' + '-'.repeat(screen.cols - 1))
+}
+
+test('3278-2 (24x80): the menu, the DA with 16 rows and its paging, the browse with 18', async () => {
+    const o = await open(podsN(40), ESdsfMetricsState.AVAILABLE, MODEL2)
+    assertFrame(o.s)
+    await command(o.s, 'da')
+    assertFrame(o.s)
+    assert.match(row(o.s, ROW_TITLE), /LINE 1-16 \(40\)$/)
+    assert.equal(dataRows(o.s).length, 16)
+    await aid(o.s, E3270Aid.PF8)
+    assert.match(row(o.s, ROW_TITLE), /LINE 17-32 \(40\)$/)
+    await command(o.s, 'bottom')
+    assert.match(row(o.s, ROW_TITLE), /LINE 25-40 \(40\)$/)
+    await command(o.s, 'top')
+    o.source.logs['pod-00/main'] = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`)
+    np(o.s, 0, 's')
+    await enter(o.s)
+    assertFrame(o.s)
+    assert.equal(row(o.s, 4).trim(), '*'.repeat(33) + ' TOP OF DATA ' + '*'.repeat(33))
+    assert.match(row(o.s, 21), /^ line 17 *$/, '18 rows of browse: the mark and 17 lines')
+    await aid(o.s, E3270Aid.PF8)
+    assert.match(row(o.s, 4), /^ line 18 /)
+})
+
+test('3278-2 (24x80): the confirm window fits, centred, over the DA', async () => {
+    const o = await open(podsN(6), ESdsfMetricsState.AVAILABLE, MODEL2)
+    await command(o.s, 'da')
+    for (let i = 0; i < 6; i++) np(o.s, i, 'c')
+    await enter(o.s)
+    const text = screenText(o.s)
+    assert.match(text, /Confirm Action/)
+    assert.match(text, /\.\.\. and 1 more/)
+    assert.match(text, /2\. Cancel the action/)
+    const frame = Array.from({ length: 24 }, (_, r) => row(o.s, r)).filter(r => r.slice(9, 11) === '+-' && r[70] === '+')
+    assert.equal(frame.length, 2, 'top and bottom of the frame inside the 24 rows, at column 9')
+    type(o.s, '2')
+    await enter(o.s)
+    assert.match(row(o.s, ROW_TITLE), /ACTION CANCELLED$/)
+})
+
+test('3278-5 (27x132): the DA with 19 rows and more columns on the first page, a 131-column browse, the window centred', async () => {
+    const o = await open(podsN(40).map((p, i) => ({ ...p, cpu: i, memory: 1024 * 1024 })), ESdsfMetricsState.AVAILABLE, MODEL5)
+    assertFrame(o.s)
+    assert.match(row(o.s, ROW_TITLE), /-+  SDSF PRIMARY OPTION MENU  -+$/)
+    await command(o.s, 'da')
+    assertFrame(o.s)
+    assert.match(row(o.s, ROW_TITLE), /LINE 1-19 \(40\)$/)
+    assert.equal(dataRows(o.s).length, 19)
+    assert.match(row(o.s, ROW_HEADERS), /SIO +CPU% Status/, 'on 132 columns the CPU% and Status follow without PF11')
+    const wide = 'x'.repeat(120) + 'END-OF-LINE' + 'y'.repeat(20)
+    o.source.logs['pod-00/main'] = [wide]
+    np(o.s, 0, 's')
+    await enter(o.s)
+    assertFrame(o.s)
+    assert.match(row(o.s, ROW_TITLE), /COLUMNS 01- 131$/)
+    assert.equal(row(o.s, 4).length, 132)
+    assert.equal(row(o.s, 5), ' ' + wide.slice(0, 131))
+    await aid(o.s, E3270Aid.PF3)
+    np(o.s, 0, 'c')
+    await enter(o.s)
+    const top = Array.from({ length: 27 }, (_, r) => row(o.s, r)).find(r => /\+-+ Confirm Action -+\+/.test(r)) ?? ''
+    assert.equal(top.indexOf('+'), 35, 'centred: (132 - 62) / 2')
+})
+
+test('any model: READY takes the whole width', async () => {
+    const o = await open([], ESdsfMetricsState.AVAILABLE, MODEL5)
+    await command(o.s, 'end')
+    assert.equal(o.s.panel, ESdsfPanel.READY)
+    type(o.s, 'x'.repeat(130))
+    await enter(o.s)
+    assert.equal(row(o.s, 1).trim(), 'x'.repeat(130))
 })

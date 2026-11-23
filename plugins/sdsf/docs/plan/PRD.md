@@ -71,7 +71,7 @@ Y además la captura de pantalla se puede confundir con una sesión real de x327
 **No-objetivos**
 - Protocolo tn3270 real, LU2, EBCDIC en el cable, **en V1**. Pasa a V2 (D11).
 - Ratón más allá de colocar el cursor con un clic (lo que hace x3270).
-- Modelos 2, 4 y 5. Solo el modelo 3 (32x80), por decisión D2.
+- El modelo 4 (43x80). Los modelos 2, 3 y 5 se eligen en el setup (D12, que sustituye a D2).
 - Configurar colores en el MVP: va el esquema clásico fijo (§6).
 
 ## 5. Conceptos: el mapeo z/OS → Kubernetes
@@ -223,7 +223,7 @@ y volver, se conservan el panel, el scroll, el PREFIX y el campo de comando.
 ## 7. Decisiones cerradas
 
 - **D1** — OSS en github.com/jfvilas/kwirth, scope `@jfvilas`. Sin dependencias de `@iriaoperae`.
-- **D2** — Terminal IBM 3278 **modelo 3, 32x80**, sin elegir otros modelos.
+- **D2** — ~~Terminal IBM 3278 **modelo 3, 32x80**, sin elegir otros modelos.~~ Sustituida por **D12**.
 - **D3** — Font **3270font** de rbanffy, embebida en el plugin junto a su fichero de licencia.
 - **D4** — MVP = `DA` + `S` (log) + `C`/`CA` + `D` + `?`. `LOG`, `ST`/`O`/`H` e `INIT` van a la fase 2,
   y `X` (exec en el contenedor, como una TSO session) a la fase 3.
@@ -265,6 +265,13 @@ y volver, se conservan el panel, el scroll, el PREFIX y el campo de comando.
   - los colores, highlights y AID llevan sus códigos reales del data stream.
 
   El servidor sería un codificador más sobre el mismo motor.
+- **D12** (2026-11-23, el usuario) — **El setup del canal pregunta la terminal** al arrancar: modelo
+  `3278-2 (24x80)`, `3278-3 (32x80)` (por defecto) o `3278-5 (27x132)`, y `Colour (3279)` (por defecto)
+  o `Green phosphor (3278)`. Va en el `instanceConfig`, así que viaja con el workspace; cambiarlo es
+  parar y arrancar, una sesión nueva. Los paneles se colocan en el tamaño del modelo (las PF en las dos
+  últimas filas, SCROLL en el borde derecho, más filas o columnas de datos). El fósforo verde es una 3278
+  monocroma de verdad, no un filtro: ignora los colores extendidos y pinta dos intensidades; lo que ISPF
+  pide en color le llega como intensidad (blanco, rojo y amarillo, o un campo intensified, brillan).
 
 ## 8. Lo que hay que decir en voz alta
 

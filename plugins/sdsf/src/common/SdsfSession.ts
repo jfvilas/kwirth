@@ -1,9 +1,10 @@
 import { Terminal3270 } from './terminal/Terminal3270'
-import { E3270Aid, E3270Color, E3270Lock, I3270Input, I3270KeyAction } from './terminal/Terminal3270Types'
+import { E3270Aid, E3270Color, E3270Lock, I3270Geometry, I3270Input, I3270KeyAction, MODEL3_GEOMETRY } from './terminal/Terminal3270Types'
+import { Screen3270 } from './terminal/Screen3270'
 import { Painter } from './panels/Painter'
 import { EMessageLevel } from './panels/SdsfLayout'
 import { paintPrimaryMenu } from './panels/PrimaryMenu'
-import { columnsFrom, DATA_ROWS, filterLine, ITableFields, offsetLeftOf, paintDa, paintTable, ROW_FIRST_DATA } from './panels/DaPanel'
+import { columnsFrom, dataRows, filterLine, ITableFields, offsetLeftOf, paintDa, paintTable, ROW_FIRST_DATA } from './panels/DaPanel'
 import { cell, DA_COLUMNS, findColumn, IDaColumn, JOBNAME_COLUMN, stepNameOf } from './panels/DaColumns'
 import { ST_COLUMNS, ST_JOBNAME_COLUMN } from './panels/JobColumns'
 import { EPrimaryCommand, IPrimaryCommand, parsePrimaryCommand } from './panels/PrimaryCommand'
@@ -13,7 +14,7 @@ import { daFilterMatches, DEFAULT_DA_FILTER, IDaFilter, parseDaParameters } from
 import { ELineCommand, isCancel, parseLineCommand } from './panels/LineCommand'
 import { ICancelTarget, IPendingCancel, paintConfirm } from './panels/ConfirmPopup'
 import { dsidOf, IContainerFields, paintContainers } from './panels/ContainersPanel'
-import { BROWSE_ROWS, BROWSE_WIDTH, browseRows, paintBrowse, printable, ROW_FIRST_BROWSE } from './panels/BrowsePanel'
+import { browseHeight, browseRows, browseWidth, paintBrowse, printable, ROW_FIRST_BROWSE } from './panels/BrowsePanel'
 import { eventColor, syslogLine } from './panels/SyslogFormat'
 import { ISdsfDataSource } from './SdsfDataSource'
 import {
@@ -96,7 +97,7 @@ interface IBrowse {
     back from the previous one.
 */
 export class SdsfSession {
-    readonly terminal = new Terminal3270()
+    readonly terminal: Terminal3270
     panel: ESdsfPanel = ESdsfPanel.MENU
     private readonly system: string
     private readonly source: ISdsfDataSource
@@ -146,7 +147,9 @@ export class SdsfSession {
     private ready: IReadyState = { lines: [] }
     private readyField = -1
 
-    constructor(system: string, source: ISdsfDataSource, now: () => number = Date.now) {
+    // The geometry is the terminal's model (24x80, 32x80 or 27x132): every panel lays itself out in it.
+    constructor(system: string, source: ISdsfDataSource, geometry: I3270Geometry = MODEL3_GEOMETRY, now: () => number = Date.now) {
+        this.terminal = new Terminal3270(new Screen3270(geometry))
         this.system = system
         this.source = source
         this.now = now
@@ -479,7 +482,7 @@ export class SdsfSession {
                     this.top = 0
                     break
                 case EPrimaryCommand.BOTTOM:
-                    after.push(() => { this.top = Math.max(0, this.viewSize() - DATA_ROWS) })
+                    after.push(() => { this.top = Math.max(0, this.viewSize() - dataRows(this.terminal.screen)) })
                     break
                 case EPrimaryCommand.UP:
                 case EPrimaryCommand.DOWN: {
@@ -874,7 +877,7 @@ export class SdsfSession {
     */
     private openSyslog = (back: ESdsfPanel): void => {
         const previous = this.browse?.syslog ? this.browse : undefined
-        const wasAtBottom = !previous || previous.top >= Math.max(0, browseRows(previous.lines).length - BROWSE_ROWS)
+        const wasAtBottom = !previous || previous.top >= Math.max(0, browseRows(previous.lines, this.terminal.screen.cols).length - browseHeight(this.terminal.screen))
         Promise.all([this.source.request({ command: ESdsfCommand.LIST }), this.source.request({ command: ESdsfCommand.EVENTS })])
             .then(([list, events]) => {
                 if (list.ok) this.pods = list.pods ?? this.pods
@@ -886,8 +889,8 @@ export class SdsfSession {
                     sdsfPatternMatches(this.prefix, e.name) && (!this.dest || e.namespace.toLowerCase() === this.dest))
                 const jobIdOf = (e: ISdsfEvent) => e.kind === 'Pod' ? this.pods.find(p => p.uid === e.uid)?.jobId ?? '' : ''
                 const lines = shown.map(e => printable(syslogLine(e, this.system, jobIdOf(e))))
-                const total = browseRows(lines).length
-                const bottom = Math.max(0, total - BROWSE_ROWS)
+                const total = browseRows(lines, this.terminal.screen.cols).length
+                const bottom = Math.max(0, total - browseHeight(this.terminal.screen))
                 this.browse = {
                     heading: `SYSLOG ${this.system.toUpperCase().slice(0, 8).padEnd(8)} ${this.dest ? this.dest.toUpperCase().slice(0, 8) : '(ALL)'}`,
                     lines,
@@ -1028,10 +1031,10 @@ export class SdsfSession {
 
     private scrollBy = (amount: string, down: boolean, cursor: number): void => {
         const size = this.viewSize()
-        const rows = this.rowsFor(amount, down, DATA_ROWS, this.terminal.screen.rowOf(cursor) - ROW_FIRST_DATA)
+        const rows = this.rowsFor(amount, down, dataRows(this.terminal.screen), this.terminal.screen.rowOf(cursor) - ROW_FIRST_DATA)
         if (rows === undefined) return
         if (rows === 'MAX') {
-            this.top = down ? Math.max(0, size - DATA_ROWS) : 0
+            this.top = down ? Math.max(0, size - dataRows(this.terminal.screen)) : 0
             return
         }
         this.top = down ? Math.min(this.top + rows, Math.max(0, size - 1)) : Math.max(0, this.top - rows)
@@ -1074,11 +1077,11 @@ export class SdsfSession {
     // ── Browse ──────────────────────────────────────────────────────────────────────────────────────
 
     private browseScroll = (browse: IBrowse, amount: string, down: boolean, cursor: number): void => {
-        const total = browseRows(browse.lines).length
-        const rows = this.rowsFor(amount, down, BROWSE_ROWS, this.terminal.screen.rowOf(cursor) - ROW_FIRST_BROWSE)
+        const total = browseRows(browse.lines, this.terminal.screen.cols).length
+        const rows = this.rowsFor(amount, down, browseHeight(this.terminal.screen), this.terminal.screen.rowOf(cursor) - ROW_FIRST_BROWSE)
         if (rows === undefined) return
         if (rows === 'MAX') {
-            browse.top = down ? Math.max(0, total - BROWSE_ROWS) : 0
+            browse.top = down ? Math.max(0, total - browseHeight(this.terminal.screen)) : 0
             return
         }
         browse.top = down ? Math.min(browse.top + rows, total - 1) : Math.max(0, browse.top - rows)
@@ -1086,22 +1089,23 @@ export class SdsfSession {
 
     // PF10/PF11: by a page of columns, half of it, the cursor's column, to the edge (MAX) or a number of them.
     private browseSideways = (browse: IBrowse, amount: string, right: boolean, cursor: number): void => {
+        const width = browseWidth(this.terminal.screen)
         const widest = browse.lines.reduce((w, l) => Math.max(w, l.length), 0)
-        const edge = Math.max(0, widest - BROWSE_WIDTH)
+        const edge = Math.max(0, widest - width)
         let cols: number
         switch (amount) {
             case 'PAGE':
-                cols = BROWSE_WIDTH
+                cols = width
                 break
             case 'HALF':
-                cols = Math.floor(BROWSE_WIDTH / 2)
+                cols = Math.floor(width / 2)
                 break
             case 'DATA':
-                cols = BROWSE_WIDTH - 1
+                cols = width - 1
                 break
             case 'CSR': {
                 const col = this.terminal.screen.colOf(cursor) - 1
-                cols = col > 0 ? (right ? col : BROWSE_WIDTH - 1 - col) : BROWSE_WIDTH
+                cols = col > 0 ? (right ? col : width - 1 - col) : width
                 break
             }
             case 'M':
@@ -1133,7 +1137,7 @@ export class SdsfSession {
             const col = lines[line].toUpperCase().indexOf(wanted)
             if (col >= 0) {
                 browse.top = line + 1
-                if (col < browse.left || col + wanted.length > browse.left + BROWSE_WIDTH) browse.left = Math.max(0, col - 10)
+                if (col < browse.left || col + wanted.length > browse.left + browseWidth(this.terminal.screen)) browse.left = Math.max(0, col - 10)
                 browse.found = { index: line + 1, col }
                 const wrapped = line < from
                 this.say(wrapped ? 'BOTTOM OF DATA REACHED' : `CHARS '${this.findText}' FOUND`.slice(0, 30), EMessageLevel.INFO,

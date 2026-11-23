@@ -1,8 +1,8 @@
 import { Painter } from './Painter'
-import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShortMessage, ROW_TITLE } from './SdsfLayout'
+import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShortMessage, ROW_TITLE, rowPfKeys } from './SdsfLayout'
 import { ISdsfContainer, ISdsfPod } from '../SdsfTypes'
 import { qosLetterOf } from './DaColumns'
-import { E3270Color, E3270Intensity } from '../terminal/Terminal3270Types'
+import { E3270Color, E3270Intensity, I3270Geometry } from '../terminal/Terminal3270Types'
 
 /*
     The ? panel, SDSF's JOB DATA SET DISPLAY (reference capture panels10): one row per data set of the job,
@@ -15,7 +15,7 @@ import { E3270Color, E3270Intensity } from '../terminal/Terminal3270Types'
 */
 export const ROW_CONTAINER_HEADERS = 4
 export const ROW_FIRST_CONTAINER = 5
-export const CONTAINER_ROWS = 25
+export const containerRows = (g: I3270Geometry): number => rowPfKeys(g) - ROW_FIRST_CONTAINER
 
 // The data set id: init containers first, as the JES data sets; the job's own output from 101, as in JES.
 export const dsidOf = (pod: ISdsfPod, container: ISdsfContainer): number => {
@@ -49,7 +49,7 @@ export const paintContainers = (p: Painter, state: IContainersState): IContainer
     const total = pod.containers.length
     paintActionBar(p)
     p.text(ROW_TITLE, 1, `SDSF JOB DATA SET DISPLAY - JOB ${pod.name.toUpperCase().slice(0, 8).padEnd(8)}  (${pod.jobId})`, { color: E3270Color.WHITE })
-    const lines = `LINE ${total ? 1 : 0}-${Math.min(total, CONTAINER_ROWS)} (${total})`
+    const lines = `LINE ${total ? 1 : 0}-${Math.min(total, containerRows(screen))} (${total})`
     p.text(ROW_TITLE, screen.cols - lines.length, lines, { color: E3270Color.WHITE })
     paintShortMessage(p, state.message, state.messageLevel)
     const fields = paintCommandLine(p, state.command, state.scroll)
@@ -59,7 +59,7 @@ export const paintContainers = (p: Painter, state: IContainersState): IContainer
 
     const stepName = (pod.containers.find(c => !c.init)?.name ?? '').toUpperCase().slice(0, 8)
     const np: IContainerFields['np'] = []
-    pod.containers.slice(0, CONTAINER_ROWS).forEach((c, i) => {
+    pod.containers.slice(0, containerRows(screen)).forEach((c, i) => {
         const row = ROW_FIRST_CONTAINER + i
         np.push({ attribute: p.input(row, 1, 3, '', { intensity: E3270Intensity.HIGH }), container: c })
         const qos = qosLetterOf(pod.qos)

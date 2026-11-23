@@ -1,6 +1,6 @@
 import {
     E3270Color, E3270Highlight, E3270Intensity, I3270Cell, I3270FieldAttribute, I3270ModifiedField,
-    MODEL3_COLS, MODEL3_ROWS
+    I3270Geometry, MODEL3_GEOMETRY
 } from './Terminal3270Types'
 
 export const DEFAULT_ATTRIBUTE: I3270FieldAttribute = {
@@ -29,7 +29,8 @@ export class Screen3270 {
     cells: I3270Cell[]
     cursor = 0
 
-    constructor(rows: number = MODEL3_ROWS, cols: number = MODEL3_COLS) {
+    constructor(geometry: I3270Geometry = MODEL3_GEOMETRY) {
+        const { rows, cols } = geometry
         this.rows = rows
         this.cols = cols
         this.size = rows * cols

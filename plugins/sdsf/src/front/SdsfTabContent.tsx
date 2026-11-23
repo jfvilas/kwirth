@@ -23,5 +23,5 @@ export const SdsfTabContent: React.FC<IContentProps> = ({ channelObject }) => {
     }
 
     // Set by the core: the tab in full screen. The terminal then takes the whole window.
-    return <TerminalView terminal={session.terminal} revision={revision} onKey={session.key} fullscreen={channelObject.isFullscreen === true} />
+    return <TerminalView terminal={session.terminal} revision={revision} onKey={session.key} fullscreen={channelObject.isFullscreen === true} display={data!.display} />
 }
