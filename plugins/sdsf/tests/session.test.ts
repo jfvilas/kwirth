@@ -1,13 +1,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { ESdsfPanel, SdsfSession } from '../src/common/SdsfSession'
+import { JC_COLUMNS } from '../src/common/panels/ClassColumns'
+import { SR_COLUMNS } from '../src/common/panels/RequestColumns'
 import { ISdsfDataSource } from '../src/common/SdsfDataSource'
 import { E3270Aid, E3270Color, E3270Highlight, E3270Key, E3270Lock } from '../src/common/terminal/Terminal3270Types'
 import { displayCell } from '../src/common/terminal/Display3270'
 import { COMMAND_COL, ROW_COMMAND, ROW_RULE, ROW_TITLE, rowPfKeys } from '../src/common/panels/SdsfLayout'
 import { dataRows as dataRowsOf, ROW_FILTER, ROW_FIRST_DATA, ROW_HEADERS } from '../src/common/panels/DaPanel'
 import { I3270Geometry, MODEL3_GEOMETRY } from '../src/common/terminal/Terminal3270Types'
-import { ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfNodeAction, ESdsfNodeStatus, ESdsfObjectKind, ESdsfQos, ISdsfEvent, ISdsfJob, ISdsfMessageResponse, ISdsfNode, ISdsfPod, ISdsfRequest } from '../src/common/SdsfTypes'
+import { ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfNodeAction, ESdsfNodeStatus, ESdsfObjectKind, ESdsfQos, ISdsfEvent, ISdsfJob, ISdsfJobClass, ISdsfMessageResponse, ISdsfNode, ISdsfPod, ISdsfRequest, ISdsfSystemRequest } from '../src/common/SdsfTypes'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@kwirthmagnify/kwirth-common'
 
 const NOW = Date.parse('2026-11-22T12:00:00Z')
@@ -38,6 +40,8 @@ class FakeSource implements ISdsfDataSource {
     nodes: ISdsfNode[] = []
     refuseNode = new Set<string>()                     // node names whose actions the back refuses (not admin)
     evicted = 0                                        // what a drain answers
+    classes: ISdsfJobClass[] = []
+    systemRequests: ISdsfSystemRequest[] = []
     request = (request: ISdsfRequest): Promise<ISdsfMessageResponse> => {
         this.requests.push(request)
         const next = this.next
@@ -58,6 +62,10 @@ class FakeSource implements ISdsfDataSource {
                 return Promise.resolve(response({ command: request.command, jobs: this.jobs, ...next }))
             case ESdsfCommand.NODES:
                 return Promise.resolve(response({ command: request.command, nodes: this.nodes, ...next }))
+            case ESdsfCommand.CLASSES:
+                return Promise.resolve(response({ command: request.command, classes: this.classes, ...next }))
+            case ESdsfCommand.REQUESTS:
+                return Promise.resolve(response({ command: request.command, requests: this.systemRequests, ...next }))
             case ESdsfCommand.NODE: {
                 if (this.refuseNode.has(request.targetName!)) return Promise.resolve(response({ command: request.command, ok: false, error: ESdsfError.NOT_AUTHORIZED, detail: "needs 'admin'" }))
                 const status = request.nodeAction === ESdsfNodeAction.START ? ESdsfNodeStatus.ACTIVE
@@ -1365,13 +1373,165 @@ test('the DA does not take the INIT commands', async () => {
 
 // ─── I (input queue) and ULOG ─────────────────────────────────────────────────
 
-test('the menu: I under DA, LOG after a blank row, ULOG on the right', async () => {
+test('the menu: I under DA, LOG after a blank row, SR and JC under it as on SDSF, ULOG on the right', async () => {
     const { s } = await open()
     assert.match(row(s, 5), /^ DA {4}Active pods\s+INIT  Initiators \(nodes\)/)
     assert.match(row(s, 6), /^ I {5}Input queue \(jobs waiting to run\)/)
     assert.equal(row(s, 10).trim(), '', 'the blank row between the queues and the LOG')
     assert.match(row(s, 11), /^ LOG {3}System log \(events\)\s+ULOG  User session log/)
-    assert.match(row(s, 13), /^ END {3}Exit SDSF/)
+    assert.match(row(s, 12), /^ SR {4}System requests \(pending CSRs\)\s*$/)
+    assert.equal(row(s, 13).trim(), '', "MAS's row: nothing behind it")
+    assert.match(row(s, 14), /^ JC {4}Job classes \(priority classes\)\s*$/)
+    assert.match(row(s, 16), /^ END {3}Exit SDSF/)
+})
+
+test('the menu fits a 3278-2 with SR and JC: END above the PF keys', async () => {
+    const { s } = await open([], ESdsfMetricsState.AVAILABLE, { rows: 24, cols: 80 })
+    assert.match(row(s, 16), /^ END {3}Exit SDSF/)
+    assert.ok(16 < rowPfKeys(s.terminal.screen))
+})
+
+// ─── JC (job classes) and SR (system requests) ────────────────────────────────
+
+const classOf = (name: string, over: Partial<ISdsfJobClass> = {}): ISdsfJobClass => ({
+    name, value: 1000, globalDefault: false, preemption: 'PreemptLowerPriority', pods: 0, description: '', created: '2026-11-01T12:00:00.000Z', ...over
+})
+
+const csrOf = (id: string, name: string, over: Partial<ISdsfSystemRequest> = {}): ISdsfSystemRequest => ({
+    name, id, signer: 'kubernetes.io/kube-apiserver-client', requestor: 'system:admin', usages: ['client auth'], created: '2026-11-22T11:50:00.000Z', ...over
+})
+
+const openJc = async () => {
+    const o = await open([
+        podOf('dns-1', { priorityClass: 'system-cluster-critical' }),
+        podOf('api-1', { priorityClass: 'batch-low' }),
+        podOf('web-1')
+    ])
+    o.source.classes = [
+        classOf('batch-low', { value: 100, preemption: 'Never', pods: 1, description: 'Batch work,\n  never preempts' }),
+        classOf('system-cluster-critical', { value: 2000000000, pods: 1 }),
+        classOf('standard', { value: 0, globalDefault: true })
+    ]
+    await command(o.s, 'jc')
+    return o
+}
+
+test('JC lists the PriorityClasses as job classes, highest priority first', async () => {
+    const { s, source } = await openJc()
+    assert.equal(s.panel, ESdsfPanel.JC)
+    assert.deepEqual(source.requests.map(r => r.command), [ESdsfCommand.CLASSES])
+    assert.match(row(s, ROW_TITLE), /^ SDSF JOB CLASS DISPLAY ALL CLASSES +LINE 1-3 \(3\)$/)
+    assert.equal(row(s, ROW_HEADERS).trimEnd(), ' NP  JobClass        Prio Default Preempt  Pods Age   ClassName')
+    assert.deepEqual(jobnames(s), ['SYSTEM-C', 'BATCH-LO', 'STANDARD'])
+    assert.match(dataRows(s)[0], /SYSTEM-C +2000000000 NO +LOWER +1 21d +system-cluster-critical/)
+    assert.match(dataRows(s)[1], /BATCH-LO +100 NO +NEVER +1 21d +batch-low/)
+    assert.match(dataRows(s)[2], /STANDARD +0 YES +LOWER +0 21d +standard/)
+    const screen = s.terminal.screen
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 1, 34)).color, E3270Color.YELLOW, 'NEVER preempts: yellow')
+    await aid(s, E3270Aid.PF11)
+    assert.match(row(s, ROW_HEADERS), /JobClass +Description/)
+    assert.match(dataRows(s)[1], /BATCH-LO +Batch work, never preempts/, 'one line, whatever the description had')
+    await aid(s, E3270Aid.PF10)
+    await command(s, 'sort prio a')
+    assert.deepEqual(jobnames(s), ['STANDARD', 'BATCH-LO', 'SYSTEM-C'])
+    await command(s, 'prefix sys*')
+    assert.deepEqual(jobnames(s), ['SYSTEM-C'])
+    await command(s, 'sort jobname')
+    assert.match(row(s, ROW_TITLE), /INVALID COLUMN NAME$/, 'JobClass, not JOBNAME, on JC')
+})
+
+test('JC: D describes the class; ? shows its pods on the DA, CLASS= on the filter line, and PF3 comes back to JC', async () => {
+    const { s, source } = await openJc()
+    np(s, 1, 'd')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.DESCRIBE, objectKind: ESdsfObjectKind.PRIORITY_CLASS, targetNamespace: '', targetName: 'batch-low' })
+    assert.match(row(s, ROW_TITLE), /DESCRIBE BATCH-LO JC/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.JC)
+    np(s, 0, '?')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.DA)
+    assert.deepEqual(jobnames(s), ['DNS-1'])
+    assert.match(row(s, ROW_FILTER), /CLASS=system-cluster-critical/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.JC)
+    assert.equal(source.requests.at(-1)!.command, ESdsfCommand.CLASSES)
+    np(s, 0, '?')
+    await enter(s)
+    await command(s, 'da')
+    assert.deepEqual(jobnames(s), ['API-1', 'DNS-1', 'WEB-1'], 'DA typed again: every class')
+    assert.doesNotMatch(row(s, ROW_FILTER), /CLASS=/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.MENU)
+})
+
+test('JC takes ? and D only: a cancel or an INIT command is not a JC line command', async () => {
+    const { s } = await openJc()
+    for (const typed of ['c', 's', 'z']) {
+        np(s, 0, typed)
+        await enter(s)
+        assert.match(row(s, ROW_TITLE), /INVALID LINE COMMAND$/, typed)
+    }
+    await aid(s, E3270Aid.PF1)
+    assert.match(row(s, ROW_FILTER), /: \?, D\./)
+})
+
+const openSr = async () => {
+    const o = await open()
+    o.source.systemRequests = [
+        csrOf('01', 'csr-node-agent-0', { signer: 'kubernetes.io/kubelet-serving', requestor: 'system:node:k3d-agent-0', usages: ['digital signature', 'server auth'], created: '2026-11-22T10:00:00.000Z' }),
+        csrOf('02', 'alice-access')
+    ]
+    await command(o.s, 'sr')
+    return o
+}
+
+test('SR lists the pending CSRs as system requests, by reply ID; PF11 shows the signer and the usages', async () => {
+    const { s, source } = await openSr()
+    assert.equal(s.panel, ESdsfPanel.SR)
+    assert.deepEqual(source.requests.map(r => r.command), [ESdsfCommand.REQUESTS])
+    assert.match(row(s, ROW_TITLE), /^ SDSF SYSTEM REQUESTS DISPLAY ALL +LINE 1-2 \(2\)$/)
+    assert.equal(row(s, ROW_HEADERS).trimEnd(), ' NP  ReplyId  Type Age   Name                     Requestor')
+    assert.match(dataRows(s)[0], /^ {5}01 +CSR +2h +csr-node-agent-0 +system:node:k3d-agent-0/)
+    assert.match(dataRows(s)[1], /^ {5}02 +CSR +10m +alice-access +system:admin/)
+    const screen = s.terminal.screen
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA, 5)).color, E3270Color.WHITE, 'the reply ID stands out')
+    await aid(s, E3270Aid.PF11)
+    assert.match(row(s, ROW_HEADERS), /ReplyId +Signer +Usages/)
+    assert.match(dataRows(s)[0], /01 +kubernetes\.io\/kubelet-serving +digital signature,server auth/)
+    await command(s, 'find alice')
+    assert.match(dataRows(s)[0], /02 /)
+})
+
+test('SR: D describes the CSR; replying is not there yet (V2), so R and C are not line commands', async () => {
+    const { s, source } = await openSr()
+    np(s, 1, 'd')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.DESCRIBE, objectKind: ESdsfObjectKind.CSR, targetNamespace: '', targetName: 'alice-access' })
+    assert.match(row(s, ROW_TITLE), /DESCRIBE ALICE-AC SR/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.SR)
+    for (const typed of ['r', 'c', '?']) {
+        np(s, 0, typed)
+        await enter(s)
+        assert.match(row(s, ROW_TITLE), /INVALID LINE COMMAND$/, typed)
+    }
+    await aid(s, E3270Aid.PF1)
+    assert.match(row(s, ROW_FILTER), /: D\./)
+})
+
+test('SR with nothing pending: an empty table; JC and SR open from any table', async () => {
+    const { s, source } = await openDa([podOf('a')])
+    await command(s, 'sr')
+    assert.match(row(s, ROW_TITLE), /LINE 0-0 \(0\)$/)
+    source.classes = [classOf('standard')]
+    await command(s, 'jc')
+    assert.equal(s.panel, ESdsfPanel.JC)
+    assert.deepEqual(jobnames(s), ['STANDARD'])
+    await command(s, 'sr')
+    assert.equal(s.panel, ESdsfPanel.SR)
 })
 
 test('I lists what waits to run: the CronJobs scheduled and the Jobs not started; S on a waiting Job has no output', async () => {
@@ -1449,4 +1609,30 @@ test('ULOG from the menu goes back to the menu; option 3 and a drain are logged 
     assert.match(row(o.s, 6), /P {3}node node-a +4 POD\(S\) EVICTED/)
     await aid(o.s, E3270Aid.PF3)
     assert.equal(o.s.panel, ESdsfPanel.MENU)
+})
+
+test('JC and SR sort by every one of their columns, both ways; an unknown preemption shows as given', async () => {
+    const o = await openJc()
+    o.source.classes = [...o.source.classes, classOf('odd', { preemption: 'SomethingNew', created: '' })]
+    await command(o.s, 'jc')
+    assert.match(screenText(o.s), /ODD +1000 NO +SOMETHI /)
+    for (const header of ['JobClass', ...JC_COLUMNS.map(c => c.header)]) {
+        for (const order of ['a', 'd']) {
+            await command(o.s, `sort ${header} ${order}`)
+            assert.doesNotMatch(row(o.s, ROW_TITLE), /INVALID/, header)
+            assert.equal(dataRows(o.s).length, 4, header)
+        }
+    }
+    const r = await openSr()
+    r.source.systemRequests = [...r.source.systemRequests, csrOf('03', 'no-date', { created: '' })]
+    await command(r.s, 'sr')
+    for (const header of ['ReplyId', ...SR_COLUMNS.map(c => c.header)]) {
+        for (const order of ['a', 'd']) {
+            await command(r.s, `sort ${header} ${order}`)
+            assert.doesNotMatch(row(r.s, ROW_TITLE), /INVALID/, header)
+            assert.equal(dataRows(r.s).length, 3, header)
+        }
+    }
+    await command(r.s, 'sort age d')
+    assert.match(dataRows(r.s)[0], /^ {5}03 /, 'no date sorts as the newest')
 })

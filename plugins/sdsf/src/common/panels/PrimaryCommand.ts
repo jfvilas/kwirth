@@ -11,6 +11,8 @@ export enum EPrimaryCommand {
     LOG = 'log',
     ULOG = 'ulog',             // the user session log: what this operator did; ULOG CLOSE empties it
     INIT = 'init',
+    JC = 'jc',                 // the job classes: PriorityClasses
+    SR = 'sr',                 // the system requests: CSRs waiting for a reply
     END = 'end',
     RETURN = 'return',
     PREFIX = 'prefix',
@@ -48,6 +50,8 @@ const VERBS: Record<string, EPrimaryCommand> = {
     LOG: EPrimaryCommand.LOG,
     ULOG: EPrimaryCommand.ULOG,
     INIT: EPrimaryCommand.INIT,
+    JC: EPrimaryCommand.JC,
+    SR: EPrimaryCommand.SR,
     END: EPrimaryCommand.END,
     RETURN: EPrimaryCommand.RETURN,
     PREFIX: EPrimaryCommand.PREFIX, PRE: EPrimaryCommand.PREFIX,

@@ -11,8 +11,10 @@ import { EPrimaryCommand, IPrimaryCommand, parsePrimaryCommand } from './panels/
 import { IReadyState, paintReady } from './panels/ReadyPanel'
 import { sdsfPatternMatches } from './panels/Wildcard'
 import { daFilterMatches, DEFAULT_DA_FILTER, IDaFilter, parseDaParameters } from './panels/DaFilter'
-import { ELineCommand, INIT_LINE_COMMANDS, isCancel, parseLineCommand, TABLE_LINE_COMMANDS } from './panels/LineCommand'
+import { ELineCommand, INIT_LINE_COMMANDS, isCancel, JC_LINE_COMMANDS, parseLineCommand, SR_LINE_COMMANDS, TABLE_LINE_COMMANDS } from './panels/LineCommand'
 import { INIT_COLUMNS, INIT_ID_COLUMN } from './panels/NodeColumns'
+import { JC_CLASS_COLUMN, JC_COLUMNS } from './panels/ClassColumns'
+import { SR_COLUMNS, SR_REPLY_COLUMN } from './panels/RequestColumns'
 import { ACTION_HELP, IActionTarget, IPendingAction, paintConfirm } from './panels/ConfirmPopup'
 import { dsidOf, IContainerFields, paintContainers } from './panels/ContainersPanel'
 import { browseHeight, browseRows, browseWidth, paintBrowse, printable, ROW_FIRST_BROWSE } from './panels/BrowsePanel'
@@ -21,7 +23,7 @@ import { ISdsfUlogEntry, ulogColor, ulogLine } from './panels/UlogFormat'
 import { ISdsfDataSource } from './SdsfDataSource'
 import {
     ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfNodeAction, ESdsfObjectKind, ISdsfContainer, ISdsfEvent, ISdsfJob,
-    ISdsfMessageResponse, ISdsfNode, ISdsfPod, ISdsfRequest
+    ISdsfJobClass, ISdsfMessageResponse, ISdsfNode, ISdsfPod, ISdsfRequest, ISdsfSystemRequest
 } from './SdsfTypes'
 
 export enum ESdsfPanel {
@@ -32,19 +34,70 @@ export enum ESdsfPanel {
     OUTPUT = 'output',             // O: the Jobs that ended
     HELD = 'held',                 // H: the CronJobs suspended
     INIT = 'init',                 // the nodes, as initiators
+    JC = 'jc',                     // the PriorityClasses, as job classes
+    SR = 'sr',                     // the pending CSRs, as system requests
     CONTAINERS = 'containers',     // the ? panel: a pod's containers
     BROWSE = 'browse',             // a log, a describe or the SYSLOG
     READY = 'ready'                // after END: TSO's READY
 }
 
 // The panels that are a table of objects with NP line commands.
-const TABLE_PANELS: ESdsfPanel[] = [ESdsfPanel.DA, ESdsfPanel.ST, ESdsfPanel.INPUT, ESdsfPanel.OUTPUT, ESdsfPanel.HELD, ESdsfPanel.INIT]
+const TABLE_PANELS: ESdsfPanel[] = [ESdsfPanel.DA, ESdsfPanel.ST, ESdsfPanel.INPUT, ESdsfPanel.OUTPUT, ESdsfPanel.HELD, ESdsfPanel.INIT, ESdsfPanel.JC, ESdsfPanel.SR]
 const isTable = (panel: ESdsfPanel): boolean => TABLE_PANELS.includes(panel)
 const isJobTable = (panel: ESdsfPanel): boolean => panel === ESdsfPanel.ST || panel === ESdsfPanel.INPUT || panel === ESdsfPanel.OUTPUT || panel === ESdsfPanel.HELD
-// The tables that share columns, sort and offset: the DA, the Job tables (ST, O, H) and INIT.
-const familyOf = (panel: ESdsfPanel): ESdsfPanel => isJobTable(panel) ? ESdsfPanel.ST : panel === ESdsfPanel.INIT ? ESdsfPanel.INIT : ESdsfPanel.DA
+// The tables that share columns, sort and offset: the Job tables (ST, I, O, H) are one family; every other table is its own.
+const familyOf = (panel: ESdsfPanel): ESdsfPanel => {
+    if (isJobTable(panel)) return ESdsfPanel.ST
+    switch (panel) {
+        case ESdsfPanel.INIT:
+        case ESdsfPanel.JC:
+        case ESdsfPanel.SR:
+            return panel
+        default:
+            return ESdsfPanel.DA
+    }
+}
 
 const INIT_TITLE = 'SDSF INITIATOR DISPLAY  ALL CLASSES'
+const JC_TITLE = 'SDSF JOB CLASS DISPLAY ALL CLASSES'
+const SR_TITLE = 'SDSF SYSTEM REQUESTS DISPLAY ALL'
+
+// What a describe of a cluster-scoped object says where a pod's says its JobID: the panel it came from.
+const DESCRIBE_TAG: Partial<Record<ESdsfObjectKind, string>> = {
+    [ESdsfObjectKind.NODE]: 'INIT',
+    [ESdsfObjectKind.PRIORITY_CLASS]: 'JC',
+    [ESdsfObjectKind.CSR]: 'SR'
+}
+
+// The line commands each table takes.
+const lineCommandsOf = (panel: ESdsfPanel): ELineCommand[] => {
+    switch (panel) {
+        case ESdsfPanel.INIT:
+            return INIT_LINE_COMMANDS
+        case ESdsfPanel.JC:
+            return JC_LINE_COMMANDS
+        case ESdsfPanel.SR:
+            return SR_LINE_COMMANDS
+        default:
+            return TABLE_LINE_COMMANDS
+    }
+}
+
+// A family's columns, for what only needs their headers and widths: SORT and the sideways scroll.
+const familyColumns = (family: ESdsfPanel): { fixed: IDaColumn<never>; columns: IDaColumn<never>[] } => {
+    switch (family) {
+        case ESdsfPanel.ST:
+            return { fixed: ST_JOBNAME_COLUMN, columns: ST_COLUMNS }
+        case ESdsfPanel.INIT:
+            return { fixed: INIT_ID_COLUMN, columns: INIT_COLUMNS }
+        case ESdsfPanel.JC:
+            return { fixed: JC_CLASS_COLUMN, columns: JC_COLUMNS }
+        case ESdsfPanel.SR:
+            return { fixed: SR_REPLY_COLUMN, columns: SR_COLUMNS }
+        default:
+            return { fixed: JOBNAME_COLUMN, columns: DA_COLUMNS }
+    }
+}
 const jobKindOrder = (j: ISdsfJob): number => j.kind === ESdsfObjectKind.JOB ? 0 : 1
 
 const JOB_TITLES: Partial<Record<ESdsfPanel, string>> = {
@@ -67,11 +120,13 @@ const ERROR_MESSAGE: Record<ESdsfError, string> = {
 // What runs once the fresh list is in: scrolling and finding need to know how many rows there are.
 type TAfterList = () => void
 
-// The row a line command was typed against: a pod (DA), a Job/CronJob (ST, O, H) or a node (INIT).
+// The row a line command was typed against: a pod (DA), a Job/CronJob (ST, I, O, H), a node (INIT), a class (JC) or a CSR (SR).
 interface ILineTarget {
     pod?: ISdsfPod
     job?: ISdsfJob
     node?: ISdsfNode
+    jobClass?: ISdsfJobClass
+    request?: ISdsfSystemRequest
 }
 
 // What S, Z and P on INIT ask the back to do with the node.
@@ -147,7 +202,10 @@ export class SdsfSession {
     private pods: ISdsfPod[] = []
     private jobs: ISdsfJob[] = []
     private nodes: ISdsfNode[] = []
+    private classes: ISdsfJobClass[] = []
+    private requests: ISdsfSystemRequest[] = []
     private nodeFilter = ''                 // ? on INIT: the DA of one node's pods, PF3 back to INIT
+    private classFilter = ''                // ? on JC: the DA of one class's pods, PF3 back to JC
     private metrics = ESdsfMetricsState.UNAVAILABLE
     private clusterCpu?: number
     private prefix = ''
@@ -339,11 +397,9 @@ export class SdsfSession {
                     this.sortDescending = false
                     return true
                 }
-                // on the menu, SORT is for the DA; on a Job table or INIT, for its columns
-                const family = familyOf(this.panel)
-                const column = family === ESdsfPanel.ST ? findColumn(arg, [ST_JOBNAME_COLUMN, ...ST_COLUMNS])
-                    : family === ESdsfPanel.INIT ? findColumn(arg, [INIT_ID_COLUMN, ...INIT_COLUMNS])
-                    : findColumn(arg, [JOBNAME_COLUMN, ...DA_COLUMNS])
+                // on the menu, SORT is for the DA; on any other table, for its columns
+                const { fixed, columns } = familyColumns(familyOf(this.panel))
+                const column = findColumn(arg, [fixed, ...columns])
                 const order = (command.args[1] ?? 'A').toUpperCase()
                 if (!column || (order !== 'A' && order !== 'D')) {
                     this.invalid(command, 'INVALID COLUMN NAME')
@@ -386,6 +442,10 @@ export class SdsfSession {
                 return ESdsfPanel.HELD
             case EPrimaryCommand.INIT:
                 return ESdsfPanel.INIT
+            case EPrimaryCommand.JC:
+                return ESdsfPanel.JC
+            case EPrimaryCommand.SR:
+                return ESdsfPanel.SR
             default:
                 return undefined
         }
@@ -412,7 +472,7 @@ export class SdsfSession {
         }
         const table = this.tableFor(command.verb)
         if (table) {
-            this.nodeFilter = ''
+            this.clearNarrow()
             this.openTable(table)
             return
         }
@@ -480,7 +540,7 @@ export class SdsfSession {
             .map((f, i) => ({ typed: value(f.attribute) ?? '', target: f.target, line: this.top + i + 1 }))
             .filter(l => l.typed.trim() !== '')
         const queue: IQueuedLine[] = []
-        const allowed = this.panel === ESdsfPanel.INIT ? INIT_LINE_COMMANDS : TABLE_LINE_COMMANDS
+        const allowed = lineCommandsOf(this.panel)
         for (const line of typedLines) {
             const parsed = parseLineCommand(line.typed, allowed)
             if (!parsed) {
@@ -498,7 +558,7 @@ export class SdsfSession {
             }
             const table = this.tableFor(command.verb)
             if (table && (table !== this.panel || command.verb === EPrimaryCommand.DA)) {
-                this.nodeFilter = ''
+                this.clearNarrow()
                 this.openTable(table)
                 return
             }
@@ -519,6 +579,8 @@ export class SdsfSession {
                 case EPrimaryCommand.INPUT:
                 case EPrimaryCommand.HELD:
                 case EPrimaryCommand.INIT:
+                case EPrimaryCommand.JC:
+                case EPrimaryCommand.SR:
                     break
                 case EPrimaryCommand.LOG:
                     this.queue = []
@@ -609,22 +671,35 @@ export class SdsfSession {
         this.finish()
     }
 
-    // PF3 (or END) on a table: to the menu; from the DA of a node's pods (? on INIT), back to INIT.
+    // PF3 (or END) on a table: to the menu; from the DA of a node's or a class's pods (? on INIT or JC), back there.
     private back = (): void => {
-        if (this.panel === ESdsfPanel.DA && this.nodeFilter) {
-            this.nodeFilter = ''
+        if (this.panel === ESdsfPanel.DA && (this.nodeFilter || this.classFilter)) {
+            const back = this.nodeFilter ? ESdsfPanel.INIT : ESdsfPanel.JC
+            this.clearNarrow()
             this.daFilter = DEFAULT_DA_FILTER
-            this.openTable(ESdsfPanel.INIT)
+            this.openTable(back)
             return
         }
         this.toMenu()
         this.finish()
     }
 
+    private clearNarrow = (): void => {
+        this.nodeFilter = ''
+        this.classFilter = ''
+    }
+
+    // The DA of one node's or one class's pods: every type, PF3 back to the table it came from.
+    private openNarrowedDa = (): void => {
+        this.queue = []
+        this.daFilter = parseDaParameters(['ALLT']) ?? DEFAULT_DA_FILTER
+        this.openTable(ESdsfPanel.DA)
+    }
+
     private toMenu = (): void => {
         this.stopAuto()
         this.queue = []
-        this.nodeFilter = ''
+        this.clearNarrow()
         this.panel = ESdsfPanel.MENU
     }
 
@@ -652,18 +727,20 @@ export class SdsfSession {
         return undefined
     }
 
-    private actionTargetOf = (target: ILineTarget): IActionTarget => target.node
-        ? { kind: ESdsfObjectKind.NODE, namespace: '', name: target.node.name, jobId: '' }
-        : target.job
-            ? { kind: target.job.kind, namespace: target.job.namespace, name: target.job.name, jobId: target.job.jobId }
-            : { kind: ESdsfObjectKind.POD, namespace: target.pod!.namespace, name: target.pod!.name, jobId: target.pod!.jobId }
+    private actionTargetOf = (target: ILineTarget): IActionTarget => {
+        if (target.node) return { kind: ESdsfObjectKind.NODE, namespace: '', name: target.node.name, jobId: '' }
+        if (target.jobClass) return { kind: ESdsfObjectKind.PRIORITY_CLASS, namespace: '', name: target.jobClass.name, jobId: '' }
+        if (target.request) return { kind: ESdsfObjectKind.CSR, namespace: '', name: target.request.name, jobId: '' }
+        if (target.job) return { kind: target.job.kind, namespace: target.job.namespace, name: target.job.name, jobId: target.job.jobId }
+        return { kind: ESdsfObjectKind.POD, namespace: target.pod!.namespace, name: target.pod!.name, jobId: target.pod!.jobId }
+    }
 
     // What changes the cluster and is confirmed first: C and CA; on INIT, S, Z and P.
     private needsConfirm = (line: IQueuedLine): boolean => line.target.node ? NODE_ACTION[line.command] !== undefined : isCancel(line.command)
 
     // The JOBNAME as the table shows it (the ID on INIT): what the Confirm Action window names.
     private jobnameOf = (target: ILineTarget): string =>
-        (target.node?.id ?? target.job?.name ?? target.pod?.name ?? '').toUpperCase().slice(0, 8)
+        (target.node?.id ?? target.jobClass?.name ?? target.request?.id ?? target.job?.name ?? target.pod?.name ?? '').toUpperCase().slice(0, 8)
 
     /*
         The next thing the queue asks for. What changes the cluster goes first: one Confirm Action window per
@@ -690,14 +767,14 @@ export class SdsfSession {
             this.refresh([])
             return
         }
-        const node = next.target.node
-        if (node) {
-            if (next.command === ELineCommand.QUERY) {
-                // The node's pods: the DA of every type on it, PF3 back to INIT. What else was queued is dropped.
-                this.queue = []
-                this.nodeFilter = node.name
-                this.daFilter = parseDaParameters(['ALLT']) ?? DEFAULT_DA_FILTER
-                this.openTable(ESdsfPanel.DA)
+        const { node, jobClass } = next.target
+        if (node || jobClass || next.target.request) {
+            if (next.command === ELineCommand.QUERY && (node || jobClass)) {
+                // The node's or the class's pods: the DA of every type, PF3 back. What else was queued is dropped.
+                this.clearNarrow()
+                if (node) this.nodeFilter = node.name
+                if (jobClass) this.classFilter = jobClass.name
+                this.openNarrowedDa()
                 return
             }
             this.openDescribe(this.actionTargetOf(next.target))
@@ -873,7 +950,7 @@ export class SdsfSession {
     }
 
     private openDescribe = (target: IActionTarget): void => {
-        const heading = `DESCRIBE ${target.name.toUpperCase().slice(0, 8).padEnd(8)} ${target.jobId || 'INIT'}`
+        const heading = `DESCRIBE ${target.name.toUpperCase().slice(0, 8).padEnd(8)} ${target.jobId || DESCRIBE_TAG[target.kind] || ''}`
         this.openBrowse({ command: ESdsfCommand.DESCRIBE, objectKind: target.kind, targetNamespace: target.namespace, targetName: target.name }, heading, this.listPanel)
     }
 
@@ -1095,15 +1172,26 @@ export class SdsfSession {
         table asks for the pods too: S and ? on a Job go to its pod.
     */
     private refresh = (after: TAfterList[]): void => {
-        const requests = isJobTable(this.panel)
-            ? [this.source.request({ command: ESdsfCommand.LIST }), this.source.request({ command: ESdsfCommand.JOBS })]
-            : this.panel === ESdsfPanel.INIT
-                ? [this.source.request({ command: ESdsfCommand.NODES })]
-                : [this.source.request({ command: ESdsfCommand.LIST })]
-        Promise.all(requests)
+        Promise.all(this.listRequests().map(r => this.source.request(r)))
             .then(responses => this.applyLists(responses, after))
             .catch(this.sayNoResponse)
             .finally(this.finish)
+    }
+
+    // What a table needs: a Job table the pods too (S and ? on a Job go to its pod).
+    private listRequests = (): ISdsfRequest[] => {
+        switch (familyOf(this.panel)) {
+            case ESdsfPanel.ST:
+                return [{ command: ESdsfCommand.LIST }, { command: ESdsfCommand.JOBS }]
+            case ESdsfPanel.INIT:
+                return [{ command: ESdsfCommand.NODES }]
+            case ESdsfPanel.JC:
+                return [{ command: ESdsfCommand.CLASSES }]
+            case ESdsfPanel.SR:
+                return [{ command: ESdsfCommand.REQUESTS }]
+            default:
+                return [{ command: ESdsfCommand.LIST }]
+        }
     }
 
     private applyLists = (responses: ISdsfMessageResponse[], after: TAfterList[]): void => {
@@ -1113,17 +1201,24 @@ export class SdsfSession {
             return
         }
         for (const response of responses) {
-            if (response.command === ESdsfCommand.JOBS) {
-                this.jobs = response.jobs ?? []
-                continue
+            switch (response.command) {
+                case ESdsfCommand.JOBS:
+                    this.jobs = response.jobs ?? []
+                    break
+                case ESdsfCommand.NODES:
+                    this.nodes = response.nodes ?? []
+                    break
+                case ESdsfCommand.CLASSES:
+                    this.classes = response.classes ?? []
+                    break
+                case ESdsfCommand.REQUESTS:
+                    this.requests = response.requests ?? []
+                    break
+                default:
+                    this.pods = response.pods ?? []
+                    this.metrics = response.metrics ?? ESdsfMetricsState.UNAVAILABLE
+                    this.clusterCpu = response.clusterCpu
             }
-            if (response.command === ESdsfCommand.NODES) {
-                this.nodes = response.nodes ?? []
-                continue
-            }
-            this.pods = response.pods ?? []
-            this.metrics = response.metrics ?? ESdsfMetricsState.UNAVAILABLE
-            this.clusterCpu = response.clusterCpu
         }
         for (const run of after) run()
         this.top = Math.max(0, Math.min(this.top, this.viewSize() - 1))
@@ -1150,6 +1245,7 @@ export class SdsfSession {
         this.pods.filter(p =>
             daFilterMatches(this.daFilter, p) &&
             (!this.nodeFilter || p.node === this.nodeFilter) &&
+            (!this.classFilter || p.priorityClass === this.classFilter) &&
             sdsfPatternMatches(this.prefix, p.name) &&
             sdsfPatternMatches(this.owner, p.owner) &&
             (!this.dest || p.namespace.toLowerCase() === this.dest)),
@@ -1187,12 +1283,28 @@ export class SdsfSession {
         [INIT_ID_COLUMN, ...INIT_COLUMNS],
         (a, b) => a.name.localeCompare(b.name))
 
+    // The JC classes: PREFIX filters them by name. By priority, highest first, as the scheduler reads them.
+    classView = (): ISdsfJobClass[] => this.sortRows(
+        this.classes.filter(c => sdsfPatternMatches(this.prefix, c.name)),
+        [JC_CLASS_COLUMN, ...JC_COLUMNS],
+        (a, b) => b.value - a.value || a.name.localeCompare(b.name))
+
+    // The SR requests: PREFIX filters them by name. In order of arrival, as their reply IDs.
+    requestView = (): ISdsfSystemRequest[] => this.sortRows(
+        this.requests.filter(r => sdsfPatternMatches(this.prefix, r.name)),
+        [SR_REPLY_COLUMN, ...SR_COLUMNS],
+        (a, b) => a.id.localeCompare(b.id))
+
     private viewSize = (): number => {
         switch (familyOf(this.panel)) {
             case ESdsfPanel.ST:
                 return this.jobView().length
             case ESdsfPanel.INIT:
                 return this.nodeView().length
+            case ESdsfPanel.JC:
+                return this.classView().length
+            case ESdsfPanel.SR:
+                return this.requestView().length
             default:
                 return this.view().length
         }
@@ -1208,6 +1320,14 @@ export class SdsfSession {
         if (this.panel === ESdsfPanel.INIT) {
             const columns = [INIT_ID_COLUMN, ...INIT_COLUMNS]
             return this.nodeView().map(n => [...columns.map(c => cell(c, n, now)), n.name].join(' ').toUpperCase())
+        }
+        if (this.panel === ESdsfPanel.JC) {
+            const columns = [JC_CLASS_COLUMN, ...JC_COLUMNS]
+            return this.classView().map(c => [...columns.map(col => cell(col, c, now)), c.name].join(' ').toUpperCase())
+        }
+        if (this.panel === ESdsfPanel.SR) {
+            const columns = [SR_REPLY_COLUMN, ...SR_COLUMNS]
+            return this.requestView().map(r => [...columns.map(c => cell(c, r, now)), r.name].join(' ').toUpperCase())
         }
         const columns = [JOBNAME_COLUMN, ...DA_COLUMNS]
         return this.view().map(p => [...columns.map(c => cell(c, p, now)), p.namespace, p.name].join(' ').toUpperCase())
@@ -1252,27 +1372,13 @@ export class SdsfSession {
 
     // PF10: a screen of columns back. PF11: to the first column that did not fit; at the last page it stays.
     private scrollLeft = (): void => {
-        const cols = this.terminal.screen.cols
-        switch (familyOf(this.panel)) {
-            case ESdsfPanel.ST:
-                this.offset = offsetLeftOf(this.offset, cols, ST_COLUMNS)
-                break
-            case ESdsfPanel.INIT:
-                this.offset = offsetLeftOf(this.offset, cols, INIT_COLUMNS)
-                break
-            default:
-                this.offset = offsetLeftOf(this.offset, cols, DA_COLUMNS)
-        }
+        this.offset = offsetLeftOf(this.offset, this.terminal.screen.cols, familyColumns(familyOf(this.panel)).columns)
     }
 
     private scrollRight = (): void => {
-        const cols = this.terminal.screen.cols
-        const [shown, total] = familyOf(this.panel) === ESdsfPanel.ST
-            ? [columnsFrom(this.offset, cols, ST_COLUMNS).length, ST_COLUMNS.length]
-            : familyOf(this.panel) === ESdsfPanel.INIT
-                ? [columnsFrom(this.offset, cols, INIT_COLUMNS).length, INIT_COLUMNS.length]
-                : [columnsFrom(this.offset, cols, DA_COLUMNS).length, DA_COLUMNS.length]
-        if (this.offset + shown < total) this.offset += shown
+        const { columns } = familyColumns(familyOf(this.panel))
+        const shown = columnsFrom(this.offset, this.terminal.screen.cols, columns).length
+        if (this.offset + shown < columns.length) this.offset += shown
     }
 
     // FIND / RFIND: the next row (every column, the full names too) that contains the text, wrapping.
@@ -1415,7 +1521,7 @@ export class SdsfSession {
             case ESdsfPanel.DA: {
                 const fields = paintDa(painter, {
                     system: this.system, dest: this.dest, prefix: this.prefix, owner: this.owner, sort, auto: this.auto,
-                    node: this.nodeFilter, pods: this.view(), top: this.top, offset: this.offset, clusterCpu: this.clusterCpu,
+                    narrow: this.nodeFilter ? `NODE=${this.nodeFilter}` : this.classFilter ? `CLASS=${this.classFilter}` : '', pods: this.view(), top: this.top, offset: this.offset, clusterCpu: this.clusterCpu,
                     command: this.command, scroll: this.scroll,
                     message: this.message, messageLevel: this.messageLevel,
                     longMessage: this.showLong ? this.longMessage : '',
@@ -1458,6 +1564,36 @@ export class SdsfSession {
                 })
                 this.tableFields(fields, f => ({ node: f.row }))
                 this.paintPending(painter)
+                return
+            }
+            case ESdsfPanel.JC: {
+                const fields = paintTable(painter, {
+                    title: JC_TITLE,
+                    filter: filterLine(this.prefix, '', '', sort, this.auto),
+                    fixed: JC_CLASS_COLUMN,
+                    columns: JC_COLUMNS,
+                    rows: this.classView(),
+                    top: this.top, offset: this.offset, command: this.command, scroll: this.scroll,
+                    message: this.message, messageLevel: this.messageLevel,
+                    longMessage: this.showLong ? this.longMessage : '',
+                    now: this.now()
+                })
+                this.tableFields(fields, f => ({ jobClass: f.row }))
+                return
+            }
+            case ESdsfPanel.SR: {
+                const fields = paintTable(painter, {
+                    title: SR_TITLE,
+                    filter: filterLine(this.prefix, '', '', sort, this.auto),
+                    fixed: SR_REPLY_COLUMN,
+                    columns: SR_COLUMNS,
+                    rows: this.requestView(),
+                    top: this.top, offset: this.offset, command: this.command, scroll: this.scroll,
+                    message: this.message, messageLevel: this.messageLevel,
+                    longMessage: this.showLong ? this.longMessage : '',
+                    now: this.now()
+                })
+                this.tableFields(fields, f => ({ request: f.row }))
                 return
             }
             case ESdsfPanel.CONTAINERS: {

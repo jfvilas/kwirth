@@ -1,9 +1,9 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.8.0` (npm `@jfvilas` y marketplace de
+> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.9.0` (npm `@jfvilas` y marketplace de
 > github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`), el S7 (`ST`/`O`/`H`), el S7b
 > (parámetros del `DA`), el S9 (modelo de terminal y color en el setup) y el S8 (`INIT`). Fase 2 completa.
-> Hecho el S10 (el Confirm Action de SDSF). **Fase 3a en curso:** hecho el S11 (`I`, `ULOG`); S12 (`JC`, `SR`), S13
+> Hecho el S10 (el Confirm Action de SDSF). **Fase 3a en curso:** hechos el S11 (`I`, `ULOG`) y el S12 (`JC`, `SR`); queda el S13
 > (`RES`, `SP`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
@@ -260,6 +260,24 @@ Se publica cada stream con su versión.
 - **Tipos nuevos** (⚠️ a validar): `ESdsfModel`, `ESdsfDisplay`, `SDSF_MODEL_GEOMETRY`, `I3270Geometry`
   (sustituye a `MODEL3_ROWS`/`MODEL3_COLS`) y los campos `model` y `display` de `ISdsfInstanceConfig`;
   `display` en `ISdsfData`.
+
+**S12 — `JC` y `SR` (fase 3a)** · ✅ VALIDADO (2026-11-23), publicado como 0.9.0.
+- **`JC`:** `SDSF JOB CLASS DISPLAY ALL CLASSES`, una PriorityClass por fila, la de más prioridad arriba:
+  `JobClass` (el nombre a 8), `Prio`, `Default`, `Preempt` (`LOWER`/`NEVER`, este en amarillo), `Pods` (los
+  que alcanza la key), `Age`, `ClassName`; con PF11, `Description`. `?` = el DA de los pods de la clase, de
+  todos los tipos (`CLASS=` en la línea de filtros; PF3 vuelve al JC); `D` = describe (con sus pods).
+- **`SR`:** `SDSF SYSTEM REQUESTS DISPLAY ALL`, los CSR sin `Approved` ni `Denied`, numerados por llegada
+  como los reply IDs de z/OS (`01`, `02`…): `ReplyId`, `Type` (`CSR`), `Age`, `Name`, `Requestor`; con PF11,
+  `Signer` y `Usages`. Solo `D` (describe con el PEM del request). Responder (`R`: aprobar o denegar) va a la
+  V2 (D15): el core no expone `CertificatesV1Api`.
+- **Back:** `schedulingApi` (`listPriorityClass`, `readPriorityClass`) y, para los CSR, el `crdApi` genérico
+  por grupo/versión/plural (`certificates.k8s.io/v1/certificatesigningrequests`); solo `import type`.
+- **Menú** como el de SDSF: `SR` y `JC` bajo `LOG`, con la fila de `MAS` en blanco entre ellos.
+- **Refactor:** las columnas de cada familia salen de un solo `familyColumns()` (SORT y PF10/PF11 ya no
+  repiten un ternario por familia); `filterLine` recibe el estrechamiento ya formado (`NODE=…`/`CLASS=…`).
+- **Tipos** (⚠️ a validar): `ESdsfPanel.JC`/`SR`, `EPrimaryCommand.JC`/`SR`, `ESdsfCommand.CLASSES`/`REQUESTS`,
+  `ESdsfObjectKind.PRIORITY_CLASS`/`CSR`, `CLUSTER_SCOPED_KINDS`, `ISdsfJobClass`, `ISdsfSystemRequest`,
+  `JC_LINE_COMMANDS`/`SR_LINE_COMMANDS`.
 
 **S11 — `I` y `ULOG` (fase 3a)** · ✅ VALIDADO (2026-11-23), publicado como 0.8.0.
 - **`I` (Input queue):** `SDSF INPUT QUEUE DISPLAY ALL CLASSES`, de la familia del ST (mismas columnas y

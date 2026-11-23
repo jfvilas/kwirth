@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
 import {
-    aid, clickCell, command, createFixture, deleteFixture, enter, fixturePods, geometry, lineCommand, NAMESPACE, oiaText, openSdsf,
+    aid, clickCell, command, createFixture, CSR, deleteFixture, enter, fixturePods, geometry, lineCommand, NAMESPACE, oiaText, openSdsf,
     row, screenText, startChannel, stopChannel, terminal, waitUnlocked, cluster
 } from './helpers'
 
@@ -281,6 +281,61 @@ test('INIT lists the nodes as initiators; D describes one; ? shows its pods; Z a
     await enter(page)
     expect(await row(page, 2)).toMatch(/ACTION CANCELLED$/)
     expect(cluster('get', 'node', nodes[0], '-o', 'jsonpath={.spec.unschedulable}')).toBe('')
+    await command(page, 'prefix demo*')
+    await command(page, 'da')
+    expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
+})
+
+test('JC lists the PriorityClasses; the fixture\'s class has its two demo pods; ? shows them on the DA, PF3 back; D describes it', async () => {
+    const classes = cluster('get', 'priorityclass', '-o', 'jsonpath={.items[*].metadata.name}').split(/\s+/).filter(Boolean)
+    await command(page, 'prefix *')
+    await command(page, 'jc')
+    expect(await row(page, 2)).toMatch(new RegExp(`^ SDSF JOB CLASS DISPLAY ALL CLASSES +LINE 1-${classes.length} \\(${classes.length}\\)$`))
+    expect(await row(page, 5)).toMatch(/^ NP  JobClass +Prio Default Preempt +Pods Age +ClassName/)
+    // highest priority first: the system classes above the fixture's 100
+    const text = await screenText(page)
+    expect(text).toMatch(/^ {5}SYSTEM-N +2000001000 NO +LOWER /m)
+    const mine = /^ {5}SDSF-E2E +100 NO +NEVER +2 .* sdsf-e2e-batch/m
+    expect(text).toMatch(mine)
+    const line = 6 + (await Promise.all(Array.from({ length: classes.length }, (_, i) => row(page, 6 + i)))).findIndex(r => mine.test(r))
+    await shot('jc')
+    await lineCommand(page, line, '?')
+    await enter(page)
+    expect(await row(page, 4)).toMatch(/CLASS=sdsf-e2e-batch/)
+    expect(await demoRows()).toHaveLength(2)
+    await aid(page, 'F3')
+    expect(await row(page, 2)).toMatch(/SDSF JOB CLASS DISPLAY/)
+    await lineCommand(page, line, 'd')
+    await enter(page)
+    const described = await screenText(page)
+    expect(described).toMatch(/DESCRIBE SDSF-E2E JC/)
+    expect(described).toMatch(/PreemptionPolicy: Never/)
+    expect(described).toMatch(/Non-terminated Pods: +\(2 in total\)/)
+    await aid(page, 'F3')
+    expect(await row(page, 2)).toMatch(/SDSF JOB CLASS DISPLAY/)
+})
+
+test('SR lists the pending CSRs as system requests; the fixture\'s one is there; D describes it; no reply yet', async () => {
+    await command(page, 'prefix sdsf-e2e*')
+    await command(page, 'sr')
+    expect(await row(page, 2)).toMatch(/^ SDSF SYSTEM REQUESTS DISPLAY ALL +LINE 1-1 \(1\)$/)
+    expect(await row(page, 5)).toMatch(/^ NP  ReplyId  Type Age +Name +Requestor/)
+    expect(await row(page, 6)).toMatch(/^ {5}\d{2} +CSR +\S+ +sdsf-e2e-request +\S/)
+    await shot('sr')
+    await aid(page, 'F11')
+    expect(await row(page, 6)).toMatch(/example\.com\/sdsf-e2e +client auth/)
+    await aid(page, 'F10')
+    await lineCommand(page, 6, 'd')
+    await enter(page)
+    const described = await screenText(page)
+    expect(described).toMatch(/DESCRIBE SDSF-E2E SR/)
+    expect(described).toMatch(/Status: +Pending/)
+    expect(described).toMatch(/BEGIN CERTIFICATE REQUEST/)
+    await aid(page, 'F3')
+    await lineCommand(page, 6, 'r')
+    await enter(page)
+    expect(await row(page, 2)).toMatch(/INVALID LINE COMMAND$/)
+    expect(cluster('get', 'csr', CSR, '-o', 'jsonpath={.status.conditions}')).toBe('')
     await command(page, 'prefix demo*')
     await command(page, 'da')
     expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)

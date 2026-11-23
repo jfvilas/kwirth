@@ -8,12 +8,24 @@ export const CHANNEL = 'sdsf'
 
 // The namespace this e2e owns: created at the start, deleted at the end. Nothing else in the cluster is touched.
 export const NAMESPACE = 'sdsf-e2e'
+// Cluster-scoped, so the namespace does not take them with it: created and deleted one by one.
+export const PRIORITY_CLASS = 'sdsf-e2e-batch'
+export const CSR = 'sdsf-e2e-request'
 
 const FIXTURE = `
 apiVersion: v1
 kind: Namespace
 metadata:
   name: ${NAMESPACE}
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: ${PRIORITY_CLASS}
+value: 100
+preemptionPolicy: Never
+globalDefault: false
+description: SDSF e2e, the class of the demo pods
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -29,6 +41,7 @@ spec:
       labels: { app: demo }
     spec:
       terminationGracePeriodSeconds: 2
+      priorityClassName: ${PRIORITY_CLASS}
       initContainers:
         - name: prepare
           image: busybox:1.36
@@ -102,15 +115,41 @@ const kubectl = (args: string[], input?: string): string =>
 // A read of the cluster, to check what SDSF shows against it (never to change anything).
 export const cluster = (...args: string[]): string => kubectl(args)
 
+/*
+    A CSR of its own that stays pending: its signer (example.com/…) does not exist, so nothing approves or
+    denies it. The key goes nowhere: only the request (a public key and a CN) reaches the cluster.
+*/
+const csrManifest = (): string => {
+    const pem = execFileSync('openssl', ['req', '-new', '-newkey', 'rsa:2048', '-nodes', '-keyout', '/dev/null', '-subj', '/CN=sdsf-e2e'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] })
+    return `
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: ${CSR}
+spec:
+  request: ${Buffer.from(pem).toString('base64')}
+  signerName: example.com/sdsf-e2e
+  usages: ['client auth']
+`
+}
+
+const deleteClusterScoped = (): void => {
+    kubectl(['delete', 'csr', CSR, '--ignore-not-found'])
+    kubectl(['delete', 'priorityclass', PRIORITY_CLASS, '--ignore-not-found'])
+}
+
 export const createFixture = (): void => {
     kubectl(['delete', 'namespace', NAMESPACE, '--ignore-not-found', '--wait=true', '--timeout=60s'])
+    deleteClusterScoped()
     kubectl(['apply', '-f', '-'], FIXTURE)
+    kubectl(['apply', '-f', '-'], csrManifest())
     kubectl(['-n', NAMESPACE, 'rollout', 'status', 'deployment/demo', '--timeout=90s'])
     kubectl(['-n', NAMESPACE, 'wait', '--for=condition=complete', 'job/batch-job', '--timeout=90s'])
 }
 
 export const deleteFixture = (): void => {
     kubectl(['delete', 'namespace', NAMESPACE, '--ignore-not-found', '--wait=false'])
+    deleteClusterScoped()
 }
 
 export const fixturePods = (): string[] =>
