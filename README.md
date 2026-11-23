@@ -5,8 +5,7 @@ inside a [Kwirth](https://kwirthmagnify.dev) tab — except that what it lists a
 **namespace** as jobs are grouped by subsystem. Put `4` in front of a job to end it, `5` to work with it, `8` to
 read its spooled files (its containers' logs), and press F5 to refresh.
 
-> Work in progress: the list, the menu and the commands are done; the options (4, 5, 7, 8) come next. See the
-> [plan](docs/plan/PLAN.md).
+> Work in progress: the e2e and the screenshots come next. See the [plan](docs/plan/PLAN.md).
 
 - Kwirth: https://kwirthmagnify.dev — source at https://github.com/kwirthmagnify/kwirth
 - Plugin source: https://github.com/jfvilas/kwirth (folder `plugins/wrkactjob`)
@@ -69,6 +68,19 @@ It opens on **Work with Active Jobs**: every subsystem (namespace) with its jobs
 | F3 or F12 | The Main Menu (`1` back to WRKACTJOB, `90` or F3 to sign off) |
 | `WRKACTJOB SBS(name) JOB(API*)` | Only that subsystem, only the jobs starting with API |
 | `SIGNOFF` | End the session; Enter signs on again |
+| `WRKJOB JOB(name)` | Work with that job |
+| `ENDJOB JOB(name) OPTION(*CNTRLD\|*IMMED) DELAY(n)` | End that job; F4 on it opens its prompt |
+
+Options, typed in `Opt` (several at once run in order, top to bottom):
+
+| Option | Does |
+|---|---|
+| `4` End | The **End Job (ENDJOB)** prompt: `*CNTRLD` gives the pod DELAY seconds (its grace period), `*IMMED` none |
+| `5` Work with | **Work with Job**: 1 status attributes, 2 definition attributes, 4 spooled files, 10 job log (the pod's events) |
+| `7` Display message | Why a job in `MSGW` is failing |
+| `8` Work with spooled files | The containers; `5` on one shows its log (**Display Spooled File**: Control `T`/`B`/`+n`/`-n`, Find with F16, F19/F20 to shift) |
+
+In every job panel F12 goes back one panel and F3 back to the list.
 
 ## Permissions
 
