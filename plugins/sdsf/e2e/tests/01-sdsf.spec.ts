@@ -265,7 +265,8 @@ test('INIT lists the nodes as initiators; D describes one; ? shows its pods; Z a
     expect(found, 'the DA of one of the nodes shows the fixture pods').toBe(true)
     await lineCommand(page, 6, 'z')
     await enter(page)
-    expect(await screenText(page)).toMatch(/Halt \(cordon\): no new pods, the running ones stay:/)
+    expect(await screenText(page)).toMatch(/Confirm Action/)
+    expect(await screenText(page)).toMatch(/Line number: 1 +\S+/)
     await page.keyboard.type('2')
     await enter(page)
     expect(await row(page, 2)).toMatch(/ACTION CANCELLED$/)
@@ -275,12 +276,17 @@ test('INIT lists the nodes as initiators; D describes one; ? shows its pods; Z a
     expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
 })
 
-test('C asks first: 2 leaves the pod alone', async () => {
+test('C asks first in the Confirm Action window, by line number and JOBNAME; 2 leaves the pod alone', async () => {
     const before = fixturePods()
     const [first] = await demoRows()
     await lineCommand(page, first, 'c')
     await enter(page)
-    expect(await screenText(page)).toMatch(/Confirm Action/)
+    const text = await screenText(page)
+    expect(text).toMatch(/Confirm Action/)
+    expect(text).toMatch(/1 {2}1\. {2}Process action character/)
+    expect(text).toMatch(/3\. {2}Process action character and/)
+    expect(text).toMatch(new RegExp(`Line number: ${first - 5} +DEMO-`))
+    expect(await row(page, first)).toMatch(/^ C /)
     await shot('confirm')
     await page.keyboard.type('2')
     await enter(page)
@@ -294,7 +300,7 @@ test('C with 1 cancels the pod: COMMAND ISSUED, and the ReplicaSet brings a new 
     const before = fixturePods()
     await lineCommand(page, first, 'c')
     await enter(page)
-    await page.keyboard.type('1')
+    // the selection comes with 1 already in it: Enter processes
     await enter(page)
     expect(await row(page, 2)).toMatch(/COMMAND ISSUED$/)
     // the ReplicaSet replaces it: two running pods again, one of them new

@@ -4,7 +4,7 @@ import { Screen3270 } from './terminal/Screen3270'
 import { Painter } from './panels/Painter'
 import { EMessageLevel } from './panels/SdsfLayout'
 import { paintPrimaryMenu } from './panels/PrimaryMenu'
-import { columnsFrom, dataRows, filterLine, ITableFields, offsetLeftOf, paintDa, paintTable, ROW_FIRST_DATA } from './panels/DaPanel'
+import { columnsFrom, dataRows, filterLine, ITableFields, offsetLeftOf, paintDa, paintTable, ROW_FIRST_DATA, ROW_HEADERS } from './panels/DaPanel'
 import { cell, DA_COLUMNS, findColumn, IDaColumn, JOBNAME_COLUMN, stepNameOf } from './panels/DaColumns'
 import { ST_COLUMNS, ST_JOBNAME_COLUMN } from './panels/JobColumns'
 import { EPrimaryCommand, IPrimaryCommand, parsePrimaryCommand } from './panels/PrimaryCommand'
@@ -13,7 +13,7 @@ import { sdsfPatternMatches } from './panels/Wildcard'
 import { daFilterMatches, DEFAULT_DA_FILTER, IDaFilter, parseDaParameters } from './panels/DaFilter'
 import { ELineCommand, INIT_LINE_COMMANDS, isCancel, parseLineCommand, TABLE_LINE_COMMANDS } from './panels/LineCommand'
 import { INIT_COLUMNS, INIT_ID_COLUMN } from './panels/NodeColumns'
-import { IActionTarget, IPendingAction, paintConfirm } from './panels/ConfirmPopup'
+import { ACTION_HELP, IActionTarget, IPendingAction, paintConfirm } from './panels/ConfirmPopup'
 import { dsidOf, IContainerFields, paintContainers } from './panels/ContainersPanel'
 import { browseHeight, browseRows, browseWidth, paintBrowse, printable, ROW_FIRST_BROWSE } from './panels/BrowsePanel'
 import { eventColor, syslogLine } from './panels/SyslogFormat'
@@ -81,6 +81,15 @@ const NODE_ACTION: Partial<Record<ELineCommand, ESdsfNodeAction>> = {
 interface IQueuedLine {
     command: ELineCommand
     target: ILineTarget
+    line: number               // the row of the table, 1-based
+}
+
+// What a run of confirmed actions came to, said when the last window closes.
+interface IActionResults {
+    processed: number
+    done: string[]             // what the back said about each one, for the long message
+    failures: string[]
+    firstError?: ESdsfError
 }
 
 // The browse on screen, and where PF3 goes back to.
@@ -153,8 +162,10 @@ export class SdsfSession {
 
     // line commands
     private queue: IQueuedLine[] = []
-    private confirm?: IPendingAction[]
+    private confirm?: IPendingAction[]     // the actions still to confirm; the window shows the first
     private confirmField = -1
+    private confirmOn = true                // SET CONFIRM; option 3 of the window turns it off
+    private results: IActionResults = { processed: 0, done: [], failures: [] }
     private containersPod?: ISdsfPod
     private containerFields: IContainerFields['np'] = []
     private browse?: IBrowse
@@ -226,7 +237,8 @@ export class SdsfSession {
             return
         }
         if (this.confirm) {
-            this.confirmAttention(input, (value(this.confirmField) ?? '').trim())
+            // the selection comes pre-filled with 1: untouched, it does not travel, and it still says 1
+            this.confirmAttention(input, (value(this.confirmField) ?? '1').trim())
             return
         }
 
@@ -303,6 +315,19 @@ export class SdsfSession {
                 this.owner = arg === '*' ? '' : arg.toUpperCase()
                 this.top = 0
                 return true
+            case EPrimaryCommand.SET: {
+                // SET CONFIRM ON|OFF, as on SDSF: the session's own, every new session asks again
+                const value = (command.args[1] ?? '').toUpperCase()
+                if (arg.toUpperCase() !== 'CONFIRM' || (value !== 'ON' && value !== 'OFF')) {
+                    this.invalid(command, 'INVALID PARAMETER')
+                    return true
+                }
+                this.confirmOn = value === 'ON'
+                this.say(`CONFIRM ${value}`, EMessageLevel.INFO, this.confirmOn
+                    ? 'C, CA and the INIT actions ask for confirmation.'
+                    : 'C, CA and the INIT actions are processed without asking: SET CONFIRM ON asks again.')
+                return true
+            }
             case EPrimaryCommand.SORT: {
                 if (!arg) {
                     this.sortHeader = ''
@@ -442,7 +467,7 @@ export class SdsfSession {
 
         // The line commands typed in NP, in screen order. One that SDSF does not know stops them all.
         const typedLines = this.npFields
-            .map(f => ({ typed: value(f.attribute) ?? '', target: f.target }))
+            .map((f, i) => ({ typed: value(f.attribute) ?? '', target: f.target, line: this.top + i + 1 }))
             .filter(l => l.typed.trim() !== '')
         const queue: IQueuedLine[] = []
         const allowed = this.panel === ESdsfPanel.INIT ? INIT_LINE_COMMANDS : TABLE_LINE_COMMANDS
@@ -453,7 +478,7 @@ export class SdsfSession {
                 queue.length = 0
                 break
             }
-            queue.push({ command: parsed, target: line.target })
+            queue.push({ command: parsed, target: line.target, line: line.line })
         }
 
         if (!this.filterCommand(command)) {
@@ -621,17 +646,27 @@ export class SdsfSession {
     // What changes the cluster and is confirmed first: C and CA; on INIT, S, Z and P.
     private needsConfirm = (line: IQueuedLine): boolean => line.target.node ? NODE_ACTION[line.command] !== undefined : isCancel(line.command)
 
+    // The JOBNAME as the table shows it (the ID on INIT): what the Confirm Action window names.
+    private jobnameOf = (target: ILineTarget): string =>
+        (target.node?.id ?? target.job?.name ?? target.pod?.name ?? '').toUpperCase().slice(0, 8)
+
     /*
-        The next thing the queue asks for. What changes the cluster goes first and all together, through the
-        CONFIRM ACTION window; then S, ? and D one by one. With the queue empty, back on the table with a fresh list.
+        The next thing the queue asks for. What changes the cluster goes first: one Confirm Action window per
+        action, in order (or none at all with SET CONFIRM OFF). Then S, ? and D one by one. With the queue
+        empty, back on the table with a fresh list.
     */
     private runQueue = (): void => {
         const actions = this.queue.filter(this.needsConfirm)
         if (actions.length > 0) {
             this.queue = this.queue.filter(q => !this.needsConfirm(q))
-            this.confirm = actions.map(a => ({ command: a.command, target: this.actionTargetOf(a.target) }))
+            this.confirm = actions.map(a => ({ command: a.command, target: this.actionTargetOf(a.target), line: a.line, jobname: this.jobnameOf(a.target) }))
+            this.results = { processed: 0, done: [], failures: [] }
             this.panel = this.listPanel
-            this.finish()
+            if (this.confirmOn) {
+                this.finish()
+                return
+            }
+            void this.processRest()
             return
         }
         const next = this.queue.shift()
@@ -684,51 +719,87 @@ export class SdsfSession {
         }
     }
 
+    /*
+        The answer to the window on screen, about its one action: 1 processes it, 2 (or PF3, PF12) discards it,
+        3 processes it and sets confirmation off, so the rest go without asking. PF1 says what the action does.
+    */
     private confirmAttention = (input: I3270Input, selection: string): void => {
-        const pending = this.confirm ?? []
-        if (input.aid === E3270Aid.PF3 || input.aid === E3270Aid.PF12 || input.aid === E3270Aid.CLEAR || selection === '2') {
-            this.confirm = undefined
-            this.say('ACTION CANCELLED', EMessageLevel.INFO, 'Nothing was done.')
-            this.runQueue()
-            return
-        }
-        if (input.aid !== E3270Aid.ENTER || selection !== '1') {
-            this.say('ENTER 1 OR 2', EMessageLevel.ERROR, '1 processes the action, 2 (or PF3) leaves everything as it is.')
+        const current = this.confirm?.[0]
+        if (!current) return
+        if (input.aid === E3270Aid.PF1) {
+            this.say(`${current.command} ACTION`, EMessageLevel.INFO, ACTION_HELP[current.command] ?? '')
+            this.showLong = true
             this.finish()
             return
         }
+        if (input.aid === E3270Aid.PF3 || input.aid === E3270Aid.PF12 || input.aid === E3270Aid.CLEAR || (input.aid === E3270Aid.ENTER && selection === '2')) {
+            this.confirm = this.confirm!.slice(1)
+            this.nextConfirm()
+            return
+        }
+        if (input.aid !== E3270Aid.ENTER || (selection !== '1' && selection !== '3')) {
+            this.say('INVALID SELECTION', EMessageLevel.ERROR, '1 processes the action, 2 (or PF3) discards it, 3 processes it and sets confirmation off.')
+            this.finish()
+            return
+        }
+        if (selection === '3') this.confirmOn = false
+        this.confirm = this.confirm!.slice(1)
+        void this.process(current).then(this.nextConfirm)
+    }
+
+    // After one window: the next one, or, with confirmation off, the rest without asking; then what came of them.
+    private nextConfirm = (): void => {
+        if ((this.confirm ?? []).length > 0) {
+            if (this.confirmOn) {
+                this.finish()
+                return
+            }
+            void this.processRest()
+            return
+        }
+        this.concludeActions()
+    }
+
+    private processRest = async (): Promise<void> => {
+        const rest = this.confirm ?? []
         this.confirm = undefined
-        void this.processAll(pending).then(this.runQueue)
+        for (const p of rest) await this.process(p)
+        this.concludeActions()
+    }
+
+    // The message for the whole run: the first refusal, or COMMAND ISSUED, or ACTION CANCELLED if all were discarded.
+    private concludeActions = (): void => {
+        const r = this.results
+        this.confirm = undefined
+        if (r.firstError) this.say(ERROR_MESSAGE[r.firstError], EMessageLevel.ERROR, r.failures.join('; '))
+        else if (r.processed > 0) this.say('COMMAND ISSUED', EMessageLevel.INFO, r.done.length ? r.done.join('; ') : `${r.processed} action(s) done.`)
+        else this.say('ACTION CANCELLED', EMessageLevel.INFO, 'Nothing was done.')
+        this.runQueue()
     }
 
     private requestOf = (p: IPendingAction): ISdsfRequest => p.target.kind === ESdsfObjectKind.NODE
         ? { command: ESdsfCommand.NODE, objectKind: ESdsfObjectKind.NODE, targetName: p.target.name, nodeAction: NODE_ACTION[p.command] }
         : { command: ESdsfCommand.CANCEL, objectKind: p.target.kind, targetNamespace: p.target.namespace, targetName: p.target.name, force: p.command === ELineCommand.CANCEL_FORCE }
 
-    // One request per object, in order. The first refusal is what the message says; every failure goes in the long one.
-    private processAll = async (pending: IPendingAction[]): Promise<void> => {
-        const failures: string[] = []
-        const done: string[] = []
-        let firstError: ESdsfError | undefined
-        for (const p of pending) {
-            const what = p.target.kind === ESdsfObjectKind.NODE ? `node ${p.target.name}` : `${p.target.namespace}/${p.target.name}`
-            try {
-                const response = await this.source.request(this.requestOf(p))
-                if (!response.ok) {
-                    firstError = firstError ?? response.error ?? ESdsfError.FAILED
-                    failures.push(`${what}: ${response.detail ?? response.error}`)
-                }
-                else if (response.evicted !== undefined) {
-                    done.push(`${what}: ${response.evicted} pod(s) evicted`)
-                }
+    // One action, asked of the back; what it says goes into the run's results.
+    private process = async (p: IPendingAction): Promise<void> => {
+        const r = this.results
+        r.processed++
+        const what = p.target.kind === ESdsfObjectKind.NODE ? `node ${p.target.name}` : `${p.target.namespace}/${p.target.name}`
+        try {
+            const response = await this.source.request(this.requestOf(p))
+            if (!response.ok) {
+                r.firstError = r.firstError ?? response.error ?? ESdsfError.FAILED
+                r.failures.push(`${what}: ${response.detail ?? response.error}`)
             }
-            catch (err) {
-                firstError = firstError ?? ESdsfError.FAILED
-                failures.push(`${what}: ${err instanceof Error ? err.message : String(err)}`)
+            else if (response.evicted !== undefined) {
+                r.done.push(`${what}: ${response.evicted} pod(s) evicted`)
             }
         }
-        if (firstError) this.say(ERROR_MESSAGE[firstError], EMessageLevel.ERROR, failures.join('; '))
-        else this.say('COMMAND ISSUED', EMessageLevel.INFO, done.length ? done.join('; ') : `${pending.length} action(s) done.`)
+        catch (err) {
+            r.firstError = r.firstError ?? ESdsfError.FAILED
+            r.failures.push(`${what}: ${err instanceof Error ? err.message : String(err)}`)
+        }
     }
 
     private openLog = (pod: ISdsfPod, container: ISdsfContainer, back: ESdsfPanel): void => {
@@ -1284,7 +1355,7 @@ export class SdsfSession {
                     now: this.now()
                 })
                 this.tableFields(fields, f => ({ pod: f.row }))
-                if (this.confirm) this.confirmField = paintConfirm(painter, this.confirm)
+                this.paintPending(painter)
                 return
             }
             case ESdsfPanel.ST:
@@ -1302,7 +1373,7 @@ export class SdsfSession {
                     now: this.now()
                 })
                 this.tableFields(fields, f => ({ job: f.row }))
-                if (this.confirm) this.confirmField = paintConfirm(painter, this.confirm)
+                this.paintPending(painter)
                 return
             }
             case ESdsfPanel.INIT: {
@@ -1318,7 +1389,7 @@ export class SdsfSession {
                     now: this.now()
                 })
                 this.tableFields(fields, f => ({ node: f.row }))
-                if (this.confirm) this.confirmField = paintConfirm(painter, this.confirm)
+                this.paintPending(painter)
                 return
             }
             case ESdsfPanel.CONTAINERS: {
@@ -1351,6 +1422,24 @@ export class SdsfSession {
             default:
                 return
         }
+    }
+
+    /*
+        The actions waiting for confirmation: each one's letter stays on its row's NP, as on SDSF, and the
+        Confirm Action window asks about the first.
+    */
+    private paintPending = (painter: Painter): void => {
+        const current = this.confirm?.[0]
+        if (!current) return
+        const screen = this.terminal.screen
+        for (const pending of this.confirm!) {
+            const field = this.npFields.find(f => {
+                const t = this.actionTargetOf(f.target)
+                return t.kind === pending.target.kind && t.namespace === pending.target.namespace && t.name === pending.target.name
+            })
+            if (field) screen.write(field.attribute + 1, pending.command)
+        }
+        this.confirmField = paintConfirm(painter, current, ROW_HEADERS)
     }
 
     // What a table paint returns, kept for the next attention: the command line and each row's NP field.

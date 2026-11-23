@@ -265,6 +265,10 @@ y volver, se conservan el panel, el scroll, el PREFIX y el campo de comando.
   - los colores, highlights y AID llevan sus códigos reales del data stream.
 
   El servidor sería un codificador más sobre el mismo motor.
+- **D14** (2026-11-23, el usuario, con captura) — **El Confirm Action es el de SDSF**: una ventana por
+  acción (`Line number: n` y el JOBNAME), la letra sigue en la NP y la ventana no explica la acción (PF1 sí).
+  Opciones `1` Process (pre-rellenada), `2` Discard y `3` Process y `SET CONFIRM OFF`; marco amarillo, título
+  turquesa, `F1=Help F2=Split F3=Cancel` / `F9=Swap F12=Cancel`. `SET CONFIRM ON|OFF` como en SDSF.
 - **D13** (2026-11-23, el usuario) — **`INIT` sigue a SDSF**: en ese panel `S` arranca el initiator
   (uncordon), `Z` lo para (cordon) y `P` lo drena; `?` muestra sus pods en el DA. Las tres acciones exigen
   `admin` y confirmación; ver el panel, `sdsf$read`, con la columna `Pods` limitada a lo que alcanza la key.

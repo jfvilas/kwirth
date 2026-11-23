@@ -72,27 +72,4 @@ export class Painter {
     protectAll = (): void => {
         for (const address of this.screen.fieldAddresses()) this.screen.cells[address].attribute!.protected = true
     }
-
-    /*
-        A pop-up window over what is painted: a frame of `width` columns, each row one protected field. Right
-        after the frame the field that was under it is started again, so the panel beside the window keeps its
-        colours instead of taking the window's.
-    */
-    window = (row: number, col: number, width: number, title: string, lines: string[], style: ITextStyle = {}): void => {
-        const screen = this.screen
-        const inner = width - 2
-        const titled = ` ${title} `
-        const left = Math.floor((inner - titled.length) / 2)
-        const rows = [
-            '+' + '-'.repeat(left) + titled + '-'.repeat(inner - left - titled.length) + '+',
-            ...lines.map(l => '|' + l.slice(0, inner).padEnd(inner) + '|'),
-            '+' + '-'.repeat(inner) + '+'
-        ]
-        rows.forEach((text, i) => {
-            const after = screen.address(row + i, col + width)
-            const under = screen.isAttribute(after) ? undefined : screen.attributeOf(after)
-            this.text(row + i, col, text, style)
-            if (under) screen.startField(after, { ...under })
-        })
-    }
 }
