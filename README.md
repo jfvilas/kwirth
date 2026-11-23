@@ -5,7 +5,7 @@ inside a [Kwirth](https://kwirthmagnify.dev) tab — except that what it lists a
 **namespace** as jobs are grouped by subsystem. Put `4` in front of a job to end it, `5` to work with it, `8` to
 read its spooled files (its containers' logs), and press F5 to refresh.
 
-> Work in progress: the e2e and the screenshots come next. See the [plan](docs/plan/PLAN.md).
+![Work with Active Jobs](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/wrkactjob.png)
 
 - Kwirth: https://kwirthmagnify.dev — source at https://github.com/kwirthmagnify/kwirth
 - Plugin source: https://github.com/jfvilas/kwirth (folder `plugins/wrkactjob`)
@@ -91,6 +91,34 @@ In every job panel F12 goes back one panel and F3 back to the list.
 
 What a key sees is limited, as everywhere in Kwirth, by the namespaces and pods it reaches.
 
+## Screenshots
+
+An option not valid: the message on the error line, the keyboard locked (`X II`) until Reset:
+
+![Option not valid](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/error.png)
+
+`7` on a job in `MSGW`, and `4`, the End Job prompt:
+
+![Display Messages](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/message.png)
+
+![End Job](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/endjob.png)
+
+`8`, the containers as spooled files, and `5` on one, its log:
+
+![Spooled files](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/spooled-files.png)
+
+![Display Spooled File](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/dspsplf.png)
+
+`5`, Work with Job, and the Main Menu:
+
+![Work with Job](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/wrkjob.png)
+
+![Main Menu](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/menu.png)
+
+A 3477-FC at 27x132 as a green 5251, the elapsed data beside the status:
+
+![27x132 green](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/wide-green.png)
+
 ## Building
 
 ```
@@ -98,3 +126,6 @@ npm install --legacy-peer-deps
 npm run build      # typecheck + dist/
 npm test           # unit tests; COVERAGE=1 npm test for c8 coverage
 ```
+
+The e2e (`e2e/`, Playwright) runs against a live Kwirth with its own `.creds.json`; it creates the
+`wrkactjob-e2e` namespace and deletes it at the end, and only lists that subsystem.
