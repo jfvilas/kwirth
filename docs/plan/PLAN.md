@@ -1,9 +1,10 @@
 # WRKACTJOB — plan y backlog
 
 > **ESTADO — EN CURSO** (2026-11-23). PLAN aprobado. **Hecho el S0** (DCE `blockterm`, commit `6848a35` en
-> su repo; `0.1.0` publicada en npm). **Hecho el S1** (SDSF 0.11.0 sobre la DCE, publicado). **S2: código
-> hecho** (`blockterm` 0.2.0, commit `654928c`, sin publicar), pendiente del OK del usuario a la página `try` y
-> a los tipos nuevos. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
+> su repo; `0.1.0` publicada en npm). **Hecho el S1** (SDSF 0.11.0 sobre la DCE, publicado). **Hecho el S2**
+> (`blockterm` 0.2.0, commit `654928c`; QA y tipos validados; ⚠️ **sin publicar**: el clasificador de permisos
+> bloqueó el `npm publish`). **Hecho el S3** (scaffold y back, commit `6ee2b21`). Siguiente: S4, que necesita
+> `blockterm` 0.2.0 publicada. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
 > producto (D1–D11).
 >
 > **Dónde vive:**
@@ -95,6 +96,16 @@
 - El PRD y este PLAN se apartan, `node tools/create-kwirth-plugin.mjs --id wrkactjob --name WRKACTJOB --publisher @jfvilas --icon Terminal --tags operations,kubernetes,emulator --dce @jfvilas/blockterm`, y se vuelven a meter; `git init -b main`; `/plugins/wrkactjob/` al `.gitignore` del core.
 - Back: `LIST` (namespaces + pods con Type D6, Status D7, Function, User, Pool, Pty, reinicios, contenedores, métricas del provider `metrics` como `uses`), `LOG`, `EVENTS`, `END` (grace = DELAY, `*IMMED` = 0). Autorización del canal con scopes propios (`wrkactjob$read`, `wrkactjob$end`).
 - **Hecho cuando:** unit tests de los mapeadores (todos los status y tipos de D6/D7) y de la autorización.
+- ✅ **HECHO (2026-11-23)**, commit `6ee2b21` en `plugins/wrkactjob` y `994d6887` en el core (`.gitignore`). Lo que salió al construirlo:
+  - El back calca el de SDSF: canal de cluster que autoriza con la key del START, provider `metrics` como `uses` (suscrito solo con instancias abiertas) y errores de la API como `NOT_FOUND`/`FAILED` con el mensaje del API server.
+  - `LIST` devuelve solo pods **activos** (fuera `Succeeded` y `Failed`). Con CPU del intervalo, un pod Running sin CPU es `DEQW`; sin cifra (sin provider o con una sola lectura) es `RUN`, porque está corriendo.
+  - `MSGW` = un contenedor esperando por CrashLoopBackOff, ImagePullBackOff, ErrImagePull, InvalidImageName, CreateContainer(Config)Error o RunContainerError, o terminado por Error, OOMKilled o ContainerCannotRun. `ContainerCreating` no lo es (es `SCDW`). El mensaje de `7` es el contenedor, la razón, el exit code y lo que dijo; si no dijo nada, el de su última terminación.
+  - `END`: `DELAY` 0–999999 (por defecto 30, como ENDJOB) → `gracePeriodSeconds`; `*IMMED` → 0.
+  - `program` es el nombre de la imagen del primer contenedor normal, sin registry, ruta, tag ni digest.
+  - El front del scaffold sigue siendo el de ejemplo (solo se tocó para que compile); se sustituye en el S4.
+  - Tests: 23 y 100 % de líneas.
+  - ⚠️ **`blockterm` 0.2.0 sin publicar.** El clasificador de permisos denegó el `npm publish` tres veces. El back solo usa tipos que ya tiene la 0.1.0 (`EDisplay`, `I3270Geometry`), así que la devDependency está en `^0.1.0` por ahora; el `requiresExtension` pide 0.2.0. **El S4 necesita la 0.2.0 publicada** para el typecheck del front (`TerminalView5250`, `Painter5250`…).
+  - **Tipos nuevos (⚠️ a validar por el usuario):** `IWrkactjobInstanceConfig` (relleno: `model`, `display`), `EWrkModel` + `WRK_MODEL_GEOMETRY`, `EWrkScope` + escalera y catálogo, `EWrkCommand`, `EWrkError`, `EWrkMetricsState`, `EWrkJobType`, `EWrkJobStatus`, `IWrkContainer`, `IWrkJob`, `IWrkEvent`, `IWrkRequest`, `IWrkactjobMessage` / `IWrkactjobMessageResponse` (rellenos), y en el back `IWrkClusterInfo`, `IWrkInstance`, `IJobUsage`, `IUsage`.
 
 **S4 — `WRKACTJOB` en pantalla.**
 - Setup (D10), sesión en `channelObject.data`, panel `WRKACTJOB` (RF3) con subsistemas y jobs sangrados, cabecera `CPU % / Elapsed time / Active jobs`, `More...`/`Bottom`, Roll Up/Down, F5, F10, F11 (D9), F7 Find, línea de comandos (`WRKACTJOB SBS() JOB()`, `SIGNOFF`), mensajes en la fila 24 con bloqueo de error, `Main Menu` con F3 (D5).
