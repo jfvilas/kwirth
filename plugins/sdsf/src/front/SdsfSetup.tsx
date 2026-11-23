@@ -3,7 +3,8 @@ import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Fo
 import { HelpOutline, Terminal } from '@mui/icons-material'
 import { ISetupProps } from '@kwirthmagnify/kwirth-common-front'
 import { SdsfConfig, SdsfInstanceConfig } from './SdsfConfig'
-import { ESdsfDisplay, ESdsfModel, ISdsfInstanceConfig } from '../common/SdsfTypes'
+import { EDisplay } from '@jfvilas/kwirth-dce-blockterm'
+import { ESdsfModel, ISdsfInstanceConfig } from '../common/SdsfTypes'
 
 const SdsfIcon = <Terminal />
 
@@ -16,9 +17,9 @@ const MODELS: { model: ESdsfModel; label: string }[] = [
     { model: ESdsfModel.MODEL5, label: '3278-5 (27x132)' }
 ]
 
-const DISPLAYS: { display: ESdsfDisplay; label: string }[] = [
-    { display: ESdsfDisplay.COLOR, label: 'Colour (3279)' },
-    { display: ESdsfDisplay.GREEN, label: 'Green phosphor (3278)' }
+const DISPLAYS: { display: EDisplay; label: string }[] = [
+    { display: EDisplay.COLOR, label: 'Colour (3279)' },
+    { display: EDisplay.GREEN, label: 'Green phosphor (3278)' }
 ]
 
 /*
@@ -29,7 +30,7 @@ const SdsfSetup: React.FC<ISetupProps> = (props: ISetupProps) => {
     const previous: Partial<ISdsfInstanceConfig> = props.setupConfig?.channelInstanceConfig ?? {}
     const config: SdsfConfig = props.setupConfig?.channelConfig || new SdsfConfig()
     const [model, setModel] = useState<ESdsfModel>(MODELS.find(m => m.model === previous.model)?.model ?? ESdsfModel.MODEL3)
-    const [display, setDisplay] = useState<ESdsfDisplay>(DISPLAYS.find(d => d.display === previous.display)?.display ?? ESdsfDisplay.COLOR)
+    const [display, setDisplay] = useState<EDisplay>(DISPLAYS.find(d => d.display === previous.display)?.display ?? EDisplay.COLOR)
     const defaultRef = useRef<HTMLInputElement | null>(null)
 
     const ok = () => {
@@ -61,7 +62,7 @@ const SdsfSetup: React.FC<ISetupProps> = (props: ISetupProps) => {
                     </Stack>
                     <Stack>
                         <FormLabel id='sdsf-display'>Display</FormLabel>
-                        <RadioGroup aria-labelledby='sdsf-display' value={display} onChange={e => setDisplay(e.target.value as ESdsfDisplay)}>
+                        <RadioGroup aria-labelledby='sdsf-display' value={display} onChange={e => setDisplay(e.target.value as EDisplay)}>
                             {DISPLAYS.map(d => <FormControlLabel key={d.display} value={d.display} control={<Radio size='small' />} label={d.label} />)}
                         </RadioGroup>
                     </Stack>

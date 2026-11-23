@@ -1,7 +1,6 @@
-import { Painter } from './Painter'
+import { E3270Color, E3270Highlight, E3270Intensity, Painter } from '@jfvilas/kwirth-dce-blockterm'
 import { ELineCommand } from './LineCommand'
 import { ESdsfObjectKind } from '../SdsfTypes'
-import { E3270Color, E3270Highlight, E3270Intensity } from '../terminal/Terminal3270Types'
 
 /*
     SDSF's Confirm Action window, as the reference capture shows it: ONE action at a time, over the table, by

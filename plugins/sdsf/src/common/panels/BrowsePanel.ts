@@ -1,6 +1,5 @@
-import { Painter } from './Painter'
+import { E3270Color, I3270Geometry, Painter } from '@jfvilas/kwirth-dce-blockterm'
 import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShortMessage, ROW_TITLE, rowPfKeys } from './SdsfLayout'
-import { E3270Color, I3270Geometry } from '../terminal/Terminal3270Types'
 
 /*
     The output browse (SDSF's ODS): a container log or a describe, read once, shown 79 columns at a time (131

@@ -345,6 +345,18 @@ Se publica cada stream con su versión.
   `ISdsfMessageResponse.nodes`/`evicted`, `ELineCommand.HALT`/`PURGE`, `INodeUsage`, y los renombrados
   `IActionTarget`/`IPendingAction`.
 
+### 0.11.0 — el terminal pasa a la DCE `blockterm` (2026-11-23)
+
+Lo pide WRKACTJOB (`plugins/wrkactjob/docs/plan/`, D3 de su PRD): un solo motor de terminal para los dos
+plugins, en la DCE `@jfvilas/kwirth-dce-blockterm` (`dces/blockterm`). SDSF **borra** su `common/terminal/`,
+`front/terminal/`, la font y `panels/Painter.ts`, e importa todo del paquete. `ESdsfDisplay` pasa a ser
+`EDisplay` de la DCE (mismos valores, así que los `instanceConfig` guardados siguen valiendo).
+- El `build.mjs` y el `watch.mjs` mapean el paquete a la instancia (`DCE_PACKAGES`); el back solo usa sus
+  tipos (`import type` en `SdsfTypes`), así que no lleva mapeo.
+- `requiresExtension`: `blockterm` ≥ 0.1.0. El `front.js` pasa de llevar el motor y la font a no llevarlos.
+- Los tests `terminal` y `keymapper` se fueron con el motor a la DCE; los de SDSF (146) usan el paquete real.
+- Validación: el e2e (26) sin tocar los specs, contra SDSF desde `dist` y la DCE desde dev.
+
 ## 4. Backlog (fuera del MVP)
 
 - **V2:** `SYSNAME` para cambiar de cluster desde dentro (D10).

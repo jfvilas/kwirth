@@ -1,5 +1,4 @@
-import { Painter } from './Painter'
-import { E3270Color, E3270Highlight, E3270Intensity, I3270Geometry } from '../terminal/Terminal3270Types'
+import { E3270Color, E3270Highlight, E3270Intensity, I3270Geometry, Painter } from '@jfvilas/kwirth-dce-blockterm'
 
 /*
     The pieces every SDSF panel shares, placed where the reference captures of a 32x80 place them. The top

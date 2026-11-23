@@ -1,5 +1,5 @@
 import { ISdsfEvent } from '../SdsfTypes'
-import { E3270Color } from '../terminal/Terminal3270Types'
+import { E3270Color } from '@jfvilas/kwirth-dce-blockterm'
 
 /*
     A cluster event written as a line of the z/OS SYSLOG (reference capture SDSF.LOG):

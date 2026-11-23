@@ -42,6 +42,28 @@ const kwirthGlobalsPlugin = {
     },
 }
 
+/*
+    The terminal comes from DCE `blockterm`: its package -> its entry in the registry. The front build reads
+    the INSTANCE Kwirth keeps (which carries every runtime export of the package under the same name) and
+    never bundles a copy of the engine. The back end only imports its types, so it needs no mapping.
+*/
+const DCE_PACKAGES = {
+    '@jfvilas/kwirth-dce-blockterm': 'blockterm',
+}
+
+const dceGlobal = (registry) => ({
+    name: 'kwirth-dce-globals',
+    setup(build) {
+        for (const [pkg] of Object.entries(DCE_PACKAGES)) {
+            build.onResolve({ filter: new RegExp(`^${pkg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }, () => ({ path: pkg, namespace: 'kwirth-dce' }))
+        }
+        build.onLoad({ filter: /.*/, namespace: 'kwirth-dce' }, (args) => ({
+            contents: `const _e = ${registry}['${DCE_PACKAGES[args.path]}']; module.exports = _e && _e.instance ? _e.instance : {};`,
+            loader: 'js',
+        }))
+    },
+})
+
 const kwirthBackGlobalsPlugin = {
     name: 'kwirth-back-globals',
     setup(build) {
@@ -83,8 +105,8 @@ await esbuild.build({
     bundle: true,
     format: 'iife',
     outfile: 'dist/front.js',
-    plugins: [kwirthGlobalsPlugin],
-    loader: { '.tsx': 'tsx', '.ts': 'ts', '.woff': 'dataurl' },
+    plugins: [kwirthGlobalsPlugin, dceGlobal('window.__kwirth_dce__')],
+    loader: { '.tsx': 'tsx', '.ts': 'ts' },
     jsx: 'transform',
     jsxFactory: 'React.createElement',
     jsxFragment: 'React.Fragment',
@@ -124,11 +146,11 @@ const distMeta = {
 fs.writeFileSync(path.join('dist', 'package.json'), JSON.stringify(distMeta, null, 2))
 console.log('Wrote dist/package.json')
 
-// npm publishes from dist/: the README has to be there to reach npmjs.org, and the 3270 font travels inside
-// front.js, so its BSD-3 notice must travel with it.
+// npm publishes from dist/: the README has to be there to reach npmjs.org. The 3270 font (and its licence)
+// travel with DCE blockterm now.
+fs.rmSync(path.join('dist', 'LICENSE-3270font.txt'), { force: true })
 fs.copyFileSync('README.md', path.join('dist', 'README.md'))
-fs.copyFileSync(path.join('src', 'front', 'fonts', 'LICENSE-3270font.txt'), path.join('dist', 'LICENSE-3270font.txt'))
-console.log('Copied dist/README.md and dist/LICENSE-3270font.txt')
+console.log('Copied dist/README.md')
 
 const npmName = `${meta.publisher}/kwirth-plugin-${meta.id}`
 console.log("Done. Run 'npm publish --access=public' on your 'dist' folder in order to publish your package to npmjs.")

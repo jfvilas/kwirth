@@ -3,7 +3,7 @@ import { ChannelNotStarted, IContentProps } from '@kwirthmagnify/kwirth-common-f
 import { Box, Stack } from '@mui/material'
 import { ISdsfData } from './SdsfData'
 import { SdsfIcon } from './SdsfSetup'
-import { TerminalView } from './terminal/TerminalView'
+import { TerminalView } from '@jfvilas/kwirth-dce-blockterm'
 
 export const SdsfTabContent: React.FC<IContentProps> = ({ channelObject }) => {
     const data = channelObject?.data as ISdsfData | undefined
@@ -23,5 +23,5 @@ export const SdsfTabContent: React.FC<IContentProps> = ({ channelObject }) => {
     }
 
     // Set by the core: the tab in full screen. The terminal then takes the whole window.
-    return <TerminalView terminal={session.terminal} revision={revision} onKey={session.key} fullscreen={channelObject.isFullscreen === true} display={data!.display} />
+    return <TerminalView terminal={session.terminal} revision={revision} onKey={session.key} fullscreen={channelObject.isFullscreen === true} display={data!.display} testId='sdsf-terminal' />
 }

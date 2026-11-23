@@ -1,5 +1,5 @@
 import { ISdsfSystemRequest } from '../SdsfTypes'
-import { E3270Color } from '../terminal/Terminal3270Types'
+import { E3270Color } from '@jfvilas/kwirth-dce-blockterm'
 import { ageOf, IDaColumn } from './DaColumns'
 
 /*

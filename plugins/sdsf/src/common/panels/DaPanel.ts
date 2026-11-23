@@ -1,8 +1,7 @@
-import { Painter } from './Painter'
+import { E3270Color, E3270Intensity, I3270Geometry, Painter } from '@jfvilas/kwirth-dce-blockterm'
 import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShortMessage, ROW_TITLE, rowPfKeys } from './SdsfLayout'
 import { cell, DA_COLUMNS, IDaColumn, JOBNAME_COLUMN } from './DaColumns'
 import { ISdsfPod } from '../SdsfTypes'
-import { E3270Color, E3270Intensity, I3270Geometry } from '../terminal/Terminal3270Types'
 
 /*
     The SDSF tabular panels (DA, and ST/O/H for Jobs), laid out like the reference capture of a 32x80 DA:

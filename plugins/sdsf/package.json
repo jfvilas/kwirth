@@ -4,8 +4,12 @@
     "displayName": "SDSF",
     "extensionType": "plugin",
     "publisher": "@jfvilas",
-    "version": "0.10.0",
-    "tags": ["operations","kubernetes","emulator"],
+    "version": "0.11.0",
+    "tags": [
+        "operations",
+        "kubernetes",
+        "emulator"
+    ],
     "description": "SDSF channel plugin for Kwirth - a z/OS SDSF panel on an IBM 3278-3 (32x80) terminal, where pods play the part of address spaces",
     "icon": "Terminal",
     "license": "MIT",
@@ -16,7 +20,13 @@
         "directory": "plugins/sdsf"
     },
     "requiresRestart": false,
-    "requiresExtension": [],
+    "requiresExtension": [
+        {
+            "extensionType": "dce",
+            "id": "blockterm",
+            "minVersion": "0.1.0"
+        }
+    ],
     "type": "module",
     "scripts": {
         "build": "node build.mjs",
@@ -29,13 +39,14 @@
         "@kwirthmagnify/kwirth-common-front": "^0.5.83"
     },
     "devDependencies": {
+        "@jfvilas/kwirth-dce-blockterm": "^0.1.0",
         "@kubernetes/client-node": "^1.4.0",
         "@mui/icons-material": "7.1.2",
         "@mui/material": "7.1.2",
         "@types/express": "^4.17.21",
-        "c8": "^12.0.0",
         "@types/node": "^20.12.13",
         "@types/react": "^18.3.0",
+        "c8": "^12.0.0",
         "esbuild": "^0.27.2",
         "react": "^18.3.0",
         "react-dom": "^18.3.0",

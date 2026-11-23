@@ -1,6 +1,5 @@
-import { Painter } from './Painter'
+import { E3270Color, Painter } from '@jfvilas/kwirth-dce-blockterm'
 import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShortMessage, ROW_FIRST_BODY, ROW_TITLE } from './SdsfLayout'
-import { E3270Color } from '../terminal/Terminal3270Types'
 
 /*
     SDSF PRIMARY OPTION MENU, with the options that have a Kubernetes meaning. The JES-only ones (printers,

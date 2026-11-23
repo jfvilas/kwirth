@@ -1,16 +1,12 @@
 import { IInstanceMessage, IExtensionScope } from '@kwirthmagnify/kwirth-common'
-import { I3270Geometry } from './terminal/Terminal3270Types'
+// Types only: the back end imports this file, and the terminal DCE lives in the front end alone.
+import type { EDisplay, I3270Geometry } from '@jfvilas/kwirth-dce-blockterm'
 
 // ─── The terminal, chosen in the setup when the channel starts ────────────────────────────────────
 export enum ESdsfModel {
     MODEL2 = 'model2',         // 3278-2, 24x80
     MODEL3 = 'model3',         // 3278-3, 32x80: the default
     MODEL5 = 'model5'          // 3278-5, 27x132
-}
-
-export enum ESdsfDisplay {
-    COLOR = 'color',           // a 3279: the seven colours
-    GREEN = 'green'            // a monochrome 3278: green phosphor, normal and intensified
 }
 
 export const SDSF_MODEL_GEOMETRY: Record<ESdsfModel, I3270Geometry> = {
@@ -21,7 +17,7 @@ export const SDSF_MODEL_GEOMETRY: Record<ESdsfModel, I3270Geometry> = {
 
 export interface ISdsfInstanceConfig {
     model: ESdsfModel
-    display: ESdsfDisplay
+    display: EDisplay          // a 3279 in colour or a 3278 in green phosphor
 }
 
 // ─── Authorisation (SDSF's own RBAC) ──────────────────────────────────────────────────────────────
