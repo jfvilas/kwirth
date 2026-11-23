@@ -25,6 +25,7 @@ export enum EPrimaryCommand {
     RIGHT = 'right',
     AUTO = 'auto',             // &nn starts the automatic update, & alone stops it
     RETRIEVE = 'retrieve',
+    SET = 'set',               // SET CONFIRM ON|OFF: whether the Confirm Action window is shown
     AMOUNT = 'amount',         // a bare number or M/MAX: a scroll amount for the PF key pressed with it
     INVALID = 'invalid'
 }
@@ -57,7 +58,8 @@ const VERBS: Record<string, EPrimaryCommand> = {
     DOWN: EPrimaryCommand.DOWN,
     LEFT: EPrimaryCommand.LEFT,
     RIGHT: EPrimaryCommand.RIGHT,
-    RETRIEVE: EPrimaryCommand.RETRIEVE, RETRIEV: EPrimaryCommand.RETRIEVE, RETR: EPrimaryCommand.RETRIEVE
+    RETRIEVE: EPrimaryCommand.RETRIEVE, RETRIEV: EPrimaryCommand.RETRIEVE, RETR: EPrimaryCommand.RETRIEVE,
+    SET: EPrimaryCommand.SET
 }
 
 // Words, keeping a quoted string ('two words' or "two words") as one.

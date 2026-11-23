@@ -75,6 +75,7 @@ option menu. `DA` lists the pods.
 | `TOP` · `BOTTOM` · `UP n` · `DOWN n` · `LEFT` · `RIGHT` | Scroll; PF7/PF8 and PF10/PF11 do it with the SCROLL amount (PAGE, HALF, DATA, CSR, MAX or a number) — `M` + PF8 goes to the end |
 | `&nn` · `&` | Refresh every nn seconds; stop it (PA1 stops it too) |
 | `RETRIEVE` (PF12) | The commands typed before |
+| `SET CONFIRM ON` · `OFF` | Ask, or stop asking, before C, CA and the INIT actions |
 | `END` (PF3) · `RETURN` (PF4) | Back; END on the menu leaves to TSO `READY` (type `SDSF` to come back) |
 
 **Line commands** (in the `NP` column of a row, then Enter):
@@ -84,7 +85,7 @@ option menu. `DA` lists the pods.
 | `S` | Browse the log of the main container (on a Job, of its newest pod; on a CronJob, of its last run) |
 | `?` | List the containers; `S` on one browses its log |
 | `D` | Browse the pod, Job or CronJob described, with its events |
-| `C` · `CA` | Cancel (delete) the pod, Job or CronJob (with its pods), after a confirmation window; CA with no grace period |
+| `C` · `CA` | Cancel (delete) the pod, Job or CronJob (with its pods), after the Confirm Action window; CA with no grace period |
 
 On **INIT**, as on SDSF's initiator panel:
 
@@ -96,10 +97,16 @@ On **INIT**, as on SDSF's initiator panel:
 | `D` | Browse the node described, with its pods and events |
 | `?` | The DA of the node's pods; PF3 comes back to INIT |
 
-`S`, `Z` and `P` need the `admin` scope and always ask first.
+`S`, `Z` and `P` need the `admin` scope.
 
-Several line commands in one Enter run as SDSF runs them: the cancels together through one
-confirmation, then the rest one after the other, each when PF3 comes back from the previous one.
+**Confirm Action.** What changes the cluster (`C`, `CA`, and `S`, `Z`, `P` on INIT) asks first, as SDSF
+does: one window per action, by its line number and job name, with the letter still on its NP. `1`
+(already there: Enter) processes it, `2` (or PF3, PF12) discards it, and `3` processes it and sets
+confirmation off for the rest of the session. The window does not say what the action does; PF1 does.
+`SET CONFIRM ON` asks again, `SET CONFIRM OFF` stops asking.
+
+Several line commands in one Enter run as SDSF runs them: the actions to confirm first, one window each,
+then the rest one after the other, each when PF3 comes back from the previous one.
 
 ## Keyboard
 

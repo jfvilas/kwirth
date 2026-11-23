@@ -1,8 +1,10 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.6.0` (npm `@jfvilas` y marketplace de
+> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.7.0` (npm `@jfvilas` y marketplace de
 > github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`), el S7 (`ST`/`O`/`H`), el S7b
-> (parámetros del `DA`), el S9 (modelo de terminal y color en el setup) y el S8 (`INIT`). Fase 2 completa. Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
+> (parámetros del `DA`), el S9 (modelo de terminal y color en el setup) y el S8 (`INIT`). Fase 2 completa.
+> Hecho el S10 (el Confirm Action de SDSF). **Fase 3a en curso:** S11 (`I`, `ULOG`), S12 (`JC`, `SR`), S13
+> (`RES`, `SP`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
 > **Dónde vive:** `~/github/kwirth/plugins/sdsf`. Es un repo anidado (rama `main`, identidad `jfvilas`)
@@ -258,6 +260,16 @@ Se publica cada stream con su versión.
 - **Tipos nuevos** (⚠️ a validar): `ESdsfModel`, `ESdsfDisplay`, `SDSF_MODEL_GEOMETRY`, `I3270Geometry`
   (sustituye a `MODEL3_ROWS`/`MODEL3_COLS`) y los campos `model` y `display` de `ISdsfInstanceConfig`;
   `display` en `ISdsfData`.
+
+**S10 — El Confirm Action de SDSF (D14)** · ✅ VALIDADO (2026-11-23), publicado como 0.7.0.
+- Una ventana por acción, en orden: `Line number` (la fila de la tabla) y el JOBNAME (el ID en INIT). La letra
+  sigue en la NP de cada fila pendiente. Selección pre-rellenada con `1` (un Enter sin tocar procesa: el campo
+  no viaja y se toma como 1). `2`, PF3 y PF12 descartan esa acción; `3` la procesa y apaga la confirmación,
+  así las que quedan van sin ventana. PF1 dice qué hace la acción (la ventana no lo dice, como en SDSF).
+- `SET CONFIRM ON|OFF` (comando primario nuevo); cada sesión arranca con la confirmación activada.
+- Pintado: marco con `┌─┐│└┘` (están en la font 3270) en amarillo, desde la fila de cabeceras y 13 columnas
+  antes del borde derecho, 42x14; cabe en el 3278-2. Sale `Painter.window`, que ya no usa nadie.
+- **Tipos** (⚠️ a validar): `IPendingAction` gana `line` y `jobname`; `EPrimaryCommand.SET`; `ACTION_HELP`.
 
 **S8 — `INIT` (nodes, con drain para `admin`)** · ✅ VALIDADO (2026-11-23), publicado como 0.6.0.
 - **Panel** `SDSF INITIATOR DISPLAY  ALL CLASSES`: `ID` (corto y único: el nombre sin lo que comparten todos
