@@ -19,15 +19,26 @@ export const baseColor = (attribute: I3270FieldAttribute | undefined): E3270Colo
     return high ? E3270Color.RED : E3270Color.GREEN
 }
 
+/*
+    A monochrome 3278 has no colours, only two intensities. It ignores the extended colour attributes, and
+    what ISPF asks for in colour reaches it as intensity: the emphasised CUA colours (white, red, yellow) and
+    any intensified field are bright, the rest normal. The two levels are given back as WHITE (bright) and
+    GREEN (normal), so a renderer only has to paint those two in phosphor green.
+*/
+const MONO_BRIGHT = new Set([E3270Color.WHITE, E3270Color.RED, E3270Color.YELLOW])
+
+const monoColor = (color: E3270Color, attribute: I3270FieldAttribute | undefined): E3270Color =>
+    attribute?.intensity === E3270Intensity.HIGH || MONO_BRIGHT.has(color) ? E3270Color.WHITE : E3270Color.GREEN
+
 export interface IDisplayCell {
     text: string               // one character; a blank for attributes, nulls and hidden fields
     color: E3270Color          // never DEFAULT: always resolved
     highlight: E3270Highlight
 }
 
-export const displayCell = (screen: Screen3270, address: number): IDisplayCell => {
+export const displayCell = (screen: Screen3270, address: number, mono = false): IDisplayCell => {
     const cell = screen.cells[address]
-    if (cell.attribute) return { text: ' ', color: baseColor(cell.attribute), highlight: E3270Highlight.DEFAULT }
+    if (cell.attribute) return { text: ' ', color: mono ? E3270Color.GREEN : baseColor(cell.attribute), highlight: E3270Highlight.DEFAULT }
     const attribute = screen.attributeOf(address)
     const hidden = attribute?.intensity === E3270Intensity.HIDDEN
     const color = cell.color !== E3270Color.DEFAULT ? cell.color
@@ -36,7 +47,7 @@ export const displayCell = (screen: Screen3270, address: number): IDisplayCell =
     const highlight = cell.highlight !== E3270Highlight.DEFAULT ? cell.highlight
         : attribute ? attribute.highlight
         : E3270Highlight.DEFAULT
-    return { text: hidden || cell.char === '' ? ' ' : cell.char, color, highlight }
+    return { text: hidden || cell.char === '' ? ' ' : cell.char, color: mono ? monoColor(color, attribute) : color, highlight }
 }
 
 export interface IDisplayRun {
@@ -47,11 +58,11 @@ export interface IDisplayRun {
 }
 
 // A row as runs of equal appearance; the cursor position is always a run of its own.
-export const displayRow = (screen: Screen3270, row: number, showCursor: boolean): IDisplayRun[] => {
+export const displayRow = (screen: Screen3270, row: number, showCursor: boolean, mono = false): IDisplayRun[] => {
     const runs: IDisplayRun[] = []
     for (let col = 0; col < screen.cols; col++) {
         const address = row * screen.cols + col
-        const cell = displayCell(screen, address)
+        const cell = displayCell(screen, address, mono)
         const cursor = showCursor && address === screen.cursor
         const last = runs[runs.length - 1]
         if (last && !cursor && !last.cursor && last.color === cell.color && last.highlight === cell.highlight) {

@@ -4,16 +4,18 @@ import { displayRow, oiaOf } from '../../common/terminal/Display3270'
 import { E3270Highlight, E3270Key, I3270KeyAction } from '../../common/terminal/Terminal3270Types'
 import { KeyMapper } from './KeyMapper'
 import { FONT_STACK, IFontMetrics, loadFont3270 } from './Font3270'
-import { OIA_COLOR, PALETTE, SCREEN_BACKGROUND } from './Palette'
+import { oiaColorOf, paletteOf, SCREEN_BACKGROUND } from './Palette'
+import { ESdsfDisplay } from '../../common/SdsfTypes'
 
 export interface ITerminalViewProps {
     terminal: Terminal3270
     revision: number                                   // bumped by the owner whenever the buffer changed
     onKey: (action: I3270KeyAction) => void
     fullscreen: boolean
+    display: ESdsfDisplay                              // a 3279 in colour or a 3278 in green phosphor
 }
 
-// Rows painted: the 32 of the screen plus the OIA line, and the rule between them.
+// Rows painted: those of the screen plus the OIA line, and the rule between them.
 const OIA_GAP = 0.35
 
 const BLINK_STYLE_ID = 'sdsf-3270-blink'
@@ -26,19 +28,24 @@ const ensureBlinkStyle = (): void => {
 }
 
 /*
-    The glass of the terminal: paints the buffer, the cursor and the OIA, scales the 32x80 grid to the room it
+    The glass of the terminal: paints the buffer, the cursor and the OIA, scales the grid (24x80, 32x80 or 27x132) to the room it
     has without deforming it, and turns the PC keyboard into 3270 keys for its owner.
 
     It paints with the DOM, one span per run of equal appearance: the 3270 font stays sharp at any size and
     there is no pixel-ratio bookkeeping, which a canvas would need.
 */
-export const TerminalView: React.FC<ITerminalViewProps> = ({ terminal, revision, onKey, fullscreen }) => {
+export const TerminalView: React.FC<ITerminalViewProps> = ({ terminal, revision, onKey, fullscreen, display }) => {
     const containerRef = useRef<HTMLDivElement>(null)
+    const gridRef = useRef<HTMLDivElement>(null)
+    const fontSizeRef = useRef(14)
     const mapperRef = useRef(new KeyMapper())
     const [metrics, setMetrics] = useState<IFontMetrics>()
     const [fontSize, setFontSize] = useState(14)
     const [top, setTop] = useState(0)
     const screen = terminal.screen
+    const mono = display === ESdsfDisplay.GREEN
+    const palette = paletteOf(display)
+    const oiaColor = oiaColorOf(display)
     void revision
 
     useEffect(() => {
@@ -57,17 +64,31 @@ export const TerminalView: React.FC<ITerminalViewProps> = ({ terminal, revision,
         return () => observer.disconnect()
     }, [fullscreen])
 
-    // The largest font size at which 80 columns and 32 rows plus the OIA fit.
+    /*
+        The largest font size at which the columns and rows plus the OIA fit. The width of a cell is the one the
+        browser lays out, measured on a painted row: the font's measured advance falls a little short, and over
+        132 columns that is enough to push the grid out of the tab.
+    */
     useLayoutEffect(() => {
         const element = containerRef.current
         if (!element || !metrics) return
+        const cellWidth = (): number => {
+            const row = gridRef.current?.firstElementChild
+            if (!row) return metrics.width
+            const range = document.createRange()
+            range.selectNodeContents(row)
+            const width = range.getBoundingClientRect().width
+            return width > 0 ? width / screen.cols / fontSizeRef.current : metrics.width
+        }
         const fit = () => {
             const width = element.clientWidth
             const height = element.clientHeight
             if (width <= 0 || height <= 0) return
-            const byWidth = width / (screen.cols * metrics.width)
+            const byWidth = width / (screen.cols * cellWidth())
             const byHeight = height / ((screen.rows + 1 + OIA_GAP) * metrics.height)
-            setFontSize(Math.max(4, Math.floor(Math.min(byWidth, byHeight) * 10) / 10))
+            const size = Math.max(4, Math.floor(Math.min(byWidth, byHeight) * 10) / 10)
+            fontSizeRef.current = size
+            setFontSize(size)
         }
         fit()
         const observer = new ResizeObserver(fit)
@@ -102,8 +123,8 @@ export const TerminalView: React.FC<ITerminalViewProps> = ({ terminal, revision,
     for (let row = 0; row < screen.rows; row++) {
         rows.push(
             <div key={row} style={{ height: lineHeight }}>
-                {displayRow(screen, row, true).map((run, i) => {
-                    const color = PALETTE[run.color]
+                {displayRow(screen, row, true, mono).map((run, i) => {
+                    const color = palette[run.color]
                     const reverse = run.cursor !== (run.highlight === E3270Highlight.REVERSE)
                     return (
                         <span key={i} style={{
@@ -119,8 +140,8 @@ export const TerminalView: React.FC<ITerminalViewProps> = ({ terminal, revision,
     }
 
     const oiaLine = (
-        <div style={{ height: lineHeight, color: OIA_COLOR, display: 'flex' }}>
-            <span style={{ color: SCREEN_BACKGROUND, backgroundColor: OIA_COLOR }}>{oia.ready[0]}</span>
+        <div style={{ height: lineHeight, color: oiaColor, display: 'flex' }}>
+            <span style={{ color: SCREEN_BACKGROUND, backgroundColor: oiaColor }}>{oia.ready[0]}</span>
             <span>{oia.ready.slice(1).padEnd(7)}</span>
             <span style={{ flex: 1 }}>{oia.lock}</span>
             <span>{oia.insert ? '^' : ' '}{' '.repeat(12)}{oia.position}</span>
@@ -147,9 +168,9 @@ export const TerminalView: React.FC<ITerminalViewProps> = ({ terminal, revision,
             }}
         >
             <div style={{ fontFamily: FONT_STACK, fontSize: `${fontSize}px`, whiteSpace: 'pre', lineHeight, visibility: metrics ? 'visible' : 'hidden' }}>
-                <div data-grid>{rows}</div>
+                <div data-grid ref={gridRef}>{rows}</div>
                 <div style={{ height: `${fontSize * (metrics?.height ?? 1.2) * OIA_GAP}px`, display: 'flex', alignItems: 'center' }}>
-                    <div style={{ width: '100%', borderTop: `1px solid ${OIA_COLOR}` }} />
+                    <div style={{ width: '100%', borderTop: `1px solid ${oiaColor}` }} />
                 </div>
                 {oiaLine}
             </div>

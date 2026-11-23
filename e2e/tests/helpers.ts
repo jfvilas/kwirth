@@ -166,11 +166,48 @@ export async function aid(page: Page, key: string): Promise<void> {
 
 export const enter = (page: Page): Promise<void> => aid(page, 'ControlRight')
 
+// The model on screen: rows and columns of the grid (24x80, 32x80 or 27x132).
+export async function geometry(page: Page): Promise<{ rows: number; cols: number }> {
+    const rows = await grid(page).locator(':scope > div').allTextContents()
+    return { rows: rows.length, cols: rows[0]?.length ?? 0 }
+}
+
 // Puts the cursor on a cell with a click, as an operator does on x3270.
 export async function clickCell(page: Page, r: number, c: number): Promise<void> {
     const box = await grid(page).boundingBox()
     if (!box) throw new Error('the terminal grid is not on screen')
-    await page.mouse.click(box.x + (c + 0.5) * box.width / 80, box.y + (r + 0.5) * box.height / 32)
+    const { rows, cols } = await geometry(page)
+    await page.mouse.click(box.x + (c + 0.5) * box.width / cols, box.y + (r + 0.5) * box.height / rows)
+}
+
+// ── The channel ────────────────────────────────────────────────────────────────────────────────────
+
+// The setup SDSF asks for when it starts: the model and the display, then OK.
+export async function answerSetup(page: Page, model: string, display: string): Promise<void> {
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible({ timeout: 10000 })
+    await dialog.getByRole('radio', { name: model }).check()
+    await dialog.getByRole('radio', { name: display }).check()
+    await dialog.getByRole('button', { name: 'OK', exact: true }).click()
+    await expect(dialog).toBeHidden()
+}
+
+async function tabMenu(page: Page, item: string): Promise<void> {
+    await page.locator('[data-testid="SettingsIcon"]').first().click({ force: true })
+    await page.getByRole('menuitem', { name: item, exact: true }).click()
+}
+
+export async function stopChannel(page: Page): Promise<void> {
+    await tabMenu(page, 'Stop')
+    await expect(page.getByTestId('channel-not-started')).toBeVisible({ timeout: 10000 })
+}
+
+// From the tab menu: Start → the setup → a new session on that terminal.
+export async function startChannel(page: Page, model: string, display: string): Promise<void> {
+    await tabMenu(page, 'Start')
+    await answerSetup(page, model, display)
+    await expect(terminal(page)).toBeVisible({ timeout: 20000 })
+    await waitUnlocked(page)
 }
 
 // Types a primary command on a clean command line (End = Erase EOF) and presses Enter (or another AID).

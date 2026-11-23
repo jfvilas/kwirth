@@ -9,15 +9,13 @@ export interface IReadyState {
     lines: string[]            // what TSO has said so far, oldest first
 }
 
-export const READY_INPUT_LENGTH = 78
-
 // Paints the conversation and the input line under it; returns the input field's attribute.
 export const paintReady = (p: Painter, state: IReadyState): number => {
     const rows = p.screen.rows
     const shown = state.lines.slice(-(rows - 2))
     shown.forEach((line, i) => p.text(i, 1, line.slice(0, p.screen.cols - 1), { color: E3270Color.GREEN }))
     const row = shown.length
-    const field = p.input(row, 1, READY_INPUT_LENGTH, '', { color: E3270Color.GREEN })
+    const field = p.input(row, 1, p.screen.cols - 2, '', { color: E3270Color.GREEN })
     p.cursor(row, 1)
     return field
 }

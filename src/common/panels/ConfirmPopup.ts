@@ -20,8 +20,8 @@ export interface IPendingCancel {
     target: ICancelTarget
 }
 
-export const POPUP_ROW = 8
-export const POPUP_COL = 9
+// Row 8 when it fits (a 32x80 or a 27x132), higher on a 24x80; always centred across.
+export const POPUP_TOP = 8
 export const POPUP_WIDTH = 62
 const SELECTION_COL_OFFSET = 3
 const MAX_LISTED = 5
@@ -52,10 +52,12 @@ export const paintConfirm = (p: Painter, pending: IPendingCancel[]): number => {
         '     2. Cancel the action',
         ''
     ]
-    p.window(POPUP_ROW, POPUP_COL, POPUP_WIDTH, 'Confirm Action', lines, { color: E3270Color.WHITE })
+    const top = Math.max(1, Math.min(POPUP_TOP, p.screen.rows - (lines.length + 2) - 1))
+    const left = Math.floor((p.screen.cols - POPUP_WIDTH) / 2)
+    p.window(top, left, POPUP_WIDTH, 'Confirm Action', lines, { color: E3270Color.WHITE })
     // The selection field sits on the line of option 1, before it; what follows it keeps the window's colour.
-    const row = POPUP_ROW + 1 + lines.indexOf('     1. Process the action')
-    const col = POPUP_COL + 1 + SELECTION_COL_OFFSET
+    const row = top + 1 + lines.indexOf('     1. Process the action')
+    const col = left + 1 + SELECTION_COL_OFFSET
     const field = p.input(row, col, 1)
     p.screen.startField(p.screen.address(row, col + 1), { protected: true, color: E3270Color.WHITE })
     p.cursor(row, col)

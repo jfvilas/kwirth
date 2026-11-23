@@ -1,6 +1,6 @@
 # SDSF — a channel plugin for Kwirth
 
-z/OS SDSF on an IBM 3278 model 3 terminal (32x80), inside a [Kwirth](https://kwirthmagnify.dev) tab —
+z/OS SDSF on an IBM 3270 terminal (24x80, 32x80 or 27x132, in colour or green phosphor), inside a [Kwirth](https://kwirthmagnify.dev) tab —
 except that what it lists are **pods** instead of address spaces. Type `DA`, put `S` in front of a
 pod to browse its log and `C` to cancel it, page with PF7/PF8 and come back with PF3.
 
@@ -33,7 +33,25 @@ pod to browse its log and `C` to cancel it, page with PF7/PF8 and come back with
 
 The screen behaves like a real 3270: **block mode** (nothing moves until you press an AID key),
 protected and unprotected fields, the 3270 base colours, insert mode, and the OIA status line under
-row 32 with the keyboard lock (`X SYSTEM`) and the cursor position.
+the last row with the keyboard lock (`X SYSTEM`) and the cursor position.
+
+## The terminal
+
+Starting the channel asks which terminal SDSF runs on:
+
+| Model | Screen |
+|---|---|
+| 3278-2 | 24 rows of 80 columns |
+| 3278-3 | 32 rows of 80 columns (the default) |
+| 3278-5 | 27 rows of 132 columns |
+
+and the display: **Colour (3279)**, the seven 3270 colours, or **Green phosphor (3278)**, a monochrome
+3278 that has no colours, only normal and intensified green. What SDSF asks for in colour reaches it as
+intensity, as ISPF does: white, red, yellow and intensified fields are bright, the rest normal.
+
+The panels lay themselves out in the model's size: more rows of data on a taller screen, more columns of
+the DA and ST before PF11 on a wider one, and a 131-column browse on the 27x132. The choice is saved with
+the tab; to change it, stop the channel and start it again — a new session, as a new logon.
 
 ## Using it
 
@@ -138,7 +156,15 @@ Cancelling a pod, with `C`:
 
 ![Confirm action](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/confirm.png)
 
-Full screen, with the OIA under row 32:
+A 3278-2 in green phosphor:
+
+![3278-2 green](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/model2-green.png)
+
+A 3278-5, 27x132, where the DA shows its CPU% and Status columns without PF11:
+
+![3278-5](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/model5.png)
+
+Full screen, with the OIA under the last row:
 
 ![Full screen](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/fullscreen.png)
 
