@@ -4,8 +4,8 @@
 > su repo; `0.1.0` publicada en npm). **Hecho el S1** (SDSF 0.11.0 sobre la DCE, publicado). **Hecho el S2**
 > (`blockterm` 0.2.0, commit `654928c`; QA y tipos validados; ⚠️ **sin publicar**: el clasificador de permisos
 > bloqueó el `npm publish`; publicada después, con el OK explícito del usuario). **Hecho el S3** (scaffold y back,
-> commit `6ee2b21`). **Hecho el S4** (commit `b407576`). **Hecho el S5** (commit `8e562e8`). **S6:** e2e y README
-> hechos; la publicación espera el OK del usuario. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
+> commit `6ee2b21`). **Hecho el S4** (commit `b407576`). **Hecho el S5** (commit `8e562e8`). **Hecho el S6:
+> MVP publicado el 2026-11-23** — `plugin/wrkactjob@0.1.0` y `dce/blockterm@0.2.0`. Queda el backlog (§4). Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
 > producto (D1–D11).
 >
 > **Dónde vive:**
@@ -154,6 +154,7 @@
   - Capturas del README (`docs/screenshots/`, 10) sacadas por el e2e: solo el fixture, el cluster y el nodo de k3d.
   - El `build.mjs` del scaffold no copiaba el README a `dist`: ahora lo copia (el tarball lleva 4 ficheros).
   - `blockterm` 0.2.0 ya está en npm; falta su entrada en el manifest de jfvilas.
+- ✅ **PUBLICADO (2026-11-23)**, con el OK del usuario. `@jfvilas/kwirth-plugin-wrkactjob@0.1.0` en npm (GET 200 a los ~10 min). En github.com/jfvilas/kwirth: subtree pull de `dces/blockterm` (0.2.0), **subtree add de `plugins/wrkactjob`**, manifest raíz con `wrkactjob@0.1.0` (con `requires: blockterm ≥ 0.2.0`) y `dce/blockterm@0.2.0`, filas en el índice del README, y los tags `plugin/wrkactjob@0.1.0` y `dce/blockterm@0.2.0`. `wrkactjob` y `blockterm` salen de `kwirth-dev.json` (lo pidió el usuario): en dev se instalan del marketplace de jfvilas, que es además la prueba pendiente de que instala una DCE de ese manifest.
 
 ## 4. Backlog (después del MVP)
 
