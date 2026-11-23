@@ -1,9 +1,9 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.7.0` (npm `@jfvilas` y marketplace de
+> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.8.0` (npm `@jfvilas` y marketplace de
 > github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`), el S7 (`ST`/`O`/`H`), el S7b
 > (parámetros del `DA`), el S9 (modelo de terminal y color en el setup) y el S8 (`INIT`). Fase 2 completa.
-> Hecho el S10 (el Confirm Action de SDSF). **Fase 3a en curso:** S11 (`I`, `ULOG`), S12 (`JC`, `SR`), S13
+> Hecho el S10 (el Confirm Action de SDSF). **Fase 3a en curso:** hecho el S11 (`I`, `ULOG`); S12 (`JC`, `SR`), S13
 > (`RES`, `SP`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
@@ -260,6 +260,18 @@ Se publica cada stream con su versión.
 - **Tipos nuevos** (⚠️ a validar): `ESdsfModel`, `ESdsfDisplay`, `SDSF_MODEL_GEOMETRY`, `I3270Geometry`
   (sustituye a `MODEL3_ROWS`/`MODEL3_COLS`) y los campos `model` y `display` de `ISdsfInstanceConfig`;
   `display` en `ISdsfData`.
+
+**S11 — `I` y `ULOG` (fase 3a)** · ✅ VALIDADO (2026-11-23), publicado como 0.8.0.
+- **`I` (Input queue):** `SDSF INPUT QUEUE DISPLAY ALL CLASSES`, de la familia del ST (mismas columnas y
+  comandos). Lo que espera a ejecutarse: CronJobs `SCHEDULED` y Jobs `WAITING` (estado nuevo: sin
+  `startTime`, cola `INPUT`, turquesa).
+- **`ULOG`:** browse de lo que hizo el operador en la sesión. Una línea por acción (C, CA, S, Z, P), por cada
+  descartada en la ventana y por cada `SET CONFIRM` (también el de la opción 3): sistema, hora UTC,
+  acción y objeto, y la respuesta (en rojo si fue un rechazo). Sin fecha para que la respuesta quepa en 79
+  columnas; lo largo, con PF11. `ULOG CLOSE` lo vacía; PF3 vuelve al panel de origen.
+- **Menú** como la captura del usuario: `I` bajo `DA`, `LOG` tras una fila en blanco y `ULOG` a la derecha.
+- **Tipos** (⚠️ a validar): `ESdsfJobState.WAITING`, `ESdsfPanel.INPUT`, `EPrimaryCommand.INPUT` y `ULOG`,
+  `ISdsfUlogEntry` (time, command, target, response, ok).
 
 **S10 — El Confirm Action de SDSF (D14)** · ✅ VALIDADO (2026-11-23), publicado como 0.7.0.
 - Una ventana por acción, en orden: `Line number` (la fila de la tabla) y el JOBNAME (el ID en INIT). La letra

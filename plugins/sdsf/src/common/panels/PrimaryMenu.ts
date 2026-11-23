@@ -11,16 +11,21 @@ export interface IMenuOption {
     description: string
 }
 
-export const MENU_LEFT: IMenuOption[] = [
+// undefined is a blank row, as the groups of the real menu have between them.
+export const MENU_LEFT: (IMenuOption | undefined)[] = [
     { code: 'DA', description: 'Active pods' },
+    { code: 'I', description: 'Input queue (jobs waiting to run)' },
     { code: 'O', description: 'Output queue (ended jobs)' },
     { code: 'H', description: 'Held output queue (suspended cronjobs)' },
     { code: 'ST', description: 'Status of jobs (jobs and cronjobs)' },
+    undefined,
     { code: 'LOG', description: 'System log (events)' }
 ]
 
-export const MENU_RIGHT: IMenuOption[] = [
-    { code: 'INIT', description: 'Initiators (nodes)' }
+export const MENU_RIGHT: (IMenuOption | undefined)[] = [
+    { code: 'INIT', description: 'Initiators (nodes)' },
+    undefined, undefined, undefined, undefined, undefined,
+    { code: 'ULOG', description: 'User session log' }
 ]
 
 export interface IMenuState {
@@ -43,7 +48,8 @@ export const paintPrimaryMenu = (p: Painter, state: IMenuState): { command: numb
     paintShortMessage(p, state.message, state.messageLevel)
     const fields = paintCommandLine(p, state.command, state.scroll)
 
-    const paintColumn = (options: IMenuOption[], col: number) => options.forEach((o, i) => {
+    const paintColumn = (options: (IMenuOption | undefined)[], col: number) => options.forEach((o, i) => {
+        if (!o) return
         p.text(ROW_FIRST_BODY + 1 + i, col, o.code.padEnd(5), { color: E3270Color.TURQUOISE })
         p.text(ROW_FIRST_BODY + 1 + i, col + 6, o.description, { color: E3270Color.BLUE })
     })

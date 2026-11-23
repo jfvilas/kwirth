@@ -85,6 +85,7 @@ export enum ESdsfNodeAction {
 
 // Where a Job or a CronJob stands, as the ST panel's Queue and Status columns say it.
 export enum ESdsfJobState {
+    WAITING = 'waiting',       // a Job not started yet (no start time): INPUT
     RUNNING = 'running',       // a Job not finished yet: EXECUTION
     COMPLETE = 'complete',     // a Job that ended well: PRINT
     FAILED = 'failed',         // a Job that gave up: PRINT, in red
