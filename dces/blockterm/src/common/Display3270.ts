@@ -1,6 +1,7 @@
 import { Screen3270 } from './Screen3270'
 import { Terminal3270 } from './Terminal3270'
 import { E3270Color, E3270Highlight, E3270Intensity, E3270Lock, I3270FieldAttribute } from './Terminal3270Types'
+import { IGlassRun } from './GlassTypes'
 
 /*
     What the operator SEES, worked out from the buffer: no DOM here, so the rules are tested on their own and
@@ -74,6 +75,18 @@ export const displayRow = (screen: Screen3270, row: number, showCursor: boolean,
     }
     return runs
 }
+
+// A row as the glass paints it: the 3270's single highlight becomes the glass's flags. 3270 has no separators.
+export const glassRow3270 = (screen: Screen3270, row: number, showCursor: boolean, mono = false): IGlassRun[] =>
+    displayRow(screen, row, showCursor, mono).map(run => ({
+        text: run.text,
+        color: run.color,
+        reverse: run.highlight === E3270Highlight.REVERSE,
+        underscore: run.highlight === E3270Highlight.UNDERSCORE,
+        blink: run.highlight === E3270Highlight.BLINK,
+        separator: false,
+        cursor: run.cursor
+    }))
 
 // The Operator Information Area, the status line under the screen.
 export interface IOia {
