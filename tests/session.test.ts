@@ -7,7 +7,7 @@ import { displayCell } from '../src/common/terminal/Display3270'
 import { COMMAND_COL, ROW_COMMAND, ROW_RULE, ROW_TITLE, rowPfKeys } from '../src/common/panels/SdsfLayout'
 import { dataRows as dataRowsOf, ROW_FILTER, ROW_FIRST_DATA, ROW_HEADERS } from '../src/common/panels/DaPanel'
 import { I3270Geometry, MODEL3_GEOMETRY } from '../src/common/terminal/Terminal3270Types'
-import { ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfObjectKind, ESdsfQos, ISdsfEvent, ISdsfJob, ISdsfMessageResponse, ISdsfPod, ISdsfRequest } from '../src/common/SdsfTypes'
+import { ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfNodeAction, ESdsfNodeStatus, ESdsfObjectKind, ESdsfQos, ISdsfEvent, ISdsfJob, ISdsfMessageResponse, ISdsfNode, ISdsfPod, ISdsfRequest } from '../src/common/SdsfTypes'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@kwirthmagnify/kwirth-common'
 
 const NOW = Date.parse('2026-11-22T12:00:00Z')
@@ -35,6 +35,9 @@ class FakeSource implements ISdsfDataSource {
     jobs: ISdsfJob[] = []
     failEvents?: Partial<ISdsfMessageResponse> | Error   // only for the EVENTS read (LOG asks LIST and EVENTS together)
     refuseCancel = new Set<string>()                   // pod names whose cancel the back refuses
+    nodes: ISdsfNode[] = []
+    refuseNode = new Set<string>()                     // node names whose actions the back refuses (not admin)
+    evicted = 0                                        // what a drain answers
     request = (request: ISdsfRequest): Promise<ISdsfMessageResponse> => {
         this.requests.push(request)
         const next = this.next
@@ -53,6 +56,15 @@ class FakeSource implements ISdsfDataSource {
             }
             case ESdsfCommand.JOBS:
                 return Promise.resolve(response({ command: request.command, jobs: this.jobs, ...next }))
+            case ESdsfCommand.NODES:
+                return Promise.resolve(response({ command: request.command, nodes: this.nodes, ...next }))
+            case ESdsfCommand.NODE: {
+                if (this.refuseNode.has(request.targetName!)) return Promise.resolve(response({ command: request.command, ok: false, error: ESdsfError.NOT_AUTHORIZED, detail: "needs 'admin'" }))
+                const status = request.nodeAction === ESdsfNodeAction.START ? ESdsfNodeStatus.ACTIVE
+                    : request.nodeAction === ESdsfNodeAction.HALT ? ESdsfNodeStatus.HALTED : ESdsfNodeStatus.DRAINED
+                this.nodes = this.nodes.map(n => n.name === request.targetName ? { ...n, status } : n)
+                return Promise.resolve(response({ command: request.command, ...(request.nodeAction === ESdsfNodeAction.DRAIN ? { evicted: this.evicted } : {}), ...next }))
+            }
             case ESdsfCommand.CANCEL:
                 if (this.refuseCancel.has(request.targetName!)) return Promise.resolve(response({ command: request.command, ok: false, error: ESdsfError.NOT_AUTHORIZED, detail: 'needs sdsf$cancel' }))
                 if (request.objectKind === ESdsfObjectKind.POD) this.pods = this.pods.filter(p => p.name !== request.targetName)
@@ -121,12 +133,10 @@ test('menu colours as in the captures', async () => {
     assert.equal(displayCell(screen, screen.address(5, 7)).color, E3270Color.BLUE)
 })
 
-test('menu: phase-2 options say NOT AVAILABLE, an unknown one INVALID COMMAND and stays to be fixed', async () => {
+test('menu: an unknown option says INVALID COMMAND and stays to be fixed', async () => {
     const { s, source } = await open()
-    await command(s, 'init')
-    assert.match(row(s, ROW_TITLE), /NOT AVAILABLE$/)
-    assert.equal(displayCell(s.terminal.screen, s.terminal.screen.address(ROW_TITLE, 79)).color, E3270Color.YELLOW)
     await command(s, 'zz')
+    assert.equal(displayCell(s.terminal.screen, s.terminal.screen.address(ROW_TITLE, 79)).color, E3270Color.RED)
     assert.match(row(s, ROW_TITLE), /INVALID COMMAND$/)
     assert.match(row(s, ROW_COMMAND), /===> zz /)
     assert.equal(s.terminal.lock, E3270Lock.NONE)
@@ -709,10 +719,8 @@ test('PF3 on the DA drops whatever line commands were still waiting', async () =
     assert.equal(s.panel, ESdsfPanel.DA)
 })
 
-test('phase-2 panels from DA, and an unknown command, keep the command to fix it', async () => {
+test('an unknown command on the DA keeps the command to fix it', async () => {
     const { s } = await openDa([podOf('a')])
-    await command(s, 'init')
-    assert.match(row(s, ROW_TITLE), /NOT AVAILABLE$/)
     await command(s, 'xyz')
     assert.match(row(s, ROW_TITLE), /INVALID COMMAND$/)
     assert.match(row(s, ROW_COMMAND), /===> xyz /)
@@ -1153,4 +1161,140 @@ test('any model: READY takes the whole width', async () => {
     type(o.s, 'x'.repeat(130))
     await enter(o.s)
     assert.equal(row(o.s, 1).trim(), 'x'.repeat(130))
+})
+
+// ─── INIT (nodes) ─────────────────────────────────────────────────────────────
+
+const nodeOf = (name: string, over: Partial<ISdsfNode> = {}): ISdsfNode => ({
+    name, id: name.slice(-1), status: ESdsfNodeStatus.ACTIVE, roles: [], pods: 3, cpus: 4, memory: 8 * 1024 ** 3, cpu: 12.5, memoryUsed: 512 * 1024 ** 2,
+    version: 'v1.31.5+k3s1', internalIp: '172.18.0.2', created: '2026-11-01T12:00:00.000Z', ...over
+})
+
+const openInit = async () => {
+    const o = await open([podOf('api-1', { node: 'node-a' }), podOf('web-1', { node: 'node-b' }), podOf('proxy-a', { node: 'node-a', controllerKind: 'DaemonSet' })])
+    o.source.nodes = [
+        nodeOf('node-b', { roles: ['control-plane', 'master'] }),
+        nodeOf('node-a'),
+        nodeOf('node-c', { status: ESdsfNodeStatus.INACTIVE, cpu: undefined, memoryUsed: undefined })
+    ]
+    await command(o.s, 'init')
+    return o
+}
+
+test('INIT lists the nodes as initiators: ID, Status, Classes, Pods, CPU%, Real, CPUs, MemGB, Version', async () => {
+    const { s, source } = await openInit()
+    assert.equal(s.panel, ESdsfPanel.INIT)
+    assert.deepEqual(source.requests.map(r => r.command), [ESdsfCommand.NODES])
+    assert.match(row(s, ROW_TITLE), /^ SDSF INITIATOR DISPLAY  ALL CLASSES +LINE 1-3 \(3\)$/)
+    assert.match(row(s, ROW_FILTER), /^ PREFIX=\*  DEST=\(ALL\)  OWNER=\*  SORT=\*/)
+    assert.equal(row(s, ROW_HEADERS).trimEnd(), ' NP  ID       Status   Classes      Pods   CPU%   Real CPUs  MemGB Version')
+    assert.deepEqual(dataRows(s).map(r => r.slice(5, 13).trim()), ['A', 'B', 'C'], 'the IDs, by name')
+    assert.match(dataRows(s)[0], /A +ACTIVE +WORKER +3 +12\.50 +512 +4 +8\.0 v1\.31\.5\+k3s1/)
+    assert.match(dataRows(s)[1], /CONTROL-PLAN /)
+    assert.match(dataRows(s)[2], /INACTIVE .* - +- /)
+    const screen = s.terminal.screen
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 2, 14)).color, E3270Color.RED, 'INACTIVE in red')
+    await aid(s, E3270Aid.PF11)
+    assert.match(row(s, ROW_HEADERS), /IP +Age +NodeName/)
+    assert.match(dataRows(s)[0], /172\.18\.0\.2 +21d +node-a/)
+    await command(s, 'sort pods d')
+    await command(s, 'prefix node-b')
+    assert.equal(dataRows(s).length, 1)
+})
+
+test('INIT: D describes the node; ? shows its pods on the DA, of every type, and PF3 comes back to INIT', async () => {
+    const { s, source } = await openInit()
+    np(s, 0, 'd')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.DESCRIBE, objectKind: ESdsfObjectKind.NODE, targetNamespace: '', targetName: 'node-a' })
+    assert.match(row(s, ROW_TITLE), /DESCRIBE NODE-A {3}INIT/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.INIT)
+    np(s, 0, '?')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.DA)
+    assert.deepEqual(jobnames(s), ['API-1', 'PROXY-A'], 'its pods, the DaemonSet one too')
+    assert.match(row(s, ROW_FILTER), /NODE=node-a/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.INIT)
+    await command(s, 'da')
+    assert.deepEqual(jobnames(s), ['API-1', 'WEB-1'], 'DA typed again: every node, the DADFLT')
+    assert.doesNotMatch(row(s, ROW_FILTER), /NODE=/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.MENU)
+})
+
+test('INIT: Z, S and P ask first; 1 halts, starts and drains; 2 leaves the nodes alone', async () => {
+    const { s, source } = await openInit()
+    np(s, 0, 'z')
+    await enter(s)
+    let text = screenText(s)
+    assert.match(text, /Confirm Action/)
+    assert.match(text, /Halt \(cordon\): no new pods, the running ones stay:/)
+    assert.match(text, /Z   node node-a/)
+    type(s, '2')
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /ACTION CANCELLED$/)
+    assert.equal(source.requests.filter(r => r.command === ESdsfCommand.NODE).length, 0)
+
+    np(s, 0, 'z')
+    await enter(s)
+    type(s, '1')
+    await enter(s)
+    assert.deepEqual(source.requests.filter(r => r.command === ESdsfCommand.NODE).at(-1), { command: ESdsfCommand.NODE, objectKind: ESdsfObjectKind.NODE, targetName: 'node-a', nodeAction: ESdsfNodeAction.HALT })
+    assert.match(row(s, ROW_TITLE), /COMMAND ISSUED$/)
+    assert.match(dataRows(s)[0], /A +HALTED/)
+
+    np(s, 0, 's')
+    await enter(s)
+    text = screenText(s)
+    assert.match(text, /Start \(uncordon\): the node takes pods again:/)
+    type(s, '1')
+    await enter(s)
+    assert.equal(source.requests.filter(r => r.command === ESdsfCommand.NODE).at(-1)?.nodeAction, ESdsfNodeAction.START)
+    assert.match(dataRows(s)[0], / A +ACTIVE/)
+
+    source.evicted = 2
+    np(s, 0, 'p')
+    await enter(s)
+    assert.match(screenText(s), /Drain: halt and evict its pods \(not DaemonSet ones\):/)
+    type(s, '1')
+    await enter(s)
+    assert.equal(source.requests.filter(r => r.command === ESdsfCommand.NODE).at(-1)?.nodeAction, ESdsfNodeAction.DRAIN)
+    assert.match(dataRows(s)[0], /A +DRAINED/)
+    await aid(s, E3270Aid.PF1)
+    assert.match(row(s, ROW_FILTER), /node node-a: 2 pod\(s\) evicted/)
+})
+
+test('INIT: several actions in one window; a refused one says NOT AUTHORIZED with the reason; C is not an INIT command', async () => {
+    const { s, source } = await openInit()
+    source.refuseNode.add('node-b')
+    np(s, 0, 'z')
+    np(s, 1, 'p')
+    await enter(s)
+    const text = screenText(s)
+    assert.match(text, /The actions listed:/)
+    assert.match(text, /Z   node node-a/)
+    assert.match(text, /P   node node-b/)
+    type(s, '1')
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /NOT AUTHORIZED$/)
+    await aid(s, E3270Aid.PF1)
+    assert.match(row(s, ROW_FILTER), /node node-b: needs 'admin'/)
+    np(s, 0, 'c')
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /INVALID LINE COMMAND$/)
+    await aid(s, E3270Aid.PF1)
+    assert.match(row(s, ROW_FILTER), /S, \?, D, Z, P/)
+    np(s, 0, 'z')
+    await enter(s)
+    assert.doesNotMatch(row(s, ROW_TITLE), /INVALID/)
+})
+
+test('the DA does not take the INIT commands', async () => {
+    const { s } = await openDa([podOf('a')])
+    np(s, 0, 'z')
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /INVALID LINE COMMAND$/)
 })

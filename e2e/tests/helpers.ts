@@ -82,6 +82,9 @@ spec:
 const kubectl = (args: string[], input?: string): string =>
     execFileSync('kubectl', args, { input, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] })
 
+// A read of the cluster, to check what SDSF shows against it (never to change anything).
+export const cluster = (...args: string[]): string => kubectl(args)
+
 export const createFixture = (): void => {
     kubectl(['delete', 'namespace', NAMESPACE, '--ignore-not-found', '--wait=true', '--timeout=60s'])
     kubectl(['apply', '-f', '-'], FIXTURE)

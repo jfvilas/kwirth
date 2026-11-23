@@ -66,6 +66,7 @@ option menu. `DA` lists the pods.
 | `DA OJOB` · `DA NOTSU` · `DA ALL` … | The DA parameters of z/OS, up to four: types `JOB` (pods of a Job), `STC` (other owners), `TSU` (bare pods), `INIT` (DaemonSets); positions `IN` (ready), `OUT` (pending, no node), `READY` (pending on a node), `TRANS` (not ready or terminating). `O…` only that one, `NO…` not that one, `ALL`/`ALLT`/`ALLP` everything, all types, all positions (with the ended pods) |
 | `ST` | Jobs and CronJobs as batch jobs, with their JES queue (EXECUTION, PRINT, INPUT, HOLD) and status |
 | `O` · `H` | Only the ended Jobs (output queue) · only the suspended CronJobs (held output) |
+| `INIT` | The nodes as initiators: ACTIVE, HALTED (cordoned, with pods), DRAINED (cordoned and empty) or INACTIVE (not Ready), with their roles, pods, CPU and memory |
 | `LOG` | The cluster's events as the SYSLOG, newest at the bottom; Enter reads again and follows the log when you are at the bottom |
 | `PREFIX api*` · `OWNER sa*` | Filter by pod name or service account; `*` any string, `%` one character; `*` alone resets |
 | `DEST kube-system` · `DEST (ALL)` | One namespace, or all |
@@ -84,6 +85,18 @@ option menu. `DA` lists the pods.
 | `?` | List the containers; `S` on one browses its log |
 | `D` | Browse the pod, Job or CronJob described, with its events |
 | `C` · `CA` | Cancel (delete) the pod, Job or CronJob (with its pods), after a confirmation window; CA with no grace period |
+
+On **INIT**, as on SDSF's initiator panel:
+
+| Command | Does |
+|---|---|
+| `S` | Start the node: uncordon it |
+| `Z` | Halt it: cordon, so no new pods go there; the running ones stay |
+| `P` | Drain it: cordon, then evict every pod but the DaemonSet and static ones (PodDisruptionBudgets apply; the evictions refused are reported) |
+| `D` | Browse the node described, with its pods and events |
+| `?` | The DA of the node's pods; PF3 comes back to INIT |
+
+`S`, `Z` and `P` need the `admin` scope and always ask first.
 
 Several line commands in one Enter run as SDSF runs them: the cancels together through one
 confirmation, then the rest one after the other, each when PF3 comes back from the previous one.
@@ -124,11 +137,11 @@ says the metrics are not available.
 
 | Scope | Allows |
 |---|---|
-| `sdsf$read` | Open SDSF, list pods, Jobs and CronJobs, browse logs, describe them |
+| `sdsf$read` | Open SDSF, list pods, Jobs, CronJobs and nodes, browse logs, describe them |
 | `sdsf$cancel` | Also cancel (delete) pods, Jobs and CronJobs |
 
-`cluster` and `admin` reach everything. Pods are always limited to the namespaces and pods the access
-key covers.
+`cluster` and `admin` reach everything, and only `admin` starts, halts or drains a node. Pods are always
+limited to the namespaces and pods the access key covers — the Pods count of a node too.
 
 ## Screenshots
 
@@ -151,6 +164,10 @@ The cluster's events as the SYSLOG, with `LOG` (warnings in yellow, failures in 
 Jobs and CronJobs, with `ST`:
 
 ![Status display](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/st.png)
+
+The nodes as initiators, with `INIT`:
+
+![Initiator display](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/init.png)
 
 Cancelling a pod, with `C`:
 

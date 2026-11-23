@@ -98,7 +98,7 @@ Y además la captura de pantalla se puede confundir con una sesión real de x327
 | Display (`D`) | Describe del pod, como mensajes en browse |
 | SYSLOG / `LOG` | Events del cluster (fase 2) |
 | `ST`, `O`, `H` | Jobs y CronJobs (fase 2) |
-| `INIT` | Nodes (fase 2) |
+| `INIT` | Nodes (fase 2): initiators; `S` start (uncordon), `Z` halt (cordon), `P` drain — `admin` (D13) |
 
 ## 6. Requisitos funcionales
 
@@ -265,6 +265,9 @@ y volver, se conservan el panel, el scroll, el PREFIX y el campo de comando.
   - los colores, highlights y AID llevan sus códigos reales del data stream.
 
   El servidor sería un codificador más sobre el mismo motor.
+- **D13** (2026-11-23, el usuario) — **`INIT` sigue a SDSF**: en ese panel `S` arranca el initiator
+  (uncordon), `Z` lo para (cordon) y `P` lo drena; `?` muestra sus pods en el DA. Las tres acciones exigen
+  `admin` y confirmación; ver el panel, `sdsf$read`, con la columna `Pods` limitada a lo que alcanza la key.
 - **D12** (2026-11-23, el usuario) — **El setup del canal pregunta la terminal** al arrancar: modelo
   `3278-2 (24x80)`, `3278-3 (32x80)` (por defecto) o `3278-5 (27x132)`, y `Colour (3279)` (por defecto)
   o `Green phosphor (3278)`. Va en el `instanceConfig`, así que viaja con el workspace; cambiarlo es

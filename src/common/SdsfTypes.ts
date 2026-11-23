@@ -28,12 +28,15 @@ export interface ISdsfInstanceConfig {
 // Namespaced with 'sdsf$', the project convention. READ opens the channel and lists pods; CANCEL deletes them.
 export enum ESdsfScope {
     READ = 'sdsf$read',
-    CANCEL = 'sdsf$cancel'
+    CANCEL = 'sdsf$cancel',
+    // Kwirth's own, on top of every ladder. ADMIN is what starts, halts and drains a node (INIT's S, Z and P).
+    CLUSTER = 'cluster',
+    ADMIN = 'admin'
 }
 
 // The ladder a key is measured against. 'cluster' and 'admin' sit on top, as in every plugin, so an
 // administrator reaches SDSF without being granted its own scopes.
-export const SDSF_SCOPE_LADDER: string[] = ['', ESdsfScope.READ, ESdsfScope.CANCEL, 'cluster', 'admin']
+export const SDSF_SCOPE_LADDER: string[] = ['', ESdsfScope.READ, ESdsfScope.CANCEL, ESdsfScope.CLUSTER, ESdsfScope.ADMIN]
 
 export const SDSF_SCOPES: IExtensionScope[] = [
     { scope: ESdsfScope.READ,   label: 'SDSF · Read',   description: 'Open SDSF: list pods, browse their logs and describe them' },
@@ -48,14 +51,36 @@ export enum ESdsfCommand {
     DESCRIBE = 'describe',     // a pod described as text lines, events included
     CANCEL = 'cancel',         // delete the target (force = grace period 0, the CA line command)
     EVENTS = 'events',         // the cluster's events, oldest first: what the LOG panel shows as the SYSLOG
-    JOBS = 'jobs'              // every Job and CronJob the key reaches: the ST, O and H panels
+    JOBS = 'jobs',             // every Job and CronJob the key reaches: the ST, O and H panels
+    NODES = 'nodes',           // every node, as the INIT panel's initiators
+    NODE = 'node'              // start, halt or drain a node (nodeAction); admin only
 }
 
-// What a request's target is. LOG is for pods only; DESCRIBE and CANCEL take the three.
+// What a request's target is. LOG is for pods only; CANCEL for pods, Jobs and CronJobs; DESCRIBE for all four.
 export enum ESdsfObjectKind {
     POD = 'Pod',
     JOB = 'Job',
-    CRONJOB = 'CronJob'
+    CRONJOB = 'CronJob',
+    NODE = 'Node'              // cluster-scoped: no targetNamespace
+}
+
+/*
+    A node as an initiator of the INIT panel, with SDSF's own status words:
+      ACTIVE    Ready and taking pods              DRAINED    cordoned and empty (DaemonSet and static pods aside)
+      HALTED    cordoned, still running pods       INACTIVE   not Ready
+*/
+export enum ESdsfNodeStatus {
+    ACTIVE = 'ACTIVE',
+    HALTED = 'HALTED',
+    DRAINED = 'DRAINED',
+    INACTIVE = 'INACTIVE'
+}
+
+// The INIT line commands that change a node: S starts it (uncordon), Z halts it (cordon), P drains it.
+export enum ESdsfNodeAction {
+    START = 'start',
+    HALT = 'halt',
+    DRAIN = 'drain'
 }
 
 // Where a Job or a CronJob stands, as the ST panel's Queue and Status columns say it.
@@ -65,6 +90,22 @@ export enum ESdsfJobState {
     FAILED = 'failed',         // a Job that gave up: PRINT, in red
     SCHEDULED = 'scheduled',   // a CronJob waiting for its next run: INPUT
     SUSPENDED = 'suspended'    // a CronJob with suspend: true: HOLD
+}
+
+// One row of the INIT panel: a node, already taken out of the API object.
+export interface ISdsfNode {
+    name: string
+    id: string                 // the initiator's ID: short and unique, the name without what every node shares
+    status: ESdsfNodeStatus
+    roles: string[]            // node-role.kubernetes.io/<role>: the classes the initiator serves
+    pods: number               // its non-terminated pods THE KEY REACHES (the rest are not counted, not shown)
+    cpus: number               // allocatable CPU, in cores
+    memory: number             // allocatable memory, bytes
+    cpu?: number               // % of its allocatable CPU its pods used over the last interval (metrics provider)
+    memoryUsed?: number        // working set of its pods, bytes (metrics provider)
+    version: string            // kubelet
+    internalIp: string
+    created: string            // ISO
 }
 
 // One row of the ST, O and H panels: a Job or a CronJob, already taken out of the API object.
@@ -173,6 +214,7 @@ export interface ISdsfRequest {
     containerName?: string
     tailLines?: number         // LOG
     force?: boolean            // CANCEL
+    nodeAction?: ESdsfNodeAction  // NODE
 }
 
 export interface ISdsfMessage extends IInstanceMessage, ISdsfRequest {
@@ -194,4 +236,6 @@ export interface ISdsfMessageResponse extends IInstanceMessage {
     lines?: string[]           // LOG and DESCRIBE
     events?: ISdsfEvent[]      // EVENTS
     jobs?: ISdsfJob[]          // JOBS
+    nodes?: ISdsfNode[]        // NODES
+    evicted?: number           // NODE drain: the evictions the API server accepted
 }

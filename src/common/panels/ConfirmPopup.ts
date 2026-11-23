@@ -1,23 +1,33 @@
 import { Painter } from './Painter'
-import { ELineCommand } from './LineCommand'
+import { ELineCommand, isCancel } from './LineCommand'
 import { ESdsfObjectKind } from '../SdsfTypes'
 import { E3270Color } from '../terminal/Terminal3270Types'
 
 /*
     SDSF's CONFIRM ACTION window, over the table: what is about to be done and to which objects, and a
-    one-character field to answer 1 (process) or 2 (cancel the action). It is always shown before a C or CA
-    (R4): cancelling deletes for real — a pod, or a Job or CronJob with its pods.
+    one-character field to answer 1 (process) or 2 (cancel the action). It is always shown before what
+    changes the cluster: C and CA (R4), which delete a pod, or a Job or CronJob with its pods; and S, Z and P
+    on INIT, which start, halt or drain a node.
 */
-export interface ICancelTarget {
+export interface IActionTarget {
     kind: ESdsfObjectKind
-    namespace: string
+    namespace: string          // '' for a node
     name: string
-    jobId: string
+    jobId: string              // '' for a node
 }
 
-export interface IPendingCancel {
-    command: ELineCommand.CANCEL | ELineCommand.CANCEL_FORCE
-    target: ICancelTarget
+export interface IPendingAction {
+    command: ELineCommand
+    target: IActionTarget
+}
+
+// What the window says is about to happen, when every pending action is the same.
+const WHAT: Partial<Record<ELineCommand, string>> = {
+    [ELineCommand.CANCEL]: 'Cancel (delete), with the grace period:',
+    [ELineCommand.CANCEL_FORCE]: 'Cancel (delete) immediately, with no grace period:',
+    [ELineCommand.SELECT]: 'Start (uncordon): the node takes pods again:',
+    [ELineCommand.HALT]: 'Halt (cordon): no new pods, the running ones stay:',
+    [ELineCommand.PURGE]: 'Drain: halt and evict its pods (not DaemonSet ones):'
 }
 
 // Row 8 when it fits (a 32x80 or a 27x132), higher on a 24x80; always centred across.
@@ -27,18 +37,23 @@ const SELECTION_COL_OFFSET = 3
 const MAX_LISTED = 5
 
 // What is shown before the namespace/name: a pod is just its name, as on the DA; the rest say what they are.
-const objectOf = (t: ICancelTarget): string => (t.kind === ESdsfObjectKind.POD ? '' : t.kind.toLowerCase() + ' ') + `${t.namespace}/${t.name}`
+const objectOf = (t: IActionTarget): string => t.kind === ESdsfObjectKind.NODE
+    ? `node ${t.name}`
+    : (t.kind === ESdsfObjectKind.POD ? '' : t.kind.toLowerCase() + ' ') + `${t.namespace}/${t.name}`
+
+const whatOf = (pending: IPendingAction[]): string => {
+    const first = pending[0]?.command
+    if (first && pending.every(c => c.command === first)) return WHAT[first] ?? ''
+    if (pending.every(c => isCancel(c.command))) return 'Cancel (delete); CA with no grace period:'
+    return 'The actions listed:'
+}
 
 // Paints the window; returns the attribute address of the selection field.
-export const paintConfirm = (p: Painter, pending: IPendingCancel[]): number => {
+export const paintConfirm = (p: Painter, pending: IPendingAction[]): number => {
     p.protectAll()
-    const listed = pending.slice(0, MAX_LISTED).map(c => `   ${c.command.padEnd(2)}  ${c.target.jobId}  ${objectOf(c.target).slice(0, 44)}`)
+    const listed = pending.slice(0, MAX_LISTED).map(c => `   ${c.command.padEnd(2)}  ${c.target.jobId ? c.target.jobId + '  ' : ''}${objectOf(c.target).slice(0, 44)}`)
     if (pending.length > MAX_LISTED) listed.push(`   ... and ${pending.length - MAX_LISTED} more`)
-    const what = pending.every(c => c.command === ELineCommand.CANCEL_FORCE)
-        ? 'Cancel (delete) immediately, with no grace period:'
-        : pending.some(c => c.command === ELineCommand.CANCEL_FORCE)
-            ? 'Cancel (delete); CA with no grace period:'
-            : 'Cancel (delete), with the grace period:'
+    const what = whatOf(pending)
     const lines = [
         '',
         ' Pending action:',

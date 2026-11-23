@@ -1,8 +1,8 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.5.0` (npm `@jfvilas` y marketplace de
+> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.6.0` (npm `@jfvilas` y marketplace de
 > github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`), el S7 (`ST`/`O`/`H`), el S7b
-> (parámetros del `DA`) y el S9 (modelo de terminal y color en el setup). **Lo siguiente es el S8** (`INIT`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
+> (parámetros del `DA`), el S9 (modelo de terminal y color en el setup) y el S8 (`INIT`). Fase 2 completa. Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
 > **Dónde vive:** `~/github/kwirth/plugins/sdsf`. Es un repo anidado (rama `main`, identidad `jfvilas`)
@@ -259,7 +259,29 @@ Se publica cada stream con su versión.
   (sustituye a `MODEL3_ROWS`/`MODEL3_COLS`) y los campos `model` y `display` de `ISdsfInstanceConfig`;
   `display` en `ISdsfData`.
 
-**S8 — `INIT` (nodes, con drain para `admin`)**: pendiente.
+**S8 — `INIT` (nodes, con drain para `admin`)** · ✅ VALIDADO (2026-11-23), publicado como 0.6.0.
+- **Panel** `SDSF INITIATOR DISPLAY  ALL CLASSES`: `ID` (corto y único: el nombre sin lo que comparten todos
+  los nodos, p. ej. `AGENT`/`SERVER` en k3d), `Status` (`ACTIVE`, `HALTED` = cordoned con pods, `DRAINED` =
+  cordoned y vacío salvo DaemonSet/estáticos, `INACTIVE` = no Ready), `Classes` (roles), `Pods` (solo los que
+  alcanza la key), `CPU%` y `Real` del provider de métricas (sobre la CPU allocatable del propio nodo),
+  `CPUs`, `MemGB`, `Version`; con PF11, `IP`, `Age` y `NodeName`. PREFIX filtra por nombre; SORT, FIND, &nn.
+- **Comandos de línea, como SDSF (decisión del usuario):** `S` = start (uncordon), `Z` = halt (cordon), `P` =
+  drain (cordon + eviction de cada pod salvo DaemonSet y estáticos; respeta los PDB y reporta los rechazados);
+  los tres solo `admin` y siempre con la ventana de confirmación. `D` = describe (`kubectl describe node`, con
+  los pods y events que alcanza la key). `?` = el DA de los pods del nodo, de todos los tipos (`NODE=` en la
+  línea de filtros), y PF3 vuelve al INIT. `C`/`CA` no son del INIT, y `Z`/`P` no son del DA.
+- **Ver el INIT** = `sdsf$read`; los nodos no tienen namespace (decisión del usuario).
+- **Back:** `listNode`, `readNode`, `patchNode` y `createNamespacedPodEviction` del `coreApi` del core (solo
+  `import type`). El cordon es JSON patch `add` (no `replace`, que falla si el nodo nunca tuvo
+  `spec.unschedulable`). No se usan `nodeCordon`/`nodeDrain` de common-back porque se tragan los errores.
+- **CPU por nodo:** suma de deltas contenedor a contenedor, así un pod que termina no anula la cifra del nodo
+  (fallo visto en el e2e con el nodo server).
+- **Refactor:** la ventana de confirmación sirve para cualquier acción: `ICancelTarget`/`IPendingCancel` pasan
+  a `IActionTarget`/`IPendingAction`. El menú pierde el campo `available` (todo existe ya).
+- **Tipos nuevos** (⚠️ a validar): `ISdsfNode`, `ESdsfNodeStatus`, `ESdsfNodeAction`, `ESdsfCommand.NODES` y
+  `NODE`, `ESdsfObjectKind.NODE`, `ESdsfScope.CLUSTER`/`ADMIN`, `ISdsfRequest.nodeAction`,
+  `ISdsfMessageResponse.nodes`/`evicted`, `ELineCommand.HALT`/`PURGE`, `INodeUsage`, y los renombrados
+  `IActionTarget`/`IPendingAction`.
 
 ## 4. Backlog (fuera del MVP)
 
