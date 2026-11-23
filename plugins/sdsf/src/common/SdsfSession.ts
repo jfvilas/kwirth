@@ -1,28 +1,46 @@
 import { Terminal3270 } from './terminal/Terminal3270'
-import { E3270Aid, E3270Lock, I3270Input, I3270KeyAction } from './terminal/Terminal3270Types'
+import { E3270Aid, E3270Color, E3270Lock, I3270Input, I3270KeyAction } from './terminal/Terminal3270Types'
 import { Painter } from './panels/Painter'
 import { EMessageLevel } from './panels/SdsfLayout'
 import { paintPrimaryMenu } from './panels/PrimaryMenu'
-import { columnsFrom, DATA_ROWS, IDaFields, offsetLeftOf, paintDa, ROW_FIRST_DATA } from './panels/DaPanel'
+import { columnsFrom, DATA_ROWS, filterLine, ITableFields, offsetLeftOf, paintDa, paintTable, ROW_FIRST_DATA } from './panels/DaPanel'
 import { cell, DA_COLUMNS, findColumn, IDaColumn, JOBNAME_COLUMN, stepNameOf } from './panels/DaColumns'
+import { ST_COLUMNS, ST_JOBNAME_COLUMN } from './panels/JobColumns'
 import { EPrimaryCommand, IPrimaryCommand, parsePrimaryCommand } from './panels/PrimaryCommand'
 import { IReadyState, paintReady } from './panels/ReadyPanel'
 import { sdsfPatternMatches } from './panels/Wildcard'
 import { ELineCommand, isCancel, parseLineCommand } from './panels/LineCommand'
-import { IPendingCancel, paintConfirm } from './panels/ConfirmPopup'
+import { ICancelTarget, IPendingCancel, paintConfirm } from './panels/ConfirmPopup'
 import { dsidOf, IContainerFields, paintContainers } from './panels/ContainersPanel'
 import { BROWSE_ROWS, BROWSE_WIDTH, browseRows, paintBrowse, printable, ROW_FIRST_BROWSE } from './panels/BrowsePanel'
 import { eventColor, syslogLine } from './panels/SyslogFormat'
 import { ISdsfDataSource } from './SdsfDataSource'
-import { ESdsfCommand, ESdsfError, ESdsfMetricsState, ISdsfContainer, ISdsfEvent, ISdsfMessageResponse, ISdsfPod, ISdsfRequest } from './SdsfTypes'
-import { E3270Color } from './terminal/Terminal3270Types'
+import {
+    ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfObjectKind, ISdsfContainer, ISdsfEvent, ISdsfJob,
+    ISdsfMessageResponse, ISdsfPod, ISdsfRequest
+} from './SdsfTypes'
 
 export enum ESdsfPanel {
     MENU = 'menu',
     DA = 'da',
-    CONTAINERS = 'containers',     // the ? panel: the pod's containers
-    BROWSE = 'browse',             // a log or a describe
+    ST = 'st',                     // every Job and CronJob
+    OUTPUT = 'output',             // O: the Jobs that ended
+    HELD = 'held',                 // H: the CronJobs suspended
+    CONTAINERS = 'containers',     // the ? panel: a pod's containers
+    BROWSE = 'browse',             // a log, a describe or the SYSLOG
     READY = 'ready'                // after END: TSO's READY
+}
+
+// The panels that are a table of objects with NP line commands.
+const TABLE_PANELS: ESdsfPanel[] = [ESdsfPanel.DA, ESdsfPanel.ST, ESdsfPanel.OUTPUT, ESdsfPanel.HELD]
+const isTable = (panel: ESdsfPanel): boolean => TABLE_PANELS.includes(panel)
+const isJobTable = (panel: ESdsfPanel): boolean => panel === ESdsfPanel.ST || panel === ESdsfPanel.OUTPUT || panel === ESdsfPanel.HELD
+const jobKindOrder = (j: ISdsfJob): number => j.kind === ESdsfObjectKind.JOB ? 0 : 1
+
+const JOB_TITLES: Partial<Record<ESdsfPanel, string>> = {
+    [ESdsfPanel.ST]: 'SDSF STATUS DISPLAY ALL CLASSES',
+    [ESdsfPanel.OUTPUT]: 'SDSF OUTPUT ALL CLASSES ALL FORMS',
+    [ESdsfPanel.HELD]: 'SDSF HELD OUTPUT DISPLAY ALL CLASSES'
 }
 
 const RETRIEVE_DEPTH = 10
@@ -36,12 +54,17 @@ const ERROR_MESSAGE: Record<ESdsfError, string> = {
 }
 
 // What runs once the fresh list is in: scrolling and finding need to know how many rows there are.
-type TAfterList = (view: ISdsfPod[]) => void
+type TAfterList = () => void
 
-// A line command waiting its turn, with the pod it was typed against.
+// The row a line command was typed against: a pod (DA) or a Job/CronJob (ST, O, H).
+interface ILineTarget {
+    pod?: ISdsfPod
+    job?: ISdsfJob
+}
+
 interface IQueuedLine {
     command: ELineCommand
-    pod: ISdsfPod
+    target: ILineTarget
 }
 
 // The browse on screen, and where PF3 goes back to.
@@ -66,9 +89,10 @@ interface IBrowse {
     Block mode, as on the real thing: an AID locks the keyboard (X SYSTEM), the session asks the back when the
     panel needs it, paints the answer and only then unlocks.
 
-    Line commands run as SDSF runs them: several typed in one Enter are queued. The cancels go together
-    through one CONFIRM ACTION window; the others (S, ?, D) one after the other, the next when PF3 comes back
-    from the previous one.
+    The tables (DA for pods; ST, O and H for Jobs and CronJobs) share everything: filters, SORT, scrolling,
+    FIND and the line commands. Several line commands typed in one Enter are queued as SDSF does: the cancels
+    together through one CONFIRM ACTION window, then S, ? and D one after the other, the next when PF3 comes
+    back from the previous one.
 */
 export class SdsfSession {
     readonly terminal = new Terminal3270()
@@ -90,21 +114,23 @@ export class SdsfSession {
     private retrieveIndex = 0
     private fields = { command: -1, scroll: -1 }
 
-    // DA
+    // tables
+    private listPanel = ESdsfPanel.DA       // the table PF3 from a browse or the ? panel returns to
     private pods: ISdsfPod[] = []
+    private jobs: ISdsfJob[] = []
     private metrics = ESdsfMetricsState.UNAVAILABLE
     private clusterCpu?: number
     private prefix = ''
     private dest = ''
     private owner = ''
-    private sortColumn?: IDaColumn
+    private sortHeader = ''
     private sortDescending = false
     private top = 0
     private offset = 0
     private findText = ''
     private auto = 0
     private timer?: ReturnType<typeof setInterval>
-    private npFields: IDaFields['np'] = []
+    private npFields: { attribute: number; target: ILineTarget }[] = []
 
     // line commands
     private queue: IQueuedLine[] = []
@@ -194,22 +220,11 @@ export class SdsfSession {
         const retrieving = input.aid === E3270Aid.PF12 || command.verb === EPrimaryCommand.RETRIEVE
         if (!retrieving && command.verb !== EPrimaryCommand.NONE && command.verb !== EPrimaryCommand.AMOUNT) this.remember(command.text)
 
-        switch (this.panel) {
-            case ESdsfPanel.MENU:
-                this.menuAttention(input, command)
-                return
-            case ESdsfPanel.DA:
-                this.daAttention(input, command, value)
-                return
-            case ESdsfPanel.CONTAINERS:
-                this.containersAttention(input, command, value)
-                return
-            case ESdsfPanel.BROWSE:
-                this.browseAttention(input, command)
-                return
-            default:
-                this.finish()
-        }
+        if (this.panel === ESdsfPanel.MENU) this.menuAttention(input, command)
+        else if (isTable(this.panel)) this.tableAttention(input, command, value)
+        else if (this.panel === ESdsfPanel.CONTAINERS) this.containersAttention(input, command, value)
+        else if (this.panel === ESdsfPanel.BROWSE) this.browseAttention(input, command)
+        else this.finish()
     }
 
     private remember = (text: string): void => {
@@ -260,22 +275,54 @@ export class SdsfSession {
                 return true
             case EPrimaryCommand.SORT: {
                 if (!arg) {
-                    this.sortColumn = undefined
+                    this.sortHeader = ''
                     this.sortDescending = false
                     return true
                 }
-                const column = findColumn(arg)
+                // on the menu, SORT is for the DA; on a Job table, for its columns
+                const column = isJobTable(this.panel)
+                    ? findColumn(arg, [ST_JOBNAME_COLUMN, ...ST_COLUMNS])
+                    : findColumn(arg, [JOBNAME_COLUMN, ...DA_COLUMNS])
                 const order = (command.args[1] ?? 'A').toUpperCase()
                 if (!column || (order !== 'A' && order !== 'D')) {
                     this.invalid(command, 'INVALID COLUMN NAME')
                     return true
                 }
-                this.sortColumn = column
+                this.sortHeader = column.header
                 this.sortDescending = order === 'D'
                 return true
             }
             default:
                 return false
+        }
+    }
+
+    // DA, ST, O and H from any panel. Going between the DA and the Job tables starts the view afresh.
+    private openTable = (panel: ESdsfPanel): void => {
+        if (isJobTable(panel) !== isJobTable(this.listPanel)) {
+            this.offset = 0
+            this.sortHeader = ''
+            this.sortDescending = false
+        }
+        this.top = 0
+        this.panel = panel
+        this.listPanel = panel
+        this.queue = []
+        this.refresh([])
+    }
+
+    private tableFor = (verb: EPrimaryCommand): ESdsfPanel | undefined => {
+        switch (verb) {
+            case EPrimaryCommand.DA:
+                return ESdsfPanel.DA
+            case EPrimaryCommand.ST:
+                return ESdsfPanel.ST
+            case EPrimaryCommand.OUTPUT:
+                return ESdsfPanel.OUTPUT
+            case EPrimaryCommand.HELD:
+                return ESdsfPanel.HELD
+            default:
+                return undefined
         }
     }
 
@@ -294,16 +341,15 @@ export class SdsfSession {
             this.finish()
             return
         }
+        const table = this.tableFor(command.verb)
+        if (table) {
+            this.openTable(table)
+            return
+        }
         switch (command.verb) {
-            case EPrimaryCommand.DA:
-                this.panel = ESdsfPanel.DA
-                this.top = 0
-                this.refresh([])
-                return
             case EPrimaryCommand.LOG:
                 this.openSyslog(ESdsfPanel.MENU)
                 return
-            case EPrimaryCommand.ST:
             case EPrimaryCommand.INIT:
                 this.notAvailable(command)
                 break
@@ -316,7 +362,7 @@ export class SdsfSession {
         this.finish()
     }
 
-    private daAttention = (input: I3270Input, command: IPrimaryCommand, value: (address: number) => string | undefined): void => {
+    private tableAttention = (input: I3270Input, command: IPrimaryCommand, value: (address: number) => string | undefined): void => {
         const after: TAfterList[] = []
         switch (input.aid) {
             case E3270Aid.CLEAR:
@@ -341,17 +387,17 @@ export class SdsfSession {
                 this.finish()
                 return
             case E3270Aid.PF5:
-                after.push(view => this.find(view, true))
+                after.push(() => this.find(true))
                 break
             case E3270Aid.PF7:
             case E3270Aid.PF8: {
                 const amount = command.verb === EPrimaryCommand.AMOUNT ? command.args[0] : this.scroll
                 const down = input.aid === E3270Aid.PF8
-                after.push(view => this.scrollBy(view, amount, down, input.cursor))
+                after.push(() => this.scrollBy(amount, down, input.cursor))
                 break
             }
             case E3270Aid.PF10:
-                this.offset = offsetLeftOf(this.offset, this.terminal.screen.cols)
+                this.scrollLeft()
                 break
             case E3270Aid.PF11:
                 this.scrollRight()
@@ -362,7 +408,7 @@ export class SdsfSession {
 
         // The line commands typed in NP, in screen order. One that SDSF does not know stops them all.
         const typedLines = this.npFields
-            .map(f => ({ typed: value(f.attribute) ?? '', pod: f.pod }))
+            .map(f => ({ typed: value(f.attribute) ?? '', target: f.target }))
             .filter(l => l.typed.trim() !== '')
         const queue: IQueuedLine[] = []
         for (const line of typedLines) {
@@ -372,10 +418,15 @@ export class SdsfSession {
                 queue.length = 0
                 break
             }
-            queue.push({ command: parsed, pod: line.pod })
+            queue.push({ command: parsed, target: line.target })
         }
 
         if (!this.filterCommand(command)) {
+            const table = this.tableFor(command.verb)
+            if (table && table !== this.panel) {
+                this.openTable(table)
+                return
+            }
             switch (command.verb) {
                 case EPrimaryCommand.END:
                 case EPrimaryCommand.RETURN:
@@ -387,14 +438,16 @@ export class SdsfSession {
                     this.finish()
                     return
                 case EPrimaryCommand.NONE:
-                case EPrimaryCommand.DA:
                 case EPrimaryCommand.AMOUNT:
+                case EPrimaryCommand.DA:
+                case EPrimaryCommand.ST:
+                case EPrimaryCommand.OUTPUT:
+                case EPrimaryCommand.HELD:
                     break
                 case EPrimaryCommand.LOG:
                     this.queue = []
-                    this.openSyslog(ESdsfPanel.DA)
+                    this.openSyslog(this.panel)
                     return
-                case EPrimaryCommand.ST:
                 case EPrimaryCommand.INIT:
                     this.notAvailable(command)
                     break
@@ -402,17 +455,17 @@ export class SdsfSession {
                     this.top = 0
                     break
                 case EPrimaryCommand.BOTTOM:
-                    after.push(view => { this.top = Math.max(0, view.length - DATA_ROWS) })
+                    after.push(() => { this.top = Math.max(0, this.viewSize() - DATA_ROWS) })
                     break
                 case EPrimaryCommand.UP:
                 case EPrimaryCommand.DOWN: {
                     const amount = command.args[0] ?? this.scroll
                     const down = command.verb === EPrimaryCommand.DOWN
-                    after.push(view => this.scrollBy(view, amount.toUpperCase(), down, input.cursor))
+                    after.push(() => this.scrollBy(amount.toUpperCase(), down, input.cursor))
                     break
                 }
                 case EPrimaryCommand.LEFT:
-                    this.offset = offsetLeftOf(this.offset, this.terminal.screen.cols)
+                    this.scrollLeft()
                     break
                 case EPrimaryCommand.RIGHT:
                     this.scrollRight()
@@ -424,11 +477,11 @@ export class SdsfSession {
                         break
                     }
                     this.findText = text
-                    after.push(view => this.find(view, false))
+                    after.push(() => this.find(false))
                     break
                 }
                 case EPrimaryCommand.RFIND:
-                    after.push(view => this.find(view, true))
+                    after.push(() => this.find(true))
                     break
                 case EPrimaryCommand.AUTO: {
                     const seconds = Number(command.args[0] ?? 0)
@@ -463,9 +516,7 @@ export class SdsfSession {
             this.ready = { lines: [] }
             this.clearMessage()
             if (upper === 'SDSF DA') {
-                this.panel = ESdsfPanel.DA
-                this.top = 0
-                this.refresh([])
+                this.openTable(ESdsfPanel.DA)
                 return
             }
             this.panel = ESdsfPanel.MENU
@@ -494,43 +545,70 @@ export class SdsfSession {
 
     // ── Line commands ───────────────────────────────────────────────────────────────────────────────
 
+    // The pod a line command on a Job means: its newest. For a CronJob, the newest pod of its newest Job.
+    private podOfJob = (job: ISdsfJob): ISdsfPod | undefined => {
+        const newestPod = (j: ISdsfJob) => this.pods
+            .filter(p => p.namespace === j.namespace && p.controllerKind === 'Job' && p.controllerName === j.name)
+            .sort((a, b) => b.created.localeCompare(a.created))[0]
+        if (job.kind === ESdsfObjectKind.JOB) return newestPod(job)
+        const runs = this.jobs
+            .filter(j => j.kind === ESdsfObjectKind.JOB && j.namespace === job.namespace && j.cronJob === job.name)
+            .sort((a, b) => b.start.localeCompare(a.start))
+        for (const run of runs) {
+            const pod = newestPod(run)
+            if (pod) return pod
+        }
+        return undefined
+    }
+
+    private cancelTargetOf = (target: ILineTarget): ICancelTarget => target.job
+        ? { kind: target.job.kind, namespace: target.job.namespace, name: target.job.name, jobId: target.job.jobId }
+        : { kind: ESdsfObjectKind.POD, namespace: target.pod!.namespace, name: target.pod!.name, jobId: target.pod!.jobId }
+
     /*
         The next thing the queue asks for. The cancels go first and all together, through the CONFIRM ACTION
-        window; then S, ? and D one by one. With the queue empty, back on the DA with a fresh list.
+        window; then S, ? and D one by one. With the queue empty, back on the table with a fresh list.
     */
     private runQueue = (): void => {
         const cancels = this.queue.filter(q => isCancel(q.command))
         if (cancels.length > 0) {
             this.queue = this.queue.filter(q => !isCancel(q.command))
-            this.confirm = cancels.map(c => ({ command: c.command as ELineCommand.CANCEL | ELineCommand.CANCEL_FORCE, pod: c.pod }))
-            this.panel = ESdsfPanel.DA
+            this.confirm = cancels.map(c => ({ command: c.command as ELineCommand.CANCEL | ELineCommand.CANCEL_FORCE, target: this.cancelTargetOf(c.target) }))
+            this.panel = this.listPanel
             this.finish()
             return
         }
         const next = this.queue.shift()
         if (!next) {
-            this.panel = ESdsfPanel.DA
+            this.panel = this.listPanel
             this.refresh([])
             return
         }
+        const job = next.target.job
+        const pod = job ? this.podOfJob(job) : next.target.pod
         switch (next.command) {
             case ELineCommand.SELECT: {
-                const main = next.pod.containers.find(c => c.name === stepNameOf(next.pod))
-                if (!main) {
-                    this.say('NO OUTPUT', EMessageLevel.WARNING, `${next.pod.name} has no container whose log could be browsed.`)
+                const main = pod?.containers.find(c => c.name === stepNameOf(pod))
+                if (!pod || !main) {
+                    this.say('NO OUTPUT', EMessageLevel.WARNING, `${job?.name ?? pod?.name ?? ''} has no pod whose log could be browsed.`)
                     this.runQueue()
                     return
                 }
-                this.openLog(next.pod, main, ESdsfPanel.DA)
+                this.openLog(pod, main, this.listPanel)
                 return
             }
             case ELineCommand.QUERY:
-                this.containersPod = next.pod
+                if (!pod) {
+                    this.say('NO OUTPUT', EMessageLevel.WARNING, `${job?.name ?? ''} has no pod to show.`)
+                    this.runQueue()
+                    return
+                }
+                this.containersPod = pod
                 this.panel = ESdsfPanel.CONTAINERS
                 this.finish()
                 return
             case ELineCommand.DISPLAY:
-                this.openDescribe(next.pod)
+                this.openDescribe(this.cancelTargetOf(next.target))
                 return
             default:
                 this.runQueue()
@@ -546,7 +624,7 @@ export class SdsfSession {
             return
         }
         if (input.aid !== E3270Aid.ENTER || selection !== '1') {
-            this.say('ENTER 1 OR 2', EMessageLevel.ERROR, '1 processes the cancel, 2 (or PF3) leaves the pods alone.')
+            this.say('ENTER 1 OR 2', EMessageLevel.ERROR, '1 processes the cancel, 2 (or PF3) leaves them alone.')
             this.finish()
             return
         }
@@ -554,40 +632,39 @@ export class SdsfSession {
         void this.cancelAll(pending).then(this.runQueue)
     }
 
-    // One CANCEL per pod, in order. The first refusal is what the message says; every failure goes in the long one.
+    // One CANCEL per object, in order. The first refusal is what the message says; every failure goes in the long one.
     private cancelAll = async (pending: IPendingCancel[]): Promise<void> => {
         const failures: string[] = []
-        let firstError: ISdsfMessageResponse | undefined
+        let firstError: ESdsfError | undefined
         for (const p of pending) {
-            const request: ISdsfRequest = { command: ESdsfCommand.CANCEL, podNamespace: p.pod.namespace, podName: p.pod.name, force: p.command === ELineCommand.CANCEL_FORCE }
+            const request: ISdsfRequest = {
+                command: ESdsfCommand.CANCEL, objectKind: p.target.kind,
+                targetNamespace: p.target.namespace, targetName: p.target.name, force: p.command === ELineCommand.CANCEL_FORCE
+            }
             try {
                 const response = await this.source.request(request)
                 if (!response.ok) {
-                    firstError = firstError ?? response
-                    failures.push(`${p.pod.namespace}/${p.pod.name}: ${response.detail ?? response.error}`)
+                    firstError = firstError ?? response.error ?? ESdsfError.FAILED
+                    failures.push(`${p.target.namespace}/${p.target.name}: ${response.detail ?? response.error}`)
                 }
             }
             catch (err) {
-                firstError = firstError ?? { ok: false, error: ESdsfError.FAILED, detail: err instanceof Error ? err.message : String(err) } as ISdsfMessageResponse
-                failures.push(`${p.pod.namespace}/${p.pod.name}: ${err instanceof Error ? err.message : String(err)}`)
+                firstError = firstError ?? ESdsfError.FAILED
+                failures.push(`${p.target.namespace}/${p.target.name}: ${err instanceof Error ? err.message : String(err)}`)
             }
         }
-        if (firstError) {
-            this.say(ERROR_MESSAGE[firstError.error ?? ESdsfError.FAILED], EMessageLevel.ERROR, failures.join('; '))
-        }
-        else {
-            this.say('COMMAND ISSUED', EMessageLevel.INFO, `${pending.length} pod(s) cancelled.`)
-        }
+        if (firstError) this.say(ERROR_MESSAGE[firstError], EMessageLevel.ERROR, failures.join('; '))
+        else this.say('COMMAND ISSUED', EMessageLevel.INFO, `${pending.length} object(s) cancelled.`)
     }
 
     private openLog = (pod: ISdsfPod, container: ISdsfContainer, back: ESdsfPanel): void => {
         const heading = `OUTPUT DISPLAY ${pod.name.toUpperCase().slice(0, 8).padEnd(8)} ${pod.jobId}  DSID ${String(dsidOf(pod, container)).padStart(5)}`
-        this.openBrowse({ command: ESdsfCommand.LOG, podNamespace: pod.namespace, podName: pod.name, containerName: container.name }, heading, back)
+        this.openBrowse({ command: ESdsfCommand.LOG, objectKind: ESdsfObjectKind.POD, targetNamespace: pod.namespace, targetName: pod.name, containerName: container.name }, heading, back)
     }
 
-    private openDescribe = (pod: ISdsfPod): void => {
-        const heading = `DESCRIBE ${pod.name.toUpperCase().slice(0, 8).padEnd(8)} ${pod.jobId}`
-        this.openBrowse({ command: ESdsfCommand.DESCRIBE, podNamespace: pod.namespace, podName: pod.name }, heading, ESdsfPanel.DA)
+    private openDescribe = (target: ICancelTarget): void => {
+        const heading = `DESCRIBE ${target.name.toUpperCase().slice(0, 8).padEnd(8)} ${target.jobId}`
+        this.openBrowse({ command: ESdsfCommand.DESCRIBE, objectKind: target.kind, targetNamespace: target.namespace, targetName: target.name }, heading, this.listPanel)
     }
 
     // Asks for the lines and opens the browse; when they do not come, the message stays on the panel it came from.
@@ -603,7 +680,8 @@ export class SdsfSession {
             })
             .catch(this.sayNoResponse)
             .finally(() => {
-                if (this.panel !== ESdsfPanel.BROWSE && back === ESdsfPanel.DA && this.queue.length === 0) {
+                if (this.panel !== ESdsfPanel.BROWSE && isTable(back) && this.queue.length === 0) {
+                    this.panel = back
                     this.refresh([])
                     return
                 }
@@ -615,7 +693,7 @@ export class SdsfSession {
         const pod = this.containersPod
         if (!pod || input.aid === E3270Aid.PF3 || input.aid === E3270Aid.PF4 || command.verb === EPrimaryCommand.END || command.verb === EPrimaryCommand.RETURN) {
             this.containersPod = undefined
-            this.panel = ESdsfPanel.DA
+            this.panel = this.listPanel
             this.runQueue()
             return
         }
@@ -658,12 +736,12 @@ export class SdsfSession {
     private browseAttention = (input: I3270Input, command: IPrimaryCommand): void => {
         const browse = this.browse
         if (!browse || input.aid === E3270Aid.PF3 || input.aid === E3270Aid.PF4 || command.verb === EPrimaryCommand.END || command.verb === EPrimaryCommand.RETURN) {
-            const back = browse?.back ?? ESdsfPanel.DA
-            // the automatic update belongs to the LOG: leaving it stops it, as leaving the DA does
+            const back = browse?.back ?? this.listPanel
+            // the automatic update belongs to the LOG: leaving it stops it, as leaving a table does
             if (browse?.syslog) this.stopAuto()
             this.browse = undefined
             this.panel = back
-            if (back === ESdsfPanel.DA) this.runQueue()
+            if (isTable(back)) this.runQueue()
             else this.finish()
             return
         }
@@ -733,7 +811,7 @@ export class SdsfSession {
 
     /*
         What only the LOG does on top of a browse: Enter alone reads the events again, PREFIX and DEST filter
-        them (by object name and namespace, as they filter the DA), and &nn keeps it running. Returns true
+        them (by object name and namespace, as they filter the tables), and &nn keeps it running. Returns true
         when it took the command; false lets the browse handle it (scrolling, FIND…).
     */
     private syslogCommand = (input: I3270Input, command: IPrimaryCommand): boolean => {
@@ -802,41 +880,48 @@ export class SdsfSession {
 
     // ── Data ────────────────────────────────────────────────────────────────────────────────────────
 
-    // Asks for a fresh list, then runs what needed it and paints. The keyboard stays locked meanwhile.
+    /*
+        Asks for a fresh list, then runs what needed it and paints. The keyboard stays locked meanwhile. A Job
+        table asks for the pods too: S and ? on a Job go to its pod.
+    */
     private refresh = (after: TAfterList[]): void => {
-        this.source.request({ command: ESdsfCommand.LIST })
-            .then(response => this.applyList(response, after))
+        const requests = isJobTable(this.panel)
+            ? [this.source.request({ command: ESdsfCommand.LIST }), this.source.request({ command: ESdsfCommand.JOBS })]
+            : [this.source.request({ command: ESdsfCommand.LIST })]
+        Promise.all(requests)
+            .then(responses => this.applyLists(responses, after))
             .catch(this.sayNoResponse)
             .finally(this.finish)
     }
 
-    private applyList = (response: ISdsfMessageResponse, after: TAfterList[]): void => {
-        if (!response.ok) {
-            this.sayError(response)
+    private applyLists = (responses: ISdsfMessageResponse[], after: TAfterList[]): void => {
+        const failed = responses.find(r => !r.ok)
+        if (failed) {
+            this.sayError(failed)
             return
         }
-        this.pods = response.pods ?? []
-        this.metrics = response.metrics ?? ESdsfMetricsState.UNAVAILABLE
-        this.clusterCpu = response.clusterCpu
-        const view = this.view()
-        for (const run of after) run(view)
-        this.top = Math.max(0, Math.min(this.top, view.length - 1))
-        if (!this.message && this.metrics === ESdsfMetricsState.UNAVAILABLE) {
+        for (const response of responses) {
+            if (response.command === ESdsfCommand.JOBS) {
+                this.jobs = response.jobs ?? []
+                continue
+            }
+            this.pods = response.pods ?? []
+            this.metrics = response.metrics ?? ESdsfMetricsState.UNAVAILABLE
+            this.clusterCpu = response.clusterCpu
+        }
+        for (const run of after) run()
+        this.top = Math.max(0, Math.min(this.top, this.viewSize() - 1))
+        if (!this.message && this.panel === ESdsfPanel.DA && this.metrics === ESdsfMetricsState.UNAVAILABLE) {
             this.say('METRICS PROVIDER NOT AVAILABLE', EMessageLevel.WARNING, "Real and CPU% need Kwirth's 'metrics' provider, which is not installed on this cluster.")
         }
     }
 
-    // The pods as the DA shows them: filtered by PREFIX, OWNER and DEST, in the SORT order.
-    view = (): ISdsfPod[] => {
+    private sortRows = <T extends { name: string }>(rows: T[], columns: IDaColumn<T>[], natural: (a: T, b: T) => number): T[] => {
         const now = this.now()
-        const pods = this.pods.filter(p =>
-            sdsfPatternMatches(this.prefix, p.name) &&
-            sdsfPatternMatches(this.owner, p.owner) &&
-            (!this.dest || p.namespace.toLowerCase() === this.dest))
-        const column = this.sortColumn
-        if (!column) return pods.sort((a, b) => a.namespace.localeCompare(b.namespace) || a.name.localeCompare(b.name))
+        const column = this.sortHeader ? findColumn(this.sortHeader, columns) : undefined
+        if (!column) return rows.sort(natural)
         const sign = this.sortDescending ? -1 : 1
-        return pods.sort((a, b) => {
+        return rows.sort((a, b) => {
             const x = column.sortKey(a, now)
             const y = column.sortKey(b, now)
             const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y))
@@ -844,10 +929,55 @@ export class SdsfSession {
         })
     }
 
+    // The pods as the DA shows them: filtered by PREFIX, OWNER and DEST, in the SORT order.
+    view = (): ISdsfPod[] => this.sortRows(
+        this.pods.filter(p =>
+            sdsfPatternMatches(this.prefix, p.name) &&
+            sdsfPatternMatches(this.owner, p.owner) &&
+            (!this.dest || p.namespace.toLowerCase() === this.dest)),
+        [JOBNAME_COLUMN, ...DA_COLUMNS],
+        (a, b) => a.namespace.localeCompare(b.namespace) || a.name.localeCompare(b.name))
+
+    // The Jobs and CronJobs a Job table shows: ST all of them, O the Jobs that ended, H the CronJobs suspended.
+    jobView = (): ISdsfJob[] => {
+        const inPanel = (j: ISdsfJob) => {
+            switch (this.panel) {
+                case ESdsfPanel.OUTPUT:
+                    return j.kind === ESdsfObjectKind.JOB && (j.state === ESdsfJobState.COMPLETE || j.state === ESdsfJobState.FAILED)
+                case ESdsfPanel.HELD:
+                    return j.state === ESdsfJobState.SUSPENDED
+                default:
+                    return true
+            }
+        }
+        return this.sortRows(
+            this.jobs.filter(j =>
+                inPanel(j) &&
+                sdsfPatternMatches(this.prefix, j.name) &&
+                sdsfPatternMatches(this.owner, j.owner) &&
+                (!this.dest || j.namespace.toLowerCase() === this.dest)),
+            [ST_JOBNAME_COLUMN, ...ST_COLUMNS],
+            // Jobs before CronJobs: what ran, then what will run
+            (a, b) => a.namespace.localeCompare(b.namespace) || jobKindOrder(a) - jobKindOrder(b) || a.name.localeCompare(b.name))
+    }
+
+    private viewSize = (): number => isJobTable(this.panel) ? this.jobView().length : this.view().length
+
+    // Every row as text: every column as shown, plus the names whole (a column may cut them). What FIND searches.
+    private viewTexts = (): string[] => {
+        const now = this.now()
+        if (isJobTable(this.panel)) {
+            const columns = [ST_JOBNAME_COLUMN, ...ST_COLUMNS]
+            return this.jobView().map(j => [...columns.map(c => cell(c, j, now)), j.namespace, j.name].join(' ').toUpperCase())
+        }
+        const columns = [JOBNAME_COLUMN, ...DA_COLUMNS]
+        return this.view().map(p => [...columns.map(c => cell(c, p, now)), p.namespace, p.name].join(' ').toUpperCase())
+    }
+
     /*
         How many rows a vertical scroll moves, from the scroll amount: PAGE, HALF, DATA (a page less one row),
-        CSR (the cursor's row goes to the top, or to the bottom going up), MAX, or a number. undefined for MAX
-        (the caller goes to the end) and for an amount that is none of those (the message is already said).
+        CSR (the cursor's row goes to the top, or to the bottom going up), MAX, or a number. undefined for an
+        amount that is none of those (the message is already said).
     */
     private rowsFor = (amount: string, down: boolean, page: number, cursorRow: number): number | 'MAX' | undefined => {
         const onData = cursorRow >= 0 && cursorRow < page
@@ -870,35 +1000,43 @@ export class SdsfSession {
         }
     }
 
-    private scrollBy = (view: ISdsfPod[], amount: string, down: boolean, cursor: number): void => {
+    private scrollBy = (amount: string, down: boolean, cursor: number): void => {
+        const size = this.viewSize()
         const rows = this.rowsFor(amount, down, DATA_ROWS, this.terminal.screen.rowOf(cursor) - ROW_FIRST_DATA)
         if (rows === undefined) return
         if (rows === 'MAX') {
-            this.top = down ? Math.max(0, view.length - DATA_ROWS) : 0
+            this.top = down ? Math.max(0, size - DATA_ROWS) : 0
             return
         }
-        this.top = down ? Math.min(this.top + rows, Math.max(0, view.length - 1)) : Math.max(0, this.top - rows)
+        this.top = down ? Math.min(this.top + rows, Math.max(0, size - 1)) : Math.max(0, this.top - rows)
     }
 
-    // PF11: to the first column that did not fit; at the last page it stays.
+    // PF10: a screen of columns back. PF11: to the first column that did not fit; at the last page it stays.
+    private scrollLeft = (): void => {
+        const cols = this.terminal.screen.cols
+        this.offset = isJobTable(this.panel) ? offsetLeftOf(this.offset, cols, ST_COLUMNS) : offsetLeftOf(this.offset, cols, DA_COLUMNS)
+    }
+
     private scrollRight = (): void => {
-        const next = this.offset + columnsFrom(this.offset, this.terminal.screen.cols).length
-        if (next < DA_COLUMNS.length) this.offset = next
+        const cols = this.terminal.screen.cols
+        const [shown, total] = isJobTable(this.panel)
+            ? [columnsFrom(this.offset, cols, ST_COLUMNS).length, ST_COLUMNS.length]
+            : [columnsFrom(this.offset, cols, DA_COLUMNS).length, DA_COLUMNS.length]
+        if (this.offset + shown < total) this.offset += shown
     }
 
-    // FIND / RFIND: the next pod whose row (every column, the full names too) contains the text, wrapping.
-    private find = (view: ISdsfPod[], again: boolean): void => {
+    // FIND / RFIND: the next row (every column, the full names too) that contains the text, wrapping.
+    private find = (again: boolean): void => {
         if (!this.findText) {
             this.say('NO PREVIOUS FIND', EMessageLevel.ERROR, 'RFIND (PF5) repeats a FIND: there has been none yet.')
             return
         }
-        const now = this.now()
         const wanted = this.findText.toUpperCase()
-        const text = (p: ISdsfPod) => [...[JOBNAME_COLUMN, ...DA_COLUMNS].map(c => cell(c, p, now)), p.namespace, p.name].join(' ').toUpperCase()
+        const texts = this.viewTexts()
         const start = again ? this.top + 1 : this.top
-        for (let i = 0; i < view.length; i++) {
-            const index = (start + i) % view.length
-            if (text(view[index]).includes(wanted)) {
+        for (let i = 0; i < texts.length; i++) {
+            const index = (start + i) % texts.length
+            if (texts[index].includes(wanted)) {
                 this.top = index
                 if (again && index < start) this.say('BOTTOM OF DATA REACHED', EMessageLevel.INFO, 'The search went past the last row and continued from the first.')
                 return
@@ -994,11 +1132,11 @@ export class SdsfSession {
         this.auto = 0
     }
 
-    // A refresh the operator did not ask for: on the DA or the LOG, never over a locked keyboard, a window or input.
+    // A refresh the operator did not ask for: on a table or the LOG, never over a locked keyboard, a window or input.
     tick = (): void => {
         if (this.disposed || this.confirm) return
         const onLog = this.panel === ESdsfPanel.BROWSE && this.browse?.syslog === true
-        if (this.panel !== ESdsfPanel.DA && !onLog) return
+        if (!isTable(this.panel) && !onLog) return
         if (this.terminal.lock !== E3270Lock.NONE || this.terminal.screen.modifiedFields().length > 0) return
         this.terminal.lock = E3270Lock.SYSTEM
         this.notify()
@@ -1014,6 +1152,7 @@ export class SdsfSession {
         const painter = new Painter(screen)
         this.npFields = []
         this.containerFields = []
+        const sort = this.sortHeader ? `${this.sortHeader.toUpperCase()}/${this.sortDescending ? 'D' : 'A'}` : ''
         switch (this.panel) {
             case ESdsfPanel.MENU:
                 this.fields = paintPrimaryMenu(painter, {
@@ -1023,7 +1162,6 @@ export class SdsfSession {
                 screen.cursor = this.fields.command + 1
                 return
             case ESdsfPanel.DA: {
-                const sort = this.sortColumn ? `${this.sortColumn.header.toUpperCase()}/${this.sortDescending ? 'D' : 'A'}` : ''
                 const fields = paintDa(painter, {
                     system: this.system, dest: this.dest, prefix: this.prefix, owner: this.owner, sort, auto: this.auto,
                     pods: this.view(), top: this.top, offset: this.offset, clusterCpu: this.clusterCpu,
@@ -1032,9 +1170,25 @@ export class SdsfSession {
                     longMessage: this.showLong ? this.longMessage : '',
                     now: this.now()
                 })
-                this.fields = { command: fields.command, scroll: fields.scroll }
-                this.npFields = fields.np
-                screen.cursor = fields.command + 1
+                this.tableFields(fields, f => ({ pod: f.row }))
+                if (this.confirm) this.confirmField = paintConfirm(painter, this.confirm)
+                return
+            }
+            case ESdsfPanel.ST:
+            case ESdsfPanel.OUTPUT:
+            case ESdsfPanel.HELD: {
+                const fields = paintTable(painter, {
+                    title: JOB_TITLES[this.panel] ?? '',
+                    filter: filterLine(this.prefix, this.dest, this.owner, sort, this.auto),
+                    fixed: ST_JOBNAME_COLUMN,
+                    columns: ST_COLUMNS,
+                    rows: this.jobView(),
+                    top: this.top, offset: this.offset, command: this.command, scroll: this.scroll,
+                    message: this.message, messageLevel: this.messageLevel,
+                    longMessage: this.showLong ? this.longMessage : '',
+                    now: this.now()
+                })
+                this.tableFields(fields, f => ({ job: f.row }))
                 if (this.confirm) this.confirmField = paintConfirm(painter, this.confirm)
                 return
             }
@@ -1068,5 +1222,12 @@ export class SdsfSession {
             default:
                 return
         }
+    }
+
+    // What a table paint returns, kept for the next attention: the command line and each row's NP field.
+    private tableFields = <T>(fields: ITableFields<T>, targetOf: (f: { row: T }) => ILineTarget): void => {
+        this.fields = { command: fields.command, scroll: fields.scroll }
+        this.npFields = fields.np.map(f => ({ attribute: f.attribute, target: targetOf(f) }))
+        this.terminal.screen.cursor = fields.command + 1
     }
 }

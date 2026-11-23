@@ -174,6 +174,29 @@ test('LOG shows the fixture\'s events as the SYSLOG, newest at the bottom; PF3 b
     expect(await row(page, 2)).toMatch(/^ SDSF DA /)
 })
 
+test('ST lists the fixture\'s Job and CronJob in JES terms; S on the Job browses its pod; O and H split them', async () => {
+    // still DEST=sdsf-e2e; batch* leaves the Deployment's pods out
+    await command(page, 'prefix batch*')
+    await command(page, 'st')
+    expect(await row(page, 2)).toMatch(/^ SDSF STATUS DISPLAY ALL CLASSES +LINE 1-2 \(2\)$/)
+    expect(await row(page, 6)).toMatch(/^ {5}BATCH-JO JOB\d{5} DEFAULT +1 PRINT +J COMPLETE 1\/1/)
+    expect(await row(page, 7)).toMatch(/^ {5}BATCH-CR JOB\d{5} DEFAULT +1 HOLD +C SUSPENDED/)
+    await shot('st')
+    await lineCommand(page, 6, 's')
+    await enter(page)
+    expect(await screenText(page)).toContain('sdsf-e2e job done')
+    await aid(page, 'F3')
+    expect(await row(page, 2)).toMatch(/SDSF STATUS DISPLAY/)
+    await command(page, 'o')
+    expect(await row(page, 2)).toMatch(/^ SDSF OUTPUT ALL CLASSES ALL FORMS +LINE 1-1 \(1\)$/)
+    await command(page, 'h')
+    expect(await row(page, 2)).toMatch(/^ SDSF HELD OUTPUT DISPLAY ALL CLASSES +LINE 1-1 \(1\)$/)
+    expect(await row(page, 6)).toMatch(/BATCH-CR/)
+    await command(page, 'prefix demo*')
+    await command(page, 'da')
+    expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
+})
+
 test('C asks first: 2 leaves the pod alone', async () => {
     const before = fixturePods()
     const [first] = await demoRows()

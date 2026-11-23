@@ -15,7 +15,9 @@ export interface IMenuOption {
 
 export const MENU_LEFT: IMenuOption[] = [
     { code: 'DA', description: 'Active pods', available: true },
-    { code: 'ST', description: 'Status of jobs', available: false },
+    { code: 'O', description: 'Output queue (ended jobs)', available: true },
+    { code: 'H', description: 'Held output queue (suspended cronjobs)', available: true },
+    { code: 'ST', description: 'Status of jobs (jobs and cronjobs)', available: true },
     { code: 'LOG', description: 'System log (events)', available: true }
 ]
 

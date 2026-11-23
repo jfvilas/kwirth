@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { sdsfPatternMatches } from '../src/common/panels/Wildcard'
 import { EPrimaryCommand, parsePrimaryCommand } from '../src/common/panels/PrimaryCommand'
-import { ageOf, dpOf, findColumn, posOf, procStepOf, statusOf, stepNameOf, DA_COLUMNS } from '../src/common/panels/DaColumns'
+import { ageOf, dpOf, findColumn, posOf, procStepOf, statusOf, stepNameOf, DA_COLUMNS, JOBNAME_COLUMN } from '../src/common/panels/DaColumns'
 import { columnsFrom, offsetLeftOf } from '../src/common/panels/DaPanel'
 import { ESdsfQos, ISdsfPod } from '../src/common/SdsfTypes'
 
@@ -85,13 +85,14 @@ test('step, proc step, status and age', () => {
 })
 
 test('columns: findColumn ignores case; the pages of PF11 cover every column once', () => {
-    assert.equal(findColumn('sio')?.header, 'SIO')
-    assert.equal(findColumn('JOBNAME')?.header, 'JOBNAME')
-    assert.equal(findColumn('nope'), undefined)
+    const all = [JOBNAME_COLUMN, ...DA_COLUMNS]
+    assert.equal(findColumn('sio', all)?.header, 'SIO')
+    assert.equal(findColumn('JOBNAME', all)?.header, 'JOBNAME')
+    assert.equal(findColumn('nope', all), undefined)
     const pages: string[][] = []
     let offset = 0
     for (;;) {
-        const shown = columnsFrom(offset, 80)
+        const shown = columnsFrom(offset, 80, DA_COLUMNS)
         pages.push(shown.map(c => c.column.header))
         if (offset + shown.length >= DA_COLUMNS.length) break
         offset += shown.length
@@ -101,9 +102,9 @@ test('columns: findColumn ignores case; the pages of PF11 cover every column onc
     // and PF10 from each page start goes back to the previous one
     let back = offset
     const starts: number[] = []
-    while (back > 0) { back = offsetLeftOf(back, 80); starts.push(back) }
+    while (back > 0) { back = offsetLeftOf(back, 80, DA_COLUMNS); starts.push(back) }
     assert.equal(starts[starts.length - 1], 0)
-    assert.equal(offsetLeftOf(0, 80), 0)
+    assert.equal(offsetLeftOf(0, 80, DA_COLUMNS), 0)
 })
 
 // ─── SYSLOG format (S6) ───────────────────────────────────────────────────────
@@ -139,4 +140,40 @@ test('SYSLOG colours: green Normal, yellow Warning, red a failing Warning', () =
         assert.equal(isFailure(ev({ type: 'Warning', reason })), true, reason)
     }
     assert.equal(isFailure(ev({ type: 'Normal', reason: 'Killing' })), false, 'a Normal is never a failure')
+})
+
+// ─── ST columns (S7) ──────────────────────────────────────────────────────────
+
+import { durationOf, jobStatusOf, queueOf, ST_COLUMNS } from '../src/common/panels/JobColumns'
+import { ESdsfJobState, ESdsfObjectKind, ISdsfJob } from '../src/common/SdsfTypes'
+
+const job = (over: Partial<ISdsfJob> = {}): ISdsfJob => ({
+    kind: ESdsfObjectKind.JOB, name: 'j', namespace: 'n', uid: 'u', jobId: 'JOB00001', owner: 'o', cronJob: '', schedule: '',
+    state: ESdsfJobState.RUNNING, parallelism: 1, completions: 3, active: 1, succeeded: 1, failed: 0,
+    start: '2026-11-22T11:00:00.000Z', end: '', ...over
+})
+
+test('ST Queue and Status in JES terms', () => {
+    assert.equal(queueOf(job()), 'EXECUTION')
+    assert.equal(queueOf(job({ state: ESdsfJobState.COMPLETE })), 'PRINT')
+    assert.equal(queueOf(job({ state: ESdsfJobState.FAILED })), 'PRINT')
+    assert.equal(queueOf(job({ state: ESdsfJobState.SCHEDULED })), 'INPUT')
+    assert.equal(queueOf(job({ state: ESdsfJobState.SUSPENDED })), 'HOLD')
+    assert.equal(jobStatusOf(job()), 'ACTIVE 1/3')
+    assert.equal(jobStatusOf(job({ completions: 0, succeeded: 0 })), 'ACTIVE 0/1', 'no completions set: one')
+    assert.equal(jobStatusOf(job({ state: ESdsfJobState.COMPLETE, succeeded: 3 })), 'COMPLETE 3/3')
+    assert.equal(jobStatusOf(job({ state: ESdsfJobState.FAILED, failed: 6 })), 'FAILED 6')
+    assert.equal(jobStatusOf(job({ state: ESdsfJobState.SCHEDULED, active: 0 })), 'SCHEDULED')
+    assert.equal(jobStatusOf(job({ state: ESdsfJobState.SCHEDULED, active: 2 })), 'SCHEDULED 2 ACT')
+    assert.equal(jobStatusOf(job({ state: ESdsfJobState.SUSPENDED })), 'SUSPENDED')
+})
+
+test('ST duration: running till now, ended till the end, nothing for a CronJob', () => {
+    const now = Date.parse('2026-11-22T11:00:45Z')
+    assert.equal(durationOf(job(), now), '45s')
+    assert.equal(durationOf(job({ end: '2026-11-22T11:30:00.000Z' }), now), '30m')
+    assert.equal(durationOf(job({ end: '2026-11-22T14:00:00.000Z' }), now), '3h')
+    assert.equal(durationOf(job({ start: '' }), now), '')
+    assert.equal(durationOf(job({ kind: ESdsfObjectKind.CRONJOB }), now), '')
+    assert.deepEqual(ST_COLUMNS.map(c => c.header), ['JobID', 'Owner', 'Prty', 'Queue', 'C', 'Status', 'Age', 'Schedule', 'CronJob', 'Dur', 'Namespace', 'JobName'])
 })

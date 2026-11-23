@@ -25,8 +25,45 @@ export enum ESdsfCommand {
     LIST = 'list',             // every pod the key can see, with its metrics when the provider has them
     LOG = 'log',               // a container's log, read once (it is a browse, not a tail)
     DESCRIBE = 'describe',     // a pod described as text lines, events included
-    CANCEL = 'cancel',         // delete a pod (force = grace period 0, the CA line command)
-    EVENTS = 'events'          // the cluster's events, oldest first: what the LOG panel shows as the SYSLOG
+    CANCEL = 'cancel',         // delete the target (force = grace period 0, the CA line command)
+    EVENTS = 'events',         // the cluster's events, oldest first: what the LOG panel shows as the SYSLOG
+    JOBS = 'jobs'              // every Job and CronJob the key reaches: the ST, O and H panels
+}
+
+// What a request's target is. LOG is for pods only; DESCRIBE and CANCEL take the three.
+export enum ESdsfObjectKind {
+    POD = 'Pod',
+    JOB = 'Job',
+    CRONJOB = 'CronJob'
+}
+
+// Where a Job or a CronJob stands, as the ST panel's Queue and Status columns say it.
+export enum ESdsfJobState {
+    RUNNING = 'running',       // a Job not finished yet: EXECUTION
+    COMPLETE = 'complete',     // a Job that ended well: PRINT
+    FAILED = 'failed',         // a Job that gave up: PRINT, in red
+    SCHEDULED = 'scheduled',   // a CronJob waiting for its next run: INPUT
+    SUSPENDED = 'suspended'    // a CronJob with suspend: true: HOLD
+}
+
+// One row of the ST, O and H panels: a Job or a CronJob, already taken out of the API object.
+export interface ISdsfJob {
+    kind: ESdsfObjectKind.JOB | ESdsfObjectKind.CRONJOB
+    name: string
+    namespace: string
+    uid: string
+    jobId: string              // 'JOB12345', stable for the life of the object
+    owner: string              // the service account its pods run as
+    cronJob: string            // the CronJob a Job was created by, '' when none
+    schedule: string           // a CronJob's schedule
+    state: ESdsfJobState
+    parallelism: number
+    completions: number        // 0 when the Job does not set it
+    active: number
+    succeeded: number
+    failed: number
+    start: string              // ISO; for a CronJob, its last schedule
+    end: string                // ISO; when a Job completed, '' otherwise
 }
 
 // Why a command failed. The front decides on THIS, never on the text that travels with it.
@@ -103,14 +140,15 @@ export interface ISdsfEvent {
 }
 
 /*
-    What the session asks for. The target is named podNamespace/podName/containerName and NOT namespace/pod/
+    What the session asks for. The target is named targetNamespace/targetName/containerName and NOT namespace/pod/
     container on purpose: with those names the core reads them as an instance config and lists the valid
     namespaces and pods on every command — API calls for nothing, since the channel authorises by itself.
 */
 export interface ISdsfRequest {
     command: ESdsfCommand
-    podNamespace?: string
-    podName?: string
+    objectKind?: ESdsfObjectKind  // the target's kind; a pod when absent
+    targetNamespace?: string
+    targetName?: string
     containerName?: string
     tailLines?: number         // LOG
     force?: boolean            // CANCEL
@@ -134,4 +172,5 @@ export interface ISdsfMessageResponse extends IInstanceMessage {
     clusterCpu?: number        // LIST: CPU used by every pod, % of the cluster
     lines?: string[]           // LOG and DESCRIBE
     events?: ISdsfEvent[]      // EVENTS
+    jobs?: ISdsfJob[]          // JOBS
 }

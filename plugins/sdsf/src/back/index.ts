@@ -7,21 +7,26 @@ import {
 import { IChannelInstances } from '@kwirthmagnify/kwirth-common'
 import { IBackChannelObject, IChannel, keyMatchesResource } from '@kwirthmagnify/kwirth-common-back'
 import type { IProviderHandle } from '@kwirthmagnify/kwirth-common-back'
-import type { CoreV1Api } from '@kubernetes/client-node'
+import type { BatchV1Api, CoreV1Api } from '@kubernetes/client-node'
 import { Request, Response } from 'express'
 import {
-    ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfScope, ISdsfMessage, ISdsfMessageResponse,
+    ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfObjectKind, ESdsfScope, ISdsfMessage, ISdsfMessageResponse,
     SDSF_SCOPES, SDSF_SCOPE_LADDER
 } from '../common/SdsfTypes'
 import { mapPod } from './PodMapper'
-import { describePod } from './Describe'
+import { describeCronJob, describeJob, describePod } from './Describe'
 import { mapEvent, sortEvents } from './EventMapper'
+import { mapCronJob, mapJob } from './JobMapper'
 import { usageOf } from './PodMetrics'
 import { IMetricsCluster } from './MetricsProviderTypes'
 
-// The slice of the core's ClusterInfo this channel reads. Structural, since a plugin cannot import it.
+/*
+    The slice of the core's ClusterInfo this channel reads. Structural, since a plugin cannot import it — and
+    type-only on the client: the API objects are the CORE's, never a client of SDSF's own in the bundle.
+*/
 export interface ISdsfClusterInfo {
     coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'readNamespacedPod' | 'readNamespacedPodLog' | 'deleteNamespacedPod' | 'listNamespacedEvent' | 'listEventForAllNamespaces'>
+    batchApi: Pick<BatchV1Api, 'listJobForAllNamespaces' | 'listCronJobForAllNamespaces' | 'readNamespacedJob' | 'readNamespacedCronJob' | 'deleteNamespacedJob' | 'deleteNamespacedCronJob'>
     getProvider(providerId: string, consumer: unknown): IProviderHandle | undefined
 }
 
@@ -204,15 +209,23 @@ export class SdsfChannel implements IChannel {
             ok: false
         }
         const fail = (error: ESdsfError, detail: string): ISdsfMessageResponse => ({ ...response, ok: false, error, detail })
-        const podNamespace = message.podNamespace ?? ''
-        const podName = message.podName ?? ''
+        const targetNamespace = message.targetNamespace ?? ''
+        const targetName = message.targetName ?? ''
         const containerName = message.containerName ?? ''
+        const kind = message.objectKind ?? ESdsfObjectKind.POD
+        const isList = message.command === ESdsfCommand.LIST || message.command === ESdsfCommand.EVENTS || message.command === ESdsfCommand.JOBS
 
-        // Everything but the two lists names one pod, and the key has to reach it.
-        if (message.command !== ESdsfCommand.LIST && message.command !== ESdsfCommand.EVENTS) {
-            if (!podNamespace || !podName) return fail(ESdsfError.BAD_REQUEST, 'No pod given')
-            if (!keyMatchesResource(instance.accessKey, { namespace: podNamespace, pod: podName, container: containerName || undefined })) {
-                return fail(ESdsfError.NOT_AUTHORIZED, `Your key does not reach ${podNamespace}/${podName}`)
+        /*
+            Everything but the lists names one object, and the key has to reach it: a pod by its namespace, name
+            and container; a Job or a CronJob by its namespace (a key limited to pods reaches no Job).
+        */
+        if (!isList) {
+            if (!targetNamespace || !targetName) return fail(ESdsfError.BAD_REQUEST, 'No target given')
+            const target = kind === ESdsfObjectKind.POD
+                ? { namespace: targetNamespace, pod: targetName, container: containerName || undefined }
+                : { namespace: targetNamespace }
+            if (!keyMatchesResource(instance.accessKey, target)) {
+                return fail(ESdsfError.NOT_AUTHORIZED, `Your key does not reach ${targetNamespace}/${targetName}`)
             }
         }
 
@@ -222,25 +235,52 @@ export class SdsfChannel implements IChannel {
                     return { ...response, ...(await this.list(instance)), ok: true }
 
                 case ESdsfCommand.LOG: {
+                    if (kind !== ESdsfObjectKind.POD) return fail(ESdsfError.BAD_REQUEST, 'Only a pod has a log')
                     if (!containerName) return fail(ESdsfError.BAD_REQUEST, 'No container given')
                     const tailLines = Math.min(Math.max(1, Math.floor(message.tailLines ?? DEFAULT_TAIL_LINES)), MAX_TAIL_LINES)
-                    const log = await this.clusterInfo.coreApi.readNamespacedPodLog({ name: podName, namespace: podNamespace, container: containerName, tailLines })
+                    const log = await this.clusterInfo.coreApi.readNamespacedPodLog({ name: targetName, namespace: targetNamespace, container: containerName, tailLines })
                     const lines = String(log ?? '').split('\n')
                     if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
                     return { ...response, ok: true, lines }
                 }
 
                 case ESdsfCommand.DESCRIBE: {
-                    const pod = await this.clusterInfo.coreApi.readNamespacedPod({ name: podName, namespace: podNamespace })
                     let events: Awaited<ReturnType<CoreV1Api['listNamespacedEvent']>>['items'] = []
-                    try {
-                        events = (await this.clusterInfo.coreApi.listNamespacedEvent({ namespace: podNamespace, fieldSelector: `involvedObject.name=${podName}` })).items
+                    const readEvents = async () => {
+                        try {
+                            events = (await this.clusterInfo.coreApi.listNamespacedEvent({ namespace: targetNamespace, fieldSelector: `involvedObject.name=${targetName}` })).items
+                        }
+                        catch (err) {
+                            // A describe without events is still a describe: the key may not reach events.
+                            this.backChannelObject.logWarning?.(`Cannot read events of ${targetNamespace}/${targetName}: ${errorText(err)}`)
+                        }
                     }
-                    catch (err) {
-                        // A describe without events is still a describe: the key may not reach events.
-                        this.backChannelObject.logWarning?.(`Cannot read events of ${podNamespace}/${podName}: ${errorText(err)}`)
+                    switch (kind) {
+                        case ESdsfObjectKind.JOB: {
+                            const job = await this.clusterInfo.batchApi.readNamespacedJob({ name: targetName, namespace: targetNamespace })
+                            await readEvents()
+                            return { ...response, ok: true, lines: describeJob(job, events) }
+                        }
+                        case ESdsfObjectKind.CRONJOB: {
+                            const cron = await this.clusterInfo.batchApi.readNamespacedCronJob({ name: targetName, namespace: targetNamespace })
+                            await readEvents()
+                            return { ...response, ok: true, lines: describeCronJob(cron, events) }
+                        }
+                        default: {
+                            const pod = await this.clusterInfo.coreApi.readNamespacedPod({ name: targetName, namespace: targetNamespace })
+                            await readEvents()
+                            return { ...response, ok: true, lines: describePod(pod, events) }
+                        }
                     }
-                    return { ...response, ok: true, lines: describePod(pod, events) }
+                }
+
+                case ESdsfCommand.JOBS: {
+                    const [jobs, crons] = await Promise.all([
+                        this.clusterInfo.batchApi.listJobForAllNamespaces(),
+                        this.clusterInfo.batchApi.listCronJobForAllNamespaces()
+                    ])
+                    const all = [...jobs.items.map(mapJob), ...crons.items.map(mapCronJob)]
+                    return { ...response, ok: true, jobs: all.filter(j => keyMatchesResource(instance.accessKey, { namespace: j.namespace })) }
                 }
 
                 case ESdsfCommand.EVENTS: {
@@ -257,14 +297,22 @@ export class SdsfChannel implements IChannel {
 
                 case ESdsfCommand.CANCEL: {
                     if (!this.allows(instance.accessKey, ESdsfScope.CANCEL)) {
-                        this.backChannelObject.logWarning?.(`Denied cancel of ${podNamespace}/${podName}: '${ESdsfScope.CANCEL}' required`)
-                        return fail(ESdsfError.NOT_AUTHORIZED, `Cancelling a pod requires the '${ESdsfScope.CANCEL}' scope`)
+                        this.backChannelObject.logWarning?.(`Denied cancel of ${targetNamespace}/${targetName}: '${ESdsfScope.CANCEL}' required`)
+                        return fail(ESdsfError.NOT_AUTHORIZED, `Cancelling requires the '${ESdsfScope.CANCEL}' scope`)
                     }
-                    await this.clusterInfo.coreApi.deleteNamespacedPod({
-                        name: podName, namespace: podNamespace,
-                        ...(message.force ? { gracePeriodSeconds: 0 } : {})
-                    })
-                    this.backChannelObject.logInfo?.(`Cancelled ${podNamespace}/${podName}${message.force ? ' (force)' : ''}`)
+                    const options = { name: targetName, namespace: targetNamespace, ...(message.force ? { gracePeriodSeconds: 0 } : {}) }
+                    switch (kind) {
+                        case ESdsfObjectKind.JOB:
+                            // Background propagation: the Job's pods go with it, as `kubectl delete job` does.
+                            await this.clusterInfo.batchApi.deleteNamespacedJob({ ...options, propagationPolicy: 'Background' })
+                            break
+                        case ESdsfObjectKind.CRONJOB:
+                            await this.clusterInfo.batchApi.deleteNamespacedCronJob({ ...options, propagationPolicy: 'Background' })
+                            break
+                        default:
+                            await this.clusterInfo.coreApi.deleteNamespacedPod(options)
+                    }
+                    this.backChannelObject.logInfo?.(`Cancelled ${kind} ${targetNamespace}/${targetName}${message.force ? ' (force)' : ''}`)
                     return { ...response, ok: true }
                 }
 
