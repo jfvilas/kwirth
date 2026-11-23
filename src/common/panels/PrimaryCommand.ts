@@ -13,6 +13,8 @@ export enum EPrimaryCommand {
     INIT = 'init',
     JC = 'jc',                 // the job classes: PriorityClasses
     SR = 'sr',                 // the system requests: CSRs waiting for a reply
+    RES = 'res',               // the resources: ResourceQuotas, used against hard
+    SP = 'sp',                 // the spool volumes: PersistentVolumes and the claims waiting for one
     END = 'end',
     RETURN = 'return',
     PREFIX = 'prefix',
@@ -52,6 +54,8 @@ const VERBS: Record<string, EPrimaryCommand> = {
     INIT: EPrimaryCommand.INIT,
     JC: EPrimaryCommand.JC,
     SR: EPrimaryCommand.SR,
+    RES: EPrimaryCommand.RES,
+    SP: EPrimaryCommand.SP,
     END: EPrimaryCommand.END,
     RETURN: EPrimaryCommand.RETURN,
     PREFIX: EPrimaryCommand.PREFIX, PRE: EPrimaryCommand.PREFIX,

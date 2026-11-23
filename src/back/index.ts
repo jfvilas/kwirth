@@ -14,7 +14,9 @@ import {
     SDSF_SCOPES, SDSF_SCOPE_LADDER
 } from '../common/SdsfTypes'
 import { mapPod } from './PodMapper'
-import { describeCronJob, describeCsr, describeJob, describeNode, describePod, describePriorityClass } from './Describe'
+import { describeClaim, describeCronJob, describeCsr, describeJob, describeNode, describePod, describePriorityClass, describeQuota, describeVolume } from './Describe'
+import { mapQuota } from './QuotaMapper'
+import { isWaitingClaim, mapVolume, mapWaitingClaim } from './VolumeMapper'
 import { mapJobClass } from './ClassMapper'
 import { mapRequests } from './RequestMapper'
 import { isEvictable, isRunning, mapNode, nodeIdsOf } from './NodeMapper'
@@ -29,7 +31,9 @@ import { IMetricsCluster } from './MetricsProviderTypes'
 */
 export interface ISdsfClusterInfo {
     coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'readNamespacedPod' | 'readNamespacedPodLog' | 'deleteNamespacedPod' | 'listNamespacedEvent' | 'listEventForAllNamespaces'
-        | 'listNode' | 'readNode' | 'patchNode' | 'createNamespacedPodEviction'>
+        | 'listNode' | 'readNode' | 'patchNode' | 'createNamespacedPodEviction'
+        | 'listResourceQuotaForAllNamespaces' | 'readNamespacedResourceQuota'
+        | 'listPersistentVolume' | 'readPersistentVolume' | 'listPersistentVolumeClaimForAllNamespaces' | 'readNamespacedPersistentVolumeClaim'>
     batchApi: Pick<BatchV1Api, 'listJobForAllNamespaces' | 'listCronJobForAllNamespaces' | 'readNamespacedJob' | 'readNamespacedCronJob' | 'deleteNamespacedJob' | 'deleteNamespacedCronJob'>
     schedulingApi: Pick<SchedulingV1Api, 'listPriorityClass' | 'readPriorityClass'>
     // The CSRs: the core has no CertificatesV1Api, and the generic one reaches any group by its path.
@@ -225,6 +229,7 @@ export class SdsfChannel implements IChannel {
         const kind = message.objectKind ?? ESdsfObjectKind.POD
         const isList = message.command === ESdsfCommand.LIST || message.command === ESdsfCommand.EVENTS || message.command === ESdsfCommand.JOBS
             || message.command === ESdsfCommand.NODES || message.command === ESdsfCommand.CLASSES || message.command === ESdsfCommand.REQUESTS
+            || message.command === ESdsfCommand.QUOTAS || message.command === ESdsfCommand.VOLUMES
         const clusterScoped = message.command === ESdsfCommand.NODE || (message.command === ESdsfCommand.DESCRIBE && CLUSTER_SCOPED_KINDS.includes(kind))
 
         /*
@@ -275,8 +280,26 @@ export class SdsfChannel implements IChannel {
                     return { ...response, ok: true, requests: mapRequests(list.items) }
                 }
 
+                case ESdsfCommand.QUOTAS: {
+                    const list = await this.clusterInfo.coreApi.listResourceQuotaForAllNamespaces()
+                    const quotas = list.items
+                        .filter(rq => keyMatchesResource(instance.accessKey, { namespace: rq.metadata?.namespace ?? '' }))
+                        .flatMap(mapQuota)
+                    return { ...response, ok: true, quotas }
+                }
+
+                case ESdsfCommand.VOLUMES:
+                    return { ...response, ok: true, volumes: await this.volumes(instance) }
+
                 case ESdsfCommand.DESCRIBE: {
                     switch (kind) {
+                        case ESdsfObjectKind.PERSISTENT_VOLUME: {
+                            const pv = await this.clusterInfo.coreApi.readPersistentVolume({ name: targetName })
+                            if (!this.reachesClaim(instance, pv.spec?.claimRef?.namespace)) {
+                                return fail(ESdsfError.NOT_AUTHORIZED, `Your key does not reach ${pv.spec?.claimRef?.namespace}, where ${targetName} is claimed`)
+                            }
+                            return { ...response, ok: true, lines: describeVolume(pv) }
+                        }
                         case ESdsfObjectKind.NODE:
                             return { ...response, ok: true, lines: await this.describeNode(instance, targetName) }
                         case ESdsfObjectKind.PRIORITY_CLASS: {
@@ -302,6 +325,15 @@ export class SdsfChannel implements IChannel {
                         }
                     }
                     switch (kind) {
+                        case ESdsfObjectKind.RESOURCE_QUOTA: {
+                            const rq = await this.clusterInfo.coreApi.readNamespacedResourceQuota({ name: targetName, namespace: targetNamespace })
+                            return { ...response, ok: true, lines: describeQuota(rq) }
+                        }
+                        case ESdsfObjectKind.PVC: {
+                            const pvc = await this.clusterInfo.coreApi.readNamespacedPersistentVolumeClaim({ name: targetName, namespace: targetNamespace })
+                            await readEvents()
+                            return { ...response, ok: true, lines: describeClaim(pvc, events) }
+                        }
                         case ESdsfObjectKind.JOB: {
                             const job = await this.clusterInfo.batchApi.readNamespacedJob({ name: targetName, namespace: targetNamespace })
                             await readEvents()
@@ -387,6 +419,25 @@ export class SdsfChannel implements IChannel {
             const reached = onNode.filter(p => isRunning(p) && keyMatchesResource(instance.accessKey, { namespace: p.metadata?.namespace ?? '', pod: p.metadata?.name ?? '' })).length
             return mapNode(node, ids[i], onNode, reached, usage.nodes.get(name), usage.interval)
         })
+    }
+
+    /*
+        A volume is seen when its claim is in a namespace the key reaches; one nobody claims (AVAILABLE, or a
+        RELEASED one whose claim is gone… its claimRef stays) is seen by any reader, as a node is.
+    */
+    private reachesClaim = (instance: IInstance, namespace: string | undefined): boolean =>
+        !namespace || keyMatchesResource(instance.accessKey, { namespace })
+
+    // The PersistentVolumes the key may see, and the claims of its namespaces still waiting for a volume.
+    private volumes = async (instance: IInstance) => {
+        const [pvs, pvcs] = await Promise.all([
+            this.clusterInfo.coreApi.listPersistentVolume(),
+            this.clusterInfo.coreApi.listPersistentVolumeClaimForAllNamespaces()
+        ])
+        return [
+            ...pvs.items.filter(pv => this.reachesClaim(instance, pv.spec?.claimRef?.namespace)).map(mapVolume),
+            ...pvcs.items.filter(pvc => isWaitingClaim(pvc) && keyMatchesResource(instance.accessKey, { namespace: pvc.metadata?.namespace ?? '' })).map(mapWaitingClaim)
+        ]
     }
 
     // The pods still running that the key reaches.

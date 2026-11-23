@@ -101,6 +101,8 @@ Y además la captura de pantalla se puede confundir con una sesión real de x327
 | `I` | Input queue (fase 3a): CronJobs programados y Jobs sin arrancar |
 | `ULOG` | User session log (fase 3a): las acciones del operador en la sesión |
 | `JC` | Job classes (fase 3a): PriorityClasses; `?` el DA de sus pods, `D` describe |
+| `RES` | WLM resources (fase 3a): ResourceQuotas, una fila por recurso, usado frente a límite; `?` el DA del namespace |
+| `SP` | Spool volumes (fase 3a): PersistentVolumes y los PVC que esperan volumen; `D` describe (D16) |
 | `SR` | System requests (fase 3a): CSRs pendientes, como los WTOR; solo lectura (`D`), responder en la V2 (D15) |
 | `INIT` | Nodes (fase 2): initiators; `S` start (uncordon), `Z` halt (cordon), `P` drain — `admin` (D13) |
 
@@ -269,6 +271,9 @@ y volver, se conservan el panel, el scroll, el PREFIX y el campo de comando.
   - los colores, highlights y AID llevan sus códigos reales del data stream.
 
   El servidor sería un codificador más sobre el mismo motor.
+- **D16** (2026-11-23, el usuario) — **Qué volúmenes ve una key en `SP`**: un PV ligado se ve si la key
+  alcanza el namespace de su claim (el describe también lo exige); uno sin claim lo ve cualquier lector, como
+  un nodo; los PVC pendientes, solo los de los namespaces de la key. Sin `%Used`: el API no lo sabe.
 - **D15** (2026-11-23, el usuario) — **`SR` es de solo lectura por ahora**: aprobar o denegar un CSR es el
   subrecurso `/approval`, que solo alcanza `CertificatesV1Api` y el `ClusterInfo` del core no la expone. Tocar
   el core queda para la V2, con la respuesta (`R`) como en SDSF; mientras, `SR` lista y describe.

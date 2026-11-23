@@ -27,6 +27,31 @@ preemptionPolicy: Never
 globalDefault: false
 description: SDSF e2e, the class of the demo pods
 ---
+# Object counts only: a quota on requests.cpu or memory would make every pod of the namespace declare them.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: sdsf-e2e-quota
+  namespace: ${NAMESPACE}
+spec:
+  hard:
+    pods: '20'
+    count/jobs.batch: '5'
+    persistentvolumeclaims: '2'
+---
+# Stays Pending: its StorageClass does not exist, so nothing provisions a volume for it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sdsf-e2e-claim
+  namespace: ${NAMESPACE}
+spec:
+  storageClassName: sdsf-e2e-none
+  accessModes: ['ReadWriteOnce']
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

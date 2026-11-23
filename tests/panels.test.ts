@@ -100,12 +100,20 @@ test('columns: findColumn ignores case; the pages of PF11 cover every column onc
     }
     assert.deepEqual(pages.flat(), DA_COLUMNS.map(c => c.header))
     for (const page of pages) assert.ok(page.length > 0)
-    // and PF10 from each page start goes back to the previous one
-    let back = offset
-    const starts: number[] = []
-    while (back > 0) { back = offsetLeftOf(back, 80, DA_COLUMNS); starts.push(back) }
-    assert.equal(starts[starts.length - 1], 0)
+    // and PF10 from each page start goes back to exactly the previous one, page by page, as PF11 came
+    const forward: number[] = []
+    for (let o = 0; ; ) {
+        forward.push(o)
+        const n = columnsFrom(o, 80, DA_COLUMNS).length
+        if (o + n >= DA_COLUMNS.length) break
+        o += n
+    }
+    const backward: number[] = [forward[forward.length - 1]]
+    while (backward[backward.length - 1] > 0) backward.push(offsetLeftOf(backward[backward.length - 1], 80, DA_COLUMNS))
+    assert.deepEqual(backward.reverse(), forward)
     assert.equal(offsetLeftOf(0, 80, DA_COLUMNS), 0)
+    // from the middle of a page (a page start of another width), to the start of the page it falls in
+    assert.equal(offsetLeftOf(forward[1] + 1, 80, DA_COLUMNS), forward[1])
 })
 
 // ─── SYSLOG format (S6) ───────────────────────────────────────────────────────

@@ -1,14 +1,16 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import type { V1Pod, CoreV1Event, V1Node, V1PriorityClass, V1CertificateSigningRequest } from '@kubernetes/client-node'
+import type { V1Pod, CoreV1Event, V1Node, V1PriorityClass, V1CertificateSigningRequest, V1ResourceQuota, V1PersistentVolume, V1PersistentVolumeClaim } from '@kubernetes/client-node'
 import { jobIdOf, mapPod } from '../src/back/PodMapper'
 import { ageOf, describePod } from '../src/back/Describe'
 import { usageOf } from '../src/back/PodMetrics'
 import { IMetricsCluster, IMetricsValue } from '../src/back/MetricsProviderTypes'
 import { SdsfChannel, ISdsfClusterInfo, DEFAULT_TAIL_LINES, MAX_TAIL_LINES } from '../src/back/index'
-import { ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfNodeAction, ESdsfNodeStatus, ESdsfObjectKind, ESdsfQos, ISdsfMessage, ISdsfNode } from '../src/common/SdsfTypes'
+import { ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfNodeAction, ESdsfNodeStatus, ESdsfObjectKind, ESdsfQos, ESdsfVolumeStatus, ISdsfMessage, ISdsfNode, ISdsfQuotaItem, ISdsfVolume } from '../src/common/SdsfTypes'
 import { isEvictable, mapNode, nodeIdsOf, nodeStatusOf, quantityOf, rolesOf } from '../src/back/NodeMapper'
-import { describeCsr, describeNode, describePriorityClass } from '../src/back/Describe'
+import { describeClaim, describeCsr, describeNode, describePriorityClass, describeQuota, describeVolume } from '../src/back/Describe'
+import { mapQuota, percentOf } from '../src/back/QuotaMapper'
+import { isWaitingClaim, mapVolume, mapWaitingClaim } from '../src/back/VolumeMapper'
 import { mapJobClass } from '../src/back/ClassMapper'
 import { isPending, mapRequests } from '../src/back/RequestMapper'
 import { AccessKey, accessKeySerialize, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, IInstanceConfig } from '@kwirthmagnify/kwirth-common'
@@ -226,6 +228,28 @@ const csr = (name: string, created: string, conditions: { type: string; status: 
     status: { conditions: conditions.map(c => ({ ...c, lastUpdateTime: new Date(created) })) }
 } as V1CertificateSigningRequest)
 
+const quota = (namespace: string, name: string): V1ResourceQuota => ({
+    metadata: { name, namespace, creationTimestamp: new Date('2026-11-20T00:00:00Z') },
+    spec: { hard: { pods: '10', 'requests.cpu': '4' } },
+    status: { hard: { pods: '10', 'requests.cpu': '4' }, used: { pods: '9', 'requests.cpu': '500m' } }
+})
+
+const pv = (name: string, claimNamespace?: string, phase = claimNamespace ? 'Bound' : 'Available'): V1PersistentVolume => ({
+    metadata: { name, creationTimestamp: new Date('2026-11-20T00:00:00Z') },
+    spec: {
+        capacity: { storage: '10Gi' }, accessModes: ['ReadWriteOnce'], persistentVolumeReclaimPolicy: 'Delete', storageClassName: 'local-path',
+        hostPath: { path: '/data' },
+        ...(claimNamespace ? { claimRef: { namespace: claimNamespace, name: 'data' } } : {})
+    },
+    status: { phase }
+})
+
+const pvc = (name: string, namespace: string, volumeName?: string, phase = 'Pending'): V1PersistentVolumeClaim => ({
+    metadata: { name, namespace, creationTimestamp: new Date('2026-11-21T00:00:00Z') },
+    spec: { accessModes: ['ReadWriteOnce'], storageClassName: 'nope', resources: { requests: { storage: '1Gi' } }, ...(volumeName ? { volumeName } : {}) },
+    status: { phase }
+})
+
 const daemonPod = (): V1Pod => pod({ metadata: { name: 'proxy-x', namespace: 'kube-system', uid: 'd1', ownerReferences: [{ apiVersion: 'apps/v1', kind: 'DaemonSet', name: 'proxy', uid: 'y', controller: true }] } })
 
 const fakeCluster = (opts: { metrics?: boolean; fail?: { code?: number; body?: string; message?: string }; refuseEvict?: string[] } = {}) => {
@@ -262,7 +286,13 @@ const fakeCluster = (opts: { metrics?: boolean; fail?: { code?: number; body?: s
             readNamespacedPod: (p: unknown) => call('read', p, pod()),
             readNamespacedPodLog: (p: unknown) => call('log', p, 'line 1\nline 2\n'),
             deleteNamespacedPod: (p: unknown) => call('delete', p, pod()),
-            listNamespacedEvent: (p: unknown) => call('events', p, { items: [] })
+            listNamespacedEvent: (p: unknown) => call('events', p, { items: [] }),
+            listResourceQuotaForAllNamespaces: () => call('listQuotas', undefined, { items: [quota('shop', 'compute'), quota('vault', 'secrets')] }),
+            readNamespacedResourceQuota: (p: unknown) => call('readQuota', p, quota('shop', 'compute')),
+            listPersistentVolume: () => call('listPvs', undefined, { items: [pv('pv-shop', 'shop'), pv('pv-vault', 'vault'), pv('pv-free'), pv('pv-released', undefined, 'Released')] }),
+            readPersistentVolume: (p: { name: string }) => call('readPv', p, p.name === 'pv-vault' ? pv('pv-vault', 'vault') : pv(p.name, 'shop')),
+            listPersistentVolumeClaimForAllNamespaces: () => call('listPvcs', undefined, { items: [pvc('waiting', 'shop'), pvc('bound', 'shop', 'pv-shop', 'Bound'), pvc('hidden', 'vault')] }),
+            readNamespacedPersistentVolumeClaim: (p: unknown) => call('readPvc', p, pvc('waiting', 'shop'))
         },
         batchApi: {
             listJobForAllNamespaces: () => call('listJobs', undefined, { items: [
@@ -845,4 +875,97 @@ test('CLASSES and REQUESTS that the API refuses say why', async () => {
     assert.equal(r.detail, 'certificatesigningrequests is forbidden')
     const missing = await open(ALL_READ, { fail: { code: 404, message: 'not found' } })
     assert.equal((await missing.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.PRIORITY_CLASS, targetNamespace: '', targetName: 'nope' }))).error, ESdsfError.NOT_FOUND)
+})
+
+// ─── RES (ResourceQuotas) and SP (volumes) ────────────────────────────────────
+
+test('percentOf: used over hard in any unit; nothing allowed and something used is 100', () => {
+    assert.equal(percentOf('500m', '4'), 12.5)
+    assert.equal(percentOf('1536Mi', '2Gi'), 75)
+    assert.equal(percentOf('9', '10'), 90)
+    assert.equal(percentOf('11', '10'), 110)
+    assert.equal(percentOf('1', '3'), 33.3)
+    assert.equal(percentOf('0', '0'), 0)
+    assert.equal(percentOf('1', '0'), 100)
+})
+
+test('mapQuota: a row per resource, by name; status.hard, or spec.hard before the controller sees it; used 0 when missing', () => {
+    assert.deepEqual(mapQuota(quota('shop', 'compute')), [
+        { namespace: 'shop', name: 'compute', resource: 'pods', used: '9', hard: '10', percent: 90, created: '2026-11-20T00:00:00.000Z' },
+        { namespace: 'shop', name: 'compute', resource: 'requests.cpu', used: '500m', hard: '4', percent: 12.5, created: '2026-11-20T00:00:00.000Z' }
+    ] as ISdsfQuotaItem[])
+    const fresh = mapQuota({ metadata: { name: 'new', namespace: 'shop' }, spec: { hard: { pods: '5' } } })
+    assert.deepEqual(fresh.map(q => [q.resource, q.used, q.hard, q.percent, q.created]), [['pods', '0', '5', 0, '']])
+    assert.deepEqual(mapQuota({}), [])
+})
+
+test('mapVolume and the claims waiting for one: status, capacity, class, claim, access, reclaim', () => {
+    assert.deepEqual(mapVolume(pv('pv-shop', 'shop')), {
+        name: 'pv-shop', kind: ESdsfObjectKind.PERSISTENT_VOLUME, status: ESdsfVolumeStatus.BOUND, capacity: 10 * 1024 ** 3, storageClass: 'local-path',
+        claimNamespace: 'shop', claimName: 'data', accessModes: ['ReadWriteOnce'], reclaim: 'Delete', created: '2026-11-20T00:00:00.000Z'
+    } as ISdsfVolume)
+    assert.equal(mapVolume(pv('x', undefined, 'Released')).status, ESdsfVolumeStatus.RELEASED)
+    assert.equal(mapVolume(pv('x', undefined, 'Failed')).status, ESdsfVolumeStatus.FAILED)
+    assert.equal(mapVolume(pv('x', undefined, 'Pending')).status, ESdsfVolumeStatus.PENDING)
+    const bare = mapVolume({})
+    assert.deepEqual([bare.name, bare.status, bare.capacity, bare.claimName, bare.accessModes, bare.reclaim, bare.created], ['', ESdsfVolumeStatus.PENDING, 0, '', [], '', ''])
+    assert.equal(isWaitingClaim(pvc('w', 'shop')), true)
+    assert.equal(isWaitingClaim(pvc('b', 'shop', 'pv-1', 'Bound')), false)
+    assert.equal(isWaitingClaim(pvc('p', 'shop', 'pv-1')), false, 'pending but already named a volume: binding, not waiting')
+    assert.deepEqual(mapWaitingClaim(pvc('w', 'shop')), {
+        name: 'w', kind: ESdsfObjectKind.PVC, status: ESdsfVolumeStatus.PENDING, capacity: 1024 ** 3, storageClass: 'nope',
+        claimNamespace: 'shop', claimName: 'w', accessModes: ['ReadWriteOnce'], reclaim: '', created: '2026-11-21T00:00:00.000Z'
+    } as ISdsfVolume)
+    assert.equal(mapWaitingClaim({}).name, '')
+})
+
+test('describeQuota, describeVolume and describeClaim read like kubectl describe', () => {
+    const q = describeQuota(quota('shop', 'compute'))
+    assert.ok(q.includes('Namespace:        shop'))
+    assert.deepEqual(q.slice(-4), ['Resource      Used        Hard', '--------      ----        ----', 'pods          9           10', 'requests.cpu  500m        4'])
+    assert.equal(describeQuota({}).at(-1), '--------  ----        ----', 'no resources: the header alone')
+    const v = describeVolume(pv('pv-shop', 'shop'))
+    assert.ok(v.includes('Claim:            shop/data'))
+    assert.ok(v.includes('Reclaim Policy:   Delete'))
+    assert.ok(v.includes('Capacity:         10Gi'))
+    assert.ok(v.includes('Source:           hostPath'))
+    assert.ok(describeVolume(pv('free')).includes('Claim:            <none>'))
+    const c = describeClaim(pvc('waiting', 'shop'), [{ metadata: {}, involvedObject: {}, type: 'Warning', reason: 'ProvisioningFailed', message: 'storageclass "nope" not found', lastTimestamp: new Date('2026-11-21T00:00:00Z') }], Date.parse('2026-11-21T00:05:00Z'))
+    assert.ok(c.includes('Status:           Pending'))
+    assert.ok(c.includes('Volume:           <none>'))
+    assert.ok(c.some(l => /Warning +ProvisioningFailed +5m .*storageclass "nope" not found/.test(l)))
+})
+
+test('QUOTAS: only those of the namespaces the key reaches, a row per resource', async () => {
+    const o = await open('sdsf$read:shop:::')
+    const r = await o.run(message(ESdsfCommand.QUOTAS))
+    assert.equal(r.ok, true)
+    assert.deepEqual((r.quotas as ISdsfQuotaItem[]).map(q => `${q.namespace}/${q.name}/${q.resource}`), ['shop/compute/pods', 'shop/compute/requests.cpu'])
+})
+
+test('VOLUMES: a claimed volume only if the key reaches its claim; free ones for any reader; the waiting claims of its namespaces', async () => {
+    const o = await open('sdsf$read:shop:::')
+    const r = await o.run(message(ESdsfCommand.VOLUMES))
+    assert.equal(r.ok, true)
+    assert.deepEqual((r.volumes as ISdsfVolume[]).map(v => `${v.kind} ${v.name}`), [
+        'PersistentVolume pv-shop', 'PersistentVolume pv-free', 'PersistentVolume pv-released', 'PersistentVolumeClaim waiting'
+    ])
+})
+
+test('DESCRIBE a quota and a claim by their namespace; a volume claimed where the key does not reach is refused', async () => {
+    const o = await open('sdsf$read:shop:::')
+    const q = await o.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.RESOURCE_QUOTA, targetNamespace: 'shop', targetName: 'compute', containerName: '' }))
+    assert.equal(q.ok, true)
+    assert.deepEqual(o.calls.at(-1), { method: 'readQuota', params: { name: 'compute', namespace: 'shop' } })
+    const c = await o.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.PVC, targetNamespace: 'shop', targetName: 'waiting', containerName: '' }))
+    assert.equal(c.ok, true)
+    assert.ok((c.lines as string[]).includes('Status:           Pending'))
+    const hidden = await o.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.RESOURCE_QUOTA, targetNamespace: 'vault', targetName: 'secrets', containerName: '' }))
+    assert.equal(hidden.error, ESdsfError.NOT_AUTHORIZED)
+    const mine = await o.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.PERSISTENT_VOLUME, targetNamespace: '', targetName: 'pv-shop', containerName: '' }))
+    assert.equal(mine.ok, true)
+    const theirs = await o.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.PERSISTENT_VOLUME, targetNamespace: '', targetName: 'pv-vault', containerName: '' }))
+    assert.equal(theirs.ok, false)
+    assert.equal(theirs.error, ESdsfError.NOT_AUTHORIZED)
+    assert.match(String(theirs.detail), /vault/)
 })

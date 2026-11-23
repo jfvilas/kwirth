@@ -1,9 +1,9 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.9.0` (npm `@jfvilas` y marketplace de
+> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.10.0` (npm `@jfvilas` y marketplace de
 > github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`), el S7 (`ST`/`O`/`H`), el S7b
 > (parámetros del `DA`), el S9 (modelo de terminal y color en el setup) y el S8 (`INIT`). Fase 2 completa.
-> Hecho el S10 (el Confirm Action de SDSF). **Fase 3a en curso:** hechos el S11 (`I`, `ULOG`) y el S12 (`JC`, `SR`); queda el S13
+> Hecho el S10 (el Confirm Action de SDSF). **Fase 3a completa:** S11 (`I`, `ULOG`), S12 (`JC`, `SR`) y S13
 > (`RES`, `SP`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
@@ -260,6 +260,26 @@ Se publica cada stream con su versión.
 - **Tipos nuevos** (⚠️ a validar): `ESdsfModel`, `ESdsfDisplay`, `SDSF_MODEL_GEOMETRY`, `I3270Geometry`
   (sustituye a `MODEL3_ROWS`/`MODEL3_COLS`) y los campos `model` y `display` de `ISdsfInstanceConfig`;
   `display` en `ISdsfData`.
+
+**S13 — `RES` y `SP` (fase 3a)** · ✅ VALIDADO (2026-11-23), publicado como 0.10.0.
+- **`RES`:** `SDSF RESOURCE DISPLAY`, una fila por recurso de cada ResourceQuota que alcanza la key, la más
+  llena arriba: `Quota` (nombre a 8), `Resource`, `Used`, `Hard`, `%Used` (amarillo desde 75, rojo desde 90,
+  `FULL` en el límite), `Namespace`; con PF11, `QuotaName` y `Age`. `DEST` por namespace, `PREFIX` por quota.
+  `?` = el DA del namespace de la quota (`DEST=` en la línea de filtros sin tocar el DEST de la sesión; PF3
+  vuelve al RES); `D` = describe.
+- **`SP`:** `SDSF SPOOL VOLUME DISPLAY`, los PV y, delante, los PVC que esperan volumen (`PENDING`): `Volume`
+  (nombre a 8, como un VOLSER), `Status`, `CapGB`, `Class`, `Claim`, `Access` (`RWO`…); con PF11, `Reclaim`
+  (`RETAIN` en amarillo), `Age`, `VolumeName`. Solo `D` (el PVC con sus events, que dicen por qué espera).
+  Visibilidad según D16. Sin `%Used`.
+- **Back:** todo del `coreApi` del core (`listResourceQuotaForAllNamespaces`, `listPersistentVolume`,
+  `listPersistentVolumeClaimForAllNamespaces` y sus `read…`); `quantityOf` del NodeMapper para los porcentajes.
+- **Menú** como SDSF: `RES` bajo `JC` (con la fila de `SE` en blanco) y `SP` a la derecha, bajo `ULOG`.
+- **Arreglo (lo destapó el harness):** PF10 no deshacía PF11: retrocedía tantas columnas como cabían y caía
+  en una página mezclada que PF11 nunca enseña (en RES dejaba fuera `Resource`). Ahora vuelve al inicio de la
+  página anterior de PF11, en todas las tablas.
+- **Tipos** (⚠️ a validar): `ESdsfPanel.RES`/`SP`, `EPrimaryCommand.RES`/`SP`, `ESdsfCommand.QUOTAS`/`VOLUMES`,
+  `ESdsfObjectKind.PERSISTENT_VOLUME`/`RESOURCE_QUOTA`/`PVC`, `ISdsfQuotaItem`, `ESdsfVolumeStatus`,
+  `ISdsfVolume`, `RES_LINE_COMMANDS`/`SP_LINE_COMMANDS`.
 
 **S12 — `JC` y `SR` (fase 3a)** · ✅ VALIDADO (2026-11-23), publicado como 0.9.0.
 - **`JC`:** `SDSF JOB CLASS DISPLAY ALL CLASSES`, una PriorityClass por fila, la de más prioridad arriba:

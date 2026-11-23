@@ -3,13 +3,15 @@ import assert from 'node:assert/strict'
 import { ESdsfPanel, SdsfSession } from '../src/common/SdsfSession'
 import { JC_COLUMNS } from '../src/common/panels/ClassColumns'
 import { SR_COLUMNS } from '../src/common/panels/RequestColumns'
+import { RES_COLUMNS } from '../src/common/panels/QuotaColumns'
+import { SP_COLUMNS } from '../src/common/panels/VolumeColumns'
 import { ISdsfDataSource } from '../src/common/SdsfDataSource'
 import { E3270Aid, E3270Color, E3270Highlight, E3270Key, E3270Lock } from '../src/common/terminal/Terminal3270Types'
 import { displayCell } from '../src/common/terminal/Display3270'
 import { COMMAND_COL, ROW_COMMAND, ROW_RULE, ROW_TITLE, rowPfKeys } from '../src/common/panels/SdsfLayout'
 import { dataRows as dataRowsOf, ROW_FILTER, ROW_FIRST_DATA, ROW_HEADERS } from '../src/common/panels/DaPanel'
 import { I3270Geometry, MODEL3_GEOMETRY } from '../src/common/terminal/Terminal3270Types'
-import { ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfNodeAction, ESdsfNodeStatus, ESdsfObjectKind, ESdsfQos, ISdsfEvent, ISdsfJob, ISdsfJobClass, ISdsfMessageResponse, ISdsfNode, ISdsfPod, ISdsfRequest, ISdsfSystemRequest } from '../src/common/SdsfTypes'
+import { ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfNodeAction, ESdsfNodeStatus, ESdsfObjectKind, ESdsfQos, ISdsfEvent, ISdsfJob, ISdsfJobClass, ISdsfMessageResponse, ISdsfNode, ISdsfPod, ISdsfQuotaItem, ISdsfRequest, ISdsfSystemRequest, ISdsfVolume, ESdsfVolumeStatus } from '../src/common/SdsfTypes'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@kwirthmagnify/kwirth-common'
 
 const NOW = Date.parse('2026-11-22T12:00:00Z')
@@ -42,6 +44,8 @@ class FakeSource implements ISdsfDataSource {
     evicted = 0                                        // what a drain answers
     classes: ISdsfJobClass[] = []
     systemRequests: ISdsfSystemRequest[] = []
+    quotas: ISdsfQuotaItem[] = []
+    volumes: ISdsfVolume[] = []
     request = (request: ISdsfRequest): Promise<ISdsfMessageResponse> => {
         this.requests.push(request)
         const next = this.next
@@ -66,6 +70,10 @@ class FakeSource implements ISdsfDataSource {
                 return Promise.resolve(response({ command: request.command, classes: this.classes, ...next }))
             case ESdsfCommand.REQUESTS:
                 return Promise.resolve(response({ command: request.command, requests: this.systemRequests, ...next }))
+            case ESdsfCommand.QUOTAS:
+                return Promise.resolve(response({ command: request.command, quotas: this.quotas, ...next }))
+            case ESdsfCommand.VOLUMES:
+                return Promise.resolve(response({ command: request.command, volumes: this.volumes, ...next }))
             case ESdsfCommand.NODE: {
                 if (this.refuseNode.has(request.targetName!)) return Promise.resolve(response({ command: request.command, ok: false, error: ESdsfError.NOT_AUTHORIZED, detail: "needs 'admin'" }))
                 const status = request.nodeAction === ESdsfNodeAction.START ? ESdsfNodeStatus.ACTIVE
@@ -363,7 +371,7 @@ test('PF11/PF10 scroll the columns sideways; NP and JOBNAME stay', async () => {
     await aid(s, E3270Aid.PF11)
     assert.match(row(s, ROW_HEADERS), /JOBNAME  Namespace/, 'at the last page it stays')
     await command(s, 'left')
-    assert.match(row(s, ROW_HEADERS), /JOBNAME +SIO +CPU% Status/, 'a whole screen of columns back')
+    assert.match(row(s, ROW_HEADERS), /^ NP  JOBNAME    CPU% Status +Node +Age *$/, 'back to the page PF11 showed before, not a mix of two')
     await aid(s, E3270Aid.PF10)
     assert.match(row(s, ROW_HEADERS), /JOBNAME  StepName/)
     await command(s, 'right')
@@ -1373,22 +1381,24 @@ test('the DA does not take the INIT commands', async () => {
 
 // ─── I (input queue) and ULOG ─────────────────────────────────────────────────
 
-test('the menu: I under DA, LOG after a blank row, SR and JC under it as on SDSF, ULOG on the right', async () => {
+test('the menu: I under DA, LOG after a blank row, SR, JC and RES under it as on SDSF, ULOG and SP on the right', async () => {
     const { s } = await open()
     assert.match(row(s, 5), /^ DA {4}Active pods\s+INIT  Initiators \(nodes\)/)
     assert.match(row(s, 6), /^ I {5}Input queue \(jobs waiting to run\)/)
     assert.equal(row(s, 10).trim(), '', 'the blank row between the queues and the LOG')
     assert.match(row(s, 11), /^ LOG {3}System log \(events\)\s+ULOG  User session log/)
-    assert.match(row(s, 12), /^ SR {4}System requests \(pending CSRs\)\s*$/)
+    assert.match(row(s, 12), /^ SR {4}System requests \(pending CSRs\) +SP {4}Spool volumes \(PVs and claims\)\s*$/)
     assert.equal(row(s, 13).trim(), '', "MAS's row: nothing behind it")
     assert.match(row(s, 14), /^ JC {4}Job classes \(priority classes\)\s*$/)
-    assert.match(row(s, 16), /^ END {3}Exit SDSF/)
+    assert.equal(row(s, 15).trim(), '', "SE's row")
+    assert.match(row(s, 16), /^ RES {3}Resources \(quotas\)\s*$/)
+    assert.match(row(s, 18), /^ END {3}Exit SDSF/)
 })
 
-test('the menu fits a 3278-2 with SR and JC: END above the PF keys', async () => {
+test('the menu fits a 3278-2 with SR, JC and RES: END above the PF keys', async () => {
     const { s } = await open([], ESdsfMetricsState.AVAILABLE, { rows: 24, cols: 80 })
-    assert.match(row(s, 16), /^ END {3}Exit SDSF/)
-    assert.ok(16 < rowPfKeys(s.terminal.screen))
+    assert.match(row(s, 18), /^ END {3}Exit SDSF/)
+    assert.ok(18 < rowPfKeys(s.terminal.screen))
 })
 
 // ─── JC (job classes) and SR (system requests) ────────────────────────────────
@@ -1635,4 +1645,156 @@ test('JC and SR sort by every one of their columns, both ways; an unknown preemp
     }
     await command(r.s, 'sort age d')
     assert.match(dataRows(r.s)[0], /^ {5}03 /, 'no date sorts as the newest')
+})
+
+// ─── RES (quotas) and SP (volumes) ────────────────────────────────────────────
+
+const quotaOf = (namespace: string, name: string, resource: string, used: string, hard: string, percent: number): ISdsfQuotaItem => ({
+    namespace, name, resource, used, hard, percent, created: '2026-11-20T12:00:00.000Z'
+})
+
+const volumeOf = (name: string, over: Partial<ISdsfVolume> = {}): ISdsfVolume => ({
+    name, kind: ESdsfObjectKind.PERSISTENT_VOLUME, status: ESdsfVolumeStatus.BOUND, capacity: 10 * 1024 ** 3, storageClass: 'local-path',
+    claimNamespace: 'shop', claimName: 'data', accessModes: ['ReadWriteOnce'], reclaim: 'Delete', created: '2026-11-21T12:00:00.000Z', ...over
+})
+
+const openRes = async () => {
+    const o = await open([podOf('api-1'), podOf('web-1', { namespace: 'web' })])
+    o.source.quotas = [
+        quotaOf('shop', 'compute', 'requests.cpu', '500m', '4', 12.5),
+        quotaOf('shop', 'compute', 'pods', '9', '10', 90),
+        quotaOf('web', 'objects', 'count/jobs.batch', '5', '5', 100),
+        quotaOf('web', 'objects', 'requests.ephemeral-storage', '1536Mi', '2Gi', 75)
+    ]
+    await command(o.s, 'res')
+    return o
+}
+
+test('RES lists the quotas, a row per resource, the fullest first; %Used yellow from 75, red from 90, FULL at the limit', async () => {
+    const { s, source } = await openRes()
+    assert.equal(s.panel, ESdsfPanel.RES)
+    assert.deepEqual(source.requests.map(r => r.command), [ESdsfCommand.QUOTAS])
+    assert.match(row(s, ROW_TITLE), /^ SDSF RESOURCE DISPLAY +LINE 1-4 \(4\)$/)
+    assert.equal(row(s, ROW_HEADERS).trimEnd(), ' NP  Quota    Resource                       Used     Hard  %Used Namespace')
+    assert.match(dataRows(s)[0], /^ {5}OBJECTS +count\/jobs\.batch +5 +5 +FULL web/)
+    assert.match(dataRows(s)[1], /^ {5}COMPUTE +pods +9 +10 +90\.0 shop/)
+    assert.match(dataRows(s)[2], /^ {5}OBJECTS +requests\.ephemeral-storage +1536Mi +2Gi +75\.0 web/)
+    assert.match(dataRows(s)[3], /^ {5}COMPUTE +requests\.cpu +500m +4 +12\.5 shop/)
+    const screen = s.terminal.screen
+    const percentCol = 60
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA, percentCol)).color, E3270Color.RED, 'FULL in red')
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 1, percentCol)).color, E3270Color.RED, '90 in red')
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 2, percentCol)).color, E3270Color.YELLOW, '75 in yellow')
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 3, percentCol)).color, E3270Color.GREEN)
+    await aid(s, E3270Aid.PF11)
+    assert.match(row(s, ROW_HEADERS), /Quota +QuotaName +Age/)
+    assert.match(dataRows(s)[0], /OBJECTS +objects +2d/)
+    await aid(s, E3270Aid.PF10)
+    assert.match(row(s, ROW_HEADERS), /Quota +Resource/, 'PF10 undoes PF11: back to the first page in one press')
+    await command(s, 'dest shop')
+    assert.deepEqual(jobnames(s), ['COMPUTE', 'COMPUTE'])
+    await command(s, 'dest (all)')
+    await command(s, 'prefix obj*')
+    assert.equal(dataRows(s).length, 2)
+    await command(s, 'sort resource a')
+    assert.match(dataRows(s)[0], /count\/jobs\.batch/)
+})
+
+test('RES: ? shows the DA of the quota\'s namespace, DEST= on the filter line, and PF3 comes back to RES; D describes the quota', async () => {
+    const { s, source } = await openRes()
+    np(s, 0, '?')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.DA)
+    assert.deepEqual(jobnames(s), ['WEB-1'])
+    assert.match(row(s, ROW_FILTER), /DEST=web/)
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.RES)
+    assert.match(row(s, ROW_FILTER), /DEST=\(ALL\)/, 'the DEST of the session is as it was')
+    np(s, 1, 'd')
+    await enter(s)
+    assert.equal(s.panel, ESdsfPanel.BROWSE)
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.DESCRIBE, objectKind: ESdsfObjectKind.RESOURCE_QUOTA, targetNamespace: 'shop', targetName: 'compute' })
+    assert.match(row(s, ROW_TITLE), /DESCRIBE COMPUTE {2}RES/)
+    await aid(s, E3270Aid.PF3)
+    np(s, 0, 'c')
+    await enter(s)
+    assert.match(row(s, ROW_TITLE), /INVALID LINE COMMAND$/)
+    await aid(s, E3270Aid.PF1)
+    assert.match(row(s, ROW_FILTER), /: \?, D\./)
+})
+
+const openSp = async () => {
+    const o = await open()
+    o.source.volumes = [
+        volumeOf('pvc-0a1b2c3d-1111', { claimName: 'data' }),
+        volumeOf('archive', { status: ESdsfVolumeStatus.RELEASED, reclaim: 'Retain', accessModes: ['ReadWriteMany', 'ReadOnlyMany'] }),
+        volumeOf('spare', { status: ESdsfVolumeStatus.AVAILABLE, claimNamespace: '', claimName: '', storageClass: '' }),
+        volumeOf('broken', { status: ESdsfVolumeStatus.FAILED }),
+        volumeOf('waiting', { kind: ESdsfObjectKind.PVC, status: ESdsfVolumeStatus.PENDING, claimName: 'waiting', capacity: 0, storageClass: 'nope', reclaim: '', accessModes: ['ReadWriteOncePod'] })
+    ]
+    await command(o.s, 'sp')
+    return o
+}
+
+test('SP lists the volumes and, first, the claims waiting for one; status colours; PF11 the full name', async () => {
+    const { s, source } = await openSp()
+    assert.equal(s.panel, ESdsfPanel.SP)
+    assert.deepEqual(source.requests.map(r => r.command), [ESdsfCommand.VOLUMES])
+    assert.match(row(s, ROW_TITLE), /^ SDSF SPOOL VOLUME DISPLAY +LINE 1-5 \(5\)$/)
+    assert.equal(row(s, ROW_HEADERS).trimEnd(), ' NP  Volume   Status     CapGB Class        Claim                    Access')
+    assert.deepEqual(jobnames(s), ['WAITING', 'ARCHIVE', 'BROKEN', 'PVC-0A1B', 'SPARE'])
+    assert.match(dataRows(s)[0], /WAITING +PENDING +- +nope +shop\/waiting +RWOP/)
+    assert.match(dataRows(s)[1], /ARCHIVE +RELEASED +10\.0 local-path +shop\/data +RWX,RO/)
+    assert.match(dataRows(s)[4], /SPARE +AVAILABLE +10\.0 +RWO/)
+    const screen = s.terminal.screen
+    const colors = [0, 1, 2, 3, 4].map(i => displayCell(screen, screen.address(ROW_FIRST_DATA + i, 14)).color)
+    assert.deepEqual(colors, [E3270Color.TURQUOISE, E3270Color.YELLOW, E3270Color.RED, E3270Color.GREEN, E3270Color.GREEN])
+    await aid(s, E3270Aid.PF11)
+    assert.match(row(s, ROW_HEADERS), /Volume +Reclaim Age +VolumeName/)
+    assert.match(dataRows(s)[1], /ARCHIVE +RETAIN +24h +archive/)
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 1, 14)).color, E3270Color.YELLOW, 'RETAIN in yellow')
+    assert.match(dataRows(s)[3], /PVC-0A1B +DELETE +24h +pvc-0a1b2c3d-1111/)
+    await aid(s, E3270Aid.PF10)
+    await command(s, 'dest shop')
+    assert.equal(dataRows(s).length, 4, 'the one nobody claims is in no namespace')
+    await command(s, 'find pvc-0a1b2c3d-1111')
+    assert.match(dataRows(s)[0], /PVC-0A1B/)
+})
+
+test('SP: D describes a volume, or a claim in its namespace; nothing else is an SP line command', async () => {
+    const { s, source } = await openSp()
+    np(s, 0, 'd')
+    np(s, 1, 'd')
+    await enter(s)
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.DESCRIBE, objectKind: ESdsfObjectKind.PVC, targetNamespace: 'shop', targetName: 'waiting' })
+    assert.match(row(s, ROW_TITLE), /DESCRIBE WAITING  SP/)
+    await aid(s, E3270Aid.PF3)
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.DESCRIBE, objectKind: ESdsfObjectKind.PERSISTENT_VOLUME, targetNamespace: '', targetName: 'archive' })
+    await aid(s, E3270Aid.PF3)
+    assert.equal(s.panel, ESdsfPanel.SP)
+    for (const typed of ['?', 'c', 'p']) {
+        np(s, 0, typed)
+        await enter(s)
+        assert.match(row(s, ROW_TITLE), /INVALID LINE COMMAND$/, typed)
+    }
+})
+
+test('RES and SP sort by every one of their columns, both ways', async () => {
+    const r = await openRes()
+    for (const header of ['Quota', ...RES_COLUMNS.map(c => c.header)]) {
+        for (const order of ['a', 'd']) {
+            await command(r.s, `sort ${header} ${order}`)
+            assert.doesNotMatch(row(r.s, ROW_TITLE), /INVALID/, header)
+        }
+    }
+    const v = await openSp()
+    v.source.volumes = [...v.source.volumes, volumeOf('no-date', { created: '' })]
+    await command(v.s, 'sp')
+    for (const header of ['Volume', ...SP_COLUMNS.map(c => c.header)]) {
+        for (const order of ['a', 'd']) {
+            await command(v.s, `sort ${header} ${order}`)
+            assert.doesNotMatch(row(v.s, ROW_TITLE), /INVALID/, header)
+            assert.equal(dataRows(v.s).length, 6, header)
+        }
+    }
 })

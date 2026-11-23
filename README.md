@@ -69,6 +69,8 @@ option menu. `DA` lists the pods.
 | `O` · `H` | Only the ended Jobs (output queue) · only the suspended CronJobs (held output) |
 | `INIT` | The nodes as initiators: ACTIVE, HALTED (cordoned, with pods), DRAINED (cordoned and empty) or INACTIVE (not Ready), with their roles, pods, CPU and memory |
 | `SR` | The system requests: the CertificateSigningRequests nobody has approved or denied yet, by reply ID, oldest first |
+| `RES` | The resources: every ResourceQuota, a row per resource it limits, used against hard; `%Used` yellow from 75, red from 90, `FULL` at the limit; the fullest first |
+| `SP` | The spool volumes: the PersistentVolumes (BOUND, AVAILABLE, RELEASED, FAILED) and, first, the claims still waiting for one (PENDING) |
 | `JC` | The job classes: the PriorityClasses, highest priority first, with their value, whether they are the default, whether they preempt, and their pods |
 | `LOG` | The cluster's events as the SYSLOG, newest at the bottom; Enter reads again and follows the log when you are at the bottom |
 | `PREFIX api*` · `OWNER sa*` | Filter by pod name or service account; `*` any string, `%` one character; `*` alone resets |
@@ -105,7 +107,10 @@ On **INIT**, as on SDSF's initiator panel:
 
 On **JC**, `?` is the DA of the class's pods (`CLASS=` on the filter line; PF3 comes back to JC) and `D`
 browses the class described, with its pods. On **SR**, `D` browses the CSR described, with its PEM
-request; replying to it (approve or deny) is not there yet.
+request; replying to it (approve or deny) is not there yet. On **RES**, `?` is the DA of the quota's
+namespace (`DEST=` on the filter line; PF3 comes back to RES) and `D` browses the quota described. On
+**SP**, `D` browses the volume or the waiting claim described (a claim with its events, which say why it
+waits).
 
 **Confirm Action.** What changes the cluster (`C`, `CA`, and `S`, `Z`, `P` on INIT) asks first, as SDSF
 does: one window per action, by its line number and job name, with the letter still on its NP. `1`
@@ -152,11 +157,12 @@ says the metrics are not available.
 
 | Scope | Allows |
 |---|---|
-| `sdsf$read` | Open SDSF, list pods, Jobs, CronJobs, nodes, priority classes and pending CSRs, browse logs, describe them |
+| `sdsf$read` | Open SDSF, list pods, Jobs, CronJobs, nodes, priority classes, pending CSRs, quotas and volumes, browse logs, describe them |
 | `sdsf$cancel` | Also cancel (delete) pods, Jobs and CronJobs |
 
 `cluster` and `admin` reach everything, and only `admin` starts, halts or drains a node. Pods are always
-limited to the namespaces and pods the access key covers — the Pods count of a node and of a class too.
+limited to the namespaces and pods the access key covers — the Pods count of a node and of a class too. Quotas and waiting claims are those of the namespaces the
+key reaches; a volume is shown when its claim is in one of them, and a volume nobody claims to any reader.
 
 ## Screenshots
 
@@ -191,6 +197,14 @@ The priority classes as job classes, with `JC`:
 The CSRs waiting for a reply, with `SR`:
 
 ![System requests](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/sr.png)
+
+The quotas as resources, with `RES`:
+
+![Resource display](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/res.png)
+
+The volumes and the claims waiting for one, with `SP`:
+
+![Spool volume display](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/sp.png)
 
 What the operator did in the session, with `ULOG`:
 

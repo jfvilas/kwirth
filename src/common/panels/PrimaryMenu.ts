@@ -22,13 +22,16 @@ export const MENU_LEFT: (IMenuOption | undefined)[] = [
     { code: 'LOG', description: 'System log (events)' },
     { code: 'SR', description: 'System requests (pending CSRs)' },
     undefined,
-    { code: 'JC', description: 'Job classes (priority classes)' }
+    { code: 'JC', description: 'Job classes (priority classes)' },
+    undefined,
+    { code: 'RES', description: 'Resources (quotas)' }
 ]
 
 export const MENU_RIGHT: (IMenuOption | undefined)[] = [
     { code: 'INIT', description: 'Initiators (nodes)' },
     undefined, undefined, undefined, undefined, undefined,
-    { code: 'ULOG', description: 'User session log' }
+    { code: 'ULOG', description: 'User session log' },
+    { code: 'SP', description: 'Spool volumes (PVs and claims)' }
 ]
 
 export interface IMenuState {
