@@ -1,8 +1,8 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.3.0` (npm `@jfvilas` y marketplace de
-> github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`) y el S7 (`ST`/`O`/`H`). **Lo siguiente
-> es el S7b** (parámetros del `DA`) y después el S8 (`INIT`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
+> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.4.0` (npm `@jfvilas` y marketplace de
+> github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`), el S7 (`ST`/`O`/`H`) y el S7b
+> (parámetros del `DA`). **Lo siguiente es el S9** (modelo de terminal y color en el setup) y el S8 (`INIT`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
 > **Dónde vive:** `~/github/kwirth/plugins/sdsf`. Es un repo anidado (rama `main`, identidad `jfvilas`)
@@ -225,14 +225,21 @@ Se publica cada stream con su versión.
 - **Tipos nuevos** (⚠️ a validar): `ESdsfObjectKind`, `ESdsfJobState`, `ISdsfJob`, `ESdsfCommand.JOBS`,
   `ICancelTarget` y, en la sesión, `ILineTarget`, `ITablePaintState<T>` e `ITableFields<T>`.
 
-**S7b — Parámetros del `DA`** (como en z/OS: tipo, posición, `O…`, `NO…`, `ALL`/`ALLT`/`ALLP`): pendiente.
+**S7b — Parámetros del `DA`** (como en z/OS: tipo, posición, `O…`, `NO…`, `ALL`/`ALLT`/`ALLP`) · ✅ VALIDADO
+(2026-11-23), publicado como 0.4.0.
+- Módulo puro `panels/DaFilter.ts`; un parámetro mal puesto da `PARAMETER INVALID` y el DA sigue como
+  estaba. Los parámetros se quedan mientras se navega por el DA; `DA` a secas y `SDSF DA` vuelven al DADFLT.
+- **Arreglo del front** (lo destapó el e2e): el clic calculaba la celda con el ancho medido de la font,
+  que se queda corto, y hacia la derecha caía una columna más allá. Ahora usa el tamaño real de la rejilla.
+- **Tipos nuevos** (⚠️ a validar): `EDaType`, `EDaPosition` e `IDaFilter`.
 - **Tipos:** `JOB` = pods de un Job; `STC` = pods con controlador (salvo DaemonSet); `TSU` = pods sueltos;
   `INIT` = pods de DaemonSet (el agente de cada nodo, lo más parecido a un initiator).
 - **Posiciones:** `IN` = Running y Ready; `OUT` = Pending sin nodo; `READY` = Pending con nodo (creando
   contenedores); `TRANS` = Running sin Ready o Terminating. Los terminados (`END`/`ABN`) solo con `ALL`.
 - **Reglas de IBM:** incluir por tipo/posición; `O…` limita (uno solo); `NO…` excluye; `ALL`/`ALLT`/`ALLP`
   no se combinan; máximo cuatro parámetros; si chocan gana el último.
-- **`DA` sin parámetros** = el `DADFLT` típico `(IN,OUT,TRANS,STC,TSU,JOB)`: sin DaemonSets ni terminados.
+- **`DA` sin parámetros** = `DADFLT (IN,OUT,TRANS,READY,STC,TSU,JOB)`: sin DaemonSets ni terminados. El
+  típico de IBM no lleva `READY`, pero entonces un pod arrancando en su nodo desaparecería del DA.
 - Fuente: IBM, *Display Active Users panel (DA)* (z/OS 2.4) y `DADFLT` en *SDSF Operation and Customization*.
 
 **S8 — `INIT` (nodes, con drain para `admin`)**: pendiente.

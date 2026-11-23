@@ -997,3 +997,71 @@ test('&nn works on ST too', async (t) => {
     assert.equal(source.requests.filter(r => r.command === ESdsfCommand.JOBS).length, asked + 1)
     s.dispose()
 })
+
+// ─── DA parameters ────────────────────────────────────────────────────────────
+
+const zoo = () => [
+    podOf('api-1'),
+    podOf('batch-1', { controllerKind: 'Job', jobId: 'JOB00001' }),
+    podOf('debug', { controllerKind: '', jobId: 'TSU00001' }),
+    podOf('proxy-1', { controllerKind: 'DaemonSet' }),
+    podOf('done-1', { controllerKind: 'Job', phase: 'Succeeded', ready: false }),
+    podOf('queued', { phase: 'Pending', ready: false, node: '' }),
+    podOf('starting', { phase: 'Pending', ready: false, node: 'node-1' })
+]
+
+test('DA parameters: bare DA is the DADFLT, without initiators (DaemonSets) or the ended pods', async () => {
+    const { s } = await openDa(zoo())
+    assert.deepEqual(jobnames(s).sort(), ['API-1', 'BATCH-1', 'DEBUG', 'QUEUED', 'STARTING'])
+})
+
+test('DA parameters: OJOB, OTSU, OINIT, OREADY, INIT and ALL, typed from the menu and from the DA itself', async () => {
+    const o = await open(zoo())
+    await command(o.s, 'da ojob')
+    assert.deepEqual(jobnames(o.s), ['BATCH-1'])
+    await command(o.s, 'DA OTSU')
+    assert.deepEqual(jobnames(o.s), ['DEBUG'])
+    await command(o.s, 'da oinit')
+    assert.deepEqual(jobnames(o.s), ['PROXY-1'])
+    await command(o.s, 'da oready')
+    assert.deepEqual(jobnames(o.s), ['STARTING'])
+    await command(o.s, 'da noready noout')
+    assert.deepEqual(jobnames(o.s).sort(), ['API-1', 'BATCH-1', 'DEBUG'])
+    await command(o.s, 'da oready allt')
+    assert.match(row(o.s, ROW_TITLE), /PARAMETER INVALID$/)
+    await command(o.s, 'da init')
+    assert.deepEqual(jobnames(o.s).sort(), ['API-1', 'BATCH-1', 'DEBUG', 'PROXY-1', 'QUEUED', 'STARTING'])
+    await command(o.s, 'da all')
+    assert.equal(jobnames(o.s).length, 7)
+    await command(o.s, 'da')
+    assert.deepEqual(jobnames(o.s).sort(), ['API-1', 'BATCH-1', 'DEBUG', 'QUEUED', 'STARTING'], 'bare DA goes back to the DADFLT')
+})
+
+test('DA parameters: a wrong one says PARAMETER INVALID, keeps the command to be fixed and the DA as it was', async () => {
+    const o = await open(zoo())
+    await command(o.s, 'da ojob oin')
+    assert.match(row(o.s, ROW_TITLE), /PARAMETER INVALID$/)
+    assert.match(row(o.s, ROW_COMMAND), /===> da ojob oin /)
+    assert.equal(o.s.terminal.lock, E3270Lock.NONE)
+    await command(o.s, 'da ojob')
+    await command(o.s, 'da job stc tsu init in')
+    assert.match(row(o.s, ROW_TITLE), /PARAMETER INVALID$/)
+    assert.deepEqual(jobnames(o.s), ['BATCH-1'], 'the DA keeps the filter it had')
+    await command(o.s, 'da')
+    assert.match(row(o.s, ROW_TITLE), /LINE 1-5 \(5\)$/, 'from the DA itself, after the error')
+})
+
+test('DA parameters: they stay while moving inside the DA and are forgotten by SDSF DA from READY', async () => {
+    const o = await open(zoo())
+    await command(o.s, 'da notsu nojob')
+    await command(o.s, 'sort jobname d')
+    assert.deepEqual(jobnames(o.s), ['STARTING', 'QUEUED', 'API-1'])
+    await command(o.s, 'prefix *')
+    assert.deepEqual(jobnames(o.s), ['STARTING', 'QUEUED', 'API-1'], 'other commands keep the DA parameters')
+    await aid(o.s, E3270Aid.PF3)
+    await aid(o.s, E3270Aid.PF3)
+    assert.equal(o.s.panel, ESdsfPanel.READY)
+    type(o.s, 'sdsf da')
+    await enter(o.s)
+    assert.deepEqual(jobnames(o.s).sort(), ['API-1', 'BATCH-1', 'DEBUG', 'QUEUED', 'STARTING'])
+})

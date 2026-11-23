@@ -197,6 +197,30 @@ test('ST lists the fixture\'s Job and CronJob in JES terms; S on the Job browses
     expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
 })
 
+test('DA parameters: the Job\'s ended pod only with ALL; OJOB, OSTC and a wrong one; bare DA back to the default', async () => {
+    await command(page, 'prefix batch*')
+    await command(page, 'da')
+    expect(await screenText(page)).not.toMatch(/^ {5}BATCH-JO/m)
+    await command(page, 'da all')
+    expect(await row(page, 6)).toMatch(/^ {5}BATCH-JO WORK +JOB\d{5} DEFAULT +. END /)
+    await command(page, 'da ojob')
+    expect(await screenText(page)).not.toMatch(/^ {5}BATCH-JO/m)
+    await command(page, 'prefix demo*')
+    await command(page, 'da ostc')
+    expect(await demoRows()).toHaveLength(2)
+    await command(page, 'da ojob')
+    expect(await demoRows()).toHaveLength(0)
+    await command(page, 'da ojob oin')
+    expect(await row(page, 2)).toMatch(/PARAMETER INVALID$/)
+    // the command line still holds 'da ojob oin': a click one column off would leave its 'd' behind
+    await clickCell(page, 3, 76)
+    expect(await oiaText(page)).toMatch(/04\/077$/)
+    await clickCell(page, 3, 20)
+    expect(await oiaText(page)).toMatch(/04\/021$/)
+    await command(page, 'da')
+    expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
+})
+
 test('C asks first: 2 leaves the pod alone', async () => {
     const before = fixturePods()
     const [first] = await demoRows()

@@ -44,7 +44,8 @@ option menu. `DA` lists the pods.
 
 | Command | Does |
 |---|---|
-| `DA` | Active pods |
+| `DA` | Active pods: every pod but the DaemonSets and the ended ones |
+| `DA OJOB` · `DA NOTSU` · `DA ALL` … | The DA parameters of z/OS, up to four: types `JOB` (pods of a Job), `STC` (other owners), `TSU` (bare pods), `INIT` (DaemonSets); positions `IN` (ready), `OUT` (pending, no node), `READY` (pending on a node), `TRANS` (not ready or terminating). `O…` only that one, `NO…` not that one, `ALL`/`ALLT`/`ALLP` everything, all types, all positions (with the ended pods) |
 | `ST` | Jobs and CronJobs as batch jobs, with their JES queue (EXECUTION, PRINT, INPUT, HOLD) and status |
 | `O` · `H` | Only the ended Jobs (output queue) · only the suspended CronJobs (held output) |
 | `LOG` | The cluster's events as the SYSLOG, newest at the bottom; Enter reads again and follows the log when you are at the bottom |

@@ -4,6 +4,7 @@ import { sdsfPatternMatches } from '../src/common/panels/Wildcard'
 import { EPrimaryCommand, parsePrimaryCommand } from '../src/common/panels/PrimaryCommand'
 import { ageOf, dpOf, findColumn, posOf, procStepOf, statusOf, stepNameOf, DA_COLUMNS, JOBNAME_COLUMN } from '../src/common/panels/DaColumns'
 import { columnsFrom, offsetLeftOf } from '../src/common/panels/DaPanel'
+import { daFilterMatches, daPositionOf, daTypeOf, DEFAULT_DA_FILTER, EDaPosition, EDaType, parseDaParameters } from '../src/common/panels/DaFilter'
 import { ESdsfQos, ISdsfPod } from '../src/common/SdsfTypes'
 
 const pod = (over: Partial<ISdsfPod> = {}): ISdsfPod => ({
@@ -176,4 +177,76 @@ test('ST duration: running till now, ended till the end, nothing for a CronJob',
     assert.equal(durationOf(job({ start: '' }), now), '')
     assert.equal(durationOf(job({ kind: ESdsfObjectKind.CRONJOB }), now), '')
     assert.deepEqual(ST_COLUMNS.map(c => c.header), ['JobID', 'Owner', 'Prty', 'Queue', 'C', 'Status', 'Age', 'Schedule', 'CronJob', 'Dur', 'Namespace', 'JobName'])
+})
+
+test('DA types and positions of a pod', () => {
+    assert.equal(daTypeOf(pod({ controllerKind: 'Job' })), EDaType.JOB)
+    assert.equal(daTypeOf(pod({ controllerKind: 'ReplicaSet' })), EDaType.STC)
+    assert.equal(daTypeOf(pod({ controllerKind: 'StatefulSet' })), EDaType.STC)
+    assert.equal(daTypeOf(pod({ controllerKind: 'DaemonSet' })), EDaType.INIT)
+    assert.equal(daTypeOf(pod({ controllerKind: '' })), EDaType.TSU)
+    assert.equal(daPositionOf(pod()), EDaPosition.IN)
+    assert.equal(daPositionOf(pod({ ready: false })), EDaPosition.TRANS)
+    assert.equal(daPositionOf(pod({ deleting: true })), EDaPosition.TRANS)
+    assert.equal(daPositionOf(pod({ phase: 'Pending', ready: false, node: '' })), EDaPosition.OUT)
+    assert.equal(daPositionOf(pod({ phase: 'Pending', ready: false, node: 'node-1' })), EDaPosition.READY)
+    assert.equal(daPositionOf(pod({ phase: 'Unknown' })), EDaPosition.TRANS)
+    assert.equal(daPositionOf(pod({ phase: 'Succeeded' })), undefined)
+    assert.equal(daPositionOf(pod({ phase: 'Failed' })), undefined)
+})
+
+test('DA parameters: the DADFLT, include, only, no, all; four at most, one O, ALL alone, last one wins', () => {
+    assert.deepEqual(parseDaParameters([]), DEFAULT_DA_FILTER)
+    assert.deepEqual(DEFAULT_DA_FILTER.types, [EDaType.STC, EDaType.TSU, EDaType.JOB])
+    assert.deepEqual(DEFAULT_DA_FILTER.positions, [EDaPosition.IN, EDaPosition.OUT, EDaPosition.TRANS, EDaPosition.READY])
+    assert.equal(DEFAULT_DA_FILTER.ended, false)
+
+    assert.deepEqual(parseDaParameters(['init'])?.types, [EDaType.STC, EDaType.TSU, EDaType.JOB, EDaType.INIT])
+    assert.deepEqual(parseDaParameters(['NOREADY', 'READY'])?.positions, [EDaPosition.IN, EDaPosition.OUT, EDaPosition.TRANS, EDaPosition.READY])
+    assert.deepEqual(parseDaParameters(['JOB'])?.types, DEFAULT_DA_FILTER.types, 'including one already there changes nothing')
+    assert.deepEqual(parseDaParameters(['ojob'])?.types, [EDaType.JOB])
+    assert.deepEqual(parseDaParameters(['OSTC'])?.types, [EDaType.STC])
+    assert.deepEqual(parseDaParameters(['OTSU'])?.types, [EDaType.TSU])
+    assert.deepEqual(parseDaParameters(['OINIT'])?.types, [EDaType.INIT])
+    assert.deepEqual(parseDaParameters(['OIN'])?.positions, [EDaPosition.IN])
+    assert.deepEqual(parseDaParameters(['OOUT'])?.positions, [EDaPosition.OUT])
+    assert.deepEqual(parseDaParameters(['OTRANS'])?.positions, [EDaPosition.TRANS])
+    assert.deepEqual(parseDaParameters(['OREADY'])?.positions, [EDaPosition.READY])
+    const oinNotsu = parseDaParameters(['OIN', 'NOTSU'])
+    assert.deepEqual(oinNotsu?.positions, [EDaPosition.IN])
+    assert.deepEqual(oinNotsu?.types, [EDaType.STC, EDaType.JOB])
+    assert.deepEqual(parseDaParameters(['NOSTC', 'NOJOB'])?.types, [EDaType.TSU])
+    assert.deepEqual(parseDaParameters(['NOIN'])?.positions, [EDaPosition.OUT, EDaPosition.TRANS, EDaPosition.READY])
+    assert.deepEqual(parseDaParameters(['NOOUT', 'NOTRANS', 'NOREADY'])?.positions, [EDaPosition.IN])
+    assert.deepEqual(parseDaParameters(['NOINIT']), DEFAULT_DA_FILTER)
+    assert.deepEqual(parseDaParameters(['JOB', 'NOJOB'])?.types, [EDaType.STC, EDaType.TSU], 'the last one wins')
+    assert.deepEqual(parseDaParameters(['NOJOB', 'JOB'])?.types, [EDaType.STC, EDaType.TSU, EDaType.JOB], 'the last one wins')
+
+    assert.deepEqual(parseDaParameters(['ALL']), { types: Object.values(EDaType), positions: Object.values(EDaPosition), ended: true })
+    assert.deepEqual(parseDaParameters(['allt']), { ...DEFAULT_DA_FILTER, types: Object.values(EDaType) })
+    assert.deepEqual(parseDaParameters(['ALLP']), { ...DEFAULT_DA_FILTER, positions: Object.values(EDaPosition), ended: true })
+
+    assert.equal(parseDaParameters(['ALL', 'JOB']), undefined, 'ALL goes alone')
+    assert.equal(parseDaParameters(['NOTSU', 'ALLP']), undefined, 'ALLP goes alone')
+    assert.equal(parseDaParameters(['OJOB', 'OIN']), undefined, 'one O at most')
+    assert.equal(parseDaParameters(['JOB', 'STC', 'TSU', 'INIT', 'IN']), undefined, 'four at most')
+    assert.notEqual(parseDaParameters(['JOB', 'STC', 'TSU', 'INIT']), undefined)
+    assert.equal(parseDaParameters(['XYZ']), undefined)
+    assert.equal(parseDaParameters(['NOXYZ']), undefined)
+    assert.equal(parseDaParameters(['OXYZ']), undefined)
+    assert.deepEqual(parseDaParameters(['OUT'])?.positions, DEFAULT_DA_FILTER.positions, 'OUT is a position, not O+UT')
+})
+
+test('DA filter on a pod: type and position, the ended ones only with ALL or ALLP', () => {
+    const all = parseDaParameters(['ALL'])!
+    const ended = pod({ phase: 'Succeeded', controllerKind: 'Job' })
+    assert.equal(daFilterMatches(DEFAULT_DA_FILTER, pod({ controllerKind: 'ReplicaSet' })), true)
+    assert.equal(daFilterMatches(DEFAULT_DA_FILTER, pod({ controllerKind: 'DaemonSet' })), false)
+    assert.equal(daFilterMatches(DEFAULT_DA_FILTER, pod({ phase: 'Pending', node: 'n1' })), true, 'a pod starting on its node stays')
+    assert.equal(daFilterMatches(parseDaParameters(['NOREADY'])!, pod({ phase: 'Pending', node: 'n1' })), false)
+    assert.equal(daFilterMatches(DEFAULT_DA_FILTER, ended), false)
+    assert.equal(daFilterMatches(all, ended), true)
+    assert.equal(daFilterMatches(all, pod({ controllerKind: 'DaemonSet' })), true)
+    assert.equal(daFilterMatches(parseDaParameters(['ALLP'])!, ended), true)
+    assert.equal(daFilterMatches(parseDaParameters(['OIN'])!, ended), false)
 })
