@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import type { V1Pod, CoreV1Event, V1Node } from '@kubernetes/client-node'
+import type { V1Pod, CoreV1Event, V1Node, V1PriorityClass, V1CertificateSigningRequest } from '@kubernetes/client-node'
 import { jobIdOf, mapPod } from '../src/back/PodMapper'
 import { ageOf, describePod } from '../src/back/Describe'
 import { usageOf } from '../src/back/PodMetrics'
@@ -8,7 +8,9 @@ import { IMetricsCluster, IMetricsValue } from '../src/back/MetricsProviderTypes
 import { SdsfChannel, ISdsfClusterInfo, DEFAULT_TAIL_LINES, MAX_TAIL_LINES } from '../src/back/index'
 import { ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfNodeAction, ESdsfNodeStatus, ESdsfObjectKind, ESdsfQos, ISdsfMessage, ISdsfNode } from '../src/common/SdsfTypes'
 import { isEvictable, mapNode, nodeIdsOf, nodeStatusOf, quantityOf, rolesOf } from '../src/back/NodeMapper'
-import { describeNode } from '../src/back/Describe'
+import { describeCsr, describeNode, describePriorityClass } from '../src/back/Describe'
+import { mapJobClass } from '../src/back/ClassMapper'
+import { isPending, mapRequests } from '../src/back/RequestMapper'
 import { AccessKey, accessKeySerialize, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, IInstanceConfig } from '@kwirthmagnify/kwirth-common'
 
 // ─── PodMapper ────────────────────────────────────────────────────────────────
@@ -212,6 +214,18 @@ const nodeObject = (name: string, over: Partial<V1Node> = {}): V1Node => ({
     ...over
 } as V1Node)
 
+const priorityClass = (name: string, value: number, over: Partial<V1PriorityClass> = {}): V1PriorityClass => ({
+    metadata: { name, creationTimestamp: new Date('2026-11-01T00:00:00Z') }, value, ...over
+})
+
+// A CSR with the PEM of a request (its content does not matter: describe prints it, nothing parses it).
+const PEM = '-----BEGIN CERTIFICATE REQUEST-----\nMIIBfake\n-----END CERTIFICATE REQUEST-----\n'
+const csr = (name: string, created: string, conditions: { type: string; status: string }[] = [], over: Partial<V1CertificateSigningRequest['spec']> = {}): V1CertificateSigningRequest => ({
+    metadata: { name, creationTimestamp: new Date(created) },
+    spec: { request: Buffer.from(PEM).toString('base64'), signerName: 'kubernetes.io/kube-apiserver-client', username: 'alice', groups: ['system:authenticated'], usages: ['client auth'], ...over },
+    status: { conditions: conditions.map(c => ({ ...c, lastUpdateTime: new Date(created) })) }
+} as V1CertificateSigningRequest)
+
 const daemonPod = (): V1Pod => pod({ metadata: { name: 'proxy-x', namespace: 'kube-system', uid: 'd1', ownerReferences: [{ apiVersion: 'apps/v1', kind: 'DaemonSet', name: 'proxy', uid: 'y', controller: true }] } })
 
 const fakeCluster = (opts: { metrics?: boolean; fail?: { code?: number; body?: string; message?: string }; refuseEvict?: string[] } = {}) => {
@@ -262,6 +276,18 @@ const fakeCluster = (opts: { metrics?: boolean; fail?: { code?: number; body?: s
             readNamespacedCronJob: (p: unknown) => call('readCronJob', p, { metadata: { name: 'report', namespace: 'shop' }, spec: { schedule: '0 * * * *', jobTemplate: { spec: { template: {} } } }, status: {} }),
             deleteNamespacedJob: (p: unknown) => call('deleteJob', p, {}),
             deleteNamespacedCronJob: (p: unknown) => call('deleteCronJob', p, {})
+        },
+        schedulingApi: {
+            listPriorityClass: () => call('listClasses', undefined, { items: [priorityClass('high', 1000), priorityClass('system-node-critical', 2000001000)] }),
+            readPriorityClass: (p: unknown) => call('readClass', p, priorityClass('high', 1000))
+        },
+        crdApi: {
+            listClusterCustomObject: (p: unknown) => call('listCustom', p, { items: [
+                csr('approved-one', '2026-11-22T09:00:00Z', [{ type: 'Approved', status: 'True' }]),
+                csr('late', '2026-11-22T11:00:00Z'),
+                csr('early', '2026-11-22T10:00:00Z')
+            ] }),
+            getClusterCustomObject: (p: unknown) => call('getCustom', p, csr('early', '2026-11-22T10:00:00Z'))
         },
         getProvider: (id: string) => opts.metrics && id === 'metrics'
             ? { id, subscribe: (s: unknown) => { subscribed.push(s); return Promise.resolve() }, unsubscribe: (s: unknown) => { subscribed.splice(subscribed.indexOf(s), 1) } }
@@ -733,4 +759,90 @@ test('NODE drain: cordon, then one eviction per pod on it but the DaemonSet ones
     assert.equal(refused.error, ESdsfError.FAILED)
     assert.equal(refused.evicted, 1)
     assert.match(String(refused.detail), /Halted; 1 of 2 pod\(s\) evicted\. Refused: shop\/api-7d9f8b6c4-x2kq9: Cannot evict pod as it would violate the pod's disruption budget\./)
+})
+
+// ─── JC (PriorityClasses) and SR (CSRs) ───────────────────────────────────────
+
+test('mapJobClass: value, default, preemption (PreemptLowerPriority when unset), description, the pods given', () => {
+    assert.deepEqual(mapJobClass(priorityClass('batch', 100, { globalDefault: true, preemptionPolicy: 'Never', description: 'Batch' }), 3), {
+        name: 'batch', value: 100, globalDefault: true, preemption: 'Never', pods: 3, description: 'Batch', created: '2026-11-01T00:00:00.000Z'
+    })
+    const bare = mapJobClass({ value: 0 }, 0)
+    assert.deepEqual([bare.name, bare.globalDefault, bare.preemption, bare.description, bare.created], ['', false, 'PreemptLowerPriority', '', ''])
+})
+
+test('mapRequests: only the pending CSRs, oldest first, numbered 01, 02 as reply IDs', () => {
+    assert.equal(isPending(csr('x', '2026-11-22T10:00:00Z')), true)
+    assert.equal(isPending(csr('x', '2026-11-22T10:00:00Z', [{ type: 'Denied', status: 'True' }])), false)
+    assert.equal(isPending(csr('x', '2026-11-22T10:00:00Z', [{ type: 'Approved', status: 'True' }, { type: 'Failed', status: 'True' }])), false)
+    assert.equal(isPending({ spec: { request: '', signerName: 's' } } as V1CertificateSigningRequest), true, 'no status yet: pending')
+    const requests = mapRequests([csr('b', '2026-11-22T11:00:00Z'), csr('a', '2026-11-22T10:00:00Z', [], { username: undefined, usages: undefined }), csr('gone', '2026-11-22T09:00:00Z', [{ type: 'Approved', status: 'True' }])])
+    assert.deepEqual(requests.map(r => [r.id, r.name]), [['01', 'a'], ['02', 'b']])
+    assert.deepEqual(requests[0], { name: 'a', id: '01', signer: 'kubernetes.io/kube-apiserver-client', requestor: '', usages: [], created: '2026-11-22T10:00:00.000Z' })
+    assert.deepEqual(mapRequests([csr('z', '2026-11-22T10:00:00Z'), csr('y', '2026-11-22T10:00:00Z')]).map(r => r.name), ['y', 'z'], 'same time: by name')
+})
+
+test('describePriorityClass and describeCsr read like kubectl describe', () => {
+    const lines = describePriorityClass(priorityClass('high', 1000, { description: 'Important' }), [pod()], Date.parse('2026-11-22T10:00:00Z'))
+    assert.ok(lines.includes('Name:             high'))
+    assert.ok(lines.includes('Value:            1000'))
+    assert.ok(lines.includes('GlobalDefault:    false'))
+    assert.ok(lines.includes('PreemptionPolicy: PreemptLowerPriority'))
+    assert.ok(lines.includes('Description:      Important'))
+    assert.ok(lines.includes('Non-terminated Pods:  (1 in total)'))
+    assert.ok(lines.some(l => /^ {2}shop +api-7d9f8b6c4-x2kq9 +21d$/.test(l)))
+    const c = describeCsr(csr('early', '2026-11-22T10:00:00Z', [], { expirationSeconds: 3600 }))
+    assert.ok(c.includes('Requesting User:  alice'))
+    assert.ok(c.includes('Groups:           system:authenticated'))
+    assert.ok(c.includes('Signer:           kubernetes.io/kube-apiserver-client'))
+    assert.ok(c.includes('Expiration:       3600s'))
+    assert.ok(c.includes('Status:           Pending'))
+    assert.deepEqual(c.slice(-4), ['Request:', '  -----BEGIN CERTIFICATE REQUEST-----', '  MIIBfake', '  -----END CERTIFICATE REQUEST-----'])
+    const done = describeCsr(csr('x', '2026-11-22T10:00:00Z', [{ type: 'Approved', status: 'True' }], { request: '' }))
+    assert.ok(done.includes('Status:           Approved'))
+    assert.ok(done.includes('Expiration:       <none>'))
+    assert.equal(done.at(-1), 'Request:', 'no request: nothing under it')
+})
+
+test('CLASSES: every PriorityClass, the Pods count only what the key reaches', async () => {
+    const shop = await open('sdsf$read:shop:::')
+    const r = await shop.run(message(ESdsfCommand.CLASSES))
+    assert.equal(r.ok, true)
+    const classes = r.classes as { name: string; pods: number }[]
+    assert.deepEqual(classes.map(c => [c.name, c.pods]), [['high', 1], ['system-node-critical', 0]], 'the vault and kube-system pods are not counted')
+    const all = await open('sdsf$read::::')
+    const every = (await all.run(message(ESdsfCommand.CLASSES))).classes as { name: string; pods: number }[]
+    assert.equal(every[0].pods, 3)
+})
+
+test('REQUESTS: the pending CSRs through the generic API, by their group, version and plural', async () => {
+    const o = await open(ALL_READ)
+    const r = await o.run(message(ESdsfCommand.REQUESTS))
+    assert.equal(r.ok, true)
+    assert.deepEqual(o.calls.at(-1), { method: 'listCustom', params: { group: 'certificates.k8s.io', version: 'v1', plural: 'certificatesigningrequests' } })
+    assert.deepEqual((r.requests as { id: string; name: string }[]).map(x => [x.id, x.name]), [['01', 'early'], ['02', 'late']])
+})
+
+test('DESCRIBE a PriorityClass and a CSR: no namespace needed; the class with the pods the key reaches', async () => {
+    const o = await open('sdsf$read:shop:::')
+    const pc = await o.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.PRIORITY_CLASS, targetNamespace: '', targetName: 'high', containerName: '' }))
+    assert.equal(pc.ok, true)
+    assert.deepEqual(o.calls.find(c => c.method === 'readClass')?.params, { name: 'high' })
+    assert.ok((pc.lines as string[]).includes('Non-terminated Pods:  (1 in total)'))
+    const c = await o.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.CSR, targetNamespace: '', targetName: 'early', containerName: '' }))
+    assert.equal(c.ok, true)
+    assert.deepEqual(o.calls.at(-1), { method: 'getCustom', params: { group: 'certificates.k8s.io', version: 'v1', plural: 'certificatesigningrequests', name: 'early' } })
+    assert.ok((c.lines as string[]).includes('Name:             early'))
+    const none = await o.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.CSR, targetNamespace: '', targetName: '' }))
+    assert.equal(none.error, ESdsfError.BAD_REQUEST)
+})
+
+test('CLASSES and REQUESTS that the API refuses say why', async () => {
+    const o = await open(ALL_READ, { fail: { code: 403, body: JSON.stringify({ message: 'certificatesigningrequests is forbidden' }) } })
+    const r = await o.run(message(ESdsfCommand.REQUESTS))
+    assert.equal(r.ok, false)
+    assert.equal(r.error, ESdsfError.FAILED)
+    assert.equal(r.detail, 'certificatesigningrequests is forbidden')
+    const missing = await open(ALL_READ, { fail: { code: 404, message: 'not found' } })
+    assert.equal((await missing.run(message(ESdsfCommand.DESCRIBE, { objectKind: ESdsfObjectKind.PRIORITY_CLASS, targetNamespace: '', targetName: 'nope' }))).error, ESdsfError.NOT_FOUND)
 })

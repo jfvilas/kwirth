@@ -19,7 +19,10 @@ export const MENU_LEFT: (IMenuOption | undefined)[] = [
     { code: 'H', description: 'Held output queue (suspended cronjobs)' },
     { code: 'ST', description: 'Status of jobs (jobs and cronjobs)' },
     undefined,
-    { code: 'LOG', description: 'System log (events)' }
+    { code: 'LOG', description: 'System log (events)' },
+    { code: 'SR', description: 'System requests (pending CSRs)' },
+    undefined,
+    { code: 'JC', description: 'Job classes (priority classes)' }
 ]
 
 export const MENU_RIGHT: (IMenuOption | undefined)[] = [

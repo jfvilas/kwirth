@@ -7,14 +7,16 @@ import {
 import { IChannelInstances } from '@kwirthmagnify/kwirth-common'
 import { IBackChannelObject, IChannel, keyMatchesResource } from '@kwirthmagnify/kwirth-common-back'
 import type { IProviderHandle } from '@kwirthmagnify/kwirth-common-back'
-import type { BatchV1Api, CoreV1Api, V1Pod } from '@kubernetes/client-node'
+import type { BatchV1Api, CoreV1Api, CustomObjectsApi, SchedulingV1Api, V1CertificateSigningRequest, V1CertificateSigningRequestList, V1Pod } from '@kubernetes/client-node'
 import { Request, Response } from 'express'
 import {
-    ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfNodeAction, ESdsfObjectKind, ESdsfScope, ISdsfMessage, ISdsfMessageResponse,
+    CLUSTER_SCOPED_KINDS, ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfNodeAction, ESdsfObjectKind, ESdsfScope, ISdsfMessage, ISdsfMessageResponse,
     SDSF_SCOPES, SDSF_SCOPE_LADDER
 } from '../common/SdsfTypes'
 import { mapPod } from './PodMapper'
-import { describeCronJob, describeJob, describeNode, describePod } from './Describe'
+import { describeCronJob, describeCsr, describeJob, describeNode, describePod, describePriorityClass } from './Describe'
+import { mapJobClass } from './ClassMapper'
+import { mapRequests } from './RequestMapper'
 import { isEvictable, isRunning, mapNode, nodeIdsOf } from './NodeMapper'
 import { mapEvent, sortEvents } from './EventMapper'
 import { mapCronJob, mapJob } from './JobMapper'
@@ -29,6 +31,9 @@ export interface ISdsfClusterInfo {
     coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'readNamespacedPod' | 'readNamespacedPodLog' | 'deleteNamespacedPod' | 'listNamespacedEvent' | 'listEventForAllNamespaces'
         | 'listNode' | 'readNode' | 'patchNode' | 'createNamespacedPodEviction'>
     batchApi: Pick<BatchV1Api, 'listJobForAllNamespaces' | 'listCronJobForAllNamespaces' | 'readNamespacedJob' | 'readNamespacedCronJob' | 'deleteNamespacedJob' | 'deleteNamespacedCronJob'>
+    schedulingApi: Pick<SchedulingV1Api, 'listPriorityClass' | 'readPriorityClass'>
+    // The CSRs: the core has no CertificatesV1Api, and the generic one reaches any group by its path.
+    crdApi: Pick<CustomObjectsApi, 'listClusterCustomObject' | 'getClusterCustomObject'>
     getProvider(providerId: string, consumer: unknown): IProviderHandle | undefined
 }
 
@@ -54,6 +59,9 @@ const errorText = (err: unknown): string => {
     }
     return err instanceof Error ? err.message : String(err)
 }
+
+// The CSRs, through the generic API: their group, version and plural.
+const CSR_RESOURCE = { group: 'certificates.k8s.io', version: 'v1', plural: 'certificatesigningrequests' }
 
 const errorCode = (err: unknown): ESdsfError => (err as { code?: number })?.code === 404 ? ESdsfError.NOT_FOUND : ESdsfError.FAILED
 
@@ -216,16 +224,17 @@ export class SdsfChannel implements IChannel {
         const containerName = message.containerName ?? ''
         const kind = message.objectKind ?? ESdsfObjectKind.POD
         const isList = message.command === ESdsfCommand.LIST || message.command === ESdsfCommand.EVENTS || message.command === ESdsfCommand.JOBS
-            || message.command === ESdsfCommand.NODES
-        const onNode = message.command === ESdsfCommand.NODE || (message.command === ESdsfCommand.DESCRIBE && kind === ESdsfObjectKind.NODE)
+            || message.command === ESdsfCommand.NODES || message.command === ESdsfCommand.CLASSES || message.command === ESdsfCommand.REQUESTS
+        const clusterScoped = message.command === ESdsfCommand.NODE || (message.command === ESdsfCommand.DESCRIBE && CLUSTER_SCOPED_KINDS.includes(kind))
 
         /*
             Everything but the lists names one object, and the key has to reach it: a pod by its namespace, name
             and container; a Job or a CronJob by its namespace (a key limited to pods reaches no Job). A node has
-            no namespace: describing it is reading, as listing it is; changing it is for 'admin' (below).
+            no namespace, nor a PriorityClass or a CSR: describing them is reading, as listing them is; changing a
+            node is for 'admin' (below).
         */
-        if (onNode) {
-            if (!targetName) return fail(ESdsfError.BAD_REQUEST, 'No node given')
+        if (clusterScoped) {
+            if (!targetName) return fail(ESdsfError.BAD_REQUEST, 'No target given')
         }
         else if (!isList) {
             if (!targetNamespace || !targetName) return fail(ESdsfError.BAD_REQUEST, 'No target given')
@@ -258,8 +267,30 @@ export class SdsfChannel implements IChannel {
                 case ESdsfCommand.NODE:
                     return await this.nodeAction(instance, message.nodeAction, targetName, response)
 
+                case ESdsfCommand.CLASSES:
+                    return { ...response, ok: true, classes: await this.classes(instance) }
+
+                case ESdsfCommand.REQUESTS: {
+                    const list = await this.clusterInfo.crdApi.listClusterCustomObject(CSR_RESOURCE) as V1CertificateSigningRequestList
+                    return { ...response, ok: true, requests: mapRequests(list.items) }
+                }
+
                 case ESdsfCommand.DESCRIBE: {
-                    if (kind === ESdsfObjectKind.NODE) return { ...response, ok: true, lines: await this.describeNode(instance, targetName) }
+                    switch (kind) {
+                        case ESdsfObjectKind.NODE:
+                            return { ...response, ok: true, lines: await this.describeNode(instance, targetName) }
+                        case ESdsfObjectKind.PRIORITY_CLASS: {
+                            const pc = await this.clusterInfo.schedulingApi.readPriorityClass({ name: targetName })
+                            const pods = (await this.reachedPods(instance)).filter(p => p.spec?.priorityClassName === targetName)
+                            return { ...response, ok: true, lines: describePriorityClass(pc, pods) }
+                        }
+                        case ESdsfObjectKind.CSR: {
+                            const csr = await this.clusterInfo.crdApi.getClusterCustomObject({ ...CSR_RESOURCE, name: targetName }) as V1CertificateSigningRequest
+                            return { ...response, ok: true, lines: describeCsr(csr) }
+                        }
+                        default:
+                            break
+                    }
                     let events: Awaited<ReturnType<CoreV1Api['listNamespacedEvent']>>['items'] = []
                     const readEvents = async () => {
                         try {
@@ -356,6 +387,22 @@ export class SdsfChannel implements IChannel {
             const reached = onNode.filter(p => isRunning(p) && keyMatchesResource(instance.accessKey, { namespace: p.metadata?.namespace ?? '', pod: p.metadata?.name ?? '' })).length
             return mapNode(node, ids[i], onNode, reached, usage.nodes.get(name), usage.interval)
         })
+    }
+
+    // The pods still running that the key reaches.
+    private reachedPods = async (instance: IInstance): Promise<V1Pod[]> =>
+        (await this.clusterInfo.coreApi.listPodForAllNamespaces()).items
+            .filter(p => isRunning(p) && keyMatchesResource(instance.accessKey, { namespace: p.metadata?.namespace ?? '', pod: p.metadata?.name ?? '' }))
+
+    // Every PriorityClass, as JC shows them, with the pods of each the key reaches.
+    private classes = async (instance: IInstance) => {
+        const [classList, pods] = await Promise.all([this.clusterInfo.schedulingApi.listPriorityClass(), this.reachedPods(instance)])
+        const counts = new Map<string, number>()
+        for (const pod of pods) {
+            const name = pod.spec?.priorityClassName
+            if (name) counts.set(name, (counts.get(name) ?? 0) + 1)
+        }
+        return classList.items.map(pc => mapJobClass(pc, counts.get(pc.metadata?.name ?? '') ?? 0))
     }
 
     private describeNode = async (instance: IInstance, name: string): Promise<string[]> => {

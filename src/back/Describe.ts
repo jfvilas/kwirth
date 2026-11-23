@@ -1,4 +1,4 @@
-import type { V1Pod, V1Container, V1ContainerStatus, CoreV1Event, V1Job, V1CronJob, V1PodTemplateSpec, V1Node } from '@kubernetes/client-node'
+import type { V1Pod, V1Container, V1ContainerStatus, CoreV1Event, V1Job, V1CronJob, V1PodTemplateSpec, V1Node, V1PriorityClass, V1CertificateSigningRequest } from '@kubernetes/client-node'
 
 /*
     A pod as text, close to what `kubectl describe pod` prints: it is what the D line command browses.
@@ -216,5 +216,44 @@ export const describeNode = (node: V1Node, pods: V1Pod[], events: CoreV1Event[],
         '  ---------                 ----                                        ---',
         ...pods.map(p => '  ' + (p.metadata?.namespace ?? '').padEnd(26) + (p.metadata?.name ?? '').padEnd(44) + ageOf(p.metadata?.creationTimestamp, now)),
         ...eventLines(events, now)
+    ]
+}
+
+// A PriorityClass, as `kubectl describe priorityclass` prints it, with the pods of the class the key reaches.
+export const describePriorityClass = (pc: V1PriorityClass, pods: V1Pod[], now: number = Date.now()): string[] => [
+    field('Name', pc.metadata?.name),
+    field('Value', pc.value),
+    field('GlobalDefault', pc.globalDefault ? 'true' : 'false'),
+    field('PreemptionPolicy', pc.preemptionPolicy ?? 'PreemptLowerPriority'),
+    field('Description', pc.description),
+    ...mapLines('Labels', pc.metadata?.labels),
+    ...mapLines('Annotations', pc.metadata?.annotations),
+    field('CreationTimestamp', isoOf(pc.metadata?.creationTimestamp)),
+    `Non-terminated Pods:  (${pods.length} in total)`,
+    '  Namespace                 Name                                        Age',
+    '  ---------                 ----                                        ---',
+    ...pods.map(p => '  ' + (p.metadata?.namespace ?? '').padEnd(26) + (p.metadata?.name ?? '').padEnd(44) + ageOf(p.metadata?.creationTimestamp, now))
+]
+
+/*
+    A CertificateSigningRequest, close to `kubectl describe csr`. The request itself goes as its PEM: it holds a
+    public key and the subject asked for, nothing secret (the private key never leaves whoever asked).
+*/
+export const describeCsr = (csr: V1CertificateSigningRequest): string[] => {
+    const conditions = csr.status?.conditions ?? []
+    const pem = csr.spec.request ? Buffer.from(csr.spec.request, 'base64').toString('utf8').split('\n').filter(l => l !== '') : []
+    return [
+        field('Name', csr.metadata?.name),
+        ...mapLines('Labels', csr.metadata?.labels),
+        ...mapLines('Annotations', csr.metadata?.annotations),
+        field('CreationTimestamp', isoOf(csr.metadata?.creationTimestamp)),
+        field('Requesting User', csr.spec.username),
+        field('Groups', (csr.spec.groups ?? []).join(', ')),
+        field('Signer', csr.spec.signerName),
+        field('Usages', (csr.spec.usages ?? []).join(', ')),
+        field('Expiration', csr.spec.expirationSeconds === undefined ? undefined : `${csr.spec.expirationSeconds}s`),
+        field('Status', conditions.length ? conditions.map(c => c.type).join(',') : 'Pending'),
+        'Request:',
+        ...pem.map(l => '  ' + l)
     ]
 }

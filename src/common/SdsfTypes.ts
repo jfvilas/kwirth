@@ -53,16 +53,23 @@ export enum ESdsfCommand {
     EVENTS = 'events',         // the cluster's events, oldest first: what the LOG panel shows as the SYSLOG
     JOBS = 'jobs',             // every Job and CronJob the key reaches: the ST, O and H panels
     NODES = 'nodes',           // every node, as the INIT panel's initiators
-    NODE = 'node'              // start, halt or drain a node (nodeAction); admin only
+    NODE = 'node',             // start, halt or drain a node (nodeAction); admin only
+    CLASSES = 'classes',       // every PriorityClass, as the JC panel's job classes
+    REQUESTS = 'requests'      // the CertificateSigningRequests still pending, as the SR panel's system requests
 }
 
-// What a request's target is. LOG is for pods only; CANCEL for pods, Jobs and CronJobs; DESCRIBE for all four.
+// What a request's target is. LOG is for pods only; CANCEL for pods, Jobs and CronJobs; DESCRIBE for all of them.
 export enum ESdsfObjectKind {
     POD = 'Pod',
     JOB = 'Job',
     CRONJOB = 'CronJob',
-    NODE = 'Node'              // cluster-scoped: no targetNamespace
+    // cluster-scoped: no targetNamespace
+    NODE = 'Node',
+    PRIORITY_CLASS = 'PriorityClass',
+    CSR = 'CertificateSigningRequest'
 }
+
+export const CLUSTER_SCOPED_KINDS: ESdsfObjectKind[] = [ESdsfObjectKind.NODE, ESdsfObjectKind.PRIORITY_CLASS, ESdsfObjectKind.CSR]
 
 /*
     A node as an initiator of the INIT panel, with SDSF's own status words:
@@ -106,6 +113,27 @@ export interface ISdsfNode {
     memoryUsed?: number        // working set of its pods, bytes (metrics provider)
     version: string            // kubelet
     internalIp: string
+    created: string            // ISO
+}
+
+// One row of the JC panel: a PriorityClass as a job class.
+export interface ISdsfJobClass {
+    name: string
+    value: number              // the priority its pods get
+    globalDefault: boolean     // the class of the pods that name none
+    preemption: string         // PreemptLowerPriority or Never
+    pods: number               // its non-terminated pods THE KEY REACHES
+    description: string
+    created: string            // ISO
+}
+
+// One row of the SR panel: a CertificateSigningRequest nobody has approved or denied yet, as a WTOR.
+export interface ISdsfSystemRequest {
+    name: string
+    id: string                 // the reply ID, as z/OS numbers its outstanding replies: in order of arrival
+    signer: string
+    requestor: string          // the user that asked for it
+    usages: string[]
     created: string            // ISO
 }
 
@@ -238,5 +266,7 @@ export interface ISdsfMessageResponse extends IInstanceMessage {
     events?: ISdsfEvent[]      // EVENTS
     jobs?: ISdsfJob[]          // JOBS
     nodes?: ISdsfNode[]        // NODES
+    classes?: ISdsfJobClass[]  // CLASSES
+    requests?: ISdsfSystemRequest[]  // REQUESTS
     evicted?: number           // NODE drain: the evictions the API server accepted
 }

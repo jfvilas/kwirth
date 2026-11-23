@@ -100,6 +100,8 @@ Y además la captura de pantalla se puede confundir con una sesión real de x327
 | `ST`, `O`, `H` | Jobs y CronJobs (fase 2) |
 | `I` | Input queue (fase 3a): CronJobs programados y Jobs sin arrancar |
 | `ULOG` | User session log (fase 3a): las acciones del operador en la sesión |
+| `JC` | Job classes (fase 3a): PriorityClasses; `?` el DA de sus pods, `D` describe |
+| `SR` | System requests (fase 3a): CSRs pendientes, como los WTOR; solo lectura (`D`), responder en la V2 (D15) |
 | `INIT` | Nodes (fase 2): initiators; `S` start (uncordon), `Z` halt (cordon), `P` drain — `admin` (D13) |
 
 ## 6. Requisitos funcionales
@@ -267,6 +269,9 @@ y volver, se conservan el panel, el scroll, el PREFIX y el campo de comando.
   - los colores, highlights y AID llevan sus códigos reales del data stream.
 
   El servidor sería un codificador más sobre el mismo motor.
+- **D15** (2026-11-23, el usuario) — **`SR` es de solo lectura por ahora**: aprobar o denegar un CSR es el
+  subrecurso `/approval`, que solo alcanza `CertificatesV1Api` y el `ClusterInfo` del core no la expone. Tocar
+  el core queda para la V2, con la respuesta (`R`) como en SDSF; mientras, `SR` lista y describe.
 - **D14** (2026-11-23, el usuario, con captura) — **El Confirm Action es el de SDSF**: una ventana por
   acción (`Line number: n` y el JOBNAME), la letra sigue en la NP y la ventana no explica la acción (PF1 sí).
   Opciones `1` Process (pre-rellenada), `2` Discard y `3` Process y `SET CONFIRM OFF`; marco amarillo, título

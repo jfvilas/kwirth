@@ -114,9 +114,9 @@ export const paintTable = <T>(p: Painter, state: ITablePaintState<T>): ITableFie
     return { command: fields.command, scroll: fields.scroll, np, shown: columns.length }
 }
 
-// The filter line every table shares; NODE= only when the DA shows one node's pods (? on INIT).
-export const filterLine = (prefix: string, dest: string, owner: string, sort: string, auto: number, node = ''): string =>
-    `PREFIX=${prefix || '*'}  DEST=${dest || '(ALL)'}  OWNER=${owner || '*'}  SORT=${sort || '*'}${node ? `  NODE=${node}` : ''}${auto ? `  &${auto}` : ''}`
+// The filter line every table shares; `narrow` (NODE=… or CLASS=…) only when the DA shows the pods of one node or class (? on INIT or JC).
+export const filterLine = (prefix: string, dest: string, owner: string, sort: string, auto: number, narrow = ''): string =>
+    `PREFIX=${prefix || '*'}  DEST=${dest || '(ALL)'}  OWNER=${owner || '*'}  SORT=${sort || '*'}${narrow ? `  ${narrow}` : ''}${auto ? `  &${auto}` : ''}`
 
 // ── DA ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -127,7 +127,7 @@ export interface IDaPaintState {
     owner: string
     sort: string               // as shown on the filter line: 'JOBNAME/A', or '' for the natural order
     auto: number               // seconds of the automatic update, 0 when off
-    node: string               // the node whose pods are shown (? on INIT), '' for every node
+    narrow: string             // NODE=… or CLASS=…: the node or class whose pods are shown (? on INIT or JC), '' for all
     pods: ISdsfPod[]           // already filtered and sorted
     top: number
     offset: number
@@ -146,7 +146,7 @@ export const paintDa = (p: Painter, state: IDaPaintState): IDaFields => {
     const cpu = state.clusterCpu === undefined ? '  -' : String(Math.round(state.clusterCpu)).padStart(3)
     return paintTable(p, {
         title: `SDSF DA ${state.system.toUpperCase().slice(0, 8).padEnd(8)} ${(state.dest || '(ALL)').toUpperCase().slice(0, 8).padEnd(8)} PAG  0  CPU/L/Z ${cpu}/${cpu}/  0`,
-        filter: filterLine(state.prefix, state.dest, state.owner, state.sort, state.auto, state.node),
+        filter: filterLine(state.prefix, state.dest, state.owner, state.sort, state.auto, state.narrow),
         fixed: JOBNAME_COLUMN,
         columns: DA_COLUMNS,
         rows: state.pods,
