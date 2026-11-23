@@ -173,14 +173,6 @@ test('option 9 is not valid: the message on the error line, the keyboard locked,
     assert.equal(screen.fieldValue(screen.fieldAt(screen.address(9, 2))!), '9', 'the option stays typed')
 })
 
-test('a valid option is accepted (it runs in S5): no "not valid"', async () => {
-    const { s, type, aid, text } = await start()
-    type('5')
-    await aid(E5250Aid.ENTER)
-    assert.doesNotMatch(text(23), /not valid/)
-    assert.equal(s.terminal.lock, E5250Lock.HOST_ERROR)
-})
-
 test('WRKACTJOB SBS() JOB() on the command line filters; an unknown keyword or command says so', async () => {
     const { s, key, type, aid, text, asked, screen } = await start()
     const toCommand = () => { s.terminal.screen.cursor = screen.address(20, 6) }

@@ -4,7 +4,7 @@
 > su repo; `0.1.0` publicada en npm). **Hecho el S1** (SDSF 0.11.0 sobre la DCE, publicado). **Hecho el S2**
 > (`blockterm` 0.2.0, commit `654928c`; QA y tipos validados; ⚠️ **sin publicar**: el clasificador de permisos
 > bloqueó el `npm publish`; publicada después, con el OK explícito del usuario). **Hecho el S3** (scaffold y back,
-> commit `6ee2b21`). **S4: código hecho** (commit `b407576`), pendiente del QA del usuario. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
+> commit `6ee2b21`). **Hecho el S4** (commit `b407576`). **S5: código hecho**, pendiente del QA del usuario. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
 > producto (D1–D11).
 >
 > **Dónde vive:**
@@ -129,6 +129,19 @@
 **S5 — Opciones y paneles hijos.**
 - `4` → prompt `ENDJOB` (`OPTION`, `DELAY`), `5` → `Work with Job` (status, definición, spooled files, job log), `7` → `Display Message` en `MSGW`, `8` → `Work with Spooled Files` → `5` → `DSPSPLF` (Roll, `F` buscar, `B`/`T`). `WRKJOB` y `ENDJOB` en la línea de comandos, F4 = prompt. Varias opciones a la vez, en orden.
 - **Hecho cuando:** criterios 4–6 del PRD; QA tuyo.
+- 🔶 **Código hecho (2026-11-23).** Lo que salió al construirlo:
+  - **Pila de paneles:** WRKACTJOB (o el menú) es la base; los paneles del job se abren encima. F12 vuelve uno, F3 sale de todos y descarta las opciones pendientes. Al salir del último, corre la siguiente opción tecleada; sin más, la lista se pide de nuevo.
+  - **Validación antes de ejecutar nada:** opción desconocida → «Option n not valid.»; opción sobre una fila `SBS` → «Option n not valid for a subsystem.»; `7` sobre un job que no está en `MSGW` → «No messages to display for job X.». Todo en su campo y con el teclado bloqueado.
+  - **`4` / `ENDJOB`:** el prompt «End Job (ENDJOB)» (Job name; el subsistema si viene de una fila; How to end `*CNTRLD`/`*IMMED`; delay 1–999999, como ENDJOB). Cada valor erróneo se marca en su campo. Si el back dice que no (sin `wrkactjob$end`), el motivo sale en el prompt. Al terminar: «End of job 123456/USER/NAME requested.» en la lista, refrescada. `ENDJOB JOB() OPTION() DELAY()` en la línea de comandos termina sin prompt.
+  - **El número de job** son seis dígitos sacados del uid, estables durante la vida del pod: `number/user/name` como en IBM i.
+  - **`5` / `WRKJOB`:** el menú Work with Job: 1 estado, 2 definición (los dos con los datos del `LIST`, sin preguntar al back), 4 spooled files, 10 job log (`EVENTS`).
+  - **`7`:** Display Messages con el motivo del `MSGW` en blanco. Sin línea de reply: un contenedor no la admite; el texto dice que se termine el job o se corrija la causa.
+  - **`8` / WRKJOB 4:** los contenedores como spooled files: `OPN` si siguen corriendo (se están escribiendo), `RDY` si no. Se incluyen los init. `5` → DSPSPLF (`LOG`).
+  - **DSPSPLF / DSPJOBLOG:** un mismo browse. Control `T`, `B`, `+n`, `-n` o un número de línea; Find con Enter o F16 (busca desde la línea siguiente y da la vuelta); Roll; F19/F20 desplazan media pantalla; regla de columnas como la de IBM (el `*` es solo de la columna 1).
+  - **F4** abre el prompt de `ENDJOB` o `WRKJOB` con lo tecleado; con otro comando, «Command X cannot be prompted here.». Desde el menú funciona igual, y al salir se vuelve al menú sin pedir la lista.
+  - **Nombre de job en un comando:** el nombre completo del pod, en cualquier caja. Si varios namespaces tienen un pod con ese nombre, «More than one job named X: select it from the list.».
+  - Tests: 61 y 100 % de líneas. **Verificado en el dev** con capturas por la UI: 5→1 y 2, 8→5 (DSPSPLF), 4 con F12 (sin terminar nada real).
+  - **Tipos nuevos (⚠️ a validar):** `IPromptParam`, `IPromptDef`, `EWorkWithJob`, `EJobAttributes`, `ISpooledFileField`, `IBrowse`, `IBrowseFields`; en la sesión, internos, `IFrame` e `IQueued`.
 
 **S6 — e2e, README y publicación.**
 - e2e propio (namespace `wrkactjob-e2e` que crea y borra; sin coincidir con el e2e de SDSF, que borra el suyo).
