@@ -82,6 +82,23 @@ Options, typed in `Opt` (several at once run in order, top to bottom):
 
 In every job panel F12 goes back one panel and F3 back to the list.
 
+## Installing it in Kwirth
+
+It is published on npmjs as `@jfvilas/kwirth-plugin-wrkactjob` and listed in the jfvilas marketplace. If your
+Kwirth does not list it yet, add it as a marketplace with this manifest URL:
+
+```
+https://raw.githubusercontent.com/jfvilas/kwirth/master/manifest.json
+```
+
+WRKACTJOB **requires** the `blockterm` DCE (Block Terminal, **0.2.0 or later**: the one with the 5250), from the
+same marketplace: install it first from the DCE manager and restart the Kwirth back end, as every DCE needs.
+Kwirth will not install WRKACTJOB without it.
+
+Then install `wrkactjob` from the plugin manager. No restart is needed. It **uses** Kwirth's `metrics` provider
+for the CPU figures when it is installed; without it WRKACTJOB works the same, says the metrics are not
+available, and shows every running job as `RUN`.
+
 ## Permissions
 
 | Scope | Allows |
@@ -96,6 +113,10 @@ What a key sees is limited, as everywhere in Kwirth, by the namespaces and pods 
 An option not valid: the message on the error line, the keyboard locked (`X II`) until Reset:
 
 ![Option not valid](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/error.png)
+
+F11, the third view: the subsystem's and the jobs' full Kubernetes names:
+
+![Full names](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/wrkactjob/docs/screenshots/names.png)
 
 `7` on a job in `MSGW`, and `4`, the End Job prompt:
 
