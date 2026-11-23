@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test'
 import {
     aid, clickCell, command, createFixture, deleteFixture, enter, fixturePods, geometry, lineCommand, NAMESPACE, oiaText, openSdsf,
-    row, screenText, startChannel, stopChannel, terminal, waitUnlocked
+    row, screenText, startChannel, stopChannel, terminal, waitUnlocked, cluster
 } from './helpers'
 
 /*
@@ -225,6 +225,52 @@ test('DA parameters: the Job\'s ended pod only with ALL; OJOB, OSTC and a wrong 
     expect(await oiaText(page)).toMatch(/04\/077$/)
     await clickCell(page, 3, 20)
     expect(await oiaText(page)).toMatch(/04\/021$/)
+    await command(page, 'da')
+    expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
+})
+
+test('INIT lists the nodes as initiators; D describes one; ? shows its pods; Z asks first and 2 leaves it alone', async () => {
+    const nodes = cluster('get', 'nodes', '-o', 'jsonpath={.items[*].metadata.name}').split(/\s+/).filter(Boolean).sort()
+    await command(page, 'prefix *')
+    await command(page, 'init')
+    expect(await row(page, 2)).toMatch(new RegExp(`^ SDSF INITIATOR DISPLAY  ALL CLASSES +LINE 1-${nodes.length} \\(${nodes.length}\\)$`))
+    expect(await row(page, 5)).toMatch(/^ NP  ID +Status +Classes +Pods +CPU% +Real +CPUs +MemGB +Version/)
+    // k3d-kwirth-agent-0 and k3d-kwirth-server-0: the IDs are what is left once what they share goes
+    const ids = new Set<string>()
+    for (let i = 0; i < nodes.length; i++) {
+        const line = await row(page, 6 + i)
+        expect(line).toMatch(/^ {5}\S+ +ACTIVE /)
+        ids.add(line.slice(5, 13).trim())
+    }
+    expect(ids.size, 'one ID per node').toBe(nodes.length)
+    await shot('init')
+    await lineCommand(page, 6, 'd')
+    await enter(page)
+    expect(await screenText(page)).toMatch(new RegExp(`Name: +${nodes[0]}`))
+    // past the labels and annotations of a k3d node: FIND it, as the operator would
+    await command(page, "f 'Non-terminated Pods'")
+    expect(await screenText(page)).toContain('Non-terminated Pods:')
+    await aid(page, 'F3')
+    expect(await row(page, 2)).toMatch(/SDSF INITIATOR DISPLAY/)
+    // the fixture's pods run on some node: ? on each until the DA of one shows them
+    let found = false
+    for (let i = 0; i < nodes.length && !found; i++) {
+        await lineCommand(page, 6 + i, '?')
+        await enter(page)
+        expect(await row(page, 4)).toMatch(new RegExp(`NODE=${nodes[i]}`))
+        found = (await screenText(page)).includes('NODE=') && (await demoRows()).length > 0
+        await aid(page, 'F3')
+        expect(await row(page, 2)).toMatch(/SDSF INITIATOR DISPLAY/)
+    }
+    expect(found, 'the DA of one of the nodes shows the fixture pods').toBe(true)
+    await lineCommand(page, 6, 'z')
+    await enter(page)
+    expect(await screenText(page)).toMatch(/Halt \(cordon\): no new pods, the running ones stay:/)
+    await page.keyboard.type('2')
+    await enter(page)
+    expect(await row(page, 2)).toMatch(/ACTION CANCELLED$/)
+    expect(cluster('get', 'node', nodes[0], '-o', 'jsonpath={.spec.unschedulable}')).toBe('')
+    await command(page, 'prefix demo*')
     await command(page, 'da')
     expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
 })

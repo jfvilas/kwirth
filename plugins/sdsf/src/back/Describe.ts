@@ -1,4 +1,4 @@
-import type { V1Pod, V1Container, V1ContainerStatus, CoreV1Event, V1Job, V1CronJob, V1PodTemplateSpec } from '@kubernetes/client-node'
+import type { V1Pod, V1Container, V1ContainerStatus, CoreV1Event, V1Job, V1CronJob, V1PodTemplateSpec, V1Node } from '@kubernetes/client-node'
 
 /*
     A pod as text, close to what `kubectl describe pod` prints: it is what the D line command browses.
@@ -177,3 +177,44 @@ export const describeCronJob = (cron: V1CronJob, events: CoreV1Event[], now: num
     ...templateLines(cron.spec?.jobTemplate?.spec?.template),
     ...eventLines(events, now)
 ]
+
+/*
+    A node, as `kubectl describe node` prints it. The pods listed are those the KEY reaches (the caller
+    filters them): a node is cluster-wide, but what runs on it belongs to namespaces.
+*/
+export const describeNode = (node: V1Node, pods: V1Pod[], events: CoreV1Event[], now: number = Date.now()): string[] => {
+    const info = node.status?.nodeInfo
+    const resources = (r: Record<string, string> | undefined): string[] =>
+        Object.entries(r ?? {}).map(([k, v]) => '  ' + (k + ':').padEnd(LABEL_WIDTH) + v)
+    const taints = (node.spec?.taints ?? []).map(t => `${t.key}${t.value ? '=' + t.value : ''}:${t.effect}`)
+    return [
+        field('Name', node.metadata?.name),
+        ...mapLines('Labels', node.metadata?.labels),
+        ...mapLines('Annotations', node.metadata?.annotations),
+        field('CreationTimestamp', isoOf(node.metadata?.creationTimestamp)),
+        ...(taints.length === 0 ? [field('Taints', undefined)] : taints.map((t, i) => i === 0 ? field('Taints', t) : ' '.repeat(LABEL_WIDTH) + t)),
+        field('Unschedulable', node.spec?.unschedulable ? 'true' : 'false'),
+        'Conditions:',
+        '  Type                Status  Reason                       Message',
+        ...(node.status?.conditions ?? []).map(c => '  ' + c.type.padEnd(20) + c.status.padEnd(8) + (c.reason ?? '').padEnd(29) + (c.message ?? '')),
+        'Addresses:',
+        ...(node.status?.addresses ?? []).map(a => '  ' + (a.type + ':').padEnd(LABEL_WIDTH) + a.address),
+        'Capacity:',
+        ...resources(node.status?.capacity),
+        'Allocatable:',
+        ...resources(node.status?.allocatable),
+        'System Info:',
+        field('OS Image', info?.osImage, 2),
+        field('Kernel Version', info?.kernelVersion, 2),
+        field('Container Runtime', info?.containerRuntimeVersion, 2),
+        field('Kubelet Version', info?.kubeletVersion, 2),
+        field('Architecture', info?.architecture, 2),
+        field('PodCIDR', node.spec?.podCIDR),
+        field('ProviderID', node.spec?.providerID),
+        `Non-terminated Pods:  (${pods.length} in total)`,
+        '  Namespace                 Name                                        Age',
+        '  ---------                 ----                                        ---',
+        ...pods.map(p => '  ' + (p.metadata?.namespace ?? '').padEnd(26) + (p.metadata?.name ?? '').padEnd(44) + ageOf(p.metadata?.creationTimestamp, now)),
+        ...eventLines(events, now)
+    ]
+}

@@ -3,26 +3,24 @@ import { EMessageLevel, paintActionBar, paintCommandLine, paintPfKeys, paintShor
 import { E3270Color } from '../terminal/Terminal3270Types'
 
 /*
-    SDSF PRIMARY OPTION MENU, with the options that have a Kubernetes meaning. Those of phase 2 are listed
-    (the operator expects them there) and answer NOT AVAILABLE until they exist; the JES-only ones (printers,
+    SDSF PRIMARY OPTION MENU, with the options that have a Kubernetes meaning. The JES-only ones (printers,
     punches, readers, spool…) are not shown, because there is nothing behind them.
 */
 export interface IMenuOption {
     code: string
     description: string
-    available: boolean
 }
 
 export const MENU_LEFT: IMenuOption[] = [
-    { code: 'DA', description: 'Active pods', available: true },
-    { code: 'O', description: 'Output queue (ended jobs)', available: true },
-    { code: 'H', description: 'Held output queue (suspended cronjobs)', available: true },
-    { code: 'ST', description: 'Status of jobs (jobs and cronjobs)', available: true },
-    { code: 'LOG', description: 'System log (events)', available: true }
+    { code: 'DA', description: 'Active pods' },
+    { code: 'O', description: 'Output queue (ended jobs)' },
+    { code: 'H', description: 'Held output queue (suspended cronjobs)' },
+    { code: 'ST', description: 'Status of jobs (jobs and cronjobs)' },
+    { code: 'LOG', description: 'System log (events)' }
 ]
 
 export const MENU_RIGHT: IMenuOption[] = [
-    { code: 'INIT', description: 'Initiators (nodes)', available: false }
+    { code: 'INIT', description: 'Initiators (nodes)' }
 ]
 
 export interface IMenuState {

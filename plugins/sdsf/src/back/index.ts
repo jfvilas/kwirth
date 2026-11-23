@@ -7,14 +7,15 @@ import {
 import { IChannelInstances } from '@kwirthmagnify/kwirth-common'
 import { IBackChannelObject, IChannel, keyMatchesResource } from '@kwirthmagnify/kwirth-common-back'
 import type { IProviderHandle } from '@kwirthmagnify/kwirth-common-back'
-import type { BatchV1Api, CoreV1Api } from '@kubernetes/client-node'
+import type { BatchV1Api, CoreV1Api, V1Pod } from '@kubernetes/client-node'
 import { Request, Response } from 'express'
 import {
-    ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfObjectKind, ESdsfScope, ISdsfMessage, ISdsfMessageResponse,
+    ESdsfCommand, ESdsfError, ESdsfMetricsState, ESdsfNodeAction, ESdsfObjectKind, ESdsfScope, ISdsfMessage, ISdsfMessageResponse,
     SDSF_SCOPES, SDSF_SCOPE_LADDER
 } from '../common/SdsfTypes'
 import { mapPod } from './PodMapper'
-import { describeCronJob, describeJob, describePod } from './Describe'
+import { describeCronJob, describeJob, describeNode, describePod } from './Describe'
+import { isEvictable, isRunning, mapNode, nodeIdsOf } from './NodeMapper'
 import { mapEvent, sortEvents } from './EventMapper'
 import { mapCronJob, mapJob } from './JobMapper'
 import { usageOf } from './PodMetrics'
@@ -25,7 +26,8 @@ import { IMetricsCluster } from './MetricsProviderTypes'
     type-only on the client: the API objects are the CORE's, never a client of SDSF's own in the bundle.
 */
 export interface ISdsfClusterInfo {
-    coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'readNamespacedPod' | 'readNamespacedPodLog' | 'deleteNamespacedPod' | 'listNamespacedEvent' | 'listEventForAllNamespaces'>
+    coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'readNamespacedPod' | 'readNamespacedPodLog' | 'deleteNamespacedPod' | 'listNamespacedEvent' | 'listEventForAllNamespaces'
+        | 'listNode' | 'readNode' | 'patchNode' | 'createNamespacedPodEviction'>
     batchApi: Pick<BatchV1Api, 'listJobForAllNamespaces' | 'listCronJobForAllNamespaces' | 'readNamespacedJob' | 'readNamespacedCronJob' | 'deleteNamespacedJob' | 'deleteNamespacedCronJob'>
     getProvider(providerId: string, consumer: unknown): IProviderHandle | undefined
 }
@@ -214,12 +216,18 @@ export class SdsfChannel implements IChannel {
         const containerName = message.containerName ?? ''
         const kind = message.objectKind ?? ESdsfObjectKind.POD
         const isList = message.command === ESdsfCommand.LIST || message.command === ESdsfCommand.EVENTS || message.command === ESdsfCommand.JOBS
+            || message.command === ESdsfCommand.NODES
+        const onNode = message.command === ESdsfCommand.NODE || (message.command === ESdsfCommand.DESCRIBE && kind === ESdsfObjectKind.NODE)
 
         /*
             Everything but the lists names one object, and the key has to reach it: a pod by its namespace, name
-            and container; a Job or a CronJob by its namespace (a key limited to pods reaches no Job).
+            and container; a Job or a CronJob by its namespace (a key limited to pods reaches no Job). A node has
+            no namespace: describing it is reading, as listing it is; changing it is for 'admin' (below).
         */
-        if (!isList) {
+        if (onNode) {
+            if (!targetName) return fail(ESdsfError.BAD_REQUEST, 'No node given')
+        }
+        else if (!isList) {
             if (!targetNamespace || !targetName) return fail(ESdsfError.BAD_REQUEST, 'No target given')
             const target = kind === ESdsfObjectKind.POD
                 ? { namespace: targetNamespace, pod: targetName, container: containerName || undefined }
@@ -244,7 +252,14 @@ export class SdsfChannel implements IChannel {
                     return { ...response, ok: true, lines }
                 }
 
+                case ESdsfCommand.NODES:
+                    return { ...response, ok: true, nodes: await this.nodes(instance) }
+
+                case ESdsfCommand.NODE:
+                    return await this.nodeAction(instance, message.nodeAction, targetName, response)
+
                 case ESdsfCommand.DESCRIBE: {
+                    if (kind === ESdsfObjectKind.NODE) return { ...response, ok: true, lines: await this.describeNode(instance, targetName) }
                     let events: Awaited<ReturnType<CoreV1Api['listNamespacedEvent']>>['items'] = []
                     const readEvents = async () => {
                         try {
@@ -322,6 +337,89 @@ export class SdsfChannel implements IChannel {
         }
         catch (err) {
             return fail(errorCode(err), errorText(err))
+        }
+    }
+
+    // Every node, as INIT shows them. Its status reads every pod on it; its Pods count only those the key reaches.
+    private nodes = async (instance: IInstance) => {
+        const [nodeList, podList] = await Promise.all([this.clusterInfo.coreApi.listNode(), this.clusterInfo.coreApi.listPodForAllNamespaces()])
+        const usage = usageOf(this.readings)
+        const byNode = new Map<string, V1Pod[]>()
+        for (const pod of podList.items) {
+            const node = pod.spec?.nodeName
+            if (node) byNode.set(node, [...(byNode.get(node) ?? []), pod])
+        }
+        const ids = nodeIdsOf(nodeList.items.map(n => n.metadata?.name ?? ''))
+        return nodeList.items.map((node, i) => {
+            const name = node.metadata?.name ?? ''
+            const onNode = byNode.get(name) ?? []
+            const reached = onNode.filter(p => isRunning(p) && keyMatchesResource(instance.accessKey, { namespace: p.metadata?.namespace ?? '', pod: p.metadata?.name ?? '' })).length
+            return mapNode(node, ids[i], onNode, reached, usage.nodes.get(name), usage.interval)
+        })
+    }
+
+    private describeNode = async (instance: IInstance, name: string): Promise<string[]> => {
+        const node = await this.clusterInfo.coreApi.readNode({ name })
+        const pods = (await this.clusterInfo.coreApi.listPodForAllNamespaces({ fieldSelector: `spec.nodeName=${name}` })).items
+            .filter(p => isRunning(p) && keyMatchesResource(instance.accessKey, { namespace: p.metadata?.namespace ?? '', pod: p.metadata?.name ?? '' }))
+        let events: Awaited<ReturnType<CoreV1Api['listEventForAllNamespaces']>>['items'] = []
+        try {
+            events = (await this.clusterInfo.coreApi.listEventForAllNamespaces({ fieldSelector: `involvedObject.kind=Node,involvedObject.name=${name}` })).items
+                .filter(e => keyMatchesResource(instance.accessKey, { namespace: e.metadata?.namespace ?? '' }))
+        }
+        catch (err) {
+            this.backChannelObject.logWarning?.(`Cannot read events of node ${name}: ${errorText(err)}`)
+        }
+        return describeNode(node, pods, events)
+    }
+
+    /*
+        S, Z and P on INIT, for 'admin' only. The cordon is a JSON patch with 'add', which also works on a node
+        that never had spec.unschedulable ('replace' would be refused there). A drain cordons first and then
+        asks one eviction per pod (DaemonSet and static pods aside), as `kubectl drain` does: evictions honour
+        the PodDisruptionBudgets, and the ones refused are reported, not hidden. It does not wait for the pods
+        to go — the INIT panel shows the node HALTED until it is empty, then DRAINED.
+    */
+    private nodeAction = async (instance: IInstance, action: ESdsfNodeAction | undefined, name: string, response: ISdsfMessageResponse): Promise<ISdsfMessageResponse> => {
+        if (!this.allows(instance.accessKey, ESdsfScope.ADMIN)) {
+            this.backChannelObject.logWarning?.(`Denied ${action ?? 'node action'} on node ${name}: '${ESdsfScope.ADMIN}' required`)
+            return { ...response, ok: false, error: ESdsfError.NOT_AUTHORIZED, detail: `Starting, halting or draining a node requires the '${ESdsfScope.ADMIN}' scope` }
+        }
+        const cordon = (unschedulable: boolean) => this.clusterInfo.coreApi.patchNode({ name, body: [{ op: 'add', path: '/spec/unschedulable', value: unschedulable }] })
+        switch (action) {
+            case ESdsfNodeAction.START:
+                await cordon(false)
+                this.backChannelObject.logInfo?.(`Node ${name} started (uncordoned)`)
+                return { ...response, ok: true }
+            case ESdsfNodeAction.HALT:
+                await cordon(true)
+                this.backChannelObject.logInfo?.(`Node ${name} halted (cordoned)`)
+                return { ...response, ok: true }
+            case ESdsfNodeAction.DRAIN: {
+                await cordon(true)
+                const pods = (await this.clusterInfo.coreApi.listPodForAllNamespaces({ fieldSelector: `spec.nodeName=${name}` })).items
+                    .filter(p => isRunning(p) && isEvictable(p))
+                const failures: string[] = []
+                let evicted = 0
+                for (const pod of pods) {
+                    const podName = pod.metadata?.name ?? ''
+                    const namespace = pod.metadata?.namespace ?? ''
+                    try {
+                        await this.clusterInfo.coreApi.createNamespacedPodEviction({ name: podName, namespace, body: { apiVersion: 'policy/v1', kind: 'Eviction', metadata: { name: podName, namespace } } })
+                        evicted++
+                    }
+                    catch (err) {
+                        failures.push(`${namespace}/${podName}: ${errorText(err)}`)
+                    }
+                }
+                this.backChannelObject.logInfo?.(`Node ${name} drained: ${evicted} of ${pods.length} pod(s) evicted`)
+                if (failures.length > 0) {
+                    return { ...response, ok: false, error: ESdsfError.FAILED, evicted, detail: `Halted; ${evicted} of ${pods.length} pod(s) evicted. Refused: ${failures.join('; ')}` }
+                }
+                return { ...response, ok: true, evicted }
+            }
+            default:
+                return { ...response, ok: false, error: ESdsfError.BAD_REQUEST, detail: `Unknown node action '${String(action)}'` }
         }
     }
 
