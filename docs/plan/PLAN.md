@@ -3,8 +3,8 @@
 > **ESTADO — EN CURSO** (2026-11-23). PLAN aprobado. **Hecho el S0** (DCE `blockterm`, commit `6848a35` en
 > su repo; `0.1.0` publicada en npm). **Hecho el S1** (SDSF 0.11.0 sobre la DCE, publicado). **Hecho el S2**
 > (`blockterm` 0.2.0, commit `654928c`; QA y tipos validados; ⚠️ **sin publicar**: el clasificador de permisos
-> bloqueó el `npm publish`). **Hecho el S3** (scaffold y back, commit `6ee2b21`). Siguiente: S4, que necesita
-> `blockterm` 0.2.0 publicada. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
+> bloqueó el `npm publish`; publicada después, con el OK explícito del usuario). **Hecho el S3** (scaffold y back,
+> commit `6ee2b21`). **S4: código hecho** (commit `b407576`), pendiente del QA del usuario. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
 > producto (D1–D11).
 >
 > **Dónde vive:**
@@ -110,6 +110,21 @@
 **S4 — `WRKACTJOB` en pantalla.**
 - Setup (D10), sesión en `channelObject.data`, panel `WRKACTJOB` (RF3) con subsistemas y jobs sangrados, cabecera `CPU % / Elapsed time / Active jobs`, `More...`/`Bottom`, Roll Up/Down, F5, F10, F11 (D9), F7 Find, línea de comandos (`WRKACTJOB SBS() JOB()`, `SIGNOFF`), mensajes en la fila 24 con bloqueo de error, `Main Menu` con F3 (D5).
 - **Hecho cuando:** criterios 1–3, 7, 8 y 10 del PRD; QA tuyo.
+- 🔶 **Código hecho (2026-11-23)**, commit `b407576`. Lo que salió al construirlo:
+  - `blockterm` 0.2.0 publicada (GET 200); WRKACTJOB depende de `^0.2.0`.
+  - **Arranque:** la sesión pinta WRKACTJOB vacío con el teclado en `X SYSTEM` y pide la lista cuando el core confirma el START (`connected()`), porque antes no hay instancia a la que preguntar.
+  - **Disposición** (contada desde abajo, igual en 24 y 27 filas): título y sistema en la fila 1, fecha en la 2, estadísticas en la 3, leyenda en la 5 y la 6, cabeceras en la 8, lista hasta r−7, `More...`/`Bottom` en r−6, la línea de comandos en r−5 y r−4, teclas en r−3 y r−2, mensajes en r−1. 10 filas de lista a 24x80 y 13 a 27x132.
+  - **Nombres** en mayúsculas y cortados a 10, como en IBM i (R4 del PRD); los completos, en la vista 3 de F11. Las filas `SBS` suman la CPU y los reinicios de sus jobs.
+  - **F11:** a 80 columnas rota estado → datos acumulados → nombres; a 132, estado (con los datos acumulados al lado) → nombres.
+  - **F7** busca el texto escrito en la línea de comandos. Es una simplificación de la ventana Find de IBM i.
+  - **Sin el provider `metrics`:** «Metrics provider not installed…» una vez por sesión. Mientras calienta, las columnas de CPU salen vacías sin aviso.
+  - **Errores con el teclado bloqueado hasta Reset:** opción no válida, comando desconocido («Command X in library *LIBL not found.»), parámetro o keyword no válidos, tecla de función que el panel no tiene, y el back diciendo que no o sin responder.
+  - **Opciones 4, 5, 7 y 8:** se validan, pero en el S4 responden «Option n not available yet.» (provisional, lo sustituye el S5).
+  - **Fuera del S4:** F14 (Include) y F24 (More keys) del RF6; F23 «More options» no tiene sentido sin más opciones.
+  - **Verificado en el dev** contra k3d con capturas por la UI: lista agrupada por namespace, opción 9, F11, menú, y CPU tras dos lecturas del provider (cabecera .9, `RUN`/`DEQW`, CPU acumulada).
+  - Tests: 44 y 100 % de líneas. `front.js` de 41 KB, que lee la instancia de la DCE.
+  - ⚠️ **Incidente:** al meter `wrkactjob` en `kwirth-dev.json` reinicié el core en mitad del e2e de Spectrum (otra sesión, arrancado a las 19:43:48; reinicio a las 19:44:35). La comprobación y la edición se lanzaron en paralelo. Apuntado en la memoria.
+  - **Tipos nuevos (⚠️ a validar):** `EWrkPanel`, `EWrkView`, `IWrkRow`, `IWrkFilter`, `IWrkColumn`, `IActiveJobsState`, `IActiveJobsFields`, `IWrkRows`, `IClCommand`, `IWrkDataSource`, `IWrkactjobData` (rellena).
 
 **S5 — Opciones y paneles hijos.**
 - `4` → prompt `ENDJOB` (`OPTION`, `DELAY`), `5` → `Work with Job` (status, definición, spooled files, job log), `7` → `Display Message` en `MSGW`, `8` → `Work with Spooled Files` → `5` → `DSPSPLF` (Roll, `F` buscar, `B`/`T`). `WRKJOB` y `ENDJOB` en la línea de comandos, F4 = prompt. Varias opciones a la vez, en orden.
