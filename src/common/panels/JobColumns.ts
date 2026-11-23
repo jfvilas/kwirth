@@ -6,7 +6,7 @@ import { ageOf, IDaColumn } from './DaColumns'
     The ST, O and H columns: a Job or a CronJob as SDSF shows a batch job (reference capture 1523606598205:
     JOBNAME JobID Owner Prty Queue C … Status). The Queue says where it is in its life, as JES's does:
 
-      EXECUTION   a Job running                 INPUT   a CronJob waiting for its next run
+      EXECUTION   a Job running                 INPUT   a CronJob waiting for its next run, or a Job not started
       PRINT       a Job ended, well or not      HOLD    a CronJob suspended
 
     Page 1 is the JES view; PF11 brings the schedule, the CronJob and the duration, and then the namespace and
@@ -16,6 +16,7 @@ import { ageOf, IDaColumn } from './DaColumns'
 const upper8 = (s: string): string => s.toUpperCase().slice(0, 8)
 
 const QUEUE: Record<ESdsfJobState, string> = {
+    [ESdsfJobState.WAITING]: 'INPUT',
     [ESdsfJobState.RUNNING]: 'EXECUTION',
     [ESdsfJobState.COMPLETE]: 'PRINT',
     [ESdsfJobState.FAILED]: 'PRINT',
@@ -24,6 +25,7 @@ const QUEUE: Record<ESdsfJobState, string> = {
 }
 
 const STATE_COLOR: Record<ESdsfJobState, E3270Color> = {
+    [ESdsfJobState.WAITING]: E3270Color.TURQUOISE,
     [ESdsfJobState.RUNNING]: E3270Color.WHITE,
     [ESdsfJobState.COMPLETE]: E3270Color.GREEN,
     [ESdsfJobState.FAILED]: E3270Color.RED,
@@ -37,6 +39,8 @@ export const queueOf = (job: ISdsfJob): string => QUEUE[job.state]
 export const jobStatusOf = (job: ISdsfJob): string => {
     const target = job.completions || 1
     switch (job.state) {
+        case ESdsfJobState.WAITING:
+            return 'WAITING'
         case ESdsfJobState.RUNNING:
             return `ACTIVE ${job.succeeded}/${target}`
         case ESdsfJobState.COMPLETE:

@@ -205,6 +205,16 @@ test('ST lists the fixture\'s Job and CronJob in JES terms; S on the Job browses
     expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
 })
 
+test('I: the input queue, the CronJob waiting for its time', async () => {
+    await command(page, 'prefix later*')
+    await command(page, 'i')
+    expect(await row(page, 2)).toMatch(/^ SDSF INPUT QUEUE DISPLAY ALL CLASSES +LINE 1-1 \(1\)$/)
+    expect(await row(page, 6)).toMatch(/^ {5}LATER-CR JOB\d{5} DEFAULT +1 INPUT +C SCHEDULED/)
+    await command(page, 'prefix demo*')
+    await command(page, 'da')
+    expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
+})
+
 test('DA parameters: the Job\'s ended pod only with ALL; OJOB, OSTC and a wrong one; bare DA back to the default', async () => {
     await command(page, 'prefix batch*')
     await command(page, 'da')
@@ -310,6 +320,18 @@ test('C with 1 cancels the pod: COMMAND ISSUED, and the ReplicaSet brings a new 
     }, { timeout: 60000 }).toBe(true)
     await expect.poll(async () => { await enter(page); return (await demoRows()).length }, { timeout: 60000 }).toBe(2)
     expect(jobLine).toBeTruthy()
+})
+
+test('ULOG: the actions of the session, the discarded ones too, newest at the bottom', async () => {
+    await command(page, 'ulog')
+    expect(await row(page, 2)).toMatch(/^ SDSF ULOG CONSOLE /)
+    const text = await screenText(page)
+    expect(text).toMatch(/Z {3}node \S+ +DISCARDED/)
+    expect(text).toMatch(/C {3}sdsf-e2e\/demo-\S+ +DISCARDED/)
+    expect(text).toMatch(/C {3}sdsf-e2e\/demo-\S+ +COMMAND ISSUED/)
+    await shot('ulog')
+    await aid(page, 'F3')
+    expect(await row(page, 2)).toMatch(/^ SDSF DA /)
 })
 
 test('full screen: the terminal takes the whole window, and the OIA follows the cursor', async () => {

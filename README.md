@@ -29,7 +29,7 @@ pod to browse its log and `C` to cancel it, page with PF7/PF8 and come back with
 | SYSOUT (`S`) | Container log, in a browse |
 | Job data sets (`?`) | The pod's containers |
 | Cancel (`C` / `CA`) | Delete the pod (CA: grace period 0), always confirmed |
-| Batch jobs (`ST`, `O`, `H`) | Jobs and CronJobs; queue EXECUTION (running), PRINT (ended), INPUT (CronJob waiting for its time), HOLD (CronJob suspended) |
+| Batch jobs (`ST`, `I`, `O`, `H`) | Jobs and CronJobs; queue EXECUTION (running), PRINT (ended), INPUT (CronJob waiting for its time, or Job not started), HOLD (CronJob suspended) |
 
 The screen behaves like a real 3270: **block mode** (nothing moves until you press an AID key),
 protected and unprotected fields, the 3270 base colours, insert mode, and the OIA status line under
@@ -65,6 +65,7 @@ option menu. `DA` lists the pods.
 | `DA` | Active pods: every pod but the DaemonSets and the ended ones |
 | `DA OJOB` · `DA NOTSU` · `DA ALL` … | The DA parameters of z/OS, up to four: types `JOB` (pods of a Job), `STC` (other owners), `TSU` (bare pods), `INIT` (DaemonSets); positions `IN` (ready), `OUT` (pending, no node), `READY` (pending on a node), `TRANS` (not ready or terminating). `O…` only that one, `NO…` not that one, `ALL`/`ALLT`/`ALLP` everything, all types, all positions (with the ended pods) |
 | `ST` | Jobs and CronJobs as batch jobs, with their JES queue (EXECUTION, PRINT, INPUT, HOLD) and status |
+| `I` | The input queue: what waits to run, the CronJobs scheduled and the Jobs not started yet |
 | `O` · `H` | Only the ended Jobs (output queue) · only the suspended CronJobs (held output) |
 | `INIT` | The nodes as initiators: ACTIVE, HALTED (cordoned, with pods), DRAINED (cordoned and empty) or INACTIVE (not Ready), with their roles, pods, CPU and memory |
 | `LOG` | The cluster's events as the SYSLOG, newest at the bottom; Enter reads again and follows the log when you are at the bottom |
@@ -76,6 +77,7 @@ option menu. `DA` lists the pods.
 | `&nn` · `&` | Refresh every nn seconds; stop it (PA1 stops it too) |
 | `RETRIEVE` (PF12) | The commands typed before |
 | `SET CONFIRM ON` · `OFF` | Ask, or stop asking, before C, CA and the INIT actions |
+| `ULOG` · `ULOG CLOSE` | The user session log: every action of the session and what came of it (refusals in red); CLOSE empties it |
 | `END` (PF3) · `RETURN` (PF4) | Back; END on the menu leaves to TSO `READY` (type `SDSF` to come back) |
 
 **Line commands** (in the `NP` column of a row, then Enter):
@@ -175,6 +177,10 @@ Jobs and CronJobs, with `ST`:
 The nodes as initiators, with `INIT`:
 
 ![Initiator display](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/init.png)
+
+What the operator did in the session, with `ULOG`:
+
+![ULOG](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/sdsf/docs/screenshots/ulog.png)
 
 Cancelling a pod, with `C`:
 

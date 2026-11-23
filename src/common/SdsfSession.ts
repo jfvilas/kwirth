@@ -17,6 +17,7 @@ import { ACTION_HELP, IActionTarget, IPendingAction, paintConfirm } from './pane
 import { dsidOf, IContainerFields, paintContainers } from './panels/ContainersPanel'
 import { browseHeight, browseRows, browseWidth, paintBrowse, printable, ROW_FIRST_BROWSE } from './panels/BrowsePanel'
 import { eventColor, syslogLine } from './panels/SyslogFormat'
+import { ISdsfUlogEntry, ulogColor, ulogLine } from './panels/UlogFormat'
 import { ISdsfDataSource } from './SdsfDataSource'
 import {
     ESdsfCommand, ESdsfError, ESdsfJobState, ESdsfMetricsState, ESdsfNodeAction, ESdsfObjectKind, ISdsfContainer, ISdsfEvent, ISdsfJob,
@@ -27,6 +28,7 @@ export enum ESdsfPanel {
     MENU = 'menu',
     DA = 'da',
     ST = 'st',                     // every Job and CronJob
+    INPUT = 'input',               // I: what waits to run: CronJobs scheduled, Jobs not started
     OUTPUT = 'output',             // O: the Jobs that ended
     HELD = 'held',                 // H: the CronJobs suspended
     INIT = 'init',                 // the nodes, as initiators
@@ -36,9 +38,9 @@ export enum ESdsfPanel {
 }
 
 // The panels that are a table of objects with NP line commands.
-const TABLE_PANELS: ESdsfPanel[] = [ESdsfPanel.DA, ESdsfPanel.ST, ESdsfPanel.OUTPUT, ESdsfPanel.HELD, ESdsfPanel.INIT]
+const TABLE_PANELS: ESdsfPanel[] = [ESdsfPanel.DA, ESdsfPanel.ST, ESdsfPanel.INPUT, ESdsfPanel.OUTPUT, ESdsfPanel.HELD, ESdsfPanel.INIT]
 const isTable = (panel: ESdsfPanel): boolean => TABLE_PANELS.includes(panel)
-const isJobTable = (panel: ESdsfPanel): boolean => panel === ESdsfPanel.ST || panel === ESdsfPanel.OUTPUT || panel === ESdsfPanel.HELD
+const isJobTable = (panel: ESdsfPanel): boolean => panel === ESdsfPanel.ST || panel === ESdsfPanel.INPUT || panel === ESdsfPanel.OUTPUT || panel === ESdsfPanel.HELD
 // The tables that share columns, sort and offset: the DA, the Job tables (ST, O, H) and INIT.
 const familyOf = (panel: ESdsfPanel): ESdsfPanel => isJobTable(panel) ? ESdsfPanel.ST : panel === ESdsfPanel.INIT ? ESdsfPanel.INIT : ESdsfPanel.DA
 
@@ -47,6 +49,7 @@ const jobKindOrder = (j: ISdsfJob): number => j.kind === ESdsfObjectKind.JOB ? 0
 
 const JOB_TITLES: Partial<Record<ESdsfPanel, string>> = {
     [ESdsfPanel.ST]: 'SDSF STATUS DISPLAY ALL CLASSES',
+    [ESdsfPanel.INPUT]: 'SDSF INPUT QUEUE DISPLAY ALL CLASSES',
     [ESdsfPanel.OUTPUT]: 'SDSF OUTPUT ALL CLASSES ALL FORMS',
     [ESdsfPanel.HELD]: 'SDSF HELD OUTPUT DISPLAY ALL CLASSES'
 }
@@ -166,6 +169,7 @@ export class SdsfSession {
     private confirmField = -1
     private confirmOn = true                // SET CONFIRM; option 3 of the window turns it off
     private results: IActionResults = { processed: 0, done: [], failures: [] }
+    private ulog: ISdsfUlogEntry[] = []     // what this operator did in the session: the ULOG panel
     private containersPod?: ISdsfPod
     private containerFields: IContainerFields['np'] = []
     private browse?: IBrowse
@@ -323,6 +327,7 @@ export class SdsfSession {
                     return true
                 }
                 this.confirmOn = value === 'ON'
+                this.record(`SET CONFIRM ${value}`, '', `CONFIRM ${value}`, true)
                 this.say(`CONFIRM ${value}`, EMessageLevel.INFO, this.confirmOn
                     ? 'C, CA and the INIT actions ask for confirmation.'
                     : 'C, CA and the INIT actions are processed without asking: SET CONFIRM ON asks again.')
@@ -373,6 +378,8 @@ export class SdsfSession {
                 return ESdsfPanel.DA
             case EPrimaryCommand.ST:
                 return ESdsfPanel.ST
+            case EPrimaryCommand.INPUT:
+                return ESdsfPanel.INPUT
             case EPrimaryCommand.OUTPUT:
                 return ESdsfPanel.OUTPUT
             case EPrimaryCommand.HELD:
@@ -412,6 +419,9 @@ export class SdsfSession {
         switch (command.verb) {
             case EPrimaryCommand.LOG:
                 this.openSyslog(ESdsfPanel.MENU)
+                return
+            case EPrimaryCommand.ULOG:
+                this.ulogCommand(command)
                 return
             case EPrimaryCommand.NONE:
                 break
@@ -506,12 +516,17 @@ export class SdsfSession {
                 case EPrimaryCommand.DA:
                 case EPrimaryCommand.ST:
                 case EPrimaryCommand.OUTPUT:
+                case EPrimaryCommand.INPUT:
                 case EPrimaryCommand.HELD:
                 case EPrimaryCommand.INIT:
                     break
                 case EPrimaryCommand.LOG:
                     this.queue = []
                     this.openSyslog(this.panel)
+                    return
+                case EPrimaryCommand.ULOG:
+                    this.queue = []
+                    this.ulogCommand(command)
                     return
                 case EPrimaryCommand.TOP:
                     this.top = 0
@@ -733,6 +748,7 @@ export class SdsfSession {
             return
         }
         if (input.aid === E3270Aid.PF3 || input.aid === E3270Aid.PF12 || input.aid === E3270Aid.CLEAR || (input.aid === E3270Aid.ENTER && selection === '2')) {
+            this.record(current.command, this.whatOf(current), 'DISCARDED', true)
             this.confirm = this.confirm!.slice(1)
             this.nextConfirm()
             return
@@ -742,7 +758,10 @@ export class SdsfSession {
             this.finish()
             return
         }
-        if (selection === '3') this.confirmOn = false
+        if (selection === '3') {
+            this.confirmOn = false
+            this.record('SET CONFIRM OFF', '', 'CONFIRM OFF (option 3)', true)
+        }
         this.confirm = this.confirm!.slice(1)
         void this.process(current).then(this.nextConfirm)
     }
@@ -781,24 +800,70 @@ export class SdsfSession {
         ? { command: ESdsfCommand.NODE, objectKind: ESdsfObjectKind.NODE, targetName: p.target.name, nodeAction: NODE_ACTION[p.command] }
         : { command: ESdsfCommand.CANCEL, objectKind: p.target.kind, targetNamespace: p.target.namespace, targetName: p.target.name, force: p.command === ELineCommand.CANCEL_FORCE }
 
-    // One action, asked of the back; what it says goes into the run's results.
+    private whatOf = (p: IPendingAction): string => p.target.kind === ESdsfObjectKind.NODE ? `node ${p.target.name}` : `${p.target.namespace}/${p.target.name}`
+
+    // ── ULOG ────────────────────────────────────────────────────────────────────────────────────────
+
+    private record = (command: string, target: string, response: string, ok: boolean): void => {
+        this.ulog.push({ time: new Date(this.now()).toISOString(), command, target, response, ok })
+    }
+
+    // ULOG shows the session's log, newest at the bottom; ULOG CLOSE empties it.
+    private ulogCommand = (command: IPrimaryCommand): void => {
+        const arg = (command.args[0] ?? '').toUpperCase()
+        if (arg === 'CLOSE') {
+            this.ulog = []
+            this.say('ULOG CLOSED', EMessageLevel.INFO, 'The user session log is empty; actions from now on start a new one.')
+            this.finish()
+            return
+        }
+        if (arg) {
+            this.invalid(command, 'INVALID PARAMETER')
+            this.finish()
+            return
+        }
+        const back = isTable(this.panel) ? this.panel : ESdsfPanel.MENU
+        const lines = this.ulog.map(e => printable(ulogLine(e, this.system)))
+        const bottom = Math.max(0, browseRows(lines, this.terminal.screen.cols).length - browseHeight(this.terminal.screen))
+        this.stopAuto()
+        this.browse = {
+            heading: `ULOG CONSOLE ${this.system.toUpperCase().slice(0, 8).padEnd(8)}`,
+            lines,
+            colors: this.ulog.map(ulogColor),
+            top: bottom,
+            left: 0,
+            back
+        }
+        this.panel = ESdsfPanel.BROWSE
+        this.finish()
+    }
+
+    // One action, asked of the back; what it says goes into the run's results and the ULOG.
     private process = async (p: IPendingAction): Promise<void> => {
         const r = this.results
         r.processed++
-        const what = p.target.kind === ESdsfObjectKind.NODE ? `node ${p.target.name}` : `${p.target.namespace}/${p.target.name}`
+        const what = this.whatOf(p)
         try {
             const response = await this.source.request(this.requestOf(p))
             if (!response.ok) {
-                r.firstError = r.firstError ?? response.error ?? ESdsfError.FAILED
+                const error = response.error ?? ESdsfError.FAILED
+                r.firstError = r.firstError ?? error
                 r.failures.push(`${what}: ${response.detail ?? response.error}`)
+                this.record(p.command, what, `${ERROR_MESSAGE[error]}: ${response.detail ?? ''}`, false)
             }
             else if (response.evicted !== undefined) {
                 r.done.push(`${what}: ${response.evicted} pod(s) evicted`)
+                this.record(p.command, what, `${response.evicted} POD(S) EVICTED`, true)
+            }
+            else {
+                this.record(p.command, what, 'COMMAND ISSUED', true)
             }
         }
         catch (err) {
+            const text = err instanceof Error ? err.message : String(err)
             r.firstError = r.firstError ?? ESdsfError.FAILED
-            r.failures.push(`${what}: ${err instanceof Error ? err.message : String(err)}`)
+            r.failures.push(`${what}: ${text}`)
+            this.record(p.command, what, `NO RESPONSE FROM KWIRTH: ${text}`, false)
         }
     }
 
@@ -1095,6 +1160,8 @@ export class SdsfSession {
     jobView = (): ISdsfJob[] => {
         const inPanel = (j: ISdsfJob) => {
             switch (this.panel) {
+                case ESdsfPanel.INPUT:
+                    return j.state === ESdsfJobState.SCHEDULED || j.state === ESdsfJobState.WAITING
                 case ESdsfPanel.OUTPUT:
                     return j.kind === ESdsfObjectKind.JOB && (j.state === ESdsfJobState.COMPLETE || j.state === ESdsfJobState.FAILED)
                 case ESdsfPanel.HELD:
@@ -1359,6 +1426,7 @@ export class SdsfSession {
                 return
             }
             case ESdsfPanel.ST:
+            case ESdsfPanel.INPUT:
             case ESdsfPanel.OUTPUT:
             case ESdsfPanel.HELD: {
                 const fields = paintTable(painter, {

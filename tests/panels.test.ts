@@ -160,6 +160,8 @@ test('ST Queue and Status in JES terms', () => {
     assert.equal(queueOf(job({ state: ESdsfJobState.FAILED })), 'PRINT')
     assert.equal(queueOf(job({ state: ESdsfJobState.SCHEDULED })), 'INPUT')
     assert.equal(queueOf(job({ state: ESdsfJobState.SUSPENDED })), 'HOLD')
+    assert.equal(queueOf(job({ state: ESdsfJobState.WAITING })), 'INPUT', 'a Job not started waits on the input queue')
+    assert.equal(jobStatusOf(job({ state: ESdsfJobState.WAITING })), 'WAITING')
     assert.equal(jobStatusOf(job()), 'ACTIVE 1/3')
     assert.equal(jobStatusOf(job({ completions: 0, succeeded: 0 })), 'ACTIVE 0/1', 'no completions set: one')
     assert.equal(jobStatusOf(job({ state: ESdsfJobState.COMPLETE, succeeded: 3 })), 'COMPLETE 3/3')

@@ -491,10 +491,11 @@ import { jobStateOf, mapCronJob, mapJob } from '../src/back/JobMapper'
 import { describeCronJob, describeJob } from '../src/back/Describe'
 import { ESdsfJobState, ESdsfObjectKind } from '../src/common/SdsfTypes'
 
-test('jobStateOf reads the conditions: Failed, Complete (or SuccessCriteriaMet), running until then', () => {
-    const job = (conditions: { type: string; status: string }[]): V1Job => ({ status: { conditions } } as V1Job)
+test('jobStateOf reads the conditions: Failed, Complete (or SuccessCriteriaMet); waiting until it starts, running until then', () => {
+    const job = (conditions: { type: string; status: string }[]): V1Job => ({ status: { conditions, startTime: new Date('2026-11-22T10:00:00Z') } } as V1Job)
     assert.equal(jobStateOf(job([])), ESdsfJobState.RUNNING)
-    assert.equal(jobStateOf({} as V1Job), ESdsfJobState.RUNNING)
+    assert.equal(jobStateOf({} as V1Job), ESdsfJobState.WAITING, 'no start time: on the input queue')
+    assert.equal(jobStateOf({ status: { conditions: [{ type: 'Complete', status: 'True' }] } } as V1Job), ESdsfJobState.COMPLETE, 'ended is ended, start time or not')
     assert.equal(jobStateOf(job([{ type: 'Complete', status: 'True' }])), ESdsfJobState.COMPLETE)
     assert.equal(jobStateOf(job([{ type: 'SuccessCriteriaMet', status: 'True' }])), ESdsfJobState.COMPLETE)
     assert.equal(jobStateOf(job([{ type: 'Complete', status: 'False' }])), ESdsfJobState.RUNNING)

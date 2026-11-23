@@ -77,6 +77,23 @@ spec:
             - name: work
               image: busybox:1.36
               command: ['sh', '-c', 'echo never']
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: later-cron
+  namespace: ${NAMESPACE}
+spec:
+  schedule: '0 3 1 1 *'
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: work
+              image: busybox:1.36
+              command: ['sh', '-c', 'echo once a year']
 `
 
 const kubectl = (args: string[], input?: string): string =>

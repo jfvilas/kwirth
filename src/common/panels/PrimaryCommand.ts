@@ -5,9 +5,11 @@ export enum EPrimaryCommand {
     NONE = 'none',             // nothing typed
     DA = 'da',
     ST = 'st',
+    INPUT = 'input',           // I: the input queue, what waits to run
     OUTPUT = 'output',         // O: the output queue, Jobs that ended
     HELD = 'held',             // H: the held output, CronJobs suspended
     LOG = 'log',
+    ULOG = 'ulog',             // the user session log: what this operator did; ULOG CLOSE empties it
     INIT = 'init',
     END = 'end',
     RETURN = 'return',
@@ -40,9 +42,11 @@ export interface IPrimaryCommand {
 const VERBS: Record<string, EPrimaryCommand> = {
     DA: EPrimaryCommand.DA,
     ST: EPrimaryCommand.ST,
+    I: EPrimaryCommand.INPUT,
     O: EPrimaryCommand.OUTPUT,
     H: EPrimaryCommand.HELD,
     LOG: EPrimaryCommand.LOG,
+    ULOG: EPrimaryCommand.ULOG,
     INIT: EPrimaryCommand.INIT,
     END: EPrimaryCommand.END,
     RETURN: EPrimaryCommand.RETURN,

@@ -15,6 +15,8 @@ export const jobStateOf = (job: V1Job): ESdsfJobState => {
     const isTrue = (type: string) => conditions.some(c => c.type === type && c.status === 'True')
     if (isTrue('Failed')) return ESdsfJobState.FAILED
     if (isTrue('Complete') || isTrue('SuccessCriteriaMet')) return ESdsfJobState.COMPLETE
+    // not started yet: waiting on the input queue, as a job JES has read and no initiator has taken
+    if (!job.status?.startTime) return ESdsfJobState.WAITING
     return ESdsfJobState.RUNNING
 }
 

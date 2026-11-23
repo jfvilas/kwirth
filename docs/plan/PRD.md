@@ -98,6 +98,8 @@ Y además la captura de pantalla se puede confundir con una sesión real de x327
 | Display (`D`) | Describe del pod, como mensajes en browse |
 | SYSLOG / `LOG` | Events del cluster (fase 2) |
 | `ST`, `O`, `H` | Jobs y CronJobs (fase 2) |
+| `I` | Input queue (fase 3a): CronJobs programados y Jobs sin arrancar |
+| `ULOG` | User session log (fase 3a): las acciones del operador en la sesión |
 | `INIT` | Nodes (fase 2): initiators; `S` start (uncordon), `Z` halt (cordon), `P` drain — `admin` (D13) |
 
 ## 6. Requisitos funcionales
