@@ -5,7 +5,8 @@ inside a [Kwirth](https://kwirthmagnify.dev) tab — except that what it lists a
 **namespace** as jobs are grouped by subsystem. Put `4` in front of a job to end it, `5` to work with it, `8` to
 read its spooled files (its containers' logs), and press F5 to refresh.
 
-> Work in progress: the back end is done; the 5250 screen comes next. See the [plan](docs/plan/PLAN.md).
+> Work in progress: the list, the menu and the commands are done; the options (4, 5, 7, 8) come next. See the
+> [plan](docs/plan/PLAN.md).
 
 - Kwirth: https://kwirthmagnify.dev — source at https://github.com/kwirthmagnify/kwirth
 - Plugin source: https://github.com/jfvilas/kwirth (folder `plugins/wrkactjob`)
@@ -34,6 +35,40 @@ read its spooled files (its containers' logs), and press F5 to refresh.
 
 CPU figures come from Kwirth's `metrics` provider when it is installed; without it WRKACTJOB works the same,
 with no CPU figures.
+
+## The terminal
+
+When the channel starts it asks for the terminal: a **3179-2 (24x80)** or a **3477-FC (27x132)**, in
+**colour** or as a **green monochrome 5251**. It is a new session each time, so changing it is stopping and
+starting the channel. At 132 columns the first view shows the elapsed data too.
+
+It is a 5250 in block mode: nothing reaches Kwirth until you press an attention key, and the keyboard waits
+(`X SYSTEM` in the status line) until the answer is painted. The keyboard is PCOMM's:
+
+| 5250 key | PC key |
+|---|---|
+| Enter | **Right Ctrl** |
+| Reset (frees the keyboard after an error, `X II`) | **Left Ctrl** |
+| Field Exit | Intro |
+| Field+ / Field- | Numpad + / - |
+| F1–F12 / F13–F24 | F1–F12 / Shift+F1–F12 |
+| Roll Up / Roll Down | PgDn / PgUp |
+| Erase EOF / Erase Input | End / Alt+End |
+
+## WRKACTJOB
+
+It opens on **Work with Active Jobs**: every subsystem (namespace) with its jobs (pods) under it.
+
+| Key or command | Does |
+|---|---|
+| F5 or Enter | Refresh the list |
+| F10 | Restart the statistics (elapsed time) |
+| F11 | Next view: status, elapsed data (pool, priority, CPU, restarts), full Kubernetes names |
+| F7 | Find the text typed on the command line, from the first row shown on |
+| PgDn / PgUp | Next / previous page |
+| F3 or F12 | The Main Menu (`1` back to WRKACTJOB, `90` or F3 to sign off) |
+| `WRKACTJOB SBS(name) JOB(API*)` | Only that subsystem, only the jobs starting with API |
+| `SIGNOFF` | End the session; Enter signs on again |
 
 ## Permissions
 

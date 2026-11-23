@@ -39,7 +39,7 @@
         "@kwirthmagnify/kwirth-common-front": "^0.5.83"
     },
     "devDependencies": {
-        "@jfvilas/kwirth-dce-blockterm": "^0.1.0",
+        "@jfvilas/kwirth-dce-blockterm": "^0.2.0",
         "@kubernetes/client-node": "^1.4.0",
         "@mui/icons-material": "7.1.2",
         "@mui/material": "7.1.2",
