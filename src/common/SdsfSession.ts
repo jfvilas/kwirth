@@ -9,6 +9,7 @@ import { ST_COLUMNS, ST_JOBNAME_COLUMN } from './panels/JobColumns'
 import { EPrimaryCommand, IPrimaryCommand, parsePrimaryCommand } from './panels/PrimaryCommand'
 import { IReadyState, paintReady } from './panels/ReadyPanel'
 import { sdsfPatternMatches } from './panels/Wildcard'
+import { daFilterMatches, DEFAULT_DA_FILTER, IDaFilter, parseDaParameters } from './panels/DaFilter'
 import { ELineCommand, isCancel, parseLineCommand } from './panels/LineCommand'
 import { ICancelTarget, IPendingCancel, paintConfirm } from './panels/ConfirmPopup'
 import { dsidOf, IContainerFields, paintContainers } from './panels/ContainersPanel'
@@ -123,6 +124,7 @@ export class SdsfSession {
     private prefix = ''
     private dest = ''
     private owner = ''
+    private daFilter: IDaFilter = DEFAULT_DA_FILTER   // the DA parameters: types and positions
     private sortHeader = ''
     private sortDescending = false
     private top = 0
@@ -252,6 +254,20 @@ export class SdsfSession {
         this.command = command.text
     }
 
+    // DA takes its parameters each time it is typed; bare, it is the DADFLT. False when they are not valid.
+    private daParameters = (command: IPrimaryCommand): boolean => {
+        if (command.verb !== EPrimaryCommand.DA) return true
+        const filter = parseDaParameters(command.args)
+        if (!filter) {
+            this.say('PARAMETER INVALID', EMessageLevel.ERROR,
+                `'${command.text}': DA takes up to 4 of IN OUT TRANS READY, JOB STC TSU INIT and their O and NO forms (one O at most), or ALL, ALLT or ALLP alone.`)
+            this.command = command.text
+            return false
+        }
+        this.daFilter = filter
+        return true
+    }
+
     private notAvailable = (command: IPrimaryCommand): void => {
         this.say('NOT AVAILABLE', EMessageLevel.WARNING, `${command.text.toUpperCase()} is not available yet in this SDSF.`)
         this.command = command.text
@@ -341,6 +357,10 @@ export class SdsfSession {
             this.finish()
             return
         }
+        if (!this.daParameters(command)) {
+            this.finish()
+            return
+        }
         const table = this.tableFor(command.verb)
         if (table) {
             this.openTable(table)
@@ -422,8 +442,12 @@ export class SdsfSession {
         }
 
         if (!this.filterCommand(command)) {
+            if (!this.daParameters(command)) {
+                this.finish()
+                return
+            }
             const table = this.tableFor(command.verb)
-            if (table && table !== this.panel) {
+            if (table && (table !== this.panel || command.verb === EPrimaryCommand.DA)) {
                 this.openTable(table)
                 return
             }
@@ -516,6 +540,7 @@ export class SdsfSession {
             this.ready = { lines: [] }
             this.clearMessage()
             if (upper === 'SDSF DA') {
+                this.daFilter = DEFAULT_DA_FILTER
                 this.openTable(ESdsfPanel.DA)
                 return
             }
@@ -929,9 +954,10 @@ export class SdsfSession {
         })
     }
 
-    // The pods as the DA shows them: filtered by PREFIX, OWNER and DEST, in the SORT order.
+    // The pods as the DA shows them: filtered by its parameters, PREFIX, OWNER and DEST, in the SORT order.
     view = (): ISdsfPod[] => this.sortRows(
         this.pods.filter(p =>
+            daFilterMatches(this.daFilter, p) &&
             sdsfPatternMatches(this.prefix, p.name) &&
             sdsfPatternMatches(this.owner, p.owner) &&
             (!this.dest || p.namespace.toLowerCase() === this.dest)),

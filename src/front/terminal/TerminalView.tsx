@@ -89,8 +89,9 @@ export const TerminalView: React.FC<ITerminalViewProps> = ({ terminal, revision,
         containerRef.current?.focus()
         const grid = (e.currentTarget.querySelector('[data-grid]') as HTMLElement | null)?.getBoundingClientRect()
         if (!grid || !metrics) return
-        const col = Math.floor((e.clientX - grid.left) / (fontSize * metrics.width))
-        const row = Math.floor((e.clientY - grid.top) / (fontSize * metrics.height))
+        // the cell as the browser laid it out: the measured font width drifts a column off towards the right
+        const col = Math.floor((e.clientX - grid.left) / (grid.width / screen.cols))
+        const row = Math.floor((e.clientY - grid.top) / (grid.height / screen.rows))
         if (row < 0 || row >= screen.rows || col < 0 || col >= screen.cols) return
         onKey({ key: E3270Key.MOVE_CURSOR, address: screen.address(row, col) })
     }
