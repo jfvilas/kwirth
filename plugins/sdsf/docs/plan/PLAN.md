@@ -351,5 +351,8 @@ Se publica cada stream con su versión.
 - **V2:** servidor tn3270 para emuladores reales (D11). Lo delicado es el puerto TCP: Kwirth solo da
   HTTP/WebSocket a los plugins, así que hay que decidir si va en el plugin, en un router o como Service
   aparte.
-- **Fase 2:** `LOG` (events, desde el provider `events`), `ST`/`O`/`H` (Jobs y CronJobs) e `INIT` (nodes).
+- **V2:** `R` en el `SR`, aprobar o denegar un CSR (D15). Necesita que el core exponga `CertificatesV1Api`
+  (una release del core).
+- **V2:** `NODE` y `MAS` del menú de SDSF, que hoy no tienen equivalente.
 - **Fase 3:** `X`, exec en el contenedor, como una sesión TSO.
+- **Fase 3:** `PS` (procesos), después del `X`: listarlos exige entrar en el contenedor.
