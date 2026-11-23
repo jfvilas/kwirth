@@ -1,5 +1,40 @@
 [
   {
+    "extensionType": "plugin",
+    "id": "wrkactjob",
+    "version": "0.1.0",
+    "tags": [
+      "operations",
+      "kubernetes",
+      "emulator"
+    ],
+    "name": "WRKACTJOB",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-wrkactjob/-/kwirth-plugin-wrkactjob-0.1.0.tgz",
+    "description": "WRKACTJOB channel plugin for Kwirth - IBM i Work with Active Jobs on a 5250 terminal (24x80 or 27x132, colour or green screen), where namespaces are subsystems and pods are jobs",
+    "icon": "Terminal",
+    "website": "https://github.com/jfvilas/kwirth/tree/master/plugins/wrkactjob",
+    "requires": [
+      {
+        "extensionType": "dce",
+        "id": "blockterm",
+        "minVersion": "0.2.0"
+      }
+    ]
+  },
+  {
+    "extensionType": "dce",
+    "id": "blockterm",
+    "version": "0.2.0",
+    "tags": [
+      "library",
+      "emulator"
+    ],
+    "name": "Block Terminal",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-dce-blockterm/-/kwirth-dce-blockterm-0.2.0.tgz",
+    "description": "Block-mode terminal for Kwirth extensions: the IBM 3270 and 5250 engines, without DOM, and the screen, font and keyboard that paint them in the front end",
+    "website": "https://github.com/jfvilas/kwirth/tree/master/dces/blockterm"
+  },
+  {
     "extensionType": "dce",
     "id": "blockterm",
     "version": "0.1.0",
