@@ -55,7 +55,9 @@ export enum ESdsfCommand {
     NODES = 'nodes',           // every node, as the INIT panel's initiators
     NODE = 'node',             // start, halt or drain a node (nodeAction); admin only
     CLASSES = 'classes',       // every PriorityClass, as the JC panel's job classes
-    REQUESTS = 'requests'      // the CertificateSigningRequests still pending, as the SR panel's system requests
+    REQUESTS = 'requests',     // the CertificateSigningRequests still pending, as the SR panel's system requests
+    QUOTAS = 'quotas',         // every ResourceQuota the key reaches, a row per resource: the RES panel
+    VOLUMES = 'volumes'        // the PersistentVolumes and the claims still waiting for one: the SP panel
 }
 
 // What a request's target is. LOG is for pods only; CANCEL for pods, Jobs and CronJobs; DESCRIBE for all of them.
@@ -66,10 +68,14 @@ export enum ESdsfObjectKind {
     // cluster-scoped: no targetNamespace
     NODE = 'Node',
     PRIORITY_CLASS = 'PriorityClass',
-    CSR = 'CertificateSigningRequest'
+    CSR = 'CertificateSigningRequest',
+    PERSISTENT_VOLUME = 'PersistentVolume',
+    // namespaced, as a pod
+    RESOURCE_QUOTA = 'ResourceQuota',
+    PVC = 'PersistentVolumeClaim'
 }
 
-export const CLUSTER_SCOPED_KINDS: ESdsfObjectKind[] = [ESdsfObjectKind.NODE, ESdsfObjectKind.PRIORITY_CLASS, ESdsfObjectKind.CSR]
+export const CLUSTER_SCOPED_KINDS: ESdsfObjectKind[] = [ESdsfObjectKind.NODE, ESdsfObjectKind.PRIORITY_CLASS, ESdsfObjectKind.CSR, ESdsfObjectKind.PERSISTENT_VOLUME]
 
 /*
     A node as an initiator of the INIT panel, with SDSF's own status words:
@@ -134,6 +140,43 @@ export interface ISdsfSystemRequest {
     signer: string
     requestor: string          // the user that asked for it
     usages: string[]
+    created: string            // ISO
+}
+
+// One row of the RES panel: one resource of a ResourceQuota, how much is used of what it allows.
+export interface ISdsfQuotaItem {
+    namespace: string
+    name: string               // the quota's
+    resource: string           // requests.cpu, pods, count/jobs.batch…
+    used: string               // as the API gives it: '500m', '2Gi', '3'
+    hard: string
+    percent: number            // used over hard, 0..100 and over; 100 when hard is 0 and something is used
+    created: string            // ISO
+}
+
+/*
+    Where a volume of the SP panel stands. A PersistentVolume's own phases, and PENDING for a claim that has
+    no volume yet (the row is the claim then, not a volume).
+*/
+export enum ESdsfVolumeStatus {
+    BOUND = 'BOUND',
+    AVAILABLE = 'AVAILABLE',
+    RELEASED = 'RELEASED',
+    FAILED = 'FAILED',
+    PENDING = 'PENDING'
+}
+
+// One row of the SP panel: a PersistentVolume, or a PersistentVolumeClaim still waiting for one.
+export interface ISdsfVolume {
+    name: string               // the volume's; for a pending claim, the claim's
+    kind: ESdsfObjectKind.PERSISTENT_VOLUME | ESdsfObjectKind.PVC
+    status: ESdsfVolumeStatus
+    capacity: number           // bytes: the volume's, or what the claim asks for
+    storageClass: string
+    claimNamespace: string     // '' for a volume nobody claims
+    claimName: string
+    accessModes: string[]      // ReadWriteOnce, ReadOnlyMany…
+    reclaim: string            // Delete, Retain, Recycle; '' for a claim
     created: string            // ISO
 }
 
@@ -268,5 +311,7 @@ export interface ISdsfMessageResponse extends IInstanceMessage {
     nodes?: ISdsfNode[]        // NODES
     classes?: ISdsfJobClass[]  // CLASSES
     requests?: ISdsfSystemRequest[]  // REQUESTS
+    quotas?: ISdsfQuotaItem[]  // QUOTAS
+    volumes?: ISdsfVolume[]    // VOLUMES
     evicted?: number           // NODE drain: the evictions the API server accepted
 }

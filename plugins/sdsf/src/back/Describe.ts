@@ -1,4 +1,4 @@
-import type { V1Pod, V1Container, V1ContainerStatus, CoreV1Event, V1Job, V1CronJob, V1PodTemplateSpec, V1Node, V1PriorityClass, V1CertificateSigningRequest } from '@kubernetes/client-node'
+import type { V1Pod, V1Container, V1ContainerStatus, CoreV1Event, V1Job, V1CronJob, V1PodTemplateSpec, V1Node, V1PriorityClass, V1CertificateSigningRequest, V1ResourceQuota, V1PersistentVolume, V1PersistentVolumeClaim } from '@kubernetes/client-node'
 
 /*
     A pod as text, close to what `kubectl describe pod` prints: it is what the D line command browses.
@@ -257,3 +257,57 @@ export const describeCsr = (csr: V1CertificateSigningRequest): string[] => {
         ...pem.map(l => '  ' + l)
     ]
 }
+
+// A ResourceQuota, as `kubectl describe quota` prints it: each resource, what is used and what is allowed.
+export const describeQuota = (rq: V1ResourceQuota): string[] => {
+    const hard = rq.status?.hard ?? rq.spec?.hard ?? {}
+    const used = rq.status?.used ?? {}
+    const width = Math.max(8, ...Object.keys(hard).map(k => k.length)) + 2
+    return [
+        field('Name', rq.metadata?.name),
+        field('Namespace', rq.metadata?.namespace),
+        ...mapLines('Labels', rq.metadata?.labels),
+        ...mapLines('Annotations', rq.metadata?.annotations),
+        field('CreationTimestamp', isoOf(rq.metadata?.creationTimestamp)),
+        field('Scopes', (rq.spec?.scopes ?? []).join(', ')),
+        'Resource'.padEnd(width) + 'Used'.padEnd(12) + 'Hard',
+        '--------'.padEnd(width) + '----'.padEnd(12) + '----',
+        ...Object.keys(hard).sort().map(k => k.padEnd(width) + (used[k] ?? '0').padEnd(12) + hard[k])
+    ]
+}
+
+// A PersistentVolume, close to `kubectl describe pv`.
+export const describeVolume = (pv: V1PersistentVolume): string[] => {
+    const claim = pv.spec?.claimRef
+    return [
+        field('Name', pv.metadata?.name),
+        ...mapLines('Labels', pv.metadata?.labels),
+        ...mapLines('Annotations', pv.metadata?.annotations),
+        field('CreationTimestamp', isoOf(pv.metadata?.creationTimestamp)),
+        field('StorageClass', pv.spec?.storageClassName),
+        field('Status', pv.status?.phase),
+        field('Claim', claim ? `${claim.namespace}/${claim.name}` : undefined),
+        field('Reclaim Policy', pv.spec?.persistentVolumeReclaimPolicy),
+        field('Access Modes', (pv.spec?.accessModes ?? []).join(', ')),
+        field('VolumeMode', pv.spec?.volumeMode),
+        field('Capacity', pv.spec?.capacity?.storage),
+        field('Message', pv.status?.message),
+        field('Source', Object.keys(pv.spec ?? {}).find(k => ['hostPath', 'local', 'csi', 'nfs', 'awsElasticBlockStore', 'azureDisk', 'azureFile', 'gcePersistentDisk', 'iscsi', 'fc', 'cephfs', 'rbd'].includes(k)))
+    ]
+}
+
+// A PersistentVolumeClaim still waiting for its volume, with the events that say why.
+export const describeClaim = (pvc: V1PersistentVolumeClaim, events: CoreV1Event[], now: number = Date.now()): string[] => [
+    field('Name', pvc.metadata?.name),
+    field('Namespace', pvc.metadata?.namespace),
+    field('StorageClass', pvc.spec?.storageClassName),
+    field('Status', pvc.status?.phase),
+    field('Volume', pvc.spec?.volumeName),
+    ...mapLines('Labels', pvc.metadata?.labels),
+    ...mapLines('Annotations', pvc.metadata?.annotations),
+    field('CreationTimestamp', isoOf(pvc.metadata?.creationTimestamp)),
+    field('Capacity', pvc.spec?.resources?.requests?.storage),
+    field('Access Modes', (pvc.spec?.accessModes ?? []).join(', ')),
+    field('VolumeMode', pvc.spec?.volumeMode),
+    ...eventLines(events, now)
+]

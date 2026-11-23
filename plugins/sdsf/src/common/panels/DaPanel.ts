@@ -65,15 +65,14 @@ export const columnsFrom = <T>(offset: number, cols: number, columns: IDaColumn<
     return result
 }
 
-// The offset PF10 goes back to: as many columns to the left as would fill the screen ending before `offset`.
+// The offset PF10 goes back to: the start of the PF11 page before `offset`, so PF10 undoes PF11 exactly.
 export const offsetLeftOf = <T>(offset: number, cols: number, columns: IDaColumn<T>[]): number => {
-    let room = cols - 1 - FIRST_SCROLL_ATTRIBUTE
-    let i = offset
-    while (i > 0 && room - (columns[i - 1].width + 1) >= 0) {
-        room -= columns[i - 1].width + 1
-        i--
+    let page = 0
+    for (;;) {
+        const next = page + Math.max(1, columnsFrom(page, cols, columns).length)
+        if (next >= offset) return page
+        page = next
     }
-    return i
 }
 
 export const paintTable = <T>(p: Painter, state: ITablePaintState<T>): ITableFields<T> => {

@@ -4,7 +4,7 @@
 */
 export enum ELineCommand {
     SELECT = 'S',              // browse the output (log of the main container); on INIT, start the node (uncordon)
-    QUERY = '?',               // the job's data sets: the pod's containers; on INIT and JC, the DA of its pods
+    QUERY = '?',               // the job's data sets: the pod's containers; on INIT and JC, the DA of its pods; on RES, of its namespace
     DISPLAY = 'D',             // the object described, in a browse
     CANCEL = 'C',              // delete the pod, Job or CronJob, after confirming
     CANCEL_FORCE = 'CA',       // the same with grace period 0
@@ -18,6 +18,9 @@ export const INIT_LINE_COMMANDS: ELineCommand[] = [ELineCommand.SELECT, ELineCom
 // JC: ? is the DA of the class's pods; SR is read-only for now (replying, approving or denying, is for V2).
 export const JC_LINE_COMMANDS: ELineCommand[] = [ELineCommand.QUERY, ELineCommand.DISPLAY]
 export const SR_LINE_COMMANDS: ELineCommand[] = [ELineCommand.DISPLAY]
+// RES: ? is the DA of the quota's namespace. SP: describe only.
+export const RES_LINE_COMMANDS: ELineCommand[] = [ELineCommand.QUERY, ELineCommand.DISPLAY]
+export const SP_LINE_COMMANDS: ELineCommand[] = [ELineCommand.DISPLAY]
 
 // What was typed in NP, or undefined when it is not a line command of this panel (and '' when nothing was typed).
 export const parseLineCommand = (typed: string, allowed: ELineCommand[] = TABLE_LINE_COMMANDS): ELineCommand | undefined | '' => {
