@@ -1,10 +1,10 @@
 # WRKACTJOB — plan y backlog
 
-> **ESTADO — CERRADO** (2026-11-24). Streams S0–S6 hechos y validados por el usuario; MVP publicado el
-> 2026-11-23 como `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE). La
-> instalación de la DCE desde el marketplace de jfvilas, validada. Las capturas de referencia (D11) se
-> descartan: los códigos de error 5250 quedan como están. Lo que sigue (§4) es backlog, sin streams. Cuelga
-> del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto (D1–D11).
+> **ESTADO — CERRADO** (2026-11-24). **MVP (S0–S6)** publicado el 2026-11-23 como `plugin/wrkactjob@0.1.0` (y
+> `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE). **Fase 3 (S7–S12)**, más comandos de IBM i
+> ([PRD-fase3](PRD-fase3.md), D12–D18), publicada el 2026-11-24 como `plugin/wrkactjob@0.2.0`. Todo validado por
+> el usuario. Lo que sigue (§4) es backlog, sin streams. Cuelga
+> del [PRD](PRD.md) y del [PRD-fase3](PRD-fase3.md), y no repite ni su problema ni sus decisiones (D1–D18).
 >
 > **Dónde vive:**
 > - `~/github/kwirth/plugins/wrkactjob`: repo anidado (rama `main`, identidad `jfvilas`) **sin remoto**,
@@ -154,10 +154,108 @@
   - `blockterm` 0.2.0 ya está en npm; falta su entrada en el manifest de jfvilas.
 - ✅ **PUBLICADO (2026-11-23)**, con el OK del usuario. `@jfvilas/kwirth-plugin-wrkactjob@0.1.0` en npm (GET 200 a los ~10 min). En github.com/jfvilas/kwirth: subtree pull de `dces/blockterm` (0.2.0), **subtree add de `plugins/wrkactjob`**, manifest raíz con `wrkactjob@0.1.0` (con `requires: blockterm ≥ 0.2.0`) y `dce/blockterm@0.2.0`, filas en el índice del README, y los tags `plugin/wrkactjob@0.1.0` y `dce/blockterm@0.2.0`. `wrkactjob` y `blockterm` salen de `kwirth-dev.json` (lo pidió el usuario): en dev se instalan del marketplace de jfvilas, que es además la prueba pendiente de que instala una DCE de ese manifest.
 
+### Fase 3 — más comandos de IBM i ([PRD-fase3](PRD-fase3.md))
+
+Lo común a todos los streams de la fase:
+- **Sin tocar `blockterm`.** Todo lo de la fase es del plugin; si un stream necesitara algo de la DCE, se para y se dice (una versión nueva de la DCE solo añade, y obliga a publicarla antes).
+- **Back:** cada comando nuevo es un `EWrkCommand` nuevo y una ampliación del `Pick` de `IWrkClusterInfo` (`coreApi`, `batchApi`, `storageApi` del `ClusterInfo` del core, solo tipos). Para los CronJobs se reutilizan `cronJobStatus` y `cronJobTrigger` de `common-back/KubernetesTools.ts` si el runtime del core (`__kwirth_back__`) los expone; si no, se llama a `batchApi` igual que ellos, sin copiar lógica.
+- **Front/sesión:** cada comando es un `EWrkPanel` nuevo en la pila de `WrkSession`, con su fichero en `src/common/panels/`; la línea de comandos y F4 los reconocen en cualquier panel que la tenga. F3 vuelve al menú, F12 uno atrás.
+- **Por stream:** unit tests con c8 al nivel del MVP (100 % de líneas en `common`), build, verificación en el dev con capturas por la UI y QA tuyo. Los tipos nuevos se listan para tu validación.
+- **Dev:** `wrkactjob` vuelve a `kwirth-dev.json` (desde `dist`) mientras dure la fase, comprobando antes, **en un turno aparte**, que no hay un Playwright vivo; sale al publicar.
+
+**S7 — Back de la fase 3 y el scope `wrkactjob$schedule`.**
+- Comandos: `SYSTEM` (nodos con allocatable, memoria pedida y pods máximos; PersistentVolumes; uso del provider `metrics`), `SUBSYSTEMS` (namespaces con estado, memoria pedida y nodos donde tienen pods), `SUBSYSTEM_DESCRIPTION` (labels, annotations, ResourceQuotas, LimitRanges de un namespace), `MESSAGES` (events Warning de los namespaces que ve la clave, el más reciente primero), `SCHEDULES` (CronJobs con schedule, zona, suspend, concurrencyPolicy, último schedule e historial de Jobs), `HOLD` / `RELEASE` (`suspend`), `SUBMIT` (Job desde el CronJob).
+- `wrkactjob$schedule` entra en `EWrkScope`, en la escalera entre `read` y `end` (D18) y en el catálogo de scopes. `HOLD`/`RELEASE`/`SUBMIT` lo exigen; una clave con `end` lo incluye por escalera.
+- D17: nodos y PersistentVolumes solo con una clave de nivel `cluster` o superior; si no, la respuesta lo marca (no autorizado a esas cifras) y el resto se calcula con lo que la clave ve.
+- Todo filtrado por los namespaces que alcanza la clave (`keyMatchesResource`), como `LIST`.
+- **Hecho cuando:** unit tests de los mapeadores y de la autorización de cada comando (incluido D17 y la escalera), 100 % de líneas en el back.
+- 🔶 **Código hecho (2026-11-24).** Lo que salió al construirlo:
+  - **`cronJobStatus` / `cronJobTrigger` de `common-back` no se usan:** el runtime los expone, pero se tragan el error (lo loguean y vuelven bien), así que un Hold que falla le diría al operador que ha ido. Se llama a `batchApi` como ellos. `SUBMIT` hace lo que `kubectl create job --from=cronjob/…`: el Job lleva la ownerReference al CronJob (así su historial y WRKACTJOB lo ven como una de sus ejecuciones) y la anotación `cronjob.kubernetes.io/instantiate: manual`; nombre `<cronjob>-manual-<epoch>`, cortado a 63.
+  - **Patch con `op: add`** en `/spec/suspend` (como el cordon de SDSF): `replace` falla si el objeto guardado no tiene el campo.
+  - **Qué alcanza la clave:** un CronJob se comprueba como un pod con su nombre (los patrones de pods de la clave se comparan con él: sus pods se llaman como él). Un subsistema se ve si la clave lo alcanza por nombre **o** alcanza algún pod suyo (una clave limitada a unos pods no tiene namespace propio, pero ve los subsistemas en que corren). Un mensaje: el de un pod, por el pod; el de otro objeto con namespace, por el namespace; el de un objeto de cluster (un nodo), solo con nivel `cluster` (D17).
+  - **`SYSTEM` por debajo de `cluster`** ni siquiera pide nodos ni volúmenes: `restricted`, pools vacíos, sin ASP, y la CPU es la suma de los jobs que alcanza.
+  - `DSPMSG`: los 1000 events Warning más recientes como mucho (`MAX_MESSAGES`).
+  - `quantityOf` es copia de la de SDSF (`Quantity.ts`): un plugin no importa otro y las librerías comunes no tienen una. La memoria pedida de un pod cuenta como el scheduler: sus contenedores juntos o su init más grande.
+  - Tests: 84 (23 nuevos), 100 % de líneas y funciones (c8). Typecheck limpio, también de los tests.
+  - **Tipos nuevos (⚠️ a validar):** `EWrkScope.SCHEDULE`; en `EWrkCommand`: `SYSTEM`, `SUBSYSTEMS`, `SUBSYSTEM_DESCRIPTION`, `MESSAGES`, `SCHEDULES`, `HOLD`, `RELEASE`, `SUBMIT`; `IWrkPool`, `IWrkStorage`, `IWrkSystem`, `EWrkSubsystemStatus`, `IWrkSubsystem`, `IWrkQuotaItem`, `IWrkLimitItem`, `IWrkSubsystemDescription`, `IWrkMessage`, `EWrkRunStatus`, `IWrkScheduleRun`, `IWrkSchedule`; campos nuevos en `IWrkactjobMessageResponse` (`system`, `subsystems`, `description`, `messages`, `schedules`, `submitted`); en el back, `IPodJob`.
+
+**S8 — Main Menu y `WRKSYSSTS`.**
+- Main Menu con 1–5 y 90 (PRD-fase3 §3). La línea de comandos reconoce `WRKSBS`, `DSPMSG` (con o sin `QSYSOPR`), `WRKMSG`, `WRKSYSSTS` y `WRKJOBSCDE`; F4 sobre ellos abre su prompt (los que tienen parámetros) o el panel.
+- `WRKSYSSTS` (PRD-fase3 §2.1): cabecera (`% CPU used`, `Elapsed time`, `Jobs in system`, `Main storage size`, `System ASP`, `% system ASP used`), tabla de pools = nodos numerados por nombre (D13), F11 con sus vistas, F10, F5; `*N` sin `metrics` y sin permiso de cluster, con el mensaje de D17. A 132 columnas, las vistas que caben juntas.
+- **Hecho cuando:** criterio 1 del PRD-fase3; tests de la tabla de pools con 1 y con más nodos que filas (Roll); QA tuyo.
+- 🔶 **Código hecho (2026-11-24).** Lo que salió al construirlo:
+  - **WRKSYSSTS es un panel sobre la base** (como los del job): F12 vuelve uno, F3 vuelve a donde se llamó (WRKACTJOB o el menú). Tecleado sobre sí mismo se refresca; `RESET(*YES)` reinicia el tiempo transcurrido, igual que F10. F4 sobre él lo ejecuta: no tiene prompt aquí.
+  - **WRKACTJOB tecleado sobre un panel cierra todos los paneles:** es la base, no un panel encima. Simplificación frente a IBM i, que lo anidaría. *(Sustituido en el S9: los paneles se apartan y F12 en WRKACTJOB vuelve a ellos.)*
+  - **ENDJOB tecleado sobre un panel** deja ese panel pintado con el mensaje (antes solo existía sobre la base, que se refresca).
+  - **Cifras:** `% CPU used`, `Elapsed time`, `Jobs in system`, `Main storage size (M)` (la memoria allocatable de los nodos); a la derecha `Auxiliary storage:` con `System ASP` (G) y `% system ASP used` (cuatro decimales, como IBM i). `*N` lo que no se sabe o no se puede ver.
+  - **Pools a 80 columnas, tres vistas con F11:** faults (`Pool Size`, `Reserved Size`, `Max Active`, `DB Fault` = jobs en MSGW, `Non-DB Fault` = reinicios), actividad (`Active`, `CPU %`, `Used Size`: no hay transiciones en Kubernetes, así que es el uso) y nombres (el nodo). A 132, todo en una vista y F11 no está.
+  - **D17:** con `restricted`, sin pools («(No pools to display)»), `*N` en almacenamiento y memoria, y «Not authorized to some system values.» en cada refresco. El aviso de que falta el provider `metrics` sale una vez por sesión, en el panel que lo descubra primero.
+  - **Main Menu:** 1–5 y 90 con una línea en blanco encima, como IBM i. La entrada 3 es `DSPMSG MSGQ(QSYSOPR)` (forma con keyword; la posicional llega en el S10).
+  - **WRKSBS, DSPMSG, WRKMSG, WRKJOBSCDE:** «Command X not available yet.» hasta sus streams (provisional, como las opciones en el S4).
+  - Tests: 95 (11 nuevos), 100 % de líneas (c8). Versión del plugin **0.2.0** y `wrkactjob` en `kwirth-dev.json` desde `dist` (sin commitear en el core hasta el cierre de la fase).
+  - **Verificado en el dev** (k3d, 2 nodos, sin PersistentVolumes) con capturas por la UI: las tres vistas, el menú y su opción 4. La CPU sale `*N` hasta que el provider `metrics` tiene dos lecturas (~1 min tras abrir el canal); luego `% CPU used`, la CPU y la memoria usada por pool. Salió que los puntos de la columna derecha acababan en «.  :»: el ancho de la etiqueta tiene que ser impar, como el de la izquierda.
+  - **Tipos nuevos (⚠️ a validar):** `ESystemView`, `ISystemStatusState`, `EWrkPanel.SYSTEM_STATUS` y, internos de la sesión, `ISystemFrame` y el campo `systemStatus` de `IFrame`.
+
+**S9 — `WRKSBS` y `DSPSBSD`.**
+- `WRKSBS` (§2.2): subsistemas con `Total Storage (M)` y sus pools (los números de `WRKSYSSTS`), F11 al estado. Opción `5` → `Display Subsystem Description` (menú de la descripción: atributos = labels/annotations, entradas de pool = ResourceQuotas, límites = LimitRanges; cada una con su panel de solo lectura). Opción `8` → `WRKACTJOB SBS(ns)` encima en la pila. `4` → «Option 4 not valid.» (D14).
+- **Hecho cuando:** criterio 2 del PRD-fase3; QA tuyo.
+- 🔶 **Código hecho y verificado en el dev (2026-11-24).** Lo que salió al construirlo:
+  - **WRKSBS** (por el menú, `WRKSBS` o F14 de vuelta a WRKSYSSTS): `Total Storage (M)` (`.00` como IBM i) y las columnas de pools 1–10, cada una con el **número de pool del sistema**. La numeración la da el back (`poolNames`): todos los nodos por nombre con nivel `cluster` (la misma de WRKSYSSTS), por debajo los nodos de los jobs que la clave alcanza. F11: estado, jobs y el nombre completo del namespace. A 132, todo junto y sin F11. Sin leyenda ni validez para `4` (D14).
+  - **Varias opciones a la vez** se validan antes de correr ninguna y corren en orden, cada una al dejar la anterior; al acabar, la lista se pide de nuevo (como WRKACTJOB).
+  - **`8` y WRKACTJOB tecleado sobre un panel:** los paneles se apartan y **F12 en WRKACTJOB vuelve a ellos**; F3 va al menú y los deja. Sustituye la simplificación del S8 (que cerraba todos los paneles).
+  - **DSPSBSD** (opción `5` o `DSPSBSD SBSD(nombre)`): el menú de IBM i con 1 Operational attributes (estado, creación, pools, labels y annotations) y 2 Pool definitions (pool del subsistema, pool del sistema, nodo); las entradas 3–10 de IBM i no tienen equivalente, así que **3 y 4 son propias: Resource quota entries y Limit range entries**. Cada una es una lista de solo lectura con Roll y «Press Enter to continue.». En la línea de selección, un número que no es entrada es «Selection n not valid.»; otra cosa se ejecuta como comando.
+  - **F4 sobre WRKSBS o DSPSBSD los ejecuta**, como WRKSYSSTS.
+  - **Back:** `SUBSYSTEMS` y `SUBSYSTEM_DESCRIPTION` devuelven `poolNames`; la descripción trae sus `pools`. `SUBSYSTEM_DESCRIPTION` ya no usa `listNamespacedPod`: lista todos los pods una vez (para los pools y la numeración) y de ahí sale si la clave alcanza el subsistema.
+  - `rowsOf` acepta solo la altura (`Pick<Screen5250, 'rows'>`): los tamaños de página se calculan sin pantalla.
+  - **Verificado en el dev** con capturas por la UI: WRKSBS (9 subsistemas, pools 1 y 2 = agent y server), F11, `5` con sus cuatro entradas y `8` sobre kube-system con F12 de vuelta. La primera pasada falló en la `8` porque el back de dev se reinició a mitad (12:14:58, ajeno); la segunda, limpia. Salió que la cabecera de los LimitRange no cabía en 80 columnas.
+  - Tests: 108 (13 nuevos), 100 % de líneas (c8).
+  - **Tipos nuevos (⚠️ a validar):** `poolNames` en `IWrkactjobMessageResponse`, `pools` en `IWrkSubsystemDescription`; `ESubsystemOption`, `ESubsystemsView`, `ISubsystemsState`, `ISubsystemsFields`, `ESubsystemDescription`, `IDisplayList`; `EWrkPanel.SUBSYSTEMS`, `SUBSYSTEM_DESCRIPTION`, `DISPLAY`; internos de la sesión, `ISubsystemsFrame`, `IDescriptionFrame` y los campos `subsystems`, `description`, `display` de `IFrame`.
+
+**S10 — `DSPMSG QSYSOPR`.**
+- Panel `Display Messages` (`Queue . . . : QSYSOPR`, `Program . . : *DSPMSG`), mensajes en orden inverso, sin campo de Reply (D15); F1 con el cursor sobre un mensaje → `Additional Message Information` (event completo); F5; Roll. `WRKMSG` abre lo mismo. Mensaje del panel cuando no hay ninguno: `No messages available.`
+- **Hecho cuando:** criterio 3 del PRD-fase3; QA tuyo.
+- 🔶 **Código hecho y verificado en el dev (2026-11-24).** Lo que salió al construirlo:
+  - **Comandos:** `DSPMSG`, `DSPMSG QSYSOPR` (posicional), `DSPMSG MSGQ(QSYSOPR)` y `WRKMSG` abren lo mismo; también `*SYSOPR`, `*WRKUSR` y `*USRPRF` (no hay cola por usuario, D15). Otra cola: «Message queue X in *LIBL not found.». El menú (3) teclea `DSPMSG QSYSOPR`. F4 sobre ellos los ejecuta.
+  - **Posicionales en el parser CL:** solo para los comandos de `POSITIONAL` (hoy `DSPMSG` y `WRKMSG` → `MSGQ`) y solo antes de cualquier keyword, como CL. El resto de comandos sigue rechazándolos.
+  - **El panel:** Queue/Library/Program arriba, una instrucción para F1 (sin «Type reply»: no hay respuesta, D15), y cada mensaje como «Pod X in subsystem Y: Reason - texto», con las líneas siguientes dos columnas más adentro. **Se pagina por mensajes enteros** (uno no se parte entre páginas; uno más largo que la página se corta). Sin mensajes: «No messages available.». Enter sale (no hay nada que contestar), F5 refresca. No tiene línea de comandos.
+  - **F1** con el cursor en cualquier línea de un mensaje abre **Additional Message Information**: Message ID (la reason), tipo, fecha de envío y primera, ocurrencias, objeto, subsistema (`*NONE` para un nodo), programa (el componente) y el texto completo. Fuera de un mensaje: «Position the cursor on a message, then press F1.».
+  - **`wrap` corregido para todos los paneles:** una palabra más larga que la línea (el nombre de un pod con su uid, frecuente en los events) ahora llena lo que queda de la línea en que empieza; antes bajaba a una línea propia y dejaba un `)` huérfano. Lo destapó la prueba en el dev.
+  - Tests: 116 (8 nuevos), 100 % de líneas (c8).
+  - **Tipos nuevos (⚠️ a validar):** `IOperatorMessagesState`; `EWrkPanel.OPERATOR_MESSAGES` y `MESSAGE_DETAILS`; `POSITIONAL` (el mapa de posicionales del parser); internos de la sesión, `IOperatorMessagesFrame` y los campos `operatorMessages` y `detail` de `IFrame`.
+
+**S11 — `WRKJOBSCDE`.**
+- Parser de cron propio en `common` (5 campos, listas, rangos, pasos, nombres de días/meses y `@hourly`…; sin dependencias): la próxima ejecución y la traducción a las frecuencias de IBM i (`*WEEKLY`, `*MONTHLY`, días y hora) o `*CRON` con la expresión (D16).
+- Panel `Work with Job Schedule Entries` (§2.4) con `SCD`/`HLD`, fecha/hora, frecuencia, próximo envío; F11 al nombre completo. Opciones `3` (prompt `HLDJOBSCDE`), `6` (`RLSJOBSCDE`), `10` (`SBMJOB`), `5` (detalle e historial), `8` (pods del último Job en WRKACTJOB, o `No active jobs.`), `4` no válida (D14). Sin `wrkactjob$schedule`, el motivo sale en el prompt como en `ENDJOB`.
+- **Hecho cuando:** criterio 4 del PRD-fase3; tests del parser con las expresiones de los CronJobs típicos (cada minuto, horas fijas, días laborables, mensual, rangos con paso, nombres, zona horaria); QA tuyo (Hold/Release/Submit sobre un CronJob de prueba propio, nunca uno ajeno).
+- 🔶 **Código hecho y verificado en el dev (2026-11-24).** Lo que salió al construirlo:
+  - **Cron propio (`common/Cron.ts`)**, como el controlador (robfig/cron estándar): cinco campos, listas, rangos, pasos (`n/paso` hasta el final), nombres, 7 = domingo, `?`, macros `@yearly`…`@hourly`, y los dos campos de día restringidos = cualquiera de los dos. La **próxima ejecución** recorre el reloj de pared en la zona del CronJob (UTC si no da ninguna: la del controlador) saltando días y horas que no casan, y relee el reloj tras cada salto, así que el cambio de hora sale solo (probado: 29-3-2026 en Madrid). Un horario imposible (30 de febrero) da «sin próxima» en vez de quedarse en bucle; una zona desconocida, también.
+  - **D16, en palabras de IBM i:** una hora al día todos los meses → `*WEEKLY` con fecha `*ALL` (todos los días), `*MON` (uno) o `*SELECT` (varios, detallados en el 5); un día del mes → `*MONTHLY` con ese día; lo demás → `*CRON` con la expresión ocupando Date y Time.
+  - **El panel:** dos líneas de leyenda (como IBM i) y cabecera en dos líneas, así que la lista empieza en la fila 10; `HLD` en blanco, como `MSGW`. Leyenda sin `2=Change` ni `4=Remove` (D14). F11: subsistema, nombre completo y cron; a 132, todo junto y sin F11.
+  - **Opciones**, validadas todas antes de correr ninguna y en orden como en WRKSBS: `3` sobre una HLD, `6` sobre una SCD y `8` sin ejecuciones se rechazan en su campo con el mensaje de IBM i («already held», «not held», «No submission…»). `3`, `6` y `10` abren su prompt (`HLDJOBSCDE`, `RLSJOBSCDE`, `SBMJOB`) con el nombre y el subsistema; el nombre tecleado tiene que ser el de la entrada; F12 en el prompt la salta sin hacer nada. Al acabar, «Job schedule entry X held./released.» o «Job <job> submitted.» en la lista refrescada.
+  - **`8`** abre WRKACTJOB con `SBS(ns) JOB(<último job>-*)`: los pods de un Job se llaman `<job>-<sufijo>`, y con el guion no entra otro job cuyo nombre empiece igual. F12 vuelve a WRKJOBSCDE.
+  - **`5`** es una lista de solo lectura: el panel de lista del S9 sale a `panels/DisplayList.ts` con una línea de cabecera libre (antes llevaba el subsistema) y lo usan los dos.
+  - Los prompts de las opciones no son comandos de la línea de comandos (no están en `PROMPTS`). Ya no queda ningún comando «not available yet»: se borró esa lista.
+  - **El mensaje de permiso del back se acortó** («Not authorized: job schedule entries need the 'wrkactjob$schedule' scope»): el anterior no cabía en la fila de mensajes.
+  - **Verificado en el dev** con un CronJob propio en un namespace temporal (`wrkactjob-s11`, suspendido, L-V 02:30 Europe/Madrid; creado y borrado por la prueba): lista, `6` (suspend → false), `3` (→ true), `10` (Job `nightly-backup-manual-…` creado), `5` y `8` (su pod en WRKACTJOB), con capturas.
+  - Tests: 131 (15 nuevos: 5 del cron), 100 % de líneas (c8).
+  - **Tipos nuevos (⚠️ a validar):** en `Cron.ts`, `ICron`, `EScheduleFrequency`, `IScheduleWords`; en el panel, `EScheduleOption`, `EScheduleStatus`, `EScheduleView`, `IScheduleEntriesState`, `IScheduleEntriesFields`; `HLDJOBSCDE_PROMPT`, `RLSJOBSCDE_PROMPT`, `SBMJOB_PROMPT`; `IDisplayList.header` (sustituye a `subsystem`); `EWrkPanel.SCHEDULE_ENTRIES`; internos de la sesión, `IScheduleFrame` y los campos `schedules` y `schedule` de `IFrame`.
+
+**S12 — e2e, README y publicación de la 0.2.0.**
+- e2e ampliado en `wrkactjob-e2e`: el fixture añade un CronJob (suspendido de inicio, nunca lanza nada solo) y un event Warning propio; specs de los cuatro comandos, el menú y Hold/Release/Submit sobre ese CronJob. Lo de cluster (`WRKSYSSTS`) se comprueba por estructura, no por cifras.
+- README: tabla de comandos, opciones, el scope `wrkactjob$schedule`, capturas nuevas sacadas por el e2e.
+- **Publicación** (gate): `wrkactjob` 0.2.0 (`requires` sigue en `blockterm ≥ 0.2.0`), manifest de jfvilas, tag `plugin/wrkactjob@0.2.0`, subtree; `wrkactjob` sale de `kwirth-dev.json`.
+- 🔶 **e2e y README hechos (2026-11-24)**, commit `071aa62`:
+  - **e2e: 21 tests en 49 s** (6 nuevos, en el mismo fichero y la misma página): el menú y WRKSYSSTS (un pool por nodo, contra `kubectl get nodes`), WRKSBS con `5` y `8` sobre el subsistema del fixture, DSPMSG con F1 sobre el BackOff del pod que falla del fixture, y WRKJOBSCDE sobre **su propio CronJob suspendido** (`nightly-backup`, L-V 02:30 Europe/Madrid): `3` rechazado (ya retenido), `6` y `3` con `spec.suspend` comprobado en Kubernetes, `10` (un Job nuevo), `5` con él entre las ejecuciones y `8` con su pod.
+  - El test de «comando desconocido» usaba `DSPMSG`, que ya existe: ahora `WRKOBJ`, y el posicional se prueba con `WRKACTJOB QSYSOPR`.
+  - **Capturas nuevas** (`wrksyssts`, `wrkjobscde`, `message-details`, `dspsbsd`) revisadas una a una: solo el fixture y los nodos de k3d. WRKSBS y la lista de DSPMSG no se capturan porque enseñan los namespaces y events del cluster entero.
+  - README: sección «More IBM i commands» con los cuatro comandos y sus opciones, F12 de WRKACTJOB, el scope `wrkactjob$schedule` y qué ve cada clave; descripción del `package.json` ampliada.
+  - **Histórico de métricas abierto** (`docs/qa/test-metrics-history.md` y sus dos PNG): en el MVP no se abrió; la fila de la 0.1.0 se escribe ahora.
+- ✅ **PUBLICADO (2026-11-24)**, con el OK del usuario tras su QA. `@jfvilas/kwirth-plugin-wrkactjob@0.2.0` en npm (GET 200 a los ~6 min). En github.com/jfvilas/kwirth: subtree pull de `plugins/wrkactjob`, entrada `wrkactjob@0.2.0` en el manifest raíz (encima de la 0.1.0, `requires: blockterm ≥ 0.2.0`), fila del README raíz con los comandos nuevos y «closed», y el tag `plugin/wrkactjob@0.2.0`. `wrkactjob` sale de `kwirth-dev.json`.
+
 ## 4. Backlog (después del MVP)
 
-- **Fase 3:** `WRKSBS` (namespaces), `DSPMSG QSYSOPR` (events Warning), `WRKJOBQ` / `WRKJOBSCDE` (Jobs pendientes y CronJobs), `WRKSYSSTS` (nodos y uso del cluster).
-- **V2:** tn5250 (y tn3270 para SDSF) sobre el mismo motor de `blockterm`, con su lado back; cambio de sistema (cluster) desde dentro.
+- **Después de la fase 3** (PRD-fase3 §5): `WRKJOBQ`, `WRKDSKSTS`, `NETSTAT *CNN`, `WRKUSRPRF`, `DSPLOG`; F14/F24, Attn/Sys Req, mandatory enter/fill del FFW.
+- **V2 (no de momento, lo dijo el usuario el 2026-11-24):** tn5250 (y tn3270 para SDSF) sobre el mismo motor de `blockterm`, con su lado back; cambio de sistema (cluster) desde dentro.
 
 ## 5. Riesgos del plan
 

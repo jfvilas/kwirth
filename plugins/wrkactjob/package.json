@@ -4,13 +4,13 @@
     "displayName": "WRKACTJOB",
     "extensionType": "plugin",
     "publisher": "@jfvilas",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "tags": [
         "operations",
         "kubernetes",
         "emulator"
     ],
-    "description": "WRKACTJOB channel plugin for Kwirth - IBM i Work with Active Jobs on a 5250 terminal (24x80 or 27x132, colour or green screen), where namespaces are subsystems and pods are jobs",
+    "description": "WRKACTJOB channel plugin for Kwirth - IBM i Work with Active Jobs on a 5250 terminal (24x80 or 27x132, colour or green screen), where namespaces are subsystems and pods are jobs; with WRKSYSSTS, WRKSBS, DSPMSG QSYSOPR and WRKJOBSCDE (CronJobs as job schedule entries)",
     "icon": "Terminal",
     "license": "MIT",
     "website": "https://github.com/jfvilas/kwirth/tree/master/plugins/wrkactjob",

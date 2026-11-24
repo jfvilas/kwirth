@@ -115,10 +115,13 @@ test('the attributes panels: status and definition, from the LIST alone', () => 
     assert.deepEqual([lonely['Started by'], lonely['Priority class'], lonely['Program']], ['Nobody: a bare pod', '*NONE', ''])
 })
 
-test('wrap: at blanks, and a word longer than the line cut', () => {
+test('wrap: at blanks, and a word longer than the line cut where it falls', () => {
     assert.deepEqual(wrap('one two three', 7), ['one two', 'three'])
     assert.deepEqual(wrap('abcdefghij', 4), ['abcd', 'efgh', 'ij'])
     assert.deepEqual(wrap('', 5), [])
+    // a word longer than the line fills the rest of the line it starts on
+    assert.deepEqual(wrap('in pod abcdefghij', 8), ['in pod a', 'bcdefghi', 'j'])
+    assert.deepEqual(wrap('in podx abcdefghij', 8), ['in podx', 'abcdefgh', 'ij'], 'no room left: the next line')
 })
 
 test('the spooled file status: OPN while the container writes, RDY when it is done', () => {
@@ -477,9 +480,9 @@ test('WRKJOB on the command line opens Work with Job; F4 prompts ENDJOB and WRKJ
     await aid(E5250Aid.F12)
     assert.equal(s.panel, EWrkPanel.ACTIVE_JOBS, 'the prompt was replaced: F12 goes to the list')
 
-    command('dspmsg')
+    command('signoff')
     await aid(E5250Aid.F4)
-    assert.match(text(23), /Command DSPMSG cannot be prompted here\./)
+    assert.match(text(23), /Command SIGNOFF cannot be prompted here\./)
     key(E5250Key.RESET)
     command('')
     await aid(E5250Aid.F4)

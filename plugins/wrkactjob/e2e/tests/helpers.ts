@@ -83,6 +83,28 @@ spec:
         - name: work
           image: busybox:1.36
           command: ['sh', '-c', 'echo "wrkactjob-e2e batch started"; sleep 900']
+---
+# A job schedule entry (WRKJOBSCDE). Suspended, so it never starts anything by itself: only SBMJOB (option 10) runs it.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-backup
+  namespace: ${NAMESPACE}
+spec:
+  schedule: "30 2 * * 1-5"
+  timeZone: Europe/Madrid
+  suspend: true
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 1
+          containers:
+            - name: backup
+              image: busybox:1.36
+              command: ['sh', '-c', 'echo "wrkactjob-e2e backing up"; sleep 900']
 `
 
 const kubectl = (args: string[], input?: string): string =>
@@ -101,6 +123,12 @@ export const createFixture = (): void => {
 export const deleteFixture = (): void => {
     kubectl(['delete', 'namespace', NAMESPACE, '--ignore-not-found', '--wait=false'])
 }
+
+// The fixture CronJob's spec.suspend, as Kubernetes has it.
+export const suspended = (): string => kubectl(['-n', NAMESPACE, 'get', 'cronjob', 'nightly-backup', '-o', 'jsonpath={.spec.suspend}'])
+
+// The Jobs in the fixture namespace, by name.
+export const jobsOf = (): string[] => kubectl(['-n', NAMESPACE, 'get', 'jobs', '-o', 'jsonpath={.items[*].metadata.name}']).split(/\s+/).filter(Boolean)
 
 // The fixture's pods with a label, running, by name.
 export const podsOf = (app: string): string[] =>

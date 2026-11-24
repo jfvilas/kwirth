@@ -37,6 +37,18 @@ export const WRKJOB_PROMPT: IPromptDef = {
 
 export const PROMPTS: IPromptDef[] = [ENDJOB_PROMPT, WRKJOB_PROMPT]
 
+/*
+    WRKJOBSCDE's options 3, 6 and 10 confirm with a prompt (PRD-fase3 §2.4), as option 4 does with ENDJOB. They are
+    not in PROMPTS: they act on the entry chosen in the list, and are not commands of the command line here.
+*/
+const scheduleEntryParam: IPromptParam = { keyword: 'JOB', label: 'Job name', width: 28, choices: 'Name', initial: '' }
+
+export const HLDJOBSCDE_PROMPT: IPromptDef = { command: 'HLDJOBSCDE', title: 'Hold Job Schedule Entry (HLDJOBSCDE)', params: [scheduleEntryParam] }
+export const RLSJOBSCDE_PROMPT: IPromptDef = { command: 'RLSJOBSCDE', title: 'Release Job Schedule Entry (RLSJOBSCDE)', params: [scheduleEntryParam] }
+export const SBMJOB_PROMPT: IPromptDef = { command: 'SBMJOB', title: 'Submit Job (SBMJOB)', params: [scheduleEntryParam] }
+
+export const SCHEDULE_PROMPTS: IPromptDef[] = [HLDJOBSCDE_PROMPT, RLSJOBSCDE_PROMPT, SBMJOB_PROMPT]
+
 const LABEL_WIDTH = 34
 const FIELD_COL = 1 + LABEL_WIDTH + 1
 

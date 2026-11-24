@@ -22,7 +22,8 @@ export interface IWrkRows {
     message: number        // the error/message line
 }
 
-export const rowsOf = (screen: Screen5250): IWrkRows => {
+// Only the height matters, so a page size can be worked out from a number of rows alone.
+export const rowsOf = (screen: Pick<Screen5250, 'rows'>): IWrkRows => {
     const r = screen.rows
     return {
         title: 0, date: 1, stats: 2, instructions: 4, legend: 5, headings: 7,

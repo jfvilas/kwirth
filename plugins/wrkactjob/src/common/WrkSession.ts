@@ -2,18 +2,29 @@ import {
     E5250Aid, E5250Lock, GEOMETRY_5250_24X80, I3270Geometry, I5250Input, I5250KeyAction, Painter5250, Screen5250, Terminal5250
 } from '@jfvilas/kwirth-dce-blockterm'
 import { IWrkDataSource } from './WrkDataSource'
-import { EWrkCommand, EWrkError, EWrkJobStatus, EWrkMetricsState, IWrkactjobMessageResponse, IWrkContainer, IWrkJob, IWrkRequest } from './WrkactjobTypes'
+import { EWrkCommand, EWrkError, EWrkJobStatus, EWrkMetricsState, IWrkactjobMessageResponse, IWrkContainer, IWrkJob, IWrkRequest, IWrkMessage, IWrkSchedule, IWrkSubsystem, IWrkSubsystemDescription, IWrkSystem } from './WrkactjobTypes'
 import { EWrkView, IActiveJobsFields, IWrkFilter, IWrkRow, NO_FILTER, pageSizeOf, paintActiveJobs, rowsFrom, viewsFor } from './panels/ActiveJobsPanel'
 import { MENU_ENTRIES, paintMainMenu, paintSignedOff } from './panels/MainMenu'
 import { IClCommand, parseCl } from './panels/ClCommand'
 import { rowsOf } from './panels/WrkLayout'
-import { ENDJOB_PROMPT, IPromptDef, paintPrompt, PROMPTS, WRKJOB_PROMPT } from './panels/PromptPanel'
+import { ENDJOB_PROMPT, HLDJOBSCDE_PROMPT, IPromptDef, paintPrompt, PROMPTS, RLSJOBSCDE_PROMPT, SBMJOB_PROMPT, SCHEDULE_PROMPTS, WRKJOB_PROMPT } from './panels/PromptPanel'
 import {
     EJobAttributes, EWorkWithJob, ISpooledFileField, paintAttributes, paintMessages, paintSpooledFiles, paintWorkWithJob,
     SPOOLED_FILE_OPTIONS, WORK_WITH_JOB_OPTIONS
 } from './panels/JobPanels'
 import { columnsShown, controlTarget, findFrom, IBrowse, IBrowseFields, jobLogLine, linesShown, paintBrowse } from './panels/BrowsePanel'
+import { ESystemView, paintSystemStatus, poolPageSizeOf, RESTRICTED_MESSAGE, systemViewsFor } from './panels/SystemStatusPanel'
+import {
+    descriptionListOf, ESubsystemDescription, ESubsystemOption, ESubsystemsView, ISubsystemsFields, paintSubsystemDescription, paintSubsystems,
+    SUBSYSTEM_DESCRIPTION_OPTIONS, SUBSYSTEM_OPTIONS, subsystemsPageSizeOf, subsystemsViewsFor
+} from './panels/SubsystemPanels'
+import { displayPageSizeOf, IDisplayList, paintDisplayList } from './panels/DisplayList'
+import { OPERATOR_QUEUES, paintMessageDetails, paintOperatorMessages, previousTopOf } from './panels/OperatorMessagesPanel'
 import { qualifiedName, shortName } from './panels/JobIdentity'
+import {
+    EScheduleOption, EScheduleView, IScheduleEntriesFields, paintScheduleEntries, SCHEDULE_OPTIONS, scheduleDetailsOf, schedulePageSizeOf,
+    scheduleViewsFor
+} from './panels/ScheduleEntriesPanel'
 
 export enum EWrkPanel {
     ACTIVE_JOBS = 'activejobs',    // WRKACTJOB: where the session opens (PRD D5)
@@ -24,8 +35,18 @@ export enum EWrkPanel {
     ATTRIBUTES = 'attributes',     // WRKJOB 1 and 2
     MESSAGES = 'messages',         // option 7: why the job is in MSGW
     SPOOLED_FILES = 'spooledfiles',// option 8, WRKJOB 4: the containers
-    BROWSE = 'browse'              // DSPSPLF (a container's log) and DSPJOBLOG (the pod's events)
+    BROWSE = 'browse',             // DSPSPLF (a container's log) and DSPJOBLOG (the pod's events)
+    SYSTEM_STATUS = 'systemstatus',// WRKSYSSTS (PRD-fase3 §2.1)
+    SUBSYSTEMS = 'subsystems',     // WRKSBS (PRD-fase3 §2.2)
+    SUBSYSTEM_DESCRIPTION = 'subsystemdescription', // DSPSBSD: its menu
+    DISPLAY = 'display',           // a read-only list: each entry of DSPSBSD
+    OPERATOR_MESSAGES = 'operatormessages', // DSPMSG QSYSOPR (PRD-fase3 §2.3)
+    MESSAGE_DETAILS = 'messagedetails',     // F1 on one: Additional Message Information
+    SCHEDULE_ENTRIES = 'scheduleentries'    // WRKJOBSCDE (PRD-fase3 §2.4)
 }
+
+// The commands that have no prompt here: F4 on them runs them, as their panel is the only thing to show.
+export const UNPROMPTED_COMMANDS = ['WRKSYSSTS', 'WRKSBS', 'DSPSBSD', 'DSPMSG', 'WRKMSG', 'WRKJOBSCDE']
 
 // The options WRKACTJOB takes (the legend). Anything else typed in Opt is 'not valid'.
 export const VALID_OPTIONS = ['4', '5', '7', '8']
@@ -42,6 +63,57 @@ export const ROLL_LIMIT = 'Roll up or down beyond first or last record in file.'
 export const NO_METRICS = 'Metrics provider not installed: CPU figures are not available.'
 export const MAX_DELAY = 999999
 
+// WRKSYSSTS's own state: it is a panel over the base, with its figures, pools and statistics.
+interface ISystemFrame {
+    status?: IWrkSystem
+    top: number
+    view: ESystemView
+    statsFrom: number
+    command: number            // the command line field of the last paint
+}
+
+// WRKSBS's own state, with the options typed and still to run (one at a time, top to bottom).
+interface ISubsystemsFrame {
+    subsystems: IWrkSubsystem[]
+    poolNames: string[]
+    top: number
+    view: ESubsystemsView
+    fields: ISubsystemsFields
+    pending: { option: string; subsystem: IWrkSubsystem }[]
+    running: boolean           // options were typed: when the last one is left, the list is asked for again
+}
+
+// DSPSBSD's menu: the description, the pool numbering and the selection field.
+interface IDescriptionFrame {
+    description: IWrkSubsystemDescription
+    poolNames: string[]
+    selection: number
+}
+
+// DSPMSG's own state: the messages, the first one shown, and where each one shown is (for F1).
+interface IOperatorMessagesFrame {
+    messages: IWrkMessage[]
+    top: number
+    shown: { index: number; first: number; last: number }[]
+}
+
+// WRKJOBSCDE's own state, with the options typed and still to run, as WRKSBS.
+interface IScheduleFrame {
+    schedules: IWrkSchedule[]
+    top: number
+    view: EScheduleView
+    fields: IScheduleEntriesFields
+    pending: { option: string; schedule: IWrkSchedule }[]
+    running: boolean
+}
+
+// What each schedule prompt asks the back, and what it says when done.
+const SCHEDULE_COMMAND = new Map<IPromptDef, EWrkCommand>([
+    [HLDJOBSCDE_PROMPT, EWrkCommand.HOLD],
+    [RLSJOBSCDE_PROMPT, EWrkCommand.RELEASE],
+    [SBMJOB_PROMPT, EWrkCommand.SUBMIT]
+])
+
 // A panel opened over WRKACTJOB (or the menu), with what it shows and the fields of its last paint.
 interface IFrame {
     panel: EWrkPanel
@@ -52,6 +124,14 @@ interface IFrame {
     selection?: number                 // WRKJOB's selection field
     files?: ISpooledFileField[]        // the spooled files' option fields
     browseFields?: IBrowseFields
+    systemStatus?: ISystemFrame
+    subsystems?: ISubsystemsFrame
+    description?: IDescriptionFrame
+    display?: IDisplayList
+    operatorMessages?: IOperatorMessagesFrame
+    detail?: IWrkMessage
+    schedules?: IScheduleFrame
+    schedule?: IWrkSchedule            // the entry a schedule prompt acts on
 }
 
 // One option typed on the list, waiting for its turn.
@@ -75,6 +155,11 @@ export class WrkSession {
     readonly terminal: Terminal5250
     private base = EWrkPanel.ACTIVE_JOBS
     private stack: IFrame[] = []
+    /*
+        The panels WRKACTJOB was called from (WRKSBS's 8, or WRKACTJOB typed on a panel): WRKACTJOB is the base,
+        so they are put aside while it shows, and F12 on it brings them back. F3 leaves them.
+    */
+    private suspended: IFrame[] = []
     private readonly painter: Painter5250
     private readonly system: string
     private readonly source: IWrkDataSource
@@ -186,7 +271,7 @@ export class WrkSession {
         switch (frame.panel) {
             case EWrkPanel.PROMPT: {
                 const prompt = frame.prompt!
-                prompt.fields = paintPrompt(p, prompt.def, prompt.values, job ? job.namespace : '', this.message)
+                prompt.fields = paintPrompt(p, prompt.def, prompt.values, job ? job.namespace : frame.schedule?.namespace ?? '', this.message)
                 // on the first value still to be given, else on the first one
                 const empty = prompt.def.params.find(param => !(prompt.values[param.keyword] ?? param.initial))
                 screen.cursor = prompt.fields[(empty ?? prompt.def.params[0]).keyword]
@@ -208,6 +293,50 @@ export class WrkSession {
                 frame.files = paintSpooledFiles(p, job, this.message)
                 screen.cursor = frame.files[0]?.start ?? 0
                 break
+            case EWrkPanel.SUBSYSTEMS: {
+                const sbs = frame.subsystems!
+                sbs.fields = paintSubsystems(p, {
+                    system: this.system, now: this.now(), subsystems: sbs.subsystems, poolNames: sbs.poolNames, top: sbs.top, view: sbs.view, message: this.message
+                })
+                screen.cursor = sbs.fields.options[0]?.start ?? sbs.fields.command
+                break
+            }
+            case EWrkPanel.SUBSYSTEM_DESCRIPTION: {
+                const d = frame.description!
+                d.selection = paintSubsystemDescription(p, d.description, this.system, this.message)
+                screen.cursor = d.selection
+                break
+            }
+            case EWrkPanel.DISPLAY:
+                paintDisplayList(p, frame.display!, this.system, this.message)
+                screen.cursor = 0
+                break
+            case EWrkPanel.OPERATOR_MESSAGES: {
+                const msg = frame.operatorMessages!
+                msg.shown = paintOperatorMessages(p, { system: this.system, messages: msg.messages, top: msg.top, message: this.message })
+                // on the first message, where F1 is meant to be pressed
+                screen.cursor = msg.shown.length ? screen.address(msg.shown[0].first, 3) : 0
+                break
+            }
+            case EWrkPanel.MESSAGE_DETAILS:
+                paintMessageDetails(p, frame.detail!, this.system)
+                screen.cursor = 0
+                break
+            case EWrkPanel.SCHEDULE_ENTRIES: {
+                const scd = frame.schedules!
+                scd.fields = paintScheduleEntries(p, { system: this.system, now: this.now(), schedules: scd.schedules, top: scd.top, view: scd.view, message: this.message })
+                screen.cursor = scd.fields.options[0]?.start ?? scd.fields.command
+                break
+            }
+            case EWrkPanel.SYSTEM_STATUS: {
+                const sys = frame.systemStatus!
+                sys.command = paintSystemStatus(p, {
+                    system: this.system, now: this.now(), elapsedMs: this.now() - sys.statsFrom, status: sys.status,
+                    top: sys.top, view: sys.view, command: '', message: this.message
+                })
+                screen.cursor = sys.command
+                break
+            }
             default:
                 frame.browseFields = paintBrowse(p, frame.browse!, this.message)
                 screen.cursor = frame.browseFields.control
@@ -271,6 +400,20 @@ export class WrkSession {
             this.runQueue()
             return
         }
+        this.resume()
+    }
+
+    // Back on the panel at the top of the stack: WRKSBS runs its next option waiting, any other is painted again.
+    private resume = (): void => {
+        const top = this.frame!
+        if (top.panel === EWrkPanel.SUBSYSTEMS && top.subsystems!.running) {
+            this.runSubsystemOption(top)
+            return
+        }
+        if (top.panel === EWrkPanel.SCHEDULE_ENTRIES && top.schedules!.running) {
+            this.runScheduleOption(top)
+            return
+        }
         this.finish()
     }
 
@@ -309,6 +452,24 @@ export class WrkSession {
                     return
                 case EWrkPanel.BROWSE:
                     this.browseAttention(input, frame)
+                    return
+                case EWrkPanel.SYSTEM_STATUS:
+                    this.systemStatusAttention(input, frame)
+                    return
+                case EWrkPanel.SUBSYSTEMS:
+                    this.subsystemsAttention(input, frame)
+                    return
+                case EWrkPanel.SUBSYSTEM_DESCRIPTION:
+                    this.descriptionAttention(input, frame)
+                    return
+                case EWrkPanel.DISPLAY:
+                    this.displayAttention(input, frame)
+                    return
+                case EWrkPanel.OPERATOR_MESSAGES:
+                    this.operatorMessagesAttention(input, frame)
+                    return
+                case EWrkPanel.SCHEDULE_ENTRIES:
+                    this.scheduleEntriesAttention(input, frame)
                     return
                 default:
                     // the displays (attributes, messages): Enter continues
@@ -353,8 +514,19 @@ export class WrkSession {
 
     private activeJobsAttention = (input: I5250Input): void => {
         switch (input.aid) {
-            case E5250Aid.F3:
             case E5250Aid.F12:
+                // called from a panel: back to it
+                if (this.suspended.length > 0) {
+                    this.stack = this.suspended
+                    this.suspended = []
+                    this.resume()
+                    return
+                }
+                this.base = EWrkPanel.MENU
+                this.finish()
+                return
+            case E5250Aid.F3:
+                this.suspended = []
                 this.base = EWrkPanel.MENU
                 this.finish()
                 return
@@ -460,12 +632,47 @@ export class WrkSession {
             return
         }
         switch (cl.verb) {
-            case 'WRKACTJOB': {
+            case 'WRKACTJOB':
                 if (!this.keywordsOk(cl, ['SBS', 'JOB'], field)) return
-                this.filter = { subsystem: cl.params.SBS ?? '', job: cl.params.JOB ?? '' }
-                this.top = 0
-                this.base = EWrkPanel.ACTIVE_JOBS
-                void this.refresh()
+                this.workWithActiveJobs(cl.params.SBS ?? '', cl.params.JOB ?? '')
+                return
+            case 'WRKSBS':
+                if (!this.keywordsOk(cl, [], field)) return
+                this.openSubsystems()
+                return
+            case 'DSPMSG':
+            case 'WRKMSG': {
+                if (!this.keywordsOk(cl, ['MSGQ'], field)) return
+                const queue = (cl.params.MSGQ ?? '').trim()
+                if (!OPERATOR_QUEUES.includes(queue)) {
+                    this.error(`Message queue ${queue} in *LIBL not found.`, field)
+                    return
+                }
+                this.openOperatorMessages()
+                return
+            }
+            case 'WRKJOBSCDE':
+                if (!this.keywordsOk(cl, [], field)) return
+                this.openScheduleEntries()
+                return
+            case 'DSPSBSD': {
+                if (!this.keywordsOk(cl, ['SBSD'], field)) return
+                const name = (cl.params.SBSD ?? '').trim()
+                if (!name) {
+                    this.error('Value for parameter SBSD required.', field)
+                    return
+                }
+                void this.openDescription(name.toLowerCase())
+                return
+            }
+            case 'WRKSYSSTS': {
+                if (!this.keywordsOk(cl, ['RESET'], field)) return
+                const reset = (cl.params.RESET ?? '*NO').trim()
+                if (reset !== '*YES' && reset !== '*NO') {
+                    this.error(`Value ${reset} for parameter RESET not valid.`, field)
+                    return
+                }
+                this.openSystemStatus(reset === '*YES')
                 return
             }
             case 'WRKJOB': {
@@ -476,7 +683,10 @@ export class WrkSession {
             }
             case 'ENDJOB':
                 if (!this.keywordsOk(cl, ['JOB', 'OPTION', 'DELAY'], field)) return
-                void this.endJob(cl.params, undefined, () => field)
+                // over the base the list is refreshed; over a panel, that panel is painted again with the message
+                void this.endJob(cl.params, undefined, () => field).then(ended => {
+                    if (ended && this.stack.length > 0 && !this.disposed) this.finish()
+                })
                 return
             case 'SIGNOFF':
                 this.signOff()
@@ -499,6 +709,10 @@ export class WrkSession {
             return
         }
         const cl = parseCl(text)
+        if (!cl.error && UNPROMPTED_COMMANDS.includes(cl.verb)) {
+            this.runCommand(text, field)
+            return
+        }
         const def = PROMPTS.find(d => d.command === cl.verb)
         if (!def) {
             this.error(cl.error ?? `Command ${cl.verb} cannot be prompted here.`, field)
@@ -519,8 +733,23 @@ export class WrkSession {
         return undefined
     }
 
+    /*
+        WRKACTJOB is the base, not a panel over it: called from a panel, the panels are put aside (F12 on WRKACTJOB
+        brings them back) and so are the options still waiting.
+    */
+    private workWithActiveJobs = (subsystem: string, job: string): void => {
+        this.filter = { subsystem, job }
+        this.top = 0
+        if (this.stack.length > 0) this.suspended = this.stack
+        this.stack = []
+        this.queue = []
+        this.base = EWrkPanel.ACTIVE_JOBS
+        void this.refresh()
+    }
+
     private signOff = (): void => {
         this.base = EWrkPanel.SIGNED_OFF
+        this.suspended = []
         this.stack = []
         this.queue = []
         this.filter = NO_FILTER
@@ -569,6 +798,10 @@ export class WrkSession {
             if (typed !== undefined) prompt.values[param.keyword] = typed.trim()
         }
         const fieldOf = (keyword: string) => prompt.fields[keyword]
+        if (SCHEDULE_PROMPTS.includes(prompt.def)) {
+            void this.scheduleCommand(prompt.def, prompt.values, frame.schedule!, fieldOf)
+            return
+        }
         if (prompt.def === WRKJOB_PROMPT) {
             const job = this.jobNamed(prompt.values.JOB ?? '', fieldOf('JOB'))
             if (!job) return
@@ -709,6 +942,430 @@ export class WrkSession {
         if (at === undefined) this.message = `String ${browse.find} not found.`
         else browse.top = at
         this.finish()
+    }
+
+    // ── WRKSYSSTS ───────────────────────────────────────────────────────────────────────────────────
+
+    // Opened over whatever is on the screen; typed again on itself, it is refreshed (RESET(*YES) restarts it).
+    private openSystemStatus = (reset: boolean): void => {
+        const top = this.frame
+        if (top?.panel === EWrkPanel.SYSTEM_STATUS) {
+            if (reset) top.systemStatus!.statsFrom = this.now()
+            void this.refreshSystemStatus(top, false)
+            return
+        }
+        const cols = this.terminal.screen.cols
+        void this.refreshSystemStatus({
+            panel: EWrkPanel.SYSTEM_STATUS,
+            systemStatus: { top: 0, view: systemViewsFor(cols)[0], statsFrom: this.now(), command: -1 }
+        }, true)
+    }
+
+    private refreshSystemStatus = async (frame: IFrame, opening: boolean): Promise<void> => {
+        const response = await this.ask({ command: EWrkCommand.SYSTEM })
+        if (!response) return
+        const sys = frame.systemStatus!
+        sys.status = response.system
+        const pools = sys.status?.pools.length ?? 0
+        sys.top = Math.max(0, Math.min(sys.top, pools - 1))
+        // D17 says it on every refresh; the missing provider, once per session
+        if (sys.status?.restricted) this.message = RESTRICTED_MESSAGE
+        else if (sys.status?.metrics === EWrkMetricsState.UNAVAILABLE && !this.metricsTold) {
+            this.metricsTold = true
+            this.message = this.message || NO_METRICS
+        }
+        if (opening) this.open(frame)
+        else this.finish()
+    }
+
+    private systemStatusAttention = (input: I5250Input, frame: IFrame): void => {
+        const sys = frame.systemStatus!
+        const command = (this.valueOf(input, sys.command) ?? '').trim()
+        switch (input.aid) {
+            case E5250Aid.F4:
+                this.promptCommand(command, sys.command)
+                return
+            case E5250Aid.F5:
+                void this.refreshSystemStatus(frame, false)
+                return
+            case E5250Aid.F10:
+                sys.statsFrom = this.now()
+                void this.refreshSystemStatus(frame, false)
+                return
+            case E5250Aid.F11: {
+                const views = systemViewsFor(this.terminal.screen.cols)
+                if (views.length < 2) {
+                    this.error('Function key not allowed.')
+                    return
+                }
+                sys.view = views[(views.indexOf(sys.view) + 1) % views.length]
+                this.finish()
+                return
+            }
+            case E5250Aid.ROLL_UP:
+            case E5250Aid.ROLL_DOWN: {
+                const forward = input.aid === E5250Aid.ROLL_UP
+                const page = poolPageSizeOf(this.terminal.screen.rows)
+                const pools = sys.status?.pools.length ?? 0
+                const target = forward ? sys.top + page : sys.top - page
+                if ((forward && target >= pools) || (!forward && sys.top === 0)) this.message = ROLL_LIMIT
+                else sys.top = Math.max(0, target)
+                this.finish()
+                return
+            }
+            case E5250Aid.ENTER:
+                if (command) this.runCommand(command, sys.command)
+                else void this.refreshSystemStatus(frame, false)
+                return
+            default:
+                this.error('Function key not allowed.')
+        }
+    }
+
+    // ── WRKSBS and DSPSBSD ──────────────────────────────────────────────────────────────────────────
+
+    // Opened over whatever is on the screen; typed again on itself, it is refreshed.
+    private openSubsystems = (): void => {
+        const top = this.frame
+        if (top?.panel === EWrkPanel.SUBSYSTEMS) {
+            void this.refreshSubsystems(top, false)
+            return
+        }
+        const view = subsystemsViewsFor(this.terminal.screen.cols)[0]
+        void this.refreshSubsystems({
+            panel: EWrkPanel.SUBSYSTEMS,
+            subsystems: { subsystems: [], poolNames: [], top: 0, view, fields: { options: [], command: -1 }, pending: [], running: false }
+        }, true)
+    }
+
+    private refreshSubsystems = async (frame: IFrame, opening: boolean): Promise<void> => {
+        const response = await this.ask({ command: EWrkCommand.SUBSYSTEMS })
+        if (!response) return
+        const sbs = frame.subsystems!
+        sbs.subsystems = response.subsystems ?? []
+        sbs.poolNames = response.poolNames ?? []
+        sbs.top = Math.max(0, Math.min(sbs.top, sbs.subsystems.length - 1))
+        if (opening) this.open(frame)
+        else this.finish()
+    }
+
+    private subsystemsAttention = (input: I5250Input, frame: IFrame): void => {
+        const sbs = frame.subsystems!
+        const command = (this.valueOf(input, sbs.fields.command) ?? '').trim()
+        switch (input.aid) {
+            case E5250Aid.F4:
+                this.promptCommand(command, sbs.fields.command)
+                return
+            case E5250Aid.F5:
+                void this.refreshSubsystems(frame, false)
+                return
+            case E5250Aid.F11: {
+                const views = subsystemsViewsFor(this.terminal.screen.cols)
+                if (views.length < 2) {
+                    this.error('Function key not allowed.')
+                    return
+                }
+                sbs.view = views[(views.indexOf(sbs.view) + 1) % views.length]
+                this.finish()
+                return
+            }
+            case E5250Aid.F14:
+                this.openSystemStatus(false)
+                return
+            case E5250Aid.ROLL_UP:
+            case E5250Aid.ROLL_DOWN: {
+                const forward = input.aid === E5250Aid.ROLL_UP
+                const page = subsystemsPageSizeOf(this.terminal.screen.rows)
+                const target = forward ? sbs.top + page : sbs.top - page
+                if ((forward && target >= sbs.subsystems.length) || (!forward && sbs.top === 0)) this.message = ROLL_LIMIT
+                else sbs.top = Math.max(0, target)
+                this.finish()
+                return
+            }
+            case E5250Aid.ENTER: {
+                // every option is checked before any runs; then they run in order, each when the previous is left
+                const typed = sbs.fields.options
+                    .map(o => ({ ...o, option: (this.valueOf(input, o.start) ?? '').trim() }))
+                    .filter(o => o.option !== '')
+                const wrong = typed.find(o => !SUBSYSTEM_OPTIONS.includes(o.option))
+                if (wrong) {
+                    this.error(`Option ${wrong.option} not valid.`, wrong.start)
+                    return
+                }
+                if (typed.length > 0) {
+                    sbs.pending = typed.map(o => ({ option: o.option, subsystem: o.subsystem }))
+                    sbs.running = true
+                    this.runSubsystemOption(frame)
+                    return
+                }
+                if (command) this.runCommand(command, sbs.fields.command)
+                else void this.refreshSubsystems(frame, false)
+                return
+            }
+            default:
+                this.error('Function key not allowed.')
+        }
+    }
+
+    // The next option waiting on WRKSBS; with none left, the list is asked for again.
+    private runSubsystemOption = (frame: IFrame): void => {
+        const sbs = frame.subsystems!
+        const next = sbs.pending.shift()
+        if (!next) {
+            sbs.running = false
+            void this.refreshSubsystems(frame, false)
+            return
+        }
+        if (next.option === ESubsystemOption.JOBS) this.workWithActiveJobs(next.subsystem.name, '')
+        else void this.openDescription(next.subsystem.name)
+    }
+
+    private openDescription = async (namespace: string): Promise<void> => {
+        const response = await this.ask({ command: EWrkCommand.SUBSYSTEM_DESCRIPTION, targetNamespace: namespace })
+        if (!response?.description) return
+        this.open({ panel: EWrkPanel.SUBSYSTEM_DESCRIPTION, description: { description: response.description, poolNames: response.poolNames ?? [], selection: -1 } })
+    }
+
+    // DSPSBSD's menu: a selection opens its entry; anything else typed there is a command.
+    private descriptionAttention = (input: I5250Input, frame: IFrame): void => {
+        const d = frame.description!
+        if (input.aid !== E5250Aid.ENTER) {
+            this.error('Function key not allowed.')
+            return
+        }
+        const typed = (this.valueOf(input, d.selection) ?? '').trim()
+        if (!typed) {
+            this.finish()
+            return
+        }
+        if (SUBSYSTEM_DESCRIPTION_OPTIONS.includes(typed)) {
+            this.open({ panel: EWrkPanel.DISPLAY, display: descriptionListOf(d.description, d.poolNames, typed as ESubsystemDescription) })
+            return
+        }
+        if (/^\d+$/.test(typed)) this.error(`Selection ${typed} not valid.`, d.selection)
+        else this.runCommand(typed, d.selection)
+    }
+
+    // A read-only list: Enter continues (one back), Roll pages it.
+    private displayAttention = (input: I5250Input, frame: IFrame): void => {
+        const list = frame.display!
+        switch (input.aid) {
+            case E5250Aid.ENTER:
+                this.back()
+                return
+            case E5250Aid.ROLL_UP:
+            case E5250Aid.ROLL_DOWN: {
+                const forward = input.aid === E5250Aid.ROLL_UP
+                const page = displayPageSizeOf(this.terminal.screen.rows)
+                const target = forward ? list.top + page : list.top - page
+                if ((forward && target >= list.lines.length) || (!forward && list.top === 0)) this.message = ROLL_LIMIT
+                else list.top = Math.max(0, target)
+                this.finish()
+                return
+            }
+            default:
+                this.error('Function key not allowed.')
+        }
+    }
+
+    // ── DSPMSG QSYSOPR ──────────────────────────────────────────────────────────────────────────────
+
+    // Opened over whatever is on the screen (it has no command line of its own: F5 refreshes it).
+    private openOperatorMessages = (): void => {
+        void this.refreshOperatorMessages({ panel: EWrkPanel.OPERATOR_MESSAGES, operatorMessages: { messages: [], top: 0, shown: [] } }, true)
+    }
+
+    private refreshOperatorMessages = async (frame: IFrame, opening: boolean): Promise<void> => {
+        const response = await this.ask({ command: EWrkCommand.MESSAGES })
+        if (!response) return
+        const msg = frame.operatorMessages!
+        msg.messages = response.messages ?? []
+        msg.top = Math.max(0, Math.min(msg.top, msg.messages.length - 1))
+        if (opening) this.open(frame)
+        else this.finish()
+    }
+
+    private operatorMessagesAttention = (input: I5250Input, frame: IFrame): void => {
+        const msg = frame.operatorMessages!
+        const screen = this.terminal.screen
+        switch (input.aid) {
+            case E5250Aid.F1: {
+                const row = Math.floor(input.cursor / screen.cols)
+                const on = msg.shown.find(m => row >= m.first && row <= m.last)
+                if (!on) {
+                    this.error('Position the cursor on a message, then press F1.')
+                    return
+                }
+                this.open({ panel: EWrkPanel.MESSAGE_DETAILS, detail: msg.messages[on.index] })
+                return
+            }
+            case E5250Aid.F5:
+                void this.refreshOperatorMessages(frame, false)
+                return
+            case E5250Aid.ROLL_UP: {
+                const last = msg.shown[msg.shown.length - 1]
+                if (!last || last.index >= msg.messages.length - 1) this.message = ROLL_LIMIT
+                else msg.top = last.index + 1
+                this.finish()
+                return
+            }
+            case E5250Aid.ROLL_DOWN:
+                if (msg.top === 0) this.message = ROLL_LIMIT
+                else msg.top = previousTopOf(msg.messages, msg.top, screen.rows, screen.cols)
+                this.finish()
+                return
+            case E5250Aid.ENTER:
+                // nothing to reply to: Enter leaves, as on IBM i
+                this.back()
+                return
+            default:
+                this.error('Function key not allowed.')
+        }
+    }
+
+    // ── WRKJOBSCDE ──────────────────────────────────────────────────────────────────────────────────
+
+    // Opened over whatever is on the screen; typed again on itself, it is refreshed.
+    private openScheduleEntries = (): void => {
+        const top = this.frame
+        if (top?.panel === EWrkPanel.SCHEDULE_ENTRIES) {
+            void this.refreshScheduleEntries(top, false)
+            return
+        }
+        const view = scheduleViewsFor(this.terminal.screen.cols)[0]
+        void this.refreshScheduleEntries({
+            panel: EWrkPanel.SCHEDULE_ENTRIES,
+            schedules: { schedules: [], top: 0, view, fields: { options: [], command: -1 }, pending: [], running: false }
+        }, true)
+    }
+
+    private refreshScheduleEntries = async (frame: IFrame, opening: boolean): Promise<void> => {
+        const response = await this.ask({ command: EWrkCommand.SCHEDULES })
+        if (!response) return
+        const scd = frame.schedules!
+        scd.schedules = response.schedules ?? []
+        scd.top = Math.max(0, Math.min(scd.top, scd.schedules.length - 1))
+        if (opening) this.open(frame)
+        else this.finish()
+    }
+
+    // Why an option cannot run on an entry, as IBM i says it; undefined when it can.
+    private scheduleOptionError = (option: string, s: IWrkSchedule): string | undefined => {
+        const name = shortName(s.name)
+        if (!SCHEDULE_OPTIONS.includes(option)) return `Option ${option} not valid.`
+        if (option === EScheduleOption.HOLD && s.held) return `Job schedule entry ${name} already held.`
+        if (option === EScheduleOption.RELEASE && !s.held) return `Job schedule entry ${name} not held.`
+        if (option === EScheduleOption.LAST_SUBMISSION && s.runs.length === 0) return `No submission for job schedule entry ${name}.`
+        return undefined
+    }
+
+    private scheduleEntriesAttention = (input: I5250Input, frame: IFrame): void => {
+        const scd = frame.schedules!
+        const command = (this.valueOf(input, scd.fields.command) ?? '').trim()
+        switch (input.aid) {
+            case E5250Aid.F4:
+                this.promptCommand(command, scd.fields.command)
+                return
+            case E5250Aid.F5:
+                void this.refreshScheduleEntries(frame, false)
+                return
+            case E5250Aid.F11: {
+                const views = scheduleViewsFor(this.terminal.screen.cols)
+                if (views.length < 2) {
+                    this.error('Function key not allowed.')
+                    return
+                }
+                scd.view = views[(views.indexOf(scd.view) + 1) % views.length]
+                this.finish()
+                return
+            }
+            case E5250Aid.ROLL_UP:
+            case E5250Aid.ROLL_DOWN: {
+                const forward = input.aid === E5250Aid.ROLL_UP
+                const page = schedulePageSizeOf(this.terminal.screen.rows)
+                const target = forward ? scd.top + page : scd.top - page
+                if ((forward && target >= scd.schedules.length) || (!forward && scd.top === 0)) this.message = ROLL_LIMIT
+                else scd.top = Math.max(0, target)
+                this.finish()
+                return
+            }
+            case E5250Aid.ENTER: {
+                const typed = scd.fields.options
+                    .map(o => ({ ...o, option: (this.valueOf(input, o.start) ?? '').trim() }))
+                    .filter(o => o.option !== '')
+                for (const o of typed) {
+                    const wrong = this.scheduleOptionError(o.option, o.schedule)
+                    if (wrong) {
+                        this.error(wrong, o.start)
+                        return
+                    }
+                }
+                if (typed.length > 0) {
+                    scd.pending = typed.map(o => ({ option: o.option, schedule: o.schedule }))
+                    scd.running = true
+                    this.runScheduleOption(frame)
+                    return
+                }
+                if (command) this.runCommand(command, scd.fields.command)
+                else void this.refreshScheduleEntries(frame, false)
+                return
+            }
+            default:
+                this.error('Function key not allowed.')
+        }
+    }
+
+    // The next option waiting on WRKJOBSCDE; with none left, the list is asked for again.
+    private runScheduleOption = (frame: IFrame): void => {
+        const scd = frame.schedules!
+        const next = scd.pending.shift()
+        if (!next) {
+            scd.running = false
+            void this.refreshScheduleEntries(frame, false)
+            return
+        }
+        const s = next.schedule
+        const prompt = (def: IPromptDef) => this.open({ panel: EWrkPanel.PROMPT, schedule: s, prompt: { def, values: { JOB: s.name.toUpperCase() }, fields: {} } })
+        switch (next.option) {
+            case EScheduleOption.HOLD:
+                prompt(HLDJOBSCDE_PROMPT)
+                return
+            case EScheduleOption.RELEASE:
+                prompt(RLSJOBSCDE_PROMPT)
+                return
+            case EScheduleOption.SUBMIT:
+                prompt(SBMJOB_PROMPT)
+                return
+            case EScheduleOption.DETAILS:
+                this.open({ panel: EWrkPanel.DISPLAY, display: scheduleDetailsOf(s, this.now()) })
+                return
+            default:
+                // the pods of its last Job: a Job's pods are named after it, '<job>-<suffix>'
+                this.workWithActiveJobs(s.namespace, `${s.runs[0].job}-*`)
+        }
+    }
+
+    // HLDJOBSCDE, RLSJOBSCDE or SBMJOB from its prompt, on the entry it was opened for.
+    private scheduleCommand = async (def: IPromptDef, values: Record<string, string>, s: IWrkSchedule, fieldOf: (keyword: string) => number | undefined): Promise<void> => {
+        const name = (values.JOB ?? '').trim()
+        if (name.toUpperCase() !== s.name.toUpperCase()) {
+            this.error(`Job schedule entry ${name || '*N'} not found.`, fieldOf('JOB'))
+            return
+        }
+        const command = SCHEDULE_COMMAND.get(def)!
+        const response = await this.ask({ command, targetNamespace: s.namespace, targetName: s.name })
+        if (!response) return
+        switch (command) {
+            case EWrkCommand.HOLD:
+                this.message = `Job schedule entry ${shortName(s.name)} held.`
+                break
+            case EWrkCommand.RELEASE:
+                this.message = `Job schedule entry ${shortName(s.name)} released.`
+                break
+            default:
+                this.message = `Job ${response.submitted ?? ''} submitted.`
+        }
+        if (!this.disposed) this.back()
     }
 
     // ── WRKACTJOB ───────────────────────────────────────────────────────────────────────────────────

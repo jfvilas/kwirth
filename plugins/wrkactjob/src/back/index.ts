@@ -7,15 +7,17 @@ import {
 import { IChannelInstances } from '@kwirthmagnify/kwirth-common'
 import { IBackChannelObject, IChannel, keyMatchesResource } from '@kwirthmagnify/kwirth-common-back'
 import type { IProviderHandle } from '@kwirthmagnify/kwirth-common-back'
-import type { CoreV1Api } from '@kubernetes/client-node'
+import type { BatchV1Api, CoreV1Api, V1Pod } from '@kubernetes/client-node'
 import { Request, Response } from 'express'
 import {
-    EWrkCommand, EWrkError, EWrkMetricsState, EWrkScope, IWrkactjobMessage, IWrkactjobMessageResponse,
+    EWrkCommand, EWrkError, EWrkMetricsState, EWrkScope, IWrkactjobMessage, IWrkactjobMessageResponse, IWrkSystem,
     WRK_SCOPES, WRK_SCOPE_LADDER
 } from '../common/WrkactjobTypes'
 import { isActive, mapJob } from './JobMapper'
-import { mapEvent, sortEvents } from './EventMapper'
-import { usageOf } from './PodMetrics'
+import { mapEvent, mapMessage, sortEvents, sortMessages } from './EventMapper'
+import { IUsage, usageOf } from './PodMetrics'
+import { cpuOf, IPodJob, mapDescription, mapPools, mapSubsystem, nodesOf, storageOf } from './SystemMapper'
+import { mapSchedule, submittedJobOf } from './ScheduleMapper'
 import { IMetricsCluster } from './MetricsProviderTypes'
 
 /*
@@ -23,7 +25,11 @@ import { IMetricsCluster } from './MetricsProviderTypes'
     type-only on the client: the API objects are the CORE's, never a client of WRKACTJOB's own in the bundle.
 */
 export interface IWrkClusterInfo {
-    coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'readNamespacedPodLog' | 'deleteNamespacedPod' | 'listNamespacedEvent'>
+    coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'readNamespacedPodLog' | 'deleteNamespacedPod' | 'listNamespacedEvent'
+        | 'listNode' | 'listPersistentVolume' | 'listNamespace' | 'readNamespace'
+        | 'listNamespacedResourceQuota' | 'listNamespacedLimitRange' | 'listEventForAllNamespaces'>
+    batchApi: Pick<BatchV1Api, 'listCronJobForAllNamespaces' | 'listJobForAllNamespaces' | 'readNamespacedCronJob'
+        | 'patchNamespacedCronJob' | 'createNamespacedJob'>
     getProvider(providerId: string, consumer: unknown): IProviderHandle | undefined
 }
 
@@ -43,6 +49,14 @@ export const MAX_TAIL_LINES = 20000
 // ENDJOB's DELAY, in seconds: what a controlled end gives the job, and the most it accepts.
 export const DEFAULT_DELAY = 30
 export const MAX_DELAY = 999999
+// DSPMSG QSYSOPR: the newest this many Warning events. A cluster in trouble has thousands, and nobody pages
+// through them on a 5250.
+export const MAX_MESSAGES = 1000
+
+// The commands that name no job: they are about the system, and filter by the key themselves.
+const SYSTEM_WIDE: EWrkCommand[] = [EWrkCommand.LIST, EWrkCommand.SYSTEM, EWrkCommand.SUBSYSTEMS, EWrkCommand.MESSAGES, EWrkCommand.SCHEDULES]
+// The commands on a job schedule entry (a CronJob): targetName is the CronJob.
+const ON_SCHEDULE: EWrkCommand[] = [EWrkCommand.HOLD, EWrkCommand.RELEASE, EWrkCommand.SUBMIT]
 
 const errorText = (err: unknown): string => {
     const body = (err as { body?: unknown })?.body
@@ -209,12 +223,25 @@ export class WrkactjobChannel implements IChannel {
         const name = message.targetName ?? ''
         const container = message.containerName ?? ''
 
-        // Everything but the list names one pod, and the key has to reach it.
-        if (message.command !== EWrkCommand.LIST) {
-            if (!namespace || !name) return fail(EWrkError.BAD_REQUEST, 'No job given')
+        /*
+            Everything but the system-wide commands names one object, and the key has to reach it. A job is a pod;
+            a job schedule entry is a CronJob, and a key's pod patterns are matched against its name (its pods are
+            named after it); a subsystem alone is checked where it is described, since that needs its pods.
+        */
+        if (message.command === EWrkCommand.SUBSYSTEM_DESCRIPTION) {
+            if (!namespace) return fail(EWrkError.BAD_REQUEST, 'No subsystem given')
+        }
+        else if (!SYSTEM_WIDE.includes(message.command)) {
+            const what = ON_SCHEDULE.includes(message.command) ? 'job schedule entry' : 'job'
+            if (!namespace || !name) return fail(EWrkError.BAD_REQUEST, `No ${what} given`)
             if (!keyMatchesResource(instance.accessKey, { namespace, pod: name, container: container || undefined })) {
                 return fail(EWrkError.NOT_AUTHORIZED, `Your key does not reach ${namespace}/${name}`)
             }
+        }
+        if (ON_SCHEDULE.includes(message.command) && !this.allows(instance.accessKey, EWrkScope.SCHEDULE)) {
+            this.backChannelObject.logWarning?.(`Denied ${message.command} of ${namespace}/${name}: '${EWrkScope.SCHEDULE}' required`)
+            // short enough for the 5250 message line (78 columns at 24x80)
+            return fail(EWrkError.NOT_AUTHORIZED, `Not authorized: job schedule entries need the '${EWrkScope.SCHEDULE}' scope`)
         }
 
         try {
@@ -252,6 +279,62 @@ export class WrkactjobChannel implements IChannel {
                     return { ...response, ok: true }
                 }
 
+                case EWrkCommand.SYSTEM:
+                    return { ...response, ok: true, system: await this.system(instance) }
+
+                case EWrkCommand.SUBSYSTEMS:
+                    return { ...response, ok: true, ...(await this.subsystems(instance)) }
+
+                case EWrkCommand.SUBSYSTEM_DESCRIPTION: {
+                    const podList = await this.clusterInfo.coreApi.listPodForAllNamespaces()
+                    const active = this.activeJobs(instance, podList.items, usageOf(this.readings))
+                    const inside = active.filter(p => p.job.namespace === namespace)
+                    // a subsystem is reached by name, or through a job of it the key reaches (see subsystems)
+                    if (inside.length === 0 && !keyMatchesResource(instance.accessKey, { namespace })) {
+                        return fail(EWrkError.NOT_AUTHORIZED, `Your key does not reach subsystem ${namespace}`)
+                    }
+                    const [ns, quotas, ranges, poolNames] = await Promise.all([
+                        this.clusterInfo.coreApi.readNamespace({ name: namespace }),
+                        this.clusterInfo.coreApi.listNamespacedResourceQuota({ namespace }),
+                        this.clusterInfo.coreApi.listNamespacedLimitRange({ namespace }),
+                        this.poolNames(instance, active)
+                    ])
+                    return { ...response, ok: true, description: mapDescription(ns, inside, quotas.items, ranges.items), poolNames }
+                }
+
+                case EWrkCommand.MESSAGES:
+                    return { ...response, ok: true, messages: await this.messages(instance) }
+
+                case EWrkCommand.SCHEDULES: {
+                    const [cronJobs, jobs] = await Promise.all([
+                        this.clusterInfo.batchApi.listCronJobForAllNamespaces(),
+                        this.clusterInfo.batchApi.listJobForAllNamespaces()
+                    ])
+                    const schedules = cronJobs.items
+                        .filter(c => keyMatchesResource(instance.accessKey, { namespace: c.metadata?.namespace ?? '', pod: c.metadata?.name ?? '' }))
+                        .map(c => mapSchedule(c, jobs.items))
+                        .sort((a, b) => a.namespace.localeCompare(b.namespace) || a.name.localeCompare(b.name))
+                    return { ...response, ok: true, schedules }
+                }
+
+                case EWrkCommand.HOLD:
+                case EWrkCommand.RELEASE: {
+                    const held = message.command === EWrkCommand.HOLD
+                    // 'add' sets the field whether or not the stored object has it ('replace' needs it there).
+                    await this.clusterInfo.batchApi.patchNamespacedCronJob({ name, namespace, body: [{ op: 'add', path: '/spec/suspend', value: held }] })
+                    this.backChannelObject.logInfo?.(`Job schedule entry ${namespace}/${name} ${held ? 'held' : 'released'}`)
+                    return { ...response, ok: true }
+                }
+
+                case EWrkCommand.SUBMIT: {
+                    const cronJob = await this.clusterInfo.batchApi.readNamespacedCronJob({ name, namespace })
+                    if (!cronJob.spec?.jobTemplate?.spec) return fail(EWrkError.FAILED, `Job schedule entry ${name} has no job template`)
+                    const job = await this.clusterInfo.batchApi.createNamespacedJob({ namespace, body: submittedJobOf(cronJob, Date.now()) })
+                    const submitted = job.metadata?.name ?? ''
+                    this.backChannelObject.logInfo?.(`Job schedule entry ${namespace}/${name} submitted: job ${submitted}`)
+                    return { ...response, ok: true, submitted }
+                }
+
                 default:
                     return fail(EWrkError.BAD_REQUEST, `Unknown command '${String(message.command)}'`)
             }
@@ -261,18 +344,88 @@ export class WrkactjobChannel implements IChannel {
         }
     }
 
+    private reachesPod = (instance: IWrkInstance, pod: V1Pod): boolean =>
+        keyMatchesResource(instance.accessKey, { namespace: pod.metadata?.namespace ?? '', pod: pod.metadata?.name ?? '' })
+
+    // The active pods the key reaches, each with the job WRKACTJOB makes of it.
+    private activeJobs = (instance: IWrkInstance, pods: V1Pod[], usage: IUsage): IPodJob[] =>
+        pods
+            .filter(isActive)
+            .filter(p => this.reachesPod(instance, p))
+            .map(pod => ({ pod, job: mapJob(pod, usage.jobs.get((pod.metadata?.namespace ?? '') + '/' + (pod.metadata?.name ?? ''))) }))
+
+    private metricsState = (): EWrkMetricsState => !this.metricsHandle
+        ? EWrkMetricsState.UNAVAILABLE
+        : this.readings.length < 2 ? EWrkMetricsState.WARMING : EWrkMetricsState.AVAILABLE
+
     // Every active job the key reaches, with its usage when the provider has it.
     private list = async (instance: IWrkInstance): Promise<Pick<IWrkactjobMessageResponse, 'jobs' | 'metrics' | 'clusterCpu'>> => {
         const podList = await this.clusterInfo.coreApi.listPodForAllNamespaces()
         const usage = usageOf(this.readings)
-        const jobs = podList.items
-            .filter(isActive)
-            .filter(p => keyMatchesResource(instance.accessKey, { namespace: p.metadata?.namespace ?? '', pod: p.metadata?.name ?? '' }))
-            .map(p => mapJob(p, usage.jobs.get((p.metadata?.namespace ?? '') + '/' + (p.metadata?.name ?? ''))))
-        const metrics = !this.metricsHandle
-            ? EWrkMetricsState.UNAVAILABLE
-            : this.readings.length < 2 ? EWrkMetricsState.WARMING : EWrkMetricsState.AVAILABLE
-        return { jobs, metrics, clusterCpu: usage.clusterCpu }
+        const jobs = this.activeJobs(instance, podList.items, usage).map(p => p.job)
+        return { jobs, metrics: this.metricsState(), clusterCpu: usage.clusterCpu }
+    }
+
+    /*
+        WRKSYSSTS. Nodes and volumes are the cluster's: only a key at 'cluster' or above sees them (PRD-fase3 D17).
+        Below it, the pools and the system ASP stay empty and the CPU is that of the jobs it reaches.
+    */
+    private system = async (instance: IWrkInstance): Promise<IWrkSystem> => {
+        const restricted = !this.allows(instance.accessKey, EWrkScope.CLUSTER)
+        const usage = usageOf(this.readings)
+        const [podList, nodeList, volumeList] = await Promise.all([
+            this.clusterInfo.coreApi.listPodForAllNamespaces(),
+            restricted ? undefined : this.clusterInfo.coreApi.listNode(),
+            restricted ? undefined : this.clusterInfo.coreApi.listPersistentVolume()
+        ])
+        const active = this.activeJobs(instance, podList.items, usage)
+        return {
+            restricted,
+            jobs: active.length,
+            cpu: restricted ? cpuOf(active.map(p => p.job)) : usage.clusterCpu,
+            metrics: this.metricsState(),
+            pools: nodeList ? mapPools(nodeList.items, active) : [],
+            storage: volumeList ? storageOf(volumeList.items) : undefined
+        }
+    }
+
+    /*
+        WRKSBS: the namespaces the key reaches, by name or through a pod it reaches in them (a key restricted to
+        some pods has no namespace of its own, but sees the subsystems those pods run in).
+    */
+    private subsystems = async (instance: IWrkInstance): Promise<Pick<IWrkactjobMessageResponse, 'subsystems' | 'poolNames'>> => {
+        const [nsList, podList] = await Promise.all([this.clusterInfo.coreApi.listNamespace(), this.clusterInfo.coreApi.listPodForAllNamespaces()])
+        const active = this.activeJobs(instance, podList.items, usageOf(this.readings))
+        const subsystems = nsList.items
+            .map(ns => ({ ns, inside: active.filter(p => p.job.namespace === (ns.metadata?.name ?? '')) }))
+            .filter(({ ns, inside }) => inside.length > 0 || keyMatchesResource(instance.accessKey, { namespace: ns.metadata?.name ?? '' }))
+            .map(({ ns, inside }) => mapSubsystem(ns, inside))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        return { subsystems, poolNames: await this.poolNames(instance, active) }
+    }
+
+    /*
+        The system pools in WRKSYSSTS's numbering (D13): every node by name at 'cluster' level; below it, where no
+        node can be listed, the nodes of the jobs the key reaches.
+    */
+    private poolNames = async (instance: IWrkInstance, active: IPodJob[]): Promise<string[]> => {
+        if (!this.allows(instance.accessKey, EWrkScope.CLUSTER)) return nodesOf(active)
+        const nodes = await this.clusterInfo.coreApi.listNode()
+        return nodes.items.map(n => n.metadata?.name ?? '').filter(Boolean).sort()
+    }
+
+    /*
+        DSPMSG QSYSOPR: the Warning events of the objects the key reaches — a pod's by the pod, anything else in
+        a namespace by the namespace, and a cluster object's (a node's) only at 'cluster' or above.
+    */
+    private messages = async (instance: IWrkInstance) => {
+        const events = await this.clusterInfo.coreApi.listEventForAllNamespaces({ fieldSelector: 'type=Warning' })
+        const cluster = this.allows(instance.accessKey, EWrkScope.CLUSTER)
+        const reached = events.items.map(mapMessage).filter(m => {
+            if (!m.namespace) return cluster
+            return keyMatchesResource(instance.accessKey, { namespace: m.namespace, pod: m.kind === 'Pod' ? m.object : undefined })
+        })
+        return sortMessages(reached).slice(0, MAX_MESSAGES)
     }
 
     containsAsset = (_ws: WebSocket, _ns: string, _pod: string, _ctr: string): boolean => false

@@ -20,19 +20,22 @@ export interface IWrkactjobInstanceConfig {
 
 // ─── Authorisation (the channel's own RBAC) ───────────────────────────────────────────────────────
 // Namespaced with 'wrkactjob$', the project convention. READ opens the channel, lists jobs and reads their
-// spooled files and job log; END ends them (deletes the pods).
+// spooled files and job log; SCHEDULE holds, releases and submits job schedule entries (CronJobs: changes and
+// starts, deletes nothing); END ends jobs (deletes the pods). PRD-fase3 D18: SCHEDULE sits between the two.
 export enum EWrkScope {
     READ = 'wrkactjob$read',
+    SCHEDULE = 'wrkactjob$schedule',
     END = 'wrkactjob$end',
     // Kwirth's own, on top of every ladder, so an administrator reaches WRKACTJOB without its own scopes.
     CLUSTER = 'cluster',
     ADMIN = 'admin'
 }
 
-export const WRK_SCOPE_LADDER: string[] = ['', EWrkScope.READ, EWrkScope.END, EWrkScope.CLUSTER, EWrkScope.ADMIN]
+export const WRK_SCOPE_LADDER: string[] = ['', EWrkScope.READ, EWrkScope.SCHEDULE, EWrkScope.END, EWrkScope.CLUSTER, EWrkScope.ADMIN]
 
 export const WRK_SCOPES: IExtensionScope[] = [
     { scope: EWrkScope.READ, label: 'WRKACTJOB · Read', description: 'Open WRKACTJOB: list the active jobs (pods), read their spooled files (logs) and job log (events)' },
+    { scope: EWrkScope.SCHEDULE, label: 'WRKACTJOB · Schedule', description: 'Hold, release and submit job schedule entries (CronJobs) from WRKJOBSCDE: suspends, resumes and runs them, deletes nothing' },
     { scope: EWrkScope.END, label: 'WRKACTJOB · End', description: 'End jobs from WRKACTJOB (option 4 and ENDJOB delete pods)' }
 ]
 
@@ -42,7 +45,16 @@ export enum EWrkCommand {
     LIST = 'list',             // every active pod the key can see, with its usage when the metrics provider has it
     LOG = 'log',               // a container's log, read once: a spooled file shown by DSPSPLF
     EVENTS = 'events',         // a pod's events, oldest first: its job log (DSPJOBLOG)
-    END = 'end'                // ENDJOB: delete the pod, with the DELAY as grace period (*IMMED = 0)
+    END = 'end',               // ENDJOB: delete the pod, with the DELAY as grace period (*IMMED = 0)
+    // PRD-fase3
+    SYSTEM = 'system',         // WRKSYSSTS: the jobs in the system, the pools (nodes) and the system ASP (volumes)
+    SUBSYSTEMS = 'subsystems', // WRKSBS: the namespaces the key reaches
+    SUBSYSTEM_DESCRIPTION = 'subsystemdescription', // DSPSBSD: a namespace's labels, quotas and limit ranges
+    MESSAGES = 'messages',     // DSPMSG QSYSOPR: the Warning events the key reaches, newest first
+    SCHEDULES = 'schedules',   // WRKJOBSCDE: the CronJobs the key reaches, with their last runs
+    HOLD = 'hold',             // HLDJOBSCDE: suspend a CronJob
+    RELEASE = 'release',       // RLSJOBSCDE: resume it
+    SUBMIT = 'submit'          // SBMJOB: run it now, a Job from its template
 }
 
 export enum EWrkError {
@@ -124,6 +136,125 @@ export interface IWrkEvent {
     source: string             // the component that reported it
 }
 
+// ─── PRD-fase3: WRKSYSSTS, WRKSBS, DSPMSG QSYSOPR, WRKJOBSCDE ─────────────────────────────────────
+
+// A main storage pool of WRKSYSSTS: a node (PRD-fase3 D13). Numbering the pools is the front's business.
+export interface IWrkPool {
+    name: string               // the node
+    cpus: number               // allocatable CPUs
+    memory: number             // pool size: allocatable memory, bytes
+    reserved: number           // reserved size: memory requested by the active pods on it, bytes
+    maxActive: number          // allocatable pods
+    jobs: number               // active pods on it
+    failing: number            // of them, in MSGW
+    restarts: number           // of their containers
+    cpu?: number               // CPU used by its pods, % of the cluster (metrics provider)
+    memoryUsed?: number        // working set of its pods, bytes (metrics provider)
+}
+
+// The system ASP: the PersistentVolumes.
+export interface IWrkStorage {
+    capacity: number           // bytes, every volume
+    bound: number              // bytes, the bound ones: '% system ASP used'
+    volumes: number
+}
+
+export interface IWrkSystem {
+    /*
+        PRD-fase3 D17: a key below 'cluster' has no node or volume figures (pools empty, no storage) and every
+        other figure counts only what it reaches.
+    */
+    restricted: boolean
+    jobs: number               // jobs in system: the active pods the key reaches
+    cpu?: number               // % CPU used: of the whole cluster, or of what the key reaches when restricted
+    metrics: EWrkMetricsState
+    pools: IWrkPool[]
+    storage?: IWrkStorage
+}
+
+export enum EWrkSubsystemStatus {
+    ACTIVE = 'ACTIVE',
+    ENDING = 'ENDING'          // the namespace is Terminating
+}
+
+// A subsystem of WRKSBS: a namespace.
+export interface IWrkSubsystem {
+    name: string
+    status: EWrkSubsystemStatus
+    storage: number            // total storage: memory requested by its active pods, bytes
+    pools: string[]            // the nodes its active pods run on, sorted
+    jobs: number               // its active pods (those the key reaches)
+}
+
+// One resource of a ResourceQuota: DSPSBSD's pool entries.
+export interface IWrkQuotaItem {
+    quota: string
+    resource: string
+    hard: string
+    used: string
+}
+
+// One limit of a LimitRange: DSPSBSD's limits.
+export interface IWrkLimitItem {
+    limitRange: string
+    type: string               // Container, Pod, PersistentVolumeClaim
+    resource: string
+    min: string
+    max: string
+    defaultLimit: string
+    defaultRequest: string
+}
+
+export interface IWrkSubsystemDescription {
+    name: string
+    status: EWrkSubsystemStatus
+    created: string            // ISO
+    labels: Record<string, string>
+    annotations: Record<string, string>
+    pools: string[]            // the nodes its active pods run on (those the key reaches), sorted
+    quotas: IWrkQuotaItem[]
+    limits: IWrkLimitItem[]
+}
+
+// A message of QSYSOPR: a Warning event, with what it is about.
+export interface IWrkMessage extends IWrkEvent {
+    namespace: string          // '' for a cluster object (a node)
+    kind: string               // of the object: Pod, Node, Deployment…
+    object: string             // its name
+    firstTime: string          // ISO: the first time it happened
+}
+
+export enum EWrkRunStatus {
+    RUNNING = 'running',
+    SUCCEEDED = 'succeeded',
+    FAILED = 'failed'
+}
+
+// One Job a CronJob started.
+export interface IWrkScheduleRun {
+    job: string
+    started: string            // ISO
+    completed: string          // ISO, '' while it runs
+    status: EWrkRunStatus
+    manual: boolean            // submitted by hand (SBMJOB, kubectl create job --from)
+}
+
+// A job schedule entry of WRKJOBSCDE: a CronJob. Translating the schedule to IBM i words is the front's.
+export interface IWrkSchedule {
+    name: string
+    namespace: string
+    schedule: string           // the cron expression
+    timeZone: string           // '' = the controller's
+    held: boolean              // spec.suspend
+    concurrencyPolicy: string
+    program: string            // the image of its first container, as WRKACTJOB's Function
+    user: string               // its service account
+    created: string            // ISO
+    lastScheduled: string      // ISO, '' when never
+    lastSuccessful: string     // ISO, '' when never
+    runs: IWrkScheduleRun[]    // newest first
+}
+
 /*
     What the session asks for. The target is named targetNamespace/targetName/containerName and NOT
     namespace/pod/container on purpose: with those names the core reads them as an instance config and lists the
@@ -131,8 +262,8 @@ export interface IWrkEvent {
 */
 export interface IWrkRequest {
     command: EWrkCommand
-    targetNamespace?: string
-    targetName?: string
+    targetNamespace?: string   // the job's subsystem; SUBSYSTEM_DESCRIPTION: the subsystem alone
+    targetName?: string        // the job (pod); HOLD, RELEASE, SUBMIT: the job schedule entry (CronJob)
     containerName?: string
     tailLines?: number         // LOG
     delay?: number             // END: seconds the job is given to end (*CNTRLD); ignored with immediate
@@ -157,4 +288,16 @@ export interface IWrkactjobMessageResponse extends IInstanceMessage {
     clusterCpu?: number        // LIST: CPU used by every job, % of the cluster
     lines?: string[]           // LOG
     events?: IWrkEvent[]       // EVENTS
+    system?: IWrkSystem        // SYSTEM
+    subsystems?: IWrkSubsystem[]                // SUBSYSTEMS
+    /*
+        SUBSYSTEMS, SUBSYSTEM_DESCRIPTION: the system pools in their numbering (PRD-fase3 D13), pool n being
+        poolNames[n-1] — every node at 'cluster' level (as WRKSYSSTS numbers them), below it the nodes of the jobs
+        the key reaches.
+    */
+    poolNames?: string[]
+    description?: IWrkSubsystemDescription      // SUBSYSTEM_DESCRIPTION
+    messages?: IWrkMessage[]   // MESSAGES
+    schedules?: IWrkSchedule[] // SCHEDULES
+    submitted?: string         // SUBMIT: the Job created
 }
