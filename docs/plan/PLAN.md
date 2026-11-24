@@ -3,7 +3,7 @@
 > **ESTADO — FASE 3 EN CURSO** (2026-11-24). **MVP (S0–S6) cerrado y publicado** el 2026-11-23 como
 > `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE); instalación de la DCE
 > desde el marketplace de jfvilas validada; capturas de referencia (D11) descartadas. **Fase 3** (más comandos
-> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3, **sin empezar**. Cuelga
+> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho**. Cuelga
 > del [PRD](PRD.md) y del [PRD-fase3](PRD-fase3.md), y no repite ni su problema ni sus decisiones (D1–D18).
 >
 > **Dónde vive:**
@@ -169,6 +169,15 @@ Lo común a todos los streams de la fase:
 - D17: nodos y PersistentVolumes solo con una clave de nivel `cluster` o superior; si no, la respuesta lo marca (no autorizado a esas cifras) y el resto se calcula con lo que la clave ve.
 - Todo filtrado por los namespaces que alcanza la clave (`keyMatchesResource`), como `LIST`.
 - **Hecho cuando:** unit tests de los mapeadores y de la autorización de cada comando (incluido D17 y la escalera), 100 % de líneas en el back.
+- 🔶 **Código hecho (2026-11-24).** Lo que salió al construirlo:
+  - **`cronJobStatus` / `cronJobTrigger` de `common-back` no se usan:** el runtime los expone, pero se tragan el error (lo loguean y vuelven bien), así que un Hold que falla le diría al operador que ha ido. Se llama a `batchApi` como ellos. `SUBMIT` hace lo que `kubectl create job --from=cronjob/…`: el Job lleva la ownerReference al CronJob (así su historial y WRKACTJOB lo ven como una de sus ejecuciones) y la anotación `cronjob.kubernetes.io/instantiate: manual`; nombre `<cronjob>-manual-<epoch>`, cortado a 63.
+  - **Patch con `op: add`** en `/spec/suspend` (como el cordon de SDSF): `replace` falla si el objeto guardado no tiene el campo.
+  - **Qué alcanza la clave:** un CronJob se comprueba como un pod con su nombre (los patrones de pods de la clave se comparan con él: sus pods se llaman como él). Un subsistema se ve si la clave lo alcanza por nombre **o** alcanza algún pod suyo (una clave limitada a unos pods no tiene namespace propio, pero ve los subsistemas en que corren). Un mensaje: el de un pod, por el pod; el de otro objeto con namespace, por el namespace; el de un objeto de cluster (un nodo), solo con nivel `cluster` (D17).
+  - **`SYSTEM` por debajo de `cluster`** ni siquiera pide nodos ni volúmenes: `restricted`, pools vacíos, sin ASP, y la CPU es la suma de los jobs que alcanza.
+  - `DSPMSG`: los 1000 events Warning más recientes como mucho (`MAX_MESSAGES`).
+  - `quantityOf` es copia de la de SDSF (`Quantity.ts`): un plugin no importa otro y las librerías comunes no tienen una. La memoria pedida de un pod cuenta como el scheduler: sus contenedores juntos o su init más grande.
+  - Tests: 84 (23 nuevos), 100 % de líneas y funciones (c8). Typecheck limpio, también de los tests.
+  - **Tipos nuevos (⚠️ a validar):** `EWrkScope.SCHEDULE`; en `EWrkCommand`: `SYSTEM`, `SUBSYSTEMS`, `SUBSYSTEM_DESCRIPTION`, `MESSAGES`, `SCHEDULES`, `HOLD`, `RELEASE`, `SUBMIT`; `IWrkPool`, `IWrkStorage`, `IWrkSystem`, `EWrkSubsystemStatus`, `IWrkSubsystem`, `IWrkQuotaItem`, `IWrkLimitItem`, `IWrkSubsystemDescription`, `IWrkMessage`, `EWrkRunStatus`, `IWrkScheduleRun`, `IWrkSchedule`; campos nuevos en `IWrkactjobMessageResponse` (`system`, `subsystems`, `description`, `messages`, `schedules`, `submitted`); en el back, `IPodJob`.
 
 **S8 — Main Menu y `WRKSYSSTS`.**
 - Main Menu con 1–5 y 90 (PRD-fase3 §3). La línea de comandos reconoce `WRKSBS`, `DSPMSG` (con o sin `QSYSOPR`), `WRKMSG`, `WRKSYSSTS` y `WRKJOBSCDE`; F4 sobre ellos abre su prompt (los que tienen parámetros) o el panel.

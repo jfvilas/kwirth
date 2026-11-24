@@ -6,8 +6,8 @@ import { isActive, mapJob, programOf, statusOf, typeOf } from '../src/back/JobMa
 import { mapEvent, sortEvents } from '../src/back/EventMapper'
 import { usageOf } from '../src/back/PodMetrics'
 import { IMetricsCluster, IMetricsValue } from '../src/back/MetricsProviderTypes'
-import { WrkactjobChannel, IWrkClusterInfo, DEFAULT_DELAY, DEFAULT_TAIL_LINES, MAX_TAIL_LINES } from '../src/back/index'
-import { EWrkCommand, EWrkError, EWrkJobStatus, EWrkJobType, EWrkMetricsState, IWrkactjobMessage, IWrkJob } from '../src/common/WrkactjobTypes'
+import { WrkactjobChannel, IWrkClusterInfo, DEFAULT_DELAY, DEFAULT_TAIL_LINES, MAX_TAIL_LINES, MAX_MESSAGES } from '../src/back/index'
+import { EWrkCommand, EWrkError, EWrkJobStatus, EWrkJobType, EWrkMetricsState, EWrkRunStatus, EWrkSubsystemStatus, IWrkactjobMessage, IWrkJob, IWrkMessage, IWrkSchedule, IWrkSubsystem, IWrkSubsystemDescription, IWrkSystem } from '../src/common/WrkactjobTypes'
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -184,7 +184,42 @@ const fakeCluster = (opts: { metrics?: boolean; fail?: { code?: number; body?: s
             listNamespacedEvent: (p: unknown) => call('events', p, { items: [
                 { metadata: {}, involvedObject: {}, reason: 'Started', lastTimestamp: new Date('2026-11-23T10:00:02Z') },
                 { metadata: {}, involvedObject: {}, reason: 'Pulled', lastTimestamp: new Date('2026-11-23T10:00:01Z') }
+            ] }),
+            listNode: () => call('nodes', undefined, { items: [
+                { metadata: { name: 'node-2' }, status: { allocatable: { cpu: '2', memory: '4Gi', pods: '110' } } },
+                { metadata: { name: 'node-1' }, status: { allocatable: { cpu: '4', memory: '8Gi', pods: '110' } } }
+            ] }),
+            listPersistentVolume: () => call('volumes', undefined, { items: [
+                { spec: { capacity: { storage: '10Gi' } }, status: { phase: 'Bound' } },
+                { spec: { capacity: { storage: '5Gi' } }, status: { phase: 'Available' } }
+            ] }),
+            listNamespace: () => call('namespaces', undefined, { items: [
+                { metadata: { name: 'vault' } }, { metadata: { name: 'payroll' } }, { metadata: { name: 'empty' } }
+            ] }),
+            readNamespace: (p: { name: string }) => call('namespace', p, { metadata: { name: p.name, labels: { team: 'hr' } }, status: { phase: 'Active' } }),
+            listNamespacedPod: (p: { namespace: string }) => call('nspods', p, { items: p.namespace === 'payroll' ? [pod()] : [] }),
+            listNamespacedResourceQuota: (p: unknown) => call('quotas', p, { items: [{ metadata: { name: 'q' }, status: { hard: { pods: '10' }, used: { pods: '3' } } }] }),
+            listNamespacedLimitRange: (p: unknown) => call('limits', p, { items: [] }),
+            listEventForAllNamespaces: (p: unknown) => call('allevents', p, { items: [
+                { metadata: { namespace: 'payroll' }, involvedObject: { kind: 'Pod', name: 'api-7d9f8b6c4-x2kq9', namespace: 'payroll' }, type: 'Warning', reason: 'BackOff', lastTimestamp: new Date('2026-11-23T10:00:01Z') },
+                { metadata: { namespace: 'payroll' }, involvedObject: { kind: 'Deployment', name: 'api', namespace: 'payroll' }, type: 'Warning', reason: 'FailedCreate', lastTimestamp: new Date('2026-11-23T10:00:03Z') },
+                { metadata: { namespace: 'vault' }, involvedObject: { kind: 'Pod', name: 'secret-pod', namespace: 'vault' }, type: 'Warning', reason: 'Unhealthy', lastTimestamp: new Date('2026-11-23T10:00:02Z') },
+                { metadata: { namespace: 'default' }, involvedObject: { kind: 'Node', name: 'node-1' }, type: 'Warning', reason: 'NodeNotReady', lastTimestamp: new Date('2026-11-23T10:00:04Z') }
             ] })
+        },
+        batchApi: {
+            listCronJobForAllNamespaces: () => call('cronjobs', undefined, { items: [
+                { metadata: { name: 'rotate', namespace: 'vault' }, spec: { schedule: '0 * * * *', jobTemplate: { spec: { template: { spec: { containers: [{ name: 'r', image: 'rotate:1' }] } } } } } },
+                { metadata: { name: 'backup', namespace: 'payroll', uid: 'cj-1' }, spec: { schedule: '0 2 * * *', suspend: true, jobTemplate: { spec: { template: { spec: { containers: [{ name: 'b', image: 'backup:1' }] } } } } } }
+            ] }),
+            listJobForAllNamespaces: () => call('jobs', undefined, { items: [
+                { metadata: { name: 'backup-1', namespace: 'payroll', ownerReferences: [{ kind: 'CronJob', name: 'backup' }] }, status: { startTime: new Date('2026-11-23T02:00:00Z') } }
+            ] }),
+            readNamespacedCronJob: (p: { name: string; namespace: string }) => call('cronjob', p, p.name === 'empty'
+                ? { metadata: { name: 'empty', namespace: p.namespace }, spec: { schedule: '* * * * *' } }
+                : { metadata: { name: p.name, namespace: p.namespace, uid: 'cj-1' }, spec: { schedule: '0 2 * * *', jobTemplate: { spec: { template: { spec: { containers: [{ name: 'b', image: 'backup:1' }] } } } } } }),
+            patchNamespacedCronJob: (p: unknown) => call('patch', p, {}),
+            createNamespacedJob: (p: { body: { metadata: { name: string } } }) => call('create', p, { metadata: { name: p.body.metadata.name } })
         },
         getProvider: (id: string) => opts.metrics && id === 'metrics'
             ? { id, subscribe: (s: unknown) => { subscribed.push(s); return Promise.resolve() }, unsubscribe: (s: unknown) => { subscribed.splice(subscribed.indexOf(s), 1) } }
@@ -239,7 +274,9 @@ test('channel data: a cluster channel; the scope ladder and catalogue', () => {
     assert.ok(c.getChannelScopeLevel('wrkactjob$read') < c.getChannelScopeLevel('wrkactjob$end'))
     assert.ok(c.getChannelScopeLevel('wrkactjob$end') < c.getChannelScopeLevel('admin'))
     assert.equal(c.getChannelScopeLevel('bogus'), -1)
-    assert.deepEqual(c.getScopeCatalog().map(s => s.scope), ['wrkactjob$read', 'wrkactjob$end'])
+    assert.ok(c.getChannelScopeLevel('wrkactjob$read') < c.getChannelScopeLevel('wrkactjob$schedule'), 'PRD-fase3 D18')
+    assert.ok(c.getChannelScopeLevel('wrkactjob$schedule') < c.getChannelScopeLevel('wrkactjob$end'))
+    assert.deepEqual(c.getScopeCatalog().map(s => s.scope), ['wrkactjob$read', 'wrkactjob$schedule', 'wrkactjob$end'])
 })
 
 test('a key without wrkactjob$read cannot open it, and nothing is registered', async () => {
@@ -406,4 +443,110 @@ test('connections: refresh and update keep the instance on its new socket', asyn
     await channel.startChannel()
     await channel.endpointRequest('', {} as never, {} as never)
     await channel.websocketRequest(other)
+})
+
+// ─── PRD-fase3: the system-wide commands and the job schedule entries ───────────────────────────────────
+
+const CLUSTER_ALL = 'cluster::::'
+const SCHEDULE_PAYROLL = 'wrkactjob$schedule:^payroll$:::'
+
+test('SYSTEM at cluster level: pools are the nodes by name, the ASP the volumes, the CPU the cluster\'s', async () => {
+    const { run, channel } = await open(CLUSTER_ALL, { metrics: true })
+    channel.processProviderEvent('metrics', reading({ 'payroll/api-7d9f8b6c4-x2kq9/api/container_cpu_usage_seconds_total': 100 }))
+    channel.processProviderEvent('metrics', reading({ 'payroll/api-7d9f8b6c4-x2kq9/api/container_cpu_usage_seconds_total': 104 }))
+    const r = await run(message(EWrkCommand.SYSTEM))
+    const system = r.system as IWrkSystem
+    assert.equal(system.restricted, false)
+    assert.equal(system.jobs, 2, 'payroll and vault, not the finished one')
+    assert.equal(system.cpu, 10)
+    assert.equal(system.metrics, EWrkMetricsState.AVAILABLE)
+    assert.deepEqual(system.pools.map(p => [p.name, p.jobs, p.cpus]), [['node-1', 2, 4], ['node-2', 0, 2]])
+    assert.deepEqual(system.storage, { capacity: 15 * 1024 ** 3, bound: 10 * 1024 ** 3, volumes: 2 })
+})
+
+test('SYSTEM below cluster level, D17: no nodes or volumes asked for, the CPU of what it reaches', async () => {
+    const { run, calls } = await open('wrkactjob$read:^payroll$:::')
+    const system = (await run(message(EWrkCommand.SYSTEM))).system as IWrkSystem
+    assert.equal(system.restricted, true)
+    assert.equal(system.jobs, 1)
+    assert.equal(system.cpu, undefined)
+    assert.equal(system.metrics, EWrkMetricsState.UNAVAILABLE)
+    assert.deepEqual(system.pools, [])
+    assert.equal(system.storage, undefined)
+    assert.deepEqual(calls.map(c => c.method), ['list'])
+})
+
+test('SUBSYSTEMS: by name, or through a pod the key reaches; sorted', async () => {
+    const byName = (await (await open('wrkactjob$read:^payroll$,^empty$:::')).run(message(EWrkCommand.SUBSYSTEMS))).subsystems as IWrkSubsystem[]
+    assert.deepEqual(byName.map(s => [s.name, s.jobs, s.pools, s.status]), [['empty', 0, [], EWrkSubsystemStatus.ACTIVE], ['payroll', 1, ['node-1'], EWrkSubsystemStatus.ACTIVE]])
+    const byPod = (await (await open('wrkactjob$read:::^secret:')).run(message(EWrkCommand.SUBSYSTEMS))).subsystems as IWrkSubsystem[]
+    assert.deepEqual(byPod.map(s => s.name), ['vault'], 'a key on some pods sees only their subsystems')
+})
+
+test('SUBSYSTEM_DESCRIPTION: labels and quotas of a subsystem the key reaches, by name or by a pod', async () => {
+    const { run } = await open(READ_ALL)
+    const d = (await run(message(EWrkCommand.SUBSYSTEM_DESCRIPTION, { targetName: '' }))).description as IWrkSubsystemDescription
+    assert.equal(d.name, 'payroll')
+    assert.deepEqual(d.labels, { team: 'hr' })
+    assert.deepEqual(d.quotas, [{ quota: 'q', resource: 'pods', hard: '10', used: '3' }])
+    const byPod = await (await open('wrkactjob$read:::^api-:')).run(message(EWrkCommand.SUBSYSTEM_DESCRIPTION, { targetName: '' }))
+    assert.equal(byPod.ok, true)
+    const out = await (await open('wrkactjob$read:::^api-:')).run(message(EWrkCommand.SUBSYSTEM_DESCRIPTION, { targetNamespace: 'vault' }))
+    assert.equal(out.error, EWrkError.NOT_AUTHORIZED)
+    const none = await run(message(EWrkCommand.SUBSYSTEM_DESCRIPTION, { targetNamespace: '' }))
+    assert.equal(none.error, EWrkError.BAD_REQUEST)
+})
+
+test('MESSAGES: the Warning events the key reaches, newest first; a node\'s only at cluster level', async () => {
+    const { run, calls } = await open('wrkactjob$read:^payroll$:::')
+    const m = (await run(message(EWrkCommand.MESSAGES))).messages as IWrkMessage[]
+    assert.deepEqual(m.map(x => x.reason), ['FailedCreate', 'BackOff'])
+    assert.deepEqual(calls.at(-1)?.params, { fieldSelector: 'type=Warning' })
+    const all = (await (await open(CLUSTER_ALL)).run(message(EWrkCommand.MESSAGES))).messages as IWrkMessage[]
+    assert.deepEqual(all.map(x => x.reason), ['NodeNotReady', 'FailedCreate', 'Unhealthy', 'BackOff'])
+    const pods = (await (await open('wrkactjob$read:::^api-:')).run(message(EWrkCommand.MESSAGES))).messages as IWrkMessage[]
+    assert.deepEqual(pods.map(x => x.reason), ['BackOff'], 'a key on pods: its pods\' events only')
+    assert.equal(MAX_MESSAGES, 1000)
+})
+
+test('SCHEDULES: the CronJobs the key reaches, with their runs', async () => {
+    const s = (await (await open(READ_ALL)).run(message(EWrkCommand.SCHEDULES))).schedules as IWrkSchedule[]
+    assert.deepEqual(s.map(x => [x.namespace, x.name, x.held]), [['payroll', 'backup', true], ['vault', 'rotate', false]])
+    assert.deepEqual(s[0].runs.map(r => [r.job, r.status]), [['backup-1', EWrkRunStatus.RUNNING]])
+    const one = (await (await open('wrkactjob$read:^payroll$:::')).run(message(EWrkCommand.SCHEDULES))).schedules as IWrkSchedule[]
+    assert.deepEqual(one.map(x => x.name), ['backup'])
+})
+
+test('HOLD and RELEASE patch spec.suspend; SUBMIT creates the Job from the template', async () => {
+    const { run, calls, logs } = await open(SCHEDULE_PAYROLL)
+    const target = { targetName: 'backup', containerName: '' }
+    assert.equal((await run(message(EWrkCommand.HOLD, target))).ok, true)
+    assert.deepEqual(calls.at(-1), { method: 'patch', params: { name: 'backup', namespace: 'payroll', body: [{ op: 'add', path: '/spec/suspend', value: true }] } })
+    await run(message(EWrkCommand.RELEASE, target))
+    assert.equal((calls.at(-1)?.params as { body: { value: boolean }[] }).body[0].value, false)
+    assert.match(logs.at(-1)!, /released/)
+    const r = await run(message(EWrkCommand.SUBMIT, target))
+    assert.equal(r.ok, true)
+    assert.match(r.submitted as string, /^backup-manual-\d+$/)
+    assert.equal(calls.at(-1)?.method, 'create')
+    const empty = await run(message(EWrkCommand.SUBMIT, { targetName: 'empty', containerName: '' }))
+    assert.equal(empty.error, EWrkError.FAILED)
+})
+
+test('HOLD, RELEASE and SUBMIT need wrkactjob$schedule (end includes it) and a CronJob the key reaches', async () => {
+    const reader = await open(READ_ALL)
+    const denied = await reader.run(message(EWrkCommand.HOLD, { targetName: 'backup', containerName: '' }))
+    assert.equal(denied.error, EWrkError.NOT_AUTHORIZED)
+    assert.match(denied.detail as string, /wrkactjob\$schedule/)
+    assert.match(reader.logs.at(-1)!, /Denied hold/)
+    assert.equal(reader.calls.length, 0)
+    const ender = await open(END_PAYROLL)
+    assert.equal((await ender.run(message(EWrkCommand.SUBMIT, { targetName: 'backup', containerName: '' }))).ok, true)
+    const outside = await open(SCHEDULE_PAYROLL)
+    const far = await outside.run(message(EWrkCommand.RELEASE, { targetNamespace: 'vault', targetName: 'rotate', containerName: '' }))
+    assert.equal(far.error, EWrkError.NOT_AUTHORIZED)
+    const none = await outside.run(message(EWrkCommand.SUBMIT, { targetName: '' }))
+    assert.equal(none.error, EWrkError.BAD_REQUEST)
+    assert.match(none.detail as string, /job schedule entry/)
+    assert.equal(outside.calls.length, 0)
 })
