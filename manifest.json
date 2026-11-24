@@ -2,6 +2,28 @@
   {
     "extensionType": "plugin",
     "id": "wrkactjob",
+    "version": "0.2.0",
+    "tags": [
+      "operations",
+      "kubernetes",
+      "emulator"
+    ],
+    "name": "WRKACTJOB",
+    "url": "https://registry.npmjs.org/@jfvilas/kwirth-plugin-wrkactjob/-/kwirth-plugin-wrkactjob-0.2.0.tgz",
+    "description": "WRKACTJOB channel plugin for Kwirth - IBM i Work with Active Jobs on a 5250 terminal (24x80 or 27x132, colour or green screen), where namespaces are subsystems and pods are jobs; with WRKSYSSTS, WRKSBS, DSPMSG QSYSOPR and WRKJOBSCDE (CronJobs as job schedule entries)",
+    "icon": "Terminal",
+    "website": "https://github.com/jfvilas/kwirth/tree/master/plugins/wrkactjob",
+    "requires": [
+      {
+        "extensionType": "dce",
+        "id": "blockterm",
+        "minVersion": "0.2.0"
+      }
+    ]
+  },
+  {
+    "extensionType": "plugin",
+    "id": "wrkactjob",
     "version": "0.1.0",
     "tags": [
       "operations",
