@@ -1,11 +1,22 @@
 import { E5250Attribute, Painter5250 } from '@jfvilas/kwirth-dce-blockterm'
 import { paintCommandLine, paintKeys, paintMessage, paintRight, paintTitle, rowsOf } from './WrkLayout'
 
-// The entries of the adapted IBM i Main Menu (PRD D5): only what this plugin can do.
+/*
+    The entries of the adapted IBM i Main Menu (PRD D5, PRD-fase3 §3): only what this plugin can do. The real
+    menu's entries are submenus with no equivalent here, so these are numbered in a row; only 90 keeps its number,
+    and a blank line above it, as on IBM i.
+*/
 export const MENU_ENTRIES: { option: string; text: string; command: string }[] = [
     { option: '1', text: 'Work with active jobs', command: 'WRKACTJOB' },
+    { option: '2', text: 'Work with subsystems', command: 'WRKSBS' },
+    { option: '3', text: 'Display operator messages', command: 'DSPMSG MSGQ(QSYSOPR)' },
+    { option: '4', text: 'Work with system status', command: 'WRKSYSSTS' },
+    { option: '5', text: 'Work with job schedule entries', command: 'WRKJOBSCDE' },
     { option: '90', text: 'Sign off', command: 'SIGNOFF' }
 ]
+
+export const SIGN_OFF_OPTION = '90'
+
 
 /*
     'MAIN' on the left, the title centred, the system on the right, then the menu, as IBM i shows it. A
@@ -19,8 +30,9 @@ export const paintMainMenu = (p: Painter5250, system: string, command: string, m
     paintRight(p, 1, `System:   ${system.slice(0, 10)}`)
     p.text(3, 1, 'Select one of the following:', E5250Attribute.BLUE, true)
     MENU_ENTRIES.forEach((e, i) => {
-        p.text(5 + i, 6, `${e.option.padStart(2)}. `, E5250Attribute.GREEN)
-        p.text(5 + i, 10, e.text, E5250Attribute.GREEN, true)
+        const row = 5 + i + (e.option === SIGN_OFF_OPTION ? 1 : 0)
+        p.text(row, 6, `${e.option.padStart(2)}. `, E5250Attribute.GREEN)
+        p.text(row, 10, e.text, E5250Attribute.GREEN, true)
     })
     const field = paintCommandLine(p, rows, 'Selection or command', command)
     paintKeys(p, rows, ['F3=Exit', 'F12=Cancel'], [])

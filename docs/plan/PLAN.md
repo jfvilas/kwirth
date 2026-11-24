@@ -3,7 +3,7 @@
 > **ESTADO — FASE 3 EN CURSO** (2026-11-24). **MVP (S0–S6) cerrado y publicado** el 2026-11-23 como
 > `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE); instalación de la DCE
 > desde el marketplace de jfvilas validada; capturas de referencia (D11) descartadas. **Fase 3** (más comandos
-> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho**. Cuelga
+> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho; S8 con el código hecho, sin verificar en el dev** (apagado). Cuelga
 > del [PRD](PRD.md) y del [PRD-fase3](PRD-fase3.md), y no repite ni su problema ni sus decisiones (D1–D18).
 >
 > **Dónde vive:**
@@ -183,6 +183,18 @@ Lo común a todos los streams de la fase:
 - Main Menu con 1–5 y 90 (PRD-fase3 §3). La línea de comandos reconoce `WRKSBS`, `DSPMSG` (con o sin `QSYSOPR`), `WRKMSG`, `WRKSYSSTS` y `WRKJOBSCDE`; F4 sobre ellos abre su prompt (los que tienen parámetros) o el panel.
 - `WRKSYSSTS` (PRD-fase3 §2.1): cabecera (`% CPU used`, `Elapsed time`, `Jobs in system`, `Main storage size`, `System ASP`, `% system ASP used`), tabla de pools = nodos numerados por nombre (D13), F11 con sus vistas, F10, F5; `*N` sin `metrics` y sin permiso de cluster, con el mensaje de D17. A 132 columnas, las vistas que caben juntas.
 - **Hecho cuando:** criterio 1 del PRD-fase3; tests de la tabla de pools con 1 y con más nodos que filas (Roll); QA tuyo.
+- 🔶 **Código hecho (2026-11-24).** Lo que salió al construirlo:
+  - **WRKSYSSTS es un panel sobre la base** (como los del job): F12 vuelve uno, F3 vuelve a donde se llamó (WRKACTJOB o el menú). Tecleado sobre sí mismo se refresca; `RESET(*YES)` reinicia el tiempo transcurrido, igual que F10. F4 sobre él lo ejecuta: no tiene prompt aquí.
+  - **WRKACTJOB tecleado sobre un panel cierra todos los paneles:** es la base, no un panel encima. Simplificación frente a IBM i, que lo anidaría.
+  - **ENDJOB tecleado sobre un panel** deja ese panel pintado con el mensaje (antes solo existía sobre la base, que se refresca).
+  - **Cifras:** `% CPU used`, `Elapsed time`, `Jobs in system`, `Main storage size (M)` (la memoria allocatable de los nodos); a la derecha `Auxiliary storage:` con `System ASP` (G) y `% system ASP used` (cuatro decimales, como IBM i). `*N` lo que no se sabe o no se puede ver.
+  - **Pools a 80 columnas, tres vistas con F11:** faults (`Pool Size`, `Reserved Size`, `Max Active`, `DB Fault` = jobs en MSGW, `Non-DB Fault` = reinicios), actividad (`Active`, `CPU %`, `Used Size`: no hay transiciones en Kubernetes, así que es el uso) y nombres (el nodo). A 132, todo en una vista y F11 no está.
+  - **D17:** con `restricted`, sin pools («(No pools to display)»), `*N` en almacenamiento y memoria, y «Not authorized to some system values.» en cada refresco. El aviso de que falta el provider `metrics` sale una vez por sesión, en el panel que lo descubra primero.
+  - **Main Menu:** 1–5 y 90 con una línea en blanco encima, como IBM i. La entrada 3 es `DSPMSG MSGQ(QSYSOPR)` (forma con keyword; la posicional llega en el S10).
+  - **WRKSBS, DSPMSG, WRKMSG, WRKJOBSCDE:** «Command X not available yet.» hasta sus streams (provisional, como las opciones en el S4).
+  - Tests: 95 (11 nuevos), 100 % de líneas (c8). Versión del plugin **0.2.0** y `wrkactjob` en `kwirth-dev.json` desde `dist` (sin commitear en el core hasta el cierre de la fase).
+  - ⚠️ **Sin verificar en el dev:** a la hora de probarlo el dev estaba apagado (ni front ni back; la máquina se reinició a las 10:45). Comprobación lista para cuando esté levantado.
+  - **Tipos nuevos (⚠️ a validar):** `ESystemView`, `ISystemStatusState`, `EWrkPanel.SYSTEM_STATUS` y, internos de la sesión, `ISystemFrame` y el campo `systemStatus` de `IFrame`.
 
 **S9 — `WRKSBS` y `DSPSBSD`.**
 - `WRKSBS` (§2.2): subsistemas con `Total Storage (M)` y sus pools (los números de `WRKSYSSTS`), F11 al estado. Opción `5` → `Display Subsystem Description` (menú de la descripción: atributos = labels/annotations, entradas de pool = ResourceQuotas, límites = LimitRanges; cada una con su panel de solo lectura). Opción `8` → `WRKACTJOB SBS(ns)` encima en la pila. `4` → «Option 4 not valid.» (D14).

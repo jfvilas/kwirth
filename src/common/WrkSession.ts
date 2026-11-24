@@ -2,7 +2,7 @@ import {
     E5250Aid, E5250Lock, GEOMETRY_5250_24X80, I3270Geometry, I5250Input, I5250KeyAction, Painter5250, Screen5250, Terminal5250
 } from '@jfvilas/kwirth-dce-blockterm'
 import { IWrkDataSource } from './WrkDataSource'
-import { EWrkCommand, EWrkError, EWrkJobStatus, EWrkMetricsState, IWrkactjobMessageResponse, IWrkContainer, IWrkJob, IWrkRequest } from './WrkactjobTypes'
+import { EWrkCommand, EWrkError, EWrkJobStatus, EWrkMetricsState, IWrkactjobMessageResponse, IWrkContainer, IWrkJob, IWrkRequest, IWrkSystem } from './WrkactjobTypes'
 import { EWrkView, IActiveJobsFields, IWrkFilter, IWrkRow, NO_FILTER, pageSizeOf, paintActiveJobs, rowsFrom, viewsFor } from './panels/ActiveJobsPanel'
 import { MENU_ENTRIES, paintMainMenu, paintSignedOff } from './panels/MainMenu'
 import { IClCommand, parseCl } from './panels/ClCommand'
@@ -13,6 +13,7 @@ import {
     SPOOLED_FILE_OPTIONS, WORK_WITH_JOB_OPTIONS
 } from './panels/JobPanels'
 import { columnsShown, controlTarget, findFrom, IBrowse, IBrowseFields, jobLogLine, linesShown, paintBrowse } from './panels/BrowsePanel'
+import { ESystemView, paintSystemStatus, poolPageSizeOf, RESTRICTED_MESSAGE, systemViewsFor } from './panels/SystemStatusPanel'
 import { qualifiedName, shortName } from './panels/JobIdentity'
 
 export enum EWrkPanel {
@@ -24,8 +25,15 @@ export enum EWrkPanel {
     ATTRIBUTES = 'attributes',     // WRKJOB 1 and 2
     MESSAGES = 'messages',         // option 7: why the job is in MSGW
     SPOOLED_FILES = 'spooledfiles',// option 8, WRKJOB 4: the containers
-    BROWSE = 'browse'              // DSPSPLF (a container's log) and DSPJOBLOG (the pod's events)
+    BROWSE = 'browse',             // DSPSPLF (a container's log) and DSPJOBLOG (the pod's events)
+    SYSTEM_STATUS = 'systemstatus' // WRKSYSSTS (PRD-fase3 §2.1)
 }
+
+// The commands of PRD-fase3 whose panels are still to come (S9-S11): known, but not available yet.
+export const COMING_COMMANDS = ['WRKSBS', 'DSPMSG', 'WRKMSG', 'WRKJOBSCDE']
+
+// The commands that have no prompt here: F4 on them runs them, as their panel is the only thing to show.
+export const UNPROMPTED_COMMANDS = ['WRKSYSSTS']
 
 // The options WRKACTJOB takes (the legend). Anything else typed in Opt is 'not valid'.
 export const VALID_OPTIONS = ['4', '5', '7', '8']
@@ -42,6 +50,15 @@ export const ROLL_LIMIT = 'Roll up or down beyond first or last record in file.'
 export const NO_METRICS = 'Metrics provider not installed: CPU figures are not available.'
 export const MAX_DELAY = 999999
 
+// WRKSYSSTS's own state: it is a panel over the base, with its figures, pools and statistics.
+interface ISystemFrame {
+    status?: IWrkSystem
+    top: number
+    view: ESystemView
+    statsFrom: number
+    command: number            // the command line field of the last paint
+}
+
 // A panel opened over WRKACTJOB (or the menu), with what it shows and the fields of its last paint.
 interface IFrame {
     panel: EWrkPanel
@@ -52,6 +69,7 @@ interface IFrame {
     selection?: number                 // WRKJOB's selection field
     files?: ISpooledFileField[]        // the spooled files' option fields
     browseFields?: IBrowseFields
+    systemStatus?: ISystemFrame
 }
 
 // One option typed on the list, waiting for its turn.
@@ -208,6 +226,15 @@ export class WrkSession {
                 frame.files = paintSpooledFiles(p, job, this.message)
                 screen.cursor = frame.files[0]?.start ?? 0
                 break
+            case EWrkPanel.SYSTEM_STATUS: {
+                const sys = frame.systemStatus!
+                sys.command = paintSystemStatus(p, {
+                    system: this.system, now: this.now(), elapsedMs: this.now() - sys.statsFrom, status: sys.status,
+                    top: sys.top, view: sys.view, command: '', message: this.message
+                })
+                screen.cursor = sys.command
+                break
+            }
             default:
                 frame.browseFields = paintBrowse(p, frame.browse!, this.message)
                 screen.cursor = frame.browseFields.control
@@ -309,6 +336,9 @@ export class WrkSession {
                     return
                 case EWrkPanel.BROWSE:
                     this.browseAttention(input, frame)
+                    return
+                case EWrkPanel.SYSTEM_STATUS:
+                    this.systemStatusAttention(input, frame)
                     return
                 default:
                     // the displays (attributes, messages): Enter continues
@@ -464,8 +494,21 @@ export class WrkSession {
                 if (!this.keywordsOk(cl, ['SBS', 'JOB'], field)) return
                 this.filter = { subsystem: cl.params.SBS ?? '', job: cl.params.JOB ?? '' }
                 this.top = 0
+                // WRKACTJOB is the base, not a panel over it: typed on a panel, it leaves every panel open
+                this.stack = []
+                this.queue = []
                 this.base = EWrkPanel.ACTIVE_JOBS
                 void this.refresh()
+                return
+            }
+            case 'WRKSYSSTS': {
+                if (!this.keywordsOk(cl, ['RESET'], field)) return
+                const reset = (cl.params.RESET ?? '*NO').trim()
+                if (reset !== '*YES' && reset !== '*NO') {
+                    this.error(`Value ${reset} for parameter RESET not valid.`, field)
+                    return
+                }
+                this.openSystemStatus(reset === '*YES')
                 return
             }
             case 'WRKJOB': {
@@ -476,13 +519,17 @@ export class WrkSession {
             }
             case 'ENDJOB':
                 if (!this.keywordsOk(cl, ['JOB', 'OPTION', 'DELAY'], field)) return
-                void this.endJob(cl.params, undefined, () => field)
+                // over the base the list is refreshed; over a panel, that panel is painted again with the message
+                void this.endJob(cl.params, undefined, () => field).then(ended => {
+                    if (ended && this.stack.length > 0 && !this.disposed) this.finish()
+                })
                 return
             case 'SIGNOFF':
                 this.signOff()
                 return
             default:
-                this.error(`Command ${cl.verb} in library *LIBL not found.`, field)
+                if (COMING_COMMANDS.includes(cl.verb)) this.error(`Command ${cl.verb} not available yet.`, field)
+                else this.error(`Command ${cl.verb} in library *LIBL not found.`, field)
         }
     }
 
@@ -499,6 +546,10 @@ export class WrkSession {
             return
         }
         const cl = parseCl(text)
+        if (!cl.error && UNPROMPTED_COMMANDS.includes(cl.verb)) {
+            this.runCommand(text, field)
+            return
+        }
         const def = PROMPTS.find(d => d.command === cl.verb)
         if (!def) {
             this.error(cl.error ?? `Command ${cl.verb} cannot be prompted here.`, field)
@@ -709,6 +760,84 @@ export class WrkSession {
         if (at === undefined) this.message = `String ${browse.find} not found.`
         else browse.top = at
         this.finish()
+    }
+
+    // ── WRKSYSSTS ───────────────────────────────────────────────────────────────────────────────────
+
+    // Opened over whatever is on the screen; typed again on itself, it is refreshed (RESET(*YES) restarts it).
+    private openSystemStatus = (reset: boolean): void => {
+        const top = this.frame
+        if (top?.panel === EWrkPanel.SYSTEM_STATUS) {
+            if (reset) top.systemStatus!.statsFrom = this.now()
+            void this.refreshSystemStatus(top, false)
+            return
+        }
+        const cols = this.terminal.screen.cols
+        void this.refreshSystemStatus({
+            panel: EWrkPanel.SYSTEM_STATUS,
+            systemStatus: { top: 0, view: systemViewsFor(cols)[0], statsFrom: this.now(), command: -1 }
+        }, true)
+    }
+
+    private refreshSystemStatus = async (frame: IFrame, opening: boolean): Promise<void> => {
+        const response = await this.ask({ command: EWrkCommand.SYSTEM })
+        if (!response) return
+        const sys = frame.systemStatus!
+        sys.status = response.system
+        const pools = sys.status?.pools.length ?? 0
+        sys.top = Math.max(0, Math.min(sys.top, pools - 1))
+        // D17 says it on every refresh; the missing provider, once per session
+        if (sys.status?.restricted) this.message = RESTRICTED_MESSAGE
+        else if (sys.status?.metrics === EWrkMetricsState.UNAVAILABLE && !this.metricsTold) {
+            this.metricsTold = true
+            this.message = this.message || NO_METRICS
+        }
+        if (opening) this.open(frame)
+        else this.finish()
+    }
+
+    private systemStatusAttention = (input: I5250Input, frame: IFrame): void => {
+        const sys = frame.systemStatus!
+        const command = (this.valueOf(input, sys.command) ?? '').trim()
+        switch (input.aid) {
+            case E5250Aid.F4:
+                this.promptCommand(command, sys.command)
+                return
+            case E5250Aid.F5:
+                void this.refreshSystemStatus(frame, false)
+                return
+            case E5250Aid.F10:
+                sys.statsFrom = this.now()
+                void this.refreshSystemStatus(frame, false)
+                return
+            case E5250Aid.F11: {
+                const views = systemViewsFor(this.terminal.screen.cols)
+                if (views.length < 2) {
+                    this.error('Function key not allowed.')
+                    return
+                }
+                sys.view = views[(views.indexOf(sys.view) + 1) % views.length]
+                this.finish()
+                return
+            }
+            case E5250Aid.ROLL_UP:
+            case E5250Aid.ROLL_DOWN: {
+                const forward = input.aid === E5250Aid.ROLL_UP
+                const page = poolPageSizeOf(this.terminal.screen.rows)
+                const pools = sys.status?.pools.length ?? 0
+                const target = forward ? sys.top + page : sys.top - page
+                if ((forward && target >= pools) || (!forward && sys.top === 0)) this.message = ROLL_LIMIT
+                else sys.top = Math.max(0, target)
+                this.finish()
+                return
+            }
+            case E5250Aid.ENTER:
+                if (command) this.runCommand(command, sys.command)
+                else void this.refreshSystemStatus(frame, false)
+                return
+            default:
+                this.error('Function key not allowed.')
+        }
     }
 
     // ── WRKACTJOB ───────────────────────────────────────────────────────────────────────────────────
