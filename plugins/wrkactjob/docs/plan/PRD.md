@@ -1,8 +1,8 @@
 # WRKACTJOB — un WRKACTJOB de IBM i (AS/400) sobre Kubernetes, en una 5250 · PRD
 
 > **ESTADO — DEFINICIÓN CERRADA** (2026-11-23). Decisiones D1–D11 cerradas con el usuario; los abiertos
-> A1–A8 se aceptaron tal cual se propusieron y pasaron a D4–D11. Solo queda pendiente que lleguen las
-> capturas de referencia (D11).
+> A1–A8 se aceptaron tal cual se propusieron y pasaron a D4–D11. Las capturas de referencia (D11) se
+> descartaron el 2026-11-24: no hacen falta. Producto entregado: ver [PLAN](PLAN.md), cerrado.
 >
 > Documento de definición de producto. **Previo al diseño técnico**: describe qué tiene que pasar y por
 > qué, no cómo se implementa. El desglose en fases/streams vivirá en `PLAN.md`, junto a este documento.
@@ -256,4 +256,4 @@ Cerradas el 2026-11-23, el usuario ("ok a todo"), tal como se propusieron en A1�
 
 ## 10. Abierto
 
-Nada. Las capturas de D11 son un pendiente, no una decisión.
+Nada. Las capturas de D11 se descartaron (2026-11-24).
