@@ -4,3 +4,5 @@ build/
 *.js.map
 *.tgz
 tests/.out/
+e2e/test-results/
+e2e/.creds.json
