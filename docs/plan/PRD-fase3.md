@@ -4,7 +4,7 @@
 > momento, pero más comandos de AS400 sí». Amplía el [PRD del MVP](PRD.md) (cerrado) y no repite su
 > problema, sus personas ni sus decisiones D1–D11, que siguen en vigor: mismo plugin, misma DCE `blockterm`,
 > mismo teclado, misma sesión en block mode. Previo al diseño técnico: los streams están en el
-> [PLAN](PLAN.md), fase 3 (S7–S12).
+> [PLAN](PLAN.md), fase 3 (S7–S12). **Entregada y publicada el 2026-11-24 como `plugin/wrkactjob@0.2.0`.**
 
 ---
 

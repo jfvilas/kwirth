@@ -1,9 +1,9 @@
 # WRKACTJOB — plan y backlog
 
-> **ESTADO — FASE 3 EN CURSO** (2026-11-24). **MVP (S0–S6) cerrado y publicado** el 2026-11-23 como
-> `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE); instalación de la DCE
-> desde el marketplace de jfvilas validada; capturas de referencia (D11) descartadas. **Fase 3** (más comandos
-> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho; S8 validado; S9 validado; S10 validado; S11 validado; S12: e2e y README hechos, falta tu QA y la publicación**. Cuelga
+> **ESTADO — CERRADO** (2026-11-24). **MVP (S0–S6)** publicado el 2026-11-23 como `plugin/wrkactjob@0.1.0` (y
+> `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE). **Fase 3 (S7–S12)**, más comandos de IBM i
+> ([PRD-fase3](PRD-fase3.md), D12–D18), publicada el 2026-11-24 como `plugin/wrkactjob@0.2.0`. Todo validado por
+> el usuario. Lo que sigue (§4) es backlog, sin streams. Cuelga
 > del [PRD](PRD.md) y del [PRD-fase3](PRD-fase3.md), y no repite ni su problema ni sus decisiones (D1–D18).
 >
 > **Dónde vive:**
@@ -250,6 +250,7 @@ Lo común a todos los streams de la fase:
   - **Capturas nuevas** (`wrksyssts`, `wrkjobscde`, `message-details`, `dspsbsd`) revisadas una a una: solo el fixture y los nodos de k3d. WRKSBS y la lista de DSPMSG no se capturan porque enseñan los namespaces y events del cluster entero.
   - README: sección «More IBM i commands» con los cuatro comandos y sus opciones, F12 de WRKACTJOB, el scope `wrkactjob$schedule` y qué ve cada clave; descripción del `package.json` ampliada.
   - **Histórico de métricas abierto** (`docs/qa/test-metrics-history.md` y sus dos PNG): en el MVP no se abrió; la fila de la 0.1.0 se escribe ahora.
+- ✅ **PUBLICADO (2026-11-24)**, con el OK del usuario tras su QA. `@jfvilas/kwirth-plugin-wrkactjob@0.2.0` en npm (GET 200 a los ~6 min). En github.com/jfvilas/kwirth: subtree pull de `plugins/wrkactjob`, entrada `wrkactjob@0.2.0` en el manifest raíz (encima de la 0.1.0, `requires: blockterm ≥ 0.2.0`), fila del README raíz con los comandos nuevos y «closed», y el tag `plugin/wrkactjob@0.2.0`. `wrkactjob` sale de `kwirth-dev.json`.
 
 ## 4. Backlog (después del MVP)
 
