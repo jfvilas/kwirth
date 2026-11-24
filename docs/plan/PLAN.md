@@ -1,12 +1,10 @@
 # WRKACTJOB — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-23). PLAN aprobado. **Hecho el S0** (DCE `blockterm`, commit `6848a35` en
-> su repo; `0.1.0` publicada en npm). **Hecho el S1** (SDSF 0.11.0 sobre la DCE, publicado). **Hecho el S2**
-> (`blockterm` 0.2.0, commit `654928c`; QA y tipos validados; ⚠️ **sin publicar**: el clasificador de permisos
-> bloqueó el `npm publish`; publicada después, con el OK explícito del usuario). **Hecho el S3** (scaffold y back,
-> commit `6ee2b21`). **Hecho el S4** (commit `b407576`). **Hecho el S5** (commit `8e562e8`). **Hecho el S6:
-> MVP publicado el 2026-11-23** — `plugin/wrkactjob@0.1.0` y `dce/blockterm@0.2.0`. Queda el backlog (§4). Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de
-> producto (D1–D11).
+> **ESTADO — CERRADO** (2026-11-24). Streams S0–S6 hechos y validados por el usuario; MVP publicado el
+> 2026-11-23 como `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE). La
+> instalación de la DCE desde el marketplace de jfvilas, validada. Las capturas de referencia (D11) se
+> descartan: los códigos de error 5250 quedan como están. Lo que sigue (§4) es backlog, sin streams. Cuelga
+> del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto (D1–D11).
 >
 > **Dónde vive:**
 > - `~/github/kwirth/plugins/wrkactjob`: repo anidado (rama `main`, identidad `jfvilas`) **sin remoto**,
@@ -89,7 +87,7 @@
   - **Página de prueba:** `npm run try` → `try/out/index.html` (gitignorada). Carga el `dist/front.js` construido con el React de la página y pinta una pantalla tipo WRKACTJOB (`?mono=1`, `?wide=1`); el «host» contesta a la opción 9 con el error de IBM i en la fila 24.
   - Tests: 65 (35 nuevos: motor 5250, pintado, teclado y compatibilidad), con el motor 5250 al 100 % de líneas. **e2e de SDSF 26/26 sobre la DCE 0.2.0** (SDSF 0.11.0 de nuevo en `kwirth-dev.json` mientras duró la prueba).
   - **Tipos nuevos (⚠️ a validar por el usuario):** `IGlassRun`, `IGlassOia`, `IGlassProps`, `IGlassKeys`, `I5250Look`, `I5250FieldFormat`, `I5250Field`, `I5250Cell`, `I5250KeyAction`, `I5250ModifiedField`, `I5250Input`, `I5250FieldStyle`, `ITerminalView5250Props`; enums `E5250Attribute`, `E5250AttributeBit`, `E5250Shift`, `E5250Adjust`, `E5250Aid`, `E5250Lock`, `E5250Error`, `E5250Key`.
-  - **Fuera del S2 (backlog):** Attn y Sys Req (no son AID: necesitan una vía de «señal de sesión» que se decide con los paneles), la AID Help sin tecla (F1 es F1; en IBM i, F1 ya es la ayuda), y mandatory enter/fill del FFW (WRKACTJOB no los usa). ⚠️ Los códigos de error de operador `0005`, `0010`, `0012` y `0019` hay que contrastarlos con capturas reales (D11 del PRD).
+  - **Fuera del S2 (backlog):** Attn y Sys Req (no son AID: necesitan una vía de «señal de sesión» que se decide con los paneles), la AID Help sin tecla (F1 es F1; en IBM i, F1 ya es la ayuda), y mandatory enter/fill del FFW (WRKACTJOB no los usa). Los códigos de error de operador `0005`, `0010`, `0012` y `0019` quedan como están: el usuario descartó contrastarlos con capturas reales (D11, 2026-11-24).
 
 ### Fase 2 — el MVP de WRKACTJOB
 
