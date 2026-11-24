@@ -2,7 +2,7 @@ import {
     E5250Aid, E5250Lock, GEOMETRY_5250_24X80, I3270Geometry, I5250Input, I5250KeyAction, Painter5250, Screen5250, Terminal5250
 } from '@jfvilas/kwirth-dce-blockterm'
 import { IWrkDataSource } from './WrkDataSource'
-import { EWrkCommand, EWrkError, EWrkJobStatus, EWrkMetricsState, IWrkactjobMessageResponse, IWrkContainer, IWrkJob, IWrkRequest, IWrkSubsystem, IWrkSubsystemDescription, IWrkSystem } from './WrkactjobTypes'
+import { EWrkCommand, EWrkError, EWrkJobStatus, EWrkMetricsState, IWrkactjobMessageResponse, IWrkContainer, IWrkJob, IWrkRequest, IWrkMessage, IWrkSubsystem, IWrkSubsystemDescription, IWrkSystem } from './WrkactjobTypes'
 import { EWrkView, IActiveJobsFields, IWrkFilter, IWrkRow, NO_FILTER, pageSizeOf, paintActiveJobs, rowsFrom, viewsFor } from './panels/ActiveJobsPanel'
 import { MENU_ENTRIES, paintMainMenu, paintSignedOff } from './panels/MainMenu'
 import { IClCommand, parseCl } from './panels/ClCommand'
@@ -19,6 +19,7 @@ import {
     paintDisplayList, paintSubsystemDescription, paintSubsystems, SUBSYSTEM_DESCRIPTION_OPTIONS, SUBSYSTEM_OPTIONS, subsystemsPageSizeOf,
     subsystemsViewsFor
 } from './panels/SubsystemPanels'
+import { OPERATOR_QUEUES, paintMessageDetails, paintOperatorMessages, previousTopOf } from './panels/OperatorMessagesPanel'
 import { qualifiedName, shortName } from './panels/JobIdentity'
 
 export enum EWrkPanel {
@@ -34,14 +35,16 @@ export enum EWrkPanel {
     SYSTEM_STATUS = 'systemstatus',// WRKSYSSTS (PRD-fase3 §2.1)
     SUBSYSTEMS = 'subsystems',     // WRKSBS (PRD-fase3 §2.2)
     SUBSYSTEM_DESCRIPTION = 'subsystemdescription', // DSPSBSD: its menu
-    DISPLAY = 'display'            // a read-only list: each entry of DSPSBSD
+    DISPLAY = 'display',           // a read-only list: each entry of DSPSBSD
+    OPERATOR_MESSAGES = 'operatormessages', // DSPMSG QSYSOPR (PRD-fase3 §2.3)
+    MESSAGE_DETAILS = 'messagedetails'      // F1 on one: Additional Message Information
 }
 
 // The commands of PRD-fase3 whose panels are still to come (S9-S11): known, but not available yet.
-export const COMING_COMMANDS = ['DSPMSG', 'WRKMSG', 'WRKJOBSCDE']
+export const COMING_COMMANDS = ['WRKJOBSCDE']
 
 // The commands that have no prompt here: F4 on them runs them, as their panel is the only thing to show.
-export const UNPROMPTED_COMMANDS = ['WRKSYSSTS', 'WRKSBS', 'DSPSBSD']
+export const UNPROMPTED_COMMANDS = ['WRKSYSSTS', 'WRKSBS', 'DSPSBSD', 'DSPMSG', 'WRKMSG']
 
 // The options WRKACTJOB takes (the legend). Anything else typed in Opt is 'not valid'.
 export const VALID_OPTIONS = ['4', '5', '7', '8']
@@ -85,6 +88,13 @@ interface IDescriptionFrame {
     selection: number
 }
 
+// DSPMSG's own state: the messages, the first one shown, and where each one shown is (for F1).
+interface IOperatorMessagesFrame {
+    messages: IWrkMessage[]
+    top: number
+    shown: { index: number; first: number; last: number }[]
+}
+
 // A panel opened over WRKACTJOB (or the menu), with what it shows and the fields of its last paint.
 interface IFrame {
     panel: EWrkPanel
@@ -99,6 +109,8 @@ interface IFrame {
     subsystems?: ISubsystemsFrame
     description?: IDescriptionFrame
     display?: IDisplayList
+    operatorMessages?: IOperatorMessagesFrame
+    detail?: IWrkMessage
 }
 
 // One option typed on the list, waiting for its turn.
@@ -278,6 +290,17 @@ export class WrkSession {
                 paintDisplayList(p, frame.display!, this.system, this.message)
                 screen.cursor = 0
                 break
+            case EWrkPanel.OPERATOR_MESSAGES: {
+                const msg = frame.operatorMessages!
+                msg.shown = paintOperatorMessages(p, { system: this.system, messages: msg.messages, top: msg.top, message: this.message })
+                // on the first message, where F1 is meant to be pressed
+                screen.cursor = msg.shown.length ? screen.address(msg.shown[0].first, 3) : 0
+                break
+            }
+            case EWrkPanel.MESSAGE_DETAILS:
+                paintMessageDetails(p, frame.detail!, this.system)
+                screen.cursor = 0
+                break
             case EWrkPanel.SYSTEM_STATUS: {
                 const sys = frame.systemStatus!
                 sys.command = paintSystemStatus(p, {
@@ -410,6 +433,9 @@ export class WrkSession {
                     return
                 case EWrkPanel.DISPLAY:
                     this.displayAttention(input, frame)
+                    return
+                case EWrkPanel.OPERATOR_MESSAGES:
+                    this.operatorMessagesAttention(input, frame)
                     return
                 default:
                     // the displays (attributes, messages): Enter continues
@@ -580,6 +606,17 @@ export class WrkSession {
                 if (!this.keywordsOk(cl, [], field)) return
                 this.openSubsystems()
                 return
+            case 'DSPMSG':
+            case 'WRKMSG': {
+                if (!this.keywordsOk(cl, ['MSGQ'], field)) return
+                const queue = (cl.params.MSGQ ?? '').trim()
+                if (!OPERATOR_QUEUES.includes(queue)) {
+                    this.error(`Message queue ${queue} in *LIBL not found.`, field)
+                    return
+                }
+                this.openOperatorMessages()
+                return
+            }
             case 'DSPSBSD': {
                 if (!this.keywordsOk(cl, ['SBSD'], field)) return
                 const name = (cl.params.SBSD ?? '').trim()
@@ -1085,6 +1122,61 @@ export class WrkSession {
                 this.finish()
                 return
             }
+            default:
+                this.error('Function key not allowed.')
+        }
+    }
+
+    // ── DSPMSG QSYSOPR ──────────────────────────────────────────────────────────────────────────────
+
+    // Opened over whatever is on the screen (it has no command line of its own: F5 refreshes it).
+    private openOperatorMessages = (): void => {
+        void this.refreshOperatorMessages({ panel: EWrkPanel.OPERATOR_MESSAGES, operatorMessages: { messages: [], top: 0, shown: [] } }, true)
+    }
+
+    private refreshOperatorMessages = async (frame: IFrame, opening: boolean): Promise<void> => {
+        const response = await this.ask({ command: EWrkCommand.MESSAGES })
+        if (!response) return
+        const msg = frame.operatorMessages!
+        msg.messages = response.messages ?? []
+        msg.top = Math.max(0, Math.min(msg.top, msg.messages.length - 1))
+        if (opening) this.open(frame)
+        else this.finish()
+    }
+
+    private operatorMessagesAttention = (input: I5250Input, frame: IFrame): void => {
+        const msg = frame.operatorMessages!
+        const screen = this.terminal.screen
+        switch (input.aid) {
+            case E5250Aid.F1: {
+                const row = Math.floor(input.cursor / screen.cols)
+                const on = msg.shown.find(m => row >= m.first && row <= m.last)
+                if (!on) {
+                    this.error('Position the cursor on a message, then press F1.')
+                    return
+                }
+                this.open({ panel: EWrkPanel.MESSAGE_DETAILS, detail: msg.messages[on.index] })
+                return
+            }
+            case E5250Aid.F5:
+                void this.refreshOperatorMessages(frame, false)
+                return
+            case E5250Aid.ROLL_UP: {
+                const last = msg.shown[msg.shown.length - 1]
+                if (!last || last.index >= msg.messages.length - 1) this.message = ROLL_LIMIT
+                else msg.top = last.index + 1
+                this.finish()
+                return
+            }
+            case E5250Aid.ROLL_DOWN:
+                if (msg.top === 0) this.message = ROLL_LIMIT
+                else msg.top = previousTopOf(msg.messages, msg.top, screen.rows, screen.cols)
+                this.finish()
+                return
+            case E5250Aid.ENTER:
+                // nothing to reply to: Enter leaves, as on IBM i
+                this.back()
+                return
             default:
                 this.error('Function key not allowed.')
         }

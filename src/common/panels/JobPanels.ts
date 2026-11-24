@@ -102,21 +102,42 @@ export const paintAttributes = (p: Painter5250, job: IWrkJob, kind: EJobAttribut
 
 // ─── Display Messages (option 7) ────────────────────────────────────────────────────────────────
 
-// Text cut into lines of at most `width`, at blanks when it can.
+/*
+    Text cut into lines of at most `width`, at blanks when it can. A word longer than a line (a pod name with its
+    uid) cannot be kept whole anyway, so it fills what is left of the line it starts on and goes on in the next:
+    starting it on a line of its own only moved the cut and could leave its last characters alone on a line.
+*/
 export const wrap = (text: string, width: number): string[] => {
     const lines: string[] = []
     let line = ''
     for (const word of text.split(/\s+/).filter(Boolean)) {
-        if (line && line.length + 1 + word.length > width) {
+        if (!line && word.length <= width) {
+            line = word
+            continue
+        }
+        if (line && line.length + 1 + word.length <= width) {
+            line += ' ' + word
+            continue
+        }
+        if (word.length <= width) {
             lines.push(line)
-            line = ''
+            line = word
+            continue
         }
         let rest = word
+        if (line) {
+            const room = width - line.length - 1
+            if (room > 0) {
+                line += ' ' + rest.slice(0, room)
+                rest = rest.slice(room)
+            }
+            lines.push(line)
+        }
         while (rest.length > width) {
             lines.push(rest.slice(0, width))
             rest = rest.slice(width)
         }
-        line = line ? `${line} ${rest}` : rest
+        line = rest
     }
     if (line) lines.push(line)
     return lines

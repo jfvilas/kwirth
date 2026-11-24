@@ -9,7 +9,7 @@ import { paintCommandLine, paintKeys, paintMessage, paintRight, paintTitle, rows
 export const MENU_ENTRIES: { option: string; text: string; command: string }[] = [
     { option: '1', text: 'Work with active jobs', command: 'WRKACTJOB' },
     { option: '2', text: 'Work with subsystems', command: 'WRKSBS' },
-    { option: '3', text: 'Display operator messages', command: 'DSPMSG MSGQ(QSYSOPR)' },
+    { option: '3', text: 'Display operator messages', command: 'DSPMSG QSYSOPR' },
     { option: '4', text: 'Work with system status', command: 'WRKSYSSTS' },
     { option: '5', text: 'Work with job schedule entries', command: 'WRKJOBSCDE' },
     { option: '90', text: 'Sign off', command: 'SIGNOFF' }

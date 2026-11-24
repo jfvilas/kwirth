@@ -3,7 +3,7 @@
 > **ESTADO — FASE 3 EN CURSO** (2026-11-24). **MVP (S0–S6) cerrado y publicado** el 2026-11-23 como
 > `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE); instalación de la DCE
 > desde el marketplace de jfvilas validada; capturas de referencia (D11) descartadas. **Fase 3** (más comandos
-> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho; S8 validado; S9 con el código hecho y verificado en el dev, falta tu QA**. Cuelga
+> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho; S8 validado; S9 validado; S10 con el código hecho y verificado en el dev, falta tu QA**. Cuelga
 > del [PRD](PRD.md) y del [PRD-fase3](PRD-fase3.md), y no repite ni su problema ni sus decisiones (D1–D18).
 >
 > **Dónde vive:**
@@ -214,6 +214,14 @@ Lo común a todos los streams de la fase:
 **S10 — `DSPMSG QSYSOPR`.**
 - Panel `Display Messages` (`Queue . . . : QSYSOPR`, `Program . . : *DSPMSG`), mensajes en orden inverso, sin campo de Reply (D15); F1 con el cursor sobre un mensaje → `Additional Message Information` (event completo); F5; Roll. `WRKMSG` abre lo mismo. Mensaje del panel cuando no hay ninguno: `No messages available.`
 - **Hecho cuando:** criterio 3 del PRD-fase3; QA tuyo.
+- 🔶 **Código hecho y verificado en el dev (2026-11-24).** Lo que salió al construirlo:
+  - **Comandos:** `DSPMSG`, `DSPMSG QSYSOPR` (posicional), `DSPMSG MSGQ(QSYSOPR)` y `WRKMSG` abren lo mismo; también `*SYSOPR`, `*WRKUSR` y `*USRPRF` (no hay cola por usuario, D15). Otra cola: «Message queue X in *LIBL not found.». El menú (3) teclea `DSPMSG QSYSOPR`. F4 sobre ellos los ejecuta.
+  - **Posicionales en el parser CL:** solo para los comandos de `POSITIONAL` (hoy `DSPMSG` y `WRKMSG` → `MSGQ`) y solo antes de cualquier keyword, como CL. El resto de comandos sigue rechazándolos.
+  - **El panel:** Queue/Library/Program arriba, una instrucción para F1 (sin «Type reply»: no hay respuesta, D15), y cada mensaje como «Pod X in subsystem Y: Reason - texto», con las líneas siguientes dos columnas más adentro. **Se pagina por mensajes enteros** (uno no se parte entre páginas; uno más largo que la página se corta). Sin mensajes: «No messages available.». Enter sale (no hay nada que contestar), F5 refresca. No tiene línea de comandos.
+  - **F1** con el cursor en cualquier línea de un mensaje abre **Additional Message Information**: Message ID (la reason), tipo, fecha de envío y primera, ocurrencias, objeto, subsistema (`*NONE` para un nodo), programa (el componente) y el texto completo. Fuera de un mensaje: «Position the cursor on a message, then press F1.».
+  - **`wrap` corregido para todos los paneles:** una palabra más larga que la línea (el nombre de un pod con su uid, frecuente en los events) ahora llena lo que queda de la línea en que empieza; antes bajaba a una línea propia y dejaba un `)` huérfano. Lo destapó la prueba en el dev.
+  - Tests: 116 (8 nuevos), 100 % de líneas (c8).
+  - **Tipos nuevos (⚠️ a validar):** `IOperatorMessagesState`; `EWrkPanel.OPERATOR_MESSAGES` y `MESSAGE_DETAILS`; `POSITIONAL` (el mapa de posicionales del parser); internos de la sesión, `IOperatorMessagesFrame` y los campos `operatorMessages` y `detail` de `IFrame`.
 
 **S11 — `WRKJOBSCDE`.**
 - Parser de cron propio en `common` (5 campos, listas, rangos, pasos, nombres de días/meses y `@hourly`…; sin dependencias): la próxima ejecución y la traducción a las frecuencias de IBM i (`*WEEKLY`, `*MONTHLY`, días y hora) o `*CRON` con la expresión (D16).
