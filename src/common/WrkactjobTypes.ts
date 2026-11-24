@@ -211,6 +211,7 @@ export interface IWrkSubsystemDescription {
     created: string            // ISO
     labels: Record<string, string>
     annotations: Record<string, string>
+    pools: string[]            // the nodes its active pods run on (those the key reaches), sorted
     quotas: IWrkQuotaItem[]
     limits: IWrkLimitItem[]
 }
@@ -289,6 +290,12 @@ export interface IWrkactjobMessageResponse extends IInstanceMessage {
     events?: IWrkEvent[]       // EVENTS
     system?: IWrkSystem        // SYSTEM
     subsystems?: IWrkSubsystem[]                // SUBSYSTEMS
+    /*
+        SUBSYSTEMS, SUBSYSTEM_DESCRIPTION: the system pools in their numbering (PRD-fase3 D13), pool n being
+        poolNames[n-1] — every node at 'cluster' level (as WRKSYSSTS numbers them), below it the nodes of the jobs
+        the key reaches.
+    */
+    poolNames?: string[]
     description?: IWrkSubsystemDescription      // SUBSYSTEM_DESCRIPTION
     messages?: IWrkMessage[]   // MESSAGES
     schedules?: IWrkSchedule[] // SCHEDULES

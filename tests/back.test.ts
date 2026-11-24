@@ -481,6 +481,10 @@ test('SUBSYSTEMS: by name, or through a pod the key reaches; sorted', async () =
     assert.deepEqual(byName.map(s => [s.name, s.jobs, s.pools, s.status]), [['empty', 0, [], EWrkSubsystemStatus.ACTIVE], ['payroll', 1, ['node-1'], EWrkSubsystemStatus.ACTIVE]])
     const byPod = (await (await open('wrkactjob$read:::^secret:')).run(message(EWrkCommand.SUBSYSTEMS))).subsystems as IWrkSubsystem[]
     assert.deepEqual(byPod.map(s => s.name), ['vault'], 'a key on some pods sees only their subsystems')
+    const numbered = await (await open('wrkactjob$read:^payroll$:::')).run(message(EWrkCommand.SUBSYSTEMS))
+    assert.deepEqual(numbered.poolNames, ['node-1'], 'below cluster level: the nodes of the jobs it reaches')
+    const all = await (await open(CLUSTER_ALL)).run(message(EWrkCommand.SUBSYSTEMS))
+    assert.deepEqual(all.poolNames, ['node-1', 'node-2'], 'at cluster level: every node, as WRKSYSSTS numbers them')
 })
 
 test('SUBSYSTEM_DESCRIPTION: labels and quotas of a subsystem the key reaches, by name or by a pod', async () => {
@@ -489,6 +493,7 @@ test('SUBSYSTEM_DESCRIPTION: labels and quotas of a subsystem the key reaches, b
     assert.equal(d.name, 'payroll')
     assert.deepEqual(d.labels, { team: 'hr' })
     assert.deepEqual(d.quotas, [{ quota: 'q', resource: 'pods', hard: '10', used: '3' }])
+    assert.deepEqual(d.pools, ['node-1'])
     const byPod = await (await open('wrkactjob$read:::^api-:')).run(message(EWrkCommand.SUBSYSTEM_DESCRIPTION, { targetName: '' }))
     assert.equal(byPod.ok, true)
     const out = await (await open('wrkactjob$read:::^api-:')).run(message(EWrkCommand.SUBSYSTEM_DESCRIPTION, { targetNamespace: 'vault' }))

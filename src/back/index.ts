@@ -16,7 +16,7 @@ import {
 import { isActive, mapJob } from './JobMapper'
 import { mapEvent, mapMessage, sortEvents, sortMessages } from './EventMapper'
 import { IUsage, usageOf } from './PodMetrics'
-import { cpuOf, IPodJob, mapDescription, mapPools, mapSubsystem, storageOf } from './SystemMapper'
+import { cpuOf, IPodJob, mapDescription, mapPools, mapSubsystem, nodesOf, storageOf } from './SystemMapper'
 import { mapSchedule, submittedJobOf } from './ScheduleMapper'
 import { IMetricsCluster } from './MetricsProviderTypes'
 
@@ -26,7 +26,7 @@ import { IMetricsCluster } from './MetricsProviderTypes'
 */
 export interface IWrkClusterInfo {
     coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'readNamespacedPodLog' | 'deleteNamespacedPod' | 'listNamespacedEvent'
-        | 'listNode' | 'listPersistentVolume' | 'listNamespace' | 'readNamespace' | 'listNamespacedPod'
+        | 'listNode' | 'listPersistentVolume' | 'listNamespace' | 'readNamespace'
         | 'listNamespacedResourceQuota' | 'listNamespacedLimitRange' | 'listEventForAllNamespaces'>
     batchApi: Pick<BatchV1Api, 'listCronJobForAllNamespaces' | 'listJobForAllNamespaces' | 'readNamespacedCronJob'
         | 'patchNamespacedCronJob' | 'createNamespacedJob'>
@@ -282,16 +282,23 @@ export class WrkactjobChannel implements IChannel {
                     return { ...response, ok: true, system: await this.system(instance) }
 
                 case EWrkCommand.SUBSYSTEMS:
-                    return { ...response, ok: true, subsystems: await this.subsystems(instance) }
+                    return { ...response, ok: true, ...(await this.subsystems(instance)) }
 
                 case EWrkCommand.SUBSYSTEM_DESCRIPTION: {
-                    if (!(await this.reachesSubsystem(instance, namespace))) return fail(EWrkError.NOT_AUTHORIZED, `Your key does not reach subsystem ${namespace}`)
-                    const [ns, quotas, ranges] = await Promise.all([
+                    const podList = await this.clusterInfo.coreApi.listPodForAllNamespaces()
+                    const active = this.activeJobs(instance, podList.items, usageOf(this.readings))
+                    const inside = active.filter(p => p.job.namespace === namespace)
+                    // a subsystem is reached by name, or through a job of it the key reaches (see subsystems)
+                    if (inside.length === 0 && !keyMatchesResource(instance.accessKey, { namespace })) {
+                        return fail(EWrkError.NOT_AUTHORIZED, `Your key does not reach subsystem ${namespace}`)
+                    }
+                    const [ns, quotas, ranges, poolNames] = await Promise.all([
                         this.clusterInfo.coreApi.readNamespace({ name: namespace }),
                         this.clusterInfo.coreApi.listNamespacedResourceQuota({ namespace }),
-                        this.clusterInfo.coreApi.listNamespacedLimitRange({ namespace })
+                        this.clusterInfo.coreApi.listNamespacedLimitRange({ namespace }),
+                        this.poolNames(instance, active)
                     ])
-                    return { ...response, ok: true, description: mapDescription(ns, quotas.items, ranges.items) }
+                    return { ...response, ok: true, description: mapDescription(ns, inside, quotas.items, ranges.items), poolNames }
                 }
 
                 case EWrkCommand.MESSAGES:
@@ -385,21 +392,25 @@ export class WrkactjobChannel implements IChannel {
         WRKSBS: the namespaces the key reaches, by name or through a pod it reaches in them (a key restricted to
         some pods has no namespace of its own, but sees the subsystems those pods run in).
     */
-    private subsystems = async (instance: IWrkInstance) => {
+    private subsystems = async (instance: IWrkInstance): Promise<Pick<IWrkactjobMessageResponse, 'subsystems' | 'poolNames'>> => {
         const [nsList, podList] = await Promise.all([this.clusterInfo.coreApi.listNamespace(), this.clusterInfo.coreApi.listPodForAllNamespaces()])
         const active = this.activeJobs(instance, podList.items, usageOf(this.readings))
-        return nsList.items
+        const subsystems = nsList.items
             .map(ns => ({ ns, inside: active.filter(p => p.job.namespace === (ns.metadata?.name ?? '')) }))
             .filter(({ ns, inside }) => inside.length > 0 || keyMatchesResource(instance.accessKey, { namespace: ns.metadata?.name ?? '' }))
             .map(({ ns, inside }) => mapSubsystem(ns, inside))
             .sort((a, b) => a.name.localeCompare(b.name))
+        return { subsystems, poolNames: await this.poolNames(instance, active) }
     }
 
-    // The same rule for one subsystem.
-    private reachesSubsystem = async (instance: IWrkInstance, namespace: string): Promise<boolean> => {
-        if (keyMatchesResource(instance.accessKey, { namespace })) return true
-        const pods = await this.clusterInfo.coreApi.listNamespacedPod({ namespace })
-        return pods.items.some(p => this.reachesPod(instance, p))
+    /*
+        The system pools in WRKSYSSTS's numbering (D13): every node by name at 'cluster' level; below it, where no
+        node can be listed, the nodes of the jobs the key reaches.
+    */
+    private poolNames = async (instance: IWrkInstance, active: IPodJob[]): Promise<string[]> => {
+        if (!this.allows(instance.accessKey, EWrkScope.CLUSTER)) return nodesOf(active)
+        const nodes = await this.clusterInfo.coreApi.listNode()
+        return nodes.items.map(n => n.metadata?.name ?? '').filter(Boolean).sort()
     }
 
     /*

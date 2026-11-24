@@ -3,7 +3,7 @@
 > **ESTADO — FASE 3 EN CURSO** (2026-11-24). **MVP (S0–S6) cerrado y publicado** el 2026-11-23 como
 > `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE); instalación de la DCE
 > desde el marketplace de jfvilas validada; capturas de referencia (D11) descartadas. **Fase 3** (más comandos
-> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho; S8 con el código hecho y verificado en el dev; falta tu QA**. Cuelga
+> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho; S8 validado; S9 con el código hecho y verificado en el dev, falta tu QA**. Cuelga
 > del [PRD](PRD.md) y del [PRD-fase3](PRD-fase3.md), y no repite ni su problema ni sus decisiones (D1–D18).
 >
 > **Dónde vive:**
@@ -185,7 +185,7 @@ Lo común a todos los streams de la fase:
 - **Hecho cuando:** criterio 1 del PRD-fase3; tests de la tabla de pools con 1 y con más nodos que filas (Roll); QA tuyo.
 - 🔶 **Código hecho (2026-11-24).** Lo que salió al construirlo:
   - **WRKSYSSTS es un panel sobre la base** (como los del job): F12 vuelve uno, F3 vuelve a donde se llamó (WRKACTJOB o el menú). Tecleado sobre sí mismo se refresca; `RESET(*YES)` reinicia el tiempo transcurrido, igual que F10. F4 sobre él lo ejecuta: no tiene prompt aquí.
-  - **WRKACTJOB tecleado sobre un panel cierra todos los paneles:** es la base, no un panel encima. Simplificación frente a IBM i, que lo anidaría.
+  - **WRKACTJOB tecleado sobre un panel cierra todos los paneles:** es la base, no un panel encima. Simplificación frente a IBM i, que lo anidaría. *(Sustituido en el S9: los paneles se apartan y F12 en WRKACTJOB vuelve a ellos.)*
   - **ENDJOB tecleado sobre un panel** deja ese panel pintado con el mensaje (antes solo existía sobre la base, que se refresca).
   - **Cifras:** `% CPU used`, `Elapsed time`, `Jobs in system`, `Main storage size (M)` (la memoria allocatable de los nodos); a la derecha `Auxiliary storage:` con `System ASP` (G) y `% system ASP used` (cuatro decimales, como IBM i). `*N` lo que no se sabe o no se puede ver.
   - **Pools a 80 columnas, tres vistas con F11:** faults (`Pool Size`, `Reserved Size`, `Max Active`, `DB Fault` = jobs en MSGW, `Non-DB Fault` = reinicios), actividad (`Active`, `CPU %`, `Used Size`: no hay transiciones en Kubernetes, así que es el uso) y nombres (el nodo). A 132, todo en una vista y F11 no está.
@@ -199,6 +199,17 @@ Lo común a todos los streams de la fase:
 **S9 — `WRKSBS` y `DSPSBSD`.**
 - `WRKSBS` (§2.2): subsistemas con `Total Storage (M)` y sus pools (los números de `WRKSYSSTS`), F11 al estado. Opción `5` → `Display Subsystem Description` (menú de la descripción: atributos = labels/annotations, entradas de pool = ResourceQuotas, límites = LimitRanges; cada una con su panel de solo lectura). Opción `8` → `WRKACTJOB SBS(ns)` encima en la pila. `4` → «Option 4 not valid.» (D14).
 - **Hecho cuando:** criterio 2 del PRD-fase3; QA tuyo.
+- 🔶 **Código hecho y verificado en el dev (2026-11-24).** Lo que salió al construirlo:
+  - **WRKSBS** (por el menú, `WRKSBS` o F14 de vuelta a WRKSYSSTS): `Total Storage (M)` (`.00` como IBM i) y las columnas de pools 1–10, cada una con el **número de pool del sistema**. La numeración la da el back (`poolNames`): todos los nodos por nombre con nivel `cluster` (la misma de WRKSYSSTS), por debajo los nodos de los jobs que la clave alcanza. F11: estado, jobs y el nombre completo del namespace. A 132, todo junto y sin F11. Sin leyenda ni validez para `4` (D14).
+  - **Varias opciones a la vez** se validan antes de correr ninguna y corren en orden, cada una al dejar la anterior; al acabar, la lista se pide de nuevo (como WRKACTJOB).
+  - **`8` y WRKACTJOB tecleado sobre un panel:** los paneles se apartan y **F12 en WRKACTJOB vuelve a ellos**; F3 va al menú y los deja. Sustituye la simplificación del S8 (que cerraba todos los paneles).
+  - **DSPSBSD** (opción `5` o `DSPSBSD SBSD(nombre)`): el menú de IBM i con 1 Operational attributes (estado, creación, pools, labels y annotations) y 2 Pool definitions (pool del subsistema, pool del sistema, nodo); las entradas 3–10 de IBM i no tienen equivalente, así que **3 y 4 son propias: Resource quota entries y Limit range entries**. Cada una es una lista de solo lectura con Roll y «Press Enter to continue.». En la línea de selección, un número que no es entrada es «Selection n not valid.»; otra cosa se ejecuta como comando.
+  - **F4 sobre WRKSBS o DSPSBSD los ejecuta**, como WRKSYSSTS.
+  - **Back:** `SUBSYSTEMS` y `SUBSYSTEM_DESCRIPTION` devuelven `poolNames`; la descripción trae sus `pools`. `SUBSYSTEM_DESCRIPTION` ya no usa `listNamespacedPod`: lista todos los pods una vez (para los pools y la numeración) y de ahí sale si la clave alcanza el subsistema.
+  - `rowsOf` acepta solo la altura (`Pick<Screen5250, 'rows'>`): los tamaños de página se calculan sin pantalla.
+  - **Verificado en el dev** con capturas por la UI: WRKSBS (9 subsistemas, pools 1 y 2 = agent y server), F11, `5` con sus cuatro entradas y `8` sobre kube-system con F12 de vuelta. La primera pasada falló en la `8` porque el back de dev se reinició a mitad (12:14:58, ajeno); la segunda, limpia. Salió que la cabecera de los LimitRange no cabía en 80 columnas.
+  - Tests: 108 (13 nuevos), 100 % de líneas (c8).
+  - **Tipos nuevos (⚠️ a validar):** `poolNames` en `IWrkactjobMessageResponse`, `pools` en `IWrkSubsystemDescription`; `ESubsystemOption`, `ESubsystemsView`, `ISubsystemsState`, `ISubsystemsFields`, `ESubsystemDescription`, `IDisplayList`; `EWrkPanel.SUBSYSTEMS`, `SUBSYSTEM_DESCRIPTION`, `DISPLAY`; internos de la sesión, `ISubsystemsFrame`, `IDescriptionFrame` y los campos `subsystems`, `description`, `display` de `IFrame`.
 
 **S10 — `DSPMSG QSYSOPR`.**
 - Panel `Display Messages` (`Queue . . . : QSYSOPR`, `Program . . : *DSPMSG`), mensajes en orden inverso, sin campo de Reply (D15); F1 con el cursor sobre un mensaje → `Additional Message Information` (event completo); F5; Roll. `WRKMSG` abre lo mismo. Mensaje del panel cuando no hay ninguno: `No messages available.`

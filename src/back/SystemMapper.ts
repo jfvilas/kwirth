@@ -68,7 +68,7 @@ export const mapSubsystem = (ns: V1Namespace, inside: IPodJob[]): IWrkSubsystem 
     name: ns.metadata?.name ?? '',
     status: subsystemStatusOf(ns),
     storage: inside.reduce((sum, p) => sum + memoryRequestOf(p.pod), 0),
-    pools: [...new Set(inside.map(p => p.job.node).filter(Boolean))].sort(),
+    pools: nodesOf(inside),
     jobs: inside.length
 })
 
@@ -104,12 +104,16 @@ export const limitItemsOf = (ranges: V1LimitRange[]): IWrkLimitItem[] =>
         }))
     }))
 
-export const mapDescription = (ns: V1Namespace, quotas: V1ResourceQuota[], ranges: V1LimitRange[]): IWrkSubsystemDescription => ({
+// The nodes some pods run on, sorted, once each.
+export const nodesOf = (inside: IPodJob[]): string[] => [...new Set(inside.map(p => p.job.node).filter(Boolean))].sort()
+
+export const mapDescription = (ns: V1Namespace, inside: IPodJob[], quotas: V1ResourceQuota[], ranges: V1LimitRange[]): IWrkSubsystemDescription => ({
     name: ns.metadata?.name ?? '',
     status: subsystemStatusOf(ns),
     created: iso(ns.metadata?.creationTimestamp),
     labels: ns.metadata?.labels ?? {},
     annotations: ns.metadata?.annotations ?? {},
+    pools: nodesOf(inside),
     quotas: quotaItemsOf(quotas),
     limits: limitItemsOf(ranges)
 })

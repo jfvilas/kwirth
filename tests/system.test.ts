@@ -114,9 +114,9 @@ test('limitItemsOf: a row per type and resource, with what it sets', () => {
 
 test('mapDescription: the namespace, its labels and annotations, quotas and limits', () => {
     const ns: V1Namespace = { metadata: { name: 'payroll', creationTimestamp: new Date('2026-01-01T00:00:00Z'), labels: { a: 'b' }, annotations: { c: 'd' } } }
-    const d = mapDescription(ns, [], [])
-    assert.deepEqual(d, { name: 'payroll', status: EWrkSubsystemStatus.ACTIVE, created: '2026-01-01T00:00:00.000Z', labels: { a: 'b' }, annotations: { c: 'd' }, quotas: [], limits: [] })
-    assert.deepEqual(mapDescription({}, [], []), { name: '', status: EWrkSubsystemStatus.ACTIVE, created: '', labels: {}, annotations: {}, quotas: [], limits: [] })
+    const d = mapDescription(ns, [pair(pod('a', 'n2', [])), pair(pod('b', 'n1', [])), pair(pod('c', 'n2', []))], [], [])
+    assert.deepEqual(d, { name: 'payroll', status: EWrkSubsystemStatus.ACTIVE, created: '2026-01-01T00:00:00.000Z', labels: { a: 'b' }, annotations: { c: 'd' }, pools: ['n1', 'n2'], quotas: [], limits: [] })
+    assert.deepEqual(mapDescription({}, [], [], []), { name: '', status: EWrkSubsystemStatus.ACTIVE, created: '', labels: {}, annotations: {}, pools: [], quotas: [], limits: [] })
 })
 
 // ─── DSPMSG QSYSOPR ───────────────────────────────────────────────────────────────────────────────
