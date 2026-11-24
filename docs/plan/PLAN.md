@@ -1,10 +1,10 @@
 # WRKACTJOB — plan y backlog
 
-> **ESTADO — CERRADO** (2026-11-24). Streams S0–S6 hechos y validados por el usuario; MVP publicado el
-> 2026-11-23 como `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE). La
-> instalación de la DCE desde el marketplace de jfvilas, validada. Las capturas de referencia (D11) se
-> descartan: los códigos de error 5250 quedan como están. Lo que sigue (§4) es backlog, sin streams. Cuelga
-> del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto (D1–D11).
+> **ESTADO — FASE 3 EN CURSO** (2026-11-24). **MVP (S0–S6) cerrado y publicado** el 2026-11-23 como
+> `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE); instalación de la DCE
+> desde el marketplace de jfvilas validada; capturas de referencia (D11) descartadas. **Fase 3** (más comandos
+> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3, **sin empezar**. Cuelga
+> del [PRD](PRD.md) y del [PRD-fase3](PRD-fase3.md), y no repite ni su problema ni sus decisiones (D1–D18).
 >
 > **Dónde vive:**
 > - `~/github/kwirth/plugins/wrkactjob`: repo anidado (rama `main`, identidad `jfvilas`) **sin remoto**,
@@ -154,10 +154,49 @@
   - `blockterm` 0.2.0 ya está en npm; falta su entrada en el manifest de jfvilas.
 - ✅ **PUBLICADO (2026-11-23)**, con el OK del usuario. `@jfvilas/kwirth-plugin-wrkactjob@0.1.0` en npm (GET 200 a los ~10 min). En github.com/jfvilas/kwirth: subtree pull de `dces/blockterm` (0.2.0), **subtree add de `plugins/wrkactjob`**, manifest raíz con `wrkactjob@0.1.0` (con `requires: blockterm ≥ 0.2.0`) y `dce/blockterm@0.2.0`, filas en el índice del README, y los tags `plugin/wrkactjob@0.1.0` y `dce/blockterm@0.2.0`. `wrkactjob` y `blockterm` salen de `kwirth-dev.json` (lo pidió el usuario): en dev se instalan del marketplace de jfvilas, que es además la prueba pendiente de que instala una DCE de ese manifest.
 
+### Fase 3 — más comandos de IBM i ([PRD-fase3](PRD-fase3.md))
+
+Lo común a todos los streams de la fase:
+- **Sin tocar `blockterm`.** Todo lo de la fase es del plugin; si un stream necesitara algo de la DCE, se para y se dice (una versión nueva de la DCE solo añade, y obliga a publicarla antes).
+- **Back:** cada comando nuevo es un `EWrkCommand` nuevo y una ampliación del `Pick` de `IWrkClusterInfo` (`coreApi`, `batchApi`, `storageApi` del `ClusterInfo` del core, solo tipos). Para los CronJobs se reutilizan `cronJobStatus` y `cronJobTrigger` de `common-back/KubernetesTools.ts` si el runtime del core (`__kwirth_back__`) los expone; si no, se llama a `batchApi` igual que ellos, sin copiar lógica.
+- **Front/sesión:** cada comando es un `EWrkPanel` nuevo en la pila de `WrkSession`, con su fichero en `src/common/panels/`; la línea de comandos y F4 los reconocen en cualquier panel que la tenga. F3 vuelve al menú, F12 uno atrás.
+- **Por stream:** unit tests con c8 al nivel del MVP (100 % de líneas en `common`), build, verificación en el dev con capturas por la UI y QA tuyo. Los tipos nuevos se listan para tu validación.
+- **Dev:** `wrkactjob` vuelve a `kwirth-dev.json` (desde `dist`) mientras dure la fase, comprobando antes, **en un turno aparte**, que no hay un Playwright vivo; sale al publicar.
+
+**S7 — Back de la fase 3 y el scope `wrkactjob$schedule`.**
+- Comandos: `SYSTEM` (nodos con allocatable, memoria pedida y pods máximos; PersistentVolumes; uso del provider `metrics`), `SUBSYSTEMS` (namespaces con estado, memoria pedida y nodos donde tienen pods), `SUBSYSTEM_DESCRIPTION` (labels, annotations, ResourceQuotas, LimitRanges de un namespace), `MESSAGES` (events Warning de los namespaces que ve la clave, el más reciente primero), `SCHEDULES` (CronJobs con schedule, zona, suspend, concurrencyPolicy, último schedule e historial de Jobs), `HOLD` / `RELEASE` (`suspend`), `SUBMIT` (Job desde el CronJob).
+- `wrkactjob$schedule` entra en `EWrkScope`, en la escalera entre `read` y `end` (D18) y en el catálogo de scopes. `HOLD`/`RELEASE`/`SUBMIT` lo exigen; una clave con `end` lo incluye por escalera.
+- D17: nodos y PersistentVolumes solo con una clave de nivel `cluster` o superior; si no, la respuesta lo marca (no autorizado a esas cifras) y el resto se calcula con lo que la clave ve.
+- Todo filtrado por los namespaces que alcanza la clave (`keyMatchesResource`), como `LIST`.
+- **Hecho cuando:** unit tests de los mapeadores y de la autorización de cada comando (incluido D17 y la escalera), 100 % de líneas en el back.
+
+**S8 — Main Menu y `WRKSYSSTS`.**
+- Main Menu con 1–5 y 90 (PRD-fase3 §3). La línea de comandos reconoce `WRKSBS`, `DSPMSG` (con o sin `QSYSOPR`), `WRKMSG`, `WRKSYSSTS` y `WRKJOBSCDE`; F4 sobre ellos abre su prompt (los que tienen parámetros) o el panel.
+- `WRKSYSSTS` (PRD-fase3 §2.1): cabecera (`% CPU used`, `Elapsed time`, `Jobs in system`, `Main storage size`, `System ASP`, `% system ASP used`), tabla de pools = nodos numerados por nombre (D13), F11 con sus vistas, F10, F5; `*N` sin `metrics` y sin permiso de cluster, con el mensaje de D17. A 132 columnas, las vistas que caben juntas.
+- **Hecho cuando:** criterio 1 del PRD-fase3; tests de la tabla de pools con 1 y con más nodos que filas (Roll); QA tuyo.
+
+**S9 — `WRKSBS` y `DSPSBSD`.**
+- `WRKSBS` (§2.2): subsistemas con `Total Storage (M)` y sus pools (los números de `WRKSYSSTS`), F11 al estado. Opción `5` → `Display Subsystem Description` (menú de la descripción: atributos = labels/annotations, entradas de pool = ResourceQuotas, límites = LimitRanges; cada una con su panel de solo lectura). Opción `8` → `WRKACTJOB SBS(ns)` encima en la pila. `4` → «Option 4 not valid.» (D14).
+- **Hecho cuando:** criterio 2 del PRD-fase3; QA tuyo.
+
+**S10 — `DSPMSG QSYSOPR`.**
+- Panel `Display Messages` (`Queue . . . : QSYSOPR`, `Program . . : *DSPMSG`), mensajes en orden inverso, sin campo de Reply (D15); F1 con el cursor sobre un mensaje → `Additional Message Information` (event completo); F5; Roll. `WRKMSG` abre lo mismo. Mensaje del panel cuando no hay ninguno: `No messages available.`
+- **Hecho cuando:** criterio 3 del PRD-fase3; QA tuyo.
+
+**S11 — `WRKJOBSCDE`.**
+- Parser de cron propio en `common` (5 campos, listas, rangos, pasos, nombres de días/meses y `@hourly`…; sin dependencias): la próxima ejecución y la traducción a las frecuencias de IBM i (`*WEEKLY`, `*MONTHLY`, días y hora) o `*CRON` con la expresión (D16).
+- Panel `Work with Job Schedule Entries` (§2.4) con `SCD`/`HLD`, fecha/hora, frecuencia, próximo envío; F11 al nombre completo. Opciones `3` (prompt `HLDJOBSCDE`), `6` (`RLSJOBSCDE`), `10` (`SBMJOB`), `5` (detalle e historial), `8` (pods del último Job en WRKACTJOB, o `No active jobs.`), `4` no válida (D14). Sin `wrkactjob$schedule`, el motivo sale en el prompt como en `ENDJOB`.
+- **Hecho cuando:** criterio 4 del PRD-fase3; tests del parser con las expresiones de los CronJobs típicos (cada minuto, horas fijas, días laborables, mensual, rangos con paso, nombres, zona horaria); QA tuyo (Hold/Release/Submit sobre un CronJob de prueba propio, nunca uno ajeno).
+
+**S12 — e2e, README y publicación de la 0.2.0.**
+- e2e ampliado en `wrkactjob-e2e`: el fixture añade un CronJob (suspendido de inicio, nunca lanza nada solo) y un event Warning propio; specs de los cuatro comandos, el menú y Hold/Release/Submit sobre ese CronJob. Lo de cluster (`WRKSYSSTS`) se comprueba por estructura, no por cifras.
+- README: tabla de comandos, opciones, el scope `wrkactjob$schedule`, capturas nuevas sacadas por el e2e.
+- **Publicación** (gate): `wrkactjob` 0.2.0 (`requires` sigue en `blockterm ≥ 0.2.0`), manifest de jfvilas, tag `plugin/wrkactjob@0.2.0`, subtree; `wrkactjob` sale de `kwirth-dev.json`.
+
 ## 4. Backlog (después del MVP)
 
-- **Fase 3:** `WRKSBS` (namespaces), `DSPMSG QSYSOPR` (events Warning), `WRKJOBQ` / `WRKJOBSCDE` (Jobs pendientes y CronJobs), `WRKSYSSTS` (nodos y uso del cluster).
-- **V2:** tn5250 (y tn3270 para SDSF) sobre el mismo motor de `blockterm`, con su lado back; cambio de sistema (cluster) desde dentro.
+- **Después de la fase 3** (PRD-fase3 §5): `WRKJOBQ`, `WRKDSKSTS`, `NETSTAT *CNN`, `WRKUSRPRF`, `DSPLOG`; F14/F24, Attn/Sys Req, mandatory enter/fill del FFW.
+- **V2 (no de momento, lo dijo el usuario el 2026-11-24):** tn5250 (y tn3270 para SDSF) sobre el mismo motor de `blockterm`, con su lado back; cambio de sistema (cluster) desde dentro.
 
 ## 5. Riesgos del plan
 

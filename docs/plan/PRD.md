@@ -3,6 +3,7 @@
 > **ESTADO — DEFINICIÓN CERRADA** (2026-11-23). Decisiones D1–D11 cerradas con el usuario; los abiertos
 > A1–A8 se aceptaron tal cual se propusieron y pasaron a D4–D11. Las capturas de referencia (D11) se
 > descartaron el 2026-11-24: no hacen falta. Producto entregado: ver [PLAN](PLAN.md), cerrado.
+> **Fase 3 (más comandos de IBM i):** [PRD-fase3.md](PRD-fase3.md), definición cerrada (D12–D18).
 >
 > Documento de definición de producto. **Previo al diseño técnico**: describe qué tiene que pasar y por
 > qué, no cómo se implementa. El desglose en fases/streams vivirá en `PLAN.md`, junto a este documento.
