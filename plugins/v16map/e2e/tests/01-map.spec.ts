@@ -60,7 +60,7 @@ test('when stopped, it says how to start it', async () => {
 
 test('start opens the setup, with the V16 filter off by default', async () => {
     await openTabMenu(page)
-    await page.getByText('Start', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Start', exact: true }).click()
     await expect(setupDialog()).toBeVisible()
     await expect(setupDialog().getByRole('checkbox', { name: 'Only V16 emergency beacons' })).not.toBeChecked()
     await setupDialog().getByRole('button', { name: 'OK', exact: true }).click()
@@ -118,6 +118,6 @@ test('the real v16 provider answers with its own snapshot', async () => {
 
 test('stop leaves the map and says how to start it again', async () => {
     await openTabMenu(page)
-    await page.getByText('Stop', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Stop', exact: true }).click()
     await expect(page.getByText('V16 Map not started')).toBeVisible()
 })

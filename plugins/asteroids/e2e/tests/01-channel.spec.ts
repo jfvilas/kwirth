@@ -63,7 +63,7 @@ test('the setup offers choosing a sender to notify the record, and by default it
         cancelled, which closes it WITHOUT starting the channel, so as not to alter the rest of the run.
     */
     await page.locator('[data-testid="SettingsIcon"]').first().click({ force: true })
-    await page.getByText('Start', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Start', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 10000 })
     await expect(dialog.getByText(/Notify a sender when the record is beaten/i)).toBeVisible()
@@ -142,12 +142,12 @@ test('at fullscreen the bar shows the plugin icon and name, and no third-party b
     // the IRIA Play logo the bar used to carry had this viewBox: it must not come back
     const IRIA_PLAY_VIEWBOX = '246 92 833 156'
     await page.locator('canvas').click()
-    await page.keyboard.press('Control+Alt+F11')
+    await page.keyboard.press('Control+Shift+Enter')
     const bar = page.locator('header.MuiAppBar-root').filter({ has: page.getByRole('heading', { name: 'Asteroids' }) })
     await expect(bar).toBeVisible({ timeout: 5000 })
     await expect(bar.locator('svg path[d^="M9.19 6.35"]')).toHaveCount(1)
     await expect(page.locator(`svg[viewBox="${IRIA_PLAY_VIEWBOX}"]`)).toHaveCount(0)
-    await page.keyboard.press('Control+Alt+F11')
+    await page.keyboard.press('Control+Shift+Enter')
     await expect(bar).toBeHidden({ timeout: 5000 })
 })
 

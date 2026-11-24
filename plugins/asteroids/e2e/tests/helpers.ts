@@ -64,7 +64,7 @@ export async function openAsteroids(page: Page): Promise<void> {
  */
 export async function startChannel(page: Page): Promise<void> {
     await page.locator('[data-testid="SettingsIcon"]').first().click({ force: true })
-    await page.getByText('Start', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Start', exact: true }).click()
     const dialog = page.getByRole('dialog')
     if (await dialog.isVisible({ timeout: 5000 }).catch(() => false)) {
         await dialog.getByRole('button', { name: 'OK', exact: true }).click()
@@ -75,6 +75,6 @@ export async function startChannel(page: Page): Promise<void> {
 /** Stops the active tab through its menu. */
 export async function stopChannel(page: Page): Promise<void> {
     await page.locator('[data-testid="SettingsIcon"]').first().click({ force: true })
-    await page.getByText('Stop', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Stop', exact: true }).click()
     await page.waitForTimeout(1500)
 }

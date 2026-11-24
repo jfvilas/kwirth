@@ -25,9 +25,9 @@ export async function login(page: Page, user = USER, pass = PASS): Promise<void>
     await expect(combo).toBeVisible({ timeout: 60000 })
 }
 
-/** The core toggles the started tab in and out of fullscreen with Ctrl+Alt+F11. */
+/** The core toggles the started tab in and out of fullscreen with Ctrl+Shift+Enter. */
 export async function toggleFullscreen(page: Page): Promise<void> {
-    await page.keyboard.press('Control+Alt+F11')
+    await page.keyboard.press('Control+Shift+Enter')
     await page.waitForTimeout(800)
 }
 
@@ -67,7 +67,7 @@ export async function openRallyx(page: Page): Promise<void> {
  */
 export async function startChannel(page: Page): Promise<void> {
     await page.locator('[data-testid="SettingsIcon"]').first().click({ force: true })
-    await page.getByText('Start', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Start', exact: true }).click()
     const dialog = page.getByRole('dialog')
     if (await dialog.isVisible({ timeout: 5000 }).catch(() => false)) {
         await dialog.getByRole('button', { name: 'OK', exact: true }).click()
@@ -78,7 +78,7 @@ export async function startChannel(page: Page): Promise<void> {
 /** Stop the active tab via its menu. */
 export async function stopChannel(page: Page): Promise<void> {
     await page.locator('[data-testid="SettingsIcon"]').first().click({ force: true })
-    await page.getByText('Stop', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Stop', exact: true }).click()
     await page.waitForTimeout(1500)
 }
 

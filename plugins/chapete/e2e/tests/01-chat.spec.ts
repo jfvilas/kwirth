@@ -57,7 +57,7 @@ const lastCall = () => fake.calls[fake.calls.length - 1]
 
 const openSetup = async (): Promise<void> => {
     await openTabMenu(page)
-    await page.getByText('Start', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Start', exact: true }).click()
     await expect(setupDialog()).toBeVisible()
 }
 

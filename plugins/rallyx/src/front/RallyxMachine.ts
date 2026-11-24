@@ -116,7 +116,7 @@ const FORWARD_KEY_MESSAGE = 'rallyx-forward-key'
 
 /*
     The iframe keeps the keyboard focus while the game is played, so a key pressed there never reaches the
-    page — and Kwirth's fullscreen shortcut (Ctrl+Alt+F11) lives there. That one combination, and only that
+    page — and Kwirth's fullscreen shortcut (Ctrl+Shift+Enter) lives there. That one combination, and only that
     one, is handed to the parent.
 */
 const FORWARD_KEY_SCRIPT = `
@@ -124,9 +124,9 @@ const FORWARD_KEY_SCRIPT = `
 // iframe: after using a Kwirth menu, clicking the game left the keyboard outside it. It is asked for here.
 window.addEventListener("pointerdown", function () { window.focus(); }, true);
 window.addEventListener("keydown", function (e) {
-    if (e.key === "F11" && e.ctrlKey && e.altKey && !e.shiftKey) {
+    if (e.key === "Enter" && e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
-        window.parent.postMessage({ type: "${FORWARD_KEY_MESSAGE}", key: e.key, ctrlKey: true, altKey: true, shiftKey: false }, "*");
+        window.parent.postMessage({ type: "${FORWARD_KEY_MESSAGE}", key: e.key, ctrlKey: true, altKey: false, shiftKey: true }, "*");
     }
 }, true);
 `

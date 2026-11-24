@@ -33,7 +33,7 @@ test.describe('Webamp channel', () => {
         await expect(webampFrame(page).getByText('Drag here')).toBeVisible({ timeout: 10000 })
 
         // The focus is put INSIDE the player on purpose: the iframe keeps the keyboard, and the shortcut
-        // only works because it hands Ctrl+Alt+F11 over to the page.
+        // only works because it hands Ctrl+Shift+Enter over to the page.
         await webampFrame(page).getByText('Drag here').click()
         await toggleFullscreen(page)
         const bar = page.locator('header.MuiAppBar-root').filter({ has: page.getByRole('heading', { name: 'Webamp' }) })

@@ -42,13 +42,13 @@ function error(msg) {
 
 /*
     The iframe keeps the keyboard focus, so a key pressed while the player is focused never reaches the
-    page — and Kwirth's fullscreen shortcut (Ctrl+Alt+F11) lives there. That one combination, and only
+    page — and Kwirth's fullscreen shortcut (Ctrl+Shift+Enter) lives there. That one combination, and only
     that one, is handed to the parent, which fires it again where the core listens.
 */
 window.addEventListener("keydown", function (e) {
-  if (e.key === "F11" && e.ctrlKey && e.altKey && !e.shiftKey) {
+  if (e.key === "Enter" && e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey) {
     e.preventDefault();
-    window.parent.postMessage({ type: "webamp-forward-key", key: e.key, ctrlKey: true, altKey: true, shiftKey: false }, "*");
+    window.parent.postMessage({ type: "webamp-forward-key", key: e.key, ctrlKey: true, altKey: false, shiftKey: true }, "*");
   }
 }, true);
 

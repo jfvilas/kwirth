@@ -26,7 +26,7 @@ test('capture: rallyx guide images', async ({ page }) => {
 
     // 2. Config dialog.
     await page.locator('[data-testid="SettingsIcon"]').first().click({ force: true })
-    await page.getByText('Start', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Start', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 10000 })
     await settle(page)

@@ -95,7 +95,7 @@ test('the iframe maintains the 1280:960 (4:3) aspect ratio', async () => {
 const pausedChip = () => page.locator('.MuiChip-root').filter({ hasText: /^paused$/ })
 const tabMenu = async (entry: 'Pause' | 'Resume'): Promise<void> => {
     await page.locator('[data-testid="SettingsIcon"]').first().click({ force: true })
-    await page.getByText(entry, { exact: true }).click()
+    await page.getByRole('menuitem', { name: entry, exact: true }).click()
 }
 
 test('pausing from the menu shows it, and resuming takes it away', async () => {

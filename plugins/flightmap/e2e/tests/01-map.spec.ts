@@ -69,7 +69,7 @@ test('when stopped, it says how to start it', async () => {
 
 test('the setup starts on the peninsula, sized for the anonymous quota', async () => {
     await openTabMenu(page)
-    await page.getByText('Start', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Start', exact: true }).click()
     await expect(setupDialog()).toBeVisible()
     await expect(setupDialog().getByText('Iberian peninsula')).toBeVisible()
     await expect(interval()).toHaveValue('720')
@@ -143,6 +143,6 @@ test('the next positions clear the error and drop the aircraft that left', async
 
 test('stop leaves the map and says how to start it again', async () => {
     await openTabMenu(page)
-    await page.getByText('Stop', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Stop', exact: true }).click()
     await expect(page.getByText('Flight Map not started')).toBeVisible()
 })

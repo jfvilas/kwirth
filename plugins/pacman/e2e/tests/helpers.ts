@@ -57,7 +57,7 @@ export async function openPacman(page: Page): Promise<void> {
 /** Opens the active tab's menu (the gear icon) and picks an entry. */
 export async function tabMenu(page: Page, entry: 'Start' | 'Stop' | 'Pause' | 'Resume'): Promise<void> {
     await page.locator('[data-testid="SettingsIcon"]').first().click({ force: true })
-    await page.getByText(entry, { exact: true }).click()
+    await page.getByRole('menuitem', { name: entry, exact: true }).click()
 }
 
 /**
@@ -82,8 +82,8 @@ export function pacmanFrame(page: Page) {
     return page.frameLocator('iframe[title="Pac-Man"]')
 }
 
-/** The core toggles the started tab in and out of fullscreen with Ctrl+Alt+F11. */
+/** The core toggles the started tab in and out of fullscreen with Ctrl+Shift+Enter. */
 export async function toggleFullscreen(page: Page): Promise<void> {
-    await page.keyboard.press('Control+Alt+F11')
+    await page.keyboard.press('Control+Shift+Enter')
     await page.waitForTimeout(800)
 }
