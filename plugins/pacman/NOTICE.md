@@ -12,7 +12,7 @@ Pittman and Bart Grantham.
 
 The game runs inside an iframe in the browser. The original code is not modified;
 it is injected as it is into the iframe's `srcdoc`. The only thing added next to it
-is a separate script that hands Kwirth's fullscreen shortcut (Ctrl+Alt+F11) to the
+is a separate script that hands Kwirth's fullscreen shortcut (Ctrl+Shift+Enter) to the
 page when the game has the keyboard focus.
 
 Because the plugin bundles the game, the plugin as a whole is distributed under the
