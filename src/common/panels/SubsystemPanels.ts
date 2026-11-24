@@ -1,6 +1,7 @@
 import { E5250Attribute, Painter5250 } from '@jfvilas/kwirth-dce-blockterm'
 import { IWrkSubsystem, IWrkSubsystemDescription } from '../WrkactjobTypes'
 import { leader, shortName } from './JobIdentity'
+import { IDisplayList } from './DisplayList'
 import { dateTimeOf, paintCommandLine, paintKeys, paintMessage, paintRight, paintTitle, rowsOf } from './WrkLayout'
 
 /*
@@ -149,55 +150,22 @@ const DESCRIPTION_ENTRIES: { option: ESubsystemDescription; text: string }[] = [
 
 export const SUBSYSTEM_DESCRIPTION_OPTIONS: string[] = DESCRIPTION_ENTRIES.map(e => e.option)
 
-const subsystemLine = (p: Painter5250, d: IWrkSubsystemDescription, row: number): void => {
-    p.text(row, 1, `Subsystem description:   ${shortName(d.name).padEnd(10)}   Status:   ${d.status}`, E5250Attribute.GREEN, true)
-}
+// The line under the title of DSPSBSD and each of its entries.
+const subsystemHeaderOf = (d: IWrkSubsystemDescription): string =>
+    `Subsystem description:   ${shortName(d.name).padEnd(10)}   Status:   ${d.status}`
 
 // Returns the selection field.
 export const paintSubsystemDescription = (p: Painter5250, d: IWrkSubsystemDescription, system: string, message: string): number => {
     const rows = rowsOf(p.screen)
     paintTitle(p, 'Display Subsystem Description', '', 0)
     paintRight(p, 1, `System:   ${system.slice(0, 10)}`)
-    subsystemLine(p, d, 2)
+    p.text(2, 1, subsystemHeaderOf(d), E5250Attribute.GREEN, true)
     p.text(4, 1, 'Select one of the following:', E5250Attribute.BLUE, true)
     DESCRIPTION_ENTRIES.forEach((e, i) => p.text(6 + i, 5, `${e.option.padStart(2)}. ${e.text}`, E5250Attribute.GREEN, true))
     const field = paintCommandLine(p, rows, 'Selection or command', '')
     paintKeys(p, rows, ['F3=Exit', 'F12=Cancel'], [])
     paintMessage(p, rows, message)
     return field
-}
-
-// ─── A read-only list: each entry of DSPSBSD ─────────────────────────────────────────────────────
-
-export interface IDisplayList {
-    title: string
-    subsystem: IWrkSubsystemDescription
-    headings: string
-    lines: string[]
-    top: number
-}
-
-const LIST_FIRST = 6
-
-export const displayPageSizeOf = (screenRows: number): number => {
-    const rows = rowsOf({ rows: screenRows })
-    return rows.more - LIST_FIRST
-}
-
-export const paintDisplayList = (p: Painter5250, list: IDisplayList, system: string, message: string): void => {
-    const rows = rowsOf(p.screen)
-    const width = p.screen.cols - 3
-    paintTitle(p, list.title, '', 0)
-    paintRight(p, 1, `System:   ${system.slice(0, 10)}`)
-    subsystemLine(p, list.subsystem, 2)
-    if (list.headings) p.text(LIST_FIRST - 1, 1, list.headings.slice(0, width), E5250Attribute.WHITE, true)
-    const lines = list.lines.length ? list.lines : ['(No entries)']
-    lines.slice(list.top, list.top + displayPageSizeOf(p.screen.rows)).forEach((line, i) =>
-        p.text(LIST_FIRST + i, 1, line.slice(0, width), list.lines.length ? E5250Attribute.GREEN : E5250Attribute.BLUE, true))
-    paintRight(p, rows.more, list.top + displayPageSizeOf(p.screen.rows) < list.lines.length ? 'More...' : 'Bottom')
-    p.text(rows.commandLabel, 1, 'Press Enter to continue.', E5250Attribute.BLUE, true)
-    paintKeys(p, rows, ['F3=Exit', 'F12=Cancel'], [])
-    paintMessage(p, rows, message)
 }
 
 const ATTRIBUTE_LABEL = 30
@@ -215,25 +183,25 @@ export const descriptionListOf = (d: IWrkSubsystemDescription, poolNames: string
     switch (entry) {
         case ESubsystemDescription.POOLS:
             return {
-                title: 'Display Pool Definitions', subsystem: d, top: 0,
+                title: 'Display Pool Definitions', header: subsystemHeaderOf(d), top: 0,
                 headings: 'Pool ID   System Pool   Pool Name',
                 lines: d.pools.map((node, i) => `${String(i + 1).padStart(7)}   ${String(poolNames.indexOf(node) + 1 || '').padStart(11)}   ${node}`)
             }
         case ESubsystemDescription.QUOTAS:
             return {
-                title: 'Display Resource Quota Entries', subsystem: d, top: 0,
+                title: 'Display Resource Quota Entries', header: subsystemHeaderOf(d), top: 0,
                 headings: `${pad('Quota', 20)}  ${pad('Resource', 24)}  ${'Used'.padStart(12)}  ${'Limit'.padStart(12)}`,
                 lines: d.quotas.map(q => `${pad(q.quota, 20)}  ${pad(q.resource, 24)}  ${q.used.padStart(12)}  ${q.hard.padStart(12)}`)
             }
         case ESubsystemDescription.LIMITS:
             return {
-                title: 'Display Limit Range Entries', subsystem: d, top: 0,
+                title: 'Display Limit Range Entries', header: subsystemHeaderOf(d), top: 0,
                 headings: `${pad('Limit range', 12)}  ${pad('Type', 10)}  ${pad('Resource', 10)}  ${'Min'.padStart(8)}  ${'Max'.padStart(8)}  ${'Default'.padStart(8)}  ${'Request'.padStart(8)}`,
                 lines: d.limits.map(l => `${pad(l.limitRange, 12)}  ${pad(l.type, 10)}  ${pad(l.resource, 10)}  ${l.min.padStart(8)}  ${l.max.padStart(8)}  ${l.defaultLimit.padStart(8)}  ${l.defaultRequest.padStart(8)}`)
             }
         default:
             return {
-                title: 'Display Operational Attributes', subsystem: d, top: 0, headings: '',
+                title: 'Display Operational Attributes', header: subsystemHeaderOf(d), top: 0, headings: '',
                 lines: [
                     leader('Subsystem description', ATTRIBUTE_LABEL) + d.name,
                     leader('Status', ATTRIBUTE_LABEL) + d.status,

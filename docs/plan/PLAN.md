@@ -3,7 +3,7 @@
 > **ESTADO — FASE 3 EN CURSO** (2026-11-24). **MVP (S0–S6) cerrado y publicado** el 2026-11-23 como
 > `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE); instalación de la DCE
 > desde el marketplace de jfvilas validada; capturas de referencia (D11) descartadas. **Fase 3** (más comandos
-> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho; S8 validado; S9 validado; S10 con el código hecho y verificado en el dev, falta tu QA**. Cuelga
+> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho; S8 validado; S9 validado; S10 validado; S11 con el código hecho y verificado en el dev, falta tu QA**. Cuelga
 > del [PRD](PRD.md) y del [PRD-fase3](PRD-fase3.md), y no repite ni su problema ni sus decisiones (D1–D18).
 >
 > **Dónde vive:**
@@ -227,6 +227,18 @@ Lo común a todos los streams de la fase:
 - Parser de cron propio en `common` (5 campos, listas, rangos, pasos, nombres de días/meses y `@hourly`…; sin dependencias): la próxima ejecución y la traducción a las frecuencias de IBM i (`*WEEKLY`, `*MONTHLY`, días y hora) o `*CRON` con la expresión (D16).
 - Panel `Work with Job Schedule Entries` (§2.4) con `SCD`/`HLD`, fecha/hora, frecuencia, próximo envío; F11 al nombre completo. Opciones `3` (prompt `HLDJOBSCDE`), `6` (`RLSJOBSCDE`), `10` (`SBMJOB`), `5` (detalle e historial), `8` (pods del último Job en WRKACTJOB, o `No active jobs.`), `4` no válida (D14). Sin `wrkactjob$schedule`, el motivo sale en el prompt como en `ENDJOB`.
 - **Hecho cuando:** criterio 4 del PRD-fase3; tests del parser con las expresiones de los CronJobs típicos (cada minuto, horas fijas, días laborables, mensual, rangos con paso, nombres, zona horaria); QA tuyo (Hold/Release/Submit sobre un CronJob de prueba propio, nunca uno ajeno).
+- 🔶 **Código hecho y verificado en el dev (2026-11-24).** Lo que salió al construirlo:
+  - **Cron propio (`common/Cron.ts`)**, como el controlador (robfig/cron estándar): cinco campos, listas, rangos, pasos (`n/paso` hasta el final), nombres, 7 = domingo, `?`, macros `@yearly`…`@hourly`, y los dos campos de día restringidos = cualquiera de los dos. La **próxima ejecución** recorre el reloj de pared en la zona del CronJob (UTC si no da ninguna: la del controlador) saltando días y horas que no casan, y relee el reloj tras cada salto, así que el cambio de hora sale solo (probado: 29-3-2026 en Madrid). Un horario imposible (30 de febrero) da «sin próxima» en vez de quedarse en bucle; una zona desconocida, también.
+  - **D16, en palabras de IBM i:** una hora al día todos los meses → `*WEEKLY` con fecha `*ALL` (todos los días), `*MON` (uno) o `*SELECT` (varios, detallados en el 5); un día del mes → `*MONTHLY` con ese día; lo demás → `*CRON` con la expresión ocupando Date y Time.
+  - **El panel:** dos líneas de leyenda (como IBM i) y cabecera en dos líneas, así que la lista empieza en la fila 10; `HLD` en blanco, como `MSGW`. Leyenda sin `2=Change` ni `4=Remove` (D14). F11: subsistema, nombre completo y cron; a 132, todo junto y sin F11.
+  - **Opciones**, validadas todas antes de correr ninguna y en orden como en WRKSBS: `3` sobre una HLD, `6` sobre una SCD y `8` sin ejecuciones se rechazan en su campo con el mensaje de IBM i («already held», «not held», «No submission…»). `3`, `6` y `10` abren su prompt (`HLDJOBSCDE`, `RLSJOBSCDE`, `SBMJOB`) con el nombre y el subsistema; el nombre tecleado tiene que ser el de la entrada; F12 en el prompt la salta sin hacer nada. Al acabar, «Job schedule entry X held./released.» o «Job <job> submitted.» en la lista refrescada.
+  - **`8`** abre WRKACTJOB con `SBS(ns) JOB(<último job>-*)`: los pods de un Job se llaman `<job>-<sufijo>`, y con el guion no entra otro job cuyo nombre empiece igual. F12 vuelve a WRKJOBSCDE.
+  - **`5`** es una lista de solo lectura: el panel de lista del S9 sale a `panels/DisplayList.ts` con una línea de cabecera libre (antes llevaba el subsistema) y lo usan los dos.
+  - Los prompts de las opciones no son comandos de la línea de comandos (no están en `PROMPTS`). Ya no queda ningún comando «not available yet»: se borró esa lista.
+  - **El mensaje de permiso del back se acortó** («Not authorized: job schedule entries need the 'wrkactjob$schedule' scope»): el anterior no cabía en la fila de mensajes.
+  - **Verificado en el dev** con un CronJob propio en un namespace temporal (`wrkactjob-s11`, suspendido, L-V 02:30 Europe/Madrid; creado y borrado por la prueba): lista, `6` (suspend → false), `3` (→ true), `10` (Job `nightly-backup-manual-…` creado), `5` y `8` (su pod en WRKACTJOB), con capturas.
+  - Tests: 131 (15 nuevos: 5 del cron), 100 % de líneas (c8).
+  - **Tipos nuevos (⚠️ a validar):** en `Cron.ts`, `ICron`, `EScheduleFrequency`, `IScheduleWords`; en el panel, `EScheduleOption`, `EScheduleStatus`, `EScheduleView`, `IScheduleEntriesState`, `IScheduleEntriesFields`; `HLDJOBSCDE_PROMPT`, `RLSJOBSCDE_PROMPT`, `SBMJOB_PROMPT`; `IDisplayList.header` (sustituye a `subsystem`); `EWrkPanel.SCHEDULE_ENTRIES`; internos de la sesión, `IScheduleFrame` y los campos `schedules` y `schedule` de `IFrame`.
 
 **S12 — e2e, README y publicación de la 0.2.0.**
 - e2e ampliado en `wrkactjob-e2e`: el fixture añade un CronJob (suspendido de inicio, nunca lanza nada solo) y un event Warning propio; specs de los cuatro comandos, el menú y Hold/Release/Submit sobre ese CronJob. Lo de cluster (`WRKSYSSTS`) se comprueba por estructura, no por cifras.

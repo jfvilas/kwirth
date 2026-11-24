@@ -8,8 +8,9 @@ import {
     IWrkSubsystem, IWrkSubsystemDescription
 } from '../src/common/WrkactjobTypes'
 import {
-    descriptionListOf, displayPageSizeOf, ESubsystemDescription, ESubsystemsView, poolNumbersOf, storageOf, subsystemsPageSizeOf, subsystemsViewsFor
+    descriptionListOf, ESubsystemDescription, ESubsystemsView, poolNumbersOf, storageOf, subsystemsPageSizeOf, subsystemsViewsFor
 } from '../src/common/panels/SubsystemPanels'
+import { displayPageSizeOf } from '../src/common/panels/DisplayList'
 import { EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType } from '@kwirthmagnify/kwirth-common'
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────────────────────────

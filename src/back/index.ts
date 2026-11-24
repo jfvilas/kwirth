@@ -240,7 +240,8 @@ export class WrkactjobChannel implements IChannel {
         }
         if (ON_SCHEDULE.includes(message.command) && !this.allows(instance.accessKey, EWrkScope.SCHEDULE)) {
             this.backChannelObject.logWarning?.(`Denied ${message.command} of ${namespace}/${name}: '${EWrkScope.SCHEDULE}' required`)
-            return fail(EWrkError.NOT_AUTHORIZED, `Holding, releasing or submitting a job schedule entry requires the '${EWrkScope.SCHEDULE}' scope`)
+            // short enough for the 5250 message line (78 columns at 24x80)
+            return fail(EWrkError.NOT_AUTHORIZED, `Not authorized: job schedule entries need the '${EWrkScope.SCHEDULE}' scope`)
         }
 
         try {
