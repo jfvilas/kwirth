@@ -3,7 +3,7 @@
 > **ESTADO — FASE 3 EN CURSO** (2026-11-24). **MVP (S0–S6) cerrado y publicado** el 2026-11-23 como
 > `plugin/wrkactjob@0.1.0` (y `dce/blockterm@0.1.0` / `0.2.0`, SDSF 0.11.0 sobre la DCE); instalación de la DCE
 > desde el marketplace de jfvilas validada; capturas de referencia (D11) descartadas. **Fase 3** (más comandos
-> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho; S8 con el código hecho, sin verificar en el dev** (apagado). Cuelga
+> de IBM i, [PRD-fase3](PRD-fase3.md), D12–D18): streams S7–S12 en §3; **S7 con el código hecho; S8 con el código hecho y verificado en el dev; falta tu QA**. Cuelga
 > del [PRD](PRD.md) y del [PRD-fase3](PRD-fase3.md), y no repite ni su problema ni sus decisiones (D1–D18).
 >
 > **Dónde vive:**
@@ -193,7 +193,7 @@ Lo común a todos los streams de la fase:
   - **Main Menu:** 1–5 y 90 con una línea en blanco encima, como IBM i. La entrada 3 es `DSPMSG MSGQ(QSYSOPR)` (forma con keyword; la posicional llega en el S10).
   - **WRKSBS, DSPMSG, WRKMSG, WRKJOBSCDE:** «Command X not available yet.» hasta sus streams (provisional, como las opciones en el S4).
   - Tests: 95 (11 nuevos), 100 % de líneas (c8). Versión del plugin **0.2.0** y `wrkactjob` en `kwirth-dev.json` desde `dist` (sin commitear en el core hasta el cierre de la fase).
-  - ⚠️ **Sin verificar en el dev:** a la hora de probarlo el dev estaba apagado (ni front ni back; la máquina se reinició a las 10:45). Comprobación lista para cuando esté levantado.
+  - **Verificado en el dev** (k3d, 2 nodos, sin PersistentVolumes) con capturas por la UI: las tres vistas, el menú y su opción 4. La CPU sale `*N` hasta que el provider `metrics` tiene dos lecturas (~1 min tras abrir el canal); luego `% CPU used`, la CPU y la memoria usada por pool. Salió que los puntos de la columna derecha acababan en «.  :»: el ancho de la etiqueta tiene que ser impar, como el de la izquierda.
   - **Tipos nuevos (⚠️ a validar):** `ESystemView`, `ISystemStatusState`, `EWrkPanel.SYSTEM_STATUS` y, internos de la sesión, `ISystemFrame` y el campo `systemStatus` de `IFrame`.
 
 **S9 — `WRKSBS` y `DSPSBSD`.**

@@ -109,7 +109,7 @@ export const poolPageSizeOf = (screenRows: number): number => {
 
 // The figures: left half from column 1, right half (auxiliary storage) from the middle; 80 columns hold both.
 const LEFT_LABEL = 27
-const RIGHT_LABEL = 24
+const RIGHT_LABEL = 25    // odd, like the left one: the dot leader needs it to end in " : "
 const VALUE_WIDTH = 11
 
 const figure = (p: Painter5250, row: number, col: number, labelWidth: number, label: string, value: string): void => {
