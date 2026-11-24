@@ -72,7 +72,7 @@ export async function openTabMenu(page: Page): Promise<void> {
 
 // ---- the fake LLM ----------------------------------------------------------------------------------
 
-interface IFakeMessage { role: string, content: string }
+export interface IFakeMessage { role: string, content: string }
 
 /** What the fake received, so a test can check what Chapete really sent to the model. */
 export interface IFakeCall {
@@ -92,6 +92,12 @@ export class FakeLlm {
     calls: IFakeCall[] = []
     private server?: Server
     port = 0
+
+    /*
+        Without 'answer' it replies with what it received, which is what the tests check. The README captures
+        pass their own, so the screenshots show a believable conversation instead of the test's echo.
+    */
+    constructor(private answer?: (messages: IFakeMessage[]) => string) { }
 
     get endpoint(): string { return `http://127.0.0.1:${this.port}/v1` }
 
@@ -125,7 +131,9 @@ export class FakeLlm {
             }
             const system = parsed.messages.find(m => m.role === 'system')?.content ?? '(none)'
             const turns = parsed.messages.filter(m => m.role !== 'system').length
-            const content = `## Fake answer\n\n**Turns received:** ${turns}\n\n**System:** ${system}\n\n\`\`\`text\n${last}\n\`\`\``
+            const content = this.answer
+                ? this.answer(parsed.messages)
+                : `## Fake answer\n\n**Turns received:** ${turns}\n\n**System:** ${system}\n\n\`\`\`text\n${last}\n\`\`\``
             res.writeHead(200, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({
                 id: `chatcmpl-${this.calls.length}`,
@@ -171,14 +179,16 @@ const aiConfig = async (session: ISession, what: 'providers' | 'llms', body?: un
  * 🔴 NON DESTRUCTIVE. The fake provider and LLM are ADDED to whatever the dev has, and 'restore' writes
  * back exactly what was read — keys included, since the core returns them real. A leftover of a previous
  * run that died before restoring is dropped, rather than piling up.
+ *
+ * 'llmId', 'provider' and 'model' are what the page shows: the README captures give them readable names.
  */
-export const installFakeLlm = async (session: ISession, endpoint: string) => {
+export const installFakeLlm = async (session: ISession, endpoint: string, llmId = E2E_LLM, provider = E2E_PROVIDER, model = 'fake-model') => {
     const isOurs = (x: unknown, key: 'name' | 'id', value: string) => (x as Record<string, unknown>)[key] === value
-    const providers = (await aiConfig(session, 'providers')).filter(p => !isOurs(p, 'name', E2E_PROVIDER))
-    const llms = (await aiConfig(session, 'llms')).filter(l => !isOurs(l, 'id', E2E_LLM))
+    const providers = (await aiConfig(session, 'providers')).filter(p => !isOurs(p, 'name', provider))
+    const llms = (await aiConfig(session, 'llms')).filter(l => !isOurs(l, 'id', llmId))
 
-    await aiConfig(session, 'providers', [...providers, { name: E2E_PROVIDER, type: 'openai-compat', key: 'sk-e2e-fake', models: [], endpoint }])
-    await aiConfig(session, 'llms', [...llms, { id: E2E_LLM, provider: E2E_PROVIDER, model: 'fake-model', temperature: 0.4, useProviderKey: true, key: '' }])
+    await aiConfig(session, 'providers', [...providers, { name: provider, type: 'openai-compat', key: 'sk-e2e-fake', models: [], endpoint }])
+    await aiConfig(session, 'llms', [...llms, { id: llmId, provider, model, temperature: 0.4, useProviderKey: true, key: '' }])
 
     return async (): Promise<void> => {
         await aiConfig(session, 'providers', providers)

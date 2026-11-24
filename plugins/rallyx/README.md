@@ -1,76 +1,96 @@
-# Rally-X
+# Rally-X — a channel plugin for Kwirth
 
-A Rally-X arcade game channel plugin for [Kwirth](https://kwirthmagnify.dev), the Kubernetes
-observability and operations platform ([source](https://github.com/kwirthmagnify/kwirth)).
+A Rally-X arcade game inside a [Kwirth](https://kwirthmagnify.dev) tab: drive your blue car through the maze,
+pick up the flags before the fuel runs out, and lose the red cars behind a cloud of smoke. A homebrew
+recreation of the 1980 arcade classic, with a high-score table shared by everyone on the cluster.
+
+![A round in play](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/rallyx/docs/screenshots/game.png)
+
+- Kwirth: https://kwirthmagnify.dev — source at https://github.com/kwirthmagnify/kwirth
+- Plugin source: https://github.com/jfvilas/kwirth (folder `plugins/rallyx`)
+- The game is MIT licensed, Copyright (c) 2017 Marco Parenzan; see [NOTICE.md](NOTICE.md).
 
 ## What it is
 
-This plugin runs a homebrew recreation of the classic 1980s Rally-X arcade game
-(originally by Midway/Namco) inside a Kwirth tab. The game is built with Phaser
-2.x and runs in an isolated iframe, so its globals never clash with Kwirth's
-React/MUI.
+A **standalone channel**: it reads nothing of the cluster, asks for no cluster scope and selects no pods.
+Picking it switches the view to `none` on its own.
 
-The game state (score, lives, round, fuel) is displayed in a HUD bar above the
-game area. High scores are persisted in a Kubernetes ConfigMap, shared across
-all users of the cluster.
+The game is built with Phaser 2 and runs in an isolated iframe, so its globals never clash with Kwirth's.
+Phaser, RequireJS and every asset travel inside the plugin's `front.js`, so it needs no network once
+installed. The iframe **survives tab switches**: switching away hides it, coming back puts it in place again,
+and only stopping the channel destroys it. A small bridge reports the game's state to the tab, which shows
+it in the bar above the game: score, lives, round, fuel and best score.
 
-## How it works
+## Using it
 
-- The game (Phaser + RequireJS + all assets) is bundled into the plugin's
-  `front.js` as text and base64. At runtime, it is injected into an iframe via
-  `srcdoc` — no network requests needed.
-- The iframe survives tab switches: switching away hides it, switching back
-  repositions it. Only stopping the channel destroys it.
-- A `postMessage` bridge reports game state to the plugin for HUD display and
-  score persistence.
-- High scores are stored via the back channel's `writeStorage` (ConfigMap
-  `kwirth-store-channel-rallyx-scores`).
+Add the **rallyx** channel to a tab and start it. The setup asks for:
 
-## Installation
+| Field | Meaning |
+|---|---|
+| **Notify a sender when the record is beaten** | Optional: one of Kwirth's senders gets a message when someone takes the top of the table |
+| **Pause when the tab loses focus** | The game freezes when you click elsewhere, and goes on when you click it again |
 
-Rally-X is published to npm as `@jfvilas/kwirth-plugin-rallyx` and listed in the **jfvilas marketplace**.
-If your Kwirth does not list it yet, add this manifest as a marketplace:
+| Key | Action |
+|---|---|
+| Arrows | Drive |
+| Ctrl | Smoke screen |
+| Space / Ctrl | Start, on the title screen |
+| Ctrl+Shift+Enter | Kwirth's full screen, also while the game has the focus |
+
+The game keeps its 4:3 proportions and fits the tab.
+
+## The high-score table
+
+It lives in the cluster, not in the browser: the back end stores it in a ConfigMap,
+`kwirth-store-channel-rallyx-scores`, so every user of that Kwirth sees the same table and it survives
+changing machines.
+
+## Installing it in Kwirth
+
+It is published on npmjs as `@jfvilas/kwirth-plugin-rallyx` and listed in the jfvilas marketplace. If your
+Kwirth does not list it yet, add it as a marketplace with this manifest URL:
 
 ```
 https://raw.githubusercontent.com/jfvilas/kwirth/master/manifest.json
 ```
 
-Then install **Rally-X** from the plugin manager and add the channel to a tab. Source code at
-[github.com/jfvilas/kwirth](https://github.com/jfvilas/kwirth) (folder `plugins/rallyx`).
+Then install `rallyx` from the plugin manager. No restart is needed and it depends on no other extension.
 
-## Controls
+## Screenshots
 
-| Key | Action |
-|-----|--------|
-| ← ↑ → ↓ | Drive |
-| Ctrl | Drop smoke |
-| Space / Ctrl | Start (on title screen) |
+The setup:
 
-## Architecture
+![Setup](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/rallyx/docs/screenshots/setup.png)
+
+The title screen:
+
+![Title](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/rallyx/docs/screenshots/title.png)
+
+Full screen:
+
+![Full screen](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/rallyx/docs/screenshots/fullscreen.png)
+
+## Building
+
+```
+npm install
+npm run build      # typecheck + dist/
+npm run watch      # fast rebuild without typecheck
+npm test           # unit tests
+```
+
+The e2e (`e2e/`, Playwright) runs against a live Kwirth with its own `.creds.json`;
+`tests/zz-readme.spec.ts` takes the screenshots of this README.
 
 ```
 src/
-├── back/index.ts          — back channel: score persistence (ConfigMap)
-├── common/RallyxTypes.ts  — shared types
-├── front/
-│   ├── index.ts           — registers RallyxChannel on window.__kwirth_plugins__
-│   ├── RallyxChannel.tsx  — IChannel impl (lifecycle, message routing)
-│   ├── RallyxMachine.ts   — iframe manager (builds HTML, manages lifecycle)
-│   ├── RallyxTabContent.tsx — tab UI (HUD, game area, scores overlay)
-│   ├── RallyxSetup.tsx    — setup dialog (sender notification, pause-on-blur)
-│   ├── RallyxConfig.ts    — config classes
-│   ├── RallyxData.ts      — channel state (survives tab switches)
-│   ├── RallyxScores.ts    — score store (back + local fallback)
-│   ├── icons.tsx          — plugin icon
-│   └── rallyx/
-│       ├── phaser.txt     — Phaser 2.x library
-│       ├── require.txt    — RequireJS library
-│       ├── js/*.txt       — game modules (named AMD defines)
-│       └── assets/        — game assets (PNGs, tilemap JSON)
-└── types/assets.d.ts      — ambient declarations for non-TS imports
+├── back/index.ts            back channel: the score table (ConfigMap)
+├── common/RallyxTypes.ts    shared types
+└── front/
+    ├── RallyxChannel.tsx    the channel: lifecycle and messages
+    ├── RallyxMachine.ts     the iframe: builds its HTML, keeps it alive
+    ├── RallyxTabContent.tsx the tab: HUD, game area, score panel
+    ├── RallyxSetup.tsx      the setup dialog
+    ├── RallyxScores.ts      the score store (back, with a local fallback)
+    └── rallyx/              Phaser, RequireJS, the game modules and its assets
 ```
-
-## License
-
-The upstream game is MIT licensed (Copyright (c) 2017 Marco Parenzan).
-See [NOTICE.md](NOTICE.md) for full attribution.
