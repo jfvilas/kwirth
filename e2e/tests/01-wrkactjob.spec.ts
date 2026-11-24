@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test'
 import {
-    aid, clickCell, cluster, command, createFixture, deleteFixture, enter, geometry, listRow, NAMESPACE, oiaText, openWrkactjob, option,
-    podsOf, reset, row, screenText, startChannel, stopChannel, terminal, waitUnlocked
+    aid, clickCell, cluster, command, createFixture, deleteFixture, enter, geometry, jobsOf, listRow, NAMESPACE, oiaText, openWrkactjob, option,
+    podsOf, reset, row, screenText, startChannel, stopChannel, suspended, terminal, waitUnlocked
 } from './helpers'
 
 /*
@@ -207,12 +207,12 @@ test('ENDJOB on the command line, with F4, prompts it with what was typed; F12 l
     expect(podsOf('demo')).toContain(pod)
 })
 
-test('an unknown command is not found in *LIBL', async () => {
-    await command(page, 'dspmsg qsysopr')
-    expect(await lastRow()).toMatch(/Parameter QSYSOPR not valid for command DSPMSG\./)
+test('an unknown command is not found in *LIBL; a positional parameter only where CL takes one', async () => {
+    await command(page, 'wrkactjob qsysopr')
+    expect(await lastRow()).toMatch(/Parameter QSYSOPR not valid for command WRKACTJOB\./)
     await reset(page)
-    await command(page, 'dspmsg')
-    expect(await lastRow()).toMatch(/Command DSPMSG in library \*LIBL not found\./)
+    await command(page, 'wrkobj')
+    expect(await lastRow()).toMatch(/Command WRKOBJ in library \*LIBL not found\./)
     await reset(page)
     await page.keyboard.press('Alt+End')
 })
@@ -228,6 +228,141 @@ test('F3 to the Main Menu; 90 signs off; Enter signs on again; 1 back to WRKACTJ
     expect(await row(page, 0)).toMatch(/IBM i Main Menu/)
     await page.keyboard.type('1')
     await enter(page)
+    expect(await row(page, 0)).toMatch(/Work with Active Jobs/)
+})
+
+// ── PRD-fase3: more IBM i commands ────────────────────────────────────────────────────────────────
+
+// The row of a list whose name column (from column 6) starts with `start`, from `first` on.
+const rowOf = async (start: string, first = 8): Promise<number> =>
+    (await screenText(page)).split('\n').findIndex((t, r) => r >= first && t.slice(6, 18).trim().startsWith(start.toUpperCase()))
+
+test('the Main Menu has the phase 3 commands; 4 is WRKSYSSTS: the figures and a pool per node', async () => {
+    await aid(page, 'F3')
+    expect(await screenText(page)).toMatch(/2\. Work with subsystems[\s\S]*3\. Display operator messages[\s\S]*4\. Work with system status[\s\S]*5\. Work with job schedule entries/)
+    await page.keyboard.type('4')
+    await enter(page)
+    expect(await row(page, 0)).toMatch(/Work with System Status/)
+    expect(await row(page, 4)).toMatch(/Jobs in system .* :\s+\d+/)
+    const nodes = cluster('get', 'nodes', '-o', 'jsonpath={.items[*].metadata.name}').split(/\s+/).filter(Boolean).sort()
+    expect(await row(page, 9 + nodes.length - 1)).toMatch(new RegExp(`^\\s+${nodes.length}\\s+\\d+\\.\\d\\d`))
+    await aid(page, 'F11')
+    await aid(page, 'F11')
+    expect(await row(page, 9)).toContain(nodes[0])
+    await aid(page, 'F11')
+    await shot('wrksyssts')
+    await aid(page, 'F3')
+    expect(await row(page, 0)).toMatch(/IBM i Main Menu/)
+})
+
+test('WRKSBS: the fixture subsystem with its pools; 5 describes it; 8 is WRKACTJOB of it, F12 back', async () => {
+    await command(page, 'wrksbs')
+    expect(await row(page, 0)).toMatch(/Work with Subsystems/)
+    // the fixture's subsystem: its pods ask for memory, so it has storage, and its pools are numbered
+    let r = await rowOf('WRKACTJOB-')
+    for (let pages = 0; r < 0 && pages < 10; pages++) {
+        await aid(page, 'PageDown')
+        r = await rowOf('WRKACTJOB-')
+    }
+    expect(r).toBeGreaterThan(7)
+    expect(await row(page, r)).toMatch(/WRKACTJOB-\s+\d+\.\d\d(\s+\d+)+\s*$/)
+    await option(page, r, '5')
+    expect(await row(page, 0)).toMatch(/Display Subsystem Description/)
+    expect(await row(page, 2)).toMatch(/Subsystem description:   WRKACTJOB-\s+Status:   ACTIVE/)
+    await page.keyboard.type('1')
+    await enter(page)
+    expect(await screenText(page)).toMatch(/kubernetes\.io\/metadata\.name=wrkactjob-e2e/)
+    await shot('dspsbsd')
+    await enter(page)
+    await aid(page, 'F12')
+    await option(page, r, '8')
+    expect(await row(page, 0)).toMatch(/Work with Active Jobs/)
+    expect(await row(page, 8)).toMatch(/^ {6}WRKACTJOB-\s+SBS/)
+    await aid(page, 'F12')
+    expect(await row(page, 0)).toMatch(/Work with Subsystems/)
+    await aid(page, 'F3')
+})
+
+test('DSPMSG QSYSOPR: the failing job\'s BackOff is there; F1 on it gives the whole event', async () => {
+    // the failing deployment of the fixture restarts again and again: Kubernetes warns of it
+    await command(page, 'dspmsg qsysopr')
+    expect(await row(page, 0)).toMatch(/Display Messages/)
+    expect(await row(page, 2)).toMatch(/Queue .* : QSYSOPR/)
+    const find = async (): Promise<number> => (await screenText(page)).split('\n').findIndex(t => /in subsystem wrkactjob-e2e: BackOff/.test(t))
+    await expect.poll(async () => {
+        await aid(page, 'F5')
+        let at = await find()
+        for (let pages = 0; at < 0 && pages < 20 && !(await row(page, 18)).includes('Bottom'); pages++) {
+            await aid(page, 'PageDown')
+            at = await find()
+        }
+        return at
+    }, { timeout: 60000, intervals: [3000] }).toBeGreaterThan(5)
+    await clickCell(page, await find(), 10)
+    await aid(page, 'F1')
+    expect(await row(page, 0)).toMatch(/Additional Message Information/)
+    expect(await row(page, 2)).toMatch(/Message ID .* : BackOff/)
+    expect(await row(page, 7)).toMatch(/From object .* : Pod broken-/)
+    expect(await row(page, 8)).toMatch(/Subsystem .* : wrkactjob-e2e/)
+    await shot('message-details')
+    await enter(page)
+    await enter(page)
+    expect(await row(page, 0)).toMatch(/Work with Active Jobs/)
+})
+
+test('WRKJOBSCDE: the fixture entry, held, in IBM i words', async () => {
+    await command(page, 'wrkjobscde')
+    expect(await row(page, 0)).toMatch(/Work with Job Schedule Entries/)
+    const r = await rowOf('NIGHTLY-BA', 9)
+    expect(r).toBeGreaterThan(8)
+    expect(await row(page, r)).toMatch(/NIGHTLY-BA  HLD     \*SELECT   02:30:00  \*WEEKLY     \d\d\/\d\d\/\d\d/)
+    await option(page, r, '3')
+    expect(await lastRow()).toMatch(/Job schedule entry NIGHTLY-BA already held\./)
+    await reset(page)
+    await clickCell(page, r, 2)
+    await page.keyboard.press('End')
+})
+
+test('6 releases it and 3 holds it again, each through its prompt; Kubernetes says so', async () => {
+    const r = await rowOf('NIGHTLY-BA', 9)
+    await option(page, r, '6')
+    expect(await row(page, 0)).toMatch(/Release Job Schedule Entry \(RLSJOBSCDE\)/)
+    expect(await row(page, 4)).toMatch(/NIGHTLY-BACKUP/)
+    await enter(page)
+    expect(await lastRow()).toMatch(/Job schedule entry NIGHTLY-BA released\./)
+    expect(await row(page, r)).toMatch(/NIGHTLY-BA  SCD/)
+    expect(suspended()).toBe('false')
+    await option(page, r, '3')
+    expect(await row(page, 0)).toMatch(/Hold Job Schedule Entry \(HLDJOBSCDE\)/)
+    await enter(page)
+    expect(await row(page, r)).toMatch(/NIGHTLY-BA  HLD/)
+    expect(suspended()).toBe('true')
+    await shot('wrkjobscde')
+})
+
+test('10 submits it: a Job of its own; 5 lists it among the submissions; 8 shows its pod', async () => {
+    const r = await rowOf('NIGHTLY-BA', 9)
+    await option(page, r, '10')
+    expect(await row(page, 0)).toMatch(/Submit Job \(SBMJOB\)/)
+    await enter(page)
+    expect(await lastRow()).toMatch(/Job nightly-backup-manual-\d+ submitted\./)
+    const submitted = jobsOf().filter(j => j.startsWith('nightly-backup-manual-'))
+    expect(submitted).toHaveLength(1)
+    await option(page, r, '5')
+    expect(await row(page, 0)).toMatch(/Display Job Schedule Entry Details/)
+    expect(await screenText(page)).toMatch(/Schedule \(cron\) .* : 30 2 \* \* 1-5/)
+    await aid(page, 'PageDown')
+    expect(await screenText(page)).toContain(submitted[0])
+    await enter(page)
+    await option(page, r, '8')
+    expect(await row(page, 0)).toMatch(/Work with Active Jobs/)
+    await expect.poll(async () => {
+        await aid(page, 'F5')
+        return screenText(page)
+    }, { timeout: 30000, intervals: [2000] }).toMatch(/NIGHTLY-BA\s+\S+\s+BCH/)
+    await aid(page, 'F12')
+    expect(await row(page, 0)).toMatch(/Work with Job Schedule Entries/)
+    await aid(page, 'F3')
     expect(await row(page, 0)).toMatch(/Work with Active Jobs/)
 })
 
