@@ -13,7 +13,7 @@ export interface IChapeteGenerateOptions {
     model: LanguageModel
     system: string
     messages: Array<{ role: 'user' | 'assistant', content: string }>
-    temperature: number
+    temperature?: number        // undefined: none is sent, the model's own
 }
 
 /*

@@ -21,7 +21,8 @@ export const ChapeteSetup: React.FC<ISetupProps> = (props: ISetupProps) => {
     const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState('')
     const [llmId, setLlmId] = useState(instanceConfig.llmId)
-    const [temperature, setTemperature] = useState(instanceConfig.temperature)
+    // '' = empty: none is sent, the model's own — an LLM of the core may have no temperature (common-ai 0.5.91)
+    const [temperature, setTemperature] = useState<number | ''>(instanceConfig.temperature ?? '')
     const defaultRef = useRef<HTMLInputElement | null>(null)
 
     // The LLMs are the core's: the same list its AI settings edit.
@@ -38,7 +39,7 @@ export const ChapeteSetup: React.FC<ISetupProps> = (props: ISetupProps) => {
                 if (!list.some(l => l.id === llmId)) {
                     const only = list.length === 1 ? list[0] : undefined
                     setLlmId(only?.id ?? '')
-                    if (only) setTemperature(only.temperature)
+                    if (only) setTemperature(only.temperature ?? '')
                 }
             }
             catch (err) {
@@ -53,10 +54,11 @@ export const ChapeteSetup: React.FC<ISetupProps> = (props: ISetupProps) => {
         setLlmId(id)
         // each LLM carries its own temperature in the core: it is the starting point, and can be changed here
         const llm = llms.find(l => l.id === id)
-        if (llm) setTemperature(llm.temperature)
+        if (llm) setTemperature(llm.temperature ?? '')
     }
 
-    const invalidTemperature = (): boolean => !Number.isFinite(temperature) || temperature < 0 || temperature > 2
+    // empty is valid (the model's own); a stated one goes from 0 to 2
+    const invalidTemperature = (): boolean => temperature !== '' && (!Number.isFinite(temperature) || temperature < 0 || temperature > 2)
 
     const noLlms = !loading && llms.length === 0
 
@@ -68,7 +70,8 @@ export const ChapeteSetup: React.FC<ISetupProps> = (props: ISetupProps) => {
     }
 
     const ok = () => {
-        const chosen: IChapeteInstanceConfig = { llmId, temperature }
+        // an empty temperature is LEFT OUT: none is sent, the model's own
+        const chosen: IChapeteInstanceConfig = { llmId, ...(temperature === '' ? {} : { temperature }) }
         props.onChannelSetupClosed(props.channel, {
             channelId: props.channel.channelId,
             channelConfig: config,
@@ -93,10 +96,10 @@ export const ChapeteSetup: React.FC<ISetupProps> = (props: ISetupProps) => {
                         {statusText()}
                     </Typography>
                     <LlmSelector llms={llms} value={llmId} onChange={selectLlm} label='LLM' />
-                    <TextField value={temperature} onChange={(e) => setTemperature(+e.target.value)} type='number' variant='standard'
-                        label='Temperature' error={invalidTemperature()} disabled={llmId === ''}
-                        slotProps={{ htmlInput: { step: 0.1, min: 0, max: 2 } }}
-                        helperText={invalidTemperature() ? 'From 0 to 2' : 'Lower is more precise, higher is more creative'} fullWidth />
+                    <TextField value={temperature} onChange={(e) => setTemperature(e.target.value === '' ? '' : +e.target.value)} type='number' variant='standard'
+                        label='Temperature' error={invalidTemperature()} disabled={llmId === ''} placeholder='model default'
+                        slotProps={{ htmlInput: { step: 0.1, min: 0, max: 2 }, inputLabel: { shrink: true } }}
+                        helperText={invalidTemperature() ? 'From 0 to 2' : temperature === '' ? 'Empty: the model\'s own — none is sent (a reasoning model takes none)' : 'Lower is more precise, higher is more creative'} fullWidth />
                 </Stack>
             </DialogContent>
             <DialogActions>

@@ -19,7 +19,9 @@ export interface IChapeteMessage {
 export interface IChapeteInstanceConfig {
     /** id of an ILlm configured in the core */
     llmId: string
-    temperature: number
+    /** undefined = none is sent, the model's own (an LLM's temperature may be empty since common-ai 0.5.91: a
+     *  reasoning model — GPT-5, the o-series — takes none) */
+    temperature?: number
 }
 
 /**
