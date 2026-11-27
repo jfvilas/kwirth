@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { EShutDownAction, ITasklistNode, ITasklistProcess, ITasklistUser } from '../../common/TasklistTypes'
 import { EProcessColumn } from '../TasklistSessionTypes'
 import { Button, Checkbox, Dialog, IListColumn, ListView, TabStrip } from '../luna/LunaControls'
-import { ProcessIcon, RunIcon, WindowIcon } from '../luna/LunaIcons'
+import { KubernetesLogo, ProcessIcon, RunIcon, WindowIcon } from '../luna/LunaIcons'
+import { version as VERSION } from '../../../package.json'
 import { cpuColumn, kilobytes } from '../Format'
 import { PROCESS_COLUMN_LABELS } from './ProcessesTab'
 
@@ -180,9 +181,26 @@ export const AboutDialog: React.FC<{ cluster: string; onClose: () => void }> = (
         <div className='tl-about'>
             <WindowIcon />
             <div>
-                <div style={{ fontWeight: 700 }}>Task Manager for Kwirth</div>
-                <div>A plugin by jfvilas, MIT licence. Not affiliated with Microsoft.</div>
-                <div style={{ marginTop: 8 }}>This computer is the cluster <b>{cluster}</b>: its pods are the processes, its Deployments the applications, its nodes the CPUs and network adapters, and its namespaces the users.</div>
+                <div style={{ fontWeight: 700 }}>Task Manager</div>
+                <div>Part of KubernetesXP {VERSION}.</div>
+                <div style={{ marginTop: 8 }}>This computer is the cluster <b>{cluster}</b>: its pods are the processes, its Deployments, StatefulSets and DaemonSets the applications, its nodes the CPUs and network adapters, and its namespaces the users.</div>
+            </div>
+        </div>
+        <div className='tl-buttons'><Button label='OK' onClick={onClose} autoFocus /></div>
+    </Dialog>
+
+// ─── Start → About KubernetesXP: the product, as XP's "About Windows" said who it was ───────────────
+
+export const AboutKubernetesXPDialog: React.FC<{ cluster: string; onClose: () => void }> = ({ cluster, onClose }) =>
+    <Dialog title='About KubernetesXP' onClose={onClose} testId='tl-about-kxp'>
+        <div className='tl-about'>
+            <span className='tl-about-logo'><KubernetesLogo /></span>
+            <div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>KubernetesXP</div>
+                <div>Version {VERSION}</div>
+                <div style={{ marginTop: 8 }}>A small XP desktop over the cluster <b>{cluster}</b>, inside Kwirth: the Task Manager and Notepad, a taskbar and a Start menu.</div>
+                <div style={{ marginTop: 8 }}>A Kwirth plugin by jfvilas, under the MIT licence. Its font is Wine's Tahoma replacement (LGPL-2.1).</div>
+                <div style={{ marginTop: 8, color: '#716f64' }}>Not affiliated with Microsoft. Kubernetes is a trademark of The Linux Foundation, used here to name it.</div>
             </div>
         </div>
         <div className='tl-buttons'><Button label='OK' onClick={onClose} autoFocus /></div>

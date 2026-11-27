@@ -1,7 +1,7 @@
-# Task Manager — a channel plugin for Kwirth
+# KubernetesXP — a channel plugin for Kwirth
 
-The classic XP **Task Manager** window, blue title bar and all, inside a [Kwirth](https://kwirthmagnify.dev) tab —
-except that the computer it manages is a **Kubernetes cluster**. Its processes are **pods**, its applications
+A small XP desktop inside a [Kwirth](https://kwirthmagnify.dev) tab — taskbar, Start menu, blue title bars and all —
+whose computer is a **Kubernetes cluster**. Its main program is the classic **Task Manager**. Its processes are **pods**, its applications
 **Deployments**, its CPUs and network adapters the **nodes**, and its users the **namespaces**. Sort the processes
 by CPU, select one and press `End Process`; watch the cluster breathe on the Performance tab.
 
@@ -83,7 +83,7 @@ Kwirth does not list it yet, add it as a marketplace with this manifest URL:
 https://raw.githubusercontent.com/jfvilas/kwirth/master/manifest.json
 ```
 
-Then install `tasklist` from the plugin manager. No restart is needed. It **uses** Kwirth's `metrics` provider for
+Then install KubernetesXP (its id is `tasklist`) from the plugin manager. No restart is needed. It **uses** Kwirth's `metrics` provider for
 the figures when it is installed.
 
 ## Permissions

@@ -9,7 +9,7 @@ export const TASKBAR_HEIGHT = 30
 
 export interface ITaskbarProps {
     session: TasklistSession
-    onAbout: () => void
+    onAbout: () => void        // Start → About KubernetesXP: the product's (the Task Manager's own is in its Help menu)
 }
 
 /*
@@ -38,7 +38,7 @@ export const Taskbar: React.FC<ITaskbarProps> = ({ session, onAbout }) => {
         { label: 'Task Manager', isDefault: true, onClick: session.openTaskManager },
         { label: 'Notepad', onClick: () => session.openNotepad('Untitled', '', false, false) },
         {},
-        { label: 'About Task Manager', onClick: onAbout },
+        { label: 'About KubernetesXP', onClick: onAbout },
         {},
         { label: 'Log Off', disabled: true },
         { label: 'Turn Off Computer...', disabled: true }

@@ -65,7 +65,7 @@ test.afterAll(async () => {
 
 test('stopped, it says so; Start opens the window on Processes, with no setup to answer', async () => {
     const notStarted = page.getByTestId('channel-not-started')
-    await expect(notStarted).toContainText('Task Manager not started')
+    await expect(notStarted).toContainText('KubernetesXP not started')
     await notStarted.getByRole('button', { name: 'Start' }).click()
     await expect(win(page)).toBeVisible({ timeout: 20000 })
     await expect(win(page).locator('.tl-title-text').first()).toHaveText('Task Manager')
@@ -552,10 +552,16 @@ test('every edge and corner resizes, the title bar\'s double click maximises and
     expect((await box()).width).toBeGreaterThan(normal.width)
     await win(page).locator('.tl-title-text').dblclick()
     expect((await box()).width).toBeCloseTo(normal.width, 0)
-    // Start → About Task Manager
+    // Start → About KubernetesXP: the product, its version; the Task Manager's About is not on the Start menu
     await page.getByTestId('tl-start').dispatchEvent('mousedown')
-    await root(page).getByTestId('tl-start-menu').getByRole('menuitem', { name: 'About Task Manager' }).click()
-    await dialog(page, 'tl-about').getByRole('button', { name: 'OK' }).click()
+    const startMenu = root(page).getByTestId('tl-start-menu')
+    await expect(startMenu.getByRole('menuitem', { name: 'About Task Manager' })).toHaveCount(0)
+    await startMenu.getByRole('menuitem', { name: 'About KubernetesXP' }).click()
+    const about = dialog(page, 'tl-about-kxp')
+    await expect(about).toContainText('KubernetesXP')
+    await expect(about).toContainText(/Version \d+\.\d+\.\d+/)
+    await expect(about).toContainText('Not affiliated with Microsoft')
+    await about.getByRole('button', { name: 'OK' }).click()
 })
 
 test('Notepad from Start: a window of its own — in front, on the taskbar, resizable, maximised and minimised, closed without asking', async () => {
@@ -672,6 +678,6 @@ test('Maximize fills the tab, Restore brings the window back; Help → About nam
     await win(page).getByRole('button', { name: 'Restore' }).click()
     expect((await win(page).boundingBox())!.width).toBeCloseTo(normal.width, 0)
     await menu(page, 'Help', 'About Task Manager')
-    await expect(dialog(page, 'tl-about')).toContainText('Not affiliated with Microsoft')
+    await expect(dialog(page, 'tl-about')).toContainText('Part of KubernetesXP')
     await dialog(page, 'tl-about').getByRole('button', { name: 'OK' }).click()
 })

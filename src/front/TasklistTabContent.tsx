@@ -69,8 +69,8 @@ export const TasklistTabContent: React.FC<IContentProps> = ({ channelObject }) =
     if (!session) {
         return (
             <Stack sx={{ height: '60vh', alignItems: 'center', justifyContent: 'center', px: 4 }}>
-                <ChannelNotStarted icon={<Box sx={{ display: 'flex', color: 'primary.main' }}>{TasklistIcon}</Box>} name='Task Manager'
-                    hint='Task Manager not started. Start the channel to see the processes, performance and network of this cluster.' channelObject={channelObject} />
+                <ChannelNotStarted icon={<Box sx={{ display: 'flex', color: 'primary.main' }}>{TasklistIcon}</Box>} name='KubernetesXP'
+                    hint='KubernetesXP not started. Start the channel to open the desktop of this cluster: its Task Manager, its logs and its YAML.' channelObject={channelObject} />
             </Stack>
         )
     }

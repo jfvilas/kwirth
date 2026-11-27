@@ -46,7 +46,7 @@ export class TasklistChannel implements IChannel {
             const signal = msg as ISignalMessage
             // A rejection from the core or the channel (no permission, for one): say it, do not swallow it.
             if (signal.level === ESignalMessageLevel.ERROR) {
-                channelObject.notify?.(channelObject.channelId, ENotifyLevel.ERROR, signal.text || 'The Task Manager reported an error')
+                channelObject.notify?.(channelObject.channelId, ENotifyLevel.ERROR, signal.text || 'KubernetesXP reported an error')
                 return { action: EChannelRefreshAction.NONE }
             }
             if (signal.flow === EInstanceMessageFlow.RESPONSE && signal.action === EInstanceMessageAction.START && signal.instance) {

@@ -11,7 +11,7 @@ import { ApplicationsTab } from './ApplicationsTab'
 import { PerformanceTab } from './PerformanceTab'
 import { NetworkingTab } from './NetworkingTab'
 import { UsersTab } from './UsersTab'
-import { AboutDialog, CreateNewTaskDialog, INewTask, PropertiesDialog, SelectColumnsDialog, SHUT_DOWN_TITLES, ShutDownDialog } from './Dialogs'
+import { AboutDialog, AboutKubernetesXPDialog, CreateNewTaskDialog, INewTask, PropertiesDialog, SelectColumnsDialog, SHUT_DOWN_TITLES, ShutDownDialog } from './Dialogs'
 import { NotepadWindow } from './NotepadWindow'
 import { LunaWindow } from '../luna/LunaWindow'
 import { TASK_MANAGER_WINDOW } from '../TasklistSessionTypes'
@@ -337,7 +337,7 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
             {/* the Task Manager's dialogs: modal over the desktop, the taskbar left free */}
             {dialog}
             </div>
-            <Taskbar session={session} onAbout={() => setDialog(<AboutDialog cluster={session.cluster} onClose={close} />)} />
+            <Taskbar session={session} onAbout={() => setDialog(<AboutKubernetesXPDialog cluster={session.cluster} onClose={close} />)} />
             {contextMenu && <ContextMenu items={contextMenu.items} x={contextMenu.x} y={contextMenu.y} onClose={closeMenu} />}
         </div>
     )

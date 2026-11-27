@@ -15,8 +15,8 @@ export enum ETasklistScope {
 export const TASKLIST_SCOPE_LADDER: string[] = ['', ETasklistScope.READ, ETasklistScope.END, ETasklistScope.CLUSTER, ETasklistScope.ADMIN]
 
 export const TASKLIST_SCOPES: IExtensionScope[] = [
-    { scope: ETasklistScope.READ, label: 'Task Manager · Read', description: 'Open the Task Manager: see the processes (pods), applications (Deployments), performance, networking and users (namespaces), and read the processes\' logs' },
-    { scope: ETasklistScope.END, label: 'Task Manager · End', description: 'End, restart and edit processes (delete, replace or change pods), end process trees (delete their controllers), end and edit tasks (Deployments, StatefulSets, DaemonSets) and run new tasks (create pods)' }
+    { scope: ETasklistScope.READ, label: 'KubernetesXP · Read', description: 'Open KubernetesXP and its Task Manager: see the processes (pods), applications (Deployments), performance, networking and users (namespaces), and read the processes\' logs' },
+    { scope: ETasklistScope.END, label: 'KubernetesXP · End', description: 'End, restart and edit processes (delete, replace or change pods), end process trees (delete their controllers), end and edit tasks (Deployments, StatefulSets, DaemonSets) and run new tasks (create pods)' }
 ]
 
 // ─── Front ↔ back protocol ────────────────────────────────────────────────────────────────────────

@@ -182,6 +182,11 @@ conservan la pestaña activa, el orden, las columnas, la selección y la histori
 - **D19** (2026-11-27, el usuario) — **Escritorio con varias ventanas**: Notepad es una ventana más (se mueve,
   se redimensiona, maximiza, minimiza y cierra; un botón en la taskbar por ventana; la de delante, con la barra
   de título viva). Se abre también en blanco desde **Start → Notepad**; uno en blanco no tiene dónde guardar.
+- **D20** (2026-11-27, el usuario) — El cierre del Task Manager se permite (Start lo vuelve a abrir); mientras
+  está cerrado no pide snapshots y su medidor sale de la bandeja.
+- **D21** (2026-11-27, el usuario) — **Nombre visible del producto: KubernetesXP** (cambia D2; el id sigue
+  siendo `tasklist`). Start → **About KubernetesXP** (el producto y su versión); **About Task Manager** queda
+  solo en el Help del Task Manager.
 
 ## 8. Entregas
 

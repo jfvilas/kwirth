@@ -160,7 +160,7 @@ export class TasklistChannel implements IChannel {
         if (!this.allows(accessKey, ETasklistScope.READ)) {
             this.backChannelObject.logWarning?.(`Denied instance ${instanceConfig.instance}: '${ETasklistScope.READ}' required`)
             this.sendSignal(webSocket, EInstanceMessageAction.START, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.ERROR, instanceConfig.instance,
-                `You don't have permission to use the Task Manager. Opening it requires the '${ETasklistScope.READ}' scope — ask an administrator.`)
+                `You don't have permission to use KubernetesXP. Opening it requires the '${ETasklistScope.READ}' scope — ask an administrator.`)
             return false
         }
 
@@ -184,7 +184,7 @@ export class TasklistChannel implements IChannel {
 
     stopInstance = (webSocket: WebSocket, instanceConfig: IInstanceConfig): void => {
         this.removeInstance(webSocket, instanceConfig.instance)
-        this.sendSignal(webSocket, EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.INFO, instanceConfig.instance, 'Task Manager stopped')
+        this.sendSignal(webSocket, EInstanceMessageAction.STOP, EInstanceMessageFlow.RESPONSE, ESignalMessageLevel.INFO, instanceConfig.instance, 'KubernetesXP stopped')
     }
 
     removeInstance = (webSocket: WebSocket, instanceId: string): void => {

@@ -227,6 +227,8 @@ const CSS = `
 .tl-notepad-text .cm-panels { font-family: ${LUNA_FONT_STACK}; font-size: 11px; background: #ece9d8; }
 .tl-about { display: flex; gap: 12px; width: 380px; line-height: 15px; }
 .tl-about .tl-title-icon { width: 48px; height: 48px; flex: 0 0 auto; }
+.tl-about-logo { flex: 0 0 auto; }
+.tl-about-logo .tl-start-logo { width: 56px; height: 56px; }
 `
 
 const STYLE_ID = 'kwirth-tasklist-luna'
