@@ -1,0 +1,47 @@
+{
+    "id": "tasklist",
+    "name": "@jfvilas/kwirth-plugin-tasklist",
+    "displayName": "Task Manager",
+    "extensionType": "plugin",
+    "publisher": "@jfvilas",
+    "version": "0.1.0",
+    "tags": [
+        "operations",
+        "kubernetes",
+        "emulator"
+    ],
+    "description": "Task Manager channel plugin for Kwirth - the classic XP Task Manager window over a Kubernetes cluster: pods are processes, Deployments are applications, nodes are CPUs and network adapters, namespaces are users",
+    "icon": "<svg viewBox='0 0 24 24'><path fill='currentColor' fill-rule='evenodd' d='M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v10h16V5zM9 19h6v2H9zM6 11h2v3H6zm4-3h2v6h-2zm4-2h2v8h-2z'/></svg>",
+    "license": "MIT",
+    "website": "https://github.com/jfvilas/kwirth/tree/master/plugins/tasklist",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jfvilas/kwirth.git",
+        "directory": "plugins/tasklist"
+    },
+    "requiresRestart": false,
+    "requiresExtension": [],
+    "type": "module",
+    "scripts": {
+        "build": "node build.mjs",
+        "watch": "node watch.mjs",
+        "test": "node tests/run.mjs"
+    },
+    "dependencies": {
+        "@kwirthmagnify/kwirth-common": "^0.5.96",
+        "@kwirthmagnify/kwirth-common-back": "^0.6.19",
+        "@kwirthmagnify/kwirth-common-front": "^0.5.83"
+    },
+    "devDependencies": {
+        "@kubernetes/client-node": "^1.4.0",
+        "@mui/material": "7.1.2",
+        "@types/express": "^4.17.21",
+        "@types/node": "^20.12.13",
+        "@types/react": "^18.3.0",
+        "c8": "^12.0.0",
+        "esbuild": "^0.27.2",
+        "react": "^18.3.0",
+        "react-dom": "^18.3.0",
+        "typescript": "^5.4.0"
+    }
+}

@@ -1,0 +1,16 @@
+tahoma.ttf and tahomabd.ttf are the Tahoma replacement fonts of the Wine project (https://www.winehq.org),
+taken from the Ubuntu package wine-common 10.0~repack-12ubuntu1 (/usr/share/wine/fonts).
+
+Copyright (c) 2004 Larry Snyder, Based on Bitstream Vera Sans Copyright (c) 2003 by Bitstream, Inc.
+Font renamed in accordance with former's license. Please do not contact Bitstream Inc. for any reason
+regarding this font.
+
+This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser
+General Public License as published by the Free Software Foundation; either version 2.1 of the License, or
+(at your option) any later version.
+
+This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
+License for more details: http://www.gnu.org/licenses/lgpl.html
+
+They are NOT Microsoft's Tahoma, and no Microsoft font is distributed with this plugin.
