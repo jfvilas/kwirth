@@ -27,6 +27,53 @@ const CSS = `
 .tl-caption:active { filter: brightness(0.85); }
 .tl-caption.tl-close { background: radial-gradient(circle at 90% 90%, #cc4600 0%, #dc6527 55%, #cd7546 70%, #ffccb2 90%, #fff 100%); }
 .tl-caption svg { width: 13px; height: 13px; }
+.tl-caption.tl-disabled { filter: grayscale(.45) opacity(.55); }
+.tl-caption.tl-disabled:hover, .tl-caption.tl-disabled:active { filter: grayscale(.45) opacity(.55); }
+.tl-title { cursor: default; }
+
+/* tiny footprint: only the panel's content is left, in the window's frame */
+.tl-compact .tl-title, .tl-compact .tl-menubar, .tl-compact .tl-tabs, .tl-compact .tl-status { display: none; }
+.tl-compact { border-top: 1px solid #0831d9; border-radius: 0; }
+.tl-compact .tl-frame { border-top: 3px solid #0054e3; }
+.tl-compact .tl-body { padding: 0; }
+.tl-compact .tl-tabpanel { border: none; padding: 4px; }
+.tl-compact .tl-buttons, .tl-compact .tl-perf-totals { display: none; }
+
+/* the desktop and XP's taskbar */
+.tl-desktop { position: absolute; left: 0; top: 0; right: 0; }
+.tl-taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 30px; display: flex; align-items: center; z-index: 40;
+    background: linear-gradient(to bottom, #3168d5 0%, #4993e6 3%, #2157d7 6%, #2663e0 10%, #245edb 50%, #1941a5 92%, #1941a5 100%); }
+.tl-taskbar .tl-menu { position: absolute; }
+.tl-start { height: 30px; display: flex; align-items: center; gap: 4px; padding: 0 22px 0 8px; border-radius: 0 10px 10px 0; cursor: default;
+    background: linear-gradient(to bottom, #3c8f3c 0%, #6fbf5c 10%, #4ba443 30%, #388e34 70%, #2c7a2b 90%, #1f5f20 100%);
+    box-shadow: inset -1px -1px 2px rgba(0,0,0,.35), 2px 0 3px rgba(0,0,0,.35); }
+.tl-start:hover { filter: brightness(1.08); }
+.tl-start.tl-pressed { background: linear-gradient(to bottom, #1f5f20 0%, #2c7a2b 30%, #388e34 80%, #3c8f3c 100%); }
+.tl-start-logo { width: 22px; height: 22px; filter: drop-shadow(1px 1px 1px rgba(0,0,0,.45)); }
+.tl-start-text { color: #fff; font-size: 19px; font-weight: 700; font-style: italic; text-shadow: 1px 1px 2px #1a3e12; padding-bottom: 2px; }
+.tl-tasks { flex: 1; min-width: 0; display: flex; gap: 3px; padding: 0 8px; }
+.tl-task { width: 160px; height: 24px; display: flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: 3px; color: #fff; cursor: default;
+    background: linear-gradient(to bottom, #3c81f3 0%, #3a7ef0 80%, #2b67d5 100%); border: 1px solid #1e4fb1; box-shadow: inset 1px 1px 0 rgba(255,255,255,.3); }
+.tl-task:hover { background: linear-gradient(to bottom, #5a98f6 0%, #4f8ff4 80%, #3d78e0 100%); }
+.tl-task.tl-active { background: #1e52b7; box-shadow: inset 1px 1px 2px rgba(0,0,0,.5); }
+.tl-task .tl-title-icon { margin-right: 0; }
+.tl-task-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tl-tray { height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 14px; color: #fff; border-left: 1px solid #092e51;
+    background: linear-gradient(to bottom, #0c59b9 0%, #139ee9 5%, #18b5f2 10%, #139beb 15%, #1290e8 50%, #0d8dea 90%, #0c59b9 100%);
+    box-shadow: inset 1px 0 1px #1a9cf3; }
+.tl-tray-icon { width: 16px; height: 16px; display: block; }
+.tl-clock { white-space: nowrap; }
+
+/* the window is resized by its edges and corners, which only change the pointer, as XP's */
+.tl-resize { position: absolute; z-index: 5; }
+.tl-resize-n { top: -3px; left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
+.tl-resize-s { bottom: -3px; left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
+.tl-resize-e { right: -3px; top: 8px; bottom: 8px; width: 6px; cursor: ew-resize; }
+.tl-resize-w { left: -3px; top: 8px; bottom: 8px; width: 6px; cursor: ew-resize; }
+.tl-resize-ne { top: -3px; right: -3px; width: 12px; height: 12px; cursor: nesw-resize; }
+.tl-resize-sw { bottom: -3px; left: -3px; width: 12px; height: 12px; cursor: nesw-resize; }
+.tl-resize-nw { top: -3px; left: -3px; width: 12px; height: 12px; cursor: nwse-resize; }
+.tl-resize-se { bottom: -3px; right: -3px; width: 12px; height: 12px; cursor: nwse-resize; }
 
 /* the menu bar and its menus */
 .tl-menubar { display: flex; height: 20px; flex: 0 0 auto; background: #ece9d8; padding-left: 1px; }

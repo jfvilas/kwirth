@@ -1,4 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { DraggableCore, DraggableData, DraggableEvent } from 'react-draggable'
+import { Resizable, ResizeCallbackData, ResizeHandle } from 'react-resizable'
+import { placementOf, resizedPlacement, TPlacement } from './Placement'
+import { Taskbar, TASKBAR_HEIGHT } from './Taskbar'
 import { EShutDownAction, ETasklistCommand, ETasklistError, ITasklistApplication, ITasklistMessageResponse, ITasklistProcess, ITasklistRequest, ITasklistUser } from '../../common/TasklistTypes'
 import { ETasklistTab, EUpdateSpeed } from '../TasklistSessionTypes'
 import { TasklistSession } from '../TasklistSession'
@@ -20,9 +24,8 @@ const TABS = [
     { id: ETasklistTab.USERS, label: 'Users' }
 ]
 
-// The size of the window when it is not maximised, as far as the tab lets it.
-const NORMAL_WIDTH = 620
-const NORMAL_HEIGHT = 600
+// The eight edges and corners the window is resized by, as XP's.
+const RESIZE_HANDLES: ResizeHandle[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
 interface IContextMenuState {
     items: IMenuItem[]
@@ -40,6 +43,8 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
     const [dialog, setDialog] = useState<JSX.Element>()
     const [contextMenu, setContextMenu] = useState<IContextMenuState>()
     const rootRef = useRef<HTMLDivElement>(null)
+    // the desktop the window lives on: state, not a ref, so the drag gets it from the first render after mounting
+    const [desktop, setDesktop] = useState<HTMLDivElement | null>(null)
     const close = useCallback(() => setDialog(undefined), [])
     const closeMenu = useCallback(() => setContextMenu(undefined), [])
     const snapshot = session.snapshot
@@ -233,12 +238,24 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
 
     // ─── the window ───────────────────────────────────────────────────────────────────────────────
     // Maximize is the window's own: the full screen of Kwirth's tab only gives it more desktop (they are independent)
+    // The desktop is the tab above the taskbar: where the window is placed, dragged and maximised.
+    const deskWidth = width
+    const deskHeight = Math.max(0, height - TASKBAR_HEIGHT)
     const maximized = session.maximized
-    const w = maximized ? width : Math.min(NORMAL_WIDTH, width - 24)
-    const h = maximized ? height : Math.min(NORMAL_HEIGHT, height - 24)
-    const placement: React.CSSProperties = maximized
-        ? { left: 0, top: 0, width, height }
-        : { left: Math.max(0, (width - w) / 2), top: Math.max(0, (height - h) / 2), width: w, height: h }
+    const [x, y, w, h] = maximized ? [0, 0, deskWidth, deskHeight] : placementOf(session, deskWidth, deskHeight)
+
+    // Dragged by the title bar (not by its buttons), and kept on the desktop.
+    const titleRef = useRef<HTMLDivElement>(null)
+    const drag = (_e: DraggableEvent, d: DraggableData) => {
+        const [x0, y0, w0, h0] = placementOf(session, deskWidth, deskHeight)
+        session.placeWindow(Math.max(0, Math.min(deskWidth - w0, x0 + d.deltaX)), Math.max(0, Math.min(deskHeight - h0, y0 + d.deltaY)), w0, h0)
+    }
+    // Resized by its edges and corners: the placement when it started, so a left or top edge moves the window too.
+    const resizeStart = useRef<TPlacement>([0, 0, 0, 0])
+    const resize = (_e: React.SyntheticEvent, data: ResizeCallbackData) => {
+        const [nx, ny, nw, nh] = resizedPlacement(resizeStart.current, data.handle, data.size.width, data.size.height, deskWidth, deskHeight)
+        session.placeWindow(nx, ny, nw, nh)
+    }
 
     const metrics = snapshot?.metrics
     const limit = (snapshot?.nodes ?? []).reduce((n, x) => n + x.memoryAllocatable, 0)
@@ -246,20 +263,38 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
 
     return (
         <div className='tl-root' ref={rootRef} tabIndex={-1} data-testid='tasklist-window-root' style={{ width, height }}>
-            <div className={'tl-window' + (maximized ? ' tl-max' : '')} style={placement} data-testid='tasklist-window'>
-                <div className='tl-title' onDoubleClick={() => session.setMaximized(!session.maximized)}>
+            <div className='tl-desktop' ref={setDesktop} style={{ height: deskHeight }} data-testid='tl-desktop'>
+            <Resizable width={w} height={h} resizeHandles={maximized ? [] : RESIZE_HANDLES} onResizeStart={() => { resizeStart.current = [x, y, w, h] }} onResize={resize}
+                handle={(axis, ref) => <span ref={ref as React.Ref<HTMLSpanElement>} className={`tl-resize tl-resize-${axis}`} data-testid={`tl-resize-${axis}`} />}>
+            <div className={'tl-window' + (maximized ? ' tl-max' : '') + (session.compact ? ' tl-compact' : '')} data-testid='tasklist-window'
+                style={{ left: x, top: y, width: w, height: h, display: session.minimized ? 'none' : undefined }}>
+                {/*
+                    Measured against the desktop, which stays still. Against the window, which moves with every step,
+                    each step was corrected twice over: the window shook and jumped while being dragged.
+                */}
+                <DraggableCore nodeRef={titleRef} onDrag={drag} cancel='.tl-caption' disabled={maximized || !desktop} offsetParent={desktop ?? undefined}>
+                <div className='tl-title' ref={titleRef} onDoubleClick={() => session.setMaximized(!session.maximized)}>
                     <WindowIcon />
                     <span className='tl-title-text'>Task Manager</span>
-                    <span className='tl-caption' aria-label='Minimize'><MinimizeGlyph /></span>
+                    <span className='tl-caption' aria-label='Minimize' role='button' onClick={() => session.setMinimized(true)}><MinimizeGlyph /></span>
                     <span className='tl-caption' aria-label={maximized ? 'Restore' : 'Maximize'} role='button'
                         onClick={() => session.setMaximized(!session.maximized)}>{maximized ? <RestoreGlyph /> : <MaximizeGlyph />}</span>
-                    <span className='tl-caption tl-close' aria-label='Close'><CloseGlyph /></span>
+                    {/* the channel is stopped from Kwirth, not from here: the close button is there, disabled */}
+                    <span className='tl-caption tl-close tl-disabled' aria-label='Close' aria-disabled='true'><CloseGlyph /></span>
                 </div>
+                </DraggableCore>
                 <div className='tl-frame'>
                     <MenuBar entries={menus} />
                     <div className='tl-body'>
                         <TabStrip tabs={TABS} selected={tab} onSelect={t => session.setState({ tab: t })} />
-                        <div className='tl-tabpanel' data-testid={`tl-panel-${tab}`}>
+                        {/*
+                            XP's tiny footprint: a double click on the panel's own frame, or on a graph, hides the window's
+                            chrome; another brings it back. A double click on a list row is still that row's.
+                        */}
+                        <div className='tl-tabpanel' data-testid={`tl-panel-${tab}`} onDoubleClick={e => {
+                            const target = e.target as HTMLElement
+                            if (target === e.currentTarget || target.closest('.tl-screen, .tl-net-graphs, .tl-perf')) session.setCompact(!session.compact)
+                        }}>
                             {tab === ETasklistTab.APPLICATIONS && <ApplicationsTab session={session} onEndTask={endTask} onSwitchTo={switchTo} onNewTask={newTask} onContextMenu={openMenu} />}
                             {tab === ETasklistTab.PROCESSES && <ProcessesTab session={session} onEndProcess={endProcess} onEndProcessTree={endProcessTree} onProperties={properties} onContextMenu={openMenu} />}
                             {tab === ETasklistTab.PERFORMANCE && <PerformanceTab session={session} />}
@@ -276,6 +311,9 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
                     </div>
                 </div>
             </div>
+            </Resizable>
+            </div>
+            <Taskbar session={session} onAbout={() => setDialog(<AboutDialog cluster={session.cluster} onClose={close} />)} />
             {contextMenu && <ContextMenu items={contextMenu.items} x={contextMenu.x} y={contextMenu.y} onClose={closeMenu} />}
             {dialog}
         </div>

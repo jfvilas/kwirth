@@ -72,6 +72,42 @@ export const RunIcon = (): JSX.Element => (
     </svg>
 )
 
+/*
+    The Start button's: Kubernetes' helm — a blue heptagon and a seven-spoke wheel — drawn here as a plain shape (the
+    machine this Start belongs to is a cluster). Kubernetes is a trademark of the Linux Foundation, used to name it.
+*/
+const heptagon = (cx: number, cy: number, r: number): string =>
+    Array.from({ length: 7 }, (_, i) => {
+        const a = -Math.PI / 2 + i * 2 * Math.PI / 7
+        return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`
+    }).join(' ')
+
+export const KubernetesLogo = (): JSX.Element => (
+    <svg viewBox='0 0 32 32' className='tl-start-logo'>
+        <polygon points={heptagon(16, 16.6, 15)} fill='#326ce5' stroke='#fff' strokeWidth='1.2' strokeLinejoin='round' />
+        <circle cx='16' cy='16.6' r='7' fill='none' stroke='#fff' strokeWidth='1.9' />
+        {Array.from({ length: 7 }, (_, i) => {
+            const a = -Math.PI / 2 + i * 2 * Math.PI / 7
+            return <line key={i} x1={16 + 2.2 * Math.cos(a)} y1={16.6 + 2.2 * Math.sin(a)} x2={16 + 10.5 * Math.cos(a)} y2={16.6 + 10.5 * Math.sin(a)}
+                stroke='#fff' strokeWidth='1.9' strokeLinecap='round' />
+        })}
+        <circle cx='16' cy='16.6' r='2.2' fill='#fff' />
+    </svg>
+)
+
+// The notification area's CPU meter, as XP's Task Manager left in the tray: green bars up to the usage.
+export const TrayCpuIcon = ({ cpu }: { cpu: number }): JSX.Element => {
+    const lit = Math.round(Math.min(100, Math.max(0, cpu)) / 100 * 12)
+    return (
+        <svg viewBox='0 0 16 16' className='tl-tray-icon'>
+            <rect x='1' y='1' width='14' height='14' fill='#000' stroke='#7d8aa3' strokeWidth='.8' />
+            {Array.from({ length: 12 }, (_, i) => (
+                <rect key={i} x='4' y={13.6 - i} width='8' height='.6' fill={i < lit ? '#1ee81e' : '#0b5d23'} />
+            ))}
+        </svg>
+    )
+}
+
 export const CheckMark = (): JSX.Element => (
     <svg viewBox='0 0 9 9'>
         <path d='M1 4.5 L3.5 7 L8 1.5' stroke='#21a121' strokeWidth='2' fill='none' />

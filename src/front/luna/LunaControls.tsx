@@ -35,13 +35,14 @@ export interface IMenuItem {
     onClick?: () => void
 }
 
-export const PopupMenu: React.FC<{ items: IMenuItem[]; x: number; y: number; onClose: () => void; testId?: string }> = ({ items, x, y, onClose, testId }) => {
+// At (x, y) from the top left, or — with `bottom` — growing upwards from that far above the bottom (the Start menu).
+export const PopupMenu: React.FC<{ items: IMenuItem[]; x: number; y?: number; bottom?: number; onClose: () => void; testId?: string }> = ({ items, x, y, bottom, onClose, testId }) => {
     const [open, setOpen] = useState<number>()
     const ref = useRef<HTMLDivElement>(null)
     const [width, setWidth] = useState(0)
     useLayoutEffect(() => { setWidth(ref.current?.offsetWidth ?? 0) }, [])
     return (
-        <div ref={ref} className='tl-menu' style={{ left: x, top: y }} role='menu' data-testid={testId} onMouseDown={(e) => e.stopPropagation()}>
+        <div ref={ref} className='tl-menu' style={bottom === undefined ? { left: x, top: y ?? 0 } : { left: x, bottom }} role='menu' data-testid={testId} onMouseDown={(e) => e.stopPropagation()}>
             {items.map((item, i) => {
                 if (!item.label) return <div key={i} className='tl-menu-sep' />
                 const classes = 'tl-menu-item' + (item.disabled ? ' tl-disabled' : '') + (item.isDefault ? ' tl-default' : '') + (open === i ? ' tl-open' : '')

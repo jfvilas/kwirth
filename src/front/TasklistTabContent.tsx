@@ -2,14 +2,34 @@ import React, { useEffect, useRef, useState } from 'react'
 import { ChannelNotStarted, IContentProps } from '@kwirthmagnify/kwirth-common-front'
 import { Box, Stack } from '@mui/material'
 import { ITasklistData } from './TasklistData'
+import { TasklistSession } from './TasklistSession'
+import { TasklistBackSource } from './TasklistBackSource'
 import { TasklistIcon } from './TasklistSetup'
 import { TaskManagerWindow } from './window/TaskManagerWindow'
 import { injectLunaStyle } from './luna/LunaStyle'
 import { loadLunaFont } from './luna/LunaFont'
 
-export const TasklistTabContent: React.FC<IContentProps> = ({ channelObject }) => {
+/*
+    A newer bundle of the plugin (an update, or a rebuild in development) is loaded while the tab is open: the
+    session in channelObject.data was made by the OLD code, and the new window would call what it does not have
+    (a drag threw 'not a function'). Such a session is made again with this code, keeping how the window was set.
+*/
+const currentSession = (channelObject: IContentProps['channelObject']): TasklistSession | undefined => {
     const data = channelObject?.data as ITasklistData | undefined
-    const session = data?.started ? data.session : undefined
+    if (!data?.started || !data.session) return undefined
+    if (data.session instanceof TasklistSession) return data.session
+    const old = data.session as Partial<TasklistSession>
+    data.source?.rejectAll?.('The Task Manager was updated.')
+    data.source = new TasklistBackSource(channelObject)
+    data.session = new TasklistSession(channelObject.clusterName || 'Kwirth', data.source)
+    if (old.state) data.session.state = { ...data.session.state, ...old.state }
+    old.dispose?.()
+    if (channelObject.instanceId) data.session.connected()
+    return data.session
+}
+
+export const TasklistTabContent: React.FC<IContentProps> = ({ channelObject }) => {
+    const session = currentSession(channelObject)
     // The session lives in channelObject.data and says when it changed — a snapshot, a click. This only turns
     // that into a React repaint.
     const [, setRevision] = useState(0)
@@ -36,8 +56,13 @@ export const TasklistTabContent: React.FC<IContentProps> = ({ channelObject }) =
         const observer = new ResizeObserver(measure)
         observer.observe(document.body)
         if (containerRef.current) observer.observe(containerRef.current)
+        // the browser's own full screen (F11) changes the window's height, not the body's: listen to the window too
+        window.addEventListener('resize', measure)
         measure()
-        return () => observer.disconnect()
+        return () => {
+            observer.disconnect()
+            window.removeEventListener('resize', measure)
+        }
         // the tab going full screen moves the window's top without resizing the body: measure again
     }, [session, channelObject.isFullscreen])
 

@@ -55,6 +55,15 @@ export class TasklistSession {
     // what is selected on each tab, and how the window sits: survive a switch of Kwirth tabs too
     selection: Partial<Record<ETasklistTab, string[]>> = {}
     maximized = false
+    // minimised to the taskbar: the window is hidden, its button on the taskbar brings it back
+    minimized = false
+    // XP's "tiny footprint": a double click on the panel hides the title, menus, tabs and status bar; another brings them back
+    compact = false
+    // where the user left the window on the tab's desktop; undefined until it is first moved or resized (centred)
+    windowX?: number
+    windowY?: number
+    windowWidth?: number
+    windowHeight?: number
     private listeners = new Set<() => void>()
     private timer?: ReturnType<typeof setTimeout>
     private asking = false
@@ -148,6 +157,25 @@ export class TasklistSession {
 
     setMaximized = (maximized: boolean): void => {
         this.maximized = maximized
+        this.changed()
+    }
+
+    setCompact = (compact: boolean): void => {
+        this.compact = compact
+        this.changed()
+    }
+
+    setMinimized = (minimized: boolean): void => {
+        this.minimized = minimized
+        this.changed()
+    }
+
+    // A move or a resize of the (not maximised) window.
+    placeWindow = (x: number, y: number, width: number, height: number): void => {
+        this.windowX = x
+        this.windowY = y
+        this.windowWidth = width
+        this.windowHeight = height
         this.changed()
     }
 

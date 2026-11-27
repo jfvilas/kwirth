@@ -28,7 +28,7 @@ const applications = () => win(page).getByTestId('tl-applications')
     captures the rows that are not the fixture's are taken out of the DOM first (they are only hidden from the
     picture; the next snapshot paints them back).
 */
-const shot = async (name: string, onlyFixture = false): Promise<void> => {
+const shot = async (name: string, onlyFixture = false, wholeDesktop = false): Promise<void> => {
     if (onlyFixture) {
         await page.evaluate((ns) => {
             const lists = ['tl-processes', 'tl-applications', 'tl-users'].map(id => `[data-testid="${id}"] tbody tr`).join(', ')
@@ -38,14 +38,23 @@ const shot = async (name: string, onlyFixture = false): Promise<void> => {
         }, NAMESPACE)
     }
     await page.waitForTimeout(300)
-    await win(page).screenshot({ path: `${SHOTS}/${name}.png` })
+    await (wholeDesktop ? root(page) : win(page)).screenshot({ path: `${SHOTS}/${name}.png` })
 }
 
 test.beforeAll(async ({ browser }) => {
     test.setTimeout(300_000)
     createFixture()
     page = await browser.newPage()
+    // an exception in the page (a handler that throws) fails the run, with what it said
+    page.on('pageerror', err => { pageErrors.push(`${err.message}\n${err.stack ?? ''}`) })
     await openTasklist(page)
+})
+
+const pageErrors: string[] = []
+
+test.afterEach(() => {
+    const errors = pageErrors.splice(0)
+    expect(errors, errors.join('\n---\n')).toEqual([])
 })
 
 test.afterAll(async () => {
@@ -92,7 +101,8 @@ test('a click on a header sorts by it, a second turns it round; CPU and memory f
     const reversed = (await rows(processes())).map(r => r[0])
     expect(reversed[0].localeCompare(reversed[reversed.length - 1], undefined, { sensitivity: 'base' })).toBeGreaterThanOrEqual(0)
     await expect.poll(async () => (await row(processes(), 'lonely').locator('td').allTextContents())[3], { timeout: 60000 }).toMatch(/^[\d,]+ K$/)
-    expect((await row(processes(), 'lonely').locator('td').allTextContents())[2]).toMatch(/^\d\d$/)
+    // the CPU needs two readings of the metrics provider: it may take one interval more than the memory
+    await expect.poll(async () => (await row(processes(), 'lonely').locator('td').allTextContents())[2], { timeout: 60000 }).toMatch(/^\d\d$/)
 })
 
 test('View → Select Columns adds PID and Threads; a pod of demo has two threads', async () => {
@@ -319,6 +329,181 @@ test('Kwirth\'s full screen and the window\'s Maximize are independent', async (
     await win(page).getByRole('button', { name: 'Restore' }).click()
     await page.keyboard.press('Control+Shift+Enter')
     await expect.poll(async () => (await root(page).boundingBox())!.height, { timeout: 5000 }).toBeLessThan((await page.viewportSize())!.height - 50)
+})
+
+test('the window moves by its title bar and resizes by its edges, inside the tab; the close button is disabled', async () => {
+    const box = async () => (await win(page).boundingBox())!
+    const desk = (await page.getByTestId('tl-desktop').boundingBox())!
+    const start = await box()
+
+    // dragged by the title bar
+    await page.mouse.move(start.x + 150, start.y + 12)
+    await page.mouse.down()
+    await page.mouse.move(start.x + 50, start.y - 40, { steps: 8 })
+    await page.mouse.up()
+    let now = await box()
+    expect(now.x).toBeCloseTo(start.x - 100, 0)
+    expect(now.y).toBeCloseTo(Math.max(desk.y, start.y - 52), 0)
+    expect(now.width).toBeCloseTo(start.width, 0)
+
+    // never out of the desktop
+    await page.mouse.move(now.x + 150, now.y + 12)
+    await page.mouse.down()
+    await page.mouse.move(now.x - 3000, now.y - 3000, { steps: 8 })
+    await page.mouse.up()
+    now = await box()
+    expect(now.x).toBeCloseTo(desk.x, 0)
+    expect(now.y).toBeCloseTo(desk.y, 0)
+
+    // the bottom-right corner makes it bigger
+    const se = (await win(page).getByTestId('tl-resize-se').boundingBox())!
+    await page.mouse.move(se.x + se.width / 2, se.y + se.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(se.x + se.width / 2 + 120, se.y + se.height / 2 + 60, { steps: 8 })
+    await page.mouse.up()
+    const bigger = await box()
+    expect(bigger.width).toBeCloseTo(now.width + 120, -1)
+    expect(bigger.height).toBeCloseTo(now.height + 60, -1)
+    expect(bigger.x).toBeCloseTo(now.x, 0)
+
+    // the left edge keeps the right one where it is
+    await page.mouse.move(bigger.x + 300, bigger.y + 12)
+    await page.mouse.down()
+    await page.mouse.move(bigger.x + 500, bigger.y + 112, { steps: 8 })
+    await page.mouse.up()
+    const moved = await box()
+    const w = (await win(page).getByTestId('tl-resize-w').boundingBox())!
+    await page.mouse.move(w.x + w.width / 2, w.y + w.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(w.x + w.width / 2 - 80, w.y + w.height / 2, { steps: 8 })
+    await page.mouse.up()
+    const wider = await box()
+    expect(wider.width).toBeCloseTo(moved.width + 80, -1)
+    expect(wider.x + wider.width).toBeCloseTo(moved.x + moved.width, -1)
+
+    // where it was left survives a switch of the window's tabs
+    await tab(page, 'Performance')
+    await tab(page, 'Processes')
+    expect((await box()).x).toBeCloseTo(wider.x, 0)
+
+    // maximised: no edges to resize by, and the title bar does not drag it
+    await win(page).getByRole('button', { name: 'Maximize' }).click()
+    await expect(win(page).getByTestId('tl-resize-se')).toHaveCount(0)
+    await win(page).getByRole('button', { name: 'Restore' }).click()
+    await expect(win(page).getByTestId('tl-resize-se')).toHaveCount(1)
+    expect((await box()).x).toBeCloseTo(wider.x, 0)
+
+    // the close button: there, and disabled
+    await expect(win(page).getByLabel('Close')).toHaveAttribute('aria-disabled', 'true')
+    await win(page).getByLabel('Close').click()
+    await expect(win(page)).toBeVisible()
+})
+
+test('the taskbar: Start with its menu, the window\'s button minimises and restores it, the tray; Maximize leaves the taskbar visible', async () => {
+    const bar = page.getByTestId('tl-taskbar')
+    await expect(bar.getByTestId('tl-start')).toContainText('start')
+    await expect(bar.getByTestId('tl-task')).toHaveAttribute('aria-pressed', 'true')
+    await expect(bar.locator('.tl-clock')).toHaveText(/\d{1,2}:\d\d/)
+
+    // the minimise button hides it; its taskbar button brings it back; a second click minimises it again
+    await win(page).getByRole('button', { name: 'Minimize' }).click()
+    await expect(win(page)).toBeHidden()
+    await expect(bar.getByTestId('tl-task')).toHaveAttribute('aria-pressed', 'false')
+    await bar.getByTestId('tl-task').click()
+    await expect(win(page)).toBeVisible()
+    await bar.getByTestId('tl-task').click()
+    await expect(win(page)).toBeHidden()
+
+    // Start → Task Manager brings it back too
+    await bar.getByTestId('tl-start').dispatchEvent('mousedown')
+    const menu = root(page).getByTestId('tl-start-menu')
+    await expect(menu).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: 'Turn Off Computer...' })).toHaveAttribute('aria-disabled', 'true')
+    await menu.getByRole('menuitem', { name: 'Task Manager', exact: true }).click()
+    await expect(win(page)).toBeVisible()
+    await expect(menu).toBeHidden()
+
+    // the whole desktop, the window and the taskbar under it, for the README
+    await tab(page, 'Performance')
+    await shot('desktop', true, true)
+    await tab(page, 'Processes')
+
+    // maximised, the window fills the desktop and stops at the taskbar
+    await win(page).getByRole('button', { name: 'Maximize' }).click()
+    const max = (await win(page).boundingBox())!
+    const taskbar = (await bar.boundingBox())!
+    expect(max.y + max.height).toBeCloseTo(taskbar.y, 0)
+    await win(page).getByRole('button', { name: 'Restore' }).click()
+})
+
+test('every edge and corner resizes, the title bar\'s double click maximises and restores, minimised while maximised comes back maximised', async () => {
+    const box = async () => (await win(page).boundingBox())!
+    // first smaller, and in the middle: room to grow in every direction
+    const se0 = (await win(page).getByTestId('tl-resize-se').boundingBox())!
+    await page.mouse.move(se0.x + se0.width / 2, se0.y + se0.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(se0.x - 300, se0.y - 300, { steps: 5 })
+    await page.mouse.up()
+    const small = await box()
+    await page.mouse.move(small.x + 150, small.y + 12)
+    await page.mouse.down()
+    await page.mouse.move(small.x + 350, small.y + 112, { steps: 5 })
+    await page.mouse.up()
+    for (const handle of ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']) {
+        const before = await box()
+        const h = (await win(page).getByTestId(`tl-resize-${handle}`).boundingBox())!
+        const dx = handle.includes('e') ? 30 : handle.includes('w') ? -30 : 0
+        const dy = handle.includes('s') ? 30 : handle.includes('n') ? -30 : 0
+        await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(h.x + h.width / 2 + dx, h.y + h.height / 2 + dy, { steps: 5 })
+        await page.mouse.up()
+        const after = await box()
+        if (dx !== 0) expect(after.width, `width after ${handle}`).toBeGreaterThan(before.width)
+        if (dy !== 0) expect(after.height, `height after ${handle}`).toBeGreaterThan(before.height)
+    }
+    const normal = await box()
+    await win(page).locator('.tl-title-text').dblclick()
+    expect((await box()).width).toBeGreaterThan(normal.width)
+    await win(page).getByRole('button', { name: 'Minimize' }).click()
+    await expect(win(page)).toBeHidden()
+    await page.getByTestId('tl-task').click()
+    expect((await box()).width).toBeGreaterThan(normal.width)
+    await win(page).locator('.tl-title-text').dblclick()
+    expect((await box()).width).toBeCloseTo(normal.width, 0)
+    // Start → About Task Manager
+    await page.getByTestId('tl-start').dispatchEvent('mousedown')
+    await root(page).getByTestId('tl-start-menu').getByRole('menuitem', { name: 'About Task Manager' }).click()
+    await dialog(page, 'tl-about').getByRole('button', { name: 'OK' }).click()
+})
+
+test('tiny footprint: a double click on the graphs leaves only them; another brings the window back', async () => {
+    await tab(page, 'Performance')
+    await win(page).getByTestId('tl-cpu-history').dblclick()
+    await expect(win(page)).toHaveClass(/tl-compact/)
+    await expect(win(page).locator('.tl-title')).toBeHidden()
+    await expect(win(page).getByRole('menubar')).toBeHidden()
+    await expect(win(page).getByTestId('tl-status')).toBeHidden()
+    await expect(win(page).getByTestId('tl-cpu-history')).toBeVisible()
+    await shot('tiny-footprint')
+    await win(page).getByTestId('tl-cpu-history').dblclick()
+    await expect(win(page).locator('.tl-title')).toBeVisible()
+    // on Processes, a double click on a row is the row's (Properties), not the tiny footprint
+    await tab(page, 'Processes')
+    await row(processes(), podsOf('demo')[0]).dblclick()
+    await expect(dialog(page, 'tl-properties')).toBeVisible()
+    await expect(win(page)).not.toHaveClass(/tl-compact/)
+    await dialog(page, 'tl-properties').getByRole('button', { name: 'OK' }).click()
+})
+
+test('the browser window growing (F11) takes the taskbar down to the new bottom', async () => {
+    const bottom = async () => { const b = (await page.getByTestId('tl-taskbar').boundingBox())!; return b.y + b.height }
+    const size = page.viewportSize()!
+    expect(await bottom()).toBeGreaterThan(size.height - 10)
+    await page.setViewportSize({ width: size.width, height: size.height + 150 })
+    await expect.poll(bottom, { timeout: 5000 }).toBeGreaterThan(size.height + 150 - 10)
+    await page.setViewportSize(size)
+    await expect.poll(bottom, { timeout: 5000 }).toBeLessThanOrEqual(size.height)
 })
 
 test('Maximize fills the tab, Restore brings the window back; Help → About names the cluster', async () => {

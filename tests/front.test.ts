@@ -8,6 +8,33 @@ import { IDLE_UID, idleProcess, visibleProcesses } from '../src/front/window/Pro
 import { performanceFigures } from '../src/front/window/PerformanceTab'
 import { applicationKey, statusOf } from '../src/front/window/ApplicationsTab'
 import { listState } from '../src/front/window/ListState'
+import { MIN_HEIGHT, MIN_WIDTH, NORMAL_HEIGHT, NORMAL_WIDTH, placementOf, resizedPlacement } from '../src/front/window/Placement'
+
+// ─── the window on the tab's desktop ──────────────────────────────────────────────────────────────
+
+test('placementOf: centred the first time, where it was left after, never bigger than nor out of the desktop', () => {
+    const s = new TasklistSession('c', new FakeSource())
+    assert.deepEqual(placementOf(s, 1000, 800), [190, 100, NORMAL_WIDTH, NORMAL_HEIGHT])
+    assert.deepEqual(placementOf(s, 500, 400), [0, 0, 500, 400])
+    s.placeWindow(300, 150, 500, 400)
+    assert.deepEqual(placementOf(s, 1000, 800), [300, 150, 500, 400])
+    // the tab shrank: the window comes back in
+    assert.deepEqual(placementOf(s, 700, 500), [200, 100, 500, 400])
+    s.dispose()
+})
+
+test('resizedPlacement: right and bottom edges grow the size; left and top ones move the corner; limits kept', () => {
+    const start: [number, number, number, number] = [100, 100, 500, 400]
+    assert.deepEqual(resizedPlacement(start, 'se', 600, 450, 1000, 800), [100, 100, 600, 450])
+    assert.deepEqual(resizedPlacement(start, 'w', 550, 400, 1000, 800), [50, 100, 550, 400])
+    assert.deepEqual(resizedPlacement(start, 'nw', 550, 450, 1000, 800), [50, 50, 550, 450])
+    // not past the desktop's edges
+    assert.deepEqual(resizedPlacement(start, 'e', 2000, 400, 1000, 800), [100, 100, 900, 400])
+    assert.deepEqual(resizedPlacement(start, 'n', 500, 2000, 1000, 800), [100, 0, 500, 500])
+    // not under the minimum
+    assert.deepEqual(resizedPlacement(start, 's', 10, 10, 1000, 800), [100, 100, MIN_WIDTH, MIN_HEIGHT])
+    assert.deepEqual(resizedPlacement(start, 'w', 10, 400, 1000, 800), [100 + 500 - MIN_WIDTH, 100, MIN_WIDTH, 400])
+})
 
 // ─── Format ───────────────────────────────────────────────────────────────────────────────────────
 
