@@ -1,7 +1,7 @@
-# Task Manager — el Administrador de tareas de Windows XP sobre Kubernetes · PRD
+# KubernetesXP (antes "Task Manager") — un escritorio de Windows XP sobre Kubernetes · PRD
 
-> **ESTADO — DEFINICIÓN CERRADA** (2026-11-27). A1–A8 del análisis inicial y A1–A4 del PRD cerrados con
-> el usuario (D1–D15). Ingeniería en [PLAN.md](PLAN.md): todo construido en una sola entrega 0.1.0, pendiente de QA.
+> **ESTADO — CERRADO** (2026-11-27). Decisiones D1–D21 cerradas con el usuario. Entregado como
+> `plugin/tasklist@0.1.0` (nombre visible KubernetesXP, D21); ingeniería y backlog en [PLAN.md](PLAN.md).
 >
 > Documento de definición de producto. **Previo al diseño técnico**: describe qué tiene que pasar y por
 > qué, no cómo se implementa. El desglose en fases/streams vivirá en `PLAN.md`, junto a este documento.

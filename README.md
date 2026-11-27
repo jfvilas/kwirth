@@ -65,7 +65,8 @@ order round) and resize by their edge.
 The tab is a small XP desktop: a taskbar along the bottom with the green **start** button (Kubernetes' helm), one
 button per window and the tray's CPU meter and clock. Windows move by their title bar, resize by their edges,
 maximise, minimise to the taskbar and come to the front with a click; dialogs move too. **Notepad** is a window of
-its own — the logs and the YAML open in it, and `start → Notepad` opens a blank one. A double click on the Task
+its own — the logs and the YAML open in it, and `start → Notepad` opens a blank one. The Task Manager can be
+closed too (it then asks the cluster nothing) and `start → Task Manager` opens it again as it was. A double click on the Task
 Manager's graphs leaves only them, as XP's tiny footprint did. Everything is remembered while the channel is open.
 
 ![The desktop, with Notepad](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/notepad.png)
@@ -100,6 +101,10 @@ Performance tab shows the key's own processes and the Networking tab has no adap
 
 ## Screenshots
 
+The desktop: the Task Manager on Performance, the taskbar under it:
+
+![The desktop](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/desktop.png)
+
 Performance:
 
 ![Performance](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/performance.png)
@@ -123,6 +128,14 @@ A process's containers, in its Properties:
 Create New Task:
 
 ![Create New Task](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/new-task.png)
+
+Users, the namespaces:
+
+![Users](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/users.png)
+
+The tiny footprint, after a double click on the graphs:
+
+![Tiny footprint](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/tiny-footprint.png)
 
 ## Building
 

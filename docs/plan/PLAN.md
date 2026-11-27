@@ -1,8 +1,8 @@
 # Task Manager — plan
 
-> **ESTADO — S1 Y S2 HECHOS, PENDIENTE DE QA** (2026-11-27). El usuario pidió hacerlo todo seguido y la QA al
-> final: S1 y S2 se hicieron de una vez y salen juntos en **una sola versión, 0.1.0** (§5). Sin publicar hasta el OK
-> de la QA; mientras, se carga en dev desde `dist` (`back/kwirth-dev.json`). Cuelga del [PRD](PRD.md) (D1–D15) y
+> **ESTADO — CERRADO** (2026-11-27). Publicado como **`plugin/tasklist@0.1.0`** (npm `@jfvilas/kwirth-plugin-tasklist`,
+> manifest raíz de jfvilas), con el nombre visible **KubernetesXP**. S1, S2 y todo lo pedido en la QA salieron
+> juntos en una sola versión (§5). Lo que queda está en el backlog (§6). Cuelga del [PRD](PRD.md) (D1–D15) y
 > no repite ni su problema ni sus decisiones de producto. **D15: es diversión, no negocio.**
 >
 > **Dónde vive:** `~/github/kwirth/plugins/tasklist`, repo anidado (rama `main`, identidad `jfvilas`) **sin
@@ -139,3 +139,15 @@ redimensionable (react-draggable y react-resizable, como magnify) con el cerrar 
 agarre de XP; las métricas de la font corregidas (Wine activa USE_TYPO_METRICS y Chrome subía el texto); View Log,
 Restart, Edit y la columna Controller (D16–D18); y el escritorio con varias ventanas y Notepad (D19). `js-yaml` va
 en el back (como magnify); CodeMirror NO se empaqueta: viene del core.
+
+Después: el cierre del Task Manager se permite y Start lo reabre (D20), y el nombre visible pasa a KubernetesXP con
+su About en Start (D21). Verificado en el cierre de la 0.1.0: 45 tests unitarios y 30 casos e2e en verde; histórico y
+gráficas en `docs/qa/`.
+
+## 6. Backlog
+
+| # | Qué | Por qué está abierto |
+|---|---|---|
+| B1 | **Start → Log Off cierra la pestaña de Kwirth** (pedido por el usuario) | Un plugin no puede cerrar su pestaña: hace falta `closeTab?: () => void` en `IChannelObject` (common-front) y conectarlo en `App.tsx` junto a `stopChannel` (hoy `onClickTabRemove` solo cierra la seleccionada). Es del **core**: se hace en su sesión, y aquí después Log Off se activa con el diálogo de XP. Hasta entonces sale en gris. |
+| B2 | Gráficas por núcleo en "One Graph Per CPU" | **Descartado por el usuario** (2026-11-27): se queda una por nodo. El provider `metrics` no da uso por núcleo; haría falta node-exporter. |
+| B3 | Nombre del producto | "KubernetesXP" lleva la marca de la Linux Foundation y evoca a Windows XP. Avisado al usuario; si se cambia, es `displayName`, README y los textos (el id `tasklist` no cambia). |
