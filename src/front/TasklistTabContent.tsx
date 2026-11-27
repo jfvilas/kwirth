@@ -38,7 +38,8 @@ export const TasklistTabContent: React.FC<IContentProps> = ({ channelObject }) =
         if (containerRef.current) observer.observe(containerRef.current)
         measure()
         return () => observer.disconnect()
-    }, [session])
+        // the tab going full screen moves the window's top without resizing the body: measure again
+    }, [session, channelObject.isFullscreen])
 
     if (!session) {
         return (
@@ -51,7 +52,7 @@ export const TasklistTabContent: React.FC<IContentProps> = ({ channelObject }) =
 
     return (
         <div ref={containerRef} style={{ width: '100%', height: size.height }} data-testid='tasklist-window-host'>
-            {size.width > 0 && <TaskManagerWindow session={session} width={size.width} height={size.height} fullscreen={channelObject.isFullscreen === true} />}
+            {size.width > 0 && <TaskManagerWindow session={session} width={size.width} height={size.height} />}
         </div>
     )
 }

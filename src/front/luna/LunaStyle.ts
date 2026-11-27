@@ -32,7 +32,7 @@ const CSS = `
 .tl-menubar { display: flex; height: 20px; flex: 0 0 auto; background: #ece9d8; padding-left: 1px; }
 .tl-menubar-item { padding: 0 6px; line-height: 19px; cursor: default; }
 .tl-menubar-item.tl-open, .tl-menubar-item:hover { background: #316ac5; color: #fff; }
-.tl-menu { position: absolute; z-index: 50; background: #fff; border: 1px solid #aca899; box-shadow: 2px 2px 3px rgba(0,0,0,.3); padding: 2px 0; min-width: 150px; }
+.tl-menu { position: absolute; z-index: 50; color: #000; font-weight: 400; background: #fff; border: 1px solid #aca899; box-shadow: 2px 2px 3px rgba(0,0,0,.3); padding: 2px 0; min-width: 150px; }
 .tl-menu-item { position: relative; display: flex; align-items: center; height: 18px; padding: 0 18px 0 20px; white-space: nowrap; cursor: default; }
 .tl-menu-item:hover:not(.tl-disabled), .tl-menu-item.tl-open { background: #316ac5; color: #fff; }
 .tl-menu-item.tl-disabled { color: #aca899; }

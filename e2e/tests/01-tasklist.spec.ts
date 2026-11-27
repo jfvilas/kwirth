@@ -288,6 +288,39 @@ test('View → Update Speed → Paused freezes the window; Refresh Now and Norma
     await expect(root(page).getByRole('menu')).toHaveCount(0)
 })
 
+test('menus are readable: items in black, disabled ones in grey, in submenus too', async () => {
+    const colourOf = (name: string) => root(page).getByRole('menu').getByRole('menuitem', { name, exact: true }).evaluate(el => getComputedStyle(el).color)
+    const BLACK = 'rgb(0, 0, 0)'
+    const GREY = 'rgb(172, 168, 153)'
+    // the pointer away from where the menus open: a hovered item is white on blue, as it should
+    await page.mouse.move(5, 5)
+    await win(page).getByRole('menubar').getByRole('menuitem', { name: 'View', exact: true }).dispatchEvent('mousedown')
+    expect(await colourOf('Refresh Now')).toBe(BLACK)
+    expect(await colourOf('Update Speed')).toBe(BLACK)
+    await root(page).getByRole('menu').getByRole('menuitem', { name: 'Update Speed', exact: true }).hover()
+    expect(await colourOf('Low')).toBe(BLACK)
+    await win(page).getByRole('menubar').getByRole('menuitem', { name: 'View', exact: true }).dispatchEvent('mousedown')
+    await win(page).getByRole('menubar').getByRole('menuitem', { name: 'Options', exact: true }).dispatchEvent('mousedown')
+    expect(await colourOf('Hide When Minimized')).toBe(GREY)
+    await win(page).getByRole('menubar').getByRole('menuitem', { name: 'Options', exact: true }).dispatchEvent('mousedown')
+    await expect(root(page).getByRole('menu')).toHaveCount(0)
+})
+
+test('Kwirth\'s full screen and the window\'s Maximize are independent', async () => {
+    const normal = (await win(page).boundingBox())!
+    await win(page).click({ position: { x: 100, y: 15 } })
+    await page.keyboard.press('Control+Shift+Enter')
+    await expect.poll(async () => (await root(page).boundingBox())!.height, { timeout: 5000 }).toBeGreaterThan(normal.height + 100)
+    // the tab is full screen, the window is not maximised: still the normal window, and Maximize still offered
+    expect((await win(page).boundingBox())!.width).toBeCloseTo(normal.width, 0)
+    await expect(win(page).getByRole('button', { name: 'Maximize' })).toBeVisible()
+    await win(page).getByRole('button', { name: 'Maximize' }).click()
+    expect((await win(page).boundingBox())!.width).toBeGreaterThan(normal.width)
+    await win(page).getByRole('button', { name: 'Restore' }).click()
+    await page.keyboard.press('Control+Shift+Enter')
+    await expect.poll(async () => (await root(page).boundingBox())!.height, { timeout: 5000 }).toBeLessThan((await page.viewportSize())!.height - 50)
+})
+
 test('Maximize fills the tab, Restore brings the window back; Help → About names the cluster', async () => {
     const normal = (await win(page).boundingBox())!
     await win(page).getByRole('button', { name: 'Maximize' }).click()

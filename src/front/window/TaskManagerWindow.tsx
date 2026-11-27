@@ -34,10 +34,9 @@ export interface ITaskManagerWindowProps {
     session: TasklistSession
     width: number
     height: number
-    fullscreen: boolean
 }
 
-export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, width, height, fullscreen }) => {
+export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, width, height }) => {
     const [dialog, setDialog] = useState<JSX.Element>()
     const [contextMenu, setContextMenu] = useState<IContextMenuState>()
     const rootRef = useRef<HTMLDivElement>(null)
@@ -233,7 +232,8 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
     }, [session])
 
     // ─── the window ───────────────────────────────────────────────────────────────────────────────
-    const maximized = fullscreen || session.maximized
+    // Maximize is the window's own: the full screen of Kwirth's tab only gives it more desktop (they are independent)
+    const maximized = session.maximized
     const w = maximized ? width : Math.min(NORMAL_WIDTH, width - 24)
     const h = maximized ? height : Math.min(NORMAL_HEIGHT, height - 24)
     const placement: React.CSSProperties = maximized
@@ -247,12 +247,12 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
     return (
         <div className='tl-root' ref={rootRef} tabIndex={-1} data-testid='tasklist-window-root' style={{ width, height }}>
             <div className={'tl-window' + (maximized ? ' tl-max' : '')} style={placement} data-testid='tasklist-window'>
-                <div className='tl-title' onDoubleClick={() => !fullscreen && session.setMaximized(!session.maximized)}>
+                <div className='tl-title' onDoubleClick={() => session.setMaximized(!session.maximized)}>
                     <WindowIcon />
                     <span className='tl-title-text'>Task Manager</span>
                     <span className='tl-caption' aria-label='Minimize'><MinimizeGlyph /></span>
                     <span className='tl-caption' aria-label={maximized ? 'Restore' : 'Maximize'} role='button'
-                        onClick={() => !fullscreen && session.setMaximized(!session.maximized)}>{maximized ? <RestoreGlyph /> : <MaximizeGlyph />}</span>
+                        onClick={() => session.setMaximized(!session.maximized)}>{maximized ? <RestoreGlyph /> : <MaximizeGlyph />}</span>
                     <span className='tl-caption tl-close' aria-label='Close'><CloseGlyph /></span>
                 </div>
                 <div className='tl-frame'>
