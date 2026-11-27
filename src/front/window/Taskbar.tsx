@@ -35,7 +35,7 @@ export const Taskbar: React.FC<ITaskbarProps> = ({ session, onAbout }) => {
     }, [startOpen])
 
     const startItems: IMenuItem[] = [
-        { label: 'Task Manager', isDefault: true, onClick: () => session.activate(TASK_MANAGER_WINDOW) },
+        { label: 'Task Manager', isDefault: true, onClick: session.openTaskManager },
         { label: 'Notepad', onClick: () => session.openNotepad('Untitled', '', false, false) },
         {},
         { label: 'About Task Manager', onClick: onAbout },
@@ -44,7 +44,7 @@ export const Taskbar: React.FC<ITaskbarProps> = ({ session, onAbout }) => {
         { label: 'Turn Off Computer...', disabled: true }
     ]
     const windows = [
-        { id: TASK_MANAGER_WINDOW, title: 'Task Manager', icon: <WindowIcon /> },
+        ...(session.taskManagerOpen ? [{ id: TASK_MANAGER_WINDOW, title: 'Task Manager', icon: <WindowIcon /> }] : []),
         ...session.notepads.map(n => ({ id: n.id, title: `${n.title} - Notepad`, icon: <NotepadIcon /> }))
     ]
     const active = session.activeWindow()
@@ -69,7 +69,8 @@ export const Taskbar: React.FC<ITaskbarProps> = ({ session, onAbout }) => {
                 ))}
             </div>
             <div className='tl-tray'>
-                <span title={`CPU Usage: ${percent(cpu)}`} data-testid='tl-tray-cpu'><TrayCpuIcon cpu={cpu ?? 0} /></span>
+                {/* the Task Manager's meter, there while it runs — as on XP */}
+                {session.taskManagerOpen && <span title={`CPU Usage: ${percent(cpu)}`} data-testid='tl-tray-cpu'><TrayCpuIcon cpu={cpu ?? 0} /></span>}
                 <span className='tl-clock'>{clock}</span>
             </div>
         </div>

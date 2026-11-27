@@ -196,7 +196,7 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
             label: 'File', items: [
                 { label: 'New Task (Run...)', disabled: !session.canEnd, onClick: newTask },
                 {},
-                { label: 'Exit Task Manager', disabled: true }
+                { label: 'Exit Task Manager', onClick: session.closeTaskManager }
             ]
         },
         {
@@ -293,11 +293,12 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
     return (
         <div className='tl-root' ref={rootRef} tabIndex={-1} data-testid='tasklist-window-root' style={{ width, height }}>
             <div className='tl-desktop' ref={setDesktop} style={{ height: deskHeight }} data-testid='tl-desktop'>
-            {/* the channel is stopped from Kwirth, not from here: the Task Manager's close button is there, disabled */}
-            <LunaWindow title='Task Manager' icon={<WindowIcon />} frame={session.taskManager} firstWidth={NORMAL_WIDTH} firstHeight={NORMAL_HEIGHT}
+            {/* closed, it is off the desktop and asks nothing; Start → Task Manager opens it again, as it was */}
+            {session.taskManagerOpen && <LunaWindow title='Task Manager' icon={<WindowIcon />} frame={session.taskManager} firstWidth={NORMAL_WIDTH} firstHeight={NORMAL_HEIGHT}
                 desktop={desktop} desktopWidth={deskWidth} desktopHeight={deskHeight} active={session.activeWindow() === TASK_MANAGER_WINDOW}
                 zIndex={zIndexOf(TASK_MANAGER_WINDOW)} compact={session.compact} testId='tasklist-window'
-                onFrame={patch => session.setFrame(TASK_MANAGER_WINDOW, patch)} onActivate={() => session.activate(TASK_MANAGER_WINDOW)}>
+                onFrame={patch => session.setFrame(TASK_MANAGER_WINDOW, patch)} onActivate={() => session.activate(TASK_MANAGER_WINDOW)}
+                onClose={session.closeTaskManager}>
                 <div className='tl-frame'>
                     <MenuBar entries={menus} />
                     <div className='tl-body'>
@@ -329,7 +330,7 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
                         {!maximized && <span className='tl-grip' data-testid='tl-grip' />}
                     </div>
                 </div>
-            </LunaWindow>
+            </LunaWindow>}
             {session.notepads.map(n => (
                 <NotepadWindow key={n.id} session={session} notepad={n} desktop={desktop} desktopWidth={deskWidth} desktopHeight={deskHeight} zIndex={zIndexOf(n.id)} />
             ))}

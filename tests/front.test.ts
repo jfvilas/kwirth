@@ -232,6 +232,36 @@ test('act: the answer for the dialog, and a fresh snapshot only when it worked',
     s.dispose()
 })
 
+test('the Task Manager closed: off the desktop, no snapshots; Start opens it again where it was, and refreshes', async () => {
+    const source = new FakeSource()
+    const s = new TasklistSession('c', source)
+    s.setState({ updateSpeed: EUpdateSpeed.HIGH })
+    s.setFrame(TASK_MANAGER_WINDOW, { x: 10, y: 20 })
+    const n = s.openNotepad('a', '', false, false)
+    s.closeTaskManager()
+    assert.equal(s.taskManagerOpen, false)
+    assert.deepEqual(s.zOrder, [n])
+    assert.equal(s.frameOf(TASK_MANAGER_WINDOW), undefined)
+    assert.equal(s.activeWindow(), n)
+    // nothing asked while it is closed
+    await new Promise(r => setTimeout(r, 1200))
+    assert.equal(source.requests.length, 0)
+    // a stray activation does not bring it back: only Start does
+    s.activate(TASK_MANAGER_WINDOW)
+    assert.equal(s.taskManagerOpen, false)
+    s.openTaskManager()
+    assert.equal(s.taskManagerOpen, true)
+    assert.equal(s.activeWindow(), TASK_MANAGER_WINDOW)
+    assert.deepEqual([s.taskManager.x, s.taskManager.y], [10, 20])
+    await new Promise(r => setTimeout(r, 10))
+    assert.equal(source.requests.length, 1)
+    // already open: Start only brings it in front
+    s.activate(n)
+    s.openTaskManager()
+    assert.equal(s.activeWindow(), TASK_MANAGER_WINDOW)
+    s.dispose()
+})
+
 test('selection and window state live in the session', () => {
     const s = new TasklistSession('c', new FakeSource())
     s.select(ETasklistTab.PROCESSES, ['x'])

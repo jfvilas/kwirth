@@ -459,9 +459,24 @@ test('the window moves by its title bar and resizes by its edges, inside the tab
     await expect(win(page).getByTestId('tl-resize-se')).toHaveCount(1)
     expect((await box()).x).toBeCloseTo(wider.x, 0)
 
-    // the close button: there, and disabled
-    await expect(win(page).getByLabel('Close')).toHaveAttribute('aria-disabled', 'true')
-    await win(page).getByLabel('Close').click()
+    // closed: off the desktop, the taskbar and the tray; Start → Task Manager brings it back where it was, on its tab
+    const bar = page.getByTestId('tl-taskbar')
+    await win(page).getByRole('button', { name: 'Close' }).click()
+    await expect(win(page)).toHaveCount(0)
+    await expect(bar.getByTestId('tl-task-taskmanager')).toHaveCount(0)
+    await expect(bar.getByTestId('tl-tray-cpu')).toHaveCount(0)
+    await bar.getByTestId('tl-start').dispatchEvent('mousedown')
+    await root(page).getByTestId('tl-start-menu').getByRole('menuitem', { name: 'Task Manager', exact: true }).click()
+    await expect(win(page)).toBeVisible()
+    expect((await box()).x).toBeCloseTo(wider.x, 0)
+    await expect(win(page).getByRole('tab', { name: 'Processes' })).toHaveAttribute('aria-selected', 'true')
+    await expect(bar.getByTestId('tl-task-taskmanager')).toHaveAttribute('aria-pressed', 'true')
+    await expect(bar.getByTestId('tl-tray-cpu')).toBeVisible()
+    // File → Exit Task Manager closes it too
+    await menu(page, 'File', 'Exit Task Manager')
+    await expect(win(page)).toHaveCount(0)
+    await bar.getByTestId('tl-start').dispatchEvent('mousedown')
+    await root(page).getByTestId('tl-start-menu').getByRole('menuitem', { name: 'Task Manager', exact: true }).click()
     await expect(win(page)).toBeVisible()
 })
 

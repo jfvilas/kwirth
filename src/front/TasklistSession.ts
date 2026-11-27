@@ -58,6 +58,8 @@ export class TasklistSession {
     compact = false
     // the desktop's windows: the Task Manager's, the Notepads open, and which is in front of which (the last, active)
     taskManager: IWindowFrame = { maximized: false, minimized: false }
+    // closed with its own close button: off the desktop and the taskbar, asking the cluster nothing; Start opens it again
+    taskManagerOpen = true
     notepads: INotepadWindow[] = []
     zOrder: string[] = [TASK_MANAGER_WINDOW]
     private notepadSequence = 0
@@ -96,7 +98,7 @@ export class TasklistSession {
         if (this.timer) clearTimeout(this.timer)
         this.timer = undefined
         const ms = UPDATE_SPEED_MS[this.state.updateSpeed]
-        if (this.disposed || ms === 0) return
+        if (this.disposed || ms === 0 || !this.taskManagerOpen) return
         this.timer = setTimeout(() => { void this.refresh() }, ms)
     }
 
@@ -159,8 +161,9 @@ export class TasklistSession {
 
     // ─── the desktop's windows ────────────────────────────────────────────────────────────────────
 
+    // A window's frame; none for a window that is not on the desktop (a closed Task Manager, a closed Notepad).
     frameOf = (id: string): IWindowFrame | undefined =>
-        id === TASK_MANAGER_WINDOW ? this.taskManager : this.notepads.find(n => n.id === id)?.frame
+        id === TASK_MANAGER_WINDOW ? (this.taskManagerOpen ? this.taskManager : undefined) : this.notepads.find(n => n.id === id)?.frame
 
     // The window in front: the last of the z-order that is not minimised.
     activeWindow = (): string | undefined =>
@@ -184,6 +187,28 @@ export class TasklistSession {
     toggleFromTaskbar = (id: string): void => {
         if (this.activeWindow() === id) this.setFrame(id, { minimized: true })
         else this.activate(id)
+    }
+
+    // Its close button: the window goes, and the snapshots stop until it is opened again.
+    closeTaskManager = (): void => {
+        this.taskManagerOpen = false
+        this.zOrder = this.zOrder.filter(w => w !== TASK_MANAGER_WINDOW)
+        if (this.timer) clearTimeout(this.timer)
+        this.timer = undefined
+        this.changed()
+    }
+
+    // Start → Task Manager: in front if it is open; opened again, where it was, and asked for a snapshot if not.
+    openTaskManager = (): void => {
+        if (this.taskManagerOpen) {
+            this.activate(TASK_MANAGER_WINDOW)
+            return
+        }
+        this.taskManagerOpen = true
+        this.taskManager.minimized = false
+        this.zOrder = [...this.zOrder, TASK_MANAGER_WINDOW]
+        this.changed()
+        void this.refresh()
     }
 
     // A new Notepad on the desktop, in front, a little down and right of the last one opened (as Windows cascades them).
