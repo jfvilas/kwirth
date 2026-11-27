@@ -1,5 +1,24 @@
 import { LUNA_FONT_STACK } from './LunaFont'
 
+// A small SVG drawn here, as a CSS image.
+const svg = (body: string, size: number): string =>
+    `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}' viewBox='0 0 ${size} ${size}'>${body}</svg>`)}")`
+
+// The grip in the middle of a scroll bar's thumb: four ridges, a light line over a blue one.
+const GRIP_V = svg([0, 2, 4, 6].map(y => `<rect x='0' y='${y}' width='8' height='1' fill='#eef4fe'/><rect x='0' y='${y + 1}' width='8' height='1' fill='#8cb0f8'/>`).join(''), 8)
+const GRIP_H = svg([0, 2, 4, 6].map(x => `<rect x='${x}' y='0' width='1' height='8' fill='#eef4fe'/><rect x='${x + 1}' y='0' width='1' height='8' fill='#8cb0f8'/>`).join(''), 8)
+
+// The arrows on the scroll bar's buttons.
+const arrow = (points: string): string => svg(`<polygon points='${points}' fill='#4d6185'/>`, 9)
+const ARROW_UP = arrow('4.5,2 8,6 1,6')
+const ARROW_DOWN = arrow('1,3 8,3 4.5,7')
+const ARROW_LEFT = arrow('2,4.5 6,1 6,8')
+const ARROW_RIGHT = arrow('3,1 7,4.5 3,8')
+
+// The size grip at the bottom right of a resizable window: six raised dots in a triangle.
+const SIZE_GRIP = svg([[9, 1], [5, 5], [9, 5], [1, 9], [5, 9], [9, 9]]
+    .map(([x, y]) => `<rect x='${x + 1}' y='${y + 1}' width='2' height='2' fill='#fff'/><rect x='${x}' y='${y}' width='2' height='2' fill='#b5b19f'/>`).join(''), 12)
+
 /*
     The look of XP's default theme (Luna, blue), drawn from scratch in CSS: no image of Microsoft's is used. Every
     class is prefixed 'tl-' and lives under '.tl-root', so nothing leaks into Kwirth or comes in from its theme.
@@ -140,8 +159,20 @@ const CSS = `
 /* scroll bars, as XP drew them */
 .tl-root ::-webkit-scrollbar { width: 17px; height: 17px; }
 .tl-root ::-webkit-scrollbar-track { background: #fdfdfa; border-left: 1px solid #eeede5; }
-.tl-root ::-webkit-scrollbar-thumb { background: linear-gradient(to right, #c9d8fc 0%, #bbcefb 50%, #b4c8f6 100%); border: 1px solid #fff; border-radius: 3px; box-shadow: inset 0 0 0 1px #9eb6e8; }
+.tl-root ::-webkit-scrollbar-thumb { border: 1px solid #fff; border-radius: 3px; box-shadow: inset 0 0 0 1px #9eb6e8; }
+.tl-root ::-webkit-scrollbar-thumb:vertical { background: ${GRIP_V} center / 8px 8px no-repeat, linear-gradient(to right, #c9d8fc 0%, #bbcefb 50%, #b4c8f6 100%); min-height: 24px; }
+.tl-root ::-webkit-scrollbar-thumb:horizontal { background: ${GRIP_H} center / 8px 8px no-repeat, linear-gradient(to bottom, #c9d8fc 0%, #bbcefb 50%, #b4c8f6 100%); min-width: 24px; }
+.tl-root ::-webkit-scrollbar-thumb:hover { box-shadow: inset 0 0 0 1px #7da2ce; }
+.tl-root ::-webkit-scrollbar-button:single-button { display: block; width: 17px; height: 17px; border: 1px solid #fff; border-radius: 3px; box-shadow: inset 0 0 0 1px #9eb6e8; }
+.tl-root ::-webkit-scrollbar-button:single-button:vertical:decrement { background: ${ARROW_UP} center / 9px 9px no-repeat, linear-gradient(to right, #c9d8fc 0%, #bbcefb 50%, #b4c8f6 100%); }
+.tl-root ::-webkit-scrollbar-button:single-button:vertical:increment { background: ${ARROW_DOWN} center / 9px 9px no-repeat, linear-gradient(to right, #c9d8fc 0%, #bbcefb 50%, #b4c8f6 100%); }
+.tl-root ::-webkit-scrollbar-button:single-button:horizontal:decrement { background: ${ARROW_LEFT} center / 9px 9px no-repeat, linear-gradient(to bottom, #c9d8fc 0%, #bbcefb 50%, #b4c8f6 100%); }
+.tl-root ::-webkit-scrollbar-button:single-button:horizontal:increment { background: ${ARROW_RIGHT} center / 9px 9px no-repeat, linear-gradient(to bottom, #c9d8fc 0%, #bbcefb 50%, #b4c8f6 100%); }
+.tl-root ::-webkit-scrollbar-button:single-button:active { box-shadow: inset 0 0 0 1px #7da2ce; filter: brightness(.92); }
 .tl-root ::-webkit-scrollbar-corner { background: #ece9d8; }
+
+/* the size grip at the bottom right of the status bar, while the window can be resized */
+.tl-grip { width: 12px; height: 12px; align-self: flex-end; flex: 0 0 auto; margin: 0 1px 1px 0; background: ${SIZE_GRIP} no-repeat; cursor: nwse-resize; }
 
 /* performance: the meters and graphs */
 .tl-perf { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -168,7 +199,7 @@ const CSS = `
 .tl-empty { color: #716f64; padding: 6px; }
 
 /* dialogs */
-.tl-modal { position: absolute; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: transparent; }
+.tl-modal { position: absolute; inset: 0 0 30px 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: transparent; }
 .tl-dialog { position: relative; display: flex; flex-direction: column; background: #ece9d8; border: 1px solid #0831d9; border-top: none; border-radius: 8px 8px 0 0; box-shadow: 3px 3px 10px rgba(0,0,0,.5); max-width: 95%; max-height: 95%; }
 .tl-dialog .tl-title { height: 26px; font-size: 12px; }
 .tl-dialog .tl-frame { padding: 12px 11px 10px 11px; }

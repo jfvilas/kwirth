@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { DraggableCore, DraggableData, DraggableEvent } from 'react-draggable'
 import { CheckMark, CloseGlyph, MenuCheck, MenuRadio } from './LunaIcons'
 
 // ─── Buttons, checkboxes, group boxes ─────────────────────────────────────────────────────────────
@@ -262,20 +263,41 @@ export const ListView = <T,>(props: IListViewProps<T>): JSX.Element => {
 
 // ─── Dialogs ──────────────────────────────────────────────────────────────────────────────────────
 
-// A window inside the window: modal, with its title bar and only a close button, as XP's message boxes.
+/*
+    A window inside the window: modal, with its title bar and only a close button, as XP's message boxes. It opens
+    centred and is dragged by its title bar, kept inside the desktop (measured against the modal layer, which does
+    not move — the same reason as the main window's drag).
+*/
 export const Dialog: React.FC<{ title: string; onClose: () => void; children?: React.ReactNode; testId?: string; style?: React.CSSProperties }> = ({ title, onClose, children, testId, style }) => {
+    const [modal, setModal] = useState<HTMLDivElement | null>(null)
+    const dialogRef = useRef<HTMLDivElement>(null)
+    const titleRef = useRef<HTMLDivElement>(null)
+    const [dx, setDx] = useState(0)
+    const [dy, setDy] = useState(0)
     useEffect(() => {
         const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }
         window.addEventListener('keydown', key, true)
         return () => window.removeEventListener('keydown', key, true)
     }, [onClose])
+    const drag = (_e: DraggableEvent, d: DraggableData) => {
+        const area = modal?.getBoundingClientRect()
+        const box = dialogRef.current?.getBoundingClientRect()
+        if (!area || !box) return
+        // the move, as far as the desktop's edges let the dialog go
+        const moveX = Math.max(area.left - box.left, Math.min(area.right - box.right, d.deltaX))
+        const moveY = Math.max(area.top - box.top, Math.min(area.bottom - box.bottom, d.deltaY))
+        setDx(x => x + moveX)
+        setDy(y => y + moveY)
+    }
     return (
-        <div className='tl-modal' onMouseDown={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
-            <div className='tl-dialog' role='dialog' aria-label={title} data-testid={testId} style={style}>
-                <div className='tl-title'>
+        <div className='tl-modal' ref={setModal} onMouseDown={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
+            <div className='tl-dialog' ref={dialogRef} role='dialog' aria-label={title} data-testid={testId} style={{ ...style, transform: `translate(${dx}px, ${dy}px)` }}>
+                <DraggableCore nodeRef={titleRef} onDrag={drag} cancel='.tl-caption' disabled={!modal} offsetParent={modal ?? undefined}>
+                <div className='tl-title' ref={titleRef}>
                     <span className='tl-title-text'>{title}</span>
                     <span className='tl-caption tl-close' onClick={onClose} role='button' aria-label='Close'><CloseGlyph /></span>
                 </div>
+                </DraggableCore>
                 <div className='tl-frame'>{children}</div>
             </div>
         </div>

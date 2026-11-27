@@ -29,6 +29,8 @@ export default defineConfig({
         video: 'off',
         ignoreHTTPSErrors: true,
         actionTimeout: 15_000,
-        viewport: { width: 1400, height: 1000 }
+        viewport: { width: 1400, height: 1000 },
+        // headless Chromium hides scroll bars; the window's are XP's, and the captures should show them
+        launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] }
     }
 })

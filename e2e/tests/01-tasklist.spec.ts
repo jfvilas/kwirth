@@ -496,6 +496,32 @@ test('tiny footprint: a double click on the graphs leaves only them; another bri
     await dialog(page, 'tl-properties').getByRole('button', { name: 'OK' }).click()
 })
 
+test('a dialog is dragged by its title bar and stays on the desktop', async () => {
+    await menu(page, 'File', 'New Task (Run...)')
+    const d = dialog(page, 'tl-new-task')
+    const start = (await d.boundingBox())!
+    await page.mouse.move(start.x + 60, start.y + 12)
+    await page.mouse.down()
+    await page.mouse.move(start.x + 160, start.y + 62, { steps: 8 })
+    await page.mouse.up()
+    const moved = (await d.boundingBox())!
+    expect(moved.x).toBeCloseTo(start.x + 100, 0)
+    expect(moved.y).toBeCloseTo(start.y + 50, 0)
+    // dragged far away it stops at the desktop's corner, above the taskbar
+    await page.mouse.move(moved.x + 60, moved.y + 12)
+    await page.mouse.down()
+    await page.mouse.move(moved.x + 5000, moved.y + 5000, { steps: 8 })
+    await page.mouse.up()
+    const corner = (await d.boundingBox())!
+    const desk = (await page.getByTestId('tl-desktop').boundingBox())!
+    expect(corner.x + corner.width).toBeCloseTo(desk.x + desk.width, 0)
+    expect(corner.y + corner.height).toBeCloseTo(desk.y + desk.height, 0)
+    // still works where it is
+    await d.getByLabel('Open').fill('x')
+    await d.getByRole('button', { name: 'Cancel' }).click()
+    await expect(d).toBeHidden()
+})
+
 test('the browser window growing (F11) takes the taskbar down to the new bottom', async () => {
     const bottom = async () => { const b = (await page.getByTestId('tl-taskbar').boundingBox())!; return b.y + b.height }
     const size = page.viewportSize()!

@@ -308,6 +308,8 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
                         <div className='tl-status-panel' style={{ flex: 1 }} title={session.error}>
                             {session.error ?? `Commit Charge: ${megabytes(snapshot?.requests.memory ?? 0)} / ${limit > 0 ? megabytes(limit) : '--'}`}
                         </div>
+                        {/* the size grip is drawn here; the resizing is the corner handle's, which sits on top of it */}
+                        {!maximized && <span className='tl-grip' data-testid='tl-grip' />}
                     </div>
                 </div>
             </div>
