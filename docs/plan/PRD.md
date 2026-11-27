@@ -169,6 +169,19 @@ conservan la pestaña activa, el orden, las columnas, la selección y la histori
   borra él solo.
 - **D15** (2026-11-27, el usuario) — **Es diversión, no negocio: el menor número de streams posible.** Dos
   entregas, no tres fases (§8).
+- **D16** (2026-11-27, el usuario) — En el menú contextual de un proceso, **View Log** (el log del contenedor,
+  las últimas 1000 líneas, en Notepad, solo lectura; submenú si hay varios contenedores; `tasklist$read`) y
+  **Restart** (el pod se sustituye: con controlador se borra y el controlador crea otro; suelto, se borra, se
+  espera a que desaparezca y se crea de nuevo con su spec; `tasklist$end`).
+- **D17** (2026-11-27, el usuario) — **Applications con columna Controller**: las aplicaciones son ahora
+  Deployments, StatefulSets y DaemonSets (cambia D4). End Task borra el que sea; Not Responding sigue siendo
+  réplicas listas < deseadas (en un DaemonSet, nodos listos < nodos que debe ocupar).
+- **D18** (2026-11-27, el usuario) — **Edit** en el menú contextual de procesos y aplicaciones: el YAML del
+  objeto (sin managedFields, con su resourceVersion) en Notepad; File → Save o Ctrl+S hace un replace. El
+  editor es el de Kwirth (CodeMirror, el que el core presta a los plugins, como magnify). `tasklist$end`.
+- **D19** (2026-11-27, el usuario) — **Escritorio con varias ventanas**: Notepad es una ventana más (se mueve,
+  se redimensiona, maximiza, minimiza y cierra; un botón en la taskbar por ventana; la de delante, con la barra
+  de título viva). Se abre también en blanco desde **Start → Notepad**; uno en blanco no tiene dónde guardar.
 
 ## 8. Entregas
 

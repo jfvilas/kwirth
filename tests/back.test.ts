@@ -4,9 +4,9 @@ import type { V1Pod } from '@kubernetes/client-node'
 import { AccessKey, accessKeySerialize, EInstanceMessageAction, EInstanceMessageFlow, EInstanceMessageType, IInstanceConfig } from '@kwirthmagnify/kwirth-common'
 import { usageOf } from '../src/back/Usage'
 import { IMetricsCluster, IMetricsValue } from '../src/back/MetricsProviderTypes'
-import { IdRegistry, isValidName, mapApplication, mapNode, mapProcess, mapUser, newTaskPod, ownerOf, PeakRegistry } from '../src/back/Mapper'
+import { editableObject, IdRegistry, isValidName, mapApplication, mapNode, mapProcess, mapUser, newTaskPod, ownerOf, PeakRegistry, replacementPod } from '../src/back/Mapper'
 import { quantityOf, requestOf } from '../src/back/Quantity'
-import { TasklistChannel } from '../src/back/index'
+import { DEFAULT_TAIL_LINES, MAX_TAIL_LINES, TasklistChannel } from '../src/back/index'
 import { EShutDownAction, ETasklistCommand, ETasklistError, isSystemUser, ITasklistMessage, ITasklistSnapshot } from '../src/common/TasklistTypes'
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────────────────────────
@@ -178,9 +178,18 @@ test('mapNode: capacity, allocatable, Ready, cordoned, and the CPU as the node\'
 })
 
 test('mapApplication, mapUser, newTaskPod, isValidName, isSystemUser', () => {
-    assert.deepEqual(mapApplication({ metadata: { name: 'api', namespace: 'payroll' }, spec: { replicas: 3, selector: {}, template: {} }, status: { readyReplicas: 2 } }),
-        { namespace: 'payroll', name: 'api', replicas: 3, readyReplicas: 2 })
-    assert.deepEqual(mapApplication({ metadata: { name: 'x', namespace: 'y' } }), { namespace: 'y', name: 'x', replicas: 1, readyReplicas: 0 })
+    assert.deepEqual(mapApplication('Deployment', { metadata: { name: 'api', namespace: 'payroll' }, spec: { replicas: 3, selector: {}, template: {} }, status: { readyReplicas: 2 } }),
+        { kind: 'Deployment', namespace: 'payroll', name: 'api', replicas: 3, readyReplicas: 2 })
+    assert.deepEqual(mapApplication('StatefulSet', { metadata: { name: 'x', namespace: 'y' } }), { kind: 'StatefulSet', namespace: 'y', name: 'x', replicas: 1, readyReplicas: 0 })
+    // a DaemonSet's replicas are the nodes it should run on
+    assert.deepEqual(mapApplication('DaemonSet', { metadata: { name: 'agent', namespace: 'y' }, status: { desiredNumberScheduled: 3, numberReady: 2, currentNumberScheduled: 3, numberMisscheduled: 0 } }),
+        { kind: 'DaemonSet', namespace: 'y', name: 'agent', replicas: 3, readyReplicas: 2 })
+    const replaced = replacementPod(pod({ owner: { kind: '', name: '' } }))
+    assert.deepEqual(Object.keys(replaced.metadata ?? {}).sort(), ['annotations', 'labels', 'name', 'namespace'])
+    assert.equal(replaced.spec?.containers.length, 2)
+    assert.equal(replaced.status, undefined)
+    const editable = editableObject('Pod', 'v1', { metadata: { name: 'p', resourceVersion: '7', managedFields: [{}] } as never })
+    assert.deepEqual(editable, { apiVersion: 'v1', kind: 'Pod', metadata: { name: 'p', resourceVersion: '7' } })
     const ids = new IdRegistry(0, 1)
     const processes = [mapProcess(pod(), usageOf([]), new IdRegistry(4, 4), new PeakRegistry())]
     assert.deepEqual(mapUser({ metadata: { name: 'payroll' }, status: { phase: 'Active' } }, processes, ids), { id: 0, name: 'payroll', phase: 'Active', pods: 1 })
@@ -201,8 +210,9 @@ test('mapApplication, mapUser, newTaskPod, isValidName, isSystemUser', () => {
 
 interface ICall { method: string; params: unknown }
 
-const fakeCluster = (opts: { fail?: { code?: number; body?: string; message?: string }; metrics?: boolean } = {}) => {
+const fakeCluster = (opts: { fail?: { code?: number; body?: string; message?: string }; metrics?: boolean; slowDelete?: boolean } = {}) => {
     const calls: ICall[] = []
+    const deleted = new Set<string>()
     const call = async <T>(method: string, params: unknown, result: T): Promise<T> => {
         calls.push({ method, params })
         if (opts.fail) throw Object.assign(new Error(opts.fail.message ?? 'boom'), opts.fail)
@@ -224,13 +234,18 @@ const fakeCluster = (opts: { fail?: { code?: number; body?: string; message?: st
             listNamespace: () => call('listNamespaces', undefined, { items: [
                 { metadata: { name: 'vault' } }, { metadata: { name: 'payroll' } }, { metadata: { name: 'kube-system' } }, { metadata: { name: 'empty' } }
             ] }),
-            readNamespacedPod: (p: { name: string; namespace: string }) => call('readPod', p,
-                p.name === 'bare' ? pod({ name: 'bare', owner: { kind: '', name: '' } })
-                    : p.name === 'op' ? pod({ name: 'op', owner: { kind: 'Rollout', name: 'r' }, hash: '' })
-                        : p.name === 'vault-0' ? pod({ name: 'vault-0', namespace: 'vault', owner: { kind: 'StatefulSet', name: 'vault' }, hash: '' })
-                            : pod()),
-            deleteNamespacedPod: (p: unknown) => call('deletePod', p, {}),
-            createNamespacedPod: (p: unknown) => call('createPod', p, {}),
+            // a deleted pod reads as 404 until it is created again (what a Restart of a bare pod waits for)
+            readNamespacedPod: (p: { name: string; namespace: string }) => deleted.has(p.name)
+                ? Promise.reject(Object.assign(new Error('not found'), { code: 404 }))
+                : call('readPod', p,
+                    p.name === 'bare' ? pod({ name: 'bare', owner: { kind: '', name: '' } })
+                        : p.name === 'op' ? pod({ name: 'op', owner: { kind: 'Rollout', name: 'r' }, hash: '' })
+                            : p.name === 'vault-0' ? pod({ name: 'vault-0', namespace: 'vault', owner: { kind: 'StatefulSet', name: 'vault' }, hash: '' })
+                                : { ...pod(), metadata: { ...pod().metadata, managedFields: [{ manager: 'kubectl' }], resourceVersion: '42' } }),
+            deleteNamespacedPod: (p: { name: string }) => { if (opts.slowDelete !== true) deleted.add(p.name); return call('deletePod', p, {}) },
+            createNamespacedPod: (p: { body: V1Pod }) => { deleted.delete(p.body.metadata?.name ?? ''); return call('createPod', p, {}) },
+            readNamespacedPodLog: (p: unknown) => call('log', p, 'line 1\nline 2\n'),
+            replaceNamespacedPod: (p: unknown) => call('replacePod', p, {}),
             deleteNamespace: (p: unknown) => call('deleteNamespace', p, {}),
             patchNode: (p: unknown) => call('patchNode', p, {}),
             createNamespacedPodEviction: (p: { name: string }) => p.name === 'coredns-1'
@@ -242,7 +257,19 @@ const fakeCluster = (opts: { fail?: { code?: number; body?: string; message?: st
                 { metadata: { name: 'api', namespace: 'payroll' }, spec: { replicas: 2 }, status: { readyReplicas: 1 } },
                 { metadata: { name: 'web', namespace: 'vault' }, spec: { replicas: 1 }, status: { readyReplicas: 1 } }
             ] }),
+            listStatefulSetForAllNamespaces: () => call('listStatefulSets', undefined, { items: [
+                { metadata: { name: 'vault', namespace: 'vault' }, spec: { replicas: 1 }, status: { readyReplicas: 1 } }
+            ] }),
+            listDaemonSetForAllNamespaces: () => call('listDaemonSets', undefined, { items: [
+                { metadata: { name: 'agent', namespace: 'payroll' }, status: { desiredNumberScheduled: 2, numberReady: 2 } }
+            ] }),
             readNamespacedReplicaSet: (p: unknown) => call('readReplicaSet', p, { metadata: { ownerReferences: [{ kind: 'Deployment', name: 'api', controller: true }] } }),
+            readNamespacedDeployment: (p: unknown) => call('readDeployment', p, { metadata: { name: 'api', namespace: 'payroll' }, spec: { replicas: 2 } }),
+            readNamespacedStatefulSet: (p: unknown) => call('readStatefulSet', p, { metadata: { name: 'vault', namespace: 'vault' } }),
+            readNamespacedDaemonSet: (p: unknown) => call('readDaemonSet', p, { metadata: { name: 'agent', namespace: 'payroll' } }),
+            replaceNamespacedDeployment: (p: unknown) => call('replaceDeployment', p, {}),
+            replaceNamespacedStatefulSet: (p: unknown) => call('replaceStatefulSet', p, {}),
+            replaceNamespacedDaemonSet: (p: unknown) => call('replaceDaemonSet', p, {}),
             deleteNamespacedDeployment: (p: unknown) => call('deleteDeployment', p, {}),
             deleteNamespacedReplicaSet: (p: unknown) => call('deleteReplicaSet', p, {}),
             deleteNamespacedStatefulSet: (p: unknown) => call('deleteStatefulSet', p, {}),
@@ -276,7 +303,7 @@ const message = (command: ETasklistCommand, extra: Partial<ITasklistMessage> = {
     targetNamespace: 'payroll', targetName: 'api-7d9f8b6c4-x2kq9', ...extra
 })
 
-const open = async (resources: string, opts: { fail?: { code?: number; body?: string; message?: string }; metrics?: boolean } = {}) => {
+const open = async (resources: string, opts: { fail?: { code?: number; body?: string; message?: string }; metrics?: boolean; slowDelete?: boolean } = {}) => {
     const fake = fakeCluster(opts)
     const logs: string[] = []
     const channel = new TasklistChannel(fake.clusterInfo as never, { logInfo: (m: string) => logs.push(m), logWarning: (m: string) => logs.push(m), logError: (m: string) => logs.push(m) } as never)
@@ -328,7 +355,9 @@ test('SNAPSHOT with a namespace key: its processes, users and applications only;
     assert.deepEqual(s.processes.map(p => p.name), ['api-7d9f8b6c4-x2kq9', 'agent-1'])
     assert.deepEqual(s.processes.map(p => p.pid), [4, 8])
     assert.deepEqual(s.users.map(u => u.name), ['payroll'])
-    assert.deepEqual(s.applications.map(a => a.name), ['api'])
+    // the applications of every kind the key reaches (PRD D17), sorted by name
+    assert.deepEqual(s.applications.map(a => `${a.kind} ${a.name}`), ['DaemonSet agent', 'Deployment api'])
+    assert.deepEqual(s.applications.find(a => a.kind === 'DaemonSet'), { kind: 'DaemonSet', namespace: 'payroll', name: 'agent', replicas: 2, readyReplicas: 2 })
     assert.deepEqual(s.nodes, [])
     assert.deepEqual(s.requests, { cpu: 0.6, memory: 2 * 192 * 1024 * 1024 })
     assert.equal(s.metrics, undefined)
@@ -404,10 +433,14 @@ test('END_PROCESS_TREE: a key that reaches the pod but not its controller by nam
     assert.ok(!narrow.calls.some(c => c.method.startsWith('delete')))
 })
 
-test('END_TASK deletes the Deployment; NEW_TASK validates and creates the pod', async () => {
+test('END_TASK deletes the application by its kind; NEW_TASK validates and creates the pod', async () => {
     const ender = await open(END_PAYROLL)
-    assert.equal((await ender.run(message(ETasklistCommand.END_TASK, { targetName: 'api' }))).ok, true)
+    assert.equal((await ender.run(message(ETasklistCommand.END_TASK, { targetName: 'api', targetKind: 'Deployment' }))).ok, true)
     assert.deepEqual(ender.calls.find(c => c.method === 'deleteDeployment')?.params, { name: 'api', namespace: 'payroll' })
+    assert.equal((await ender.run(message(ETasklistCommand.END_TASK, { targetName: 'agent', targetKind: 'DaemonSet' }))).ok, true)
+    assert.deepEqual(ender.calls.find(c => c.method === 'deleteDaemonSet')?.params, { name: 'agent', namespace: 'payroll' })
+    assert.equal((await ender.run(message(ETasklistCommand.END_TASK, { targetName: 'db', targetKind: 'StatefulSet' }))).ok, true)
+    assert.match(String((await ender.run(message(ETasklistCommand.END_TASK, { targetName: 'x', targetKind: 'Job' }))).detail), /not an application/)
 
     assert.match(String((await ender.run(message(ETasklistCommand.NEW_TASK, { targetName: 'x', image: ' ' }))).detail), /image/)
     assert.match(String((await ender.run(message(ETasklistCommand.NEW_TASK, { targetName: 'Bad_Name', image: 'busybox' }))).detail), /not a valid name/)
@@ -418,6 +451,62 @@ test('END_TASK deletes the Deployment; NEW_TASK validates and creates the pod', 
     const created = ender.calls.find(c => c.method === 'createPod')?.params as { namespace: string; body: V1Pod }
     assert.equal(created.namespace, 'payroll')
     assert.equal(created.body.metadata?.name, 'busybox-1')
+})
+
+test('LOG: a container\'s last lines, for a key that reaches it; the tail is bounded', async () => {
+    const reader = await open(READ_PAYROLL)
+    const r = await reader.run(message(ETasklistCommand.LOG, { containerName: 'api' }))
+    assert.deepEqual(r.lines, ['line 1', 'line 2'])
+    assert.deepEqual(reader.calls.find(c => c.method === 'log')?.params, { name: 'api-7d9f8b6c4-x2kq9', namespace: 'payroll', container: 'api', tailLines: DEFAULT_TAIL_LINES })
+    await reader.run(message(ETasklistCommand.LOG, { containerName: 'api', tailLines: 10 ** 9 }))
+    assert.equal((reader.calls.filter(c => c.method === 'log')[1].params as { tailLines: number }).tailLines, MAX_TAIL_LINES)
+    assert.equal((await reader.run(message(ETasklistCommand.LOG, { containerName: '' }))).error, ETasklistError.NOT_FOUND)
+    assert.equal((await reader.run(message(ETasklistCommand.LOG, { targetNamespace: 'vault', targetName: 'vault-0', containerName: 'api' }))).error, ETasklistError.ACCESS_DENIED)
+})
+
+test('RESTART_PROCESS: a pod with a controller is deleted; a bare one is deleted, waited for and created again', async () => {
+    const reader = await open(READ_PAYROLL)
+    assert.equal((await reader.run(message(ETasklistCommand.RESTART_PROCESS))).error, ETasklistError.ACCESS_DENIED)
+    const admin = await open(ADMIN)
+    const owned = await admin.run(message(ETasklistCommand.RESTART_PROCESS))
+    assert.equal(owned.detail, 'deleted, its ReplicaSet api-7d9f8b6c4 starts another')
+    assert.ok(!admin.calls.some(c => c.method === 'createPod'))
+    const bare = await admin.run(message(ETasklistCommand.RESTART_PROCESS, { targetName: 'bare' }))
+    assert.equal(bare.detail, 'deleted and started again')
+    const created = admin.calls.find(c => c.method === 'createPod')?.params as { namespace: string; body: V1Pod }
+    assert.equal(created.body.metadata?.name, 'bare')
+    assert.equal(created.body.metadata?.uid, undefined)
+    assert.equal(created.body.status, undefined)
+})
+
+test('GET_YAML and APPLY_YAML: the object as YAML without managedFields; saved back only as the same object', async () => {
+    const reader = await open(READ_PAYROLL)
+    assert.equal((await reader.run(message(ETasklistCommand.GET_YAML, { targetKind: 'Pod' }))).error, ETasklistError.ACCESS_DENIED)
+    const admin = await open(ADMIN)
+    const got = await admin.run(message(ETasklistCommand.GET_YAML, { targetKind: 'Pod' }))
+    const text = String(got.yaml)
+    assert.match(text, /^apiVersion: v1\nkind: Pod\n/)
+    assert.match(text, /resourceVersion: '42'/)
+    assert.doesNotMatch(text, /managedFields/)
+    const deployment = await admin.run(message(ETasklistCommand.GET_YAML, { targetKind: 'Deployment', targetName: 'api' }))
+    assert.match(String(deployment.yaml), /^apiVersion: apps\/v1\nkind: Deployment\n/)
+    assert.match(String((await admin.run(message(ETasklistCommand.GET_YAML, { targetKind: 'Secret', targetName: 'x' }))).detail), /cannot be edited/)
+
+    const saved = await admin.run(message(ETasklistCommand.APPLY_YAML, { targetKind: 'Pod', yaml: text.replace('payroll-api:2.1', 'payroll-api:2.2') }))
+    assert.equal(saved.ok, true)
+    const replaced = admin.calls.find(c => c.method === 'replacePod')?.params as { name: string; body: V1Pod }
+    assert.equal(replaced.name, 'api-7d9f8b6c4-x2kq9')
+    assert.equal(replaced.body.spec?.containers[0].image, 'payroll-api:2.2')
+    assert.equal(replaced.body.metadata?.resourceVersion, '42')
+    // another object, another kind or YAML that cannot be read: refused, nothing replaced
+    assert.match(String((await admin.run(message(ETasklistCommand.APPLY_YAML, { targetKind: 'Pod', yaml: text.replace('name: api-7d9f8b6c4-x2kq9', 'name: other') }))).detail), /must still be the Pod/)
+    assert.match(String((await admin.run(message(ETasklistCommand.APPLY_YAML, { targetKind: 'Deployment', targetName: 'api', yaml: text }))).detail), /must still be the Deployment/)
+    assert.match(String((await admin.run(message(ETasklistCommand.APPLY_YAML, { targetKind: 'Pod', yaml: 'a: [' }))).detail), /cannot be read/)
+    assert.equal(admin.calls.filter(c => c.method === 'replacePod').length, 1)
+    for (const kind of ['StatefulSet', 'DaemonSet', 'Deployment']) {
+        assert.equal((await admin.run(message(ETasklistCommand.APPLY_YAML, { targetKind: kind, targetName: 'x', yaml: `kind: ${kind}\nmetadata:\n  name: x\n` }))).ok, true)
+    }
+    assert.deepEqual(admin.calls.filter(c => c.method.startsWith('replace')).map(c => c.method), ['replacePod', 'replaceStatefulSet', 'replaceDaemonSet', 'replaceDeployment'])
 })
 
 test('LOG_OFF and SHUT_DOWN are for admin alone', async () => {

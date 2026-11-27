@@ -15,8 +15,8 @@ export enum ETasklistScope {
 export const TASKLIST_SCOPE_LADDER: string[] = ['', ETasklistScope.READ, ETasklistScope.END, ETasklistScope.CLUSTER, ETasklistScope.ADMIN]
 
 export const TASKLIST_SCOPES: IExtensionScope[] = [
-    { scope: ETasklistScope.READ, label: 'Task Manager · Read', description: 'Open the Task Manager: see the processes (pods), applications (Deployments), performance, networking and users (namespaces)' },
-    { scope: ETasklistScope.END, label: 'Task Manager · End', description: 'End processes and process trees (delete pods and their controllers), end tasks (delete Deployments) and run new tasks (create pods)' }
+    { scope: ETasklistScope.READ, label: 'Task Manager · Read', description: 'Open the Task Manager: see the processes (pods), applications (Deployments), performance, networking and users (namespaces), and read the processes\' logs' },
+    { scope: ETasklistScope.END, label: 'Task Manager · End', description: 'End, restart and edit processes (delete, replace or change pods), end process trees (delete their controllers), end and edit tasks (Deployments, StatefulSets, DaemonSets) and run new tasks (create pods)' }
 ]
 
 // ─── Front ↔ back protocol ────────────────────────────────────────────────────────────────────────
@@ -24,11 +24,18 @@ export enum ETasklistCommand {
     SNAPSHOT = 'snapshot',                 // everything the window shows, at the Update Speed
     END_PROCESS = 'endprocess',            // delete a pod
     END_PROCESS_TREE = 'endprocesstree',   // delete the pod's controller (its Deployment, StatefulSet, DaemonSet or Job)
-    END_TASK = 'endtask',                  // delete a Deployment
+    END_TASK = 'endtask',                  // delete an application: a Deployment, StatefulSet or DaemonSet
     NEW_TASK = 'newtask',                  // create a pod from an image (Create New Task)
     LOG_OFF = 'logoff',                    // delete a namespace (Users)
-    SHUT_DOWN = 'shutdown'                 // cordon, drain or uncordon a node
+    SHUT_DOWN = 'shutdown',                // cordon, drain or uncordon a node
+    LOG = 'log',                           // a container's log, read once (View Log)
+    RESTART_PROCESS = 'restartprocess',    // replace a pod: its controller makes another, or a bare one is recreated
+    GET_YAML = 'getyaml',                  // a pod or an application as YAML, to edit (Edit)
+    APPLY_YAML = 'applyyaml'               // the edited YAML, replacing the object
 }
+
+// What Edit and End Task act on besides a pod: the controllers an application can be.
+export const APPLICATION_KINDS = ['Deployment', 'StatefulSet', 'DaemonSet']
 
 export enum ETasklistError {
     ACCESS_DENIED = 'accessdenied',
@@ -91,6 +98,7 @@ export interface ITasklistNode {
 }
 
 export interface ITasklistApplication {
+    kind: string                   // its controller: Deployment, StatefulSet or DaemonSet
     namespace: string
     name: string
     replicas: number
@@ -127,9 +135,13 @@ export interface ITasklistSnapshot {
 export interface ITasklistRequest {
     command: ETasklistCommand
     targetNamespace?: string       // END_PROCESS, END_PROCESS_TREE, END_TASK, NEW_TASK
-    targetName?: string            // the pod, the Deployment, the new pod's name, the namespace (LOG_OFF) or the node (SHUT_DOWN)
+    targetName?: string            // the pod, the application, the new pod's name, the namespace (LOG_OFF) or the node (SHUT_DOWN)
+    targetKind?: string            // END_TASK, GET_YAML, APPLY_YAML: Pod, or the application's controller
+    yaml?: string                  // APPLY_YAML
     image?: string                 // NEW_TASK
     shutDown?: EShutDownAction     // SHUT_DOWN
+    containerName?: string         // LOG
+    tailLines?: number             // LOG: how many of the last lines
 }
 
 /*
@@ -154,4 +166,6 @@ export interface ITasklistMessageResponse extends IInstanceMessage {
     snapshot?: ITasklistSnapshot   // SNAPSHOT
     canEnd?: boolean               // SNAPSHOT: the key may end and create (greys the buttons out when not)
     isAdmin?: boolean              // SNAPSHOT: Log Off and Shut Down
+    lines?: string[]               // LOG
+    yaml?: string                  // GET_YAML
 }

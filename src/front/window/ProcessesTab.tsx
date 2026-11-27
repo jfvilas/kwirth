@@ -68,24 +68,38 @@ export interface IProcessesTabProps {
     onEndProcess: (processes: ITasklistProcess[]) => void
     onEndProcessTree: (process: ITasklistProcess) => void
     onProperties: (process: ITasklistProcess) => void
+    onViewLog: (process: ITasklistProcess, container: string) => void
+    onRestart: (process: ITasklistProcess) => void
+    onEdit: (process: ITasklistProcess) => void
     onContextMenu: (items: IMenuItem[], x: number, y: number) => void
 }
 
-export const ProcessesTab: React.FC<IProcessesTabProps> = ({ session, onEndProcess, onEndProcessTree, onProperties, onContextMenu }) => {
+export const ProcessesTab: React.FC<IProcessesTabProps> = ({ session, onEndProcess, onEndProcessTree, onProperties, onViewLog, onRestart, onEdit, onContextMenu }) => {
     const processes = visibleProcesses(session)
     const selectedKeys = session.selection[ETasklistTab.PROCESSES] ?? []
     const selected = processes.filter(p => selectedKeys.includes(p.uid))
     const columns = session.state.columns.map(c => COLUMNS[c])
 
-    const menuFor = (p: ITasklistProcess): IMenuItem[] => [
-        { label: 'End Process', onClick: () => onEndProcess([p]) },
-        { label: 'End Process Tree', onClick: () => onEndProcessTree(p) },
-        { label: 'Debug', disabled: true },
-        {},
-        { label: 'Set Priority', disabled: true, items: [] },
-        {},
-        { label: 'Properties', isDefault: true, disabled: p.uid === IDLE_UID, onClick: () => onProperties(p) }
-    ]
+    const menuFor = (p: ITasklistProcess): IMenuItem[] => {
+        const idle = p.uid === IDLE_UID
+        // one thread (container): its log straight away; several, a submenu to pick one
+        const viewLog: IMenuItem = p.containers.length === 1
+            ? { label: 'View Log', onClick: () => onViewLog(p, p.containers[0].name) }
+            : { label: 'View Log', disabled: idle || p.containers.length === 0, items: p.containers.map(c => ({ label: c.name, onClick: () => onViewLog(p, c.name) })) }
+        return [
+            { label: 'End Process', onClick: () => onEndProcess([p]) },
+            { label: 'End Process Tree', onClick: () => onEndProcessTree(p) },
+            { label: 'Restart', disabled: idle || !session.canEnd, onClick: () => onRestart(p) },
+            { label: 'Debug', disabled: true },
+            {},
+            { label: 'Set Priority', disabled: true, items: [] },
+            {},
+            viewLog,
+            { label: 'Edit...', disabled: idle || !session.canEnd, onClick: () => onEdit(p) },
+            {},
+            { label: 'Properties', isDefault: true, disabled: idle, onClick: () => onProperties(p) }
+        ]
+    }
 
     return (
         <>

@@ -125,3 +125,17 @@ informe):
 - Front: `ITasklistDataSource` (la fuente de la sesión, para los tests), `ITasklistHistory` (las series de las
   gráficas), `INewTask`, `EPropertiesTab` y, de la capa Luna, `IMenuItem`, `IMenuBarEntry`, `IListColumn`,
   `IListSort`, `IGraphLine`, más las props de cada pestaña y de la ventana (`IProcessesTabProps`…).
+- Tras la QA (D16–D19, 2026-11-27): `IWindowFrame` (dónde está una ventana del escritorio), `INotepadWindow` (un
+  Notepad abierto), `TPlacement` (`[x, y, ancho, alto]`), `ILunaWindowProps`, `INotepadWindowProps`,
+  `ITaskbarProps`, la constante `APPLICATION_KINDS`; en el protocolo, los comandos `LOG`, `RESTART_PROCESS`,
+  `GET_YAML` y `APPLY_YAML`, los campos `containerName`, `tailLines`, `targetKind` y `yaml`, y `kind` en
+  `ITasklistApplication`.
+
+### Tras la primera QA (2026-11-27)
+
+El usuario fue pidiendo, sobre lo entregado: fullscreen independiente y menús legibles; ventana movible y
+redimensionable (react-draggable y react-resizable, como magnify) con el cerrar deshabilitado; taskbar con Start
+(el timón de Kubernetes), minimizar y restaurar; tiny footprint con doble clic; diálogos movibles; scroll bars y
+agarre de XP; las métricas de la font corregidas (Wine activa USE_TYPO_METRICS y Chrome subía el texto); View Log,
+Restart, Edit y la columna Controller (D16–D18); y el escritorio con varias ventanas y Notepad (D19). `js-yaml` va
+en el back (como magnify); CodeMirror NO se empaqueta: viene del core.

@@ -37,6 +37,32 @@ export enum EProcessColumn {
     IO_WRITE_BYTES = 'iowritebytes'
 }
 
+// ─── the desktop's windows ────────────────────────────────────────────────────────────────────────
+
+export const TASK_MANAGER_WINDOW = 'taskmanager'
+
+// Where a window sits on the tab's desktop. Unset x/y/width/height: its first size, centred.
+export interface IWindowFrame {
+    x?: number
+    y?: number
+    width?: number
+    height?: number
+    maximized: boolean
+    minimized: boolean
+}
+
+// A Notepad on the desktop: a log (read only), an object's YAML (Save applies it) or a blank one from Start.
+export interface INotepadWindow {
+    id: string
+    title: string                                          // the file's name, as Notepad's title says it
+    text: string                                           // what it holds now
+    saved: string                                          // what it held when last saved (or opened)
+    readOnly: boolean
+    yaml: boolean                                          // highlighted as YAML
+    save?: (text: string) => Promise<string | undefined>  // none: File → Save is off; undefined back: saved; a text: why not
+    frame: IWindowFrame
+}
+
 export interface ITasklistSession {
     tab: ETasklistTab
     updateSpeed: EUpdateSpeed

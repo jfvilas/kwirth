@@ -1,7 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { DraggableCore, DraggableData, DraggableEvent } from 'react-draggable'
-import { Resizable, ResizeCallbackData, ResizeHandle } from 'react-resizable'
-import { placementOf, resizedPlacement, TPlacement } from './Placement'
 import { Taskbar, TASKBAR_HEIGHT } from './Taskbar'
 import { EShutDownAction, ETasklistCommand, ETasklistError, ITasklistApplication, ITasklistMessageResponse, ITasklistProcess, ITasklistRequest, ITasklistUser } from '../../common/TasklistTypes'
 import { ETasklistTab, EUpdateSpeed } from '../TasklistSessionTypes'
@@ -15,6 +12,10 @@ import { PerformanceTab } from './PerformanceTab'
 import { NetworkingTab } from './NetworkingTab'
 import { UsersTab } from './UsersTab'
 import { AboutDialog, CreateNewTaskDialog, INewTask, PropertiesDialog, SelectColumnsDialog, SHUT_DOWN_TITLES, ShutDownDialog } from './Dialogs'
+import { NotepadWindow } from './NotepadWindow'
+import { LunaWindow } from '../luna/LunaWindow'
+import { TASK_MANAGER_WINDOW } from '../TasklistSessionTypes'
+import { NORMAL_HEIGHT, NORMAL_WIDTH } from './Placement'
 
 const TABS = [
     { id: ETasklistTab.APPLICATIONS, label: 'Applications' },
@@ -23,9 +24,6 @@ const TABS = [
     { id: ETasklistTab.NETWORKING, label: 'Networking' },
     { id: ETasklistTab.USERS, label: 'Users' }
 ]
-
-// The eight edges and corners the window is resized by, as XP's.
-const RESIZE_HANDLES: ResizeHandle[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
 interface IContextMenuState {
     items: IMenuItem[]
@@ -108,17 +106,17 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
 
     const endTask = (a: ITasklistApplication) => {
         confirm('Task Manager Warning', [
-            `The Deployment ${a.namespace}/${a.name} will be deleted, with every pod it keeps. It will not come back.`,
+            `The ${a.kind} ${a.namespace}/${a.name} will be deleted, with every pod it keeps. It will not come back.`,
             'Are you sure you want to end this task?'
         ], () => {
-            void run({ command: ETasklistCommand.END_TASK, targetNamespace: a.namespace, targetName: a.name }, 'Unable to End Task')
+            void run({ command: ETasklistCommand.END_TASK, targetNamespace: a.namespace, targetName: a.name, targetKind: a.kind }, 'Unable to End Task')
             session.select(ETasklistTab.APPLICATIONS, [])
         })
     }
 
     // Switch To and Go To Process: the Processes tab, with the application's pods selected.
     const switchTo = (a: ITasklistApplication) => {
-        const pods = (snapshot?.processes ?? []).filter(p => p.namespace === a.namespace && p.owner?.kind === 'Deployment' && p.owner.name === a.name)
+        const pods = (snapshot?.processes ?? []).filter(p => p.namespace === a.namespace && p.owner?.kind === a.kind && p.owner.name === a.name)
         session.select(ETasklistTab.PROCESSES, pods.map(p => p.uid))
         session.setState({ tab: ETasklistTab.PROCESSES, allUsers: session.state.allUsers || pods.some(p => p.namespace.startsWith('kube-')) })
         setTimeout(() => {
@@ -146,6 +144,48 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
             response => infoBox(SHUT_DOWN_TITLES[action], [`${node}: ${response.detail ?? 'done'}.`]))} />)
 
     const properties = (p: ITasklistProcess) => setDialog(<PropertiesDialog process={p} onClose={close} />)
+
+    // View Log (PRD D16): the container's last lines, read once, in Notepad.
+    const viewLog = async (p: ITasklistProcess, container: string) => {
+        try {
+            const response = await session.request({ command: ETasklistCommand.LOG, targetNamespace: p.namespace, targetName: p.name, containerName: container })
+            if (!response.ok) {
+                errorBox('View Log', ['The log could not be read.', response.error === ETasklistError.ACCESS_DENIED ? 'Access is denied.' : (response.detail ?? 'Unknown error.')])
+                return
+            }
+            session.openNotepad(`${p.name}-${container}.log`, (response.lines ?? []).join('\n'), true, false)
+        }
+        catch (err) {
+            errorBox('View Log', ['The log could not be read.', err instanceof Error ? err.message : String(err)])
+        }
+    }
+
+    // Restart (PRD D16): the pod is replaced — by its controller, or recreated when it has none.
+    const restart = (p: ITasklistProcess) => confirm('Task Manager Warning', [
+        'WARNING: Restarting a process ends it first. It will not be given the chance to save its state or data before it is terminated.',
+        p.owner ? `The pod ${p.namespace}/${p.name} will be deleted, and its ${p.owner.kind} ${p.owner.name} will start another.` : `The pod ${p.namespace}/${p.name} has no controller: it will be deleted and created again from its own definition.`,
+        'Are you sure you want to restart the process?'
+    ], () => void run({ command: ETasklistCommand.RESTART_PROCESS, targetNamespace: p.namespace, targetName: p.name }, 'Unable to Restart Process'))
+
+    // Edit (PRD D18): the object's YAML in Notepad; File → Save replaces it.
+    const edit = async (kind: string, namespace: string, name: string) => {
+        try {
+            const response = await session.request({ command: ETasklistCommand.GET_YAML, targetKind: kind, targetNamespace: namespace, targetName: name })
+            if (!response.ok) {
+                errorBox('Edit', [`The ${kind} could not be read.`, response.error === ETasklistError.ACCESS_DENIED ? 'Access is denied.' : (response.detail ?? 'Unknown error.')])
+                return
+            }
+            const save = async (text: string): Promise<string | undefined> => {
+                const saved = await session.act({ command: ETasklistCommand.APPLY_YAML, targetKind: kind, targetNamespace: namespace, targetName: name, yaml: text })
+                if (saved.ok) return undefined
+                return saved.error === ETasklistError.ACCESS_DENIED ? 'Access is denied.' : (saved.detail ?? 'Unknown error.')
+            }
+            session.openNotepad(`${name}.yaml`, response.yaml ?? '', false, true, save)
+        }
+        catch (err) {
+            errorBox('Edit', [`The ${kind} could not be read.`, err instanceof Error ? err.message : String(err)])
+        }
+    }
 
     // ─── menus ────────────────────────────────────────────────────────────────────────────────────
     const speed = session.state.updateSpeed
@@ -236,26 +276,15 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
         return () => root.removeEventListener('keydown', key)
     }, [session])
 
-    // ─── the window ───────────────────────────────────────────────────────────────────────────────
-    // Maximize is the window's own: the full screen of Kwirth's tab only gives it more desktop (they are independent)
-    // The desktop is the tab above the taskbar: where the window is placed, dragged and maximised.
+    // ─── the desktop ──────────────────────────────────────────────────────────────────────────────
+    /*
+        The tab above the taskbar: where the windows are placed, dragged and maximised. Kwirth's full screen only gives
+        it more room; a window's Maximize is its own (they are independent).
+    */
     const deskWidth = width
     const deskHeight = Math.max(0, height - TASKBAR_HEIGHT)
-    const maximized = session.maximized
-    const [x, y, w, h] = maximized ? [0, 0, deskWidth, deskHeight] : placementOf(session, deskWidth, deskHeight)
-
-    // Dragged by the title bar (not by its buttons), and kept on the desktop.
-    const titleRef = useRef<HTMLDivElement>(null)
-    const drag = (_e: DraggableEvent, d: DraggableData) => {
-        const [x0, y0, w0, h0] = placementOf(session, deskWidth, deskHeight)
-        session.placeWindow(Math.max(0, Math.min(deskWidth - w0, x0 + d.deltaX)), Math.max(0, Math.min(deskHeight - h0, y0 + d.deltaY)), w0, h0)
-    }
-    // Resized by its edges and corners: the placement when it started, so a left or top edge moves the window too.
-    const resizeStart = useRef<TPlacement>([0, 0, 0, 0])
-    const resize = (_e: React.SyntheticEvent, data: ResizeCallbackData) => {
-        const [nx, ny, nw, nh] = resizedPlacement(resizeStart.current, data.handle, data.size.width, data.size.height, deskWidth, deskHeight)
-        session.placeWindow(nx, ny, nw, nh)
-    }
+    const maximized = session.taskManager.maximized
+    const zIndexOf = (id: string) => 10 + Math.max(0, session.zOrder.indexOf(id))
 
     const metrics = snapshot?.metrics
     const limit = (snapshot?.nodes ?? []).reduce((n, x) => n + x.memoryAllocatable, 0)
@@ -264,25 +293,11 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
     return (
         <div className='tl-root' ref={rootRef} tabIndex={-1} data-testid='tasklist-window-root' style={{ width, height }}>
             <div className='tl-desktop' ref={setDesktop} style={{ height: deskHeight }} data-testid='tl-desktop'>
-            <Resizable width={w} height={h} resizeHandles={maximized ? [] : RESIZE_HANDLES} onResizeStart={() => { resizeStart.current = [x, y, w, h] }} onResize={resize}
-                handle={(axis, ref) => <span ref={ref as React.Ref<HTMLSpanElement>} className={`tl-resize tl-resize-${axis}`} data-testid={`tl-resize-${axis}`} />}>
-            <div className={'tl-window' + (maximized ? ' tl-max' : '') + (session.compact ? ' tl-compact' : '')} data-testid='tasklist-window'
-                style={{ left: x, top: y, width: w, height: h, display: session.minimized ? 'none' : undefined }}>
-                {/*
-                    Measured against the desktop, which stays still. Against the window, which moves with every step,
-                    each step was corrected twice over: the window shook and jumped while being dragged.
-                */}
-                <DraggableCore nodeRef={titleRef} onDrag={drag} cancel='.tl-caption' disabled={maximized || !desktop} offsetParent={desktop ?? undefined}>
-                <div className='tl-title' ref={titleRef} onDoubleClick={() => session.setMaximized(!session.maximized)}>
-                    <WindowIcon />
-                    <span className='tl-title-text'>Task Manager</span>
-                    <span className='tl-caption' aria-label='Minimize' role='button' onClick={() => session.setMinimized(true)}><MinimizeGlyph /></span>
-                    <span className='tl-caption' aria-label={maximized ? 'Restore' : 'Maximize'} role='button'
-                        onClick={() => session.setMaximized(!session.maximized)}>{maximized ? <RestoreGlyph /> : <MaximizeGlyph />}</span>
-                    {/* the channel is stopped from Kwirth, not from here: the close button is there, disabled */}
-                    <span className='tl-caption tl-close tl-disabled' aria-label='Close' aria-disabled='true'><CloseGlyph /></span>
-                </div>
-                </DraggableCore>
+            {/* the channel is stopped from Kwirth, not from here: the Task Manager's close button is there, disabled */}
+            <LunaWindow title='Task Manager' icon={<WindowIcon />} frame={session.taskManager} firstWidth={NORMAL_WIDTH} firstHeight={NORMAL_HEIGHT}
+                desktop={desktop} desktopWidth={deskWidth} desktopHeight={deskHeight} active={session.activeWindow() === TASK_MANAGER_WINDOW}
+                zIndex={zIndexOf(TASK_MANAGER_WINDOW)} compact={session.compact} testId='tasklist-window'
+                onFrame={patch => session.setFrame(TASK_MANAGER_WINDOW, patch)} onActivate={() => session.activate(TASK_MANAGER_WINDOW)}>
                 <div className='tl-frame'>
                     <MenuBar entries={menus} />
                     <div className='tl-body'>
@@ -295,8 +310,10 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
                             const target = e.target as HTMLElement
                             if (target === e.currentTarget || target.closest('.tl-screen, .tl-net-graphs, .tl-perf')) session.setCompact(!session.compact)
                         }}>
-                            {tab === ETasklistTab.APPLICATIONS && <ApplicationsTab session={session} onEndTask={endTask} onSwitchTo={switchTo} onNewTask={newTask} onContextMenu={openMenu} />}
-                            {tab === ETasklistTab.PROCESSES && <ProcessesTab session={session} onEndProcess={endProcess} onEndProcessTree={endProcessTree} onProperties={properties} onContextMenu={openMenu} />}
+                            {tab === ETasklistTab.APPLICATIONS && <ApplicationsTab session={session} onEndTask={endTask} onSwitchTo={switchTo} onNewTask={newTask}
+                                onEdit={a => void edit(a.kind, a.namespace, a.name)} onContextMenu={openMenu} />}
+                            {tab === ETasklistTab.PROCESSES && <ProcessesTab session={session} onEndProcess={endProcess} onEndProcessTree={endProcessTree} onProperties={properties}
+                                onViewLog={(p, c) => void viewLog(p, c)} onRestart={restart} onEdit={p => void edit('Pod', p.namespace, p.name)} onContextMenu={openMenu} />}
                             {tab === ETasklistTab.PERFORMANCE && <PerformanceTab session={session} />}
                             {tab === ETasklistTab.NETWORKING && <NetworkingTab session={session} />}
                             {tab === ETasklistTab.USERS && <UsersTab session={session} onLogOff={logOff} onContextMenu={openMenu} />}
@@ -312,12 +329,15 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
                         {!maximized && <span className='tl-grip' data-testid='tl-grip' />}
                     </div>
                 </div>
-            </div>
-            </Resizable>
+            </LunaWindow>
+            {session.notepads.map(n => (
+                <NotepadWindow key={n.id} session={session} notepad={n} desktop={desktop} desktopWidth={deskWidth} desktopHeight={deskHeight} zIndex={zIndexOf(n.id)} />
+            ))}
+            {/* the Task Manager's dialogs: modal over the desktop, the taskbar left free */}
+            {dialog}
             </div>
             <Taskbar session={session} onAbout={() => setDialog(<AboutDialog cluster={session.cluster} onClose={close} />)} />
             {contextMenu && <ContextMenu items={contextMenu.items} x={contextMenu.x} y={contextMenu.y} onClose={closeMenu} />}
-            {dialog}
         </div>
     )
 }

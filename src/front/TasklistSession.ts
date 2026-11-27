@@ -1,6 +1,6 @@
 import { ETasklistCommand, ITasklistMessageResponse, ITasklistNode, ITasklistRequest, ITasklistSnapshot } from '../common/TasklistTypes'
 import { ITasklistDataSource } from './TasklistBackSource'
-import { EProcessColumn, ETasklistTab, EUpdateSpeed, ITasklistSession, UPDATE_SPEED_MS } from './TasklistSessionTypes'
+import { EProcessColumn, ETasklistTab, EUpdateSpeed, INotepadWindow, ITasklistSession, IWindowFrame, TASK_MANAGER_WINDOW, UPDATE_SPEED_MS } from './TasklistSessionTypes'
 
 // How many points each graph keeps: what fits across the widest history box, as XP keeps.
 export const HISTORY_POINTS = 120
@@ -52,18 +52,15 @@ export class TasklistSession {
     // how many snapshots the graphs have taken: what scrolls their grid
     ticks = 0
     commitPeak = 0
-    // what is selected on each tab, and how the window sits: survive a switch of Kwirth tabs too
+    // what is selected on each tab, and how the windows sit: survive a switch of Kwirth tabs too
     selection: Partial<Record<ETasklistTab, string[]>> = {}
-    maximized = false
-    // minimised to the taskbar: the window is hidden, its button on the taskbar brings it back
-    minimized = false
     // XP's "tiny footprint": a double click on the panel hides the title, menus, tabs and status bar; another brings them back
     compact = false
-    // where the user left the window on the tab's desktop; undefined until it is first moved or resized (centred)
-    windowX?: number
-    windowY?: number
-    windowWidth?: number
-    windowHeight?: number
+    // the desktop's windows: the Task Manager's, the Notepads open, and which is in front of which (the last, active)
+    taskManager: IWindowFrame = { maximized: false, minimized: false }
+    notepads: INotepadWindow[] = []
+    zOrder: string[] = [TASK_MANAGER_WINDOW]
+    private notepadSequence = 0
     private listeners = new Set<() => void>()
     private timer?: ReturnType<typeof setTimeout>
     private asking = false
@@ -155,27 +152,61 @@ export class TasklistSession {
         this.changed()
     }
 
-    setMaximized = (maximized: boolean): void => {
-        this.maximized = maximized
-        this.changed()
-    }
-
     setCompact = (compact: boolean): void => {
         this.compact = compact
         this.changed()
     }
 
-    setMinimized = (minimized: boolean): void => {
-        this.minimized = minimized
+    // ─── the desktop's windows ────────────────────────────────────────────────────────────────────
+
+    frameOf = (id: string): IWindowFrame | undefined =>
+        id === TASK_MANAGER_WINDOW ? this.taskManager : this.notepads.find(n => n.id === id)?.frame
+
+    // The window in front: the last of the z-order that is not minimised.
+    activeWindow = (): string | undefined =>
+        [...this.zOrder].reverse().find(id => this.frameOf(id)?.minimized === false)
+
+    // A move, a resize, a maximise or a minimise of a window. Restoring one brings it to the front.
+    setFrame = (id: string, patch: Partial<IWindowFrame>): void => {
+        const frame = this.frameOf(id)
+        if (!frame) return
+        Object.assign(frame, patch)
+        if (patch.minimized === false) this.zOrder = [...this.zOrder.filter(w => w !== id), id]
         this.changed()
     }
 
-    // A move or a resize of the (not maximised) window.
-    placeWindow = (x: number, y: number, width: number, height: number): void => {
-        this.windowX = x
-        this.windowY = y
-        this.windowWidth = width
-        this.windowHeight = height
+    activate = (id: string): void => {
+        if (this.zOrder[this.zOrder.length - 1] === id && this.frameOf(id)?.minimized === false) return
+        this.setFrame(id, { minimized: false })
+    }
+
+    // Its taskbar button: the window in front is minimised; any other comes to the front.
+    toggleFromTaskbar = (id: string): void => {
+        if (this.activeWindow() === id) this.setFrame(id, { minimized: true })
+        else this.activate(id)
+    }
+
+    // A new Notepad on the desktop, in front, a little down and right of the last one opened (as Windows cascades them).
+    openNotepad = (title: string, text: string, readOnly: boolean, yaml: boolean, save?: (text: string) => Promise<string | undefined>): string => {
+        const id = `notepad-${++this.notepadSequence}`
+        const step = (this.notepads.length % 8) * 24
+        this.notepads = [...this.notepads, { id, title, text, saved: text, readOnly, yaml, save, frame: { x: 40 + step, y: 30 + step, maximized: false, minimized: false } }]
+        this.zOrder = [...this.zOrder, id]
+        this.changed()
+        return id
+    }
+
+    setNotepadText = (id: string, text: string, saved?: boolean): void => {
+        const notepad = this.notepads.find(n => n.id === id)
+        if (!notepad) return
+        notepad.text = text
+        if (saved) notepad.saved = text
+        this.changed()
+    }
+
+    closeNotepad = (id: string): void => {
+        this.notepads = this.notepads.filter(n => n.id !== id)
+        this.zOrder = this.zOrder.filter(w => w !== id)
         this.changed()
     }
 
@@ -185,6 +216,9 @@ export class TasklistSession {
         if (speedChanged) this.schedule()
         this.changed()
     }
+
+    // A question that changes nothing (a log, an object's YAML): its answer, and no refresh.
+    request = (request: ITasklistRequest): Promise<ITasklistMessageResponse> => this.source.request(request)
 
     // An action (End Process, New Task…): its answer for the dialog, and a fresh snapshot after it.
     act = async (request: ITasklistRequest): Promise<ITasklistMessageResponse> => {

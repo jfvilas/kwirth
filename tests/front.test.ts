@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { ETasklistCommand, ITasklistMessageResponse, ITasklistNode, ITasklistProcess, ITasklistRequest, ITasklistSnapshot } from '../src/common/TasklistTypes'
 import { cpuColumn, cpuTime, kilobytes, kilobytesBare, linkSpeed, megabytes, meterBytes, networkScale, percent, utilisation } from '../src/front/Format'
 import { DEFAULT_COLUMNS, HISTORY_POINTS, networkUtilisation, TasklistSession } from '../src/front/TasklistSession'
-import { EProcessColumn, ETasklistTab, EUpdateSpeed } from '../src/front/TasklistSessionTypes'
+import { EProcessColumn, ETasklistTab, EUpdateSpeed, TASK_MANAGER_WINDOW } from '../src/front/TasklistSessionTypes'
 import { IDLE_UID, idleProcess, visibleProcesses } from '../src/front/window/ProcessesTab'
 import { performanceFigures } from '../src/front/window/PerformanceTab'
 import { applicationKey, statusOf } from '../src/front/window/ApplicationsTab'
@@ -14,12 +14,47 @@ import { MIN_HEIGHT, MIN_WIDTH, NORMAL_HEIGHT, NORMAL_WIDTH, placementOf, resize
 
 test('placementOf: centred the first time, where it was left after, never bigger than nor out of the desktop', () => {
     const s = new TasklistSession('c', new FakeSource())
-    assert.deepEqual(placementOf(s, 1000, 800), [190, 100, NORMAL_WIDTH, NORMAL_HEIGHT])
-    assert.deepEqual(placementOf(s, 500, 400), [0, 0, 500, 400])
-    s.placeWindow(300, 150, 500, 400)
-    assert.deepEqual(placementOf(s, 1000, 800), [300, 150, 500, 400])
+    const at = (w: number, h: number) => placementOf(s.taskManager, NORMAL_WIDTH, NORMAL_HEIGHT, w, h)
+    assert.deepEqual(at(1000, 800), [190, 100, NORMAL_WIDTH, NORMAL_HEIGHT])
+    assert.deepEqual(at(500, 400), [0, 0, 500, 400])
+    s.setFrame(TASK_MANAGER_WINDOW, { x: 300, y: 150, width: 500, height: 400 })
+    assert.deepEqual(at(1000, 800), [300, 150, 500, 400])
     // the tab shrank: the window comes back in
-    assert.deepEqual(placementOf(s, 700, 500), [200, 100, 500, 400])
+    assert.deepEqual(at(700, 500), [200, 100, 500, 400])
+    s.dispose()
+})
+
+test('the desktop\'s windows: Notepads open in front and cascade; the taskbar minimises the one in front and brings back the rest', () => {
+    const s = new TasklistSession('c', new FakeSource())
+    assert.equal(s.activeWindow(), TASK_MANAGER_WINDOW)
+    const a = s.openNotepad('a.log', 'one\ntwo', true, false)
+    const b = s.openNotepad('b.yaml', 'kind: Pod', false, true, async () => undefined)
+    assert.deepEqual(s.zOrder, [TASK_MANAGER_WINDOW, a, b])
+    assert.equal(s.activeWindow(), b)
+    assert.deepEqual([s.frameOf(a)?.x, s.frameOf(b)?.x], [40, 64])
+    // a click on the Task Manager brings it to the front
+    s.activate(TASK_MANAGER_WINDOW)
+    assert.deepEqual(s.zOrder, [a, b, TASK_MANAGER_WINDOW])
+    // its button: in front, it is minimised, and the next one is in front
+    s.toggleFromTaskbar(TASK_MANAGER_WINDOW)
+    assert.equal(s.taskManager.minimized, true)
+    assert.equal(s.activeWindow(), b)
+    // another's button brings it to the front; a minimised one's restores it
+    s.toggleFromTaskbar(a)
+    assert.equal(s.activeWindow(), a)
+    s.toggleFromTaskbar(TASK_MANAGER_WINDOW)
+    assert.equal(s.taskManager.minimized, false)
+    assert.equal(s.activeWindow(), TASK_MANAGER_WINDOW)
+    // text typed, saved, closed
+    s.setNotepadText(b, 'kind: Pod\n# edited')
+    assert.equal(s.notepads.find(n => n.id === b)?.saved, 'kind: Pod')
+    s.setNotepadText(b, 'kind: Pod\n# edited', true)
+    assert.equal(s.notepads.find(n => n.id === b)?.saved, 'kind: Pod\n# edited')
+    s.closeNotepad(a)
+    assert.deepEqual(s.zOrder, [b, TASK_MANAGER_WINDOW])
+    assert.equal(s.frameOf(a), undefined)
+    s.setFrame('nope', { minimized: true })
+    s.setNotepadText('nope', 'x')
     s.dispose()
 })
 
@@ -200,9 +235,9 @@ test('act: the answer for the dialog, and a fresh snapshot only when it worked',
 test('selection and window state live in the session', () => {
     const s = new TasklistSession('c', new FakeSource())
     s.select(ETasklistTab.PROCESSES, ['x'])
-    s.setMaximized(true)
+    s.setFrame(TASK_MANAGER_WINDOW, { maximized: true })
     assert.deepEqual(s.selection[ETasklistTab.PROCESSES], ['x'])
-    assert.equal(s.maximized, true)
+    assert.equal(s.taskManager.maximized, true)
     s.dispose()
 })
 
@@ -244,10 +279,11 @@ test('performanceFigures: the boxes of the Performance tab (PLAN §3)', () => {
 })
 
 test('applications: Running when every replica is ready, Not Responding when not', () => {
-    assert.equal(statusOf({ namespace: 'a', name: 'b', replicas: 2, readyReplicas: 2 }), 'Running')
-    assert.equal(statusOf({ namespace: 'a', name: 'b', replicas: 2, readyReplicas: 1 }), 'Not Responding')
-    assert.equal(statusOf({ namespace: 'a', name: 'b', replicas: 0, readyReplicas: 0 }), 'Running')
-    assert.equal(applicationKey({ namespace: 'a', name: 'b', replicas: 1, readyReplicas: 1 }), 'a/b')
+    assert.equal(statusOf({ kind: 'Deployment', namespace: 'a', name: 'b', replicas: 2, readyReplicas: 2 }), 'Running')
+    assert.equal(statusOf({ kind: 'Deployment', namespace: 'a', name: 'b', replicas: 2, readyReplicas: 1 }), 'Not Responding')
+    assert.equal(statusOf({ kind: 'DaemonSet', namespace: 'a', name: 'b', replicas: 0, readyReplicas: 0 }), 'Running')
+    // a Deployment and a StatefulSet of the same name are two applications
+    assert.equal(applicationKey({ kind: 'StatefulSet', namespace: 'a', name: 'b', replicas: 1, readyReplicas: 1 }), 'StatefulSet/a/b')
 })
 
 test('listState: widths and sort kept per list in the session', () => {

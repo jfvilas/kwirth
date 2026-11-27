@@ -7,13 +7,14 @@ import {
 import { IChannelInstances } from '@kwirthmagnify/kwirth-common'
 import { IBackChannelObject, IChannel, keyMatchesResource } from '@kwirthmagnify/kwirth-common-back'
 import type { IProviderHandle } from '@kwirthmagnify/kwirth-common-back'
-import type { AppsV1Api, BatchV1Api, CoreV1Api, V1Pod } from '@kubernetes/client-node'
+import type { AppsV1Api, BatchV1Api, CoreV1Api, V1DaemonSet, V1Deployment, V1Pod, V1StatefulSet } from '@kubernetes/client-node'
+import yaml from 'js-yaml'
 import { Request, Response } from 'express'
 import {
-    EShutDownAction, ETasklistCommand, ETasklistError, ETasklistScope, ITasklistMessage, ITasklistMessageResponse,
+    APPLICATION_KINDS, EShutDownAction, ETasklistCommand, ETasklistError, ETasklistScope, ITasklistMessage, ITasklistMessageResponse,
     ITasklistProcess, ITasklistSnapshot, TASKLIST_SCOPES, TASKLIST_SCOPE_LADDER
 } from '../common/TasklistTypes'
-import { IdRegistry, isValidName, mapApplication, mapNode, mapProcess, mapUser, newTaskPod, PeakRegistry } from './Mapper'
+import { editableObject, IdRegistry, isValidName, mapApplication, mapNode, mapProcess, mapUser, newTaskPod, PeakRegistry, replacementPod } from './Mapper'
 import { requestOf } from './Quantity'
 import { usageOf } from './Usage'
 import { IMetricsCluster } from './MetricsProviderTypes'
@@ -24,9 +25,11 @@ import { IMetricsCluster } from './MetricsProviderTypes'
 */
 export interface ITasklistClusterInfo {
     coreApi: Pick<CoreV1Api, 'listPodForAllNamespaces' | 'listNode' | 'listNamespace' | 'readNamespacedPod' | 'deleteNamespacedPod'
-        | 'createNamespacedPod' | 'deleteNamespace' | 'patchNode' | 'createNamespacedPodEviction'>
-    appsApi: Pick<AppsV1Api, 'listDeploymentForAllNamespaces' | 'readNamespacedReplicaSet' | 'deleteNamespacedDeployment'
-        | 'deleteNamespacedReplicaSet' | 'deleteNamespacedStatefulSet' | 'deleteNamespacedDaemonSet'>
+        | 'createNamespacedPod' | 'deleteNamespace' | 'patchNode' | 'createNamespacedPodEviction' | 'readNamespacedPodLog' | 'replaceNamespacedPod'>
+    appsApi: Pick<AppsV1Api, 'listDeploymentForAllNamespaces' | 'listStatefulSetForAllNamespaces' | 'listDaemonSetForAllNamespaces'
+        | 'readNamespacedReplicaSet' | 'readNamespacedDeployment' | 'readNamespacedStatefulSet' | 'readNamespacedDaemonSet'
+        | 'replaceNamespacedDeployment' | 'replaceNamespacedStatefulSet' | 'replaceNamespacedDaemonSet'
+        | 'deleteNamespacedDeployment' | 'deleteNamespacedReplicaSet' | 'deleteNamespacedStatefulSet' | 'deleteNamespacedDaemonSet'>
     batchApi: Pick<BatchV1Api, 'deleteNamespacedJob'>
     getProvider(providerId: string, consumer: unknown): IProviderHandle | undefined
 }
@@ -41,6 +44,12 @@ export interface ITasklistInstance {
 }
 
 const METRICS_PROVIDER = 'metrics'
+// View Log reads the last lines, once; this caps what one read can pull out of a chatty container.
+export const DEFAULT_TAIL_LINES = 1000
+export const MAX_TAIL_LINES = 20000
+// Restart of a bare pod: how long its deletion is waited for before starting it again, and how often it is asked.
+export const RESTART_WAIT_MS = 60000
+export const RESTART_POLL_MS = 1000
 
 const errorText = (err: unknown): string => {
     const body = (err as { body?: unknown })?.body
@@ -245,10 +254,66 @@ export class TasklistChannel implements IChannel {
                 }
 
                 case ETasklistCommand.END_TASK: {
+                    const kind = message.targetKind ?? ''
                     if (!namespace || !name) return fail(ETasklistError.NOT_FOUND, 'No task given')
+                    if (!APPLICATION_KINDS.includes(kind)) return fail(ETasklistError.FAILED, `'${kind}' is not an application the Task Manager ends`)
                     if (!this.allows(key, ETasklistScope.END) || !keyMatchesResource(key, { namespace, pod: name })) return denied(ETasklistScope.END, `${namespace}/${name}`)
-                    await this.clusterInfo.appsApi.deleteNamespacedDeployment({ name, namespace })
-                    this.backChannelObject.logInfo?.(`Ended task (Deployment) ${namespace}/${name}`)
+                    switch (kind) {
+                        case 'Deployment': await this.clusterInfo.appsApi.deleteNamespacedDeployment({ name, namespace }); break
+                        case 'StatefulSet': await this.clusterInfo.appsApi.deleteNamespacedStatefulSet({ name, namespace }); break
+                        case 'DaemonSet': await this.clusterInfo.appsApi.deleteNamespacedDaemonSet({ name, namespace }); break
+                    }
+                    this.backChannelObject.logInfo?.(`Ended task (${kind}) ${namespace}/${name}`)
+                    return { ...response, ok: true }
+                }
+
+                case ETasklistCommand.LOG: {
+                    const container = message.containerName ?? ''
+                    if (!namespace || !name || !container) return fail(ETasklistError.NOT_FOUND, 'No process or container given')
+                    if (!keyMatchesResource(key, { namespace, pod: name, container })) return denied(ETasklistScope.READ, `the log of ${namespace}/${name}/${container}`)
+                    const tailLines = Math.min(Math.max(1, Math.floor(message.tailLines ?? DEFAULT_TAIL_LINES)), MAX_TAIL_LINES)
+                    const log = await this.clusterInfo.coreApi.readNamespacedPodLog({ name, namespace, container, tailLines })
+                    const lines = String(log ?? '').split('\n')
+                    if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+                    return { ...response, ok: true, lines }
+                }
+
+                case ETasklistCommand.RESTART_PROCESS: {
+                    if (!namespace || !name) return fail(ETasklistError.NOT_FOUND, 'No process given')
+                    if (!this.allows(key, ETasklistScope.END) || !keyMatchesResource(key, { namespace, pod: name })) return denied(ETasklistScope.END, `${namespace}/${name}`)
+                    const detail = await this.restart(namespace, name)
+                    this.backChannelObject.logInfo?.(`Restarted process ${namespace}/${name}: ${detail}`)
+                    return { ...response, ok: true, detail }
+                }
+
+                case ETasklistCommand.GET_YAML: {
+                    const kind = message.targetKind ?? ''
+                    if (!namespace || !name) return fail(ETasklistError.NOT_FOUND, 'Nothing to edit given')
+                    if (kind !== 'Pod' && !APPLICATION_KINDS.includes(kind)) return fail(ETasklistError.FAILED, `'${kind}' cannot be edited here`)
+                    // reading it to edit it is changing it: the same scope as saving
+                    if (!this.allows(key, ETasklistScope.END) || !keyMatchesResource(key, { namespace, pod: name })) return denied(ETasklistScope.END, `${kind} ${namespace}/${name}`)
+                    const object = await this.readObject(kind, namespace, name)
+                    return { ...response, ok: true, yaml: yaml.dump(editableObject(kind, kind === 'Pod' ? 'v1' : 'apps/v1', object), { indent: 2, noRefs: true, lineWidth: -1 }) }
+                }
+
+                case ETasklistCommand.APPLY_YAML: {
+                    const kind = message.targetKind ?? ''
+                    if (!namespace || !name) return fail(ETasklistError.NOT_FOUND, 'Nothing to save given')
+                    if (kind !== 'Pod' && !APPLICATION_KINDS.includes(kind)) return fail(ETasklistError.FAILED, `'${kind}' cannot be edited here`)
+                    if (!this.allows(key, ETasklistScope.END) || !keyMatchesResource(key, { namespace, pod: name })) return denied(ETasklistScope.END, `${kind} ${namespace}/${name}`)
+                    let body: { kind?: string; metadata?: { name?: string; namespace?: string } }
+                    try {
+                        body = yaml.load(message.yaml ?? '') as typeof body
+                    }
+                    catch (err) {
+                        return fail(ETasklistError.FAILED, `The YAML cannot be read: ${errorText(err)}`)
+                    }
+                    // what was opened is what is saved: not another object under the same window
+                    if (!body || typeof body !== 'object' || body.kind !== kind || body.metadata?.name !== name || (body.metadata?.namespace ?? namespace) !== namespace) {
+                        return fail(ETasklistError.FAILED, `The YAML must still be the ${kind} ${namespace}/${name}`)
+                    }
+                    await this.replaceObject(kind, namespace, name, body)
+                    this.backChannelObject.logInfo?.(`Edited ${kind} ${namespace}/${name}`)
                     return { ...response, ok: true }
                 }
 
@@ -300,11 +365,13 @@ export class TasklistChannel implements IChannel {
         const key = instance.accessKey
         const wholeCluster = this.allows(key, ETasklistScope.CLUSTER)
         const usage = usageOf(this.readings)
-        const [podList, nodeList, nsList, deploymentList] = await Promise.all([
+        const [podList, nodeList, nsList, deploymentList, statefulSetList, daemonSetList] = await Promise.all([
             this.clusterInfo.coreApi.listPodForAllNamespaces(),
             wholeCluster ? this.clusterInfo.coreApi.listNode() : undefined,
             this.clusterInfo.coreApi.listNamespace(),
-            this.clusterInfo.appsApi.listDeploymentForAllNamespaces()
+            this.clusterInfo.appsApi.listDeploymentForAllNamespaces(),
+            this.clusterInfo.appsApi.listStatefulSetForAllNamespaces(),
+            this.clusterInfo.appsApi.listDaemonSetForAllNamespaces()
         ])
 
         const reached = podList.items.filter(p => this.reachesPod(instance, p))
@@ -320,10 +387,14 @@ export class TasklistChannel implements IChannel {
             .sort((a, b) => a.name.localeCompare(b.name))
         this.userIds.keepOnly(new Set(nsList.items.map(ns => ns.metadata?.name ?? '')))
 
-        const applications = deploymentList.items
-            .filter(d => keyMatchesResource(key, { namespace: d.metadata?.namespace ?? '', pod: d.metadata?.name ?? '' }))
-            .map(mapApplication)
-            .sort((a, b) => a.name.localeCompare(b.name) || a.namespace.localeCompare(b.namespace))
+        // the applications (PRD D17): every controller that keeps something running, each with its kind
+        const applications = [
+            ...deploymentList.items.map(d => mapApplication('Deployment', d)),
+            ...statefulSetList.items.map(s => mapApplication('StatefulSet', s)),
+            ...daemonSetList.items.map(d => mapApplication('DaemonSet', d))
+        ]
+            .filter(a => keyMatchesResource(key, { namespace: a.namespace, pod: a.name }))
+            .sort((a, b) => a.name.localeCompare(b.name) || a.namespace.localeCompare(b.namespace) || a.kind.localeCompare(b.kind))
 
         const requests = reached.reduce((total, p) => ({ cpu: total.cpu + requestOf(p, 'cpu'), memory: total.memory + requestOf(p, 'memory') }), { cpu: 0, memory: 0 })
 
@@ -344,6 +415,52 @@ export class TasklistChannel implements IChannel {
             applications,
             requests,
             metrics
+        }
+    }
+
+    /*
+        Restart (PRD D16): the pod is replaced. One with a controller is deleted, and its controller makes another
+        (a new name and PID). A bare one has nobody to bring it back, so it is deleted, its deletion waited for, and
+        it is created again from its own spec, under the same name.
+    */
+    private restart = async (namespace: string, name: string): Promise<string> => {
+        const pod = await this.clusterInfo.coreApi.readNamespacedPod({ name, namespace })
+        const owner = (pod.metadata?.ownerReferences ?? []).find(r => r.controller) ?? pod.metadata?.ownerReferences?.[0]
+        await this.clusterInfo.coreApi.deleteNamespacedPod({ name, namespace })
+        if (owner) return `deleted, its ${owner.kind} ${owner.name} starts another`
+        const deadline = Date.now() + RESTART_WAIT_MS
+        for (;;) {
+            try {
+                await this.clusterInfo.coreApi.readNamespacedPod({ name, namespace })
+            }
+            catch (err) {
+                if (errorCode(err) === ETasklistError.NOT_FOUND) break
+                throw err
+            }
+            if (Date.now() > deadline) throw new Error(`${name} took more than ${RESTART_WAIT_MS / 1000} s to end: it was deleted and not started again`)
+            await new Promise(r => setTimeout(r, RESTART_POLL_MS))
+        }
+        await this.clusterInfo.coreApi.createNamespacedPod({ namespace, body: replacementPod(pod) })
+        return 'deleted and started again'
+    }
+
+    // An object to edit: a pod or an application, by its kind.
+    private readObject = async (kind: string, namespace: string, name: string): Promise<{ metadata?: { managedFields?: unknown } }> => {
+        switch (kind) {
+            case 'Pod': return this.clusterInfo.coreApi.readNamespacedPod({ name, namespace })
+            case 'Deployment': return this.clusterInfo.appsApi.readNamespacedDeployment({ name, namespace })
+            case 'StatefulSet': return this.clusterInfo.appsApi.readNamespacedStatefulSet({ name, namespace })
+            default: return this.clusterInfo.appsApi.readNamespacedDaemonSet({ name, namespace })
+        }
+    }
+
+    // The edited object over the stored one. Its resourceVersion makes a save over a newer version fail (409).
+    private replaceObject = async (kind: string, namespace: string, name: string, body: object): Promise<void> => {
+        switch (kind) {
+            case 'Pod': await this.clusterInfo.coreApi.replaceNamespacedPod({ name, namespace, body: body as V1Pod }); break
+            case 'Deployment': await this.clusterInfo.appsApi.replaceNamespacedDeployment({ name, namespace, body: body as V1Deployment }); break
+            case 'StatefulSet': await this.clusterInfo.appsApi.replaceNamespacedStatefulSet({ name, namespace, body: body as V1StatefulSet }); break
+            default: await this.clusterInfo.appsApi.replaceNamespacedDaemonSet({ name, namespace, body: body as V1DaemonSet })
         }
     }
 

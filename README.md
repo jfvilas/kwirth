@@ -26,7 +26,7 @@ by CPU, select one and press `End Process`; watch the cluster breathe on the Per
 | `Threads` | Containers |
 | `System Idle Process` | What the cluster's CPU is not doing |
 | `Show processes from all users` | Unchecked hides the system's users: the `kube-*` namespaces |
-| Application (`Task`) | Deployment — `Not Responding` while fewer replicas are ready than wanted |
+| Application (`Task`) | Deployment, StatefulSet or DaemonSet (the `Controller` column) — `Not Responding` while fewer replicas are ready than wanted |
 | CPU (`One Graph Per CPU`) | Node |
 | `PF Usage` / Page File history | Memory in use in the cluster |
 | `Physical Memory` (Total / Available / System Cache) | Nodes' capacity / capacity not in use / capacity not allocatable |
@@ -45,9 +45,12 @@ works the same, with no figures.
 |---|---|---|
 | Processes | `End Process` (or Delete) | Deletes the pod; its controller, if it has one, starts another |
 | Processes | `End Process Tree` | Deletes the pod's controller (its Deployment, StatefulSet, DaemonSet or Job), and its pods with it |
+| Processes | `Restart` | Replaces the pod: its controller starts another; a pod with none is created again from its own spec |
+| Processes | `View Log` | The container's last 1000 lines, in Notepad (a submenu picks the container when there are several) |
+| Processes, Applications | `Edit...` | The object's YAML in Notepad; `File → Save` (or Ctrl+S) replaces it, as `kubectl edit` |
 | Processes | `Properties` | The pod: user, computer (node), parent, and its containers |
 | Processes | `View → Select Columns...` | PID, CPU Time, Peak Mem Usage, Threads, I/O Read and Write Bytes |
-| Applications | `End Task` | Deletes the Deployment |
+| Applications | `End Task` | Deletes the Deployment, StatefulSet or DaemonSet |
 | Applications | `Switch To` / `Go To Process` | The Processes tab with the application's pods selected |
 | Applications, File | `New Task...` | Creates a pod from an image (`kubectl run`), in the namespace you choose |
 | Users | `Logoff` | Deletes the namespace — everything in it |
@@ -55,8 +58,21 @@ works the same, with no figures.
 | View | `Update Speed`, `Refresh Now` | Refresh every 1, 2 or 4 seconds, or paused |
 
 Everything that ends something asks first, with XP's warning. The headers sort the lists (a second click turns the
-order round) and resize by their edge; the window remembers its tab, columns, widths and selection while the
-channel is open, and Maximize fills the Kwirth tab.
+order round) and resize by their edge.
+
+## The desktop
+
+The tab is a small XP desktop: a taskbar along the bottom with the green **start** button (Kubernetes' helm), one
+button per window and the tray's CPU meter and clock. Windows move by their title bar, resize by their edges,
+maximise, minimise to the taskbar and come to the front with a click; dialogs move too. **Notepad** is a window of
+its own — the logs and the YAML open in it, and `start → Notepad` opens a blank one. A double click on the Task
+Manager's graphs leaves only them, as XP's tiny footprint did. Everything is remembered while the channel is open.
+
+![The desktop, with Notepad](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/notepad.png)
+
+Edit, on a Deployment:
+
+![Edit](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/edit.png)
 
 ## Installing it in Kwirth
 
@@ -74,8 +90,8 @@ the figures when it is installed.
 
 | Scope | Allows |
 |---|---|
-| `tasklist$read` | Open the Task Manager and see everything in it |
-| `tasklist$end` | End processes, process trees and tasks; run new tasks |
+| `tasklist$read` | Open the Task Manager, see everything in it and read the processes' logs |
+| `tasklist$end` | End, restart and edit processes; end process trees; end and edit tasks; run new tasks |
 | `admin` | `Logoff` (delete a namespace) and `Shut Down` (cordon, drain, uncordon a node) |
 
 What a key sees is limited, as everywhere in Kwirth, by the namespaces and pods it reaches; a controller is matched

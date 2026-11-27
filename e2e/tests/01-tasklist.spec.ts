@@ -2,7 +2,7 @@ import { test, expect, Page } from '@playwright/test'
 import { execFileSync } from 'child_process'
 import {
     createFixture, deleteFixture, dialog, exists, headers, LOGOFF_NAMESPACE, menu, NAMESPACE, namespaceAlive, nodeNames, openTasklist, podsOf,
-    root, row, rows, tab, waitForRow, win
+    historyLimitOf, root, row, rows, tab, uidOf, editorReplace, waitForRow, win
 } from './helpers'
 
 /*
@@ -138,6 +138,72 @@ test('Properties of a process: its user, computer and parent; its containers on 
     await expect(d).toBeHidden()
 })
 
+test('View Log: the container\'s last lines in Notepad, read only, from the end; Word Wrap', async () => {
+    await row(processes(), 'lonely').click({ button: 'right' })
+    await root(page).getByTestId('tl-context-menu').getByRole('menuitem', { name: 'View Log' }).click()
+    const n = dialog(page, 'tl-notepad')
+    await expect(n).toBeVisible({ timeout: 15000 })
+    await expect(n).toContainText('lonely-alone.log - Notepad')
+    await expect(n.locator('.cm-content')).toContainText('tasklist-e2e lonely tick')
+    await expect(n.locator('.cm-content')).toHaveAttribute('contenteditable', 'false')
+    await n.getByRole('menuitem', { name: 'Format', exact: true }).dispatchEvent('mousedown')
+    await n.getByRole('menu').getByRole('menuitem', { name: 'Word Wrap' }).click()
+    await expect(n.locator('.cm-lineWrapping')).toHaveCount(1)
+    await expect(n.getByRole('menuitem', { name: 'File', exact: true })).toBeVisible()
+    await n.getByRole('menuitem', { name: 'File', exact: true }).dispatchEvent('mousedown')
+    await expect(n.getByRole('menu').getByRole('menuitem', { name: 'Save' })).toHaveAttribute('aria-disabled', 'true')
+    await n.getByRole('menu').getByRole('menuitem', { name: 'Exit' }).click()
+    await expect(n).toBeHidden()
+    // a pod of several threads: the submenu names its containers
+    await row(processes(), podsOf('demo')[0]).click({ button: 'right' })
+    await root(page).getByTestId('tl-context-menu').getByRole('menuitem', { name: 'View Log' }).hover()
+    await expect(root(page).getByTestId('tl-context-menu').getByRole('menuitem', { name: 'sidecar' })).toBeVisible()
+    await page.mouse.click(5, 5)
+})
+
+test('Restart of a bare process: deleted and created again, the same name with another identity', async () => {
+    const before = uidOf('lonely')
+    await row(processes(), 'lonely').click({ button: 'right' })
+    await root(page).getByTestId('tl-context-menu').getByRole('menuitem', { name: 'Restart' }).click()
+    const w = dialog(page, 'tl-warning')
+    await expect(w).toContainText('has no controller: it will be deleted and created again')
+    await w.getByRole('button', { name: 'Yes' }).click()
+    await expect.poll(() => { try { return uidOf('lonely') } catch { return '' } }, { timeout: 60000 }).not.toMatch(new RegExp(`^(${before})?$`))
+    execFileSync('kubectl', ['-n', NAMESPACE, 'wait', '--for=condition=Ready', 'pod/lonely', '--timeout=60s'])
+})
+
+test('Edit: an application\'s YAML in Notepad; Save applies it, and what Kubernetes refuses is said', async () => {
+    await tab(page, 'Applications')
+    await waitForRow(applications(), `store - ${NAMESPACE}`)
+    expect((await row(applications(), `store - ${NAMESPACE}`).locator('td').allTextContents())[1]).toBe('StatefulSet')
+    expect((await row(applications(), `demo - ${NAMESPACE}`).locator('td').allTextContents())[1]).toBe('Deployment')
+
+    await row(applications(), `demo - ${NAMESPACE}`).click({ button: 'right' })
+    await root(page).getByTestId('tl-context-menu').getByRole('menuitem', { name: 'Edit...' }).click()
+    const n = dialog(page, 'tl-notepad')
+    await expect(n).toContainText('demo.yaml - Notepad', { timeout: 15000 })
+    await expect(n.locator('.cm-content')).toContainText('kind: Deployment')
+    await expect(n.locator('.cm-content')).not.toContainText('managedFields')
+    await editorReplace(page, 'revisionHistoryLimit: 10', 'revisionHistoryLimit: 5')
+    await shot('edit', true, true)
+    await n.locator('.cm-content').press('Control+s')
+    await expect.poll(() => historyLimitOf('demo'), { timeout: 15000 }).toBe('5')
+
+    // another object under the same window is refused, and the text stays to be put right
+    await editorReplace(page, 'name: demo\n', 'name: other\n')
+    await n.getByRole('menuitem', { name: 'File', exact: true }).dispatchEvent('mousedown')
+    await n.getByRole('menu').getByRole('menuitem', { name: 'Save' }).click()
+    const e = dialog(page, 'tl-notepad-error')
+    await expect(e).toContainText(`must still be the Deployment ${NAMESPACE}/demo`)
+    await e.getByRole('button', { name: 'OK' }).click()
+    // leaving with changes asks; No leaves them unsaved
+    await n.getByRole('button', { name: 'Close' }).click()
+    await expect(dialog(page, 'tl-notepad-ask')).toContainText('Do you want to save the changes?')
+    await dialog(page, 'tl-notepad-ask').getByRole('button', { name: 'No' }).click()
+    await expect(n).toBeHidden()
+    await tab(page, 'Processes')
+})
+
 test('End Process on the System Idle Process: Unable to Terminate Process, Access is denied', async () => {
     await win(page).getByTestId('tl-all-users').click()
     await waitForRow(processes(), 'System Idle Process', 60000)
@@ -180,8 +246,8 @@ test('End Process Tree: the pod\'s Deployment goes, with its pods', async () => 
 test('Applications: the Deployments, Running or Not Responding; Go To Process selects its processes', async () => {
     await tab(page, 'Applications')
     await waitForRow(applications(), `demo - ${NAMESPACE}`)
-    await expect.poll(async () => (await row(applications(), `demo - ${NAMESPACE}`).locator('td').allTextContents())[1], { timeout: 30000 }).toBe('Running')
-    await expect.poll(async () => (await row(applications(), `broken - ${NAMESPACE}`).locator('td').allTextContents())[1], { timeout: 30000 }).toBe('Not Responding')
+    await expect.poll(async () => (await row(applications(), `demo - ${NAMESPACE}`).locator('td').allTextContents())[2], { timeout: 30000 }).toBe('Running')
+    await expect.poll(async () => (await row(applications(), `broken - ${NAMESPACE}`).locator('td').allTextContents())[2], { timeout: 30000 }).toBe('Not Responding')
     await expect(win(page).getByRole('menubar')).toContainText('Windows')
     await shot('applications', true)
     await row(applications(), `demo - ${NAMESPACE}`).click({ button: 'right' })
@@ -402,16 +468,16 @@ test('the window moves by its title bar and resizes by its edges, inside the tab
 test('the taskbar: Start with its menu, the window\'s button minimises and restores it, the tray; Maximize leaves the taskbar visible', async () => {
     const bar = page.getByTestId('tl-taskbar')
     await expect(bar.getByTestId('tl-start')).toContainText('start')
-    await expect(bar.getByTestId('tl-task')).toHaveAttribute('aria-pressed', 'true')
+    await expect(bar.getByTestId('tl-task-taskmanager')).toHaveAttribute('aria-pressed', 'true')
     await expect(bar.locator('.tl-clock')).toHaveText(/\d{1,2}:\d\d/)
 
     // the minimise button hides it; its taskbar button brings it back; a second click minimises it again
     await win(page).getByRole('button', { name: 'Minimize' }).click()
     await expect(win(page)).toBeHidden()
-    await expect(bar.getByTestId('tl-task')).toHaveAttribute('aria-pressed', 'false')
-    await bar.getByTestId('tl-task').click()
+    await expect(bar.getByTestId('tl-task-taskmanager')).toHaveAttribute('aria-pressed', 'false')
+    await bar.getByTestId('tl-task-taskmanager').click()
     await expect(win(page)).toBeVisible()
-    await bar.getByTestId('tl-task').click()
+    await bar.getByTestId('tl-task-taskmanager').click()
     await expect(win(page)).toBeHidden()
 
     // Start → Task Manager brings it back too
@@ -467,7 +533,7 @@ test('every edge and corner resizes, the title bar\'s double click maximises and
     expect((await box()).width).toBeGreaterThan(normal.width)
     await win(page).getByRole('button', { name: 'Minimize' }).click()
     await expect(win(page)).toBeHidden()
-    await page.getByTestId('tl-task').click()
+    await page.getByTestId('tl-task-taskmanager').click()
     expect((await box()).width).toBeGreaterThan(normal.width)
     await win(page).locator('.tl-title-text').dblclick()
     expect((await box()).width).toBeCloseTo(normal.width, 0)
@@ -475,6 +541,57 @@ test('every edge and corner resizes, the title bar\'s double click maximises and
     await page.getByTestId('tl-start').dispatchEvent('mousedown')
     await root(page).getByTestId('tl-start-menu').getByRole('menuitem', { name: 'About Task Manager' }).click()
     await dialog(page, 'tl-about').getByRole('button', { name: 'OK' }).click()
+})
+
+test('Notepad from Start: a window of its own — in front, on the taskbar, resizable, maximised and minimised, closed without asking', async () => {
+    const bar = page.getByTestId('tl-taskbar')
+    await bar.getByTestId('tl-start').dispatchEvent('mousedown')
+    await root(page).getByTestId('tl-start-menu').getByRole('menuitem', { name: 'Notepad', exact: true }).click()
+    const n = root(page).getByTestId('tl-notepad')
+    await expect(n).toBeVisible()
+    await expect(n.locator('.tl-title-text')).toHaveText('Untitled - Notepad')
+    // in front: its title bright, the Task Manager's pale; its button on the taskbar, pressed
+    await expect(n).not.toHaveClass(/tl-inactive/)
+    await expect(win(page)).toHaveClass(/tl-inactive/)
+    const task = bar.locator('[data-testid^="tl-task-notepad-"]')
+    await expect(task).toHaveAttribute('aria-pressed', 'true')
+    // typed into; nowhere to save a blank page to
+    await n.locator('.cm-content').click()
+    await page.keyboard.type('a note on the cluster')
+    await expect(n.locator('.cm-content')).toContainText('a note on the cluster')
+    await n.getByRole('menuitem', { name: 'File', exact: true }).dispatchEvent('mousedown')
+    await expect(n.getByRole('menu').getByRole('menuitem', { name: 'Save' })).toHaveAttribute('aria-disabled', 'true')
+    await n.getByRole('menuitem', { name: 'File', exact: true }).dispatchEvent('mousedown')
+    // resized by its corner
+    const before = (await n.boundingBox())!
+    const se = (await n.getByTestId('tl-resize-se').boundingBox())!
+    await page.mouse.move(se.x + se.width / 2, se.y + se.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(se.x + se.width / 2 + 60, se.y + se.height / 2 + 40, { steps: 5 })
+    await page.mouse.up()
+    expect((await n.boundingBox())!.width).toBeGreaterThan(before.width)
+    // a click on the Task Manager (on the part of its title the Notepad leaves uncovered) brings it in front
+    const tm = (await win(page).locator('.tl-title').boundingBox())!
+    await page.mouse.click(tm.x + tm.width - 110, tm.y + 12)
+    await expect(win(page)).not.toHaveClass(/tl-inactive/)
+    await expect(n).toHaveClass(/tl-inactive/)
+    await task.click()
+    await expect(n).not.toHaveClass(/tl-inactive/)
+    // maximised, minimised from its own buttons, back from the taskbar
+    await n.getByRole('button', { name: 'Maximize' }).click()
+    const desk = (await page.getByTestId('tl-desktop').boundingBox())!
+    expect((await n.boundingBox())!.width).toBeCloseTo(desk.width, 0)
+    await n.getByRole('button', { name: 'Restore' }).click()
+    // the desktop with both windows, for the README
+    await shot('notepad', true, true)
+    await n.getByRole('button', { name: 'Minimize' }).click()
+    await expect(n).toBeHidden()
+    await task.click()
+    await expect(n).toBeVisible()
+    // closed: no question (there is nothing to save to), off the taskbar
+    await n.getByRole('button', { name: 'Close' }).click()
+    await expect(n).toHaveCount(0)
+    await expect(task).toHaveCount(0)
 })
 
 test('tiny footprint: a double click on the graphs leaves only them; another brings the window back', async () => {

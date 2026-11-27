@@ -28,6 +28,16 @@ export const ApplicationIcon = (): JSX.Element => (
     </svg>
 )
 
+// Notepad's: a pad of lined paper with a blue spine and its spiral.
+export const NotepadIcon = (): JSX.Element => (
+    <svg viewBox='0 0 16 16' className='tl-title-icon'>
+        <rect x='3' y='1.5' width='11' height='13' rx='.8' fill='#fff' stroke='#5a6f99' strokeWidth='.8' />
+        <rect x='3' y='1.5' width='11' height='2.4' fill='#3f7ad8' />
+        {[6, 8, 10, 12].map(y => <rect key={y} x='5' y={y} width='7' height='.7' fill='#9aaac5' />)}
+        {[4.5, 7, 9.5, 12].map(y => <circle key={y} cx='3' cy={y} r='.9' fill='none' stroke='#55606f' strokeWidth='.6' />)}
+    </svg>
+)
+
 // A process (a pod), for its Properties.
 export const ProcessIcon = (): JSX.Element => (
     <svg viewBox='0 0 32 32' style={{ width: 32, height: 32 }}>

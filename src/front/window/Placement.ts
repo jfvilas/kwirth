@@ -1,8 +1,10 @@
-import { TasklistSession } from '../TasklistSession'
+import { IWindowFrame } from '../TasklistSessionTypes'
 
-// The window when it is not maximised: its first size, and the smallest it can be dragged to (as XP's).
+// The Task Manager's first size, and the smallest any window can be dragged to (as XP's).
 export const NORMAL_WIDTH = 620
 export const NORMAL_HEIGHT = 600
+export const NOTEPAD_WIDTH = 660
+export const NOTEPAD_HEIGHT = 460
 export const MIN_WIDTH = 380
 export const MIN_HEIGHT = 320
 
@@ -12,14 +14,14 @@ export type TPlacement = [number, number, number, number]
 const clamp = (n: number, min: number, max: number): number => Math.max(min, Math.min(max, n))
 
 /*
-    Where the window is on a desktop of this size: where the user left it, or centred the first time; never
-    bigger than the desktop and never out of it, so a tab that shrinks (or leaves full screen) brings it back in.
+    Where a window is on a desktop of this size: where the user left it, or centred at its first size; never bigger
+    than the desktop and never out of it, so a tab that shrinks (or leaves full screen) brings it back in.
 */
-export const placementOf = (session: TasklistSession, desktopWidth: number, desktopHeight: number): TPlacement => {
-    const width = Math.min(session.windowWidth ?? NORMAL_WIDTH, desktopWidth)
-    const height = Math.min(session.windowHeight ?? NORMAL_HEIGHT, desktopHeight)
-    const x = session.windowX ?? (desktopWidth - width) / 2
-    const y = session.windowY ?? (desktopHeight - height) / 2
+export const placementOf = (frame: IWindowFrame, firstWidth: number, firstHeight: number, desktopWidth: number, desktopHeight: number): TPlacement => {
+    const width = Math.min(frame.width ?? firstWidth, desktopWidth)
+    const height = Math.min(frame.height ?? firstHeight, desktopHeight)
+    const x = frame.x ?? (desktopWidth - width) / 2
+    const y = frame.y ?? (desktopHeight - height) / 2
     return [clamp(Math.round(x), 0, desktopWidth - width), clamp(Math.round(y), 0, desktopHeight - height), width, height]
 }
 

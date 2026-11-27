@@ -100,7 +100,28 @@ spec:
   containers:
     - name: alone
       image: busybox:1.36
-      command: ['sh', '-c', 'while true; do sleep 2; done']
+      command: ['sh', '-c', 'i=0; while true; do i=$((i+1)); echo "tasklist-e2e lonely tick $i"; sleep 1; done']
+---
+# An application of another kind: the Controller column says StatefulSet.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: store
+  namespace: ${NAMESPACE}
+spec:
+  serviceName: ''
+  replicas: 1
+  selector:
+    matchLabels: { app: store }
+  template:
+    metadata:
+      labels: { app: store }
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+        - name: keeper
+          image: busybox:1.36
+          command: ['sh', '-c', 'while true; do sleep 2; done']
 `
 
 const kubectl = (args: string[], input?: string): string =>
@@ -115,6 +136,28 @@ export const createFixture = (): void => {
     kubectl(['-n', NAMESPACE, 'rollout', 'status', 'deployment/demo', '--timeout=90s'])
     kubectl(['-n', NAMESPACE, 'rollout', 'status', 'deployment/tree', '--timeout=90s'])
     kubectl(['-n', NAMESPACE, 'wait', '--for=condition=Ready', 'pod/lonely', '--timeout=90s'])
+    kubectl(['-n', NAMESPACE, 'rollout', 'status', 'statefulset/store', '--timeout=90s'])
+}
+
+// A pod's uid: a restarted bare pod keeps its name and gets a new one.
+export const uidOf = (pod: string): string => kubectl(['-n', NAMESPACE, 'get', 'pod', pod, '-o', 'jsonpath={.metadata.uid}'])
+
+// A field Edit changes without touching the pods the later tests count.
+export const historyLimitOf = (deployment: string): string => kubectl(['-n', NAMESPACE, 'get', 'deployment', deployment, '-o', 'jsonpath={.spec.revisionHistoryLimit}'])
+
+/*
+    Replaces text in the open CodeMirror (Notepad's editor) as a user's edit would: through the editor's own view,
+    which the content element carries.
+*/
+export async function editorReplace(page: Page, from: string, to: string): Promise<void> {
+    await page.evaluate(([a, b]) => {
+        const content = document.querySelector('[data-testid="tl-notepad"] .cm-content') as unknown as { cmView: { view: { state: { doc: { toString(): string } }; dispatch(t: unknown): void } } }
+        const view = content.cmView.view
+        const text = view.state.doc.toString()
+        const at = text.indexOf(a)
+        if (at < 0) throw new Error(`'${a}' is not in the editor`)
+        view.dispatch({ changes: { from: at, to: at + a.length, insert: b } })
+    }, [from, to])
 }
 
 export const deleteFixture = (): void => {

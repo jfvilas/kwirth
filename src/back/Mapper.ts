@@ -1,4 +1,4 @@
-import type { V1ContainerStatus, V1Deployment, V1Namespace, V1Node, V1Pod } from '@kubernetes/client-node'
+import type { V1ContainerStatus, V1DaemonSet, V1Deployment, V1Namespace, V1Node, V1Pod, V1StatefulSet } from '@kubernetes/client-node'
 import { ITasklistApplication, ITasklistContainer, ITasklistNode, ITasklistOwner, ITasklistProcess, ITasklistUser } from '../common/TasklistTypes'
 import { quantityOf } from './Quantity'
 import { IUsage } from './Usage'
@@ -134,12 +134,43 @@ export const mapNode = (node: V1Node, usage: IUsage): ITasklistNode => {
     }
 }
 
-export const mapApplication = (deployment: V1Deployment): ITasklistApplication => ({
-    namespace: deployment.metadata?.namespace ?? '',
-    name: deployment.metadata?.name ?? '',
-    replicas: deployment.spec?.replicas ?? 1,
-    readyReplicas: deployment.status?.readyReplicas ?? 0
+// An application (PRD D4, D17): a Deployment or StatefulSet with its replicas, or a DaemonSet with its nodes.
+export const mapApplication = (kind: string, controller: V1Deployment | V1StatefulSet | V1DaemonSet): ITasklistApplication => {
+    const daemonSet = kind === 'DaemonSet' ? controller as V1DaemonSet : undefined
+    const replicated = controller as V1Deployment | V1StatefulSet
+    return {
+        kind,
+        namespace: controller.metadata?.namespace ?? '',
+        name: controller.metadata?.name ?? '',
+        replicas: daemonSet ? (daemonSet.status?.desiredNumberScheduled ?? 0) : (replicated.spec?.replicas ?? 1),
+        readyReplicas: daemonSet ? (daemonSet.status?.numberReady ?? 0) : (replicated.status?.readyReplicas ?? 0)
+    }
+}
+
+/*
+    The pod that replaces a bare one on Restart (PRD D16): its own spec, without what the API server set when it
+    was created (uid, resourceVersion, status...) — the same pod, started again.
+*/
+export const replacementPod = (pod: V1Pod): V1Pod => ({
+    apiVersion: 'v1',
+    kind: 'Pod',
+    metadata: {
+        name: pod.metadata?.name,
+        namespace: pod.metadata?.namespace,
+        labels: pod.metadata?.labels,
+        annotations: pod.metadata?.annotations
+    },
+    spec: pod.spec
 })
+
+/*
+    An object as Edit shows it (PRD D18), like 'kubectl edit': without managedFields, which nobody edits by hand;
+    with its resourceVersion, so a save over a newer version is refused instead of overwriting it.
+*/
+export const editableObject = (kind: string, apiVersion: string, object: { metadata?: { managedFields?: unknown } }): Record<string, unknown> => {
+    const { managedFields: _managed, ...metadata } = object.metadata ?? {}
+    return { apiVersion, kind, ...object, metadata }
+}
 
 export const mapUser = (namespace: V1Namespace, processes: ITasklistProcess[], ids: IdRegistry): ITasklistUser => {
     const name = namespace.metadata?.name ?? ''
