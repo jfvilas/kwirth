@@ -118,6 +118,74 @@ export const TrayCpuIcon = ({ cpu }: { cpu: number }): JSX.Element => {
     )
 }
 
+// ─── The Start menu's: its places and its two buttons at the foot ─────────────────────────────────
+
+// My Cluster: a computer.
+export const ComputerIcon = (): JSX.Element => (
+    <svg viewBox='0 0 24 24' className='tl-sm-icon'>
+        <rect x='2.5' y='3' width='19' height='13' rx='1.2' fill='#dfe8f6' stroke='#3b5a8f' />
+        <rect x='4.2' y='4.7' width='15.6' height='9.6' fill='#2f6be0' />
+        <path d='M4.2 4.7h15.6v3.5L4.2 12z' fill='#5d92f0' />
+        <rect x='9' y='16' width='6' height='2.5' fill='#8a96ab' />
+        <rect x='5.5' y='18.5' width='13' height='2.5' rx='1' fill='#c3cbd8' stroke='#5d6a82' strokeWidth='.6' />
+    </svg>
+)
+
+// My Namespaces: two people, the users.
+export const UsersIcon = (): JSX.Element => (
+    <svg viewBox='0 0 24 24' className='tl-sm-icon'>
+        <circle cx='15.5' cy='8' r='3.6' fill='#f2c79a' stroke='#8a5a2b' strokeWidth='.7' />
+        <path d='M9.5 21c0-4 2.7-6.5 6-6.5s6 2.5 6 6.5z' fill='#3b8a3b' stroke='#1f5a1f' strokeWidth='.7' />
+        <circle cx='8.5' cy='9' r='3.6' fill='#f7d4ad' stroke='#8a5a2b' strokeWidth='.7' />
+        <path d='M2.5 22c0-4 2.7-6.5 6-6.5s6 2.5 6 6.5z' fill='#2f6be0' stroke='#1d438f' strokeWidth='.7' />
+    </svg>
+)
+
+// Help and Support: a blue question mark.
+export const HelpIcon = (): JSX.Element => (
+    <svg viewBox='0 0 24 24' className='tl-sm-icon'>
+        <circle cx='12' cy='12' r='10' fill='#2f6be0' stroke='#1d438f' />
+        <path d='M9 9.3a3 3 0 1 1 4.4 2.7c-.9.5-1.4 1-1.4 2.2' fill='none' stroke='#fff' strokeWidth='2.2' strokeLinecap='round' />
+        <circle cx='12' cy='17.6' r='1.3' fill='#fff' />
+    </svg>
+)
+
+// Log Off: a key on an orange square.
+export const LogOffIcon = (): JSX.Element => (
+    <svg viewBox='0 0 24 24' className='tl-sm-foot-icon'>
+        <rect x='1' y='1' width='22' height='22' rx='3' fill='#f0a030' stroke='#fff' strokeWidth='1.2' />
+        <circle cx='9' cy='9' r='3.6' fill='none' stroke='#fff' strokeWidth='2' />
+        <path d='M11.6 11.6l6.5 6.5M15.5 15.5l1.8-1.8M17.3 17.3l1.8-1.8' stroke='#fff' strokeWidth='2' strokeLinecap='round' />
+    </svg>
+)
+
+// Turn Off Computer: the power symbol on a red square.
+export const TurnOffIcon = (): JSX.Element => (
+    <svg viewBox='0 0 24 24' className='tl-sm-foot-icon'>
+        <rect x='1' y='1' width='22' height='22' rx='3' fill='#e0441e' stroke='#fff' strokeWidth='1.2' />
+        <path d='M8.2 7.5a6 6 0 1 0 7.6 0' fill='none' stroke='#fff' strokeWidth='2.2' strokeLinecap='round' />
+        <path d='M12 4.5v7' stroke='#fff' strokeWidth='2.2' strokeLinecap='round' />
+    </svg>
+)
+
+// Control Panel: a window with a sheet of settings on it (its title bar's, and the Start menu's).
+export const ControlPanelIcon = ({ title }: { title?: boolean }): JSX.Element => (
+    <svg viewBox='0 0 24 24' className={title ? 'tl-title-icon' : 'tl-sm-icon'}>
+        <rect x='2' y='3' width='20' height='17' rx='1.5' fill='#fff' stroke='#3b5a8f' />
+        <rect x='2' y='3' width='20' height='4' rx='1.5' fill='#2f6be0' />
+        <path d='M6 11h8M6 15h12' stroke='#9aaac5' strokeWidth='1.6' />
+        <circle cx='17' cy='11' r='2' fill='#3c9a3c' />
+    </svg>
+)
+
+// All Programs: the green arrow.
+export const GreenArrow = (): JSX.Element => (
+    <svg viewBox='0 0 16 16' className='tl-sm-arrow'>
+        <rect x='.5' y='.5' width='15' height='15' rx='2' fill='#3c9a3c' stroke='#2a6e2a' />
+        <path d='M6 3.5l5 4.5-5 4.5z' fill='#fff' />
+    </svg>
+)
+
 export const CheckMark = (): JSX.Element => (
     <svg viewBox='0 0 9 9'>
         <path d='M1 4.5 L3.5 7 L8 1.5' stroke='#21a121' strokeWidth='2' fill='none' />

@@ -63,11 +63,24 @@ order round) and resize by their edge.
 ## The desktop
 
 The tab is a small XP desktop: a taskbar along the bottom with the green **start** button (Kubernetes' helm), one
-button per window and the tray's CPU meter and clock. Windows move by their title bar, resize by their edges,
-maximise, minimise to the taskbar and come to the front with a click; dialogs move too. **Notepad** is a window of
-its own — the logs and the YAML open in it, and `start → Notepad` opens a blank one. The Task Manager can be
-closed too (it then asks the cluster nothing) and `start → Task Manager` opens it again as it was. A double click on the Task
-Manager's graphs leaves only them, as XP's tiny footprint did. Everything is remembered while the channel is open.
+button per window and the tray's CPU meter and clock. It starts empty, as XP did: the programs are opened from
+**start**. Windows move by their title bar, resize by their edges, maximise, minimise to the taskbar and come to the
+front with a click; dialogs move too. **Notepad** is a window of its own — the logs and the YAML open in it, and
+`start → Notepad` opens a blank one. The Task Manager can be closed (it then asks the cluster nothing) and opened
+again as it was. A double click on the Task Manager's graphs leaves only them, as XP's tiny footprint did.
+Everything is remembered while the channel is open.
+
+The **start** menu has your Kwirth user at the top; the programs on the left (Task Manager, Notepad, All Programs);
+the places on the right — **My Cluster** (the Task Manager on Performance), **My Namespaces** (on Users), the
+**Control Panel**, **Run...** (Create New Task) and About; and at the foot **Turn Off Computer**, which stops the
+channel after asking. Log Off is there, disabled, until Kwirth lets a channel close its own tab.
+
+![The start menu](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/start-menu.png)
+
+The **Control Panel** is an Explorer window with XP's applets in their classic view. None of them does anything yet:
+they are all there, disabled.
+
+![The Control Panel](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/control-panel.png)
 
 ![The desktop, with Notepad](https://raw.githubusercontent.com/jfvilas/kwirth/master/plugins/tasklist/docs/screenshots/notepad.png)
 
