@@ -66,7 +66,31 @@ const reasonOf = (pod: V1Pod, containers: ISdsfContainer[]): string => {
     return died?.reason ?? ''
 }
 
-export const mapPod = (pod: V1Pod): ISdsfPod => {
+// What is left of a name once its parent's goes: 'x2kq9' of api-7d9f8b6c4-x2kq9, '0' of db-0. The whole name when it is not the parent's plus a suffix.
+export const suffixOf = (name: string, parent: string): string =>
+    parent && name.startsWith(parent + '-') && name.length > parent.length + 1 ? name.slice(parent.length + 1) : name
+
+/*
+    The workload at the top of a pod's owners, its JOBNAME. A ReplicaSet is named after its Deployment plus the
+    pod-template-hash, which is a label of the pod too: taking it off gives the Deployment without reading the
+    ReplicaSet. A Job's CronJob is in the Job, not in the pod: whoever maps knows the Jobs and says it.
+*/
+export const workloadOf = (pod: V1Pod, controllerKind: string, controllerName: string, cronJobOf: (namespace: string, job: string) => string): string => {
+    switch (controllerKind) {
+        case '':
+            return pod.metadata?.name ?? ''
+        case 'ReplicaSet': {
+            const hash = pod.metadata?.labels?.['pod-template-hash']
+            return hash && controllerName.endsWith('-' + hash) ? controllerName.slice(0, -hash.length - 1) : controllerName
+        }
+        case 'Job':
+            return cronJobOf(pod.metadata?.namespace ?? '', controllerName) || controllerName
+        default:
+            return controllerName
+    }
+}
+
+export const mapPod = (pod: V1Pod, cronJobOf: (namespace: string, job: string) => string = () => ''): ISdsfPod => {
     const statuses = pod.status?.containerStatuses ?? []
     const initStatuses = pod.status?.initContainerStatuses ?? []
     const regular = (pod.spec?.containers ?? []).map(c => containerOf(c.name, c.image ?? '', false, statuses.find(s => s.name === c.name)))
@@ -85,6 +109,8 @@ export const mapPod = (pod: V1Pod): ISdsfPod => {
         owner: pod.spec?.serviceAccountName ?? pod.spec?.serviceAccount ?? '',
         controllerKind,
         controllerName: controller?.name ?? '',
+        workload: workloadOf(pod, controllerKind, controller?.name ?? '', cronJobOf),
+        step: controllerKind ? suffixOf(pod.metadata?.name ?? '', controller?.name ?? '') : '',
         qos: qosOf(pod.status?.qosClass),
         phase: pod.status?.phase ?? '',
         ready: regular.length > 0 && regular.every(c => c.ready),

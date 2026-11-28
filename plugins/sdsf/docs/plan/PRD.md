@@ -80,8 +80,9 @@ Y además la captura de pantalla se puede confundir con una sesión real de x327
 |---|---|
 | Sistema (SYSNAME) | Cluster de Kwirth |
 | Address space / job | **Pod** |
-| JOBNAME | Nombre del pod (8 caracteres visibles en la columna; el nombre completo con scroll a la derecha y en la columna larga) |
-| StepName / ProcStep | Contenedor / init container |
+| JOBNAME | El workload, el dueño de arriba: Deployment, StatefulSet, DaemonSet, el CronJob de un Job o el Job; un pod suelto, su nombre (D17) |
+| StepName | El pod: lo que lo distingue de sus réplicas (el sufijo); en ST, la ejecución de un CronJob (D17) |
+| ProcStep | El contenedor en marcha: el init mientras dure, luego el principal; en `?`, el de cada data set (D17) |
 | JobID (`STC12345`, `JOB…`) | `POD`, `JOB` o `STS` + los 5 últimos dígitos derivados del uid (estable por pod) |
 | Owner | serviceAccount |
 | C (job class) | QoS class (`G`uaranteed, `B`urstable, `E` besteffort) |
@@ -271,6 +272,11 @@ y volver, se conservan el panel, el scroll, el PREFIX y el campo de comando.
   - los colores, highlights y AID llevan sus códigos reales del data stream.
 
   El servidor sería un codificador más sobre el mismo motor.
+- **D17** (2026-11-28, el usuario) — **JOBNAME = controller, StepName = pod, ProcStep = container**, en
+  todos los paneles. JOBNAME es el workload de arriba (el Deployment, no su ReplicaSet; el CronJob de un
+  Job), compartido por sus réplicas como el de un started task con varios address spaces; StepName, lo que
+  distingue al pod (o a la ejecución de un CronJob en ST); ProcStep, el contenedor en marcha. `PREFIX`
+  filtra por JOBNAME. La ventana de confirmación nombra `JOBNAME.STEPNAME`.
 - **D16** (2026-11-23, el usuario) — **Qué volúmenes ve una key en `SP`**: un PV ligado se ve si la key
   alcanza el namespace de su claim (el describe también lo exige); uno sin claim lo ve cualquier lector, como
   un nodo; los PVC pendientes, solo los de los namespaces de la key. Sin `%Used`: el API no lo sabe.
@@ -299,9 +305,9 @@ y volver, se conservan el panel, el scroll, el PREFIX y el campo de comando.
   No hay teclado en pantalla (D9). Para las PF que el navegador no deje capturar, la vía es la
   equivalencia de ISPF: escribir el comando en `COMMAND INPUT`, por ejemplo `END` = PF3, `DOWN` = PF8
   o `RIGHT` = PF11. En pantalla completa y en el escritorio (Electron/Tauri) se capturan todas.
-- **R3 — 8 caracteres.** Los nombres de pod son largos (`api-7d9f8b6c4-x2kq9`). Si se truncan a 8 como
-  JOBNAME, quedan ambiguos. La columna JOBNAME de 8 es lo fiel; el nombre completo está en la columna
-  `PodName` (con PF11) y en el título del browse.
+- **R3 — 8 caracteres.** Los nombres de pod son largos (`api-7d9f8b6c4-x2kq9`). Resuelto con D17: el
+  JOBNAME es el workload y el StepName el sufijo del pod, que caben en 8; el nombre completo está en la
+  columna `PodName` (con PF11) y FIND busca en él.
 - **R4 — `C` es destructivo.** Borra pods de verdad. Por eso la confirmación va activa por defecto y no
   se puede desactivar en el MVP.
 - **R5 — "Fiel" es subjetivo.** Se resuelve con las capturas de `reference/` (A1): el RF2 está sacado
@@ -311,7 +317,7 @@ y volver, se conservan el panel, el scroll, el PREFIX y el campo de comando.
 
 1. La pestaña muestra exactamente 32x80 celdas más la OIA, con la font 3270, en claro y en oscuro (el
    terminal es siempre negro).
-2. `PREFIX api*` + Enter deja solo los pods que empiezan por `api`, y el título dice `LINE 1-n (n)`.
+2. `PREFIX api*` + Enter deja solo los pods cuyo JOBNAME (workload) empieza por `api`, y el título dice `LINE 1-n (n)`.
 3. `S` en un pod abre su log; PF8 pagina, `F error` + PF5 busca, PF3 vuelve a `DA` en la misma posición.
 4. `C` en un pod pide confirmación. Al confirmar, el pod se borra y aparece `COMMAND ISSUED`; tras Enter,
    la lista muestra el pod nuevo del ReplicaSet.

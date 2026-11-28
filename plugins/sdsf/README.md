@@ -18,8 +18,9 @@ pod to browse its log and `C` to cancel it, page with PF7/PF8 and come back with
 | SDSF / z/OS | Kubernetes |
 |---|---|
 | System | The cluster picked in Kwirth's cluster list |
-| Address space / job (JOBNAME) | Pod |
-| StepName / ProcStep | Container / init container |
+| JOBNAME | The workload: the Deployment, the StatefulSet, the DaemonSet, the CronJob of a Job, the Job itself; a bare pod's own name. Its replicas share it, as the address spaces of one started task do |
+| StepName | The pod: what tells it from its siblings (`x2kq9` of `api-7d9f8b6c4-x2kq9`, `0` of `db-0`); on ST, the run of a CronJob |
+| ProcStep | The container at work: an init container while one runs, the main one after; on `?`, each data set's own container |
 | JobID (`STC12345`, `JOB12345`, `TSU12345`) | Stable id from the pod uid; JOB for Jobs, TSU for bare pods, STC for the rest |
 | Owner | Service account |
 | C (class) | QoS class: G, B or E |
@@ -75,7 +76,7 @@ option menu. `DA` lists the pods.
 | `SP` | The spool volumes: the PersistentVolumes (BOUND, AVAILABLE, RELEASED, FAILED) and, first, the claims still waiting for one (PENDING) |
 | `JC` | The job classes: the PriorityClasses, highest priority first, with their value, whether they are the default, whether they preempt, and their pods |
 | `LOG` | The cluster's events as the SYSLOG, newest at the bottom; Enter reads again and follows the log when you are at the bottom |
-| `PREFIX api*` · `OWNER sa*` | Filter by pod name or service account; `*` any string, `%` one character; `*` alone resets |
+| `PREFIX api*` · `OWNER sa*` | Filter by JOBNAME (the workload: `api` takes every replica) or service account; `*` any string, `%` one character; `*` alone resets |
 | `DEST kube-system` · `DEST (ALL)` | One namespace, or all |
 | `SORT col [A\|D]` | Sort by any column (`SORT sio d`); `SORT` alone goes back to the natural order |
 | `FIND text` · `RFIND` (PF5) | Find in the rows, or in a browse |
@@ -106,6 +107,9 @@ On **INIT**, as on SDSF's initiator panel:
 | `?` | The DA of the node's pods; PF3 comes back to INIT |
 
 `S`, `Z` and `P` need the `admin` scope.
+
+The Confirm Action window names a pod or a Job as `JOBNAME.STEPNAME` (`API.X2KQ9`), since the replicas
+share the JOBNAME; the browse headings name the JOBNAME and the JobID.
 
 On **JC**, `?` is the DA of the class's pods (`CLASS=` on the filter line; PF3 comes back to JC) and `D`
 browses the class described, with its pods. On **SR**, `D` browses the CSR described, with its PEM

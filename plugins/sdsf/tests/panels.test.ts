@@ -2,13 +2,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { sdsfPatternMatches } from '../src/common/panels/Wildcard'
 import { EPrimaryCommand, parsePrimaryCommand } from '../src/common/panels/PrimaryCommand'
-import { ageOf, dpOf, findColumn, posOf, procStepOf, statusOf, stepNameOf, DA_COLUMNS, JOBNAME_COLUMN } from '../src/common/panels/DaColumns'
+import { ageOf, dpOf, findColumn, posOf, procStepOf, statusOf, mainContainerOf, DA_COLUMNS, JOBNAME_COLUMN } from '../src/common/panels/DaColumns'
 import { columnsFrom, offsetLeftOf } from '../src/common/panels/DaPanel'
 import { daFilterMatches, daPositionOf, daTypeOf, DEFAULT_DA_FILTER, EDaPosition, EDaType, parseDaParameters } from '../src/common/panels/DaFilter'
 import { ESdsfQos, ISdsfPod } from '../src/common/SdsfTypes'
 
 const pod = (over: Partial<ISdsfPod> = {}): ISdsfPod => ({
-    name: 'p', namespace: 'n', uid: 'u', jobId: 'STC00001', owner: 'o', controllerKind: '', controllerName: '', qos: ESdsfQos.UNKNOWN,
+    name: 'p', namespace: 'n', uid: 'u', jobId: 'STC00001', owner: 'o', controllerKind: '', controllerName: '', workload: 'p', step: '', qos: ESdsfQos.UNKNOWN,
     phase: 'Running', ready: true, deleting: false, reason: '', priorityClass: '', priority: 0, restarts: 0, node: '', created: '', containers: [],
     ...over
 })
@@ -65,15 +65,18 @@ test('DP from the priority', () => {
     assert.equal(dpOf(-5), 'C0')
 })
 
-test('step, proc step, status and age', () => {
+test('main container, proc step (the container at work), status and age', () => {
     const p = pod({ containers: [
         { name: 'init', init: true, image: '', ready: false, restarts: 0, state: 'running', reason: '' },
         { name: 'done', init: true, image: '', ready: true, restarts: 0, state: 'terminated', reason: 'Completed' },
         { name: 'main', init: false, image: '', ready: false, restarts: 0, state: 'waiting', reason: '' }
     ] })
-    assert.equal(stepNameOf(p), 'main')
-    assert.equal(procStepOf(p), 'init')
-    assert.equal(stepNameOf(pod()), '')
+    assert.equal(mainContainerOf(p), 'main')
+    assert.equal(procStepOf(p), 'init', 'an init container still at work')
+    const started = { ...p, containers: p.containers.map(c => c.init ? { ...c, state: 'terminated' } : c) }
+    assert.equal(procStepOf(started), 'main', 'the inits done: the main one')
+    assert.equal(mainContainerOf(pod()), '')
+    assert.equal(procStepOf(pod()), '')
     assert.equal(statusOf(pod({ reason: 'CrashLoopBackOff' })), 'CrashLoopBackOff')
     assert.equal(statusOf(pod({ deleting: true, reason: 'x' })), 'Terminating')
     assert.equal(statusOf(pod()), 'Running')
@@ -157,7 +160,7 @@ import { durationOf, jobStatusOf, queueOf, ST_COLUMNS } from '../src/common/pane
 import { ESdsfJobState, ESdsfObjectKind, ISdsfJob } from '../src/common/SdsfTypes'
 
 const job = (over: Partial<ISdsfJob> = {}): ISdsfJob => ({
-    kind: ESdsfObjectKind.JOB, name: 'j', namespace: 'n', uid: 'u', jobId: 'JOB00001', owner: 'o', cronJob: '', schedule: '',
+    kind: ESdsfObjectKind.JOB, name: 'j', namespace: 'n', uid: 'u', jobId: 'JOB00001', owner: 'o', cronJob: '', workload: 'j', step: '', schedule: '',
     state: ESdsfJobState.RUNNING, parallelism: 1, completions: 3, active: 1, succeeded: 1, failed: 0,
     start: '2026-11-22T11:00:00.000Z', end: '', ...over
 })
@@ -186,7 +189,7 @@ test('ST duration: running till now, ended till the end, nothing for a CronJob',
     assert.equal(durationOf(job({ end: '2026-11-22T14:00:00.000Z' }), now), '3h')
     assert.equal(durationOf(job({ start: '' }), now), '')
     assert.equal(durationOf(job({ kind: ESdsfObjectKind.CRONJOB }), now), '')
-    assert.deepEqual(ST_COLUMNS.map(c => c.header), ['JobID', 'Owner', 'Prty', 'Queue', 'C', 'Status', 'Age', 'Schedule', 'CronJob', 'Dur', 'Namespace', 'JobName'])
+    assert.deepEqual(ST_COLUMNS.map(c => c.header), ['StepName', 'JobID', 'Owner', 'Prty', 'Queue', 'C', 'Status', 'Age', 'Schedule', 'CronJob', 'Dur', 'Namespace', 'JobName'])
 })
 
 test('DA types and positions of a pod', () => {

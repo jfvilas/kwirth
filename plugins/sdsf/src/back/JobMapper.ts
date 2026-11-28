@@ -1,6 +1,6 @@
 import type { V1Job, V1CronJob } from '@kubernetes/client-node'
 import { ESdsfJobState, ESdsfObjectKind, ISdsfJob } from '../common/SdsfTypes'
-import { jobIdOf } from './PodMapper'
+import { jobIdOf, suffixOf } from './PodMapper'
 
 /*
     Job / CronJob -> one row of the ST, O and H panels. Pure, like the pod mapper: the tests feed it objects
@@ -31,6 +31,8 @@ export const mapJob = (job: V1Job): ISdsfJob => {
         jobId: jobIdOf(uid, 'Job'),
         owner: job.spec?.template?.spec?.serviceAccountName ?? 'default',
         cronJob: cron?.name ?? '',
+        workload: cron?.name || (job.metadata?.name ?? ''),
+        step: cron?.name ? suffixOf(job.metadata?.name ?? '', cron.name) : '',
         schedule: '',
         state: jobStateOf(job),
         parallelism: job.spec?.parallelism ?? 1,
@@ -53,6 +55,8 @@ export const mapCronJob = (cron: V1CronJob): ISdsfJob => {
         jobId: jobIdOf(uid, 'Job'),
         owner: cron.spec?.jobTemplate?.spec?.template?.spec?.serviceAccountName ?? 'default',
         cronJob: '',
+        workload: cron.metadata?.name ?? '',
+        step: '',
         schedule: cron.spec?.schedule ?? '',
         state: cron.spec?.suspend ? ESdsfJobState.SUSPENDED : ESdsfJobState.SCHEDULED,
         parallelism: cron.spec?.jobTemplate?.spec?.parallelism ?? 1,
