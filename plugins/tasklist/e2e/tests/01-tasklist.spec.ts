@@ -2,7 +2,7 @@ import { test, expect, Page } from '@playwright/test'
 import { execFileSync } from 'child_process'
 import {
     createFixture, deleteFixture, dialog, exists, headers, LOGOFF_NAMESPACE, menu, NAMESPACE, namespaceAlive, nodeNames, openTasklist, podsOf,
-    historyLimitOf, root, row, rows, tab, uidOf, editorReplace, waitForRow, win
+    historyLimitOf, root, row, USER, rows, tab, uidOf, editorReplace, waitForRow, win
 } from './helpers'
 
 /*
@@ -63,10 +63,20 @@ test.afterAll(async () => {
     deleteFixture()
 })
 
-test('stopped, it says so; Start opens the window on Processes, with no setup to answer', async () => {
+test('stopped, it says so; started, the desktop is empty; start → Task Manager opens it on Processes', async () => {
     const notStarted = page.getByTestId('channel-not-started')
     await expect(notStarted).toContainText('KubernetesXP not started')
     await notStarted.getByRole('button', { name: 'Start' }).click()
+    // the desktop and its taskbar, and no window on it (D24)
+    const bar = page.getByTestId('tl-taskbar')
+    await expect(bar).toBeVisible({ timeout: 20000 })
+    await expect(win(page)).toHaveCount(0)
+    await expect(bar.getByTestId('tl-task-taskmanager')).toHaveCount(0)
+    await expect(bar.getByTestId('tl-tray-cpu')).toHaveCount(0)
+    await bar.getByTestId('tl-start').dispatchEvent('mousedown')
+    // the one snapshot taken on connecting tells the Start menu what the key may do
+    await expect(root(page).getByTestId('tl-start-menu').getByRole('menuitem', { name: 'Run...' })).not.toHaveAttribute('aria-disabled', 'true', { timeout: 15000 })
+    await root(page).getByTestId('tl-start-menu').getByRole('menuitem', { name: 'Task Manager', exact: true }).click()
     await expect(win(page)).toBeVisible({ timeout: 20000 })
     await expect(win(page).locator('.tl-title-text').first()).toHaveText('Task Manager')
     await expect(win(page).getByRole('tab', { name: 'Processes' })).toHaveAttribute('aria-selected', 'true')
@@ -79,18 +89,18 @@ test('Processes: the four XP columns, the fixture pods as processes of the user 
     for (const name of podsOf('demo')) await waitForRow(processes(), name)
     await waitForRow(processes(), 'lonely')
     expect((await row(processes(), 'lonely').locator('td').allTextContents())[1]).toBe(NAMESPACE)
-    expect((await rows(processes())).some(r => r[1].startsWith('kube-'))).toBe(false)
+    expect((await rows(processes())).some(r => r[1]?.startsWith('kube-'))).toBe(false)
     await expect(win(page).getByTestId('tl-status')).toContainText(/Processes: \d+/)
     await expect(win(page).getByTestId('tl-status')).toContainText(/Commit Charge: \d+M \/ \d+M/)
 })
 
 test('Show processes from all users: the system users appear, and the System Idle Process once the CPU is known', async () => {
     await win(page).getByTestId('tl-all-users').click()
-    await expect.poll(async () => (await rows(processes())).some(r => r[1].startsWith('kube-')), { timeout: 15000 }).toBe(true)
+    await expect.poll(async () => (await rows(processes())).some(r => r[1]?.startsWith('kube-')), { timeout: 15000 }).toBe(true)
     await waitForRow(processes(), 'System Idle Process', 60000)
     expect((await row(processes(), 'System Idle Process').locator('td').allTextContents())[1]).toBe('SYSTEM')
     await win(page).getByTestId('tl-all-users').click()
-    await expect.poll(async () => (await rows(processes())).some(r => r[1].startsWith('kube-')), { timeout: 15000 }).toBe(false)
+    await expect.poll(async () => (await rows(processes())).some(r => r[1]?.startsWith('kube-')), { timeout: 15000 }).toBe(false)
 })
 
 test('a click on a header sorts by it, a second turns it round; CPU and memory figures are XP\'s', async () => {
@@ -499,7 +509,7 @@ test('the taskbar: Start with its menu, the window\'s button minimises and resto
     await bar.getByTestId('tl-start').dispatchEvent('mousedown')
     const menu = root(page).getByTestId('tl-start-menu')
     await expect(menu).toBeVisible()
-    await expect(menu.getByRole('menuitem', { name: 'Turn Off Computer...' })).toHaveAttribute('aria-disabled', 'true')
+    await expect(menu.getByRole('button', { name: 'Log Off' })).toHaveAttribute('aria-disabled', 'true')
     await menu.getByRole('menuitem', { name: 'Task Manager', exact: true }).click()
     await expect(win(page)).toBeVisible()
     await expect(menu).toBeHidden()
@@ -562,6 +572,67 @@ test('every edge and corner resizes, the title bar\'s double click maximises and
     await expect(about).toContainText(/Version \d+\.\d+\.\d+/)
     await expect(about).toContainText('Not affiliated with Microsoft')
     await about.getByRole('button', { name: 'OK' }).click()
+})
+
+test('the Start menu: the user, the programs and All Programs, the places; My Cluster, Run... and Turn Off', async () => {
+    const bar = page.getByTestId('tl-taskbar')
+    const open = async () => {
+        await bar.getByTestId('tl-start').dispatchEvent('mousedown')
+        await expect(root(page).getByTestId('tl-start-menu')).toBeVisible()
+        return root(page).getByTestId('tl-start-menu')
+    }
+    let sm = await open()
+    await expect(sm.getByTestId('tl-start-user')).toHaveText(USER)
+    await expect(sm.getByTestId('tl-sm-taskmanager')).toContainText('Processes and performance')
+    await expect(sm.getByTestId('tl-sm-notepad')).toContainText('Logs and YAML')
+    await expect(sm.getByRole('menuitem', { name: 'Help and Support' })).toHaveAttribute('aria-disabled', 'true')
+    await expect(sm.getByRole('button', { name: 'Turn Off Computer' })).not.toHaveAttribute('aria-disabled', 'true')
+    // All Programs opens its list of programs
+    await sm.getByRole('menuitem', { name: 'All Programs' }).hover()
+    await expect(sm.getByTestId('tl-sm-programs').getByRole('menuitem')).toHaveText(['Task Manager', 'Notepad'])
+    await shot('start-menu', true, true)
+    // My Cluster: the Task Manager on Performance
+    await sm.getByRole('menuitem', { name: 'My Cluster' }).click()
+    await expect(sm).toBeHidden()
+    await expect(win(page).getByRole('tab', { name: 'Performance' })).toHaveAttribute('aria-selected', 'true')
+    // Run...: Create New Task
+    sm = await open()
+    await sm.getByRole('menuitem', { name: 'Run...' }).click()
+    await expect(dialog(page, 'tl-new-task')).toBeVisible()
+    await dialog(page, 'tl-new-task').getByRole('button', { name: 'Cancel' }).click()
+    // Turn Off Computer asks first; Cancel leaves it on
+    sm = await open()
+    await sm.getByRole('button', { name: 'Turn Off Computer' }).click()
+    await expect(dialog(page, 'tl-turn-off')).toContainText('the channel stops')
+    await dialog(page, 'tl-turn-off').getByRole('button', { name: 'Cancel' }).click()
+    await expect(win(page)).toBeVisible()
+    await tab(page, 'Processes')
+})
+
+test('Control Panel from Start: an Explorer window of its own, every applet there and disabled', async () => {
+    const bar = page.getByTestId('tl-taskbar')
+    await bar.getByTestId('tl-start').dispatchEvent('mousedown')
+    await root(page).getByTestId('tl-start-menu').getByRole('menuitem', { name: 'Control Panel' }).click()
+    const cp = root(page).getByTestId('tl-control-panel')
+    await expect(cp).toBeVisible()
+    await expect(cp.locator('.tl-title-text')).toHaveText('Control Panel')
+    await expect(bar.getByTestId('tl-task-controlpanel')).toHaveAttribute('aria-pressed', 'true')
+    const applets = cp.getByTestId('tl-cp-applets').getByRole('button')
+    await expect(applets).toHaveCount(28)
+    expect(await applets.evaluateAll(els => els.every(e => e.getAttribute('aria-disabled') === 'true'))).toBe(true)
+    await expect(cp.getByRole('button', { name: 'Firewall' })).toBeVisible()
+    for (const tool of ['Back', 'Forward', 'Up', 'Search', 'Folders', 'Views', 'Go']) await expect(cp.getByRole('button', { name: tool, exact: true })).toHaveAttribute('aria-disabled', 'true')
+    await cp.getByRole('menuitem', { name: 'View', exact: true }).dispatchEvent('mousedown')
+    await expect(cp.getByRole('menu').getByRole('menuitem', { name: 'Refresh' })).toHaveAttribute('aria-disabled', 'true')
+    await cp.getByRole('menuitem', { name: 'View', exact: true }).dispatchEvent('mousedown')
+    await shot('control-panel', true, true)
+    // opened again from Start: the same one, in front
+    await bar.getByTestId('tl-start').dispatchEvent('mousedown')
+    await root(page).getByTestId('tl-start-menu').getByRole('menuitem', { name: 'Control Panel' }).click()
+    await expect(root(page).getByTestId('tl-control-panel')).toHaveCount(1)
+    await cp.getByRole('button', { name: 'Close' }).click()
+    await expect(cp).toHaveCount(0)
+    await expect(bar.getByTestId('tl-task-controlpanel')).toHaveCount(0)
 })
 
 test('Notepad from Start: a window of its own — in front, on the taskbar, resizable, maximised and minimised, closed without asking', async () => {

@@ -187,6 +187,16 @@ conservan la pestaña activa, el orden, las columnas, la selección y la histori
 - **D21** (2026-11-27, el usuario) — **Nombre visible del producto: KubernetesXP** (cambia D2; el id sigue
   siendo `tasklist`). Start → **About KubernetesXP** (el producto y su versión); **About Task Manager** queda
   solo en el Help del Task Manager.
+- **D22** (2026-11-28, el usuario) — **Menú de start como el de XP**: cabecera con el usuario de Kwirth; programas a la
+  izquierda (Task Manager, Notepad, All Programs); sitios a la derecha (My Cluster → Performance, My Namespaces →
+  Users, Control Panel, Run... = Create New Task, About KubernetesXP, Help and Support en gris); al pie Log Off (en gris,
+  B1) y Turn Off Computer, que tras confirmar **para el canal** (el `stopChannel` que presta el core).
+- **D23** (2026-11-28, el usuario) — **Control Panel**: una ventana de Explorer con sus menús, la barra
+  Back/Forward/Up/Search/Folders/Views, Address y los 28 applets de la vista clásica de XP, **todo deshabilitado de
+  momento**, con iconos propios. "Windows Firewall" se llama **Firewall**.
+- **D24** (2026-11-28, el usuario) — **El escritorio arranca sin el Task Manager abierto**: solo la taskbar; se abre desde
+  Start. Al conectar se pide una única foto (el menú de start necesita los permisos para Run... y los namespaces para
+  Create New Task); los refrescos periódicos empiezan al abrir el Task Manager.
 
 ## 8. Entregas
 

@@ -1,8 +1,9 @@
 # Task Manager — plan
 
-> **ESTADO — CERRADO** (2026-11-27). Publicado como **`plugin/tasklist@0.1.0`** (npm `@jfvilas/kwirth-plugin-tasklist`,
-> manifest raíz de jfvilas), con el nombre visible **KubernetesXP**. S1, S2 y todo lo pedido en la QA salieron
-> juntos en una sola versión (§5). Lo que queda está en el backlog (§6). Cuelga del [PRD](PRD.md) (D1–D15) y
+> **ESTADO — CERRADO** (2026-11-28). Publicado como **`plugin/tasklist@0.1.1`** (npm `@jfvilas/kwirth-plugin-tasklist`,
+> manifest raíz de jfvilas), con el nombre visible **KubernetesXP**. La 0.1.0 (2026-11-27) llevó S1, S2 y todo lo pedido
+> en su QA (§5); la 0.1.1, el menú de start de XP, el Control Panel y el arranque sin Task Manager (D22–D24, §5). Lo que
+> queda está en el backlog (§6). Cuelga del [PRD](PRD.md) (D1–D15) y
 > no repite ni su problema ni sus decisiones de producto. **D15: es diversión, no negocio.**
 >
 > **Dónde vive:** `~/github/kwirth/plugins/tasklist`, repo anidado (rama `main`, identidad `jfvilas`) **sin
@@ -143,6 +144,14 @@ en el back (como magnify); CodeMirror NO se empaqueta: viene del core.
 Después: el cierre del Task Manager se permite y Start lo reabre (D20), y el nombre visible pasa a KubernetesXP con
 su About en Start (D21). Verificado en el cierre de la 0.1.0: 45 tests unitarios y 30 casos e2e en verde; histórico y
 gráficas en `docs/qa/`.
+
+### 0.1.1 (2026-11-28)
+
+El menú de start como el de XP (D22: `StartMenu`, con el `userName` y el `stopChannel` que presta el core para Turn Off
+Computer), el Control Panel (D23: `ControlPanelWindow`, los 28 applets deshabilitados, iconos propios en
+`ControlPanelIcons.tsx`) y el escritorio que arranca sin el Task Manager (D24: una foto al conectar, refrescos al
+abrirlo). Tipos nuevos: `IStartMenuProps`, `IControlPanelWindowProps`, `IControlPanelApplet`, `TAppletGlyph` y la
+constante `CONTROL_PANEL_WINDOW`. Verificado: 47 tests unitarios y 32 casos e2e.
 
 ## 6. Backlog
 

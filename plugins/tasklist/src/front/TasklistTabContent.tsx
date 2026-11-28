@@ -77,7 +77,8 @@ export const TasklistTabContent: React.FC<IContentProps> = ({ channelObject }) =
 
     return (
         <div ref={containerRef} style={{ width: '100%', height: size.height }} data-testid='tasklist-window-host'>
-            {size.width > 0 && <TaskManagerWindow session={session} width={size.width} height={size.height} />}
+            {size.width > 0 && <TaskManagerWindow session={session} width={size.width} height={size.height}
+                userName={channelObject.userName || 'User'} onTurnOff={channelObject.stopChannel} />}
         </div>
     )
 }

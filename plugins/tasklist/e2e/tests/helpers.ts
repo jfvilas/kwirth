@@ -242,13 +242,12 @@ export async function menu(page: Page, bar: string, item: string, sub?: string):
     else await entry.click()
 }
 
-// The rows of a list, each as its cells' texts.
+/*
+    The rows of a list, each as its cells' texts — read in one go in the page, so a refresh of the list (every couple
+    of seconds) cannot land between counting the rows and reading them.
+*/
 export async function rows(list: Locator): Promise<string[][]> {
-    const all = list.locator('tbody tr')
-    const count = await all.count()
-    const result: string[][] = []
-    for (let i = 0; i < count; i++) result.push(await all.nth(i).locator('td').allTextContents())
-    return result
+    return list.locator('tbody').evaluate(body => Array.from(body.querySelectorAll('tr')).map(tr => Array.from(tr.querySelectorAll('td')).map(td => td.textContent ?? '')))
 }
 
 export async function headers(list: Locator): Promise<string[]> {

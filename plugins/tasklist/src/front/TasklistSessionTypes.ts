@@ -40,6 +40,7 @@ export enum EProcessColumn {
 // ─── the desktop's windows ────────────────────────────────────────────────────────────────────────
 
 export const TASK_MANAGER_WINDOW = 'taskmanager'
+export const CONTROL_PANEL_WINDOW = 'controlpanel'
 
 // Where a window sits on the tab's desktop. Unset x/y/width/height: its first size, centred.
 export interface IWindowFrame {

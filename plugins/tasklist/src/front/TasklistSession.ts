@@ -1,6 +1,6 @@
 import { ETasklistCommand, ITasklistMessageResponse, ITasklistNode, ITasklistRequest, ITasklistSnapshot } from '../common/TasklistTypes'
 import { ITasklistDataSource } from './TasklistBackSource'
-import { EProcessColumn, ETasklistTab, EUpdateSpeed, INotepadWindow, ITasklistSession, IWindowFrame, TASK_MANAGER_WINDOW, UPDATE_SPEED_MS } from './TasklistSessionTypes'
+import { EProcessColumn, ETasklistTab, EUpdateSpeed, CONTROL_PANEL_WINDOW, INotepadWindow, ITasklistSession, IWindowFrame, TASK_MANAGER_WINDOW, UPDATE_SPEED_MS } from './TasklistSessionTypes'
 
 // How many points each graph keeps: what fits across the widest history box, as XP keeps.
 export const HISTORY_POINTS = 120
@@ -58,10 +58,16 @@ export class TasklistSession {
     compact = false
     // the desktop's windows: the Task Manager's, the Notepads open, and which is in front of which (the last, active)
     taskManager: IWindowFrame = { maximized: false, minimized: false }
-    // closed with its own close button: off the desktop and the taskbar, asking the cluster nothing; Start opens it again
-    taskManagerOpen = true
+    /*
+        Closed — as the desktop starts (D24), or with its own close button —: off the desktop and the taskbar, asking
+        the cluster nothing; Start opens it.
+    */
+    taskManagerOpen = false
+    // the Control Panel: closed until Start opens it
+    controlPanel: IWindowFrame = { maximized: false, minimized: false }
+    controlPanelOpen = false
     notepads: INotepadWindow[] = []
-    zOrder: string[] = [TASK_MANAGER_WINDOW]
+    zOrder: string[] = []
     private notepadSequence = 0
     private listeners = new Set<() => void>()
     private timer?: ReturnType<typeof setTimeout>
@@ -82,7 +88,11 @@ export class TasklistSession {
         for (const listener of this.listeners) listener()
     }
 
-    // The instance exists: the first snapshot, and the rest at the Update Speed.
+    /*
+        The instance exists: one snapshot, which the desktop needs even with the Task Manager closed (the key's
+        permissions say whether Run... is on; the namespaces fill Create New Task). The rest come at the Update Speed
+        once the Task Manager is open.
+    */
     connected = (): void => {
         void this.refresh()
     }
@@ -162,8 +172,13 @@ export class TasklistSession {
     // ─── the desktop's windows ────────────────────────────────────────────────────────────────────
 
     // A window's frame; none for a window that is not on the desktop (a closed Task Manager, a closed Notepad).
-    frameOf = (id: string): IWindowFrame | undefined =>
-        id === TASK_MANAGER_WINDOW ? (this.taskManagerOpen ? this.taskManager : undefined) : this.notepads.find(n => n.id === id)?.frame
+    frameOf = (id: string): IWindowFrame | undefined => {
+        switch (id) {
+            case TASK_MANAGER_WINDOW: return this.taskManagerOpen ? this.taskManager : undefined
+            case CONTROL_PANEL_WINDOW: return this.controlPanelOpen ? this.controlPanel : undefined
+            default: return this.notepads.find(n => n.id === id)?.frame
+        }
+    }
 
     // The window in front: the last of the z-order that is not minimised.
     activeWindow = (): string | undefined =>
@@ -209,6 +224,24 @@ export class TasklistSession {
         this.zOrder = [...this.zOrder, TASK_MANAGER_WINDOW]
         this.changed()
         void this.refresh()
+    }
+
+    // Start → Control Panel: in front if it is open; opened, where it was left, if not.
+    openControlPanel = (): void => {
+        if (this.controlPanelOpen) {
+            this.activate(CONTROL_PANEL_WINDOW)
+            return
+        }
+        this.controlPanelOpen = true
+        this.controlPanel.minimized = false
+        this.zOrder = [...this.zOrder, CONTROL_PANEL_WINDOW]
+        this.changed()
+    }
+
+    closeControlPanel = (): void => {
+        this.controlPanelOpen = false
+        this.zOrder = this.zOrder.filter(w => w !== CONTROL_PANEL_WINDOW)
+        this.changed()
     }
 
     // A new Notepad on the desktop, in front, a little down and right of the last one opened (as Windows cascades them).

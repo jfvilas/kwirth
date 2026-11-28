@@ -14,7 +14,8 @@ import { UsersTab } from './UsersTab'
 import { AboutDialog, AboutKubernetesXPDialog, CreateNewTaskDialog, INewTask, PropertiesDialog, SelectColumnsDialog, SHUT_DOWN_TITLES, ShutDownDialog } from './Dialogs'
 import { NotepadWindow } from './NotepadWindow'
 import { LunaWindow } from '../luna/LunaWindow'
-import { TASK_MANAGER_WINDOW } from '../TasklistSessionTypes'
+import { CONTROL_PANEL_WINDOW, TASK_MANAGER_WINDOW } from '../TasklistSessionTypes'
+import { ControlPanelWindow } from './ControlPanelWindow'
 import { NORMAL_HEIGHT, NORMAL_WIDTH } from './Placement'
 
 const TABS = [
@@ -35,9 +36,11 @@ export interface ITaskManagerWindowProps {
     session: TasklistSession
     width: number
     height: number
+    userName: string               // Kwirth's user, at the top of the Start menu
+    onTurnOff?: () => void         // stops the channel (the core's stopChannel); absent: Turn Off Computer is disabled
 }
 
-export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, width, height }) => {
+export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, width, height, userName, onTurnOff }) => {
     const [dialog, setDialog] = useState<JSX.Element>()
     const [contextMenu, setContextMenu] = useState<IContextMenuState>()
     const rootRef = useRef<HTMLDivElement>(null)
@@ -331,13 +334,19 @@ export const TaskManagerWindow: React.FC<ITaskManagerWindowProps> = ({ session, 
                     </div>
                 </div>
             </LunaWindow>}
+            {session.controlPanelOpen && <ControlPanelWindow session={session} desktop={desktop} desktopWidth={deskWidth} desktopHeight={deskHeight}
+                zIndex={zIndexOf(CONTROL_PANEL_WINDOW)} />}
             {session.notepads.map(n => (
                 <NotepadWindow key={n.id} session={session} notepad={n} desktop={desktop} desktopWidth={deskWidth} desktopHeight={deskHeight} zIndex={zIndexOf(n.id)} />
             ))}
             {/* the Task Manager's dialogs: modal over the desktop, the taskbar left free */}
             {dialog}
             </div>
-            <Taskbar session={session} onAbout={() => setDialog(<AboutKubernetesXPDialog cluster={session.cluster} onClose={close} />)} />
+            <Taskbar session={session} userName={userName} onRun={newTask}
+                onAbout={() => setDialog(<AboutKubernetesXPDialog cluster={session.cluster} onClose={close} />)}
+                onTurnOff={onTurnOff && (() => setDialog(<MessageBox title='Turn Off Computer' icon={<WarningIcon />} testId='tl-turn-off'
+                    lines={['KubernetesXP will be turned off: the channel stops, and its windows close.', 'Start the channel again to turn it back on.']}
+                    onClose={close} buttons={[{ label: 'Turn Off', onClick: () => { close(); onTurnOff() } }, { label: 'Cancel', onClick: close }]} />))} />
             {contextMenu && <ContextMenu items={contextMenu.items} x={contextMenu.x} y={contextMenu.y} onClose={closeMenu} />}
         </div>
     )

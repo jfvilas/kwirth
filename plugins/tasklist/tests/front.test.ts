@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { ETasklistCommand, ITasklistMessageResponse, ITasklistNode, ITasklistProcess, ITasklistRequest, ITasklistSnapshot } from '../src/common/TasklistTypes'
 import { cpuColumn, cpuTime, kilobytes, kilobytesBare, linkSpeed, megabytes, meterBytes, networkScale, percent, utilisation } from '../src/front/Format'
 import { DEFAULT_COLUMNS, HISTORY_POINTS, networkUtilisation, TasklistSession } from '../src/front/TasklistSession'
-import { EProcessColumn, ETasklistTab, EUpdateSpeed, TASK_MANAGER_WINDOW } from '../src/front/TasklistSessionTypes'
+import { CONTROL_PANEL_WINDOW, EProcessColumn, ETasklistTab, EUpdateSpeed, TASK_MANAGER_WINDOW } from '../src/front/TasklistSessionTypes'
 import { IDLE_UID, idleProcess, visibleProcesses } from '../src/front/window/ProcessesTab'
 import { performanceFigures } from '../src/front/window/PerformanceTab'
 import { applicationKey, statusOf } from '../src/front/window/ApplicationsTab'
@@ -12,8 +12,33 @@ import { MIN_HEIGHT, MIN_WIDTH, NORMAL_HEIGHT, NORMAL_WIDTH, placementOf, resize
 
 // ─── the window on the tab's desktop ──────────────────────────────────────────────────────────────
 
+// A session whose Task Manager has been opened from Start (the desktop starts with it closed, D24).
+const withTaskManager = (source = new FakeSource()): TasklistSession => {
+    const s = new TasklistSession('c', source)
+    s.openTaskManager()
+    return s
+}
+
+test('the desktop starts with the Task Manager closed: one snapshot on connecting, no refreshes until it is opened', async () => {
+    const source = new FakeSource()
+    const s = new TasklistSession('c', source)
+    s.setState({ updateSpeed: EUpdateSpeed.HIGH })
+    assert.equal(s.taskManagerOpen, false)
+    assert.deepEqual(s.zOrder, [])
+    assert.equal(s.activeWindow(), undefined)
+    s.connected()
+    await new Promise(r => setTimeout(r, 1300))
+    // the one that tells the Start menu the permissions and the namespaces, and no more
+    assert.equal(source.requests.length, 1)
+    assert.equal(s.canEnd, true)
+    s.openTaskManager()
+    await new Promise(r => setTimeout(r, 1300))
+    assert.ok(source.requests.length >= 3)
+    s.dispose()
+})
+
 test('placementOf: centred the first time, where it was left after, never bigger than nor out of the desktop', () => {
-    const s = new TasklistSession('c', new FakeSource())
+    const s = withTaskManager()
     const at = (w: number, h: number) => placementOf(s.taskManager, NORMAL_WIDTH, NORMAL_HEIGHT, w, h)
     assert.deepEqual(at(1000, 800), [190, 100, NORMAL_WIDTH, NORMAL_HEIGHT])
     assert.deepEqual(at(500, 400), [0, 0, 500, 400])
@@ -25,7 +50,7 @@ test('placementOf: centred the first time, where it was left after, never bigger
 })
 
 test('the desktop\'s windows: Notepads open in front and cascade; the taskbar minimises the one in front and brings back the rest', () => {
-    const s = new TasklistSession('c', new FakeSource())
+    const s = withTaskManager()
     assert.equal(s.activeWindow(), TASK_MANAGER_WINDOW)
     const a = s.openNotepad('a.log', 'one\ntwo', true, false)
     const b = s.openNotepad('b.yaml', 'kind: Pod', false, true, async () => undefined)
@@ -205,7 +230,7 @@ test('the Update Speed asks again on its own; Paused stops; dispose stops for go
     const source = new FakeSource()
     const s = new TasklistSession('c', source)
     s.setState({ updateSpeed: EUpdateSpeed.HIGH })
-    await s.refresh()
+    s.openTaskManager()
     await new Promise(r => setTimeout(r, 1150))
     assert.ok(source.requests.length >= 2)
     s.setState({ updateSpeed: EUpdateSpeed.PAUSED })
@@ -234,18 +259,20 @@ test('act: the answer for the dialog, and a fresh snapshot only when it worked',
 
 test('the Task Manager closed: off the desktop, no snapshots; Start opens it again where it was, and refreshes', async () => {
     const source = new FakeSource()
-    const s = new TasklistSession('c', source)
+    const s = withTaskManager(source)
     s.setState({ updateSpeed: EUpdateSpeed.HIGH })
     s.setFrame(TASK_MANAGER_WINDOW, { x: 10, y: 20 })
     const n = s.openNotepad('a', '', false, false)
+    await new Promise(r => setTimeout(r, 10))
     s.closeTaskManager()
+    const askedOpen = source.requests.length
     assert.equal(s.taskManagerOpen, false)
     assert.deepEqual(s.zOrder, [n])
     assert.equal(s.frameOf(TASK_MANAGER_WINDOW), undefined)
     assert.equal(s.activeWindow(), n)
     // nothing asked while it is closed
     await new Promise(r => setTimeout(r, 1200))
-    assert.equal(source.requests.length, 0)
+    assert.equal(source.requests.length, askedOpen)
     // a stray activation does not bring it back: only Start does
     s.activate(TASK_MANAGER_WINDOW)
     assert.equal(s.taskManagerOpen, false)
@@ -254,7 +281,7 @@ test('the Task Manager closed: off the desktop, no snapshots; Start opens it aga
     assert.equal(s.activeWindow(), TASK_MANAGER_WINDOW)
     assert.deepEqual([s.taskManager.x, s.taskManager.y], [10, 20])
     await new Promise(r => setTimeout(r, 10))
-    assert.equal(source.requests.length, 1)
+    assert.equal(source.requests.length, askedOpen + 1)
     // already open: Start only brings it in front
     s.activate(n)
     s.openTaskManager()
@@ -262,8 +289,27 @@ test('the Task Manager closed: off the desktop, no snapshots; Start opens it aga
     s.dispose()
 })
 
+test('the Control Panel: closed at first; Start opens it in front, once; its close button takes it off the desktop', () => {
+    const s = withTaskManager()
+    assert.equal(s.controlPanelOpen, false)
+    assert.equal(s.frameOf(CONTROL_PANEL_WINDOW), undefined)
+    s.openControlPanel()
+    assert.equal(s.activeWindow(), CONTROL_PANEL_WINDOW)
+    assert.deepEqual(s.zOrder, [TASK_MANAGER_WINDOW, CONTROL_PANEL_WINDOW])
+    s.activate(TASK_MANAGER_WINDOW)
+    s.openControlPanel()
+    assert.deepEqual(s.zOrder, [TASK_MANAGER_WINDOW, CONTROL_PANEL_WINDOW])
+    s.setFrame(CONTROL_PANEL_WINDOW, { x: 5, y: 6 })
+    s.closeControlPanel()
+    assert.equal(s.controlPanelOpen, false)
+    assert.deepEqual(s.zOrder, [TASK_MANAGER_WINDOW])
+    s.openControlPanel()
+    assert.deepEqual([s.controlPanel.x, s.controlPanel.y], [5, 6])
+    s.dispose()
+})
+
 test('selection and window state live in the session', () => {
-    const s = new TasklistSession('c', new FakeSource())
+    const s = withTaskManager()
     s.select(ETasklistTab.PROCESSES, ['x'])
     s.setFrame(TASK_MANAGER_WINDOW, { maximized: true })
     assert.deepEqual(s.selection[ETasklistTab.PROCESSES], ['x'])
