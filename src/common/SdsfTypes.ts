@@ -185,6 +185,8 @@ export interface ISdsfJob {
     jobId: string              // 'JOB12345', stable for the life of the object
     owner: string              // the service account its pods run as
     cronJob: string            // the CronJob a Job was created by, '' when none
+    workload: string           // the JOBNAME: the CronJob of a Job it created, its own name otherwise
+    step: string               // the StepName: a CronJob's run (the Job's name without the CronJob's), '' otherwise
     schedule: string           // a CronJob's schedule
     state: ESdsfJobState
     parallelism: number
@@ -240,6 +242,13 @@ export interface ISdsfPod {
     owner: string              // service account
     controllerKind: string     // kind of the first ownerReference, '' for a bare pod
     controllerName: string
+    /*
+        The JOBNAME: the workload at the top of its owners — the Deployment (not its ReplicaSet), the CronJob of
+        its Job, the StatefulSet, DaemonSet or Job itself — and the pod's own name when nobody owns it. Every
+        replica shares it, as the address spaces of one started task share a JOBNAME on z/OS.
+    */
+    workload: string
+    step: string               // the StepName: what tells the pod from its siblings, its name without its controller's ('' for a bare pod)
     qos: ESdsfQos
     phase: string
     ready: boolean             // every regular container ready

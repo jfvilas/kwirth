@@ -4,9 +4,10 @@ import { E3270Color } from '@jfvilas/kwirth-dce-blockterm'
 /*
     The DA columns: how each pod field becomes an SDSF column. Presentation only — the back sends data.
 
-    The order is the one of a real DA (D8): JOBNAME is fixed at the left, the rest scroll with PF10/PF11. Past
-    SIO come the ones only Kubernetes has: CPU%, the namespace, the full pod name (JOBNAME has 8 characters,
-    and pod names are long), the status, the node and the age.
+    The order is the one of a real DA (D8): JOBNAME is fixed at the left, the rest scroll with PF10/PF11.
+    JOBNAME is the workload (the Deployment, the CronJob…), StepName the pod (what tells it from its siblings)
+    and ProcStep the container at work, as a job, its step and its proc step. Past SIO come the ones only
+    Kubernetes has: CPU%, the status, the node, the age, the namespace and the full pod name.
 */
 // One column of a table panel, for rows of type T (pods on the DA, Jobs on ST/O/H).
 export interface IDaColumn<T = ISdsfPod> {
@@ -23,9 +24,10 @@ const VALUE = E3270Color.GREEN
 
 const upper8 = (s: string): string => s.toUpperCase().slice(0, 8)
 
-// The step being run: the first regular container. The proc step: an init container still at work.
-export const stepNameOf = (pod: ISdsfPod): string => pod.containers.find(c => !c.init)?.name ?? ''
-export const procStepOf = (pod: ISdsfPod): string => pod.containers.find(c => c.init && c.state !== 'terminated')?.name ?? ''
+// The main container: the first regular one, whose log S browses.
+export const mainContainerOf = (pod: ISdsfPod): string => pod.containers.find(c => !c.init)?.name ?? ''
+// The ProcStep: the container at work now, an init container while there is one still running, the main one after.
+export const procStepOf = (pod: ISdsfPod): string => pod.containers.find(c => c.init && c.state !== 'terminated')?.name ?? mainContainerOf(pod)
 
 const QOS_CLASS: Record<ESdsfQos, string> = {
     [ESdsfQos.GUARANTEED]: 'G',
@@ -96,11 +98,11 @@ const cpuOf = (pod: ISdsfPod): string => pod.cpu === undefined ? '-' : pod.cpu.t
 
 export const JOBNAME_COLUMN: IDaColumn = {
     header: 'JOBNAME', width: 8, right: false,
-    text: p => upper8(p.name), color: () => IDENTITY, sortKey: p => p.name
+    text: p => upper8(p.workload), color: () => IDENTITY, sortKey: p => `${p.workload} ${p.step}`
 }
 
 export const DA_COLUMNS: IDaColumn[] = [
-    { header: 'StepName', width: 8, right: false, text: p => upper8(stepNameOf(p)), color: () => IDENTITY, sortKey: p => stepNameOf(p) },
+    { header: 'StepName', width: 8, right: false, text: p => upper8(p.step), color: () => IDENTITY, sortKey: p => p.step },
     { header: 'ProcStep', width: 8, right: false, text: p => upper8(procStepOf(p)), color: () => IDENTITY, sortKey: p => procStepOf(p) },
     { header: 'JobID', width: 8, right: false, text: p => p.jobId, color: () => IDENTITY, sortKey: p => p.jobId },
     { header: 'Owner', width: 8, right: false, text: p => upper8(p.owner), color: () => IDENTITY, sortKey: p => p.owner },

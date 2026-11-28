@@ -27,10 +27,10 @@ const shot = async (name: string): Promise<void> => {
     await terminal(page).locator(':scope > div').screenshot({ path: `${SHOTS}/${name}.png` })
 }
 
-// The rows of the DA that list the fixture's pods (JOBNAME starts with DEMO-).
+// The rows of the DA that list the fixture's pods: JOBNAME DEMO (the Deployment), StepName the pod.
 const demoRows = async (): Promise<number[]> => {
     const rows: number[] = []
-    for (let r = 6; r < 30; r++) if (/^ {5}DEMO-/.test(await row(page, r))) rows.push(r)
+    for (let r = 6; r < 30; r++) if (/^ {5}DEMO {5}\S/.test(await row(page, r))) rows.push(r)
     return rows
 }
 
@@ -94,7 +94,7 @@ test('DA with PREFIX and DEST lists exactly the fixture pods', async () => {
     expect(await row(page, 5)).toMatch(/^ NP  JOBNAME  StepName ProcStep JobID +Owner +C Pos DP  Real Paging +SIO/)
     const rows = await demoRows()
     expect(rows).toHaveLength(2)
-    for (const r of rows) expect(await row(page, r)).toMatch(/DEMO-.* APP +STC\d{5} DEFAULT +B IN /)
+    for (const r of rows) expect(await row(page, r)).toMatch(/^ {5}DEMO {5}\S{5} {4}APP +STC\d{5} DEFAULT +B IN /)
     /*
         For the capture, the metrics provider's figures rather than its '-': CPU% needs two readings, which can
         take a couple of its intervals on fresh pods. Not an assertion — a cluster without the provider is valid.
@@ -129,7 +129,7 @@ test('S browses the log of the main container; FIND finds in it; PF3 comes back'
     const [first] = await demoRows()
     await lineCommand(page, first, 's')
     await enter(page)
-    expect(await row(page, 2)).toMatch(/^ SDSF OUTPUT DISPLAY DEMO-.* DSID   101/)
+    expect(await row(page, 2)).toMatch(/^ SDSF OUTPUT DISPLAY DEMO {5}STC\d{5}  DSID   101/)
     expect(await row(page, 4)).toMatch(/TOP OF DATA/)
     expect(await screenText(page)).toMatch(/sdsf-e2e tick \d+/)
     await command(page, 'f tick')
@@ -144,10 +144,12 @@ test('? lists the containers as data sets; S on the sidecar browses its log', as
     const [first] = await demoRows()
     await lineCommand(page, first, '?')
     await enter(page)
-    expect(await row(page, 2)).toMatch(/SDSF JOB DATA SET DISPLAY - JOB DEMO-/)
-    expect(await row(page, 5)).toMatch(/PREPARE +INIT +PREPARE +2 /)
-    expect(await row(page, 6)).toMatch(/APP +APP +101 /)
-    expect(await row(page, 7)).toMatch(/SIDECAR +APP +102 /)
+    expect(await row(page, 2)).toMatch(/SDSF JOB DATA SET DISPLAY - JOB DEMO {6}\(STC\d{5}\)/)
+    // every data set is of the same step (the pod); its proc step is its own container
+    const step = /^ {5}PREPARE {2}(\S{5}) {4}PREPARE +2 /.exec(await row(page, 5))?.[1]
+    expect(step, 'the pod as StepName').toBeTruthy()
+    expect(await row(page, 6)).toMatch(new RegExp(`^ {5}APP {6}${step} {4}APP +101 `))
+    expect(await row(page, 7)).toMatch(new RegExp(`^ {5}SIDECAR {2}${step} {4}SIDECAR +102 `))
     await shot('containers')
     await lineCommand(page, 7, 's')
     await enter(page)
@@ -162,7 +164,7 @@ test('D browses the pod described, with its events', async () => {
     const [first] = await demoRows()
     await lineCommand(page, first, 'd')
     await enter(page)
-    expect(await row(page, 2)).toMatch(/^ SDSF DESCRIBE DEMO-/)
+    expect(await row(page, 2)).toMatch(/^ SDSF DESCRIBE DEMO {5}STC\d{5}/)
     const text = await screenText(page)
     expect(text).toMatch(new RegExp(`Namespace: +${NAMESPACE}`))
     expect(text).toMatch(/Controlled By: +ReplicaSet\/demo-/)
@@ -187,8 +189,8 @@ test('ST lists the fixture\'s Job and CronJob in JES terms; S on the Job browses
     await command(page, 'prefix batch*')
     await command(page, 'st')
     expect(await row(page, 2)).toMatch(/^ SDSF STATUS DISPLAY ALL CLASSES +LINE 1-2 \(2\)$/)
-    expect(await row(page, 6)).toMatch(/^ {5}BATCH-JO JOB\d{5} DEFAULT +1 PRINT +J COMPLETE 1\/1/)
-    expect(await row(page, 7)).toMatch(/^ {5}BATCH-CR JOB\d{5} DEFAULT +1 HOLD +C SUSPENDED/)
+    expect(await row(page, 6)).toMatch(/^ {5}BATCH-JO {10}JOB\d{5} DEFAULT +1 PRINT +J COMPLETE 1\/1/)
+    expect(await row(page, 7)).toMatch(/^ {5}BATCH-CR {10}JOB\d{5} DEFAULT +1 HOLD +C SUSPENDED/)
     await shot('st')
     await lineCommand(page, 6, 's')
     await enter(page)
@@ -209,7 +211,7 @@ test('I: the input queue, the CronJob waiting for its time', async () => {
     await command(page, 'prefix later*')
     await command(page, 'i')
     expect(await row(page, 2)).toMatch(/^ SDSF INPUT QUEUE DISPLAY ALL CLASSES +LINE 1-1 \(1\)$/)
-    expect(await row(page, 6)).toMatch(/^ {5}LATER-CR JOB\d{5} DEFAULT +1 INPUT +C SCHEDULED/)
+    expect(await row(page, 6)).toMatch(/^ {5}LATER-CR {10}JOB\d{5} DEFAULT +1 INPUT +C SCHEDULED/)
     await command(page, 'prefix demo*')
     await command(page, 'da')
     expect(await row(page, 2)).toMatch(/^ SDSF DA .* LINE 1-2 \(2\)$/)
@@ -220,7 +222,7 @@ test('DA parameters: the Job\'s ended pod only with ALL; OJOB, OSTC and a wrong 
     await command(page, 'da')
     expect(await screenText(page)).not.toMatch(/^ {5}BATCH-JO/m)
     await command(page, 'da all')
-    expect(await row(page, 6)).toMatch(/^ {5}BATCH-JO WORK +JOB\d{5} DEFAULT +. END /)
+    expect(await row(page, 6)).toMatch(/^ {5}BATCH-JO \S{5} {4}WORK +JOB\d{5} DEFAULT +. END /)
     await command(page, 'da ojob')
     expect(await screenText(page)).not.toMatch(/^ {5}BATCH-JO/m)
     await command(page, 'prefix demo*')
@@ -405,7 +407,7 @@ test('C asks first in the Confirm Action window, by line number and JOBNAME; 2 l
     expect(text).toMatch(/Confirm Action/)
     expect(text).toMatch(/1 {2}1\. {2}Process action character/)
     expect(text).toMatch(/3\. {2}Process action character and/)
-    expect(text).toMatch(new RegExp(`Line number: ${first - 5} +DEMO-`))
+    expect(text).toMatch(new RegExp(`Line number: ${first - 5} +DEMO\\.\\S{5}\\b`))
     expect(await row(page, first)).toMatch(/^ C /)
     await shot('confirm')
     await page.keyboard.type('2')

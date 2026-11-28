@@ -521,12 +521,35 @@ export class SdsfChannel implements IChannel {
         }
     }
 
+    /*
+        Which CronJob created each Job, for the JOBNAME of their pods: a pod names its Job, not the CronJob above
+        it. The Jobs are read only when some pod belongs to one; if they cannot be read, the JOBNAME is the Job's.
+    */
+    private cronJobsOfJobs = async (pods: V1Pod[]): Promise<(namespace: string, job: string) => string> => {
+        const none = () => ''
+        if (!pods.some(p => (p.metadata?.ownerReferences ?? []).some(o => o.kind === 'Job'))) return none
+        try {
+            const jobs = await this.clusterInfo.batchApi.listJobForAllNamespaces()
+            const crons = new Map<string, string>()
+            for (const job of jobs.items) {
+                const cron = job.metadata?.ownerReferences?.find(o => o.kind === 'CronJob')
+                if (cron) crons.set(`${job.metadata?.namespace}/${job.metadata?.name}`, cron.name)
+            }
+            return (namespace, job) => crons.get(`${namespace}/${job}`) ?? ''
+        }
+        catch (err) {
+            this.backChannelObject.logWarning?.(`Cannot read the Jobs for the JOBNAME of their pods: ${errorText(err)}`)
+            return none
+        }
+    }
+
     // Every pod the key reaches, with its usage when the provider has it.
     private list = async (instance: IInstance): Promise<Pick<ISdsfMessageResponse, 'pods' | 'metrics' | 'clusterCpu'>> => {
         const podList = await this.clusterInfo.coreApi.listPodForAllNamespaces()
         const usage = usageOf(this.readings)
+        const cronJobOf = await this.cronJobsOfJobs(podList.items)
         const pods = podList.items
-            .map(mapPod)
+            .map(p => mapPod(p, cronJobOf))
             .filter(p => keyMatchesResource(instance.accessKey, { namespace: p.namespace, pod: p.name }))
             .map(p => {
                 const u = usage.pods.get(p.namespace + '/' + p.name)

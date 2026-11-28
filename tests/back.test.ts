@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { V1Pod, CoreV1Event, V1Node, V1PriorityClass, V1CertificateSigningRequest, V1ResourceQuota, V1PersistentVolume, V1PersistentVolumeClaim } from '@kubernetes/client-node'
-import { jobIdOf, mapPod } from '../src/back/PodMapper'
+import { jobIdOf, mapPod, suffixOf, workloadOf } from '../src/back/PodMapper'
 import { ageOf, describePod } from '../src/back/Describe'
 import { usageOf } from '../src/back/PodMetrics'
 import { IMetricsCluster, IMetricsValue } from '../src/back/MetricsProviderTypes'
@@ -296,7 +296,7 @@ const fakeCluster = (opts: { metrics?: boolean; fail?: { code?: number; body?: s
         },
         batchApi: {
             listJobForAllNamespaces: () => call('listJobs', undefined, { items: [
-                { metadata: { name: 'nightly', namespace: 'shop', uid: 'j1' }, spec: { template: {} }, status: { succeeded: 1, conditions: [{ type: 'Complete', status: 'True' }] } },
+                { metadata: { name: 'nightly', namespace: 'shop', uid: 'j1', ownerReferences: [{ kind: 'CronJob', name: 'nightly-cron', apiVersion: 'batch/v1', uid: 'c0' }] }, spec: { template: {} }, status: { succeeded: 1, conditions: [{ type: 'Complete', status: 'True' }] } },
                 { metadata: { name: 'secret-job', namespace: 'vault', uid: 'j2' }, spec: { template: {} }, status: {} }
             ] }),
             listCronJobForAllNamespaces: () => call('listCronJobs', undefined, { items: [
@@ -566,7 +566,7 @@ test('mapJob and mapCronJob take every ST column out of the object', () => {
     } as V1Job)
     assert.deepEqual(j, {
         kind: ESdsfObjectKind.JOB, name: 'backup-28920', namespace: 'ops', uid: 'aaaa-0001', jobId: jobIdOf('aaaa-0001', 'Job'), owner: 'runner',
-        cronJob: 'backup', schedule: '', state: ESdsfJobState.RUNNING, parallelism: 2, completions: 4, active: 1, succeeded: 2, failed: 1,
+        cronJob: 'backup', workload: 'backup', step: '28920', schedule: '', state: ESdsfJobState.RUNNING, parallelism: 2, completions: 4, active: 1, succeeded: 2, failed: 1,
         start: '2026-11-22T10:00:00.000Z', end: ''
     })
     assert.equal(j.jobId.slice(0, 3), 'JOB')
@@ -574,6 +574,9 @@ test('mapJob and mapCronJob take every ST column out of the object', () => {
     assert.equal(bare.owner, 'default')
     assert.equal(bare.parallelism, 1)
     assert.equal(bare.completions, 0)
+    assert.deepEqual([bare.workload, bare.step], ['', ''])
+    const alone = mapJob({ metadata: { name: 'migrate' } } as V1Job)
+    assert.deepEqual([alone.workload, alone.step], ['migrate', ''], 'a Job of its own is its own JOBNAME, with no step')
     const c = mapCronJob({
         metadata: { name: 'backup', namespace: 'ops', uid: 'cccc' },
         spec: { schedule: '0 2 * * *', jobTemplate: { spec: { parallelism: 3, template: { spec: { serviceAccountName: 'runner', containers: [] } } } } },
@@ -585,6 +588,7 @@ test('mapJob and mapCronJob take every ST column out of the object', () => {
     assert.equal(c.active, 1)
     assert.equal(c.parallelism, 3)
     assert.equal(c.start, '2026-11-22T02:00:00.000Z')
+    assert.deepEqual([c.workload, c.step], ['backup', ''])
     assert.equal(mapCronJob({ spec: { suspend: true } } as V1CronJob).state, ESdsfJobState.SUSPENDED)
     assert.equal(mapCronJob({} as V1CronJob).owner, 'default')
 })
@@ -968,4 +972,53 @@ test('DESCRIBE a quota and a claim by their namespace; a volume claimed where th
     assert.equal(theirs.ok, false)
     assert.equal(theirs.error, ESdsfError.NOT_AUTHORIZED)
     assert.match(String(theirs.detail), /vault/)
+})
+
+// ─── JOBNAME = the workload, StepName = the pod ───────────────────────────────
+
+const owned = (name: string, kind: string, owner: string, labels: Record<string, string> = {}): V1Pod => pod({
+    metadata: { name, namespace: 'shop', uid: name, labels, ownerReferences: kind ? [{ apiVersion: 'v1', kind, name: owner, uid: 'o', controller: true }] : [] }
+})
+
+test('suffixOf: what is left of a name once its parent goes; the whole name when it is not its parent plus a suffix', () => {
+    assert.equal(suffixOf('api-7d9f8b6c4-x2kq9', 'api-7d9f8b6c4'), 'x2kq9')
+    assert.equal(suffixOf('db-0', 'db'), '0')
+    assert.equal(suffixOf('backup-29012345', 'backup'), '29012345')
+    assert.equal(suffixOf('handmade', 'api'), 'handmade')
+    assert.equal(suffixOf('api-', 'api'), 'api-', 'nothing after the dash: the name')
+    assert.equal(suffixOf('api', ''), 'api')
+})
+
+test('workload and step of a pod: Deployment, StatefulSet, DaemonSet, Job, a CronJob\'s Job, a bare pod', () => {
+    const rs = mapPod(owned('api-7d9f8b6c4-x2kq9', 'ReplicaSet', 'api-7d9f8b6c4', { 'pod-template-hash': '7d9f8b6c4' }))
+    assert.deepEqual([rs.workload, rs.step], ['api', 'x2kq9'], 'the Deployment, from the ReplicaSet without its hash')
+    const rsNoHash = mapPod(owned('old-x1', 'ReplicaSet', 'old'))
+    assert.deepEqual([rsNoHash.workload, rsNoHash.step], ['old', 'x1'], 'a ReplicaSet of its own (no hash label): the ReplicaSet')
+    const sts = mapPod(owned('db-0', 'StatefulSet', 'db'))
+    assert.deepEqual([sts.workload, sts.step], ['db', '0'])
+    const ds = mapPod(owned('proxy-abcde', 'DaemonSet', 'proxy'))
+    assert.deepEqual([ds.workload, ds.step], ['proxy', 'abcde'])
+    const job = mapPod(owned('migrate-q8w2z', 'Job', 'migrate'))
+    assert.deepEqual([job.workload, job.step], ['migrate', 'q8w2z'], 'a Job of its own')
+    const run = mapPod(owned('backup-29012345-k7m4p', 'Job', 'backup-29012345'), (ns, j) => ns === 'shop' && j === 'backup-29012345' ? 'backup' : '')
+    assert.deepEqual([run.workload, run.step], ['backup', 'k7m4p'], 'a CronJob\'s run: the CronJob, the pod against its Job')
+    const bare = mapPod(owned('debug-shell', '', ''))
+    assert.deepEqual([bare.workload, bare.step], ['debug-shell', ''], 'nobody owns it: its own name, no step')
+    assert.equal(workloadOf({}, '', '', () => ''), '')
+})
+
+test('LIST: the JOBNAME of a Job\'s pod is its CronJob, read from the Jobs only when some pod belongs to a Job', async () => {
+    const o = await open('sdsf$read::::')
+    const pods = (await o.run(message(ESdsfCommand.LIST))).pods as { name: string; workload: string }[]
+    assert.ok(pods.length > 0)
+    assert.equal(o.calls.some(c => c.method === 'listJobs'), false, 'no pod of a Job: the Jobs are not read')
+    ;(o.clusterInfo.coreApi as unknown as { listPodForAllNamespaces: () => Promise<unknown> }).listPodForAllNamespaces = async () => ({ items: [
+        owned('nightly-k7m4p', 'Job', 'nightly'), owned('once-q8w2z', 'Job', 'once')
+    ] })
+    const withJobs = (await o.run(message(ESdsfCommand.LIST))).pods as { name: string; workload: string; step: string }[]
+    assert.equal(o.calls.filter(c => c.method === 'listJobs').length, 1)
+    assert.deepEqual(withJobs.map(p => [p.name, p.workload, p.step]), [['nightly-k7m4p', 'nightly-cron', 'k7m4p'], ['once-q8w2z', 'once', 'q8w2z']])
+    ;(o.clusterInfo.batchApi as unknown as { listJobForAllNamespaces: () => Promise<unknown> }).listJobForAllNamespaces = async () => { throw new Error('forbidden') }
+    const unread = (await o.run(message(ESdsfCommand.LIST))).pods as { workload: string }[]
+    assert.deepEqual(unread.map(p => p.workload), ['nightly', 'once'], 'the Jobs cannot be read: the JOBNAME is the Job\'s, and the list still comes')
 })

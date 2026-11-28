@@ -5,9 +5,10 @@ import { qosLetterOf } from './DaColumns'
 
 /*
     The ? panel, SDSF's JOB DATA SET DISPLAY (reference capture panels10): one row per data set of the job,
-    which here are the pod's containers. S on a row browses that container's log.
+    which here are the pod's containers. S on a row browses that container's log. As on the DA, the job is the
+    workload, StepName the pod and ProcStep the container (the data set's own).
 
-      row 2     SDSF JOB DATA SET DISPLAY - JOB API-7D9F  (STC43981)              LINE 1-3 (3)
+      row 2     SDSF JOB DATA SET DISPLAY - JOB API       (STC43981)              LINE 1-3 (3)
       row 3     COMMAND INPUT ===>                                          SCROLL ===> PAGE
       row 4     NP   DDNAME   StepName ProcStep DSID Owner    C State      Rst Image
       5..       one container per row
@@ -47,7 +48,7 @@ export const paintContainers = (p: Painter, state: IContainersState): IContainer
     const pod = state.pod
     const total = pod.containers.length
     paintActionBar(p)
-    p.text(ROW_TITLE, 1, `SDSF JOB DATA SET DISPLAY - JOB ${pod.name.toUpperCase().slice(0, 8).padEnd(8)}  (${pod.jobId})`, { color: E3270Color.WHITE })
+    p.text(ROW_TITLE, 1, `SDSF JOB DATA SET DISPLAY - JOB ${pod.workload.toUpperCase().slice(0, 8).padEnd(8)}  (${pod.jobId})`, { color: E3270Color.WHITE })
     const lines = `LINE ${total ? 1 : 0}-${Math.min(total, containerRows(screen))} (${total})`
     p.text(ROW_TITLE, screen.cols - lines.length, lines, { color: E3270Color.WHITE })
     paintShortMessage(p, state.message, state.messageLevel)
@@ -56,7 +57,7 @@ export const paintContainers = (p: Painter, state: IContainersState): IContainer
     p.text(ROW_CONTAINER_HEADERS, 1, 'NP ', { color: E3270Color.BLUE })
     p.text(ROW_CONTAINER_HEADERS, 5, 'DDNAME   StepName ProcStep DSID Owner    C State      Rst Image', { color: E3270Color.TURQUOISE })
 
-    const stepName = (pod.containers.find(c => !c.init)?.name ?? '').toUpperCase().slice(0, 8)
+    const stepName = pod.step.toUpperCase().slice(0, 8)
     const np: IContainerFields['np'] = []
     pod.containers.slice(0, containerRows(screen)).forEach((c, i) => {
         const row = ROW_FIRST_CONTAINER + i
@@ -64,8 +65,8 @@ export const paintContainers = (p: Painter, state: IContainersState): IContainer
         const qos = qosLetterOf(pod.qos)
         const left = [
             c.name.toUpperCase().slice(0, 8).padEnd(8),
-            (c.init ? 'INIT' : stepName).padEnd(8),
-            (c.init ? c.name.toUpperCase().slice(0, 8) : '').padEnd(8),
+            stepName.padEnd(8),
+            c.name.toUpperCase().slice(0, 8).padEnd(8),
             String(dsidOf(pod, c)).padStart(4),
             pod.owner.toUpperCase().slice(0, 8).padEnd(8),
             qos

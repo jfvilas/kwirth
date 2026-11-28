@@ -1,10 +1,10 @@
 # SDSF — plan y backlog
 
-> **ESTADO — EN CURSO** (2026-11-23). Publicado: `plugin/sdsf@0.10.0` (npm `@jfvilas` y marketplace de
+> **ESTADO — EN CURSO** (2026-11-28). Publicado: `plugin/sdsf@0.12.0` (npm `@jfvilas` y marketplace de
 > github.com/jfvilas/kwirth). Hechos el MVP (S0–S5), el S6 (`LOG`), el S7 (`ST`/`O`/`H`), el S7b
 > (parámetros del `DA`), el S9 (modelo de terminal y color en el setup) y el S8 (`INIT`). Fase 2 completa.
 > Hecho el S10 (el Confirm Action de SDSF). **Fase 3a completa:** S11 (`I`, `ULOG`), S12 (`JC`, `SR`) y S13
-> (`RES`, `SP`). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
+> (`RES`, `SP`). Hecho el S14 (JOBNAME = workload, D17). Quedan la fase 3 (`X`) y la V2 (SYSNAME, tn3270), en §4. Cuelga del [PRD](PRD.md) y no repite ni su problema ni sus decisiones de producto
 > (D1–D11).
 >
 > **Dónde vive:** `~/github/kwirth/plugins/sdsf`. Es un repo anidado (rama `main`, identidad `jfvilas`)
@@ -260,6 +260,20 @@ Se publica cada stream con su versión.
 - **Tipos nuevos** (⚠️ a validar): `ESdsfModel`, `ESdsfDisplay`, `SDSF_MODEL_GEOMETRY`, `I3270Geometry`
   (sustituye a `MODEL3_ROWS`/`MODEL3_COLS`) y los campos `model` y `display` de `ISdsfInstanceConfig`;
   `display` en `ISdsfData`.
+
+**S14 — JOBNAME = controller, StepName = pod, ProcStep = container (D17)** · ✅ VALIDADO (2026-11-28), publicado como 0.12.0.
+- **Back:** `ISdsfPod` y `ISdsfJob` ganan `workload` y `step`. El workload de un pod: el Deployment (el
+  ReplicaSet sin su `pod-template-hash`, sin leer el ReplicaSet), el StatefulSet, el DaemonSet, el Job o el
+  CronJob de su Job (el LIST lee los Jobs solo si algún pod es de un Job; si no puede, se queda el Job), y su
+  propio nombre si nadie lo posee. El step: el nombre sin el de su controller directo (`x2kq9`, `0`). En ST,
+  un Job de CronJob tiene el CronJob de JOBNAME y su ejecución de step.
+- **Paneles:** DA (`JOBNAME`, `StepName` = step, `ProcStep` = contenedor en marcha), ST/I/O/H (`StepName`
+  nuevo tras JOBNAME), `?` (título con el workload; StepName el pod, ProcStep el contenedor de cada DD),
+  cabeceras `OUTPUT DISPLAY`/`DESCRIBE` con el workload (el JobID dice cuál), ventana de confirmación con
+  `JOBNAME.STEPNAME`. `PREFIX` filtra por JOBNAME; FIND sigue buscando en los nombres completos.
+- `stepNameOf` pasa a `mainContainerOf` (el que browsea `S`) y `procStepOf` cae en el principal cuando no hay
+  init en marcha.
+- **Tipos** (validados por el usuario): `workload` y `step` en `ISdsfPod` e `ISdsfJob`.
 
 **S13 — `RES` y `SP` (fase 3a)** · ✅ VALIDADO (2026-11-23), publicado como 0.10.0.
 - **`RES`:** `SDSF RESOURCE DISPLAY`, una fila por recurso de cada ResourceQuota que alcanza la key, la más

@@ -18,6 +18,8 @@ const podOf = (name: string, over: Partial<ISdsfPod> = {}): ISdsfPod => ({
     name, namespace: 'shop', uid: name, jobId: 'STC00001', owner: 'default', controllerKind: 'ReplicaSet', controllerName: 'rs',
     qos: ESdsfQos.BURSTABLE, phase: 'Running', ready: true, deleting: false, reason: '', priorityClass: '', priority: 0, restarts: 0,
     node: 'node-1', created: '2026-11-22T11:00:00.000Z', containers: [{ name: 'main', init: false, image: 'x', ready: true, restarts: 0, state: 'running', reason: '' }],
+    // the JOBNAME is the pod's own name unless a test gives the pod a workload (replicas share it)
+    workload: name, step: '',
     ...over
 })
 
@@ -105,6 +107,8 @@ const command = async (s: SdsfSession, text: string, a: E3270Aid = E3270Aid.ENTE
 const row = (s: SdsfSession, r: number) => s.terminal.screen.rowText(r)
 const dataRows = (s: SdsfSession) => Array.from({ length: dataRowsOf(s.terminal.screen) }, (_, i) => row(s, ROW_FIRST_DATA + i)).filter(r => r.trim())
 const jobnames = (s: SdsfSession) => dataRows(s).map(r => r.slice(5, 13).trim())
+// JOBNAME and StepName together, as 'BACKUP 1': what tells apart the rows that share a JOBNAME
+const jobsteps = (s: SdsfSession) => dataRows(s).map(r => r.slice(5, 22).replace(/\s+/g, ' ').trim())
 
 const open = async (pods: ISdsfPod[] = [], metrics = ESdsfMetricsState.AVAILABLE, geometry: I3270Geometry = MODEL3_GEOMETRY) => {
     const source = new FakeSource()
@@ -202,8 +206,8 @@ test('END and PF3 on the menu leave to TSO READY; SDSF and SDSF DA come back; an
 
 test('DA lists the pods with the columns of a real DA, in the colours of the captures', async () => {
     const { s, source } = await openDa([
-        podOf('api-7d9f8b6c4-x2kq9', { owner: 'api-sa', jobId: 'STC43981', qos: ESdsfQos.GUARANTEED, priority: 2000001000, memory: 256 * 1024 * 1024, restarts: 3 }),
-        podOf('worker-0', { namespace: 'batch', phase: 'Pending', ready: false, qos: ESdsfQos.BESTEFFORT })
+        podOf('api-7d9f8b6c4-x2kq9', { owner: 'api-sa', jobId: 'STC43981', qos: ESdsfQos.GUARANTEED, priority: 2000001000, memory: 256 * 1024 * 1024, restarts: 3, workload: 'api', step: 'x2kq9' }),
+        podOf('worker-0', { namespace: 'batch', phase: 'Pending', ready: false, qos: ESdsfQos.BESTEFFORT, controllerKind: 'StatefulSet', controllerName: 'worker', workload: 'worker', step: '0' })
     ])
     const screen = s.terminal.screen
     assert.equal(s.panel, ESdsfPanel.DA)
@@ -213,8 +217,10 @@ test('DA lists the pods with the columns of a real DA, in the colours of the cap
     assert.match(row(s, ROW_FILTER), /^ PREFIX=\*  DEST=\(ALL\)  OWNER=\*  SORT=\*/)
     assert.equal(row(s, ROW_HEADERS).trimEnd(), ' NP  JOBNAME  StepName ProcStep JobID    Owner    C Pos DP  Real Paging     SIO')
     // natural order: namespace, then name
-    assert.deepEqual(jobnames(s), ['WORKER-0', 'API-7D9F'])
-    assert.equal(dataRows(s)[1].trimEnd(), '     API-7D9F MAIN              STC43981 API-SA   G IN  FF   256   0.00       3')
+    // JOBNAME the workload (the Deployment, the StatefulSet), StepName the pod, ProcStep the container at work
+    assert.deepEqual(jobnames(s), ['WORKER', 'API'])
+    assert.equal(dataRows(s)[1].trimEnd(), '     API      X2KQ9    MAIN     STC43981 API-SA   G IN  FF   256   0.00       3')
+    assert.match(dataRows(s)[0], /^ {5}WORKER {3}0 {8}MAIN /)
     assert.match(dataRows(s)[0], / E NS  F0     - /)
     assert.equal(displayCell(screen, screen.address(ROW_HEADERS, 5)).color, E3270Color.TURQUOISE)
     assert.equal(displayCell(screen, screen.address(ROW_HEADERS, 1)).color, E3270Color.BLUE)
@@ -566,16 +572,17 @@ test('a log that cannot be read stays on the DA with the reason', async () => {
 })
 
 test('? shows the containers as the job data sets; S on one browses its log and PF3 goes back to them', async () => {
-    const { s, source } = await openDa([twoContainers('api-1')])
+    const { s, source } = await openDa([{ ...twoContainers('api-1'), workload: 'api', step: '1' }])
     source.logs['api-1/proxy'] = ['proxy says hi']
     np(s, 0, '?')
     await enter(s)
     assert.equal(s.panel, ESdsfPanel.CONTAINERS)
-    assert.match(row(s, ROW_TITLE), /^ SDSF JOB DATA SET DISPLAY - JOB API-1     \(STC00042\) +LINE 1-3 \(3\)$/)
+    // the job is the workload; every data set is of the same step (the pod), and its proc step is its container
+    assert.match(row(s, ROW_TITLE), /^ SDSF JOB DATA SET DISPLAY - JOB API       \(STC00042\) +LINE 1-3 \(3\)$/)
     assert.equal(row(s, 4).trimEnd(), ' NP  DDNAME   StepName ProcStep DSID Owner    C State      Rst Image')
-    assert.equal(row(s, 5).trimEnd(), '     MIGRATE  INIT     MIGRATE     2 DEFAULT  B Completed    0 migrate:1')
-    assert.equal(row(s, 6).trimEnd(), '     API      API                101 DEFAULT  B running      2 registry/api:2.1')
-    assert.match(row(s, 7), /PROXY +API +102 DEFAULT +B CrashLoopB +0 envoy:1/)
+    assert.equal(row(s, 5).trimEnd(), '     MIGRATE  1        MIGRATE     2 DEFAULT  B Completed    0 migrate:1')
+    assert.equal(row(s, 6).trimEnd(), '     API      1        API       101 DEFAULT  B running      2 registry/api:2.1')
+    assert.match(row(s, 7), /PROXY +1 +PROXY +102 DEFAULT +B CrashLoopB +0 envoy:1/)
     const screen = s.terminal.screen
     assert.equal(displayCell(screen, screen.address(7, 48)).color, E3270Color.RED)
     assert.equal(displayCell(screen, screen.address(6, 61)).color, E3270Color.YELLOW, 'restarts')
@@ -944,11 +951,16 @@ test('LOG: &nn keeps it running; PA1 stops it; a refused read says why', async (
 
 // ─── ST, O and H (S7) ─────────────────────────────────────────────────────────
 
-const jobOf = (name: string, over: Partial<ISdsfJob> = {}): ISdsfJob => ({
-    kind: ESdsfObjectKind.JOB, name, namespace: 'batch', uid: name, jobId: 'JOB00001', owner: 'runner', cronJob: '', schedule: '',
-    state: ESdsfJobState.COMPLETE, parallelism: 1, completions: 1, active: 0, succeeded: 1, failed: 0,
-    start: '2026-11-22T11:00:00.000Z', end: '2026-11-22T11:01:30.000Z', ...over
-})
+// As the back maps it: a CronJob's run has the CronJob as JOBNAME and what is left of its name as StepName.
+const jobOf = (name: string, over: Partial<ISdsfJob> = {}): ISdsfJob => {
+    const job: ISdsfJob = {
+        kind: ESdsfObjectKind.JOB, name, namespace: 'batch', uid: name, jobId: 'JOB00001', owner: 'runner', cronJob: '', schedule: '',
+        workload: name, step: '',
+        state: ESdsfJobState.COMPLETE, parallelism: 1, completions: 1, active: 0, succeeded: 1, failed: 0,
+        start: '2026-11-22T11:00:00.000Z', end: '2026-11-22T11:01:30.000Z', ...over
+    }
+    return job.cronJob && !over.workload ? { ...job, workload: job.cronJob, step: name.slice(job.cronJob.length + 1) } : job
+}
 
 const batch = () => [
     jobOf('backup-1', { jobId: 'JOB00011', cronJob: 'backup', start: '2026-11-22T10:00:00.000Z' }),
@@ -959,7 +971,7 @@ const batch = () => [
 ]
 
 const podOfJob = (job: string, name: string, created: string) => podOf(name, {
-    namespace: 'batch', controllerKind: 'Job', controllerName: job, jobId: 'JOB00099', created,
+    namespace: 'batch', controllerKind: 'Job', controllerName: job, jobId: 'JOB00099', created, workload: job, step: name.slice(job.length + 1),
     containers: [{ name: 'work', init: false, image: 'x', ready: false, restarts: 0, state: 'terminated', reason: 'Completed' }]
 })
 
@@ -975,19 +987,20 @@ test('ST lists Jobs and CronJobs as batch jobs: Queue and Status in JES terms', 
     assert.equal(s.panel, ESdsfPanel.ST)
     assert.deepEqual(source.requests.map(r => r.command), [ESdsfCommand.LIST, ESdsfCommand.JOBS], 'the pods too: S and ? on a Job go to its pod')
     assert.match(row(s, ROW_TITLE), /^ SDSF STATUS DISPLAY ALL CLASSES +LINE 1-5 \(5\)$/)
-    assert.equal(row(s, ROW_HEADERS).trimEnd(), ' NP  JOBNAME  JobID    Owner    Prty Queue     C Status             Age')
-    assert.deepEqual(jobnames(s), ['BACKUP-1', 'BACKUP-2', 'MIGRATE', 'BACKUP', 'REPORT'], 'Jobs before CronJobs, then by name')
-    assert.match(dataRows(s)[0], /BACKUP-1 JOB00011 RUNNER +1 PRINT +J COMPLETE 1\/1/)
-    assert.match(dataRows(s)[1], /BACKUP-2 JOB00012 RUNNER +1 EXECUTION J ACTIVE 0\/1/)
-    assert.match(dataRows(s)[2], /MIGRATE +JOB00013 RUNNER +1 PRINT +J FAILED 3/)
-    assert.match(dataRows(s)[3], /BACKUP +JOB00014 RUNNER +1 INPUT +C SCHEDULED/)
+    assert.equal(row(s, ROW_HEADERS).trimEnd(), ' NP  JOBNAME  StepName JobID    Owner    Prty Queue     C Status             Age')
+    // a CronJob's runs have its JOBNAME, and their StepName tells them apart
+    assert.deepEqual(jobnames(s), ['BACKUP', 'BACKUP', 'MIGRATE', 'BACKUP', 'REPORT'], 'Jobs before CronJobs, then by name')
+    assert.match(dataRows(s)[0], /^ {5}BACKUP {3}1 {8}JOB00011 RUNNER +1 PRINT +J COMPLETE 1\/1/)
+    assert.match(dataRows(s)[1], /^ {5}BACKUP {3}2 {8}JOB00012 RUNNER +1 EXECUTION J ACTIVE 0\/1/)
+    assert.match(dataRows(s)[2], /^ {5}MIGRATE {11}JOB00013 RUNNER +1 PRINT +J FAILED 3/, 'a Job of its own: no step')
+    assert.match(dataRows(s)[3], /^ {5}BACKUP {12}JOB00014 RUNNER +1 INPUT +C SCHEDULED/)
     assert.match(dataRows(s)[4], /REPORT +JOB00015 RUNNER +1 HOLD +C SUSPENDED/)
     const screen = s.terminal.screen
-    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 2, 50)).color, E3270Color.RED, 'a failed Job in red')
-    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 4, 50)).color, E3270Color.PINK, 'held in pink')
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 2, 59)).color, E3270Color.RED, 'a failed Job in red')
+    assert.equal(displayCell(screen, screen.address(ROW_FIRST_DATA + 4, 59)).color, E3270Color.PINK, 'held in pink')
     await aid(s, E3270Aid.PF11)
     assert.match(row(s, ROW_HEADERS), /^ NP  JOBNAME  Schedule +CronJob +Dur Namespace/)
-    assert.match(dataRows(s)[0], /BACKUP-1 +backup +61m batch/, 'from 10:00 to 11:01:30')
+    assert.match(dataRows(s)[0], /BACKUP +backup +61m batch/, 'from 10:00 to 11:01:30')
     assert.match(dataRows(s)[3], /BACKUP +0 2 \* \* \*/)
     await aid(s, E3270Aid.PF11)
     assert.match(row(s, ROW_HEADERS), /^ NP  JOBNAME  JobName/)
@@ -997,7 +1010,7 @@ test('O shows the Jobs that ended; H the CronJobs suspended; DA and ST switch fr
     const { s } = await openSt('o')
     assert.equal(s.panel, ESdsfPanel.OUTPUT)
     assert.match(row(s, ROW_TITLE), /^ SDSF OUTPUT ALL CLASSES ALL FORMS/)
-    assert.deepEqual(jobnames(s), ['BACKUP-1', 'MIGRATE'])
+    assert.deepEqual(jobsteps(s), ['BACKUP 1', 'MIGRATE'])
     await command(s, 'h')
     assert.equal(s.panel, ESdsfPanel.HELD)
     assert.match(row(s, ROW_TITLE), /^ SDSF HELD OUTPUT DISPLAY ALL CLASSES/)
@@ -1012,11 +1025,11 @@ test('O shows the Jobs that ended; H the CronJobs suspended; DA and ST switch fr
 test('ST: filters, SORT on its own columns, FIND; going to DA forgets the ST sort', async () => {
     const { s } = await openSt()
     await command(s, 'prefix backup*')
-    assert.deepEqual(jobnames(s), ['BACKUP-1', 'BACKUP-2', 'BACKUP'])
+    assert.deepEqual(jobsteps(s), ['BACKUP 1', 'BACKUP 2', 'BACKUP'], 'PREFIX is on the JOBNAME: the CronJob and its runs')
     await command(s, 'prefix *')
     await command(s, 'sort queue d')
     assert.match(row(s, ROW_FILTER), /SORT=QUEUE\/D/)
-    assert.deepEqual(jobnames(s), ['BACKUP-1', 'MIGRATE', 'BACKUP', 'REPORT', 'BACKUP-2'])
+    assert.deepEqual(jobsteps(s), ['BACKUP 1', 'MIGRATE', 'BACKUP', 'REPORT', 'BACKUP 2'])
     await command(s, 'sort sio')
     assert.match(row(s, ROW_TITLE), /INVALID COLUMN NAME$/, 'SIO is a DA column, not an ST one')
     await command(s, 'f 0 2 *')
@@ -1073,7 +1086,12 @@ test('C on a Job and a CronJob: a window each, by line and JOBNAME; 1 deletes th
         [[ESdsfObjectKind.JOB, 'migrate'], [ESdsfObjectKind.CRONJOB, 'report']])
     assert.equal(s.panel, ESdsfPanel.ST)
     assert.match(row(s, ROW_TITLE), /COMMAND ISSUED$/)
-    assert.deepEqual(jobnames(s), ['BACKUP-1', 'BACKUP-2', 'BACKUP'])
+    assert.deepEqual(jobsteps(s), ['BACKUP 1', 'BACKUP 2', 'BACKUP'])
+    // a run of a CronJob: the window names it JOBNAME.STEPNAME, the runs share the JOBNAME
+    np(s, 1, 'c')
+    await enter(s)
+    assert.match(screenText(s), /Line number: 2 +BACKUP\.2\b/)
+    await aid(s, E3270Aid.PF3)
 })
 
 test('&nn works on ST too', async (t) => {
@@ -1795,4 +1813,51 @@ test('RES and SP sort by every one of their columns, both ways', async () => {
             assert.equal(dataRows(v.s).length, 6, header)
         }
     }
+})
+
+// ─── JOBNAME = workload, StepName = pod, ProcStep = container ─────────────────
+
+const replica = (step: string, over: Partial<ISdsfPod> = {}) => podOf(`api-7d9f8b6c4-${step}`, {
+    controllerName: 'api-7d9f8b6c4', workload: 'api', step, jobId: `STC0000${step.length}`, uid: step, ...over
+})
+
+test('the replicas of a workload share its JOBNAME, StepName tells them apart, PREFIX takes them all', async () => {
+    const { s } = await openDa([replica('x2kq9'), replica('m3pq1'), podOf('web-1', { namespace: 'web', workload: 'web', step: '1' })])
+    assert.deepEqual(jobsteps(s), ['API M3PQ1', 'API X2KQ9', 'WEB 1'])
+    await command(s, 'prefix api')
+    assert.deepEqual(jobsteps(s), ['API M3PQ1', 'API X2KQ9'], 'PREFIX is on the JOBNAME: every replica, without the hash')
+    await command(s, 'prefix api-7d*')
+    assert.equal(dataRows(s).length, 0, 'the pod name is not the JOBNAME any more')
+    await command(s, 'prefix *')
+    await command(s, 'find api-7d9f8b6c4-x2kq9')
+    assert.match(dataRows(s)[0], /API +X2KQ9/, 'FIND still finds the full pod name')
+    await command(s, 'sort jobname d')
+    await command(s, 'top')
+    assert.deepEqual(jobsteps(s), ['WEB 1', 'API X2KQ9', 'API M3PQ1'], 'by JOBNAME, then StepName')
+})
+
+test('ProcStep is the container at work: an init one while it runs; S still browses the main one', async () => {
+    const starting = replica('x2kq9', { containers: [
+        { name: 'migrate', init: true, image: 'x', ready: false, restarts: 0, state: 'running', reason: '' },
+        { name: 'api', init: false, image: 'x', ready: false, restarts: 0, state: 'waiting', reason: '' }
+    ] })
+    const { s, source } = await openDa([starting])
+    assert.match(dataRows(s)[0], /^ {5}API {6}X2KQ9 {4}MIGRATE /)
+    source.logs['api-7d9f8b6c4-x2kq9/api'] = ['api log']
+    np(s, 0, 's')
+    await enter(s)
+    assert.equal(row(s, 5).trimEnd(), ' api log')
+    assert.match(row(s, ROW_TITLE), /OUTPUT DISPLAY API {6}STC00005/, 'the heading names the JOBNAME; the JobID says which pod')
+})
+
+test('the Confirm Action window names JOBNAME.STEPNAME; D on a pod heads its describe with the JOBNAME', async () => {
+    const { s, source } = await openDa([replica('x2kq9'), replica('m3pq1')])
+    np(s, 1, 'c')
+    await enter(s)
+    assert.match(screenText(s), /Line number: 2 +API\.X2KQ9\b/)
+    await aid(s, E3270Aid.PF3)
+    np(s, 0, 'd')
+    await enter(s)
+    assert.deepEqual(source.requests.at(-1), { command: ESdsfCommand.DESCRIBE, objectKind: ESdsfObjectKind.POD, targetNamespace: 'shop', targetName: 'api-7d9f8b6c4-m3pq1' })
+    assert.match(row(s, ROW_TITLE), /DESCRIBE API {6}STC00005/)
 })

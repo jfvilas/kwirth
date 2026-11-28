@@ -69,10 +69,12 @@ const VALUE = E3270Color.GREEN
 
 export const ST_JOBNAME_COLUMN: IDaColumn<ISdsfJob> = {
     header: 'JOBNAME', width: 8, right: false,
-    text: j => upper8(j.name), color: () => IDENTITY, sortKey: j => j.name
+    text: j => upper8(j.workload), color: () => IDENTITY, sortKey: j => `${j.workload} ${j.step}`
 }
 
+// JOBNAME is the workload: a CronJob's runs share its name, and StepName tells them apart.
 export const ST_COLUMNS: IDaColumn<ISdsfJob>[] = [
+    { header: 'StepName', width: 8, right: false, text: j => upper8(j.step), color: () => IDENTITY, sortKey: j => j.step },
     { header: 'JobID', width: 8, right: false, text: j => j.jobId, color: () => IDENTITY, sortKey: j => j.jobId },
     { header: 'Owner', width: 8, right: false, text: j => upper8(j.owner), color: () => IDENTITY, sortKey: j => j.owner },
     { header: 'Prty', width: 4, right: true, text: j => String(j.parallelism), color: () => VALUE, sortKey: j => j.parallelism },

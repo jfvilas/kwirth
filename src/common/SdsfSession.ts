@@ -4,7 +4,7 @@ import {
 import { EMessageLevel } from './panels/SdsfLayout'
 import { paintPrimaryMenu } from './panels/PrimaryMenu'
 import { columnsFrom, dataRows, filterLine, ITableFields, offsetLeftOf, paintDa, paintTable, ROW_FIRST_DATA, ROW_HEADERS } from './panels/DaPanel'
-import { cell, DA_COLUMNS, findColumn, IDaColumn, JOBNAME_COLUMN, stepNameOf } from './panels/DaColumns'
+import { cell, DA_COLUMNS, findColumn, IDaColumn, JOBNAME_COLUMN, mainContainerOf } from './panels/DaColumns'
 import { ST_COLUMNS, ST_JOBNAME_COLUMN } from './panels/JobColumns'
 import { EPrimaryCommand, IPrimaryCommand, parsePrimaryCommand } from './panels/PrimaryCommand'
 import { IReadyState, paintReady } from './panels/ReadyPanel'
@@ -772,9 +772,16 @@ export class SdsfSession {
     // What changes the cluster and is confirmed first: C and CA; on INIT, S, Z and P.
     private needsConfirm = (line: IQueuedLine): boolean => line.target.node ? NODE_ACTION[line.command] !== undefined : isCancel(line.command)
 
-    // The JOBNAME as the table shows it (the ID on INIT): what the Confirm Action window names.
-    private jobnameOf = (target: ILineTarget): string =>
-        (target.node?.id ?? target.jobClass?.name ?? target.request?.id ?? target.quota?.name ?? target.volume?.name ?? target.job?.name ?? target.pod?.name ?? '').toUpperCase().slice(0, 8)
+    /*
+        What the Confirm Action window names. For a pod or a Job, JOBNAME.STEPNAME (API.X2KQ9): the replicas of a
+        workload share the JOBNAME, and the window has to say which one goes. For the rest, its first column.
+    */
+    private jobnameOf = (target: ILineTarget): string => {
+        const upper8 = (s: string) => s.toUpperCase().slice(0, 8)
+        const workload = target.pod ?? target.job
+        if (workload) return workload.step ? `${upper8(workload.workload)}.${upper8(workload.step)}` : upper8(workload.workload)
+        return upper8(target.node?.id ?? target.jobClass?.name ?? target.request?.id ?? target.quota?.name ?? target.volume?.name ?? '')
+    }
 
     /*
         The next thing the queue asks for. What changes the cluster goes first: one Confirm Action window per
@@ -812,14 +819,14 @@ export class SdsfSession {
                 this.openNarrowedDa()
                 return
             }
-            this.openDescribe(this.actionTargetOf(next.target))
+            this.openDescribe(this.actionTargetOf(next.target), this.actionTargetOf(next.target).name)
             return
         }
         const job = next.target.job
         const pod = job ? this.podOfJob(job) : next.target.pod
         switch (next.command) {
             case ELineCommand.SELECT: {
-                const main = pod?.containers.find(c => c.name === stepNameOf(pod))
+                const main = pod?.containers.find(c => c.name === mainContainerOf(pod))
                 if (!pod || !main) {
                     this.say('NO OUTPUT', EMessageLevel.WARNING, `${job?.name ?? pod?.name ?? ''} has no pod whose log could be browsed.`)
                     this.runQueue()
@@ -839,7 +846,8 @@ export class SdsfSession {
                 this.finish()
                 return
             case ELineCommand.DISPLAY:
-                this.openDescribe(this.actionTargetOf(next.target))
+                // a pod's or a Job's heading names its JOBNAME, as the table: the JobID tells which one
+                this.openDescribe(this.actionTargetOf(next.target), (job ?? next.target.pod)?.workload ?? '')
                 return
             default:
                 this.runQueue()
@@ -980,12 +988,13 @@ export class SdsfSession {
     }
 
     private openLog = (pod: ISdsfPod, container: ISdsfContainer, back: ESdsfPanel): void => {
-        const heading = `OUTPUT DISPLAY ${pod.name.toUpperCase().slice(0, 8).padEnd(8)} ${pod.jobId}  DSID ${String(dsidOf(pod, container)).padStart(5)}`
+        const heading = `OUTPUT DISPLAY ${pod.workload.toUpperCase().slice(0, 8).padEnd(8)} ${pod.jobId}  DSID ${String(dsidOf(pod, container)).padStart(5)}`
         this.openBrowse({ command: ESdsfCommand.LOG, objectKind: ESdsfObjectKind.POD, targetNamespace: pod.namespace, targetName: pod.name, containerName: container.name }, heading, back)
     }
 
-    private openDescribe = (target: IActionTarget): void => {
-        const heading = `DESCRIBE ${target.name.toUpperCase().slice(0, 8).padEnd(8)} ${target.jobId || DESCRIBE_TAG[target.kind] || ''}`
+    // `name` is what the heading shows: the JOBNAME of a pod or a Job, the object's own name otherwise.
+    private openDescribe = (target: IActionTarget, name: string): void => {
+        const heading = `DESCRIBE ${name.toUpperCase().slice(0, 8).padEnd(8)} ${target.jobId || DESCRIBE_TAG[target.kind] || ''}`
         this.openBrowse({ command: ESdsfCommand.DESCRIBE, objectKind: target.kind, targetNamespace: target.namespace, targetName: target.name }, heading, this.listPanel)
     }
 
@@ -1292,7 +1301,7 @@ export class SdsfSession {
             (!this.nodeFilter || p.node === this.nodeFilter) &&
             (!this.classFilter || p.priorityClass === this.classFilter) &&
             (!this.namespaceFilter || p.namespace === this.namespaceFilter) &&
-            sdsfPatternMatches(this.prefix, p.name) &&
+            sdsfPatternMatches(this.prefix, p.workload) &&
             sdsfPatternMatches(this.owner, p.owner) &&
             (!this.dest || p.namespace.toLowerCase() === this.dest)),
         [JOBNAME_COLUMN, ...DA_COLUMNS],
@@ -1315,7 +1324,7 @@ export class SdsfSession {
         return this.sortRows(
             this.jobs.filter(j =>
                 inPanel(j) &&
-                sdsfPatternMatches(this.prefix, j.name) &&
+                sdsfPatternMatches(this.prefix, j.workload) &&
                 sdsfPatternMatches(this.owner, j.owner) &&
                 (!this.dest || j.namespace.toLowerCase() === this.dest)),
             [ST_JOBNAME_COLUMN, ...ST_COLUMNS],
